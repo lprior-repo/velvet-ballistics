@@ -61,7 +61,10 @@
 //         the multiplication is `body_count.checked_mul(iter_count)` at
 //         budget.rs:2487 and the addition is `total.checked_add(product)`
 //         at budget.rs:2493; the trailing `push_done_continuation`
-//         call at budget.rs:2498 is mirrored separately below)
+//         call at budget.rs:2498 is performed inline via the
+//         `push_done_continuation` mirror below; `body_count` is a
+//         factored input, production computes it via
+//         `count_body_region_nodes` at budget.rs:2484)
 //        -> mirrored as `count_and_push_loop_body`
 //
 //   - `find_node_position`                   <- crates/vb_core/src/budget.rs:2240-2267
@@ -430,7 +433,8 @@ pub mod workflow {
 
 /// Production wrapper for `count_and_push_loop_body` at
 /// `crates/vb_core/src/budget.rs:2474-2500`. Body performs the same
-/// `checked_mul` + `checked_add` as production. Body skipped by Verus.
+/// `checked_mul` + `checked_add` + done-continuation push as production.
+/// Body skipped by Verus.
 ///
 /// The production function does four things in sequence for any
 /// loop header (CollectStart / ForEachStart / RepeatStart /
@@ -439,19 +443,23 @@ pub mod workflow {
 ///   2. `let product = body_count.checked_mul(iter_count)` (line 2486-2491)
 ///   3. `total = total.checked_add(product)` (line 2492-2497)
 ///   4. `push_done_continuation(nodes, done, node_count, stack)?`
-///      (line 2498), mirrored by `push_done_continuation` below.
+///      (line 2498), performed below via the `push_done_continuation` mirror.
 ///
-/// This mirror exposes the multiplication and the addition as a single
-/// exec fn so the spec surface stays aligned with the production
-/// call sites at budget.rs:2310 (ForEachStart) / :2325 (CollectStart)
-/// / :2342 (ReduceStart) / :2352 (RepeatStart). The stack effect of
-/// step 4 is modelled by the separate `push_done_continuation`
-/// mirror and its bridge in the companion spec file.
+/// The `body_count` parameter is a factored input: production computes
+/// it via `count_body_region_nodes` (budget.rs:2526-2532, delegating to
+/// the recursive `region_counter::count`), which has no mirror yet.
+/// The stack effect of step 4 is part of this mirror, so the bridge
+/// contract in the companion spec file covers the arithmetic and the
+/// push in a single call.
 #[verifier::external]
 pub fn count_and_push_loop_body(
     _body_count: u64,
     _iter_count: u64,
     _total: u64,
+    nodes: &Vec<CompiledNode>,
+    done: StepIdx,
+    node_count: usize,
+    stack: &mut Vec<StepIdx>,
 ) -> Result<u64, BudgetError> {
     // Production body (budget.rs:2474-2500):
     //   let body_count = count_body_region_nodes(nodes, body, done, node_count)?;
@@ -462,6 +470,7 @@ pub fn count_and_push_loop_body(
     //   total = total
     //       .checked_add(product)
     //       .ok_or(BudgetError::TotalStepsExceeded { actual: u64::MAX, limit: u64::MAX })?;
+    //   push_done_continuation(nodes, done, node_count, stack)?;
     //   Ok(total)
     let body_count = _body_count;
     let iter_count = _iter_count.max(1);
@@ -474,12 +483,18 @@ pub fn count_and_push_loop_body(
             });
         }
     };
-    match _total.checked_add(product) {
-        Some(v) => Ok(v),
-        None => Err(BudgetError::TotalStepsExceeded {
-            actual: u64::MAX,
-            limit: u64::MAX,
-        }),
+    let total = match _total.checked_add(product) {
+        Some(v) => v,
+        None => {
+            return Err(BudgetError::TotalStepsExceeded {
+                actual: u64::MAX,
+                limit: u64::MAX,
+            });
+        }
+    };
+    match push_done_continuation(nodes, done, node_count, stack) {
+        Ok(()) => Ok(total),
+        Err(e) => Err(e),
     }
 }
 
