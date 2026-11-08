@@ -128,6 +128,10 @@
 //   - `validate_step`, `validate_slot`, `validate_const`, `validate_expr`,
 //     `validate_accessor`, `validate_symbol`
 //     <- crates/vb_core/src/workflow/mod.rs:2012-2156
+//   - `validate_accessor_paths`
+//     <- crates/vb_core/src/workflow/mod.rs:2089-2119
+//   - `MAX_PATH_DEPTH`
+//     <- crates/vb_core/src/limits.rs:59
 //   - `validate_reachability`
 //     <- crates/vb_core/src/workflow/mod.rs:2160-2229
 //   - `validate_forward_edges`
@@ -570,17 +574,28 @@ pub struct SpecExprProgram {
     pub max_stack: u32,
     pub ops: Vec<SpecExprOp>,
 }
+/// Mirrors the production `PathSegment` at
+/// `crates/vb_core/src/workflow/mod.rs:656-661`: `Field` carries the
+/// interned symbol id, `Index` the list index. The `u32::MAX`
+/// index value is reserved by `validate_accessor_paths`
+/// (workflow/mod.rs:2089-2119) and is modelled by
+/// `accessor_path_error`.
+#[derive(Clone, Copy)]
+pub enum SpecPathSegment {
+    Field(u32),
+    Index(u32),
+}
 /// Mirrors the production `AccessorProgram` at
 /// `crates/vb_core/src/workflow/mod.rs:646-661`. The projection
-/// consumes `root` (slot index) and `path_depth` (used by the
-/// `AccessorPathTooDeep` guard at workflow/mod.rs:2095-2100). The
-/// path-element payload (Field SymbolId, Index u32) is not part of
-/// the decision fn at the granularity the spec cares about; it is
-/// collapsed to `path_depth` for the size check.
-#[derive(Clone, Copy)]
+/// consumes `root` (slot index) and the full `path` segment
+/// inventory: `accessor_path_error` models the per-segment
+/// `validate_accessor_paths` decision (depth cap from
+/// `MAX_PATH_DEPTH`, `Field` symbol bounds, reserved
+/// `Index(u32::MAX)`).
+#[derive(Clone)]
 pub struct SpecAccessor {
     pub root: u32,
-    pub path_depth: u32,
+    pub path: Vec<SpecPathSegment>,
 }
 /// Mirrors the four numeric bounds of the production
 /// `CompiledInputConstraint` at
@@ -1307,6 +1322,44 @@ pub fn expr_error(program: &SpecExprProgram, accessors_len: u32) -> Option<SpecW
         if let SpecExprOp::LoadAccessor(index) = op {
             if *index >= accessors_len {
                 return Some(SpecWorkflowError::ExpressionInvalid);
+            }
+        }
+    }
+    None
+}
+
+/// Pure projection of `validate_accessor_paths`
+/// (workflow/mod.rs:2089-2119) for one accessor program, in
+/// production order: the path length against `MAX_PATH_DEPTH`
+/// (crates/vb_core/src/limits.rs:59, 16), then each segment in
+/// order — `Field(symbol)` via `validate_symbol`
+/// (workflow/mod.rs:2150-2156, `symbol.get() < symbols_count`
+/// else `SymbolOutOfBounds`), `Index(u32::MAX)` via the reserved
+/// value arm (`ExpressionInvalid`). Returns the first failure,
+/// or `None` when the path validates.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn accessor_path_error(
+    accessor: &SpecAccessor,
+    symbols_count: u32,
+) -> Option<SpecWorkflowError> {
+    if accessor.path.len() > 16 {
+        return Some(SpecWorkflowError::AccessorPathTooDeep);
+    }
+    for segment in &accessor.path {
+        match *segment {
+            SpecPathSegment::Field(symbol) => {
+                if symbol >= symbols_count {
+                    return Some(SpecWorkflowError::SymbolOutOfBounds);
+                }
+            }
+            SpecPathSegment::Index(index) => {
+                if index == u32::MAX {
+                    return Some(SpecWorkflowError::ExpressionInvalid);
+                }
             }
         }
     }
@@ -2407,13 +2460,11 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         }
     }
     // 1d. validate_accessors (workflow/mod.rs:2069-2074) — root
-    // slot bounds.
+    // slot bounds only. Path depth and per-segment checks live in
+    // the validate_accessor_paths step below (1e).
     for accessor in &parts.accessors {
         if accessor.root >= parts.slot_count {
             return SpecValidationResult::Err(SpecWorkflowError::SlotOutOfBounds);
-        }
-        if accessor.path_depth > 32 {
-            return SpecValidationResult::Err(SpecWorkflowError::AccessorPathTooDeep);
         }
     }
     // 1e. per-node loop: validate_node_id + validate_node.
@@ -2445,13 +2496,20 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
             return SpecValidationResult::Err(err);
         }
     }
+    // 1e. validate_accessor_paths (workflow/mod.rs:2089-2119) —
+    // per accessor, in order: path depth against MAX_PATH_DEPTH
+    // (limits.rs:59), then per-segment Field symbol bounds and
+    // reserved Index(u32::MAX). Runs after the per-node loop, in
+    // production position.
+    for accessor in &parts.accessors {
+        if let Some(err) = accessor_path_error(accessor, parts.symbols_count) {
+            return SpecValidationResult::Err(err);
+        }
+    }
     // 1f. validate_constants_symbols + validate_build_object_symbols
-    // + validate_accessor_paths — SymbolId bounds and path depth.
-    // The projection has already checked accessor path_depth above.
-    // For symbol bounds, the production validator reads every
-    // constant / field / path-segment; the projection trusts the
-    // caller-supplied `parts.symbols_count` is sufficient (the spec
-    // proves SymbolOutOfBounds separately).
+    // (workflow/mod.rs:2122-2147) — per-symbol detail remains
+    // trusted/future: the projection does not yet model the
+    // SymbolId bounds of the constant pool or BuildObject fields.
     // 1g. validate_reachability (workflow/mod.rs:2160-2229) —
     // every node must be reachable from the entry over routing
     // `next`, routing error handlers, and kind targets.
