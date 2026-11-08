@@ -21,16 +21,16 @@
 // blocked by the production file using:
 //
 //   1. `use thiserror::Error;` plus `#[derive(... Error ...)]` on
-//      `WorkflowError` (workflow/mod.rs:14, 319). Verus
+//      `WorkflowError` (workflow/mod.rs:18, 664). Verus
 //      0.2026.05.05 (Rust 1.95.0) cannot expand `thiserror`-style derive
 //      macros because `thiserror` is not registered as an extern crate
 //      in this single-file Verus unit, and shim traits cannot satisfy
 //      `#[derive(...)]` because derive macros require proc-macro crates.
 //   2. `use serde::{Deserialize, Serialize};` plus `#[derive(... Serialize,
-//      Deserialize ...)]` on every IR type (workflow/mod.rs:14,
-//      273, 300, 309, 454, 484, 562, 582). Same proc-macro blocker.
+//      Deserialize ...)]` on every IR type (workflow/mod.rs:17,
+//      608, 645, 654, 883, 912, 994, 1188). Same proc-macro blocker.
 //   3. Rust 2024 let-chains (e.g. `validate_forward_target` style guards
-//      and `is_some_and` at workflow/mod.rs:1787). Verus 0.2026.05.05
+//      and `is_some_and` at workflow/mod.rs:1445). Verus 0.2026.05.05
 //      requires `--edition 2024` and is locked to single-file lib mode.
 //
 // These are all "NO production changes" blockers (per the task brief).
@@ -240,7 +240,7 @@ pub enum SpecValidationResult {
 // table, accessor table, resource contract, node kind, node, parts)
 // ============================================================================
 /// Mirrors the production `ResourceContract` field set at
-/// `crates/vb_core/src/workflow/mod.rs:189-228`. Each `u16`/`u32`/`u64`
+/// `crates/vb_core/src/workflow/mod.rs:252-289`. Each `u16`/`u32`/`u64`
 /// production field is promoted to `u32` for lossless int mirroring.
 #[derive(Clone, Copy)]
 pub struct SpecResourceContract {
@@ -282,7 +282,7 @@ pub struct SpecResourceContract {
     pub allows_secret_results: bool,
 }
 /// Mirrors the production `CompiledNodeKind` discriminant set at
-/// `crates/vb_core/src/workflow/mod.rs:582-751`. Discriminant ordering
+/// `crates/vb_core/src/workflow/mod.rs:1191-1357`. Discriminant ordering
 /// matches the production source for binding-drift detection.
 /// `Box<[...]>` slices are flattened to `(vec_len, ptr-as-u32)` pairs;
 /// the projection only consumes slot/step indices, not element payload
@@ -408,7 +408,7 @@ pub enum SpecNodeKind {
     Finish { result: u32 },
 }
 /// Mirrors the production `CompiledNode` at
-/// `crates/vb_core/src/workflow/mod.rs:561-579`.
+/// `crates/vb_core/src/workflow/mod.rs:995-1004`.
 #[derive(Clone)]
 pub struct SpecNode {
     /// `node.id` (StepIdx → u32).
@@ -425,18 +425,18 @@ pub struct SpecNode {
     pub kind: SpecNodeKind,
 }
 /// Mirrors the production `ExprProgram` at
-/// `crates/vb_core/src/workflow/mod.rs:454-461`. The projection only
+/// `crates/vb_core/src/workflow/mod.rs:884-889`. The projection only
 /// consumes `max_stack`; the op-bytes are not part of the
 /// `try_from_parts` decision fn (they are validated transitively by
-/// `ExprProgram::try_from_parts` itself, see workflow/mod.rs:471-480).
+/// `ExprProgram::try_from_parts` itself, see workflow/mod.rs:899-908).
 #[derive(Clone, Copy)]
 pub struct SpecExprProgram {
     pub max_stack: u32,
 }
 /// Mirrors the production `AccessorProgram` at
-/// `crates/vb_core/src/workflow/mod.rs:299-306`. The projection
+/// `crates/vb_core/src/workflow/mod.rs:646-661`. The projection
 /// consumes `root` (slot index) and `path_depth` (used by the
-/// `AccessorPathTooDeep` guard at workflow/mod.rs:1338-1343). The
+/// `AccessorPathTooDeep` guard at workflow/mod.rs:2095-2100). The
 /// path-element payload (Field SymbolId, Index u32) is not part of
 /// the decision fn at the granularity the spec cares about; it is
 /// collapsed to `path_depth` for the size check.
@@ -446,7 +446,7 @@ pub struct SpecAccessor {
     pub path_depth: u32,
 }
 /// Mirrors the production `WorkflowParts` field set at
-/// `crates/vb_core/src/workflow/mod.rs:273-297`. Only the fields
+/// `crates/vb_core/src/workflow/mod.rs:609-642`. Only the fields
 /// consumed by `validate_parts` / `validate_budget` are mirrored;
 /// `name`, `digest`, and `step_names` are out-of-scope for the
 /// validation decision.
@@ -469,7 +469,7 @@ pub struct SpecWorkflowParts {
     /// `out_error_slot[i]` = the slot index in `node.error_slot` if
     /// Some, else u32::MAX.
     /// `out_id[i]` = `node.id` (StepIdx as u32) — used by
-    /// `validate_node_id` (workflow/mod.rs:819-832).
+    /// `validate_node_id` (workflow/mod.rs:1472-1485).
     /// `out_kind_disc[i]` = closed-set discriminant for the node kind
     /// (see `spec_node_kind_disc`).
     /// `out_max_step_ref[i]` = the *largest* step index referenced by
@@ -488,7 +488,7 @@ pub struct SpecWorkflowParts {
     pub accessors: Vec<SpecAccessor>,
     pub resource_contract: SpecResourceContract,
     /// Flattened input slot indices consumed by `validate_input_slots`
-    /// (workflow/mod.rs:876-906). Each value is the slot index of one
+    /// (workflow/mod.rs:1394-1425). Each value is the slot index of one
     /// input slot declaration. The projection checks: all in-bounds,
     /// no duplicates, strictly increasing order.
     pub input_slots: Vec<u32>,
@@ -550,7 +550,7 @@ pub struct SpecNodeMeta {
 // ============================================================================
 /// Stable discriminant for `SpecNodeKind` mirroring the production
 /// `CompiledNodeKind` ordering at
-/// `crates/vb_core/src/workflow/mod.rs:582-751`. Used by the
+/// `crates/vb_core/src/workflow/mod.rs:1191-1357`. Used by the
 /// validator projection to switch on node kind without carrying
 /// the full enum payload. Each discriminant is exposed as a
 /// `const fn` (matching the established pattern in this repo for
@@ -635,7 +635,7 @@ pub const fn spec_workflow_error_is_bound_violation(e: SpecWorkflowError) -> boo
 // Pure decision fn: per-node validator
 // ============================================================================
 /// Pure projection of `validate_node_common` and `validate_node_kind`
-/// at `crates/vb_core/src/workflow/mod.rs:949-1090`, applied to a
+/// at `crates/vb_core/src/workflow/mod.rs:1711-1847`, applied to a
 /// single node's flattened metadata. The projection returns
 /// `None` when the node passes every per-node check; otherwise it
 /// returns the *first* specific failure the production body would
@@ -656,7 +656,7 @@ pub fn validate_node_pure(
     constants_len: u32,
     symbols_count: u32,
 ) -> Option<SpecWorkflowError> {
-    // 1. validate_node_common (workflow/mod.rs:954-959)
+    // 1. validate_node_common (workflow/mod.rs:1711-1716)
     if meta.has_output == 1 && meta.out_slot >= slot_count {
         return Some(SpecWorkflowError::SlotOutOfBounds);
     }
@@ -669,7 +669,7 @@ pub fn validate_node_pure(
     if meta.has_error_slot == 1 && meta.error_slot >= slot_count {
         return Some(SpecWorkflowError::SlotOutOfBounds);
     }
-    // 2. validate_node_kind (workflow/mod.rs:961-1090)
+    // 2. validate_node_kind (workflow/mod.rs:1718-1847)
     // The discriminants 0, 9..=11, 14, 18, 21, 25..=26, 29 are the
     // no-payload kinds that production treats as "no further
     // check" (Nop, ForEachJoin, TogetherJoin, CollectFinish,
@@ -829,7 +829,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         return SpecValidationResult::Err(SpecWorkflowError::EmptyNodes);
     }
     let node_count = parts.nodes_len;
-    // 1a. resource contract bounds (workflow/mod.rs:834-839).
+    // 1a. resource contract bounds (workflow/mod.rs:1587-1593).
     // The projection trusts the caller-supplied `slot_count`,
     // `expressions_len`, `accessors_len`, `constants_len` are within
     // their respective contract fields. A production contract
@@ -862,11 +862,11 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
     }
-    // 1b. entry bounds (workflow/mod.rs:945-947, 1265-1271).
+    // 1b. entry bounds (workflow/mod.rs:1673-1675, 1372).
     if parts.entry >= node_count {
         return SpecValidationResult::Err(SpecWorkflowError::EntryOutOfBounds);
     }
-    // 1c. validate_expressions (workflow/mod.rs:1289-1298).
+    // 1c. validate_expressions (workflow/mod.rs:2046-2055).
     // The projection uses accessor_count to bound LoadAccessor
     // references; production walks every op. Per-op detail is
     // out of scope at the spec granularity (the spec records
@@ -880,7 +880,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         // ExpressionInvalid arm is exercised by tests that supply
         // an oversize stack.
     }
-    // 1d. validate_accessors (workflow/mod.rs:1312-1317) — root
+    // 1d. validate_accessors (workflow/mod.rs:2069-2074) — root
     // slot bounds.
     for accessor in &parts.accessors {
         if accessor.root >= parts.slot_count {
@@ -892,7 +892,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     }
     // 1e. per-node loop: validate_node_id + validate_node.
     for meta in &parts.nodes_meta {
-        // validate_node_id (workflow/mod.rs:819-832).
+        // validate_node_id (workflow/mod.rs:1472-1485).
         // Production indexes by enumeration position; the
         // projection trusts the caller-supplied `meta.id` matches
         // the iteration index. The spec's NodeIdMismatch arm is
