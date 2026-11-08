@@ -220,6 +220,136 @@ fn typed_strict_policy_port_failure() -> Result<(), Box<dyn std::error::Error>> 
     Ok(())
 }
 
+fn journal_bytes_written(shard: &Shard, run: RunId) -> Result<u64, Box<dyn std::error::Error>> {
+    shard
+        .run_state_get(run)
+        .map(|state| state.journal_bytes_written)
+        .ok_or("run state must exist".into())
+}
+
+fn policy_decision_bytes(
+    decision: &DecisionRecord,
+    seq: vb_storage::EventSeq,
+) -> Result<u64, Box<dyn std::error::Error>> {
+    let event = vb_storage::JournalEvent::PolicyDecisionEvent {
+        run: decision.ticket.run,
+        seq,
+        decision: decision.clone(),
+    };
+    let encoded = postcard::to_allocvec(&event).map_err(|_| "decision event must encode")?;
+    u64::try_from(encoded.len()).map_err(|_| "encoded length must fit u64".into())
+}
+
+#[test]
+fn policy_decision_charges_journal_bytes() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(90005);
+    let (mut shard, journal, ticket) = make_shard_with_journal(run)?;
+
+    shard.seed_journal_sequence(run, vb_storage::EventSeq::new(5))?;
+    let before = journal_bytes_written(&shard, run)?;
+    let decision = test_decision_record(ticket);
+
+    shard.append_policy_decision_strict(decision.clone())?;
+
+    let after = journal_bytes_written(&shard, run)?;
+    let expected = policy_decision_bytes(&decision, vb_storage::EventSeq::new(5))?;
+    assert_eq!(
+        after,
+        before + expected,
+        "counter must grow by exactly the stored decision event bytes"
+    );
+
+    let calls = journal.strict_calls()?;
+    assert_eq!(
+        calls,
+        vec![(decision, vb_storage::EventSeq::new(5))],
+        "journal must record exact decision at seq 5"
+    );
+    Ok(())
+}
+
+#[test]
+fn policy_decision_denied_outcome_charges_journal_bytes() -> Result<(), Box<dyn std::error::Error>>
+{
+    let run = RunId::new(90006);
+    let (mut shard, _journal, ticket) = make_shard_with_journal(run)?;
+
+    shard.seed_journal_sequence(run, vb_storage::EventSeq::new(5))?;
+    let before = journal_bytes_written(&shard, run)?;
+    let decision = DecisionRecord {
+        outcome: DecisionCode::Denied,
+        ..test_decision_record(ticket)
+    };
+
+    shard.append_policy_decision_strict(decision.clone())?;
+
+    let after = journal_bytes_written(&shard, run)?;
+    let expected = policy_decision_bytes(&decision, vb_storage::EventSeq::new(5))?;
+    assert_eq!(
+        after,
+        before + expected,
+        "denied decisions must charge journal bytes exactly like allowed ones"
+    );
+    Ok(())
+}
+
+#[test]
+fn policy_decision_charges_accumulate() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(90007);
+    let (mut shard, _journal, ticket) = make_shard_with_journal(run)?;
+
+    shard.seed_journal_sequence(run, vb_storage::EventSeq::new(5))?;
+    let before = journal_bytes_written(&shard, run)?;
+    let first = test_decision_record(ticket);
+    let second = test_decision_record(ticket);
+
+    shard.append_policy_decision_strict(first.clone())?;
+    shard.append_policy_decision_strict(second.clone())?;
+
+    let after = journal_bytes_written(&shard, run)?;
+    let expected = policy_decision_bytes(&first, vb_storage::EventSeq::new(5))?
+        + policy_decision_bytes(&second, vb_storage::EventSeq::new(6))?;
+    assert_eq!(
+        after,
+        before + expected,
+        "two decisions must charge the sum of their stored event bytes"
+    );
+    Ok(())
+}
+
+#[test]
+fn policy_decision_counter_overflow_fails_before_append() -> Result<(), Box<dyn std::error::Error>>
+{
+    let run = RunId::new(90008);
+    let (mut shard, journal, ticket) = make_shard_with_journal(run)?;
+
+    shard.seed_journal_sequence(run, vb_storage::EventSeq::new(5))?;
+    let seq_before = shard.journal_sequence_for(run);
+    shard
+        .run_state_get_mut(run)
+        .ok_or("run state must exist")?
+        .journal_bytes_written = u64::MAX;
+
+    let result = shard.append_policy_decision_strict(test_decision_record(ticket));
+    let err = result
+        .err()
+        .ok_or("expected shard to reject counter overflow")?;
+    match err {
+        RuntimeError::EncodeFailed => {}
+        _ => return Err("wrong typed counter overflow error".into()),
+    }
+
+    let calls = journal.strict_calls()?;
+    assert_eq!(
+        calls.len(),
+        0,
+        "journal must not be called when the counter overflows"
+    );
+
+    assert_ticket_and_seq_unchanged(&shard, ticket, seq_before)?;
+    Ok(())
+}
+
 #[test]
 fn overflow_at_u64_max() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(90003);
