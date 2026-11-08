@@ -2646,6 +2646,12 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
     } else if parts.slot_count > parts.resource_contract.max_slots {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
+    } else if parts.constants_len > parts.resource_contract.max_constants {
+        SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
+    } else if parts.accessors_len > parts.resource_contract.max_accessors {
+        SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
+    } else if parts.expressions_len > parts.resource_contract.max_expressions {
+        SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
     } else if spec_expr_stack_error(parts, 0) != None::<SpecWorkflowError> {
         SpecValidationResult::Err(spec_expr_stack_error(parts, 0).unwrap())
     } else if spec_exprs_error(parts, 0) != None::<SpecWorkflowError> {
@@ -2856,6 +2862,9 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
@@ -2896,6 +2905,12 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
     } else if parts.nodes_len > parts.resource_contract.max_steps {
         // Resource contract exceeded: skip.
     } else if parts.slot_count > parts.resource_contract.max_slots {
+        // Resource contract exceeded: skip.
+    } else if parts.constants_len > parts.resource_contract.max_constants {
+        // Resource contract exceeded: skip.
+    } else if parts.accessors_len > parts.resource_contract.max_accessors {
+        // Resource contract exceeded: skip.
+    } else if parts.expressions_len > parts.resource_contract.max_expressions {
         // Resource contract exceeded: skip.
     } else if spec_expr_stack_error(parts, 0) != None::<SpecWorkflowError> {
         // Expression stack usage: skip (already required valid).
@@ -3739,6 +3754,9 @@ pub proof fn lemma_repeat_counter_duplicate_rejected_top_level(parts: &SpecWorkf
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
@@ -3790,6 +3808,9 @@ pub proof fn lemma_forward_edge_routing_next_rejected(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
@@ -3848,6 +3869,9 @@ pub proof fn lemma_forward_edge_jump_target_rejected(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
@@ -3978,6 +4002,9 @@ pub proof fn lemma_forward_edge_repeat_check_no_owner_rejected(parts: &SpecWorkf
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
@@ -4058,6 +4085,9 @@ pub proof fn lemma_forward_edge_repeat_check_wrong_owner_rejected(parts: &SpecWo
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
@@ -4169,6 +4199,9 @@ pub proof fn lemma_forward_edge_improper_nesting_rejected(parts: &SpecWorkflowPa
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
@@ -4265,6 +4298,9 @@ pub proof fn lemma_reachability_unreachable_rejected(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
@@ -4372,6 +4408,9 @@ pub proof fn lemma_nested_together_rejected(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
@@ -5544,6 +5583,9 @@ pub proof fn lemma_budget_pairing_before_budget(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
@@ -5585,6 +5627,9 @@ pub proof fn lemma_budget_before_input_slots(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
@@ -5628,6 +5673,9 @@ pub proof fn lemma_budget_within_caps_reaches_input_slots(parts: &SpecWorkflowPa
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
@@ -5929,6 +5977,9 @@ pub proof fn lemma_expr_before_budget(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == Some(SpecWorkflowError::ExpressionInvalid),
         (parts.computed_budget.max_total_steps as int) > 1_000_000,
@@ -6138,6 +6189,9 @@ pub proof fn lemma_accessor_path_before_reachability(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == Some(SpecWorkflowError::AccessorPathTooDeep),
@@ -6221,6 +6275,9 @@ pub proof fn lemma_expr_stack_before_exprs(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == Some(SpecWorkflowError::ResourceContractExceeded),
         spec_exprs_error(parts, 0) == Some(SpecWorkflowError::ExpressionInvalid),
     ensures
@@ -6251,6 +6308,9 @@ pub proof fn lemma_expr_stack_within_cap_reaches_exprs(parts: &SpecWorkflowParts
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == Some(SpecWorkflowError::ExpressionInvalid),
     ensures
@@ -6389,6 +6449,9 @@ pub proof fn lemma_symbols_before_reachability(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
@@ -6424,6 +6487,9 @@ pub proof fn lemma_symbols_within_bounds_reaches_reachability(parts: &SpecWorkfl
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
@@ -6457,6 +6523,217 @@ pub proof fn lemma_constants_symbols_before_build_object(parts: &SpecWorkflowPar
 {
     assert(spec_symbols_error(parts)
         == spec_constants_symbols_error(parts, 0));
+}
+
+/// Lemma 119: the constants-count rejection. A workflow whose
+/// constant pool is longer than the contract cap is rejected with
+/// `ResourceContractExceeded` (production
+/// `validate_resource_usage`, workflow/mod.rs:1614-1644, Constants
+/// arm: `parts.constants.len()` against `max_constants`).
+pub proof fn lemma_constants_count_over_cap_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len > parts.resource_contract.max_constants,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 120: the accessors-count rejection. A workflow whose
+/// accessor table is longer than the contract cap is rejected with
+/// `ResourceContractExceeded` (production
+/// `validate_resource_usage`, workflow/mod.rs:1614-1644, Accessors
+/// arm: `parts.accessors.len()` against `max_accessors`).
+pub proof fn lemma_accessors_count_over_cap_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len > parts.resource_contract.max_accessors,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 121: the expressions-count rejection. A workflow whose
+/// expression table is longer than the contract cap is rejected with
+/// `ResourceContractExceeded` (production
+/// `validate_resource_usage`, workflow/mod.rs:1614-1644, Expressions
+/// arm: `parts.expressions.len()` against `max_expressions`).
+pub proof fn lemma_expressions_count_over_cap_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len > parts.resource_contract.max_expressions,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 122: the first over-cap count wins. A workflow whose
+/// constant pool, accessor table, and expression table are all
+/// over their contract caps is rejected with
+/// `ResourceContractExceeded` (production
+/// `validate_resource_usage` runs the Constants arm before the
+/// Accessors arm before the Expressions arm,
+/// workflow/mod.rs:1614-1644). All three arms return the same
+/// `ResourceContractExceeded` value, so their relative order is
+/// unobservable in the top-level result; this pins the combined
+/// rejection with the Constants arm first in production order,
+/// in the same sense as lemma 118 pins the symbol composition.
+pub proof fn lemma_resource_counts_first_over_cap_wins(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len > parts.resource_contract.max_constants,
+        parts.accessors_len > parts.resource_contract.max_accessors,
+        parts.expressions_len > parts.resource_contract.max_expressions,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 123: the count check runs before the expression check. A
+/// workflow with an over-cap constant pool and a failing
+/// expression is rejected with the count error, not the
+/// expression error (production `validate_resource_contract` runs
+/// `validate_resource_usage` before `validate_expressions`,
+/// workflow/mod.rs:1587-1593 and 2046-2055).
+pub proof fn lemma_resource_counts_before_exprs(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len > parts.resource_contract.max_constants,
+        spec_exprs_error(parts, 0) == Some(SpecWorkflowError::ExpressionInvalid),
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 124: within-cap counts reach the expression check. A
+/// workflow whose constant pool, accessor table, and expression
+/// table all fit their contract caps and whose expression check
+/// fails is rejected with the expression error, not the count
+/// error (production `validate_resource_usage` passes, then
+/// `validate_expressions` runs, workflow/mod.rs:1587-1593 and
+/// 2046-2055).
+pub proof fn lemma_resource_counts_within_cap_reaches_exprs(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == Some(SpecWorkflowError::ExpressionInvalid),
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ExpressionInvalid),
+{
+    assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ExpressionInvalid));
+}
+
+/// Lemma 125: the at-cap counts are accepted. A workflow whose
+/// constant pool, accessor table, and expression table are each
+/// exactly at their contract cap validates: production rejects
+/// only when the actual count exceeds the declared cap
+/// (workflow/mod.rs:1631-1643). The boundary equalities imply
+/// the lemma 15 requires, so the well-formed acceptance carries
+/// the result.
+pub proof fn lemma_resource_counts_at_cap_accepted(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len == parts.resource_contract.max_constants,
+        parts.accessors_len == parts.resource_contract.max_accessors,
+        parts.expressions_len == parts.resource_contract.max_expressions,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
+        spec_reachability_error(parts) == None::<SpecWorkflowError>,
+        spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
+        spec_nested_together_error(parts) == None::<SpecWorkflowError>,
+        spec_pairing_error(&parts.nodes_meta, 0) == None::<SpecWorkflowError>,
+        spec_loop_relations_error(parts) == None::<SpecWorkflowError>,
+        spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>,
+        input_slots_valid(parts) == None::<SpecWorkflowError>,
+    ensures
+        spec_validation_ok(try_from_parts_pure_spec(parts)),
+{
+    lemma_well_formed_parts_accepted(parts);
+    assert(spec_validation_ok(try_from_parts_pure_spec(parts)));
 }
 fn main() {}
 
