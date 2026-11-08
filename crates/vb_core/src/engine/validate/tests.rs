@@ -902,6 +902,7 @@ fn all_validators_accept_three_node_linear_chain() {
 
 // RED PHASE: additional resource contract tests
 mod red_phase_behavior_tests;
+mod red_phase_cycle_detection_tests;
 mod red_phase_tests;
 // vb-x46ae: differential proof for the unified resource-contract validator.
 mod differential_contract_tests;

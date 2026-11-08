@@ -35,7 +35,7 @@ fn nop_node(id: u16) -> CompiledNode {
     node(StepIdx::new(id), CompiledNodeKind::Nop, None, None)
 }
 
-fn nop_node_with_next(id: u16, next: u16) -> CompiledNode {
+pub(super) fn nop_node_with_next(id: u16, next: u16) -> CompiledNode {
     node(
         StepIdx::new(id),
         CompiledNodeKind::Nop,
@@ -62,7 +62,7 @@ fn valid_parts() -> WorkflowParts {
     }
 }
 
-fn valid_parts_with_nodes(nodes: Vec<CompiledNode>) -> WorkflowParts {
+pub(super) fn valid_parts_with_nodes(nodes: Vec<CompiledNode>) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
         nodes: nodes.into_boxed_slice(),
@@ -167,141 +167,7 @@ mod valid_workflow_graph_acceptance {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Cycle detection and backward edges
-// ---------------------------------------------------------------------------
-
-mod cycle_detection_and_backward_edges {
-    use super::*;
-    use crate::workflow::node;
-
-    #[test]
-    fn rejects_direct_backward_edge_via_next() {
-        let parts = valid_parts_with_nodes(vec![
-            nop_node_with_next(0, 1),
-            node(
-                StepIdx::new(1),
-                CompiledNodeKind::Finish {
-                    result: SlotIdx::new(0),
-                },
-                None,
-                Some(StepIdx::new(0)),
-            ),
-        ]);
-        let result = validate_compiled_workflow(&parts);
-        assert_eq!(
-            result,
-            Err(WorkflowError::BackwardEdge {
-                from: StepIdx::new(1),
-                to: StepIdx::new(0),
-            })
-        );
-    }
-
-    #[test]
-    fn rejects_self_loop_via_next() {
-        let parts = valid_parts_with_nodes(vec![node(
-            StepIdx::new(0),
-            CompiledNodeKind::Finish {
-                result: SlotIdx::new(0),
-            },
-            None,
-            Some(StepIdx::new(0)),
-        )]);
-        let result = validate_compiled_workflow(&parts);
-        assert_eq!(
-            result,
-            Err(WorkflowError::BackwardEdge {
-                from: StepIdx::new(0),
-                to: StepIdx::new(0),
-            })
-        );
-    }
-
-    #[test]
-    fn rejects_jump_with_backward_target() {
-        let parts = valid_parts_with_nodes(vec![
-            nop_node_with_next(0, 1),
-            node(
-                StepIdx::new(1),
-                CompiledNodeKind::Jump {
-                    target: StepIdx::new(0),
-                },
-                None,
-                None,
-            ),
-        ]);
-        let result = validate_compiled_workflow(&parts);
-        assert_eq!(
-            result,
-            Err(WorkflowError::BackwardEdge {
-                from: StepIdx::new(1),
-                to: StepIdx::new(0),
-            })
-        );
-    }
-
-    #[test]
-    fn rejects_choose_branch_with_backward_target() {
-        let parts = valid_parts_with_nodes(vec![
-            nop_node_with_next(0, 1),
-            node(
-                StepIdx::new(1),
-                CompiledNodeKind::Choose {
-                    branches: vec![ExprBranch {
-                        condition: ExprIdx::new(0),
-                        target: StepIdx::new(0),
-                    }]
-                    .into_boxed_slice(),
-                    otherwise: None,
-                },
-                None,
-                None,
-            ),
-        ]);
-        let p = WorkflowParts {
-            semantic_source_identity: None,
-            expressions: vec![ExprProgram {
-                ops: Box::new([ExprOp::LoadConst(ConstIdx::new(0))]),
-                max_stack: 1,
-            }]
-            .into_boxed_slice(),
-            constants: vec![ConstValue::I64(0)].into_boxed_slice(),
-            ..parts
-        };
-        let result = validate_compiled_workflow(&p);
-        assert_eq!(
-            result,
-            Err(WorkflowError::BackwardEdge {
-                from: StepIdx::new(1),
-                to: StepIdx::new(0),
-            })
-        );
-    }
-
-    #[test]
-    fn rejects_backward_edge_with_exact_error_fields() {
-        let parts = valid_parts_with_nodes(vec![
-            nop_node_with_next(0, 1),
-            node(
-                StepIdx::new(1),
-                CompiledNodeKind::Nop,
-                None,
-                Some(StepIdx::new(0)),
-            ),
-        ]);
-        let err = validate_compiled_workflow(&parts).unwrap_err();
-        assert_eq!(
-            err,
-            WorkflowError::BackwardEdge {
-                from: StepIdx::new(1),
-                to: StepIdx::new(0),
-            }
-        );
-    }
-}
-
-// ---------------------------------------------------------------------------
-// 3. Disconnected/unreachable nodes
+// 2. Disconnected/unreachable nodes
 // ---------------------------------------------------------------------------
 
 mod disconnected_unreachable_nodes {
@@ -360,7 +226,7 @@ mod disconnected_unreachable_nodes {
 }
 
 // ---------------------------------------------------------------------------
-// 4. Duplicate node IDs detection
+// 3. Duplicate node IDs detection
 // ---------------------------------------------------------------------------
 
 mod duplicate_node_ids_detection {
@@ -452,7 +318,7 @@ mod duplicate_node_ids_detection {
 }
 
 // ---------------------------------------------------------------------------
-// 5. Per-node-kind invalid configurations (10+ variants)
+// 4. Per-node-kind invalid configurations (10+ variants)
 // ---------------------------------------------------------------------------
 
 mod per_node_kind_invalid_configurations {
@@ -839,7 +705,7 @@ mod per_node_kind_invalid_configurations {
 }
 
 // ---------------------------------------------------------------------------
-// 6. Resource contract exceeded
+// 5. Resource contract exceeded
 // ---------------------------------------------------------------------------
 
 mod resource_contract_exceeded {
@@ -943,7 +809,7 @@ mod resource_contract_exceeded {
 }
 
 // ---------------------------------------------------------------------------
-// 7. Target out-of-bounds
+// 6. Target out-of-bounds
 // ---------------------------------------------------------------------------
 
 mod target_out_of_bounds {
@@ -1072,7 +938,7 @@ mod target_out_of_bounds {
 }
 
 // ---------------------------------------------------------------------------
-// 8. Taint/secret validation (on_error / error_slot paths)
+// 7. Taint/secret validation (on_error / error_slot paths)
 // ---------------------------------------------------------------------------
 
 mod taint_secret_validation {
@@ -1130,7 +996,7 @@ mod taint_secret_validation {
 }
 
 // ---------------------------------------------------------------------------
-// 9. Error message exactness verification
+// 8. Error message exactness verification
 // ---------------------------------------------------------------------------
 
 mod error_message_exactness_verification {
@@ -1242,7 +1108,7 @@ mod error_message_exactness_verification {
 }
 
 // ---------------------------------------------------------------------------
-// 10. Complex nested workflow validation
+// 9. Complex nested workflow validation
 // ---------------------------------------------------------------------------
 
 mod complex_nested_workflow_validation {
@@ -1426,7 +1292,7 @@ mod complex_nested_workflow_validation {
 }
 
 // ---------------------------------------------------------------------------
-// 11. Determinism/idempotency of validation
+// 10. Determinism/idempotency of validation
 // ---------------------------------------------------------------------------
 
 mod determinism_idempotency_of_validation {
@@ -1511,7 +1377,7 @@ mod determinism_idempotency_of_validation {
 }
 
 // ---------------------------------------------------------------------------
-// 12. Kani harnesses
+// 11. Kani harnesses
 // ---------------------------------------------------------------------------
 
 #[cfg(kani)]
