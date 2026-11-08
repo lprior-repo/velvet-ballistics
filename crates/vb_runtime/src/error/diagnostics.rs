@@ -75,6 +75,12 @@ impl RuntimeError {
             Self::FramePoolUnavailable => Self::FRAME_POOL_UNAVAILABLE_CODE,
             Self::InvalidActionCompletion
             | Self::InvalidGateDecisionRecord
+            | Self::GateAlreadyOpen { .. }
+            | Self::GateNotOpen { .. }
+            | Self::GateEvaluationFailed { .. }
+            | Self::GateRunNotSuspendable { .. }
+            | Self::GateWrongDelegate { .. }
+            | Self::GateOpenBlocksResume { .. }
             | Self::StaleAttempt { .. }
             | Self::StaleFencingToken { .. }
             | Self::AttemptBeyondMax { .. }
@@ -164,6 +170,12 @@ impl RuntimeError {
             },
             Self::InvalidActionCompletion
             | Self::InvalidGateDecisionRecord
+            | Self::GateAlreadyOpen { .. }
+            | Self::GateNotOpen { .. }
+            | Self::GateEvaluationFailed { .. }
+            | Self::GateRunNotSuspendable { .. }
+            | Self::GateWrongDelegate { .. }
+            | Self::GateOpenBlocksResume { .. }
             | Self::StaleAttempt { .. }
             | Self::StaleFencingToken { .. }
             | Self::AttemptBeyondMax { .. }

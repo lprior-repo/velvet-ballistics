@@ -1,5 +1,9 @@
 use std::sync::Arc;
 use vb_core::ids::RunId;
+use vb_core::manual_gate::{ApproverId, GateId};
+
+use crate::manual_gate::GateError;
+use crate::shard::types::RuntimeState;
 
 /// Runtime error type.
 #[derive(Debug, Clone)]
@@ -74,6 +78,45 @@ pub enum RuntimeError {
     InvalidActionCompletion,
     /// Gate outcome record failed structural validation before journaling.
     InvalidGateDecisionRecord,
+    /// A manual gate with this id is already open on the shard.
+    GateAlreadyOpen {
+        /// Gate identifier that is already open.
+        gate: GateId,
+    },
+    /// No open manual gate carries this id.
+    GateNotOpen {
+        /// Gate identifier that is not open.
+        gate: GateId,
+    },
+    /// Manual gate evaluation rejected the submission.
+    GateEvaluationFailed {
+        /// Preserved gate evaluation failure.
+        source: GateError,
+    },
+    /// A manual gate cannot suspend a run in its current state.
+    GateRunNotSuspendable {
+        /// Run that cannot be suspended by a gate.
+        run: RunId,
+        /// Current runtime state of the run.
+        state: RuntimeState,
+    },
+    /// A delegated gate received a decision from an approver other than
+    /// the delegate.
+    GateWrongDelegate {
+        /// Gate identifier.
+        gate: GateId,
+        /// Approver the gate was delegated to.
+        expected: ApproverId,
+        /// Approver who submitted the decision.
+        actual: ApproverId,
+    },
+    /// An open manual gate blocks resuming the run; decide the gate first.
+    GateOpenBlocksResume {
+        /// Run that cannot resume yet.
+        run: RunId,
+        /// Open gate blocking the resume.
+        gate: GateId,
+    },
     /// Action completion belongs to an older attempt than the live suspended attempt.
     StaleAttempt {
         /// Attempt carried by the incoming completion ticket.

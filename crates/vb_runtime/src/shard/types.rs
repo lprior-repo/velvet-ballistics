@@ -9,6 +9,7 @@ use vb_core::action::{ActionContract, ActionTicket};
 use vb_core::capability::CapabilitySet;
 use vb_core::frame::{RunFrame, RunFrameCheckpointV1};
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::manual_gate::{ApproverId, GateDecisionInput, GateId, ManualGate};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
@@ -124,6 +125,27 @@ pub enum ShardCommand {
         /// Run identifier.
         run: RunId,
     },
+    /// Open a manual gate for a run and suspend the run until decided.
+    OpenGate {
+        /// Gate definition opened by the operator.
+        gate: ManualGate,
+        /// Opening time in milliseconds since the UNIX epoch.
+        opened_at_ms: u64,
+        /// Operator who requested the gated action.
+        requester: ApproverId,
+    },
+    /// Submit an operator decision to an open manual gate.
+    SubmitGateDecision {
+        /// Operator submission for the open gate.
+        input: GateDecisionInput,
+    },
+    /// Escalate an open manual gate whose deadline has passed.
+    EscalateGate {
+        /// Gate to escalate.
+        gate: GateId,
+        /// Escalation time in milliseconds since the UNIX epoch.
+        now_ms: u64,
+    },
     /// An external action completed.
     ActionCompleted {
         /// Ticket emitted by the suspended Do step.
@@ -235,7 +257,8 @@ impl ShardCommand {
             | Self::RuntimeActionFailed { ticket, .. } => Some(ticket.run),
             Self::AskAnswered { answer } => Some(answer.ticket.run),
             Self::Recover { command } => Some(command.run),
-            Self::Shutdown => None,
+            Self::OpenGate { gate, .. } => Some(gate.run),
+            Self::SubmitGateDecision { .. } | Self::EscalateGate { .. } | Self::Shutdown => None,
         }
     }
 }
@@ -472,6 +495,26 @@ impl AskTicket {
 pub(crate) struct PendingAskAuthority {
     pub(crate) step: StepIdx,
     pub(crate) boundary_seq: EventSeq,
+}
+
+/// Operator-opened manual gate awaiting a decision (MASTER §77.15).
+///
+/// Lives in shard memory only: the gate definition, its opening time, the
+/// operator who requested the gated action, and the current delegate after
+/// a delegation decision. The durable record of a gate is its outcome
+/// record, journaled when the gate is decided or escalated; an open gate
+/// that never reaches a decision leaves no journal trace.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct OpenGate {
+    /// Gate definition as opened by the operator.
+    pub(crate) gate: ManualGate,
+    /// Opening time in milliseconds since the UNIX epoch.
+    pub(crate) opened_at_ms: u64,
+    /// Operator who requested the gated action.
+    pub(crate) requester: ApproverId,
+    /// Delegate target after a delegation decision; later submissions must
+    /// come from this approver. `None` until the gate is delegated.
+    pub(crate) delegated_to: Option<ApproverId>,
 }
 
 /// Explicit ask answer contract. The requested slot must match the AskTicket authority.
@@ -1375,6 +1418,8 @@ pub struct Shard {
     pub(crate) journal_sequences: IndexMap<RunId, EventSeq>,
     /// Current runtime-issued ask boundary generation by run.
     pub(crate) pending_ask_authorities: IndexMap<RunId, PendingAskAuthority>,
+    /// Operator-opened manual gates awaiting a decision, keyed by gate id.
+    pub(crate) open_gates: IndexMap<GateId, OpenGate>,
     /// Last frame executed count already reflected in shard counters by run.
     pub(crate) accounted_executed_steps: IndexMap<RunId, u64>,
     pub(crate) frame_pools: IndexMap<FramePoolKey, FramePool>,
@@ -1582,6 +1627,13 @@ pub enum ResumeError {
     IncompleteHydration {
         /// The run identifier.
         run_id: RunId,
+    },
+    /// An open manual gate blocks resuming the run; decide the gate first.
+    GateOpen {
+        /// The run identifier that cannot resume yet.
+        run_id: RunId,
+        /// The open gate blocking the resume.
+        gate: vb_core::manual_gate::GateId,
     },
     /// Failed to append the Resumed event to the journal.
     JournalAppendFailed,
