@@ -13,7 +13,6 @@ crates/vb_core/src/capability_grant.rs|lewis|vb-srclen|split-after-ledger-landin
 crates/vb_core/src/diagnostic.rs|lewis|vb-srclen|split-after-ledger-landing|production 2100 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_core/src/engine/choose.rs|lewis|vb-srclen|split-after-ledger-landing|production 382 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_core/src/engine/error_routing.rs|lewis|vb-srclen|split-after-ledger-landing|production 481 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
-crates/vb_core/src/engine/expr_eval/accessors.rs|lewis|vb-srclen|split-after-ledger-landing|production 725 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_core/src/engine/expr_eval/tests.rs|lewis|vb-srclen|split-after-ledger-landing|test_in_src 1733 lines (limit 1500) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_core/src/engine/object_list.rs|lewis|vb-srclen|split-after-ledger-landing|production 442 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_core/src/engine/signals.rs|lewis|vb-srclen|split-after-ledger-landing|production 607 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
