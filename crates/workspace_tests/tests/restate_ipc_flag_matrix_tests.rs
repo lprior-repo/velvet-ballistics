@@ -6,7 +6,8 @@
 //!
 //! ## Test Plan Reference
 //! - 22 behaviors identified
-//! - 30 test functions (6 proptest, 14 integration, 8 unit, 2 error taxonomy)
+//! - 39 test functions (6 proptest, 14 integration, 9 unit, 2 error taxonomy,
+//!   8 additional regression/matrix tests)
 //! - 14 scenarios executable immediately
 //! - 8 formerly GAP-blocked scenarios, now implemented and enabled
 //!
@@ -35,8 +36,10 @@ use vb_ipc::{
 /// which has a `pub(crate)` getter inaccessible from workspace tests.
 const DEFAULT_MAX_PAYLOAD: u32 = 1_048_576;
 
-// Masks come from production `CommandFlags`; the independent contract
-// oracle remains the Kani reference model in kani_flag_validation.rs.
+// Most tests read masks from production `CommandFlags`. The contract §2.2
+// literals are pinned independently by `CONTRACT_VALID_MASKS` below
+// (transcribed from the Kani reference model in kani_flag_validation.rs)
+// and checked by B-FLAG-009, so a drift in either side fails here.
 
 /// All 11 IPC v1 commands in declaration order.
 const ALL_COMMANDS: [IpcCommand; 11] = [
@@ -70,6 +73,24 @@ const NONZERO_MASK_COMMANDS: [IpcCommand; 5] = [
     IpcCommand::InspectRun,
     IpcCommand::ListEvents,
     IpcCommand::DrainTrace,
+];
+
+/// Contract §2.2 valid mask per command, as literals transcribed from the
+/// Kani reference model (`valid_mask_model` in kani_flag_validation.rs).
+/// Deliberately not derived from production `CommandFlags`: B-FLAG-009
+/// compares production against this table, so either side drifting fails.
+const CONTRACT_VALID_MASKS: [(IpcCommand, u16); 11] = [
+    (IpcCommand::SubmitRun, 0x00FF),
+    (IpcCommand::SubmitRunInline, 0x00FF),
+    (IpcCommand::CancelRun, 0x0000),
+    (IpcCommand::InspectRun, 0x0003),
+    (IpcCommand::ListEvents, 0x00FF),
+    (IpcCommand::AnswerAsk, 0x0000),
+    (IpcCommand::CompleteAction, 0x0000),
+    (IpcCommand::FailAction, 0x0000),
+    (IpcCommand::DrainTrace, 0x0007),
+    (IpcCommand::Health, 0x0000),
+    (IpcCommand::Shutdown, 0x0000),
 ];
 
 // ============================================================================
@@ -389,7 +410,7 @@ fn proptest_decode_reserved_field_error_takes_precedence_over_flag_error() {
 }
 
 // ============================================================================
-// Section C: Flag validation unit tests (8 functions)
+// Section C: Flag validation unit tests (9 functions)
 // ============================================================================
 
 /// B-FLAG-001: CommandFlags::validate returns Ok(CommandFlags(0)) when
@@ -593,6 +614,27 @@ fn command_flags_as_u16_returns_the_validated_value() {
     assert_eq!(flags.as_u16(), 0x00FF);
     let flags = CommandFlags::validate(IpcCommand::Health, 0).expect("valid flag");
     assert_eq!(flags.as_u16(), 0);
+}
+
+/// B-FLAG-009: `CommandFlags::valid_mask` equals the contract §2.2 literal
+/// for every command, and `reserved_global_mask` is 0xFF00. Expected
+/// values come from `CONTRACT_VALID_MASKS`, transcribed from the Kani
+/// reference model rather than read from production, so this test pins
+/// the contract values independently of the code under test.
+#[test]
+fn valid_mask_matches_contract_section_2_2_literals_for_all_commands() {
+    assert_eq!(
+        CommandFlags::reserved_global_mask(),
+        0xFF00,
+        "reserved_global_mask must be the contract §2.1 literal 0xFF00"
+    );
+    for (command, expected) in CONTRACT_VALID_MASKS {
+        assert_eq!(
+            CommandFlags::valid_mask(command),
+            expected,
+            "valid_mask({command:?}) must be the contract §2.2 literal {expected:#06x}"
+        );
+    }
 }
 
 // ============================================================================
