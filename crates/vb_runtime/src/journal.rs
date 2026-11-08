@@ -17,3 +17,8 @@ mod tests {
 mod strict_policy_port_tests {
     include!("journal/tests/strict_policy_port.rs");
 }
+
+#[cfg(test)]
+mod strict_gate_port_tests {
+    include!("journal/tests/strict_gate_port.rs");
+}

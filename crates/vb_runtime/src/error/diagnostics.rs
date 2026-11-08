@@ -74,6 +74,7 @@ impl RuntimeError {
             Self::UnsupportedAsyncStrictAck => Self::UNSUPPORTED_ASYNC_STRICT_ACK_CODE,
             Self::FramePoolUnavailable => Self::FRAME_POOL_UNAVAILABLE_CODE,
             Self::InvalidActionCompletion
+            | Self::InvalidGateDecisionRecord
             | Self::StaleAttempt { .. }
             | Self::StaleFencingToken { .. }
             | Self::AttemptBeyondMax { .. }
@@ -162,6 +163,7 @@ impl RuntimeError {
                 _ => Some(Self::STORAGE_ERROR_RUNTIME_CODE),
             },
             Self::InvalidActionCompletion
+            | Self::InvalidGateDecisionRecord
             | Self::StaleAttempt { .. }
             | Self::StaleFencingToken { .. }
             | Self::AttemptBeyondMax { .. }

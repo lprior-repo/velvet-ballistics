@@ -46,4 +46,8 @@ mod tests {
     mod strict_policy_sequence {
         include!("lifecycle_tests/strict_policy_sequence.rs");
     }
+
+    mod strict_gate_sequence {
+        include!("lifecycle_tests/strict_gate_sequence.rs");
+    }
 }
