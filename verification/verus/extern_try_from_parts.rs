@@ -80,6 +80,16 @@
 //     <- crates/vb_core/src/workflow/mod.rs:2336-2364
 //   - `validate_no_nested_together` (moved out of workflow/mod.rs)
 //     <- crates/vb_core/src/engine/validate.rs:119-172
+//   - `validate` (repeat_counter_ownership)
+//     <- crates/vb_core/src/workflow/repeat_counter_ownership.rs:6-12
+//   - `identify_counter_owners`
+//     <- crates/vb_core/src/workflow/repeat_counter_ownership.rs:14-35
+//   - `validate_slot_ownership`
+//     <- crates/vb_core/src/workflow/repeat_counter_ownership.rs:37-72
+//   - `is_paired_check`
+//     <- crates/vb_core/src/workflow/repeat_counter_ownership.rs:74-109
+//   - `writes_slot`
+//     <- crates/vb_core/src/workflow/repeat_counter_ownership.rs:111-137
 //   - `validate` (loop_regions pairing step)
 //     <- crates/vb_core/src/workflow/loop_regions.rs:59-72
 //   - `cache_control`
@@ -563,6 +573,27 @@ pub struct SpecWorkflowParts {
     /// counterpart: the inventory is caller-supplied, so the
     /// allocation step is out of scope.
     pub kind_targets: Vec<Vec<u32>>,
+    /// Per-node kind-specific written-slot inventory consumed by
+    /// the repeat-counter ownership check (`writes_slot`,
+    /// repeat_counter_ownership.rs:111-137). `written_slots[i]`
+    /// is node i's kind-specific written slots in `writes_slot`
+    /// match order: ForEachStart item_slot, ForEachNext
+    /// iterator_slot, TogetherBranch / TogetherJoin accumulator,
+    /// CollectStart source, CollectNext collector_slot, ReduceStart
+    /// input then accumulator, ReduceNext iterator_slot, RepeatCheck
+    /// attempt_slot, RetryCheck policy_slot, ErrorHandler error_slot,
+    /// AskResume answer. The output slot and the routing error slot
+    /// are NOT in this inventory: the projection reads them from
+    /// the node's meta (`has_output` / `out_slot`,
+    /// `has_error_slot` / `error_slot`), matching production's
+    /// output-first, error-second check order. The projection
+    /// treats a missing entry (a `written_slots` shorter than
+    /// `nodes_meta`) as no kind-specific writes for the tail nodes.
+    /// The `CollectStart` source arm is the caller's
+    /// responsibility: the inventory includes the source slot only
+    /// when the node's output is none, matching production's
+    /// `node.output.slot().is_none() && *source == slot` guard.
+    pub written_slots: Vec<Vec<u32>>,
 }
 /// Per-node metadata feeding the validator. See `SpecWorkflowParts`
 /// for the field semantics. Mirrors every scalar that
@@ -1200,6 +1231,128 @@ pub fn loop_region_edges_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflow
     None
 }
 // ============================================================================
+// Pure decision fn: repeat-counter ownership
+// ============================================================================
+/// Pure projection of `is_paired_check`
+/// (repeat_counter_ownership.rs:74-109): the node is the paired
+/// `RepeatCheck` for the counter slot `slot` owned by `owner` iff
+/// it is a `RepeatCheck` whose attempt slot is the counter slot,
+/// whose control shape exists (routing next is a step), whose done
+/// matches the owner's start done, whose id lies strictly between
+/// the owner's body and done, and whose routing next step is the
+/// owner's body. The owner lookup scans by id, which agrees with
+/// production's `parts.nodes.get(owner.as_usize())` position index
+/// on every input that reached this step because step 1e trusts
+/// `meta.id` to match the table position. An owner carries a start
+/// shape by construction (`start_state` needs only the output
+/// slot, which owners have by definition), so a missing start
+/// shape means the node is not paired.
+#[verifier::external]
+fn is_paired_repeat_check(
+    parts: &SpecWorkflowParts,
+    node: SpecNodeMeta,
+    slot: u32,
+    owner: u32,
+) -> bool {
+    if node.kind_disc != spec_node_kind_repeat_check() {
+        return false;
+    }
+    if node.has_ctrl_shape != 1 || node.ctrl_state_a != slot {
+        return false;
+    }
+    for candidate in parts.nodes_meta.iter() {
+        if candidate.id != owner {
+            continue;
+        }
+        if candidate.kind_disc != spec_node_kind_repeat_start()
+            || candidate.has_start_shape != 1
+        {
+            return false;
+        }
+        return node.ctrl_done == candidate.start_done
+            && candidate.start_body < node.id
+            && node.id < candidate.start_done
+            && node.ctrl_body == candidate.start_body;
+    }
+    false
+}
+
+/// Pure projection of `writes_slot`
+/// (repeat_counter_ownership.rs:111-137) for the node at table
+/// index `index`: the output slot, the routing error slot, or any
+/// slot in the caller-supplied `written_slots` inventory for the
+/// node. A missing inventory entry means the node writes no
+/// kind-specific slot.
+#[verifier::external]
+fn node_writes_slot(parts: &SpecWorkflowParts, index: usize, slot: u32) -> bool {
+    let meta = match parts.nodes_meta.get(index) {
+        Some(meta) => *meta,
+        None => return false,
+    };
+    if meta.has_output == 1 && meta.out_slot == slot {
+        return true;
+    }
+    if meta.has_error_slot == 1 && meta.error_slot == slot {
+        return true;
+    }
+    match parts.written_slots.get(index) {
+        Some(slots) => slots.contains(&slot),
+        None => false,
+    }
+}
+
+/// Pure projection of `repeat_counter_ownership::validate`
+/// (repeat_counter_ownership.rs:6-12), applied to the whole node
+/// table in table order. Phase 1 (`identify_counter_owners`,
+/// repeat_counter_ownership.rs:14-35) claims one counter slot per
+/// `RepeatStart` with an output slot; a second owner claiming the
+/// same slot returns `RepeatCounterForeignWrite`. Phase 2
+/// (`validate_slot_ownership`, repeat_counter_ownership.rs:37-72)
+/// checks every claim in claim order: the owner node itself and
+/// its paired `RepeatCheck` may only touch the slot through their
+/// routing error slot; every other node must not write the slot
+/// (`writes_slot`, repeat_counter_ownership.rs:111-137). Returns
+/// the first failure, else `None`.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn repeat_counter_ownership_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError> {
+    let mut owners: Vec<(u32, u32)> = Vec::new();
+    for meta in parts.nodes_meta.iter() {
+        if meta.kind_disc != spec_node_kind_repeat_start() || meta.has_output != 1 {
+            continue;
+        }
+        for (slot, _) in owners.iter() {
+            if *slot == meta.out_slot {
+                return Some(SpecWorkflowError::RepeatCounterForeignWrite);
+            }
+        }
+        owners.push((meta.out_slot, meta.id));
+    }
+    for (slot, owner) in owners.iter() {
+        for (index, meta) in parts.nodes_meta.iter().enumerate() {
+            if meta.id == *owner {
+                if meta.has_error_slot == 1 && meta.error_slot == *slot {
+                    return Some(SpecWorkflowError::RepeatCounterForeignWrite);
+                }
+                continue;
+            }
+            if is_paired_repeat_check(parts, *meta, *slot, *owner) {
+                if meta.has_error_slot == 1 && meta.error_slot == *slot {
+                    return Some(SpecWorkflowError::RepeatCounterForeignWrite);
+                }
+                continue;
+            }
+            if node_writes_slot(parts, index, *slot) {
+                return Some(SpecWorkflowError::RepeatCounterForeignWrite);
+            }
+        }
+    }
+    None
+}
+// ============================================================================
 // Pure decision fn: top-level try_from_parts validation
 // ============================================================================
 /// Pure projection of `CompiledWorkflow::try_from_parts` validation
@@ -1240,6 +1393,8 @@ pub fn loop_region_edges_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflow
 ///   - `validate_build_object_symbols` (SymbolId bounds in nodes),
 ///   - `validate_reachability`,
 ///   - `validate_forward_edges`,
+///   - `repeat_counter_ownership::validate`
+///     (repeat_counter_ownership.rs:6-12),
 ///   - `validate_no_nested_together`.
 ///
 /// `validate_budget` runs `WholeWorkflowBudget::compute` then
@@ -1356,6 +1511,18 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // decision-fn level; the spec's BackwardEdge / UnreachableNode
     // / NestedTogether arms are exercised via dedicated spec
     // functions).
+    // 1h. repeat_counter_ownership::validate
+    // (repeat_counter_ownership.rs:6-12). Production runs this
+    // inside validate_parts after validate_forward_edges and
+    // before validate_no_nested_together: one counter slot per
+    // RepeatStart with an output slot, and no other node may write
+    // a claimed slot (the owner and its paired RepeatCheck are
+    // exempt except for their routing error slot). The written
+    // slots read the caller-supplied `written_slots` inventory;
+    // a missing entry means the node writes no kind-specific slot.
+    if let Some(err) = repeat_counter_ownership_error(parts) {
+        return SpecValidationResult::Err(err);
+    }
     // ---- Step 2: loop-region validation ----
     // Production calls loop_regions::validate (loop_regions.rs:59-72)
     // next, in this order: pairing (`cache_control` +
