@@ -641,7 +641,7 @@ pub open spec fn spec_expr_effect(op: SpecExprOp) -> (int, int) {
 /// workflow/mod.rs:2692-2702), per-op capacity breach
 /// (`validate_expr_stack_capacity`, workflow/mod.rs:2704-2710,
 /// against the claimed `max_stack` and the 64-entry ceiling,
-/// limits.rs:43), final-depth failure
+/// crates/vb_core/src/limits.rs:43), final-depth failure
 /// (`validate_expr_final_depth`, workflow/mod.rs:2712-2720), or
 /// computed-required != claimed-max_stack mismatch
 /// (`ExprProgram::try_from_parts`, workflow/mod.rs:899-908), or
@@ -712,7 +712,7 @@ pub open spec fn spec_expr_accessor_error(
 /// `validate_expressions` decision (workflow/mod.rs:2046-2055)
 /// for one program, in production order: op count
 /// (`validate_expr_op_count`, workflow/mod.rs:2682-2690, cap 256,
-/// limits.rs:31), stack simulation, final depth, max_stack
+/// crates/vb_core/src/limits.rs:31), stack simulation, final depth, max_stack
 /// mismatch, then the accessor scan. Returns
 /// `Some(ExpressionInvalid)` for the first failure, or `None`
 /// when the program validates.
@@ -816,7 +816,7 @@ pub open spec fn spec_accessor_path_segment_error(
 /// Spec-level mirror of `production::accessor_path_error`: the
 /// `validate_accessor_paths` decision (workflow/mod.rs:2089-2119)
 /// for one accessor, in production order: path length against
-/// `MAX_PATH_DEPTH` (16, limits.rs:59), then the per-segment
+/// `MAX_PATH_DEPTH` (16, crates/vb_core/src/limits.rs:59), then the per-segment
 /// walk. Returns the first failure, or `None` when the path
 /// validates.
 pub open spec fn spec_accessor_path_error(
@@ -1368,7 +1368,7 @@ pub open spec fn spec_loop_shape_matches(control: SpecNodeMeta, start: SpecNodeM
         && control.ctrl_state_b == start.start_state_b
 }
 
-/// Spec mirror of the `unique_owner` scan (pairing.rs:33-50) for one
+/// Spec mirror of the `unique_owner` scan (crates/vb_core/src/workflow/loop_regions/pairing.rs:33-50) for one
 /// cached control at index `ctrl_idx`. Scans candidate starts from
 /// index `j`; `found` records whether an ordered owner was already
 /// seen. Returns the first `LoopRegionUnpaired` failure (missing
@@ -1409,7 +1409,7 @@ pub open spec fn spec_owner_scan_error(
     }
 }
 
-/// Spec mirror of the `cache_control` pairing pass (pairing.rs:8-31)
+/// Spec mirror of the `cache_control` pairing pass (crates/vb_core/src/workflow/loop_regions/pairing.rs:8-31)
 /// over the node table. Walks controls in table order; a control
 /// participates only when its body does not follow its own id
 /// (`ctrl_body <= id`, the complement of the production skip).
@@ -1445,7 +1445,7 @@ pub open spec fn spec_region_contains(region: SpecLoopRegion, step: u32) -> bool
 
 /// Spec predicate: two regions are disjoint or strictly nested.
 /// Mirrors `disjoint_or_nested` in `extern_try_from_parts.rs`
-/// (pairing.rs:72-77).
+/// (crates/vb_core/src/workflow/loop_regions/pairing.rs:72-77).
 pub open spec fn spec_disjoint_or_nested(first: SpecLoopRegion, second: SpecLoopRegion) -> bool {
     first.control < second.body
         || second.control < first.body
@@ -1453,7 +1453,7 @@ pub open spec fn spec_disjoint_or_nested(first: SpecLoopRegion, second: SpecLoop
         || (second.body < first.body && first.control < second.control)
 }
 
-/// Spec mirror of the `unique_owner` scan (pairing.rs:33-50) for one
+/// Spec mirror of the `unique_owner` scan (crates/vb_core/src/workflow/loop_regions/pairing.rs:33-50) for one
 /// cached control at index `ctrl_idx`, returning the owner id
 /// instead of the error. Scans candidate starts from index `j`;
 /// `found` records the ordered owner already seen. Returns `None`
@@ -1489,7 +1489,7 @@ pub open spec fn spec_owner_scan(
 }
 
 /// Spec mirror of one entry of the region table built by
-/// `cache_control` (pairing.rs:8-31): the region a cached control
+/// `cache_control` (crates/vb_core/src/workflow/loop_regions/pairing.rs:8-31): the region a cached control
 /// owns, or `None` when the node is not a cached control or its
 /// owner scan fails.
 pub open spec fn spec_region_of(metas: &Vec<SpecNodeMeta>, ctrl_idx: int) -> Option<SpecLoopRegion> {
@@ -1514,7 +1514,7 @@ pub open spec fn spec_region_of(metas: &Vec<SpecNodeMeta>, ctrl_idx: int) -> Opt
 }
 
 /// Spec mirror of one pair check in `validate_region_relations`
-/// (pairing.rs:52-71): the regions of controls `i` and `j` share
+/// (crates/vb_core/src/workflow/loop_regions/pairing.rs:52-71): the regions of controls `i` and `j` share
 /// no start and are disjoint or strictly nested. Returns
 /// `LoopRegionUnpaired` for a shared start, `LoopRegionCrossing`
 /// for a partially overlapping pair, else `None`. The `first.id >=
@@ -1572,7 +1572,7 @@ pub open spec fn spec_relations_inner(
     }
 }
 
-/// Spec mirror of `validate_region_relations` (pairing.rs:52-71)
+/// Spec mirror of `validate_region_relations` (crates/vb_core/src/workflow/loop_regions/pairing.rs:52-71)
 /// over the node table. Walks first regions in table order;
 /// returns the first pair failure, or `None` when every pair is
 /// properly related.
@@ -2857,7 +2857,7 @@ pub proof fn lemma_entry_out_of_bounds_rejected(parts: &SpecWorkflowParts)
 /// whose `max_steps` exceeds the hard limit is rejected with
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1499-1503,
-/// `MAX_STEPS_PER_WORKFLOW` 65535, limits.rs:11). The production
+/// `MAX_STEPS_PER_WORKFLOW` 65535, crates/vb_core/src/limits.rs:11). The production
 /// field is `u16`, so this arm cannot fire on a real production
 /// contract; the projection models the check as written over the
 /// `u32`-promoted spec field, where the over-cap input is
@@ -3052,7 +3052,7 @@ pub proof fn lemma_ref_none_sentinel()
 /// Lemma 18: the loop-region unpaired rejection. A lone cached
 /// control with no start shape anywhere in the table is rejected
 /// with `LoopRegionUnpaired` (production `unique_owner`,
-/// pairing.rs:33-50, returns the same error when no start matches
+/// crates/vb_core/src/workflow/loop_regions/pairing.rs:33-50, returns the same error when no start matches
 /// the control shape).
 pub proof fn lemma_loop_region_unpaired_rejected(metas: &Vec<SpecNodeMeta>)
     requires
@@ -3117,7 +3117,7 @@ pub proof fn lemma_loop_region_unordered_owner_rejected(metas: &Vec<SpecNodeMeta
 
 /// Lemma 21: the shared-start rejection. Two cached controls
 /// owned by the same start are rejected with `LoopRegionUnpaired`
-/// (production `validate_region_relations`, pairing.rs:52-71,
+/// (production `validate_region_relations`, crates/vb_core/src/workflow/loop_regions/pairing.rs:52-71,
 /// errors on the second control as soon as the shared start is
 /// seen).
 pub proof fn lemma_loop_region_shared_start_rejected(metas: &Vec<SpecNodeMeta>)
@@ -5981,7 +5981,7 @@ pub proof fn lemma_node_id_first_mismatch_wins(metas: &Vec<SpecNodeMeta>)
 /// more than 256 ops is rejected with `ExpressionInvalid`
 /// (production `validate_expr_op_count`,
 /// workflow/mod.rs:2682-2690, cap `MAX_EXPRESSION_OPS` 256,
-/// limits.rs:31).
+/// crates/vb_core/src/limits.rs:31).
 pub proof fn lemma_expr_op_count_rejected(program: SpecExprProgram)
     requires
         program.ops.len() == 257,
@@ -6228,7 +6228,7 @@ pub proof fn lemma_expr_before_budget(parts: &SpecWorkflowParts)
 /// Lemma 96: the accessor-path depth rejection. An accessor
 /// whose path holds 17 segments is rejected with
 /// `AccessorPathTooDeep`: production rejects any path longer
-/// than `MAX_PATH_DEPTH` (16, limits.rs:59),
+/// than `MAX_PATH_DEPTH` (16, crates/vb_core/src/limits.rs:59),
 /// workflow/mod.rs:2089-2119.
 pub proof fn lemma_accessor_path_depth_rejected(accessor: SpecAccessor)
     requires
@@ -6355,7 +6355,7 @@ proof fn lemma_segment_scan_field_zero_ok(
 
 /// Lemma 102: depth exactly 16 is accepted. An accessor whose
 /// path holds 16 in-bounds `Field(0)` segments validates: the
-/// depth cap is `MAX_PATH_DEPTH` (16, limits.rs:59), so only
+/// depth cap is `MAX_PATH_DEPTH` (16, crates/vb_core/src/limits.rs:59), so only
 /// lengths above 16 reject (workflow/mod.rs:2089-2119).
 pub proof fn lemma_accessor_path_depth_16_accepted(accessor: SpecAccessor)
     requires
@@ -7128,7 +7128,7 @@ pub proof fn lemma_resource_counts_at_cap_accepted(parts: &SpecWorkflowParts)
 /// `max_constants` exceeds the hard limit is rejected with
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1509-1513,
-/// `MAX_CONSTANTS` 65535, limits.rs:23). The production field is
+/// `MAX_CONSTANTS` 65535, crates/vb_core/src/limits.rs:23). The production field is
 /// `u16`, so this arm cannot fire on a real production contract;
 /// the projection models the check as written over the
 /// `u32`-promoted spec field, where the over-cap input is
@@ -7152,7 +7152,7 @@ pub proof fn lemma_constants_limit_over_cap_rejected(parts: &SpecWorkflowParts)
 /// `max_accessors` exceeds the hard limit is rejected with
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1514-1518,
-/// `MAX_ACCESSORS` 8192, limits.rs:39).
+/// `MAX_ACCESSORS` 8192, crates/vb_core/src/limits.rs:39).
 pub proof fn lemma_accessors_limit_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -7173,7 +7173,7 @@ pub proof fn lemma_accessors_limit_over_cap_rejected(parts: &SpecWorkflowParts)
 /// `max_expressions` exceeds the hard limit is rejected with
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1519-1523,
-/// `MAX_EXPRESSIONS` 4096, limits.rs:35).
+/// `MAX_EXPRESSIONS` 4096, crates/vb_core/src/limits.rs:35).
 pub proof fn lemma_expressions_limit_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -7341,7 +7341,7 @@ pub proof fn lemma_contract_limits_at_cap_accepted(parts: &SpecWorkflowParts)
 /// `max_step_budget_per_tick` exceeds the hard limit is rejected
 /// with `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1529-1533,
-/// `MAX_STEP_BUDGET` 10000, limits.rs:94). The production field is
+/// `MAX_STEP_BUDGET` 10000, crates/vb_core/src/limits.rs:94). The production field is
 /// `u64` and the cap is below the type maximum, so this arm is
 /// reachable on a real production contract.
 pub proof fn lemma_step_budget_limit_over_cap_rejected(parts: &SpecWorkflowParts)
@@ -7367,7 +7367,7 @@ pub proof fn lemma_step_budget_limit_over_cap_rejected(parts: &SpecWorkflowParts
 /// `max_input_bytes` exceeds the hard limit is rejected with
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1539-1543,
-/// `MAX_INPUT_BYTES` 16777216, limits.rs:98). The production field
+/// `MAX_INPUT_BYTES` 16777216, crates/vb_core/src/limits.rs:98). The production field
 /// is `u32` and the cap is below the type maximum, so this arm is
 /// reachable on a real production contract.
 pub proof fn lemma_input_bytes_limit_over_cap_rejected(parts: &SpecWorkflowParts)
@@ -7396,7 +7396,7 @@ pub proof fn lemma_input_bytes_limit_over_cap_rejected(parts: &SpecWorkflowParts
 /// `max_output_bytes` exceeds the hard limit is rejected with
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1544-1548,
-/// `MAX_OUTPUT_BYTES` 16777216, limits.rs:102). The production
+/// `MAX_OUTPUT_BYTES` 16777216, crates/vb_core/src/limits.rs:102). The production
 /// field is `u32` and the cap is below the type maximum, so this
 /// arm is reachable on a real production contract.
 pub proof fn lemma_output_bytes_limit_over_cap_rejected(parts: &SpecWorkflowParts)
@@ -7426,7 +7426,7 @@ pub proof fn lemma_output_bytes_limit_over_cap_rejected(parts: &SpecWorkflowPart
 /// `max_blob_bytes` exceeds the hard limit is rejected with
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1549-1553,
-/// `MAX_BLOB_BYTES` 67108864, limits.rs:106). The production field
+/// `MAX_BLOB_BYTES` 67108864, crates/vb_core/src/limits.rs:106). The production field
 /// is `u64` and the cap is below the type maximum, so this arm is
 /// reachable on a real production contract.
 pub proof fn lemma_blob_bytes_limit_over_cap_rejected(parts: &SpecWorkflowParts)
@@ -7457,7 +7457,7 @@ pub proof fn lemma_blob_bytes_limit_over_cap_rejected(parts: &SpecWorkflowParts)
 /// whose `max_ipc_payload_bytes` exceeds the hard limit is rejected
 /// with `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1554-1558,
-/// `MAX_IPC_PAYLOAD_BYTES` 16777216, limits.rs:110). The production
+/// `MAX_IPC_PAYLOAD_BYTES` 16777216, crates/vb_core/src/limits.rs:110). The production
 /// field is `u32` and the cap is below the type maximum, so this
 /// arm is reachable on a real production contract.
 pub proof fn lemma_ipc_payload_bytes_limit_over_cap_rejected(parts: &SpecWorkflowParts)
@@ -7489,7 +7489,7 @@ pub proof fn lemma_ipc_payload_bytes_limit_over_cap_rejected(parts: &SpecWorkflo
 /// whose `max_journal_batch_bytes` exceeds the hard limit is
 /// rejected with `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1579-1583,
-/// `MAX_JOURNAL_BATCH_BYTES` 16777216, limits.rs:130). The
+/// `MAX_JOURNAL_BATCH_BYTES` 16777216, crates/vb_core/src/limits.rs:130). The
 /// production field is `u32` and the cap is below the type
 /// maximum, so this arm is reachable on a real production contract.
 /// Production runs the retry (1559-1563), fanout (1564-1568),
@@ -7638,7 +7638,7 @@ pub proof fn lemma_byte_budget_limits_within_cap_reaches_usage(parts: &SpecWorkf
 /// workflow whose step-budget, input, output, blob, IPC-payload,
 /// retry, fanout, collect, queue, and journal-batch caps are each
 /// exactly at their hard limit validates: production rejects only
-/// when a declared cap exceeds its hard limit
+/// when a declared input, output, blob, or IPC-payload cap exceeds its hard limit
 /// (workflow/mod.rs:1529-1533, 1539-1558, 1559-1578, 1579-1583). The boundary equalities imply the lemma 15
 /// requires, so the well-formed acceptance carries the result.
 pub proof fn lemma_byte_budget_limits_at_cap_accepted(parts: &SpecWorkflowParts)
@@ -7692,7 +7692,7 @@ pub proof fn lemma_byte_budget_limits_at_cap_accepted(parts: &SpecWorkflowParts)
 /// `max_retry_attempts` exceeds the hard limit is rejected with
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1559-1563,
-/// `MAX_RETRY_ATTEMPTS` 10, limits.rs:114). The production field is
+/// `MAX_RETRY_ATTEMPTS` 10, crates/vb_core/src/limits.rs:114). The production field is
 /// `u16` and the cap is below the type maximum, so this arm is
 /// reachable on a real production contract.
 pub proof fn lemma_retry_attempts_limit_over_cap_rejected(parts: &SpecWorkflowParts)
@@ -7725,7 +7725,7 @@ pub proof fn lemma_retry_attempts_limit_over_cap_rejected(parts: &SpecWorkflowPa
 /// `max_fanout` exceeds the hard limit is rejected with
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1564-1568,
-/// `MAX_FANOUT` 256, limits.rs:118). The production field is `u16`
+/// `MAX_FANOUT` 256, crates/vb_core/src/limits.rs:118). The production field is `u16`
 /// and the cap is below the type maximum, so this arm is reachable
 /// on a real production contract.
 pub proof fn lemma_fanout_limit_over_cap_rejected(parts: &SpecWorkflowParts)
@@ -7759,7 +7759,7 @@ pub proof fn lemma_fanout_limit_over_cap_rejected(parts: &SpecWorkflowParts)
 /// `max_collect_items` exceeds the hard limit is rejected with
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1569-1573,
-/// `MAX_COLLECT_ITEMS` 1048576, limits.rs:122). The production
+/// `MAX_COLLECT_ITEMS` 1048576, crates/vb_core/src/limits.rs:122). The production
 /// field is `u32` and the cap is below the type maximum, so this
 /// arm is reachable on a real production contract.
 pub proof fn lemma_collect_items_limit_over_cap_rejected(parts: &SpecWorkflowParts)
@@ -7794,7 +7794,7 @@ pub proof fn lemma_collect_items_limit_over_cap_rejected(parts: &SpecWorkflowPar
 /// `max_queue_depth` exceeds the hard limit is rejected with
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1574-1578,
-/// `MAX_QUEUE_DEPTH` 1048576, limits.rs:126). The production field
+/// `MAX_QUEUE_DEPTH` 1048576, crates/vb_core/src/limits.rs:126). The production field
 /// is `u32` and the cap is below the type maximum, so this arm is
 /// reachable on a real production contract.
 pub proof fn lemma_queue_depth_limit_over_cap_rejected(parts: &SpecWorkflowParts)
@@ -7996,7 +7996,7 @@ pub proof fn lemma_retry_fanout_collect_queue_limits_at_cap_accepted(parts: &Spe
 /// with more fields than `MAX_OBJECT_FIELDS_PER_VALUE` is rejected with
 /// `ResourceContractExceeded` (production `validate_build_object`,
 /// workflow/mod.rs:1869-1882, checks the cap before the per-field
-/// slots; cap `MAX_OBJECT_FIELDS_PER_VALUE` 65535, limits.rs:75).
+/// slots; cap `MAX_OBJECT_FIELDS_PER_VALUE` 65535, crates/vb_core/src/limits.rs:75).
 pub proof fn lemma_build_object_fields_over_cap_rejected(
     meta: SpecNodeMeta,
     kind_refs: &Vec<SpecKindRef>,
@@ -8056,7 +8056,7 @@ pub proof fn lemma_together_join_zero_branch_count_rejected(
 /// even when a following slot is out of bounds (production
 /// `validate_build_list`, workflow/mod.rs:1860-1867, checks the cap
 /// before `validate_slots`; cap `MAX_LIST_ITEMS_PER_VALUE` 65535,
-/// limits.rs:71).
+/// crates/vb_core/src/limits.rs:71).
 pub proof fn lemma_build_list_items_before_slots(
     meta: SpecNodeMeta,
     kind_refs: &Vec<SpecKindRef>,
@@ -8087,7 +8087,7 @@ pub proof fn lemma_build_list_items_before_slots(
 /// `ResourceContractExceeded` even when a following slot is out of
 /// bounds (production `validate_build_object`,
 /// workflow/mod.rs:1869-1882, checks the cap before the per-field
-/// slots; cap `MAX_OBJECT_FIELDS_PER_VALUE` 65535, limits.rs:75).
+/// slots; cap `MAX_OBJECT_FIELDS_PER_VALUE` 65535, crates/vb_core/src/limits.rs:75).
 pub proof fn lemma_build_object_fields_before_slots(
     meta: SpecNodeMeta,
     kind_refs: &Vec<SpecKindRef>,
@@ -8247,7 +8247,7 @@ pub proof fn lemma_build_list_items_at_cap_accepted(
 /// `max_transitions_per_tick` exceeds the hard limit is rejected
 /// with `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1534-1538,
-/// `MAX_STEP_BUDGET` 10000, limits.rs:94). The production field is
+/// `MAX_STEP_BUDGET` 10000, crates/vb_core/src/limits.rs:94). The production field is
 /// `u64` and the cap is below the type maximum, so this arm is
 /// reachable on a real production contract.
 pub proof fn lemma_transitions_limit_over_cap_rejected(parts: &SpecWorkflowParts)
@@ -8452,7 +8452,7 @@ pub proof fn lemma_zero_transitions_after_limits(parts: &SpecWorkflowParts)
 /// `max_steps` exceeds the hard limit is rejected with
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1499-1503,
-/// `MAX_STEPS_PER_WORKFLOW` 65535, limits.rs:11). The production
+/// `MAX_STEPS_PER_WORKFLOW` 65535, crates/vb_core/src/limits.rs:11). The production
 /// field is `u16`, so this arm cannot fire on a real production
 /// contract; the projection models the check as written over the
 /// `u32`-promoted spec field, where the over-cap input is
@@ -8474,7 +8474,7 @@ pub proof fn lemma_steps_limit_over_cap_rejected(parts: &SpecWorkflowParts)
 /// `max_slots` exceeds the hard limit is rejected with
 /// `ResourceContractTooLarge` (production
 /// `check_resource_contract_limits`, workflow/mod.rs:1504-1508,
-/// `MAX_SLOTS_PER_WORKFLOW` 65535, limits.rs:15). The production
+/// `MAX_SLOTS_PER_WORKFLOW` 65535, crates/vb_core/src/limits.rs:15). The production
 /// field is `u16`, so this arm cannot fire on a real production
 /// contract; the projection models the check as written over the
 /// `u32`-promoted spec field, where the over-cap input is
