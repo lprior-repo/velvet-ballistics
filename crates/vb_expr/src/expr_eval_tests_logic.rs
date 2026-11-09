@@ -87,6 +87,20 @@
         let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
         let result = eval_expr_program(&program, &[], &constants)?;
         assert_eq!(result, SlotValue::Bool(true));
+
+        let tokens = crate::lexer::lex_expr("true == false")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::Bool(false));
+
+        let tokens = crate::lexer::lex_expr("false != false")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::Bool(false));
         Ok(())
     }
 
