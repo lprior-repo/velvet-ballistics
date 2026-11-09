@@ -18,6 +18,15 @@ fn make_program(ops: Vec<ExprOp>) -> ExprResult<ExprProgram> {
     })
 }
 
+#[cfg(test)]
+fn make_binary_const_program(op: ExprOp) -> ExprResult<ExprProgram> {
+    make_program(vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        op,
+    ])
+}
+
 fn eval_with_const(program: &ExprProgram, constants: Vec<ConstValue>) -> ExprResult<SlotValue> {
     let slots: Vec<Option<SlotValue>> = Vec::new();
     eval_expr_program(program, &slots, &constants)
@@ -25,11 +34,7 @@ fn eval_with_const(program: &ExprProgram, constants: Vec<ConstValue>) -> ExprRes
 
 #[test]
 fn evaluates_addition() -> ExprResult<()> {
-    let program = make_program(vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::Add,
-    ])?;
+    let program = make_binary_const_program(ExprOp::Add)?;
     let result = eval_with_const(&program, vec![ConstValue::I64(19), ConstValue::I64(23)])?;
     assert_eq!(result, SlotValue::I64(42));
     Ok(())
@@ -37,11 +42,7 @@ fn evaluates_addition() -> ExprResult<()> {
 
 #[test]
 fn evaluates_subtraction() -> ExprResult<()> {
-    let program = make_program(vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::Sub,
-    ])?;
+    let program = make_binary_const_program(ExprOp::Sub)?;
     let result = eval_with_const(&program, vec![ConstValue::I64(10), ConstValue::I64(3)])?;
     assert_eq!(result, SlotValue::I64(7));
     Ok(())
@@ -49,11 +50,7 @@ fn evaluates_subtraction() -> ExprResult<()> {
 
 #[test]
 fn evaluates_multiplication() -> ExprResult<()> {
-    let program = make_program(vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::Mul,
-    ])?;
+    let program = make_binary_const_program(ExprOp::Mul)?;
     let result = eval_with_const(&program, vec![ConstValue::I64(6), ConstValue::I64(7)])?;
     assert_eq!(result, SlotValue::I64(42));
     Ok(())
@@ -61,11 +58,7 @@ fn evaluates_multiplication() -> ExprResult<()> {
 
 #[test]
 fn evaluates_division() -> ExprResult<()> {
-    let program = make_program(vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::Div,
-    ])?;
+    let program = make_binary_const_program(ExprOp::Div)?;
     let result = eval_with_const(&program, vec![ConstValue::I64(42), ConstValue::I64(6)])?;
     assert_eq!(result, SlotValue::I64(7));
     Ok(())
@@ -73,11 +66,7 @@ fn evaluates_division() -> ExprResult<()> {
 
 #[test]
 fn rejects_division_by_zero() -> ExprResult<()> {
-    let program = make_program(vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::Div,
-    ])?;
+    let program = make_binary_const_program(ExprOp::Div)?;
     let result = eval_with_const(&program, vec![ConstValue::I64(1), ConstValue::I64(0)]);
     assert!(matches!(result, Err(ExprError::DivisionByZero)));
     Ok(())
@@ -85,11 +74,7 @@ fn rejects_division_by_zero() -> ExprResult<()> {
 
 #[test]
 fn evaluates_equality() -> ExprResult<()> {
-    let program = make_program(vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::Eq,
-    ])?;
+    let program = make_binary_const_program(ExprOp::Eq)?;
     let result = eval_with_const(&program, vec![ConstValue::I64(5), ConstValue::I64(5)])?;
     assert_eq!(result, SlotValue::Bool(true));
     Ok(())
@@ -97,11 +82,7 @@ fn evaluates_equality() -> ExprResult<()> {
 
 #[test]
 fn evaluates_inequality() -> ExprResult<()> {
-    let program = make_program(vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::NotEq,
-    ])?;
+    let program = make_binary_const_program(ExprOp::NotEq)?;
     let result = eval_with_const(&program, vec![ConstValue::I64(5), ConstValue::I64(3)])?;
     assert_eq!(result, SlotValue::Bool(true));
     Ok(())
@@ -116,11 +97,7 @@ fn evaluates_comparison_ops() -> ExprResult<()> {
         (ExprOp::Gt, false),
         (ExprOp::Gte, false),
     ] {
-        let program = make_program(vec![
-            ExprOp::LoadConst(ConstIdx::new(0)),
-            ExprOp::LoadConst(ConstIdx::new(1)),
-            op,
-        ])?;
+        let program = make_binary_const_program(op)?;
         let result = eval_with_const(&program, constants.clone())?;
         assert_eq!(result, SlotValue::Bool(expected), "failed for {op:?}");
     }
@@ -137,22 +114,14 @@ fn evaluates_boolean_not() -> ExprResult<()> {
 
 #[test]
 fn evaluates_boolean_and_or() -> ExprResult<()> {
-    let program = make_program(vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::And,
-    ])?;
+    let program = make_binary_const_program(ExprOp::And)?;
     let result = eval_with_const(
         &program,
         vec![ConstValue::Bool(true), ConstValue::Bool(false)],
     )?;
     assert_eq!(result, SlotValue::Bool(false));
 
-    let program = make_program(vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::Or,
-    ])?;
+    let program = make_binary_const_program(ExprOp::Or)?;
     let result = eval_with_const(
         &program,
         vec![ConstValue::Bool(true), ConstValue::Bool(false)],
@@ -172,11 +141,7 @@ fn evaluates_load_slot() -> ExprResult<()> {
 
 #[test]
 fn rejects_type_mismatch_for_arithmetic() -> ExprResult<()> {
-    let program = make_program(vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::Add,
-    ])?;
+    let program = make_binary_const_program(ExprOp::Add)?;
     let result = eval_with_const(&program, vec![ConstValue::Bool(true), ConstValue::I64(1)]);
     assert!(matches!(result, Err(ExprError::TypeMismatch { .. })));
     Ok(())
