@@ -18,6 +18,28 @@ fn make_step(fields: Vec<(&str, FieldValue)>) -> StepDoc {
     StepDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
 }
 
+#[cfg(test)]
+fn workflow_with_finish_step_id(id: &str) -> WorkflowDoc {
+    make_workflow(vec![
+        (
+            "version",
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
+        ),
+        ("name", FieldValue::String("test".to_owned())),
+        (
+            "when",
+            FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
+        ),
+        (
+            "steps",
+            FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String(id.to_owned())),
+                ("finish", FieldValue::Empty),
+            ])]),
+        ),
+    ])
+}
+
 fn valid_workflow_doc() -> WorkflowDoc {
     make_workflow(vec![
         (
@@ -406,24 +428,7 @@ fn validate_version_returns_missing_required_field_when_absent() {
 
 #[test]
 fn validate_ids_returns_invalid_id_for_malformed_id() {
-    let doc = make_workflow(vec![
-        (
-            "version",
-            FieldValue::String("velvet-ballistics/v1".to_owned()),
-        ),
-        ("name", FieldValue::String("test".to_owned())),
-        (
-            "when",
-            FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
-        ),
-        (
-            "steps",
-            FieldValue::Sequence(vec![make_step(vec![
-                ("id", FieldValue::String("1bad".to_owned())),
-                ("finish", FieldValue::Empty),
-            ])]),
-        ),
-    ]);
+    let doc = workflow_with_finish_step_id("1bad");
     assert_eq!(
         validate_ids(&doc),
         Err(ValidationError::InvalidId {
@@ -434,24 +439,7 @@ fn validate_ids_returns_invalid_id_for_malformed_id() {
 
 #[test]
 fn validate_ids_returns_reserved_id_for_system_id() {
-    let doc = make_workflow(vec![
-        (
-            "version",
-            FieldValue::String("velvet-ballistics/v1".to_owned()),
-        ),
-        ("name", FieldValue::String("test".to_owned())),
-        (
-            "when",
-            FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
-        ),
-        (
-            "steps",
-            FieldValue::Sequence(vec![make_step(vec![
-                ("id", FieldValue::String("runtime".to_owned())),
-                ("finish", FieldValue::Empty),
-            ])]),
-        ),
-    ]);
+    let doc = workflow_with_finish_step_id("runtime");
     assert_eq!(
         validate_ids(&doc),
         Err(ValidationError::ReservedId {
@@ -515,24 +503,7 @@ fn validate_ids_accepts_valid_step_ids() {
 
 #[test]
 fn validate_ids_rejects_step_id_with_spaces() {
-    let doc = make_workflow(vec![
-        (
-            "version",
-            FieldValue::String("velvet-ballistics/v1".to_owned()),
-        ),
-        ("name", FieldValue::String("test".to_owned())),
-        (
-            "when",
-            FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
-        ),
-        (
-            "steps",
-            FieldValue::Sequence(vec![make_step(vec![
-                ("id", FieldValue::String("has space".to_owned())),
-                ("finish", FieldValue::Empty),
-            ])]),
-        ),
-    ]);
+    let doc = workflow_with_finish_step_id("has space");
     assert_eq!(
         validate_ids(&doc),
         Err(ValidationError::InvalidId {
@@ -543,24 +514,7 @@ fn validate_ids_rejects_step_id_with_spaces() {
 
 #[test]
 fn validate_ids_rejects_step_id_starting_with_digit() {
-    let doc = make_workflow(vec![
-        (
-            "version",
-            FieldValue::String("velvet-ballistics/v1".to_owned()),
-        ),
-        ("name", FieldValue::String("test".to_owned())),
-        (
-            "when",
-            FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
-        ),
-        (
-            "steps",
-            FieldValue::Sequence(vec![make_step(vec![
-                ("id", FieldValue::String("9lead".to_owned())),
-                ("finish", FieldValue::Empty),
-            ])]),
-        ),
-    ]);
+    let doc = workflow_with_finish_step_id("9lead");
     assert_eq!(
         validate_ids(&doc),
         Err(ValidationError::InvalidId {
@@ -571,24 +525,7 @@ fn validate_ids_rejects_step_id_starting_with_digit() {
 
 #[test]
 fn validate_ids_rejects_step_id_with_special_chars() {
-    let doc = make_workflow(vec![
-        (
-            "version",
-            FieldValue::String("velvet-ballistics/v1".to_owned()),
-        ),
-        ("name", FieldValue::String("test".to_owned())),
-        (
-            "when",
-            FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
-        ),
-        (
-            "steps",
-            FieldValue::Sequence(vec![make_step(vec![
-                ("id", FieldValue::String("bad-id".to_owned())),
-                ("finish", FieldValue::Empty),
-            ])]),
-        ),
-    ]);
+    let doc = workflow_with_finish_step_id("bad-id");
     assert_eq!(
         validate_ids(&doc),
         Err(ValidationError::InvalidId {
@@ -912,10 +849,7 @@ fn get_mapping_with_nested_data_returns_correct_mapping() {
         return;
     };
     assert_eq!(field, "manual");
-    let FieldValue::String(s) = value else {
-        return;
-    };
-    assert_eq!(s, "test");
+    assert!(matches!(value, FieldValue::String(s) if s == "test"));
 }
 
 #[test]
@@ -1025,24 +959,7 @@ fn adversarial_version_v2_is_rejected_as_invalid_version() {
 
 #[test]
 fn adversarial_reserved_id_input_is_rejected_as_reserved() {
-    let doc = make_workflow(vec![
-        (
-            "version",
-            FieldValue::String("velvet-ballistics/v1".to_owned()),
-        ),
-        ("name", FieldValue::String("test".to_owned())),
-        (
-            "when",
-            FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
-        ),
-        (
-            "steps",
-            FieldValue::Sequence(vec![make_step(vec![
-                ("id", FieldValue::String("input".to_owned())),
-                ("finish", FieldValue::Empty),
-            ])]),
-        ),
-    ]);
+    let doc = workflow_with_finish_step_id("input");
     assert_eq!(
         validate_ids(&doc),
         Err(ValidationError::ReservedId {
@@ -1053,24 +970,7 @@ fn adversarial_reserved_id_input_is_rejected_as_reserved() {
 
 #[test]
 fn adversarial_reserved_id_vars_is_rejected_as_reserved() {
-    let doc = make_workflow(vec![
-        (
-            "version",
-            FieldValue::String("velvet-ballistics/v1".to_owned()),
-        ),
-        ("name", FieldValue::String("test".to_owned())),
-        (
-            "when",
-            FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
-        ),
-        (
-            "steps",
-            FieldValue::Sequence(vec![make_step(vec![
-                ("id", FieldValue::String("vars".to_owned())),
-                ("finish", FieldValue::Empty),
-            ])]),
-        ),
-    ]);
+    let doc = workflow_with_finish_step_id("vars");
     assert_eq!(
         validate_ids(&doc),
         Err(ValidationError::ReservedId {
@@ -1081,24 +981,7 @@ fn adversarial_reserved_id_vars_is_rejected_as_reserved() {
 
 #[test]
 fn adversarial_reserved_id_secrets_is_rejected_as_reserved() {
-    let doc = make_workflow(vec![
-        (
-            "version",
-            FieldValue::String("velvet-ballistics/v1".to_owned()),
-        ),
-        ("name", FieldValue::String("test".to_owned())),
-        (
-            "when",
-            FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
-        ),
-        (
-            "steps",
-            FieldValue::Sequence(vec![make_step(vec![
-                ("id", FieldValue::String("secrets".to_owned())),
-                ("finish", FieldValue::Empty),
-            ])]),
-        ),
-    ]);
+    let doc = workflow_with_finish_step_id("secrets");
     assert_eq!(
         validate_ids(&doc),
         Err(ValidationError::ReservedId {
@@ -1109,24 +992,7 @@ fn adversarial_reserved_id_secrets_is_rejected_as_reserved() {
 
 #[test]
 fn adversarial_reserved_id_steps_is_rejected_as_reserved() {
-    let doc = make_workflow(vec![
-        (
-            "version",
-            FieldValue::String("velvet-ballistics/v1".to_owned()),
-        ),
-        ("name", FieldValue::String("test".to_owned())),
-        (
-            "when",
-            FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
-        ),
-        (
-            "steps",
-            FieldValue::Sequence(vec![make_step(vec![
-                ("id", FieldValue::String("steps".to_owned())),
-                ("finish", FieldValue::Empty),
-            ])]),
-        ),
-    ]);
+    let doc = workflow_with_finish_step_id("steps");
     assert_eq!(
         validate_ids(&doc),
         Err(ValidationError::ReservedId {
@@ -1137,24 +1003,7 @@ fn adversarial_reserved_id_steps_is_rejected_as_reserved() {
 
 #[test]
 fn adversarial_reserved_id_error_is_rejected_as_reserved() {
-    let doc = make_workflow(vec![
-        (
-            "version",
-            FieldValue::String("velvet-ballistics/v1".to_owned()),
-        ),
-        ("name", FieldValue::String("test".to_owned())),
-        (
-            "when",
-            FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
-        ),
-        (
-            "steps",
-            FieldValue::Sequence(vec![make_step(vec![
-                ("id", FieldValue::String("error".to_owned())),
-                ("finish", FieldValue::Empty),
-            ])]),
-        ),
-    ]);
+    let doc = workflow_with_finish_step_id("error");
     assert_eq!(
         validate_ids(&doc),
         Err(ValidationError::ReservedId {
@@ -1165,24 +1014,7 @@ fn adversarial_reserved_id_error_is_rejected_as_reserved() {
 
 #[test]
 fn adversarial_reserved_id_attempt_is_rejected_as_reserved() {
-    let doc = make_workflow(vec![
-        (
-            "version",
-            FieldValue::String("velvet-ballistics/v1".to_owned()),
-        ),
-        ("name", FieldValue::String("test".to_owned())),
-        (
-            "when",
-            FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
-        ),
-        (
-            "steps",
-            FieldValue::Sequence(vec![make_step(vec![
-                ("id", FieldValue::String("attempt".to_owned())),
-                ("finish", FieldValue::Empty),
-            ])]),
-        ),
-    ]);
+    let doc = workflow_with_finish_step_id("attempt");
     assert_eq!(
         validate_ids(&doc),
         Err(ValidationError::ReservedId {
