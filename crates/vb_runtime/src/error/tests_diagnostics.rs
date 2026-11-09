@@ -3,6 +3,9 @@ use std::error::Error;
 use std::sync::Arc;
 use vb_core::DiagnosticCode;
 
+#[cfg(test)]
+mod proptest_vb_edvbj_diagnostic_code;
+
 #[test]
 fn admission_durability_error_variants_are_exhaustive() {
     let admission_error = RuntimeError::AdmissionHeaderPersistenceFailed {
