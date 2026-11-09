@@ -129,6 +129,18 @@ impl CompletionWatermark {
         self.validate_run(run)?;
         self.validate_sequence(seq)?;
         self.reject_duplicate_or_drained(seq)?;
+        if self.boundary.checked_add(1) == Some(seq) {
+            // Contiguous with the drained prefix: admit and drain immediately
+            // without consuming pending capacity, then cascade into pending.
+            self.boundary = seq;
+            self.waiters.retain(|waiter| *waiter != seq);
+            let mut drained = vec![seq];
+            drained.extend(self.drain_prefix());
+            return Ok(CompletionDrain {
+                boundary: self.boundary,
+                drained: drained.into_boxed_slice(),
+            });
+        }
         self.push_pending(seq)?;
         let drained = self.drain_prefix();
         Ok(CompletionDrain {
