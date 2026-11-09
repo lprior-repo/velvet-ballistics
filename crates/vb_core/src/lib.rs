@@ -15,6 +15,8 @@ pub mod action;
 pub mod action_pack;
 pub mod artifact;
 pub mod budget;
+#[cfg(test)]
+mod budget_vb_8mdp_7_prop_tests;
 pub mod capability;
 pub mod capability_grant;
 pub mod contract_encoding;
