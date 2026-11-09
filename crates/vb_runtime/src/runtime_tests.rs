@@ -21,10 +21,16 @@ mod tests {
     use crate::RuntimeError;
     use crate::engine::action::compute_idempotency_key;
     use crate::runtime::RecoveryPrefixEvidence;
-    use crate::shard::{AskAnswer, InspectResponse, PendingTimerKind, ShardDirective};
+    use crate::shard::{
+        AskAnswer, InspectResponse, PendingTimerKind, RuntimeState, ShardDirective,
+    };
     use crate::trace::TraceEvent;
     use std::num::NonZeroUsize;
     use vb_core::ids::RunId;
+    use vb_core::manual_gate::{
+        ApproverId, ApproverRole, GateDecision, GateDecisionInput, GateDigest, GateId, GateOutcome,
+        GateOutcomeRecord, ManualGate, RiskClass, SeparationOfDuties,
+    };
 
     #[derive(Debug)]
     struct RejectCompletionJournal {
@@ -1202,6 +1208,271 @@ mod tests {
         };
         // Then answer_ask routes to the only shard and succeeds
         assert_eq!(runtime.answer_ask(answer), Ok(()));
+    }
+
+    #[derive(Debug, Default)]
+    struct GateDecisionTestJournal {
+        decisions: Mutex<Vec<GateOutcomeRecord>>,
+        opened: Mutex<Vec<(ManualGate, u64, ApproverId)>>,
+    }
+
+    impl GateDecisionTestJournal {
+        fn shared() -> Arc<Self> {
+            Arc::new(Self::default())
+        }
+
+        fn decisions(&self) -> crate::RuntimeResult<Vec<GateOutcomeRecord>> {
+            self.decisions
+                .lock()
+                .map(|calls| calls.clone())
+                .map_err(|_| RuntimeError::JournalPoisoned)
+        }
+    }
+
+    impl RuntimeJournal for GateDecisionTestJournal {
+        fn append(&self, _event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
+            Ok(())
+        }
+
+        fn append_sequenced_batch(
+            &self,
+            events: &[RuntimeJournalEvent],
+            _start_seq: vb_storage::EventSeq,
+        ) -> crate::RuntimeResult<()> {
+            for event in events {
+                self.append(event.clone())?;
+            }
+            Ok(())
+        }
+
+        fn append_gate_decision_strict(
+            &self,
+            record: GateOutcomeRecord,
+            _seq: vb_storage::EventSeq,
+        ) -> crate::RuntimeResult<()> {
+            self.decisions
+                .lock()
+                .map_err(|_| RuntimeError::JournalPoisoned)?
+                .push(record);
+            Ok(())
+        }
+
+        fn append_gate_opened_strict(
+            &self,
+            gate: ManualGate,
+            opened_at_ms: u64,
+            requester: ApproverId,
+            _seq: vb_storage::EventSeq,
+        ) -> crate::RuntimeResult<()> {
+            self.opened
+                .lock()
+                .map_err(|_| RuntimeError::JournalPoisoned)?
+                .push((gate, opened_at_ms, requester));
+            Ok(())
+        }
+
+        fn probe(&self) -> crate::RuntimeResult<()> {
+            Ok(())
+        }
+    }
+
+    fn gate_digest(byte: u8) -> GateDigest {
+        GateDigest::from_bytes([byte; 32])
+    }
+
+    fn gate_role() -> ApproverRole {
+        ApproverRole::new("deploy-approver".to_string()).unwrap()
+    }
+
+    fn gate_person(value: &str) -> ApproverId {
+        ApproverId::new(value.to_string()).unwrap()
+    }
+
+    fn gate_fixture(run: RunId, id: u64) -> ManualGate {
+        ManualGate {
+            id: GateId::new(id),
+            run,
+            action: ActionId::new(9),
+            risk: RiskClass::High,
+            compensatable: false,
+            required_role: gate_role(),
+            separation_of_duties: SeparationOfDuties::DistinctFromRequester,
+            evidence_bundle_digest: gate_digest(1),
+            prompt_digest: gate_digest(2),
+            timeout_ms: 1_000,
+            escalation_policy_digest: gate_digest(3),
+            break_glass_allowed: true,
+            approval_reason_required: true,
+        }
+    }
+
+    fn gate_input_fixture(id: u64, decision: GateDecision) -> GateDecisionInput {
+        GateDecisionInput {
+            gate: GateId::new(id),
+            decision,
+            approver: gate_person("alice"),
+            approver_role: gate_role(),
+            requester: gate_person("bob"),
+            reason: Some("checked the rollout plan".to_string()),
+            evidence_shown: true,
+            evidence_bundle_digest: gate_digest(1),
+            delegated_to: None,
+            break_glass_justification: None,
+            decided_at_ms: 500,
+        }
+    }
+
+    fn gate_chain_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+        let mut nodes = Vec::new();
+        for index in 0..9_u16 {
+            nodes.push(vb_core::workflow::node(
+                StepIdx::new(index),
+                CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+                Some(SlotIdx::ZERO),
+                Some(StepIdx::new(index + 1)),
+            ));
+        }
+        nodes.push(vb_core::workflow::node(
+            StepIdx::new(9),
+            CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO,
+            },
+            None,
+            None,
+        ));
+        let parts = WorkflowParts {
+            semantic_source_identity: None,
+            name: Box::from("chain_then_finish"),
+            digest: WorkflowDigest::from_bytes([2; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([ConstValue::I64(0)]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::ZERO,
+            step_names: Box::from([]),
+            resource_contract: ResourceContract::DEFAULT,
+            input_slots: Box::from([]),
+        };
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    fn running_runtime_with_open_gate(
+        run: RunId,
+        gate_id: u64,
+    ) -> (Runtime, Arc<GateDecisionTestJournal>) {
+        let shard_count = NonZeroUsize::new(1).expect("one shard");
+        let journal = GateDecisionTestJournal::shared();
+        let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+        let workflow = gate_chain_workflow().expect("chain workflow must compile");
+        assert_eq!(runtime.submit_compiled(run, workflow), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        let gate = gate_fixture(run, gate_id);
+        let shard = runtime
+            .shards
+            .first_mut()
+            .expect("single-shard runtime must hold one shard");
+        assert_eq!(shard.open_gate(gate, 0, gate_person("bob")), Ok(()));
+        (runtime, journal)
+    }
+
+    #[test]
+    fn runtime_submit_gate_decision_approves_open_gate() {
+        let run = RunId::new(93001);
+        let (mut runtime, journal) = running_runtime_with_open_gate(run, 7);
+        assert_eq!(
+            runtime.submit_gate_decision(run, gate_input_fixture(7, GateDecision::Approve)),
+            Ok(())
+        );
+        assert_eq!(runtime.tick_all(), Ok(true));
+        let shard = runtime
+            .shards
+            .first()
+            .expect("single-shard runtime must hold one shard");
+        assert_eq!(
+            shard.open_gate_for(run),
+            None,
+            "gate must close after the approved decision"
+        );
+        assert_eq!(
+            shard.runtime_state_get(run),
+            Some(RuntimeState::Running),
+            "run must resume after the approved decision"
+        );
+        let decisions = journal.decisions().expect("decision journal must read");
+        assert_eq!(
+            decisions.len(),
+            1,
+            "approval must journal exactly one decision"
+        );
+        let decision = decisions
+            .into_iter()
+            .next()
+            .expect("one decision must be journaled");
+        assert_eq!(decision.outcome, GateOutcome::Approved);
+        assert!(decision.receipt.is_some(), "approval must carry a receipt");
+    }
+
+    #[test]
+    fn runtime_submit_gate_decision_rejects_unknown_gate() {
+        let run = RunId::new(93002);
+        let shard_count = NonZeroUsize::new(1).expect("one shard");
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        let workflow = gate_chain_workflow().expect("chain workflow must compile");
+        assert_eq!(runtime.submit_compiled(run, workflow), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(
+            runtime.submit_gate_decision(run, gate_input_fixture(7, GateDecision::Approve)),
+            Err(RuntimeError::GateNotOpen {
+                gate: GateId::new(7)
+            }),
+            "a decision for a gate that was never opened must be rejected"
+        );
+    }
+
+    #[test]
+    fn runtime_submit_gate_decision_rejects_run_mismatch() {
+        let run = RunId::new(93003);
+        let other = RunId::new(93004);
+        let (mut runtime, _journal) = running_runtime_with_open_gate(run, 7);
+        let workflow = gate_chain_workflow().expect("chain workflow must compile");
+        assert_eq!(runtime.submit_compiled(other, workflow), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(
+            runtime.submit_gate_decision(other, gate_input_fixture(7, GateDecision::Approve)),
+            Err(RuntimeError::GateRunMismatch {
+                gate: GateId::new(7),
+                expected: run,
+                actual: other,
+            }),
+            "a decision naming another run must be rejected with the typed mismatch"
+        );
+        let shard = runtime
+            .shards
+            .first()
+            .expect("single-shard runtime must hold one shard");
+        assert_eq!(
+            shard.open_gate_for(run),
+            Some(GateId::new(7)),
+            "gate must stay open after a rejected mismatched decision"
+        );
+    }
+
+    #[test]
+    fn runtime_submit_gate_decision_rejects_unknown_run() {
+        let shard_count = NonZeroUsize::new(1).expect("one shard");
+        let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        assert_eq!(
+            runtime.submit_gate_decision(
+                RunId::new(93005),
+                gate_input_fixture(7, GateDecision::Approve)
+            ),
+            Err(RuntimeError::RunNotFound),
+            "a decision for a run the runtime does not own must be rejected"
+        );
     }
 
     #[test]

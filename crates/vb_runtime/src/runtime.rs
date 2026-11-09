@@ -5,6 +5,7 @@ use std::num::NonZeroUsize;
 use vb_core::action::{ActionContract, ActionFailure, ActionOutputReady, ActionTicket};
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::manual_gate::GateDecisionInput;
 use vb_core::value::SlotValue;
 use vb_core::workflow::CompiledWorkflow;
 
@@ -1327,6 +1328,21 @@ impl Runtime {
         let shard = self.shard_for_run(run)?;
         shard.validate_pending_ask_answer(answer)?;
         shard.enqueue(ShardCommand::AskAnswered { answer })
+    }
+
+    /// Submits an operator decision to an open manual gate.
+    ///
+    /// The gate must already be open for the run: the submission is
+    /// rejected before enqueueing when the gate is closed or belongs to
+    /// another run, mirroring the fail-fast pre-validation of
+    /// [`Runtime::answer_ask`]. An accepted decision is enqueued for
+    /// drive-time application, where it is journaled before any state
+    /// change; the decision counts against the run's admitted per-run
+    /// queue depth.
+    pub fn submit_gate_decision(&self, run: RunId, input: GateDecisionInput) -> RuntimeResult<()> {
+        let shard = self.shard_for_run(run)?;
+        shard.validate_open_gate_decision(run, &input)?;
+        shard.enqueue(ShardCommand::SubmitGateDecision { run, input })
     }
 
     /// Legacy run-only timer delivery is fail-closed because it carries no authority.

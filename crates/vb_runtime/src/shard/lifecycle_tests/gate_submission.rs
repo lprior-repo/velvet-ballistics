@@ -1196,3 +1196,54 @@ fn escalate_gate_rejects_run_mismatch() -> Result<(), Box<dyn std::error::Error>
     );
     Ok(())
 }
+
+#[test]
+fn validate_open_gate_decision_accepts_open_gate() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(92025);
+    let (mut shard, _journal) = make_running_shard(run)?;
+
+    open_test_gate(&mut shard, run, 7)?;
+    assert_eq!(
+        shard.validate_open_gate_decision(run, &test_input(7, GateDecision::Approve)),
+        Ok(()),
+        "an open gate must accept a decision for its own run"
+    );
+    Ok(())
+}
+
+#[test]
+fn validate_open_gate_decision_rejects_closed_gate() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(92026);
+    let (mut shard, _journal) = make_running_shard(run)?;
+
+    assert_eq!(
+        shard.validate_open_gate_decision(run, &test_input(7, GateDecision::Approve)),
+        Err(RuntimeError::GateNotOpen { gate: GateId::new(7) }),
+        "a decision for a gate that was never opened must be rejected"
+    );
+    Ok(())
+}
+
+#[test]
+fn validate_open_gate_decision_rejects_run_mismatch() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(92027);
+    let other = RunId::new(92028);
+    let (mut shard, _journal) = make_running_shard(run)?;
+
+    open_test_gate(&mut shard, run, 7)?;
+    assert_eq!(
+        shard.validate_open_gate_decision(other, &test_input(7, GateDecision::Approve)),
+        Err(RuntimeError::GateRunMismatch {
+            gate: GateId::new(7),
+            expected: run,
+            actual: other,
+        }),
+        "a decision naming another run must be rejected with the typed mismatch"
+    );
+    assert_eq!(
+        shard.open_gate_for(run),
+        Some(GateId::new(7)),
+        "gate must stay open after a rejected mismatched decision"
+    );
+    Ok(())
+}

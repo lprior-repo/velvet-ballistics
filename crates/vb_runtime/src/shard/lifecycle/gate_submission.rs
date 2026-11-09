@@ -210,6 +210,18 @@ impl Shard {
         Ok(())
     }
 
+    /// Fail-fast pre-check for direct-API gate submission.
+    pub(crate) fn validate_open_gate_decision(
+        &self,
+        run: RunId,
+        input: &GateDecisionInput,
+    ) -> RuntimeResult<()> {
+        match self.open_gates.get(&input.gate) {
+            Some(open) => Self::check_gate_run(&open.gate, run),
+            None => Err(RuntimeError::GateNotOpen { gate: input.gate }),
+        }
+    }
+
     /// Returns the first open gate id for a run, in opening order, if any.
     pub(crate) fn open_gate_for(&self, run: RunId) -> Option<GateId> {
         self.open_gates
