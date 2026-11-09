@@ -5,12 +5,20 @@
 //!
 //! See `.beads/vb-xi2f.32/test-plan.md` Sections 9.1 and 9.2.
 
-#![allow(unused_must_use)]
-
 use crate::mod_compile_lowering::{canonical_primitive_name, digest_step_primitive};
 use crate::{ScalarValue, StepPrimitive};
 use blake3::Hasher;
 use proptest::prelude::*;
+
+/// Helper: digest a primitive with a fresh hasher, propagating failures.
+#[cfg(test)]
+fn try_digest_step(
+    primitive: &StepPrimitive,
+) -> Result<blake3::Hash, crate::mod_compile_errors::CompileErrors> {
+    let mut hasher = Hasher::new();
+    digest_step_primitive(&mut hasher, primitive)?;
+    Ok(hasher.finalize())
+}
 
 // ---------------------------------------------------------------------------
 // Section 9.1: Direct unit tests for `digest_step_primitive` Wait arm
@@ -20,7 +28,8 @@ use proptest::prelude::*;
 /// name in the hasher state. The pre-fix catch-all path only hashed `b"wait"`;
 /// the fix adds event and timeout field bytes.
 #[test]
-fn digest_step_wait_includes_wait_label_when_wait_primitive_is_hashed() {
+fn digest_step_wait_includes_wait_label_when_wait_primitive_is_hashed()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
     // Given: a Wait primitive with both event and timeout present
     let wait = StepPrimitive::Wait {
         event: Some("0".into()),
@@ -28,9 +37,7 @@ fn digest_step_wait_includes_wait_label_when_wait_primitive_is_hashed() {
     };
 
     // When: digest_step_primitive processes the Wait primitive
-    let mut hasher_with_wait = Hasher::new();
-    digest_step_primitive(&mut hasher_with_wait, &wait);
-    let digest_wait = hasher_with_wait.finalize();
+    let digest_wait = try_digest_step(&wait)?;
 
     // Simulate the pre-fix catch-all: only hash the primitive name "wait"
     let mut hasher_catch_all = Hasher::new();
@@ -43,12 +50,14 @@ fn digest_step_wait_includes_wait_label_when_wait_primitive_is_hashed() {
         "Wait arm must hash field bytes beyond just the primitive name 'wait'; \
          pre-fix catch-all hash checked only the name"
     );
+    Ok(())
 }
 
 /// Verify that different event values produce different hasher states
 /// when the timeout field is held constant. This proves C1 field sensitivity.
 #[test]
-fn event_field_affects_hasher_state_when_event_values_differ() {
+fn event_field_affects_hasher_state_when_event_values_differ()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
     // Given: two Wait primitives with different event values, same timeout
     let wait_a = StepPrimitive::Wait {
         event: Some("0".into()),
@@ -60,25 +69,23 @@ fn event_field_affects_hasher_state_when_event_values_differ() {
     };
 
     // When: both are hashed independently
-    let mut hasher_a = Hasher::new();
-    digest_step_primitive(&mut hasher_a, &wait_a);
-    let digest_a = hasher_a.finalize();
+    let digest_a = try_digest_step(&wait_a)?;
 
-    let mut hasher_b = Hasher::new();
-    digest_step_primitive(&mut hasher_b, &wait_b);
-    let digest_b = hasher_b.finalize();
+    let digest_b = try_digest_step(&wait_b)?;
 
     // Then: different event values must produce different digests
     assert_ne!(
         digest_a, digest_b,
         "Wait primitives with different event values must produce different hasher states"
     );
+    Ok(())
 }
 
 /// Verify that different timeout values produce different hasher states
 /// when the event field is held constant. This proves C1 field sensitivity.
 #[test]
-fn timeout_field_affects_hasher_state_when_timeout_values_differ() {
+fn timeout_field_affects_hasher_state_when_timeout_values_differ()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
     // Given: two Wait primitives with same event, different timeout values
     let wait_a = StepPrimitive::Wait {
         event: Some("0".into()),
@@ -90,26 +97,24 @@ fn timeout_field_affects_hasher_state_when_timeout_values_differ() {
     };
 
     // When: both are hashed independently
-    let mut hasher_a = Hasher::new();
-    digest_step_primitive(&mut hasher_a, &wait_a);
-    let digest_a = hasher_a.finalize();
+    let digest_a = try_digest_step(&wait_a)?;
 
-    let mut hasher_b = Hasher::new();
-    digest_step_primitive(&mut hasher_b, &wait_b);
-    let digest_b = hasher_b.finalize();
+    let digest_b = try_digest_step(&wait_b)?;
 
     // Then: different timeout values must produce different digests
     assert_ne!(
         digest_a, digest_b,
         "Wait primitives with different timeout values must produce different hasher states"
     );
+    Ok(())
 }
 
 /// Verify that the sentinel `b"none"` for absent event is unambiguous:
 /// `event=None` (sentinel) must not collide with `event=Some("none_sentinel_probe")`.
 /// This proves the C3 sentinel contract.
 #[test]
-fn none_event_uses_none_sentinel_when_event_is_absent() {
+fn none_event_uses_none_sentinel_when_event_is_absent()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
     // Given: WaitUntil (event=None) and WaitEvent with event text "none_sentinel_probe"
     let wait_until = StepPrimitive::Wait {
         event: None,
@@ -121,13 +126,9 @@ fn none_event_uses_none_sentinel_when_event_is_absent() {
     };
 
     // When: both are hashed independently
-    let mut hasher_until = Hasher::new();
-    digest_step_primitive(&mut hasher_until, &wait_until);
-    let digest_until = hasher_until.finalize();
+    let digest_until = try_digest_step(&wait_until)?;
 
-    let mut hasher_probe = Hasher::new();
-    digest_step_primitive(&mut hasher_probe, &wait_event_probe);
-    let digest_probe = hasher_probe.finalize();
+    let digest_probe = try_digest_step(&wait_event_probe)?;
 
     // Then: the sentinel must not collide with an explicit field value
     assert_ne!(
@@ -135,13 +136,15 @@ fn none_event_uses_none_sentinel_when_event_is_absent() {
         "event=None must produce a different digest than \
          event=Some(\"none_sentinel_probe\"); sentinel b\"none\" must be unambiguous"
     );
+    Ok(())
 }
 
 /// Verify that the sentinel `b"none"` for absent timeout is unambiguous:
 /// `timeout=None` (sentinel) must not collide with `timeout=Some("none_sentinel_probe")`.
 /// This proves the C3 sentinel contract.
 #[test]
-fn none_timeout_uses_none_sentinel_when_timeout_is_absent() {
+fn none_timeout_uses_none_sentinel_when_timeout_is_absent()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
     // Given: WaitEvent unbounded (timeout=None) and WaitEvent with timeout text "none_sentinel_probe"
     let wait_unbounded = StepPrimitive::Wait {
         event: Some("0".into()),
@@ -153,13 +156,9 @@ fn none_timeout_uses_none_sentinel_when_timeout_is_absent() {
     };
 
     // When: both are hashed independently
-    let mut hasher_unbounded = Hasher::new();
-    digest_step_primitive(&mut hasher_unbounded, &wait_unbounded);
-    let digest_unbounded = hasher_unbounded.finalize();
+    let digest_unbounded = try_digest_step(&wait_unbounded)?;
 
-    let mut hasher_probe = Hasher::new();
-    digest_step_primitive(&mut hasher_probe, &wait_probe);
-    let digest_probe = hasher_probe.finalize();
+    let digest_probe = try_digest_step(&wait_probe)?;
 
     // Then: the sentinel must not collide with an explicit field value
     assert_ne!(
@@ -167,13 +166,15 @@ fn none_timeout_uses_none_sentinel_when_timeout_is_absent() {
         "timeout=None must produce a different digest than \
          timeout=Some(\"none_sentinel_probe\"); sentinel b\"none\" must be unambiguous"
     );
+    Ok(())
 }
 
 /// Verify that `digest_step_primitive` is deterministic: calling it twice
 /// with the same Wait primitive on two fresh hashers produces identical
 /// `finalize()` outputs.
 #[test]
-fn digest_step_wait_arm_is_deterministic_when_same_input_hashed_twice() {
+fn digest_step_wait_arm_is_deterministic_when_same_input_hashed_twice()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
     // Given: a Wait primitive
     let wait = StepPrimitive::Wait {
         event: Some("42".into()),
@@ -181,19 +182,16 @@ fn digest_step_wait_arm_is_deterministic_when_same_input_hashed_twice() {
     };
 
     // When: hashed twice on independent hashers
-    let mut hasher1 = Hasher::new();
-    digest_step_primitive(&mut hasher1, &wait);
-    let digest1 = hasher1.finalize();
+    let digest1 = try_digest_step(&wait)?;
 
-    let mut hasher2 = Hasher::new();
-    digest_step_primitive(&mut hasher2, &wait);
-    let digest2 = hasher2.finalize();
+    let digest2 = try_digest_step(&wait)?;
 
     // Then: both digests must be identical
     assert_eq!(
         digest1, digest2,
         "Same Wait primitive hashed twice must produce identical digests"
     );
+    Ok(())
 }
 
 /// Verify that the explicit Wait arm never collides with the pre-fix
@@ -201,7 +199,8 @@ fn digest_step_wait_arm_is_deterministic_when_same_input_hashed_twice() {
 /// arm additionally hashes event and timeout field bytes. These must
 /// produce different final hashes.
 #[test]
-fn digest_step_wait_vs_catch_all_never_collides_when_explicit_arm_is_active() {
+fn digest_step_wait_vs_catch_all_never_collides_when_explicit_arm_is_active()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
     // Given: a Wait primitive with known field values
     let wait = StepPrimitive::Wait {
         event: Some("0".into()),
@@ -209,9 +208,7 @@ fn digest_step_wait_vs_catch_all_never_collides_when_explicit_arm_is_active() {
     };
 
     // When: explicit Wait arm processes the primitive
-    let mut hasher_explicit = Hasher::new();
-    digest_step_primitive(&mut hasher_explicit, &wait);
-    let digest_explicit = hasher_explicit.finalize();
+    let digest_explicit = try_digest_step(&wait)?;
 
     // Simulate the pre-fix catch-all path: only hash "wait" (no field bytes)
     let mut hasher_catch_all = Hasher::new();
@@ -224,6 +221,7 @@ fn digest_step_wait_vs_catch_all_never_collides_when_explicit_arm_is_active() {
         "Explicit Wait arm must produce a different hash than the pre-fix catch-all \
          which only hashed the primitive name b\"wait\""
     );
+    Ok(())
 }
 
 /// Verify that `digest_step_primitive` does not panic for any of the three
@@ -231,7 +229,8 @@ fn digest_step_wait_vs_catch_all_never_collides_when_explicit_arm_is_active() {
 /// unbounded (event=Some, timeout=None), and WaitEvent bounded (event=Some,
 /// timeout=Some). This is the direct unit complement to Kani KH-1.
 #[test]
-fn digest_step_wait_no_panic_for_three_legal_shapes_when_any_wait_configuration_used() {
+fn digest_step_wait_no_panic_for_three_legal_shapes_when_any_wait_configuration_used()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
     let shapes: [StepPrimitive; 3] = [
         // WaitUntil: event absent, timeout present
         StepPrimitive::Wait {
@@ -251,16 +250,15 @@ fn digest_step_wait_no_panic_for_three_legal_shapes_when_any_wait_configuration_
     ];
 
     for shape in &shapes {
-        let mut hasher = Hasher::new();
-        digest_step_primitive(&mut hasher, shape);
         // The assertion is that we reach this point without panicking.
         // We also verify the hasher produced output (not a zero state).
-        let digest = hasher.finalize();
+        let digest = try_digest_step(shape)?;
         assert!(
             !digest.as_bytes().iter().all(|b| *b == 0),
             "digest_step_primitive must produce non-zero hash output for legal Wait shape"
         );
     }
+    Ok(())
 }
 
 /// Verify that one Wait shape (WaitUntil) produces the expected digest
@@ -268,7 +266,8 @@ fn digest_step_wait_no_panic_for_three_legal_shapes_when_any_wait_configuration_
 /// constructing WaitUntil and comparing against WaitUntil with different
 /// timeout — they must differ, proving the timeout is included.
 #[test]
-fn wait_until_hashes_label_sentinel_and_timeout_when_event_is_absent() {
+fn wait_until_hashes_label_sentinel_and_timeout_when_event_is_absent()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
     // Given: two WaitUntil configurations with different timeouts
     let until_a = StepPrimitive::Wait {
         event: None,
@@ -280,13 +279,9 @@ fn wait_until_hashes_label_sentinel_and_timeout_when_event_is_absent() {
     };
 
     // When: both are hashed
-    let mut hasher_a = Hasher::new();
-    digest_step_primitive(&mut hasher_a, &until_a);
-    let digest_a = hasher_a.finalize();
+    let digest_a = try_digest_step(&until_a)?;
 
-    let mut hasher_b = Hasher::new();
-    digest_step_primitive(&mut hasher_b, &until_b);
-    let digest_b = hasher_b.finalize();
+    let digest_b = try_digest_step(&until_b)?;
 
     // Then: different timeouts produce different digests (B2 contract)
     assert_ne!(
@@ -294,6 +289,7 @@ fn wait_until_hashes_label_sentinel_and_timeout_when_event_is_absent() {
         "WaitUntil with different timeouts must produce different digests; \
          timeout field must be included in hasher state"
     );
+    Ok(())
 }
 
 /// Verify C2 discriminator at the `digest_step_primitive` unit level:
@@ -303,7 +299,8 @@ fn wait_until_hashes_label_sentinel_and_timeout_when_event_is_absent() {
 /// position for WaitUntil vs actual event text for WaitEvent guarantees
 /// distinct hasher states.
 #[test]
-fn digest_step_primitive_discriminates_wait_until_from_wait_event_when_event_position_differs() {
+fn digest_step_primitive_discriminates_wait_until_from_wait_event_when_event_position_differs()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
     // Given: WaitUntil (event=None) and WaitEvent (timeout=None) with
     // the same text value filling the other slot
     let wait_until = StepPrimitive::Wait {
@@ -316,13 +313,9 @@ fn digest_step_primitive_discriminates_wait_until_from_wait_event_when_event_pos
     };
 
     // When: both are hashed independently via digest_step_primitive
-    let mut hasher_until = Hasher::new();
-    digest_step_primitive(&mut hasher_until, &wait_until);
-    let digest_until = hasher_until.finalize();
+    let digest_until = try_digest_step(&wait_until)?;
 
-    let mut hasher_event = Hasher::new();
-    digest_step_primitive(&mut hasher_event, &wait_event);
-    let digest_event = hasher_event.finalize();
+    let digest_event = try_digest_step(&wait_event)?;
 
     // Then: distinct digests — the positional sentinel acts as the discriminator
     assert_ne!(
@@ -332,6 +325,7 @@ fn digest_step_primitive_discriminates_wait_until_from_wait_event_when_event_pos
          b\"wait\"+b\"none\"+timeout while WaitEvent hashes \
          b\"wait\"+event+b\"none\""
     );
+    Ok(())
 }
 
 /// Verify the EXACT sentinel byte value `b"none"` for absent event field
@@ -340,7 +334,8 @@ fn digest_step_primitive_discriminates_wait_until_from_wait_event_when_event_pos
 /// `digest_step_primitive` on WaitUntil produces the identical hash.
 /// Any change to the sentinel (e.g., `b"nil"`) breaks this test.
 #[test]
-fn digest_step_primitive_uses_exact_b_none_sentinel_when_event_is_absent() {
+fn digest_step_primitive_uses_exact_b_none_sentinel_when_event_is_absent()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
     // Given: WaitUntil (event=None, timeout=Some("30"))
     let wait_until = StepPrimitive::Wait {
         event: None,
@@ -348,9 +343,7 @@ fn digest_step_primitive_uses_exact_b_none_sentinel_when_event_is_absent() {
     };
 
     // When: digest_step_primitive hashes the WaitUntil
-    let mut hasher_until = Hasher::new();
-    digest_step_primitive(&mut hasher_until, &wait_until);
-    let digest_until = hasher_until.finalize();
+    let digest_until = try_digest_step(&wait_until)?;
 
     // New encoding: b"wait" + field_tag("event:") + TAG_NONE +
     //               field_tag("timeout:") + TAG_SOME + tagged_string("30")
@@ -374,6 +367,7 @@ fn digest_step_primitive_uses_exact_b_none_sentinel_when_event_is_absent() {
         digest_until, digest_ref,
         "WaitUntil (event=None) must use TAG_NONE sentinel with length-prefixed timeout"
     );
+    Ok(())
 }
 
 /// Verify the EXACT sentinel byte value `b"none"` for absent timeout field
@@ -382,7 +376,8 @@ fn digest_step_primitive_uses_exact_b_none_sentinel_when_event_is_absent() {
 /// `digest_step_primitive` on WaitEvent unbounded produces the identical hash.
 /// Any change to the sentinel (e.g., `b"nil"`) breaks this test.
 #[test]
-fn digest_step_primitive_uses_exact_b_none_sentinel_when_timeout_is_absent() {
+fn digest_step_primitive_uses_exact_b_none_sentinel_when_timeout_is_absent()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
     // Given: WaitEvent unbounded (event=Some("0"), timeout=None)
     let wait_unbounded = StepPrimitive::Wait {
         event: Some("0".into()),
@@ -390,9 +385,7 @@ fn digest_step_primitive_uses_exact_b_none_sentinel_when_timeout_is_absent() {
     };
 
     // When: digest_step_primitive hashes the WaitEvent unbounded
-    let mut hasher_unbounded = Hasher::new();
-    digest_step_primitive(&mut hasher_unbounded, &wait_unbounded);
-    let digest_unbounded = hasher_unbounded.finalize();
+    let digest_unbounded = try_digest_step(&wait_unbounded)?;
 
     // New encoding: b"wait" + field_tag("event:") + TAG_SOME + tagged_string("0") +
     //               field_tag("timeout:") + TAG_NONE
@@ -416,6 +409,7 @@ fn digest_step_primitive_uses_exact_b_none_sentinel_when_timeout_is_absent() {
         digest_unbounded, digest_ref,
         "WaitEvent unbounded (timeout=None) must use TAG_NONE sentinel with tagged event"
     );
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -603,11 +597,15 @@ proptest! {
         let wait = StepPrimitive::Wait { event, timeout };
 
         let mut hasher1 = Hasher::new();
-        digest_step_primitive(&mut hasher1, &wait);
+        if let Err(error) = digest_step_primitive(&mut hasher1, &wait) {
+            return Err(TestCaseError::fail(format!("first digest failed: {error:?}")));
+        }
         let digest1 = hasher1.finalize();
 
         let mut hasher2 = Hasher::new();
-        digest_step_primitive(&mut hasher2, &wait);
+        if let Err(error) = digest_step_primitive(&mut hasher2, &wait) {
+            return Err(TestCaseError::fail(format!("second digest failed: {error:?}")));
+        }
         let digest2 = hasher2.finalize();
 
         prop_assert_eq!(digest1, digest2,
