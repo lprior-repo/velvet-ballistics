@@ -9,7 +9,7 @@
 // ============================================================================
 //
 // This file is bound to the production exec fn `lower_bounded_collect`
-// at `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-261`
+// at `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-260`
 // through the companion extern surface
 // `verification/verus/extern_collect_lowering.rs`. The production exec
 // fn computes edges via `plan_compute_edges`
@@ -21,7 +21,7 @@
 // `CollectFinish` node, returning the finish slot.
 //
 // The pre-split spec bound this file to `lower_canonical_collect` at
-// part_03.rs:195-256 with fixed offsets (body=id+1, page=id+2,
+// part_03.rs with fixed offsets (body=id+1, page=id+2,
 // done=id+3). That binding is false for current production whenever
 // the body has more than one step: the consecutiveness lemma (L3)
 // and the max-valid-start lemma (L4, 65532) no longer hold. This
@@ -76,7 +76,7 @@
 //                                              crates/vb_compile/src/mod_compile_errors/kind.rs:126,141)
 //   - `lower_bounded_collect_projection`   <- extern_collect_lowering.rs
 //                                              (mirror of
-//                                              bounded_collect.rs:243-261)
+//                                              bounded_collect.rs:243-260)
 //   - `lower_bounded_collect_offsets`      <- extern_collect_lowering.rs
 //                                              (mirror of
 //                                              bounded_collect.rs:116-126)
@@ -85,10 +85,10 @@
 // RESHAPE FROM PRE-SPLIT BINDING
 // ============================================================================
 // The previous `collect_lowering.rs` modelled the pre-split
-// `lower_canonical_collect` (part_03.rs:195-256): fixed offsets 1/2/3,
+// `lower_canonical_collect` (part_03.rs): fixed offsets 1/2/3,
 // a `CollectPage` node, a `3 + body.len()` node count, and a +1 slot
 // delta. The production split moved the fn to
-// `bounded_collect.rs:243-261` as `lower_bounded_collect` and changed
+// `bounded_collect.rs:243-260` as `lower_bounded_collect` and changed
 // the shape: edges depend on body length, the middle node is
 // `CollectNext`, the fn returns the finish slot, and the slot delta
 // is +3 (one record plus two allocates). The old lemmas L3
@@ -226,7 +226,7 @@ pub assume_specification[ production::lower_bounded_collect_offsets ](
 // Bridge: `lower_bounded_collect_projection` matches production emission.
 // --------------------------------------------------------------------------
 // Mirrors production `lower_bounded_collect` at
-// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-261`.
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-260`.
 // The projection flattens the production args to
 // `(id: StepIdx, body_len: u16, body_node_count: u16,
 // pre_slot_count: u16)` and returns `SpecCollectOutcome` carrying
@@ -629,7 +629,7 @@ pub proof fn lemma_option_some_or_default_is_at_least_one(v: Option<u32>)
 // ============================================================================
 // L6: Full emission chain — production projection contract end-to-end
 // ============================================================================
-// Production source: bounded_collect.rs:243-261 (the full
+// Production source: bounded_collect.rs:243-260 (the full
 // `lower_bounded_collect` body).
 //
 // PO-COLLECT-006: For any valid starting `id` (where
