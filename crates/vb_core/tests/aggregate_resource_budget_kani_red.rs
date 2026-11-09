@@ -3,7 +3,9 @@ mod aggregate_budget_kani_harnesses {
     // `budget.rs` is a shell over sibling modules in `budget/`; the checked
     // add/subtract impls live in `budget/usage.rs`, the aggregate types
     // and validation live in `budget/aggregate.rs` and
-    // `budget/aggregate_validate.rs`, and the boundedness policy and error
+    // `budget/aggregate_validate.rs`, the budget computation and its
+    // small-linear fast path live in `budget/compute.rs` and
+    // `budget/small_linear.rs`, and the boundedness policy and error
     // taxonomy live in `budget/validate.rs` and `budget/validate_error.rs`,
     // so the shell alone would miss the tokens these harnesses require.
     // Concatenate them, mirroring `aggregate_resource_budget_red.rs`.
@@ -15,6 +17,10 @@ mod aggregate_budget_kani_harnesses {
         include_str!("../src/budget/aggregate.rs"),
         "\n",
         include_str!("../src/budget/aggregate_validate.rs"),
+        "\n",
+        include_str!("../src/budget/compute.rs"),
+        "\n",
+        include_str!("../src/budget/small_linear.rs"),
         "\n",
         include_str!("../src/budget/validate.rs"),
         "\n",

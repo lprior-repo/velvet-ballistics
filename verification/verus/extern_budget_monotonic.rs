@@ -26,9 +26,9 @@
 //
 // BINDING LEDGER (mirrors production_inner/budget_monotonic_production.rs)
 // ============================================================================
-//   - `WholeWorkflowBudget`        <- crates/vb_core/src/budget.rs:14-90
-//   - `WholeWorkflowBudget::compute` <- crates/vb_core/src/budget.rs:97-103
-//   - `BudgetTraversalError`       <- crates/vb_core/src/budget.rs:256-280
+//   - `WholeWorkflowBudget`        <- crates/vb_core/src/budget/compute.rs:15-93
+//   - `WholeWorkflowBudget::compute` <- crates/vb_core/src/budget/compute.rs:98-106
+//   - `BudgetTraversalError`       <- crates/vb_core/src/budget.rs:11-37
 //   - `WorkflowError`              <- crates/vb_core/src/workflow/mod.rs:666-880
 //   - `ResourceContract`           <- crates/vb_core/src/workflow/mod.rs:252-289
 //   - `CompiledNode`, `CompiledNodeKind`
@@ -84,7 +84,7 @@ fn prod_methods_drift_check(
     entry: production_inner::StepIdx,
     contract: production_inner::ResourceContract,
 ) {
-    // Reference every field of WholeWorkflowBudget (budget.rs:14-90)
+    // Reference every field of WholeWorkflowBudget (budget/compute.rs:15-93)
     // to surface any rename in production.
     let _budget = production_inner::WholeWorkflowBudget {
         max_total_steps: 0,
@@ -119,7 +119,7 @@ fn prod_methods_drift_check(
         max_cost_units: 0,
     };
 
-    // Reference BudgetTraversalError variants (budget.rs:256-280).
+    // Reference BudgetTraversalError variants (budget.rs:11-37).
     let step = production_inner::StepIdx::new(0);
     let _err = production_inner::BudgetTraversalError::EntryOutOfBounds { entry };
     let _err = production_inner::BudgetTraversalError::StepOutOfBounds { step };
