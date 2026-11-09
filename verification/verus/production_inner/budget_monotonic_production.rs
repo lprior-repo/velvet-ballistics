@@ -12,7 +12,7 @@
 // the production source:
 //
 //   1. Production `use thiserror::Error;` and `#[derive(... serde::Serialize,
-//      serde::Deserialize ...)]` at budget.rs:8 / :881 are NOT re-included.
+//      serde::Deserialize ...)]` at budget/validate_error.rs:5 / budget/aggregate.rs:10 are NOT re-included.
 //      The mirror uses a `#[derive(Clone, Copy, ...)]` subset that
 //      Verus 0.2026.05.05 can parse without proc-macro support. Field
 //      NAMES and TYPES match production byte-for-byte, so any drift
@@ -67,15 +67,15 @@
 //                                               crates/vb_core/src/workflow/mod.rs:666-880)
 //   - `BudgetTraversalError`                <- extern_budget_monotonic.rs
 //                                               (mirror of
-//                                               crates/vb_core/src/budget.rs:11-37)
+//                                               crates/vb_core/src/budget.rs:13-37)
 //   - `WholeWorkflowBudget`                 <- extern_budget_monotonic.rs
 //                                               (mirror of
-//                                               crates/vb_core/src/budget/compute.rs:15-93)
-// Production `crates/vb_core/src/budget/compute.rs:15-93`
+//                                               crates/vb_core/src/budget/compute.rs:17-93)
+// Production `crates/vb_core/src/budget/compute.rs:17-93`
 //   - `WholeWorkflowBudget::compute`        <- extern_budget_monotonic.rs
 //                                               `whole_workflow_budget_compute`
 //                                               (mirror of
-//                                               crates/vb_core/src/budget/compute.rs:98-106)
+//                                               crates/vb_core/src/budget/compute.rs:100-106)
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -103,7 +103,7 @@ use vstd::prelude::*;
 // same constructor / accessor surface the production code uses so a
 // signature drift breaks this mirror.
 
-/// Mirror of `StepIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:55`.
+/// Mirror of `StepIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:70`.
 #[derive(Clone, Copy)]
 pub struct StepIdx(pub u16);
 
@@ -119,7 +119,7 @@ impl StepIdx {
     }
 }
 
-/// Mirror of `SlotIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:56`.
+/// Mirror of `SlotIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:71`.
 #[derive(Clone, Copy)]
 pub struct SlotIdx(pub u16);
 
@@ -135,7 +135,7 @@ impl SlotIdx {
     }
 }
 
-/// Mirror of `ConstIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:60`.
+/// Mirror of `ConstIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:75`.
 #[derive(Clone, Copy)]
 pub struct ConstIdx(pub u16);
 
@@ -151,7 +151,7 @@ impl ConstIdx {
     }
 }
 
-/// Mirror of `ActionId` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:58`.
+/// Mirror of `ActionId` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:73`.
 #[derive(Clone, Copy)]
 pub struct ActionId(pub u16);
 
@@ -164,7 +164,7 @@ impl ActionId {
     }
 }
 
-/// Mirror of `ExprIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:57`.
+/// Mirror of `ExprIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:72`.
 #[derive(Clone, Copy)]
 pub struct ExprIdx(pub u16);
 
@@ -180,7 +180,7 @@ impl ExprIdx {
     }
 }
 
-/// Mirror of `AccessorIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:59`.
+/// Mirror of `AccessorIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:74`.
 #[derive(Clone, Copy)]
 pub struct AccessorIdx(pub u16);
 
@@ -196,7 +196,7 @@ impl AccessorIdx {
     }
 }
 
-/// Mirror of `SymbolId` (u32 newtype) at `crates/vb_core/src/ids/mod.rs:61`.
+/// Mirror of `SymbolId` (u32 newtype) at `crates/vb_core/src/ids/mod.rs:76`.
 #[derive(Clone, Copy)]
 pub struct SymbolId(pub u32);
 
@@ -550,7 +550,7 @@ pub struct ResourceContract {
 }
 
 // ============================================================================
-// BudgetTraversalError — mirror of `crates/vb_core/src/budget.rs:11-37`
+// BudgetTraversalError — mirror of `crates/vb_core/src/budget.rs:13-37`
 // ============================================================================
 //
 // Mirror of `BudgetTraversalError` (the narrow error type returned by
@@ -558,7 +558,7 @@ pub struct ResourceContract {
 // any variant drift breaks the mirror.
 
 /// Mirror of production `BudgetTraversalError` at
-/// `crates/vb_core/src/budget.rs:11-37`.
+/// `crates/vb_core/src/budget.rs:13-37`.
 #[derive(Clone, Copy)]
 pub enum BudgetTraversalError {
     EntryOutOfBounds { entry: StepIdx },
@@ -572,12 +572,12 @@ pub enum BudgetTraversalError {
 // WholeWorkflowBudget — production mirror
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget/compute.rs:15-93`. Every field name, type,
+// Mirror of `crates/vb_core/src/budget/compute.rs:17-93`. Every field name, type,
 // and visibility matches production exactly. Drift in any field breaks
 // the mirror.
 
 /// Mirror of production `WholeWorkflowBudget` at
-/// `crates/vb_core/src/budget/compute.rs:15-93`. Field-by-field copy of the
+/// `crates/vb_core/src/budget/compute.rs:17-93`. Field-by-field copy of the
 /// production struct. The exec fn `WholeWorkflowBudget::compute` below
 /// is `#[verifier::external]` and accepts the production signature.
 #[derive(Clone, Copy)]
@@ -616,7 +616,7 @@ pub struct WholeWorkflowBudget {
 
 impl WholeWorkflowBudget {
     /// Production wrapper for `WholeWorkflowBudget::compute` at
-    /// `crates/vb_core/src/budget/compute.rs:98-106`. Body skipped by Verus;
+    /// `crates/vb_core/src/budget/compute.rs:100-106`. Body skipped by Verus;
     /// contract attached via `assume_specification` in the spec file.
     #[verifier::external]
     pub fn compute(
@@ -640,7 +640,7 @@ impl WholeWorkflowBudget {
 // (`budget_monotonic.rs`).
 
 /// Production wrapper for `WholeWorkflowBudget::compute` at
-/// `crates/vb_core/src/budget/compute.rs:98-106`. Body skipped by Verus.
+/// `crates/vb_core/src/budget/compute.rs:100-106`. Body skipped by Verus.
 #[verifier::external]
 pub fn whole_workflow_budget_compute(
     nodes: &[super::workflow::CompiledNode],

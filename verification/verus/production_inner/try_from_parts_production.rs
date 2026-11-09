@@ -168,7 +168,7 @@ impl WorkflowDigest {
 // Local stub: `vb_core::value::FiniteF64`
 // ---------------------------------------------------------------------------
 //
-// Production `FiniteF64` at `crates/vb_core/src/value.rs:68-100` is a
+// Production `FiniteF64` at `crates/vb_core/src/value.rs:72-104` is a
 // `#[repr(transparent)]` newtype over `f64` that rejects NaN and
 // infinities at construction. The mirror carries the same payload type
 // and the manual `Eq` impl; the construction-time finiteness invariant
@@ -183,7 +183,7 @@ impl Eq for FiniteF64 {}
 // Local stub: `vb_core::value::ConstValue`
 // ---------------------------------------------------------------------------
 //
-// Production `crates/vb_core/src/value.rs:165-176` declares `ConstValue`
+// Production `crates/vb_core/src/value.rs:169-180` declares `ConstValue`
 // with five scalar variants. The mirror carries all five in production
 // order, plus a mirror-only `String` variant retained from the earlier
 // subset (production has no `String` variant).
@@ -727,7 +727,7 @@ pub enum ContractResource {
 // Local stub: `vb_core::budget::BudgetDimension`
 // ===========================================================================
 //
-// Production `BudgetDimension` at crates/vb_core/src/budget.rs:793-840
+// Production `BudgetDimension` at crates/vb_core/src/budget/validate_error.rs:100-147
 // declares a ~20-variant enum. The mirror declares a single-variant stub
 // because production `WorkflowError` carries `BudgetDimension` only via
 // the `BudgetPolicyExceeded` payload and the spec proofs do not inspect
@@ -756,7 +756,7 @@ pub fn validate_parts(_parts: &WorkflowParts) -> Result<(), WorkflowError> {
 pub fn validate_budget(_parts: &WorkflowParts) -> Result<(), WorkflowError> {
     Ok(())
 }
-// Production crates/vb_core/src/workflow/mod.rs:876-906
+// Production crates/vb_core/src/workflow/mod.rs:1394-1425
 // Drift policy: any change to this function body in production MUST be
 // mirrored here. The spec proofs depend on the faithful implementation.
 

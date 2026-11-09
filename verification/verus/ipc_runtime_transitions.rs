@@ -11,12 +11,12 @@
 // the pre-binding spec's header explicitly references as REFINE-IPC-003..005:
 //
 //   - `crates/vb_runtime/src/ipc_refinement.rs`             (REFINE-IPC-003..005)
-//   - `crates/vb_runtime/src/shard/types.rs:1537-1600`      (RuntimeState, RuntimeEvent)
-//   - `crates/vb_runtime/src/shard/types.rs:1460-1493`      (ShardStatus, ShardHealth)
-//   - `crates/vb_runtime/src/shard/types.rs:34-37, 890, 908-924` (PendingTimerKind,
+//   - `crates/vb_runtime/src/shard/types.rs:1544-1607`      (RuntimeState, RuntimeEvent)
+//   - `crates/vb_runtime/src/shard/types.rs:1467-1500`      (ShardStatus, ShardHealth)
+//   - `crates/vb_runtime/src/shard/types.rs:34-37, 897, 915-931` (PendingTimerKind,
 //                                                            ShardCommandQueue,
 //                                                            MAX_COMMAND_QUEUE_CAPACITY)
-//   - `crates/vb_runtime/src/shard/timer_wheel.rs:20-159`   (TimerEntry, TimerWheel)
+//   - `crates/vb_runtime/src/shard/timer_wheel.rs:21-159`   (TimerEntry, TimerWheel)
 //   - `crates/vb_core/src/policy.rs:194-201`                (RuntimePolicy)
 //   - `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31` (RunAdmission)
 //
@@ -35,16 +35,16 @@
 // ============================================================================
 // BINDING LEDGER (mirrors the extern file's BINDING LEDGER)
 // ============================================================================
-//   - `MirrorRuntimeEvent` (9-variant enum)            <- crates/vb_runtime/src/shard/types.rs:1562-1581
-//   - `MirrorRuntimeEvent::is_terminal()`              <- crates/vb_runtime/src/shard/types.rs:1586-1591
-//   - `MirrorRuntimeEvent::is_resumable()`             <- crates/vb_runtime/src/shard/types.rs:1595-1600
-//   - `MirrorRuntimeState` (5-variant enum)            <- crates/vb_runtime/src/shard/types.rs:1537-1548
-//   - `MirrorRuntimeState::is_resumable()`             <- crates/vb_runtime/src/shard/types.rs:1553-1555
-//   - `MirrorShardStatus` (11-field struct)            <- crates/vb_runtime/src/shard/types.rs:1460-1483
-//   - `MirrorShardHealth` (2-variant enum)             <- crates/vb_runtime/src/shard/types.rs:1488-1493
+//   - `MirrorRuntimeEvent` (9-variant enum)            <- crates/vb_runtime/src/shard/types.rs:1569-1588
+//   - `MirrorRuntimeEvent::is_terminal()`              <- crates/vb_runtime/src/shard/types.rs:1593-1598
+//   - `MirrorRuntimeEvent::is_resumable()`             <- crates/vb_runtime/src/shard/types.rs:1602-1607
+//   - `MirrorRuntimeState` (5-variant enum)            <- crates/vb_runtime/src/shard/types.rs:1544-1555
+//   - `MirrorRuntimeState::is_resumable()`             <- crates/vb_runtime/src/shard/types.rs:1560-1562
+//   - `MirrorShardStatus` (11-field struct)            <- crates/vb_runtime/src/shard/types.rs:1467-1490
+//   - `MirrorShardHealth` (2-variant enum)             <- crates/vb_runtime/src/shard/types.rs:1495-1500
 //   - `MirrorTimerWheel::len / get_kind / cancel / fire_expired`
 //                                                     <- crates/vb_runtime/src/shard/timer_wheel.rs:144, 150, 93, 109
-//   - `MAX_COMMAND_QUEUE_CAPACITY = 65_536`            <- crates/vb_runtime/src/shard/types.rs:890
+//   - `MAX_COMMAND_QUEUE_CAPACITY = 65_536`            <- crates/vb_runtime/src/shard/types.rs:897
 //
 // Source: vb-IPC proof-obligations VERUS-IPC-003..005 / REFINE-IPC-003..005.
 #[path = "extern_ipc_runtime_transitions.rs"]
@@ -68,30 +68,30 @@ verus! {
 // MirrorRuntimeEvent — 9 variants, mirrors production order
 // --------------------------------------------------------------------------
 /// Mirror of production `vb_runtime::shard::types::RuntimeEvent` at
-/// `crates/vb_runtime/src/shard/types.rs:1562-1581`. Discriminant set is
+/// `crates/vb_runtime/src/shard/types.rs:1569-1588`. Discriminant set is
 /// the production set: 9 variants in production order.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum MirrorRuntimeEvent {
-    /// Production variant 0: `RuntimeEvent::Submit` (types.rs:1564).
+    /// Production variant 0: `RuntimeEvent::Submit` (types.rs:1571).
     Submit,
-    /// Production variant 1: `RuntimeEvent::Resume` (types.rs:1566).
+    /// Production variant 1: `RuntimeEvent::Resume` (types.rs:1573).
     Resume,
-    /// Production variant 2: `RuntimeEvent::ResumeRollback` (types.rs:1568).
+    /// Production variant 2: `RuntimeEvent::ResumeRollback` (types.rs:1575).
     ResumeRollback,
-    /// Production variant 3: `RuntimeEvent::DriveContinue` (types.rs:1570).
+    /// Production variant 3: `RuntimeEvent::DriveContinue` (types.rs:1577).
     DriveContinue,
-    /// Production variant 4: `RuntimeEvent::DriveFinished` (types.rs:1572).
-    /// Marked terminal by `RuntimeEvent::is_terminal()` (types.rs:1586-1591).
+    /// Production variant 4: `RuntimeEvent::DriveFinished` (types.rs:1579).
+    /// Marked terminal by `RuntimeEvent::is_terminal()` (types.rs:1593-1598).
     DriveFinished,
-    /// Production variant 5: `RuntimeEvent::AwaitAction` (types.rs:1574).
+    /// Production variant 5: `RuntimeEvent::AwaitAction` (types.rs:1581).
     AwaitAction,
-    /// Production variant 6: `RuntimeEvent::AwaitTimer` (types.rs:1576).
+    /// Production variant 6: `RuntimeEvent::AwaitTimer` (types.rs:1583).
     AwaitTimer,
-    /// Production variant 7: `RuntimeEvent::Fail` (types.rs:1578).
-    /// Marked terminal by `RuntimeEvent::is_terminal()` (types.rs:1586-1591).
+    /// Production variant 7: `RuntimeEvent::Fail` (types.rs:1585).
+    /// Marked terminal by `RuntimeEvent::is_terminal()` (types.rs:1593-1598).
     Fail,
-    /// Production variant 8: `RuntimeEvent::TerminalRemove` (types.rs:1580).
-    /// Marked terminal by `RuntimeEvent::is_terminal()` (types.rs:1586-1591).
+    /// Production variant 8: `RuntimeEvent::TerminalRemove` (types.rs:1587).
+    /// Marked terminal by `RuntimeEvent::is_terminal()` (types.rs:1593-1598).
     TerminalRemove,
 }
 
@@ -130,19 +130,19 @@ pub const MIRROR_RUNTIME_EVENT_TERMINAL_REMOVE_TAG: u8 = 8;
 // MirrorRuntimeState — 5 variants, mirrors production order
 // --------------------------------------------------------------------------
 /// Mirror of production `vb_runtime::shard::types::RuntimeState` at
-/// `crates/vb_runtime/src/shard/types.rs:1537-1548`.
+/// `crates/vb_runtime/src/shard/types.rs:1544-1555`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum MirrorRuntimeState {
-    /// Production variant 0: `RuntimeState::Initial` (types.rs:1539).
+    /// Production variant 0: `RuntimeState::Initial` (types.rs:1546).
     Initial,
-    /// Production variant 1: `RuntimeState::Running` (types.rs:1541).
+    /// Production variant 1: `RuntimeState::Running` (types.rs:1548).
     Running,
-    /// Production variant 2: `RuntimeState::Resumable` (types.rs:1543).
-    /// `is_resumable() == true` (types.rs:1553-1555).
+    /// Production variant 2: `RuntimeState::Resumable` (types.rs:1550).
+    /// `is_resumable() == true` (types.rs:1560-1562).
     Resumable,
-    /// Production variant 3: `RuntimeState::Resuming` (types.rs:1545).
+    /// Production variant 3: `RuntimeState::Resuming` (types.rs:1552).
     Resuming,
-    /// Production variant 4: `RuntimeState::Failed` (types.rs:1547).
+    /// Production variant 4: `RuntimeState::Failed` (types.rs:1554).
     Failed,
 }
 
@@ -165,12 +165,12 @@ pub const MIRROR_RUNTIME_STATE_FAILED_TAG: u8 = 4;
 // MirrorShardHealth — 2 variants
 // --------------------------------------------------------------------------
 /// Mirror of production `vb_runtime::shard::ShardHealth` at
-/// `crates/vb_runtime/src/shard/types.rs:1488-1493`.
+/// `crates/vb_runtime/src/shard/types.rs:1495-1500`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum MirrorShardHealth {
-    /// Production variant 0: `ShardHealth::Running` (types.rs:1490).
+    /// Production variant 0: `ShardHealth::Running` (types.rs:1497).
     Running,
-    /// Production variant 1: `ShardHealth::ShuttingDown` (types.rs:1492).
+    /// Production variant 1: `ShardHealth::ShuttingDown` (types.rs:1499).
     ShuttingDown,
 }
 
@@ -178,29 +178,29 @@ pub enum MirrorShardHealth {
 // MirrorShardStatus — 11 fields
 // --------------------------------------------------------------------------
 /// Mirror of production `vb_runtime::shard::ShardStatus` at
-/// `crates/vb_runtime/src/shard/types.rs:1460-1483`.
+/// `crates/vb_runtime/src/shard/types.rs:1467-1490`.
 pub struct MirrorShardStatus {
-    /// Production field (types.rs:1462): health label.
+    /// Production field (types.rs:1469): health label.
     pub health: MirrorShardHealth,
-    /// Production field (types.rs:1464): shard can continue ticks.
+    /// Production field (types.rs:1471): shard can continue ticks.
     pub running: bool,
-    /// Production field (types.rs:1466): graceful shutdown has begun.
+    /// Production field (types.rs:1473): graceful shutdown has begun.
     pub shutting_down: bool,
-    /// Production field (types.rs:1468): command queue depth.
+    /// Production field (types.rs:1475): command queue depth.
     pub command_queue_depth: usize,
-    /// Production field (types.rs:1470): command queue capacity.
+    /// Production field (types.rs:1477): command queue capacity.
     pub command_queue_capacity: usize,
-    /// Production field (types.rs:1472): active runs owned by shard.
+    /// Production field (types.rs:1479): active runs owned by shard.
     pub active_runs: usize,
-    /// Production field (types.rs:1474): active-run ceiling.
+    /// Production field (types.rs:1481): active-run ceiling.
     pub max_active_runs: usize,
-    /// Production field (types.rs:1476): trace ring capacity.
+    /// Production field (types.rs:1483): trace ring capacity.
     pub trace_capacity: usize,
-    /// Production field (types.rs:1478): trace events dropped on overflow.
+    /// Production field (types.rs:1485): trace events dropped on overflow.
     pub trace_dropped: u64,
-    /// Production field (types.rs:1480): max steps attempted per tick.
+    /// Production field (types.rs:1487): max steps attempted per tick.
     pub step_budget_per_tick: u64,
-    /// Production field (types.rs:1482): runtime admission policy.
+    /// Production field (types.rs:1489): runtime admission policy.
     pub runtime_policy: u8,
 }
 
@@ -263,7 +263,7 @@ pub open spec fn timer_eligible(run_exists: bool, terminal: int, cancelled: bool
 /// Spec predicate: admission is open (not shutting down or closed).
 ///
 /// Production semantics (from `ShardStatus::shutting_down` at
-/// `crates/vb_runtime/src/shard/types.rs:1466`): when `shutting_down
+/// `crates/vb_runtime/src/shard/types.rs:1473`): when `shutting_down
 /// == true`, the shard stops accepting new submissions.
 pub open spec fn admission_open(state: int) -> bool {
     state == 0
@@ -319,21 +319,21 @@ pub open spec fn event_to_terminal_tag(event: MirrorRuntimeEvent) -> int {
 
 /// Map a `MirrorRuntimeEvent` to a bool indicating whether the event
 /// is terminal. Mirrors production `RuntimeEvent::is_terminal` at
-/// types.rs:1586-1591.
+/// types.rs:1593-1598.
 pub open spec fn spec_is_terminal_event(event: MirrorRuntimeEvent) -> bool {
     terminal_state(event_to_terminal_tag(event))
 }
 
 /// Map a `MirrorRuntimeState` to a bool indicating whether the state
 /// is resumable. Mirrors production `RuntimeState::is_resumable` at
-/// types.rs:1553-1555.
+/// types.rs:1560-1562.
 pub open spec fn spec_is_resumable_state(state: MirrorRuntimeState) -> bool {
     matches!(state, MirrorRuntimeState::Resumable)
 }
 
 /// Map a `MirrorRuntimeEvent` to a bool indicating whether the event
 /// sets a resumable state. Mirrors production
-/// `RuntimeEvent::is_resumable` at types.rs:1595-1600.
+/// `RuntimeEvent::is_resumable` at types.rs:1602-1607.
 pub open spec fn spec_is_resumable_event(event: MirrorRuntimeEvent) -> bool {
     matches!(
         event,
@@ -353,7 +353,7 @@ pub open spec fn spec_is_resumable_event(event: MirrorRuntimeEvent) -> bool {
 /// Production-bound exec wrapper for `MirrorRuntimeEvent::is_terminal`.
 ///
 /// Mirrors production `RuntimeEvent::is_terminal` at
-/// `crates/vb_runtime/src/shard/types.rs:1586-1591`:
+/// `crates/vb_runtime/src/shard/types.rs:1593-1598`:
 ///
 /// ```ignore
 /// pub fn is_terminal(&self) -> bool {
@@ -376,7 +376,7 @@ pub exec fn mirror_runtime_event_is_terminal(event: MirrorRuntimeEvent) -> bool 
 /// Production-bound exec wrapper for `MirrorRuntimeEvent::is_resumable`.
 ///
 /// Mirrors production `RuntimeEvent::is_resumable` at
-/// `crates/vb_runtime/src/shard/types.rs:1595-1600`.
+/// `crates/vb_runtime/src/shard/types.rs:1602-1607`.
 #[verifier::external]
 pub exec fn mirror_runtime_event_is_resumable(event: MirrorRuntimeEvent) -> bool {
     matches!(
@@ -390,7 +390,7 @@ pub exec fn mirror_runtime_event_is_resumable(event: MirrorRuntimeEvent) -> bool
 /// Production-bound exec wrapper for `MirrorRuntimeState::is_resumable`.
 ///
 /// Mirrors production `RuntimeState::is_resumable` at
-/// `crates/vb_runtime/src/shard/types.rs:1553-1555`.
+/// `crates/vb_runtime/src/shard/types.rs:1560-1562`.
 #[verifier::external]
 pub exec fn mirror_runtime_state_is_resumable(state: MirrorRuntimeState) -> bool {
     matches!(state, MirrorRuntimeState::Resumable)
@@ -410,7 +410,7 @@ pub exec fn mirror_runtime_state_is_resumable(state: MirrorRuntimeState) -> bool
 /// true iff `event` is `Fail | TerminalRemove | DriveFinished`.
 ///
 /// Mirrors production `RuntimeEvent::is_terminal` at
-/// `crates/vb_runtime/src/shard/types.rs:1586-1591`.
+/// `crates/vb_runtime/src/shard/types.rs:1593-1598`.
 pub assume_specification[ mirror_runtime_event_is_terminal ](event: MirrorRuntimeEvent) -> (r: bool)
     ensures
         r == spec_is_terminal_event(event),
@@ -423,7 +423,7 @@ pub assume_specification[ mirror_runtime_event_is_terminal ](event: MirrorRuntim
 /// true iff `event` is `AwaitAction | AwaitTimer | ResumeRollback`.
 ///
 /// Mirrors production `RuntimeEvent::is_resumable` at
-/// `crates/vb_runtime/src/shard/types.rs:1595-1600`.
+/// `crates/vb_runtime/src/shard/types.rs:1602-1607`.
 pub assume_specification[ mirror_runtime_event_is_resumable ](event: MirrorRuntimeEvent) -> (r:
     bool)
     ensures
@@ -437,7 +437,7 @@ pub assume_specification[ mirror_runtime_event_is_resumable ](event: MirrorRunti
 /// true iff `state == Resumable`.
 ///
 /// Mirrors production `RuntimeState::is_resumable` at
-/// `crates/vb_runtime/src/shard/types.rs:1553-1555`.
+/// `crates/vb_runtime/src/shard/types.rs:1560-1562`.
 pub assume_specification[ mirror_runtime_state_is_resumable ](state: MirrorRuntimeState) -> (r:
     bool)
     ensures
@@ -653,7 +653,7 @@ pub proof fn admission_open_state(state: int)
 /// Theorem: `DriveFinished` maps to `completed_terminal(1)`.
 ///
 /// Production binding: `RuntimeEvent::is_terminal(DriveFinished) ==
-/// true` (production: types.rs:1586-1591).
+/// true` (production: types.rs:1593-1598).
 pub proof fn bridge_drive_finished_is_completed_terminal()
     ensures
         spec_is_terminal_event(MirrorRuntimeEvent::DriveFinished),
@@ -667,7 +667,7 @@ pub proof fn bridge_drive_finished_is_completed_terminal()
 /// Theorem: `Fail` maps to `cancelled_terminal(2)`.
 ///
 /// Production binding: `RuntimeEvent::is_terminal(Fail) == true`
-/// (production: types.rs:1586-1591).
+/// (production: types.rs:1593-1598).
 pub proof fn bridge_fail_is_cancelled_terminal()
     ensures
         spec_is_terminal_event(MirrorRuntimeEvent::Fail),
@@ -681,7 +681,7 @@ pub proof fn bridge_fail_is_cancelled_terminal()
 /// Theorem: `TerminalRemove` maps to `completed_terminal(1)`.
 ///
 /// Production binding: `RuntimeEvent::is_terminal(TerminalRemove) ==
-/// true` (production: types.rs:1586-1591).
+/// true` (production: types.rs:1593-1598).
 pub proof fn bridge_terminal_remove_is_completed_terminal()
     ensures
         spec_is_terminal_event(MirrorRuntimeEvent::TerminalRemove),
@@ -696,7 +696,7 @@ pub proof fn bridge_terminal_remove_is_completed_terminal()
 ///
 /// Production binding: `RuntimeEvent::is_terminal` returns false for
 /// `Submit | Resume | ResumeRollback | DriveContinue | AwaitAction |
-/// AwaitTimer` (production: types.rs:1586-1591).
+/// AwaitTimer` (production: types.rs:1593-1598).
 pub proof fn bridge_submit_is_none_terminal()
     ensures
         !spec_is_terminal_event(MirrorRuntimeEvent::Submit),
@@ -719,7 +719,7 @@ pub proof fn bridge_drive_continue_is_none_terminal()
 /// Theorem: `Resumable` state maps to `spec_is_resumable_state == true`.
 ///
 /// Production binding: `RuntimeState::is_resumable(Resumable) == true`
-/// (production: types.rs:1553-1555).
+/// (production: types.rs:1560-1562).
 pub proof fn bridge_resumable_state()
     ensures
         spec_is_resumable_state(MirrorRuntimeState::Resumable),
@@ -777,13 +777,13 @@ pub proof fn bridge_resume_rollback_is_resumable_event()
 // production functions would not be exercised in exec mode.
 //
 // Mirrors production code at:
-//   - `crates/vb_runtime/src/shard/types.rs:1586-1591`  (RuntimeEvent::is_terminal)
-//   - `crates/vb_runtime/src/shard/types.rs:1595-1600`  (RuntimeEvent::is_resumable)
-//   - `crates/vb_runtime/src/shard/types.rs:1553-1555`  (RuntimeState::is_resumable)
+//   - `crates/vb_runtime/src/shard/types.rs:1593-1598`  (RuntimeEvent::is_terminal)
+//   - `crates/vb_runtime/src/shard/types.rs:1602-1607`  (RuntimeEvent::is_resumable)
+//   - `crates/vb_runtime/src/shard/types.rs:1560-1562`  (RuntimeState::is_resumable)
 /// Production-bound exec wrapper for `production::runtime_event_is_terminal`.
 ///
 /// Calls the production mirror `runtime_event_is_terminal` (production at
-/// `crates/vb_runtime/src/shard/types.rs:1586-1591`) with the
+/// `crates/vb_runtime/src/shard/types.rs:1593-1598`) with the
 /// `MirrorRuntimeEvent::Fail` discriminant, which is the canonical
 /// terminal event in production. Asserts the production return matches
 /// the spec-side predicate.
@@ -864,7 +864,7 @@ pub fn production_runtime_state_is_resumable_exec_failed() -> (r: bool)
 /// true iff `event` is `Fail | TerminalRemove | DriveFinished`.
 ///
 /// Mirrors production `RuntimeEvent::is_terminal` at
-/// `crates/vb_runtime/src/shard/types.rs:1586-1591`.
+/// `crates/vb_runtime/src/shard/types.rs:1593-1598`.
 pub assume_specification[ production::runtime_event_is_terminal ](
     event: production::RuntimeEvent,
 ) -> (r: bool)
@@ -882,7 +882,7 @@ pub assume_specification[ production::runtime_event_is_terminal ](
 /// true iff `event` is `AwaitAction | AwaitTimer | ResumeRollback`.
 ///
 /// Mirrors production `RuntimeEvent::is_resumable` at
-/// `crates/vb_runtime/src/shard/types.rs:1595-1600`.
+/// `crates/vb_runtime/src/shard/types.rs:1602-1607`.
 pub assume_specification[ production::runtime_event_is_resumable ](
     event: production::RuntimeEvent,
 ) -> (r: bool)
@@ -900,7 +900,7 @@ pub assume_specification[ production::runtime_event_is_resumable ](
 /// true iff `state == Resumable`.
 ///
 /// Mirrors production `RuntimeState::is_resumable` at
-/// `crates/vb_runtime/src/shard/types.rs:1553-1555`.
+/// `crates/vb_runtime/src/shard/types.rs:1560-1562`.
 pub assume_specification[ production::runtime_state_is_resumable ](
     state: production::RuntimeState,
 ) -> (r: bool)
