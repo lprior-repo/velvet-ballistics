@@ -197,7 +197,11 @@ pub open spec fn spec_checked_add_u32_ok(a: int, b: int) -> bool {
 /// `limit = 0` yields zero pages for any `page_size`; `page_size = 0`
 /// behaves as `page_size = 1`.
 pub open spec fn spec_collect_pages(limit: u32, page_size: u32) -> int {
-    let per_page = if page_size == 0u32 { 1int } else { page_size as int };
+    let per_page = if page_size == 0u32 {
+        1int
+    } else {
+        page_size as int
+    };
     if limit == 0u32 {
         0int
     } else {
@@ -209,11 +213,7 @@ pub open spec fn spec_collect_pages(limit: u32, page_size: u32) -> int {
 /// `find_node_position` at `crates/vb_core/src/budget.rs:1530-1535`:
 /// the first position at or after `start` whose node id equals `step`,
 /// or `None` when no such position exists.
-pub open spec fn spec_find_scan(
-    nodes: Seq<CompiledNode>,
-    step: StepIdx,
-    start: int,
-) -> Option<int>
+pub open spec fn spec_find_scan(nodes: Seq<CompiledNode>, step: StepIdx, start: int) -> Option<int>
     decreases nodes.len() - start,
 {
     if start < 0 || start >= nodes.len() {
@@ -247,7 +247,7 @@ pub open spec fn spec_find_position(
                 } else {
                     None
                 }
-            }
+            },
         }
     }
 }
@@ -257,10 +257,7 @@ pub open spec fn spec_find_position(
 /// the successor node's id when the done node at `done_pos` ends the
 /// workflow (`NodeContinuation::End`) and a successor node exists,
 /// or `None` otherwise.
-pub open spec fn spec_push_next_id(
-    nodes: Seq<CompiledNode>,
-    done_pos: int,
-) -> Option<StepIdx> {
+pub open spec fn spec_push_next_id(nodes: Seq<CompiledNode>, done_pos: int) -> Option<StepIdx> {
     if done_pos >= 0 && done_pos < nodes.len() {
         match nodes[done_pos].routing.next {
             NodeContinuation::End => {
@@ -269,7 +266,7 @@ pub open spec fn spec_push_next_id(
                 } else {
                     None
                 }
-            }
+            },
             NodeContinuation::Step(_) => None,
         }
     } else {
@@ -294,7 +291,7 @@ pub open spec fn spec_push_done_stack(
                 Some(next) => Some(stack.push(next).push(done)),
                 None => Some(stack.push(done)),
             }
-        }
+        },
         None => None,
     }
 }
@@ -329,22 +326,17 @@ pub assume_specification[ production::count_and_push_loop_body ](
         match result {
             Ok(new_total) => new_total == _total + _body_count * spec_effective_iter_count(
                 _iter_count,
-            )
-                && spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@)
-                    == Some((*final(stack))@),
+            ) && spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@) == Some(
+                (*final(stack))@,
+            ),
             Err(BudgetError::TotalStepsExceeded { actual, limit }) => actual == u64::MAX && limit
-                == u64::MAX
-                && (*final(stack))@ == (*old(stack))@
-                && (!spec_checked_mul_u64_ok(
-                    _body_count as int,
-                    spec_effective_iter_count(_iter_count),
-                )
-                    || !spec_checked_add_u64_ok(
-                        _total as int,
-                        _body_count as int * spec_effective_iter_count(_iter_count),
-                    )
-                    || spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@)
-                        == None),
+                == u64::MAX && (*final(stack))@ == (*old(stack))@ && (!spec_checked_mul_u64_ok(
+                _body_count as int,
+                spec_effective_iter_count(_iter_count),
+            ) || !spec_checked_add_u64_ok(
+                _total as int,
+                _body_count as int * spec_effective_iter_count(_iter_count),
+            ) || spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@) == None),
         },
 ;
 
@@ -364,11 +356,12 @@ pub assume_specification[ production::push_done_continuation ](
 ) -> (result: Result<(), BudgetError>)
     ensures
         match result {
-            Ok(()) => spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@)
-                == Some((*final(stack))@),
+            Ok(()) => spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@) == Some(
+                (*final(stack))@,
+            ),
             Err(BudgetError::TotalStepsExceeded { actual, limit }) => actual == u64::MAX && limit
-                == u64::MAX
-                && spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@) == None,
+                == u64::MAX && spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@)
+                == None,
         },
 ;
 
@@ -406,11 +399,10 @@ pub assume_specification[ production::collect_start_update_metrics ](
                 limit,
                 page_size,
             ) && pair.1 as int == max_gather_items as int + limit as int,
-            Err(BudgetTraversalError::StepCountOverflow { actual }) => actual == u64::MAX
-                && (spec_collect_pages(limit, page_size) > spec_u32_max()
-                    || max_gather_pages as int + spec_collect_pages(limit, page_size)
-                        > spec_u32_max()
-                    || max_gather_items as int + limit as int > spec_u32_max()),
+            Err(BudgetTraversalError::StepCountOverflow { actual }) => actual == u64::MAX && (
+            spec_collect_pages(limit, page_size) > spec_u32_max() || max_gather_pages as int
+                + spec_collect_pages(limit, page_size) > spec_u32_max() || max_gather_items as int
+                + limit as int > spec_u32_max()),
             Err(_) => false,
         },
 ;
@@ -428,8 +420,8 @@ pub assume_specification[ production::count_total_steps_step_increment ](
     ensures
         match result {
             Ok(v) => v == total + 1,
-            Err(BudgetTraversalError::StepOutOfBounds { step }) => step.0 == current.0
-                && total == u64::MAX,
+            Err(BudgetTraversalError::StepOutOfBounds { step }) => step.0 == current.0 && total
+                == u64::MAX,
             Err(_) => false,
         },
 ;
@@ -463,15 +455,15 @@ pub assume_specification[ production::body_region_step_increment ](count: u64) -
 /// Mirrors the per-iteration `total = total.checked_add(1)` at
 /// `crates/vb_core/src/budget/loop_body.rs:43-46`.
 #[allow(dead_code)]
-pub fn exec_count_total_steps_step_increment(
-    total: u64,
-    current: StepIdx,
-) -> (result: Result<u64, BudgetTraversalError>)
+pub fn exec_count_total_steps_step_increment(total: u64, current: StepIdx) -> (result: Result<
+    u64,
+    BudgetTraversalError,
+>)
     ensures
         match result {
             Ok(v) => v == total + 1,
-            Err(BudgetTraversalError::StepOutOfBounds { step }) => step.0 == current.0
-                && total == u64::MAX,
+            Err(BudgetTraversalError::StepOutOfBounds { step }) => step.0 == current.0 && total
+                == u64::MAX,
             Err(_) => false,
         },
 {
@@ -509,24 +501,18 @@ pub fn exec_count_and_push_loop_body(
 ) -> (result: Result<u64, BudgetError>)
     ensures
         match result {
-            Ok(new_total) => new_total == total + body_count * spec_effective_iter_count(
-                iter_count,
-            )
-                && spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@)
-                    == Some((*final(stack))@),
+            Ok(new_total) => new_total == total + body_count * spec_effective_iter_count(iter_count)
+                && spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@) == Some(
+                (*final(stack))@,
+            ),
             Err(BudgetError::TotalStepsExceeded { actual, limit }) => actual == u64::MAX && limit
-                == u64::MAX
-                && (*final(stack))@ == (*old(stack))@
-                && (!spec_checked_mul_u64_ok(
-                    body_count as int,
-                    spec_effective_iter_count(iter_count),
-                )
-                    || !spec_checked_add_u64_ok(
-                        total as int,
-                        body_count as int * spec_effective_iter_count(iter_count),
-                    )
-                    || spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@)
-                        == None),
+                == u64::MAX && (*final(stack))@ == (*old(stack))@ && (!spec_checked_mul_u64_ok(
+                body_count as int,
+                spec_effective_iter_count(iter_count),
+            ) || !spec_checked_add_u64_ok(
+                total as int,
+                body_count as int * spec_effective_iter_count(iter_count),
+            ) || spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@) == None),
         },
 {
     count_and_push_loop_body(body_count, iter_count, total, nodes, done, node_count, stack)
@@ -546,11 +532,12 @@ pub fn exec_push_done_continuation(
 ) -> (result: Result<(), BudgetError>)
     ensures
         match result {
-            Ok(()) => spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@)
-                == Some((*final(stack))@),
+            Ok(()) => spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@) == Some(
+                (*final(stack))@,
+            ),
             Err(BudgetError::TotalStepsExceeded { actual, limit }) => actual == u64::MAX && limit
-                == u64::MAX
-                && spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@) == None,
+                == u64::MAX && spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@)
+                == None,
         },
 {
     push_done_continuation(nodes, done, node_count, stack)
@@ -572,11 +559,10 @@ pub fn exec_collect_start_update_metrics(
                 limit,
                 page_size,
             ) && pair.1 as int == max_gather_items as int + limit as int,
-            Err(BudgetTraversalError::StepCountOverflow { actual }) => actual == u64::MAX
-                && (spec_collect_pages(limit, page_size) > spec_u32_max()
-                    || max_gather_pages as int + spec_collect_pages(limit, page_size)
-                        > spec_u32_max()
-                    || max_gather_items as int + limit as int > spec_u32_max()),
+            Err(BudgetTraversalError::StepCountOverflow { actual }) => actual == u64::MAX && (
+            spec_collect_pages(limit, page_size) > spec_u32_max() || max_gather_pages as int
+                + spec_collect_pages(limit, page_size) > spec_u32_max() || max_gather_items as int
+                + limit as int > spec_u32_max()),
             Err(_) => false,
         },
 {
@@ -765,11 +751,10 @@ pub proof fn lemma_push_done_next_iff_end(nodes: Seq<CompiledNode>, pos: int)
         0 <= pos,
         pos < nodes.len(),
     ensures
-        spec_push_next_id(nodes, pos) != None
-            == (match nodes[pos].routing.next {
-                NodeContinuation::End => pos + 1 < nodes.len(),
-                NodeContinuation::Step(_) => false,
-            }),
+        spec_push_next_id(nodes, pos) != None == (match nodes[pos].routing.next {
+            NodeContinuation::End => pos + 1 < nodes.len(),
+            NodeContinuation::Step(_) => false,
+        }),
 {
 }
 
@@ -785,8 +770,11 @@ pub proof fn lemma_push_done_error_iff_unfindable(
     stack: Seq<StepIdx>,
 )
     ensures
-        (spec_push_done_stack(nodes, done, node_count, stack) == None)
-            == (spec_find_position(nodes, done, node_count) == None),
+        (spec_push_done_stack(nodes, done, node_count, stack) == None) == (spec_find_position(
+            nodes,
+            done,
+            node_count,
+        ) == None),
 {
 }
 
@@ -809,8 +797,8 @@ pub proof fn lemma_push_done_stack_ends_with_done(
         spec_find_position(nodes, done, node_count) == Some(pos),
     ensures
         match spec_push_done_stack(nodes, done, node_count, stack) {
-            Some(s) => (s.len() == stack.len() + 1 || s.len() == stack.len() + 2)
-                && s[s.len() - 1] == done,
+            Some(s) => (s.len() == stack.len() + 1 || s.len() == stack.len() + 2) && s[s.len() - 1]
+                == done,
             None => false,
         },
 {
@@ -825,11 +813,11 @@ pub proof fn lemma_push_done_stack_ends_with_done(
         Some(next) => {
             assert(stack.push(next).push(done).len() == stack.len() + 2);
             assert(stack.push(next).push(done)[(stack.len() as int) + 1] == done);
-        }
+        },
         None => {
             assert(stack.push(done).len() == stack.len() + 1);
             assert(stack.push(done)[stack.len() as int] == done);
-        }
+        },
     }
 }
 
@@ -862,17 +850,14 @@ pub proof fn lemma_loop_body_ok_stack_ends_with_done(
 ///
 /// Mirrors the scan loop in production `find_node_position` at
 /// `crates/vb_core/src/budget.rs:1530-1535`.
-pub proof fn lemma_find_scan_none_iff(
-    nodes: Seq<CompiledNode>,
-    step: StepIdx,
-    start: int,
-)
+pub proof fn lemma_find_scan_none_iff(nodes: Seq<CompiledNode>, step: StepIdx, start: int)
     requires
         0 <= start,
         start <= nodes.len(),
     ensures
-        (spec_find_scan(nodes, step, start) == None)
-            == (forall|i: int| #![auto] start <= i < nodes.len() ==> nodes[i].id != step),
+        (spec_find_scan(nodes, step, start) == None) == (forall|i: int|
+            #![auto]
+            start <= i < nodes.len() ==> nodes[i].id != step),
     decreases nodes.len() - start,
 {
     if start >= nodes.len() {
@@ -884,8 +869,8 @@ pub proof fn lemma_find_scan_none_iff(
     } else {
         lemma_find_scan_none_iff(nodes, step, start + 1);
         assert(spec_find_scan(nodes, step, start) == spec_find_scan(nodes, step, start + 1));
-        assert((forall|i: int| #![auto] start <= i < nodes.len() ==> nodes[i].id != step)
-            == (forall|i: int| #![auto] start + 1 <= i < nodes.len() ==> nodes[i].id != step));
+        assert((forall|i: int| #![auto] start <= i < nodes.len() ==> nodes[i].id != step) == (
+        forall|i: int| #![auto] start + 1 <= i < nodes.len() ==> nodes[i].id != step));
     }
 }
 
@@ -897,15 +882,10 @@ pub proof fn lemma_find_scan_none_iff(
 /// the direct fallback both return `Some` whenever
 /// `step.as_usize() < node_count`, so failure requires the direct
 /// index out of range and no matching id.
-pub proof fn lemma_find_position_none_iff(
-    nodes: Seq<CompiledNode>,
-    step: StepIdx,
-    node_count: int,
-)
+pub proof fn lemma_find_position_none_iff(nodes: Seq<CompiledNode>, step: StepIdx, node_count: int)
     ensures
-        (spec_find_position(nodes, step, node_count) == None)
-            == ((step.0 as int) >= node_count
-                && (forall|i: int| #![auto] 0 <= i < nodes.len() ==> nodes[i].id != step)),
+        (spec_find_position(nodes, step, node_count) == None) == ((step.0 as int) >= node_count && (
+        forall|i: int| #![auto] 0 <= i < nodes.len() ==> nodes[i].id != step)),
 {
     let direct = step.0 as int;
     lemma_find_scan_none_iff(nodes, step, 0);
@@ -918,11 +898,15 @@ pub proof fn lemma_find_position_none_iff(
             assert(spec_find_position(nodes, step, node_count) == Some(direct));
         }
         assert(spec_find_position(nodes, step, node_count) != None);
-        assert(!(direct >= node_count
-            && (forall|i: int| #![auto] 0 <= i < nodes.len() ==> nodes[i].id != step)));
+        assert(!(direct >= node_count && (forall|i: int|
+            #![auto]
+            0 <= i < nodes.len() ==> nodes[i].id != step)));
     } else {
-        assert((spec_find_position(nodes, step, node_count) == None)
-            == (spec_find_scan(nodes, step, 0) == None));
+        assert((spec_find_position(nodes, step, node_count) == None) == (spec_find_scan(
+            nodes,
+            step,
+            0,
+        ) == None));
     }
 }
 

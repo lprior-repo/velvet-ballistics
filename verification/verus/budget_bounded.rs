@@ -209,8 +209,8 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for WholeWorkflowBudget {
             == other.max_signal_subscriptions && self.max_incident_emissions
             == other.max_incident_emissions && self.max_transitions == other.max_transitions
             && self.max_journal_bytes_total == other.max_journal_bytes_total
-            && self.max_value_store_entries == other.max_value_store_entries
-            && self.max_cost_units == other.max_cost_units
+            && self.max_value_store_entries == other.max_value_store_entries && self.max_cost_units
+            == other.max_cost_units
     }
 }
 
@@ -267,14 +267,12 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for AggregateResourceBudget {
             == other.max_ipc_payload_bytes && self.max_blob_bytes == other.max_blob_bytes
             && self.max_input_bytes == other.max_input_bytes && self.max_step_budget_per_tick
             == other.max_step_budget_per_tick && self.max_transitions_per_tick
-            == other.max_transitions_per_tick && self.max_open_gates
-            == other.max_open_gates && self.max_signal_subscriptions
-            == other.max_signal_subscriptions && self.max_incident_emissions
-            == other.max_incident_emissions && self.max_transitions
+            == other.max_transitions_per_tick && self.max_open_gates == other.max_open_gates
+            && self.max_signal_subscriptions == other.max_signal_subscriptions
+            && self.max_incident_emissions == other.max_incident_emissions && self.max_transitions
             == other.max_transitions && self.max_journal_bytes_total
             == other.max_journal_bytes_total && self.max_value_store_entries
-            == other.max_value_store_entries && self.max_cost_units
-            == other.max_cost_units
+            == other.max_value_store_entries && self.max_cost_units == other.max_cost_units
     }
 }
 
@@ -301,10 +299,9 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for AggregateResourceCapacity {
             == other.max_signal_subscriptions && self.max_incident_emissions
             == other.max_incident_emissions && self.max_transitions == other.max_transitions
             && self.max_journal_bytes_total == other.max_journal_bytes_total
-            && self.max_value_store_entries == other.max_value_store_entries
-            && self.max_cost_units == other.max_cost_units && self.tenant_quota_cost_units
-            == other.tenant_quota_cost_units && self.global_quota_cost_units
-            == other.global_quota_cost_units
+            && self.max_value_store_entries == other.max_value_store_entries && self.max_cost_units
+            == other.max_cost_units && self.tenant_quota_cost_units == other.tenant_quota_cost_units
+            && self.global_quota_cost_units == other.global_quota_cost_units
     }
 }
 
@@ -331,8 +328,8 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for AggregateResourceUsage {
             == other.max_signal_subscriptions && self.max_incident_emissions
             == other.max_incident_emissions && self.max_transitions == other.max_transitions
             && self.max_journal_bytes_total == other.max_journal_bytes_total
-            && self.max_value_store_entries == other.max_value_store_entries
-            && self.max_cost_units == other.max_cost_units
+            && self.max_value_store_entries == other.max_value_store_entries && self.max_cost_units
+            == other.max_cost_units
     }
 }
 
@@ -561,19 +558,19 @@ pub open spec fn spec_policy_violation(
         Err(BudgetError::OpenGatesExceeded { actual, limit }) => actual == budget.max_open_gates
             && limit == policy.absolute_max_open_gates && actual > limit,
         Err(BudgetError::SignalSubscriptionsExceeded { actual, limit }) => actual
-            == budget.max_signal_subscriptions && limit
-            == policy.absolute_max_signal_subscriptions && actual > limit,
+            == budget.max_signal_subscriptions && limit == policy.absolute_max_signal_subscriptions
+            && actual > limit,
         Err(BudgetError::IncidentEmissionsExceeded { actual, limit }) => actual
             == budget.max_incident_emissions && limit == policy.absolute_max_incident_emissions
             && actual > limit,
         Err(BudgetError::TransitionsExceeded { actual, limit }) => actual == budget.max_transitions
             && limit == policy.absolute_max_transitions && actual > limit,
         Err(BudgetError::JournalBytesTotalExceeded { actual, limit }) => actual
-            == budget.max_journal_bytes_total && limit
-            == policy.absolute_max_journal_bytes_total && actual > limit,
+            == budget.max_journal_bytes_total && limit == policy.absolute_max_journal_bytes_total
+            && actual > limit,
         Err(BudgetError::ValueStoreEntriesExceeded { actual, limit }) => actual
-            == budget.max_value_store_entries && limit
-            == policy.absolute_max_value_store_entries && actual > limit,
+            == budget.max_value_store_entries && limit == policy.absolute_max_value_store_entries
+            && actual > limit,
         Err(BudgetError::CostUnitsExceeded { actual, limit }) => actual == budget.max_cost_units
             && limit == policy.absolute_max_cost_units && actual > limit,
         Err(_) => true,
@@ -616,34 +613,34 @@ pub proof fn lemma_policy_violation_open_gates(
         spec_policy_violation(
             budget,
             policy,
-            Err(BudgetError::OpenGatesExceeded {
-                actual: budget.max_open_gates,
-                limit: policy.absolute_max_open_gates,
-            }),
+            Err(
+                BudgetError::OpenGatesExceeded {
+                    actual: budget.max_open_gates,
+                    limit: policy.absolute_max_open_gates,
+                },
+            ),
         ) && !spec_policy_violation(
             budget,
             policy,
-            Err(BudgetError::OpenGatesExceeded {
-                actual: 0,
-                limit: policy.absolute_max_open_gates,
-            }),
+            Err(
+                BudgetError::OpenGatesExceeded { actual: 0, limit: policy.absolute_max_open_gates },
+            ),
         ),
 {
     assert(spec_policy_violation(
         budget,
         policy,
-        Err(BudgetError::OpenGatesExceeded {
-            actual: budget.max_open_gates,
-            limit: policy.absolute_max_open_gates,
-        }),
+        Err(
+            BudgetError::OpenGatesExceeded {
+                actual: budget.max_open_gates,
+                limit: policy.absolute_max_open_gates,
+            },
+        ),
     ));
     assert(!spec_policy_violation(
         budget,
         policy,
-        Err(BudgetError::OpenGatesExceeded {
-            actual: 0,
-            limit: policy.absolute_max_open_gates,
-        }),
+        Err(BudgetError::OpenGatesExceeded { actual: 0, limit: policy.absolute_max_open_gates }),
     ));
 }
 
@@ -657,40 +654,48 @@ pub proof fn lemma_policy_violation_signal_subscriptions(
     policy: BoundednessPolicy,
 )
     requires
-        (budget.max_signal_subscriptions as int)
-            > (policy.absolute_max_signal_subscriptions as int),
+        (budget.max_signal_subscriptions as int) > (
+        policy.absolute_max_signal_subscriptions as int),
     ensures
         spec_policy_violation(
             budget,
             policy,
-            Err(BudgetError::SignalSubscriptionsExceeded {
-                actual: budget.max_signal_subscriptions,
-                limit: policy.absolute_max_signal_subscriptions,
-            }),
+            Err(
+                BudgetError::SignalSubscriptionsExceeded {
+                    actual: budget.max_signal_subscriptions,
+                    limit: policy.absolute_max_signal_subscriptions,
+                },
+            ),
         ) && !spec_policy_violation(
             budget,
             policy,
-            Err(BudgetError::SignalSubscriptionsExceeded {
-                actual: 0,
-                limit: policy.absolute_max_signal_subscriptions,
-            }),
+            Err(
+                BudgetError::SignalSubscriptionsExceeded {
+                    actual: 0,
+                    limit: policy.absolute_max_signal_subscriptions,
+                },
+            ),
         ),
 {
     assert(spec_policy_violation(
         budget,
         policy,
-        Err(BudgetError::SignalSubscriptionsExceeded {
-            actual: budget.max_signal_subscriptions,
-            limit: policy.absolute_max_signal_subscriptions,
-        }),
+        Err(
+            BudgetError::SignalSubscriptionsExceeded {
+                actual: budget.max_signal_subscriptions,
+                limit: policy.absolute_max_signal_subscriptions,
+            },
+        ),
     ));
     assert(!spec_policy_violation(
         budget,
         policy,
-        Err(BudgetError::SignalSubscriptionsExceeded {
-            actual: 0,
-            limit: policy.absolute_max_signal_subscriptions,
-        }),
+        Err(
+            BudgetError::SignalSubscriptionsExceeded {
+                actual: 0,
+                limit: policy.absolute_max_signal_subscriptions,
+            },
+        ),
     ));
 }
 
@@ -704,40 +709,47 @@ pub proof fn lemma_policy_violation_incident_emissions(
     policy: BoundednessPolicy,
 )
     requires
-        (budget.max_incident_emissions as int)
-            > (policy.absolute_max_incident_emissions as int),
+        (budget.max_incident_emissions as int) > (policy.absolute_max_incident_emissions as int),
     ensures
         spec_policy_violation(
             budget,
             policy,
-            Err(BudgetError::IncidentEmissionsExceeded {
-                actual: budget.max_incident_emissions,
-                limit: policy.absolute_max_incident_emissions,
-            }),
+            Err(
+                BudgetError::IncidentEmissionsExceeded {
+                    actual: budget.max_incident_emissions,
+                    limit: policy.absolute_max_incident_emissions,
+                },
+            ),
         ) && !spec_policy_violation(
             budget,
             policy,
-            Err(BudgetError::IncidentEmissionsExceeded {
-                actual: 0,
-                limit: policy.absolute_max_incident_emissions,
-            }),
+            Err(
+                BudgetError::IncidentEmissionsExceeded {
+                    actual: 0,
+                    limit: policy.absolute_max_incident_emissions,
+                },
+            ),
         ),
 {
     assert(spec_policy_violation(
         budget,
         policy,
-        Err(BudgetError::IncidentEmissionsExceeded {
-            actual: budget.max_incident_emissions,
-            limit: policy.absolute_max_incident_emissions,
-        }),
+        Err(
+            BudgetError::IncidentEmissionsExceeded {
+                actual: budget.max_incident_emissions,
+                limit: policy.absolute_max_incident_emissions,
+            },
+        ),
     ));
     assert(!spec_policy_violation(
         budget,
         policy,
-        Err(BudgetError::IncidentEmissionsExceeded {
-            actual: 0,
-            limit: policy.absolute_max_incident_emissions,
-        }),
+        Err(
+            BudgetError::IncidentEmissionsExceeded {
+                actual: 0,
+                limit: policy.absolute_max_incident_emissions,
+            },
+        ),
     ));
 }
 
@@ -756,34 +768,37 @@ pub proof fn lemma_policy_violation_transitions(
         spec_policy_violation(
             budget,
             policy,
-            Err(BudgetError::TransitionsExceeded {
-                actual: budget.max_transitions,
-                limit: policy.absolute_max_transitions,
-            }),
+            Err(
+                BudgetError::TransitionsExceeded {
+                    actual: budget.max_transitions,
+                    limit: policy.absolute_max_transitions,
+                },
+            ),
         ) && !spec_policy_violation(
             budget,
             policy,
-            Err(BudgetError::TransitionsExceeded {
-                actual: 0,
-                limit: policy.absolute_max_transitions,
-            }),
+            Err(
+                BudgetError::TransitionsExceeded {
+                    actual: 0,
+                    limit: policy.absolute_max_transitions,
+                },
+            ),
         ),
 {
     assert(spec_policy_violation(
         budget,
         policy,
-        Err(BudgetError::TransitionsExceeded {
-            actual: budget.max_transitions,
-            limit: policy.absolute_max_transitions,
-        }),
+        Err(
+            BudgetError::TransitionsExceeded {
+                actual: budget.max_transitions,
+                limit: policy.absolute_max_transitions,
+            },
+        ),
     ));
     assert(!spec_policy_violation(
         budget,
         policy,
-        Err(BudgetError::TransitionsExceeded {
-            actual: 0,
-            limit: policy.absolute_max_transitions,
-        }),
+        Err(BudgetError::TransitionsExceeded { actual: 0, limit: policy.absolute_max_transitions }),
     ));
 }
 
@@ -797,40 +812,47 @@ pub proof fn lemma_policy_violation_journal_bytes_total(
     policy: BoundednessPolicy,
 )
     requires
-        (budget.max_journal_bytes_total as int)
-            > (policy.absolute_max_journal_bytes_total as int),
+        (budget.max_journal_bytes_total as int) > (policy.absolute_max_journal_bytes_total as int),
     ensures
         spec_policy_violation(
             budget,
             policy,
-            Err(BudgetError::JournalBytesTotalExceeded {
-                actual: budget.max_journal_bytes_total,
-                limit: policy.absolute_max_journal_bytes_total,
-            }),
+            Err(
+                BudgetError::JournalBytesTotalExceeded {
+                    actual: budget.max_journal_bytes_total,
+                    limit: policy.absolute_max_journal_bytes_total,
+                },
+            ),
         ) && !spec_policy_violation(
             budget,
             policy,
-            Err(BudgetError::JournalBytesTotalExceeded {
-                actual: 0,
-                limit: policy.absolute_max_journal_bytes_total,
-            }),
+            Err(
+                BudgetError::JournalBytesTotalExceeded {
+                    actual: 0,
+                    limit: policy.absolute_max_journal_bytes_total,
+                },
+            ),
         ),
 {
     assert(spec_policy_violation(
         budget,
         policy,
-        Err(BudgetError::JournalBytesTotalExceeded {
-            actual: budget.max_journal_bytes_total,
-            limit: policy.absolute_max_journal_bytes_total,
-        }),
+        Err(
+            BudgetError::JournalBytesTotalExceeded {
+                actual: budget.max_journal_bytes_total,
+                limit: policy.absolute_max_journal_bytes_total,
+            },
+        ),
     ));
     assert(!spec_policy_violation(
         budget,
         policy,
-        Err(BudgetError::JournalBytesTotalExceeded {
-            actual: 0,
-            limit: policy.absolute_max_journal_bytes_total,
-        }),
+        Err(
+            BudgetError::JournalBytesTotalExceeded {
+                actual: 0,
+                limit: policy.absolute_max_journal_bytes_total,
+            },
+        ),
     ));
 }
 
@@ -844,40 +866,47 @@ pub proof fn lemma_policy_violation_value_store_entries(
     policy: BoundednessPolicy,
 )
     requires
-        (budget.max_value_store_entries as int)
-            > (policy.absolute_max_value_store_entries as int),
+        (budget.max_value_store_entries as int) > (policy.absolute_max_value_store_entries as int),
     ensures
         spec_policy_violation(
             budget,
             policy,
-            Err(BudgetError::ValueStoreEntriesExceeded {
-                actual: budget.max_value_store_entries,
-                limit: policy.absolute_max_value_store_entries,
-            }),
+            Err(
+                BudgetError::ValueStoreEntriesExceeded {
+                    actual: budget.max_value_store_entries,
+                    limit: policy.absolute_max_value_store_entries,
+                },
+            ),
         ) && !spec_policy_violation(
             budget,
             policy,
-            Err(BudgetError::ValueStoreEntriesExceeded {
-                actual: 0,
-                limit: policy.absolute_max_value_store_entries,
-            }),
+            Err(
+                BudgetError::ValueStoreEntriesExceeded {
+                    actual: 0,
+                    limit: policy.absolute_max_value_store_entries,
+                },
+            ),
         ),
 {
     assert(spec_policy_violation(
         budget,
         policy,
-        Err(BudgetError::ValueStoreEntriesExceeded {
-            actual: budget.max_value_store_entries,
-            limit: policy.absolute_max_value_store_entries,
-        }),
+        Err(
+            BudgetError::ValueStoreEntriesExceeded {
+                actual: budget.max_value_store_entries,
+                limit: policy.absolute_max_value_store_entries,
+            },
+        ),
     ));
     assert(!spec_policy_violation(
         budget,
         policy,
-        Err(BudgetError::ValueStoreEntriesExceeded {
-            actual: 0,
-            limit: policy.absolute_max_value_store_entries,
-        }),
+        Err(
+            BudgetError::ValueStoreEntriesExceeded {
+                actual: 0,
+                limit: policy.absolute_max_value_store_entries,
+            },
+        ),
     ));
 }
 
@@ -896,34 +925,34 @@ pub proof fn lemma_policy_violation_cost_units(
         spec_policy_violation(
             budget,
             policy,
-            Err(BudgetError::CostUnitsExceeded {
-                actual: budget.max_cost_units,
-                limit: policy.absolute_max_cost_units,
-            }),
+            Err(
+                BudgetError::CostUnitsExceeded {
+                    actual: budget.max_cost_units,
+                    limit: policy.absolute_max_cost_units,
+                },
+            ),
         ) && !spec_policy_violation(
             budget,
             policy,
-            Err(BudgetError::CostUnitsExceeded {
-                actual: 0,
-                limit: policy.absolute_max_cost_units,
-            }),
+            Err(
+                BudgetError::CostUnitsExceeded { actual: 0, limit: policy.absolute_max_cost_units },
+            ),
         ),
 {
     assert(spec_policy_violation(
         budget,
         policy,
-        Err(BudgetError::CostUnitsExceeded {
-            actual: budget.max_cost_units,
-            limit: policy.absolute_max_cost_units,
-        }),
+        Err(
+            BudgetError::CostUnitsExceeded {
+                actual: budget.max_cost_units,
+                limit: policy.absolute_max_cost_units,
+            },
+        ),
     ));
     assert(!spec_policy_violation(
         budget,
         policy,
-        Err(BudgetError::CostUnitsExceeded {
-            actual: 0,
-            limit: policy.absolute_max_cost_units,
-        }),
+        Err(BudgetError::CostUnitsExceeded { actual: 0, limit: policy.absolute_max_cost_units }),
     ));
 }
 
