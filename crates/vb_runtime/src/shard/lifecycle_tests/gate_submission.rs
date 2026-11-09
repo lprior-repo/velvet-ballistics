@@ -1,20 +1,24 @@
 use std::sync::{Arc, Mutex};
 
 use vb_core::capability::CapabilitySet;
+use vb_core::engine::EngineError;
 use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::manual_gate::{
     ApproverId, ApproverRole, GateDecision, GateDecisionInput, GateDigest, GateId, GateOutcome,
     GateOutcomeRecord, ManualGate, RiskClass, SeparationOfDuties,
 };
+use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue};
 use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
 
 use crate::RuntimeError;
+use crate::admission::RunAdmission;
+use crate::engine::types::{EvidenceCollector, RuntimeEngineError, RuntimeSignal};
 use crate::error::RuntimeResult;
 use crate::journal::{RuntimeJournal, RuntimeJournalEvent};
-use crate::shard::types::{RuntimeState, Shard, ShardCommand};
+use crate::shard::types::{OpenGate, RuntimeState, Shard, ShardCommand};
 
-use super::{require_workflow, small_config, suspended_workflow};
+use super::{ask_workflow, require_workflow, small_config, suspension_budget, suspended_workflow};
 
 #[derive(Debug, Default)]
 struct RecordingJournal {
@@ -294,6 +298,84 @@ fn open_gate_suspends_running_run() -> Result<(), Box<dyn std::error::Error>> {
         Some(GateId::new(7)),
         "open gate must be registered for the run"
     );
+    Ok(())
+}
+
+#[test]
+fn open_gate_count_tracks_per_run_gates() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(92100);
+    let other = RunId::new(92101);
+    let (mut shard, _journal) = make_running_shard(run)?;
+
+    assert_eq!(shard.open_gate_count(run), 0, "no gate is open yet");
+    open_test_gate(&mut shard, run, 7)?;
+
+    assert_eq!(shard.open_gate_count(run), 1, "one gate is open for the run");
+    assert_eq!(
+        shard.open_gate_count(other),
+        0,
+        "a gate for one run must not count for another run"
+    );
+    Ok(())
+}
+
+#[test]
+fn drive_state_threads_registered_manual_gate_count() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(92102);
+    let mut shard = Shard::new(small_config());
+    shard.open_gates.insert(
+        GateId::new(7),
+        OpenGate {
+            gate: test_gate(run, 7),
+            opened_at_ms: 0,
+            requester: person("bob"),
+            delegated_to: None,
+        },
+    );
+    let workflow = require_workflow("ask", ask_workflow())?;
+    let digest = workflow.digest();
+    let Some(mut state) = crate::shard::helpers::make_run_state(workflow, run) else {
+        return Err("ask workflow must build a run state".into());
+    };
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        RuntimePolicy::Relaxed,
+        suspension_budget(1, 1),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = shard.drive_state(run, &mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "open_gates",
+            limit: 1,
+        }))
+    ));
+    Ok(())
+}
+
+#[test]
+fn drive_state_without_registered_gate_suspends_on_ask() -> Result<(), Box<dyn std::error::Error>>
+{
+    let run = RunId::new(92103);
+    let shard = Shard::new(small_config());
+    let workflow = require_workflow("ask", ask_workflow())?;
+    let digest = workflow.digest();
+    let Some(mut state) = crate::shard::helpers::make_run_state(workflow, run) else {
+        return Err("ask workflow must build a run state".into());
+    };
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        RuntimePolicy::Relaxed,
+        suspension_budget(1, 1),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = shard.drive_state(run, &mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::AwaitingAsk)));
     Ok(())
 }
 

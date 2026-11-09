@@ -195,6 +195,13 @@ impl Shard {
             .map(|open| open.gate.id)
     }
 
+    pub(crate) fn open_gate_count(&self, run: RunId) -> u64 {
+        self.open_gates
+            .values()
+            .filter(|open| open.gate.run == run)
+            .fold(0u64, |count, _| count.saturating_add(1))
+    }
+
     /// Rejects opening a gate on a run that cannot be suspended.
     ///
     /// Only a run that can proceed may be gated: initial or running, with

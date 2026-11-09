@@ -1,7 +1,23 @@
 impl Shard {
     fn drive_state(
+        &self,
+        run: RunId,
         state: &mut RunState,
         step_budget_per_tick: u64,
+        evidence: &mut EvidenceCollector,
+    ) -> RuntimeEngineResult<RuntimeSignal> {
+        Self::drive_state_with_manual_gates(
+            state,
+            step_budget_per_tick,
+            self.open_gate_count(run),
+            evidence,
+        )
+    }
+
+    fn drive_state_with_manual_gates(
+        state: &mut RunState,
+        step_budget_per_tick: u64,
+        manual_open_gates: u64,
         evidence: &mut EvidenceCollector,
     ) -> RuntimeEngineResult<RuntimeSignal> {
         let mut budget = Self::transition_tick_budget(state, step_budget_per_tick)?;
@@ -24,7 +40,7 @@ impl Shard {
             state.run_attempt.get(),
         )?;
         Self::check_run_time_budget(state)?;
-        Self::check_suspension_budgets(state)?;
+        Self::check_suspension_budgets(state, manual_open_gates)?;
         Self::check_value_store_budget(state)?;
         Self::check_cost_budget(state, &signal)?;
         Self::check_action_ticket_budget(state, &signal)?;
@@ -111,14 +127,17 @@ impl Shard {
         Ok(())
     }
 
-    fn check_suspension_budgets(state: &RunState) -> RuntimeEngineResult<()> {
+    fn check_suspension_budgets(
+        state: &RunState,
+        manual_open_gates: u64,
+    ) -> RuntimeEngineResult<()> {
         let Some(admission) = state.admission.as_ref() else {
             return Ok(());
         };
         let Some(budget) = admission.budget() else {
             return Ok(());
         };
-        let mut open_gates: u64 = 0;
+        let mut ask_gates: u64 = 0;
         let mut signal_subscriptions: u64 = 0;
         for index in 0..state.frame.step_count() {
             let step = vb_core::ids::StepIdx::new(index);
@@ -130,7 +149,7 @@ impl Shard {
                 Ok(vb_core::frame::StepState::Asking)
             ) && matches!(node.kind, vb_core::workflow::CompiledNodeKind::Ask { .. })
             {
-                open_gates = open_gates.saturating_add(1);
+                ask_gates = ask_gates.saturating_add(1);
             }
             if matches!(
                 state.frame.step_state(step),
@@ -142,6 +161,7 @@ impl Shard {
                 signal_subscriptions = signal_subscriptions.saturating_add(1);
             }
         }
+        let open_gates = ask_gates.saturating_add(manual_open_gates);
         if open_gates > u64::from(budget.max_open_gates) {
             return Err(crate::engine::types::RuntimeEngineError::Core(
                 vb_core::engine::EngineError::BudgetExceeded {
