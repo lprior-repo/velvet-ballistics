@@ -819,6 +819,7 @@ fn engine_error_slot_uninitialized_display() {
         msg.contains("SlotIdx(7)"),
         "display must contain slot index, got: {msg}"
     );
+    assert_eq!(msg, "slot not initialized: SlotIdx(7)");
 }
 
 #[test]
