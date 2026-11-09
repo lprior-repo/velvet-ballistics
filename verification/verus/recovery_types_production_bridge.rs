@@ -18,12 +18,12 @@
 //
 // Target: vb_storage::recovery::types at
 //   crates/vb_storage/src/recovery/types.rs:550-562, 566-589,
-//   612-649, 793-804, 837-909
+//   612-649, 795-806, 837-909
 //   (RecoveryTerminalState 550-562, RecoveryRuntimeSummary 566-589,
-//    RecoveryHydration 612-617 with `summary` at 634,
-//    RecoveredStepState 793-804,
-//    UnsupportedRecoveryState 837-846 with SUPPORTED at 850,
-//    `union` at 886, `is_fully_supported` at 897)
+//    RecoveryHydration 612-619 with `summary` at 636,
+//    RecoveredStepState 795-806,
+//    UnsupportedRecoveryState 839-848 with SUPPORTED at 852,
+//    `union` at 888, `is_fully_supported` at 899)
 //
 // This file binds to production through the verbatim mirror at
 // `verification/verus/production_inner/recovery_types_production.rs`
@@ -47,13 +47,15 @@
 //
 // STRONG binding (direct `#[path = "crates/vb_storage/src/...rs"]`) is
 // blocked by:
-//   1. `types.rs:9-13` `use vb_core::{...}` and `use crate::{...}`
+//   1. `crates/vb_storage/src/recovery/types.rs:9-13` `use vb_core::{...}` and `use crate::{...}`
 //      require the vb_storage crate root + vb_core extern alias;
 //      neither is resolvable in standalone `verus --crate-type=lib`.
-//   2. `types.rs:15-33` `#[cfg(kani)]` harness blocks pull in
+//   2. `crates/vb_storage/src/recovery/types.rs:15-33` `#[cfg(kani)]` harness blocks pull in
 //      proc-macro dependencies unavailable in standalone Verus.
-//   3. `types.rs:36-37` `#[derive(thiserror::Error)]` on
-//      `RecoveryError` requires the thiserror proc-macro crate.
+// (A former third blocker is gone: production previously carried a
+// `#[derive(Debug, thiserror::Error)]` on `RecoveryError`; that derive
+// has been removed, now a plain `#[derive(Debug)]` at
+// `crates/vb_storage/src/recovery/types.rs:36-37`.)
 //
 // These are all "NO production changes" blockers (per the task brief).
 // The `production_inner` mirror sidesteps every blocker while still
@@ -156,7 +158,7 @@ pub use production::{
 /// `valid_recovery_terminal_state(st)` — every documented
 /// `RecoveryTerminalState` variant is valid. Production uses
 /// `#[non_exhaustive]`; the spec projection enumerates the closed
-/// four-variant set documented in `types.rs:529-543`. Any new variant
+/// four-variant set documented in `crates/vb_storage/src/recovery/types.rs:550-562`. Any new variant
 /// added to production is a `#[non_exhaustive]` extension that does
 /// not affect the four-variant invariant (the bridge's phantom
 /// `prod_items_drift_check` would still resolve the new variant).
@@ -200,7 +202,7 @@ pub open spec fn terminal_state_eq(
 ///   - `first_seq <= last_seq`
 ///   - `steps_started >= steps_succeeded`
 ///   - `actions_scheduled >= actions_resolved`
-/// Mirrors the production invariant from `types.rs:547-570`.
+/// Mirrors the production invariant from `crates/vb_storage/src/recovery/types.rs:566-589`.
 pub open spec fn recovery_runtime_summary_inv(s: production::RecoveryRuntimeSummary) -> bool {
     &&& s.first_seq.0 <= s.last_seq.0
     &&& s.steps_started >= s.steps_succeeded
@@ -211,7 +213,7 @@ pub open spec fn recovery_runtime_summary_inv(s: production::RecoveryRuntimeSumm
 /// `valid_recovered_step_state(st)` — every documented
 /// `RecoveredStepState` variant is valid. Production uses
 /// `#[non_exhaustive]`; the spec projection enumerates the closed
-/// five-variant set documented in `types.rs:608-621`.
+/// five-variant set documented in `crates/vb_storage/src/recovery/types.rs:795-806`.
 pub open spec fn valid_recovered_step_state(st: production::RecoveredStepState) -> bool {
     matches!(st,
         production::RecoveredStepState::Running
@@ -255,7 +257,7 @@ pub open spec fn unsupported_state_eq(
 }
 
 /// `unsupported_union_spec(a, b)` — flagwise OR across all four fields.
-/// Mirrors the production body at `types.rs:701-710`.
+/// Mirrors the production body at `crates/vb_storage/src/recovery/types.rs:888-895`.
 pub open spec fn unsupported_union_spec(
     a: production::UnsupportedRecoveryState,
     b: production::UnsupportedRecoveryState,
@@ -269,7 +271,7 @@ pub open spec fn unsupported_union_spec(
 }
 
 /// `is_fully_supported_spec(s)` — `true` iff every flag is `false`.
-/// Mirrors the production body at `types.rs:713-716`.
+/// Mirrors the production body at `crates/vb_storage/src/recovery/types.rs:899-901`.
 pub open spec fn is_fully_supported_spec(s: production::UnsupportedRecoveryState) -> bool {
     !s.slot_values && !s.slot_taint && !s.action_payloads && !s.pending_actions
 }

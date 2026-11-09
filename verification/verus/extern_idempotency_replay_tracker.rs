@@ -30,18 +30,26 @@
 // ============================================================================
 // Direct `#[path = "../../crates/vb_storage/src/recovery/types.rs"]`
 // inclusion is blocked by:
-//   - types.rs:10 `use serde::{Deserialize, Serialize};` requires the
-//     `serde` extern crate, which is not registered under
+//   - `crates/vb_storage/src/recovery/types.rs:1429`
+//     `#[derive(..., serde::Serialize, serde::Deserialize)]` on
+//     `RunSnapshot` (fully-qualified paths; no `use serde` import)
+//     requires the `serde` extern crate, which is not registered under
 //     `verus --crate-type=lib` (no installs allowed by task brief).
-//   - types.rs:11-14 `use vb_core::{ActionId, ActionTicket, ...};` requires
+//   - `crates/vb_storage/src/recovery/types.rs:10-13`
+//     `use vb_core::{ActionId, ActionTicket, ...};` requires
 //     the `vb_core` extern crate alias, which is wired through the
 //     workspace `Cargo.toml` and is unavailable in a standalone
 //     `verus --crate-type=lib` invocation.
-//   - types.rs:37 `#[derive(Debug, thiserror::Error)]` on
-//     `RecoveryError` requires the `thiserror` proc-macro crate, also
-//     unavailable under the no-installs constraint.
-//   - types.rs:17-37 `#[cfg(kani)] struct ReplayResolutionSet(...)`
+//   - `crates/vb_storage/src/recovery/types.rs:15-33`
+//     `#[cfg(kani)] struct ReplayResolutionSet(...)`
 //     forces kani cfg to be active or the file fails to compile.
+//
+// Note: production previously carried a `#[derive(Debug,
+// thiserror::Error)]` on `RecoveryError`; that derive has been removed
+// (now a plain `#[derive(Debug)]` at
+// `crates/vb_storage/src/recovery/types.rs:36-37`), so thiserror is no
+// longer a blocker. The mirror is still required by the `serde` and
+// `vb_core` blockers above.
 //
 // The in-tree mirror file at
 // `verification/verus/production_inner/action_replay_tracker_production.rs`
