@@ -127,7 +127,7 @@ pub mod prod_src;
 // stub (`ValueStoreStub` field shape + `check_arena_cap_stub`).
 #[verifier::external]
 fn prod_methods_drift_check() {
-    // Reference every field of ValueStoreStub (production crates/vb_core/src/value_store.rs:56).
+    // Reference every field of ValueStoreStub (production crates/vb_core/src/value_store.rs:56-69).
     let _stub = prod_src::ValueStoreStub { max_arena_entries: 0, total_arena_count_field: 0 };
 
     // Reference the production check_arena_cap decision fn
