@@ -29,29 +29,29 @@
 // ============================================================================
 //   - `EngineSignal`                          <- extern_step_state_machine.rs
 //                                               (mirror of
-//                                               signals.rs:100-115;
+//                                               crates/vb_core/src/engine/signals.rs:100-115;
 //                                               ALL 7 production variants
 //                                               including the previously
 //                                               missing `ActionFailureUnhandled`)
 //   - `StepBudget`                            <- extern_step_state_machine.rs
 //                                               (mirror of
-//                                               signals.rs:14-16)
+//                                               crates/vb_core/src/engine/signals.rs:14-16)
 //   - `StepBudget::MAX`                       <- extern_step_state_machine.rs
 //                                               `step_budget_max`
-//                                               (mirror of signals.rs:19-22)
+//                                               (mirror of crates/vb_core/src/engine/signals.rs:19-22)
 //   - `StepBudget::new`                       <- extern_step_state_machine.rs
 //                                               `step_budget_new`
-//                                               (mirror of signals.rs:26-35)
+//                                               (mirror of crates/vb_core/src/engine/signals.rs:26-35)
 //   - `StepBudget::remaining`                 <- extern_step_state_machine.rs
 //                                               `step_budget_remaining`
-//                                               (mirror of signals.rs:62-65)
+//                                               (mirror of crates/vb_core/src/engine/signals.rs:62-65)
 //   - `StepBudget::try_take`                  <- extern_step_state_machine.rs
 //                                               `step_budget_try_take`
-//                                               (mirror of signals.rs:50-60)
+//                                               (mirror of crates/vb_core/src/engine/signals.rs:50-60)
 //   - `mark_step_after_signal`                <- extern_step_state_machine.rs
 //                                               `spec_mark_step_after_signal`
 //                                               (pure projection of
-//                                               step.rs:109-121 match arms)
+//                                               crates/vb_core/src/engine/step.rs:109-121 match arms)
 //
 // ============================================================================
 // UPGRADE FROM PREVIOUS SPEC
@@ -164,7 +164,7 @@ pub assume_specification[ production::step_budget_remaining ](
 // --------------------------------------------------------------------------
 // Bridge: `step_budget_max` returns a budget at the maximum allowed value.
 // --------------------------------------------------------------------------
-// Mirrors production `StepBudget::MAX` at signals.rs:19-22:
+// Mirrors production `StepBudget::MAX` at crates/vb_core/src/engine/signals.rs:19-22:
 //
 //     pub const MAX: Self = Self { remaining: MAX_STEP_BUDGET };
 pub assume_specification[ production::step_budget_max ]() -> (budget: production::StepBudget)
@@ -209,7 +209,7 @@ pub assume_specification[ production::step_budget_try_take ](
 // Bridge: `step_budget_from_env` returns Ok(budget_with_remaining_at_most_max)
 //         or Err(BudgetParse / env-access error).
 // --------------------------------------------------------------------------
-// Mirrors production `StepBudget::from_env` at signals.rs:80-94. The body is
+// Mirrors production `StepBudget::from_env` at crates/vb_core/src/engine/signals.rs:80-94. The body is
 // opaque (uses std::env); the contract is that the returned budget has
 // `remaining <= MAX_STEP_BUDGET` and the Err variants match the production
 // parse-failure / env-access-error variants.
@@ -249,7 +249,7 @@ pub assume_specification[ production::spec_mark_step_after_signal ](
 // --------------------------------------------------------------------------
 // Bridge: `engine_signal_discriminant` returns the production variant index.
 // --------------------------------------------------------------------------
-// Mirrors the production variant order at signals.rs:100-115:
+// Mirrors the production variant order at crates/vb_core/src/engine/signals.rs:100-115:
 //
 //   Continue=0, Finished=1, StepBudgetExhausted=2, AwaitingAction=3,
 //   ActionFailureUnhandled=4, AwaitingWait=5, AwaitingAsk=6
@@ -305,7 +305,7 @@ pub open spec fn is_suspended_mirror(s: SpecStepStateMirror) -> bool {
 // the previous step_state_machine.rs spec, but now anchored to the
 // production `EngineSignal` discriminant set via
 // `spec_mark_step_after_signal` (which is itself a pure projection of
-// the production match at step.rs:109-121).
+// the production match at crates/vb_core/src/engine/step.rs:109-121).
 pub enum SpecStepState {
     Pending,
     Running,
@@ -629,7 +629,7 @@ pub proof fn proof_production_signal_mapping_total(signal: EngineSignal)
             EngineSignal::AwaitingAsk => true,
         },
         // And the mapping is the production-defined mapping at
-        // step.rs:109-121:
+        // crates/vb_core/src/engine/step.rs:109-121:
         spec_signal_to_state(signal) == (match signal {
             EngineSignal::Continue => SpecStepState::Succeeded,
             EngineSignal::Finished => SpecStepState::Succeeded,
@@ -657,7 +657,7 @@ pub proof fn proof_production_signal_mapping_total(signal: EngineSignal)
 }
 
 /// Production-bound: Continue and Finished map to Succeeded (terminal
-/// success). Mirrors step.rs:119
+/// success). Mirrors crates/vb_core/src/engine/step.rs:119
 /// `EngineSignal::Continue | EngineSignal::Finished(_, _) => run.mark_succeeded(step)`.
 pub proof fn proof_continue_finished_maps_to_succeeded()
     ensures
@@ -666,7 +666,7 @@ pub proof fn proof_continue_finished_maps_to_succeeded()
 {
 }
 
-/// Production-bound: AwaitingWait maps to Waiting. Mirrors step.rs:115
+/// Production-bound: AwaitingWait maps to Waiting. Mirrors crates/vb_core/src/engine/step.rs:115
 /// `EngineSignal::AwaitingWait => run.mark_waiting(step)`.
 pub proof fn proof_awaiting_wait_maps_to_waiting()
     ensures
@@ -674,7 +674,7 @@ pub proof fn proof_awaiting_wait_maps_to_waiting()
 {
 }
 
-/// Production-bound: AwaitingAsk maps to Asking. Mirrors step.rs:116
+/// Production-bound: AwaitingAsk maps to Asking. Mirrors crates/vb_core/src/engine/step.rs:116
 /// `EngineSignal::AwaitingAsk => run.mark_asking(step)`.
 pub proof fn proof_awaiting_ask_maps_to_asking()
     ensures
@@ -683,7 +683,7 @@ pub proof fn proof_awaiting_ask_maps_to_asking()
 }
 
 /// Production-bound: AwaitingAction and StepBudgetExhausted are no-ops
-/// that preserve Running state. Mirrors step.rs:117
+/// that preserve Running state. Mirrors crates/vb_core/src/engine/step.rs:117
 /// `EngineSignal::AwaitingAction | EngineSignal::StepBudgetExhausted => Ok(())`
 /// (no mark_* call → state stays in Running).
 pub proof fn proof_noop_signals_preserve_running()
@@ -694,7 +694,7 @@ pub proof fn proof_noop_signals_preserve_running()
 }
 
 /// NEW PRODUCTION-BINDING PROOF: ActionFailureUnhandled maps to Failed.
-/// This is the previously-missing 7th-variant binding. Mirrors step.rs:118
+/// This is the previously-missing 7th-variant binding. Mirrors crates/vb_core/src/engine/step.rs:118
 /// `EngineSignal::ActionFailureUnhandled => run.mark_failed(step)`.
 pub proof fn proof_action_failure_unhandled_maps_to_failed()
     ensures
@@ -703,7 +703,7 @@ pub proof fn proof_action_failure_unhandled_maps_to_failed()
 }
 
 /// Exhaustiveness: all 7 production variants are handled. Binds the
-/// production match at step.rs:114-120 to the spec mapping.
+/// production match at crates/vb_core/src/engine/step.rs:114-120 to the spec mapping.
 pub proof fn proof_production_signal_exhaustiveness()
     ensures
         spec_signal_to_state(EngineSignal::Continue) == SpecStepState::Succeeded,
@@ -741,7 +741,7 @@ pub proof fn proof_noop_signals_correct()
 }
 
 /// Production-bound: Finished payload is independent of the state mapping.
-/// Mirrors step.rs:119
+/// Mirrors crates/vb_core/src/engine/step.rs:119
 /// `EngineSignal::Continue | EngineSignal::Finished(_, _) => run.mark_succeeded(step)`
 /// — the `_` payload wildcards confirm the state is determined by the
 /// discriminant alone, not the payload values.
@@ -874,7 +874,7 @@ pub open spec fn spec_try_take_decrement(remaining: int) -> int {
 }
 
 /// Production-bound: `try_take` on a budget exceeding MAX_STEP_BUDGET
-/// returns `Err(StepCounterOverflow)`. Mirrors signals.rs:50-53
+/// returns `Err(StepCounterOverflow)`. Mirrors crates/vb_core/src/engine/signals.rs:50-53
 /// defense-in-depth overflow guard. Spec-mode proof.
 pub proof fn proof_step_budget_try_take_overflow_guard(remaining: int)
     requires
@@ -897,7 +897,7 @@ pub proof fn proof_step_budget_try_take_overflow_guard(remaining: int)
 // production exec surface (extern fns) and the spec-mode proof lemmas.
 // ============================================================================
 /// Production-bound exec wrapper for `step_budget_new`. Calls the
-/// production-mirror exec fn (signals.rs:26-35) and asserts the
+/// production-mirror exec fn (crates/vb_core/src/engine/signals.rs:26-35) and asserts the
 /// `assume_specification` contract in spec mode.
 pub exec fn checked_step_budget_new(value: u64) -> (budget: StepBudget)
     ensures

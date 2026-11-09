@@ -113,7 +113,7 @@ pub use production::{
 // The spec classifies the production error into three buckets that the
 // parity lemmas reason about. This is the spec-side view of the
 // production `CompileError` discriminant set reachable from
-// `emit_single_body_set` at part_04.rs:96-179.
+// `emit_single_body_set` at crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179.
 /// Spec classification of the production `CompileError` discriminant
 /// reachable from `emit_single_body_set`. The `Other` bucket groups
 /// the production variants the spec does not separately classify
@@ -122,21 +122,21 @@ pub use production::{
 pub enum SpecParityResult {
     /// Body length is not 1 (empty or multi-step body). Mirrors the
     /// `Err(CompileError::StepFieldShape { field: "steps", .. })` arm
-    /// at part_04.rs:105-111.
+    /// at crates/vb_compile/src/mod_compile_lowering/part_04.rs:105-111.
     StepFieldShape,
     /// Body length is 1 and the primitive is not Set or Do and not
     /// recognized by the explicit match arms. Mirrors the
     /// `Err(CompileError::UnsupportedStepPrimitive { primitive: canonical_primitive_name(other) })`
-    /// arm at part_04.rs:172-177.
+    /// arm at crates/vb_compile/src/mod_compile_lowering/part_04.rs:172-177.
     UnsupportedStepPrimitive,
     /// Body length is 1 and the primitive is Set (with valid value) or
     /// Do (with valid action/input), so the function succeeds. Mirrors
-    /// the `Ok(())` paths at part_04.rs:125 and 170.
+    /// the `Ok(())` paths at crates/vb_compile/src/mod_compile_lowering/part_04.rs:122-125 and 170.
     Ok,
     /// Body length is 1, primitive is Set or Do, but a downstream
     /// parse / bounds error fires. Mirrors the `Err(...)` arms in the
     /// Set value branch (via `body_constant_index`) and the Do action /
-    /// input parse / range-check arms at part_04.rs:128-156. This
+    /// input parse / range-check arms at crates/vb_compile/src/mod_compile_lowering/part_04.rs:128-156. This
     /// bucket exists so the parity proof can classify the `Do { action,
     /// input }` and `Set { value }` arms without claiming they always
     /// return `Ok` (which would be a false invariant).
@@ -152,7 +152,7 @@ pub enum SpecParityResult {
 // ============================================================================
 //
 // The spec mirrors the discriminant mapping that production emits at
-// part_04.rs:96-179 line by line. The mapping is:
+// crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179 line by line. The mapping is:
 //   - body.len() != 1                         -> StepFieldShape
 //   - body.len() == 1, primitive is Set       -> Ok if body_constant_index
 //                                                succeeds; DownstreamError if it
@@ -171,11 +171,11 @@ pub enum SpecParityResult {
 // happy-path case (no parse errors), which matches the production body
 // in the standard emit_single_body_set use site.
 /// Spec helper: classify the production error variant into the spec
-/// taxonomy. Mirrors the discriminant arm-by-arm at part_04.rs:96-179.
+/// taxonomy. Mirrors the discriminant arm-by-arm at crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179.
 ///
 /// This is a spec-only decision function. The production body classifies
 /// its own errors via the `match &step.primitive` chain at
-/// part_04.rs:119-178; the spec classifier below mirrors that chain so
+/// crates/vb_compile/src/mod_compile_lowering/part_04.rs:119-178; the spec classifier below mirrors that chain so
 /// the parity lemmas can derive the spec property from the production
 /// contract.
 pub open spec fn classify_production_error(err: CompileError) -> SpecParityResult {
@@ -199,7 +199,7 @@ pub open spec fn classify_production_error(err: CompileError) -> SpecParityResul
 /// Spec helper: classify the full production `Result<(), CompileErrors>`
 /// return value into the spec taxonomy. Mirrors the production body
 /// structure where `Ok(())` is returned from the Set / Do success arms
-/// at part_04.rs:125 and 170, and `Err(CompileErrors(vec![err]))` is
+/// at crates/vb_compile/src/mod_compile_lowering/part_04.rs:122-125 and 170, and `Err(CompileErrors(vec![err]))` is
 /// returned from the failure arms.
 pub open spec fn classify_production_result(result: Result<(), CompileErrors>) -> SpecParityResult {
     match result {
@@ -228,11 +228,11 @@ pub open spec fn parity_invariant_holds(
     result: Result<(), CompileErrors>,
 ) -> bool {
     if body_len != 1 {
-        // Production returns StepFieldShape at part_04.rs:106.
+        // Production returns StepFieldShape at crates/vb_compile/src/mod_compile_lowering/part_04.rs:106.
         classify_production_result(result) is StepFieldShape
     } else if primitive_is_set {
         // Production's Set arm succeeds iff body_constant_index
-        // succeeds (Ok at part_04.rs:125) or fails with DownstreamError.
+        // succeeds (Ok at crates/vb_compile/src/mod_compile_lowering/part_04.rs:122-125) or fails with DownstreamError.
         classify_production_result(result) is Ok || classify_production_result(
             result,
         ) is DownstreamError
@@ -245,7 +245,7 @@ pub open spec fn parity_invariant_holds(
             result,
         ) is DownstreamError
     } else {
-        // Production returns UnsupportedStepPrimitive at part_04.rs:173.
+        // Production returns UnsupportedStepPrimitive at crates/vb_compile/src/mod_compile_lowering/part_04.rs:173.
         classify_production_result(result) is UnsupportedStepPrimitive
     }
 }
@@ -648,7 +648,7 @@ pub fn check_set_body_returns_ok_or_downstream(diagnostic_step: usize) -> Result
 // which only checked four string names without binding to production.
 /// Spec lemma: the parity invariant holds for every production
 /// discriminant in the StepPrimitive enum. Mirrors the production
-/// match chain at part_04.rs:119-178.
+/// match chain at crates/vb_compile/src/mod_compile_lowering/part_04.rs:119-178.
 ///
 /// This lemma is exec-mode (not proof-mode) because it must call the
 /// exec-mode `make_primitive_by_name` constructor (the production
@@ -657,7 +657,7 @@ pub fn check_set_body_returns_ok_or_downstream(diagnostic_step: usize) -> Result
 /// above.
 pub fn lemma_error_parity_exhaustive_production_bound() {
     // Save: body.len() == 1 -> UnsupportedStepPrimitive. The
-    // production match arm at part_04.rs:173 covers Save because
+    // production match arm at crates/vb_compile/src/mod_compile_lowering/part_04.rs:173 covers Save because
     // production only pattern-matches on Set and Do.
     lemma_non_set_body_returns_unsupported_step_primitive(
         make_primitive_by_name("save"),
@@ -667,7 +667,7 @@ pub fn lemma_error_parity_exhaustive_production_bound() {
 
     // Choose, ForEach, Together, Collect, Aggregate, Repeat, Wait,
     // Ask, Finish: all classified as UnsupportedStepPrimitive by the
-    // "other" arm of the production match at part_04.rs:172-177.
+    // "other" arm of the production match at crates/vb_compile/src/mod_compile_lowering/part_04.rs:172-177.
     lemma_non_set_body_returns_unsupported_step_primitive(
         make_primitive_by_name("choose"),
         false,
@@ -764,7 +764,7 @@ pub fn lemma_canonical_primitive_name_parity(primitive: StepPrimitive) {
 //
 // The lemmas below are pure proof-mode discharges of the spec classifier
 // `classify_production_error` for every production `CompileError`
-// discriminant reachable from `emit_single_body_set` at part_04.rs:96-179.
+// discriminant reachable from `emit_single_body_set` at crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179.
 // Each lemma constructs a concrete `CompileError` value in proof mode
 // (mirroring the pattern used by `vb_xi2f_error_mapping.rs` to construct
 // `CompileErrorMirror::Workflow(_)` in proof mode) and asserts that the
@@ -780,7 +780,7 @@ pub fn lemma_canonical_primitive_name_parity(primitive: StepPrimitive) {
 // `assume_specification` above.
 /// Proof: `CompileError::StepFieldShape { field: "steps", .. }` classifies
 /// to `SpecParityResult::StepFieldShape`. Mirrors the production arm at
-/// part_04.rs:105-111 (empty-body / multi-body shape mismatch).
+/// crates/vb_compile/src/mod_compile_lowering/part_04.rs:105-111 (empty-body / multi-body shape mismatch).
 pub proof fn proof_classify_step_field_shape_steps_field()
     ensures
         classify_production_error(
@@ -793,7 +793,7 @@ pub proof fn proof_classify_step_field_shape_steps_field()
 
 /// Proof: `CompileError::StepFieldShape { field: <other>, .. }` classifies
 /// to `SpecParityResult::DownstreamError`. Mirrors the production arm at
-/// part_04.rs:130 (Do-action parse failure tagged as `field: "action"`).
+/// crates/vb_compile/src/mod_compile_lowering/part_04.rs:130 (Do-action parse failure tagged as `field: "action"`).
 pub proof fn proof_classify_step_field_shape_other_field()
     ensures
         classify_production_error(
@@ -806,7 +806,7 @@ pub proof fn proof_classify_step_field_shape_other_field()
 
 /// Proof: `CompileError::UnsupportedStepPrimitive { .. }` classifies to
 /// `SpecParityResult::UnsupportedStepPrimitive`. Mirrors the production
-/// arm at part_04.rs:172-177 (the `other => Err(UnsupportedStepPrimitive)`
+/// arm at crates/vb_compile/src/mod_compile_lowering/part_04.rs:172-177 (the `other => Err(UnsupportedStepPrimitive)`
 /// fallback for non-Set, non-Do primitives).
 pub proof fn proof_classify_unsupported_step_primitive()
     ensures
@@ -820,7 +820,7 @@ pub proof fn proof_classify_unsupported_step_primitive()
 
 /// Proof: `CompileError::PrimitiveLoweringLimitExceeded { .. }` classifies
 /// to `SpecParityResult::DownstreamError`. Mirrors the production arm at
-/// part_04.rs:137 (Do-action range check that overflows the u16 limit).
+/// crates/vb_compile/src/mod_compile_lowering/part_04.rs:137 (Do-action range check that overflows the u16 limit).
 pub proof fn proof_classify_primitive_lowering_limit_exceeded()
     ensures
         classify_production_error(
@@ -843,7 +843,7 @@ pub proof fn proof_classify_primitive_lowering_limit_exceeded()
 
 /// Proof: `CompileError::SlotIndexOutOfRange { .. }` classifies to
 /// `SpecParityResult::DownstreamError`. Mirrors the production arm at
-/// part_04.rs:153 (Do-input slot range check).
+/// crates/vb_compile/src/mod_compile_lowering/part_04.rs:153 (Do-input slot range check).
 pub proof fn proof_classify_slot_index_out_of_range()
     ensures
         classify_production_error(
@@ -916,7 +916,7 @@ pub proof fn proof_parity_invariant_empty_body_holds_when_step_field_shape(
 /// Proof: `Ok(())` satisfies the parity invariant for the Set arm
 /// (body_len == 1, primitive_is_set == true). This is the spec-side
 /// counterpart to the production `Ok(())` returned from the Set
-/// success arm at part_04.rs:125 after `body_constant_index` succeeds.
+/// success arm at crates/vb_compile/src/mod_compile_lowering/part_04.rs:122-125 after `body_constant_index` succeeds.
 pub proof fn proof_parity_invariant_set_arm_ok_holds()
     ensures
         parity_invariant_holds(1, true, false, Ok(())),
