@@ -80,7 +80,8 @@ fn load(
         .owned_run_inputs(expected.run, artifact.digest, source.digest, &verified)?
         .ok_or("owned record missing")?;
     let events = journal.events_for_run_full(expected.run)?;
-    assert_eq!(events.len(), 2);
+    // Submission writes Accepted + Admission + CompatibilityDecision (#210).
+    assert_eq!(events.len(), 3);
     let admission = events
         .into_iter()
         .find(|event| matches!(event, JournalEvent::RunAdmission { .. }))

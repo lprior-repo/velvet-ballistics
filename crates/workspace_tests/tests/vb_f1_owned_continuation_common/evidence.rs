@@ -105,3 +105,39 @@ fn finish_output(fixture: &Fixture, events: &[EvidenceEvent]) -> TestResult {
     assert_eq!(writes.len(), 1);
     Ok(())
 }
+
+#[cfg(test)]
+mod sequence_guard_probes {
+    use super::super::support::{TestResult, drive, fixture};
+    use super::sequence;
+
+    /// Valid 30-event cut stream passes both guards without firing.
+    #[test]
+    fn valid_cut_stream_passes_both_guards() -> TestResult {
+        let mut f = fixture()?;
+        let (_, events) = drive(&mut f.state, 10)?;
+        assert_eq!(events.len(), 30);
+        sequence(&f, &events, false)?;
+        Ok(())
+    }
+
+    /// 28 events leave a one-event remainder: the remainder guard must fire.
+    #[test]
+    #[should_panic(expected = "complete triples")]
+    fn truncated_remainder_is_rejected() {
+        let mut f = fixture().expect("fixture must build");
+        let (_, mut events) = drive(&mut f.state, 10).expect("drive must succeed");
+        events.truncate(28);
+        let _ = sequence(&f, &events, false);
+    }
+
+    /// 33 events with a 10-step expectation are one triple too many.
+    #[test]
+    #[should_panic(expected = "triple count")]
+    fn extra_triple_count_mismatch_is_rejected() {
+        let mut f = fixture().expect("fixture must build");
+        let (_, mut events) = drive(&mut f.state, 10).expect("drive must succeed");
+        events.extend_from_within(27..30);
+        let _ = sequence(&f, &events, false);
+    }
+}
