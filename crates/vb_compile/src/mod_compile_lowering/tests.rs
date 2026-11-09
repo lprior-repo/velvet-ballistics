@@ -1633,3 +1633,193 @@ fn lower_canonical_choose_accepts_exactly_64_branches() {
 // - slot_from_text_empty_string       (StepFieldShape with step/field/expected)
 // - slot_from_text_negative           (SlotIndexOutOfRange with value -1)
 // No additional weak-assertion tests are needed here.
+
+/// Helper: fallible digest of a StepPrimitive via digest_step_primitive.
+fn try_digest_primitive(
+    primitive: &StepPrimitive,
+) -> Result<blake3::Hash, crate::mod_compile_errors::CompileErrors> {
+    let mut hasher = Hasher::new();
+    digest_step_primitive(&mut hasher, primitive)?;
+    Ok(hasher.finalize())
+}
+
+#[test]
+fn direct_digest_collect_body_set_id_changes_digest()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
+    let body_a = vec![StepAst {
+        id: "step_a".to_string(),
+        name: None,
+        condition: None,
+        primitive: StepPrimitive::Set {
+            output: "x".to_string(),
+            value: "1".to_string(),
+        },
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
+    }];
+    let mut body_b = body_a.clone();
+    body_b[0].id = "step_b".to_string();
+
+    let prim_a = make_collect("x", "items", Some(10), Some(50), body_a);
+    let prim_b = make_collect("x", "items", Some(10), Some(50), body_b);
+
+    let digest_a = try_digest_primitive(&prim_a)?;
+    let digest_b = try_digest_primitive(&prim_b)?;
+
+    assert_ne!(digest_a, digest_b, "Set step id changes Collect digest");
+    Ok(())
+}
+#[test]
+fn direct_digest_collect_body_set_output_changes_digest()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
+    let body_a = vec![StepAst {
+        id: "step_a".to_string(),
+        name: None,
+        condition: None,
+        primitive: StepPrimitive::Set {
+            output: "x".to_string(),
+            value: "1".to_string(),
+        },
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
+    }];
+    let mut body_b = body_a.clone();
+    body_b[0].primitive = StepPrimitive::Set {
+        output: "y".to_string(),
+        value: "1".to_string(),
+    };
+
+    let prim_a = make_collect("x", "items", Some(10), Some(50), body_a);
+    let prim_b = make_collect("x", "items", Some(10), Some(50), body_b);
+
+    let digest_a = try_digest_primitive(&prim_a)?;
+    let digest_b = try_digest_primitive(&prim_b)?;
+
+    assert_ne!(digest_a, digest_b, "Set output changes Collect digest");
+    Ok(())
+}
+#[test]
+fn direct_digest_collect_body_set_value_changes_digest()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
+    let body_a = vec![StepAst {
+        id: "step_a".to_string(),
+        name: None,
+        condition: None,
+        primitive: StepPrimitive::Set {
+            output: "x".to_string(),
+            value: "1".to_string(),
+        },
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
+    }];
+    let mut body_b = body_a.clone();
+    body_b[0].primitive = StepPrimitive::Set {
+        output: "x".to_string(),
+        value: "2".to_string(),
+    };
+
+    let prim_a = make_collect("x", "items", Some(10), Some(50), body_a);
+    let prim_b = make_collect("x", "items", Some(10), Some(50), body_b);
+
+    let digest_a = try_digest_primitive(&prim_a)?;
+    let digest_b = try_digest_primitive(&prim_b)?;
+
+    assert_ne!(digest_a, digest_b, "Set value changes Collect digest");
+    Ok(())
+}
+#[test]
+fn direct_digest_reduce_body_set_id_changes_digest()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
+    let body_a = vec![StepAst {
+        id: "step_a".to_string(),
+        name: None,
+        condition: None,
+        primitive: StepPrimitive::Set {
+            output: "x".to_string(),
+            value: "1".to_string(),
+        },
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
+    }];
+    let mut body_b = body_a.clone();
+    body_b[0].id = "step_b".to_string();
+
+    let prim_a = make_reduce("acc", "items", "0", body_a);
+    let prim_b = make_reduce("acc", "items", "0", body_b);
+
+    let digest_a = try_digest_primitive(&prim_a)?;
+    let digest_b = try_digest_primitive(&prim_b)?;
+
+    assert_ne!(digest_a, digest_b, "Set step id changes Aggregate digest");
+    Ok(())
+}
+#[test]
+fn direct_digest_reduce_body_set_output_changes_digest()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
+    let body_a = vec![StepAst {
+        id: "step_a".to_string(),
+        name: None,
+        condition: None,
+        primitive: StepPrimitive::Set {
+            output: "x".to_string(),
+            value: "1".to_string(),
+        },
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
+    }];
+    let mut body_b = body_a.clone();
+    body_b[0].primitive = StepPrimitive::Set {
+        output: "y".to_string(),
+        value: "1".to_string(),
+    };
+
+    let prim_a = make_reduce("acc", "items", "0", body_a);
+    let prim_b = make_reduce("acc", "items", "0", body_b);
+
+    let digest_a = try_digest_primitive(&prim_a)?;
+    let digest_b = try_digest_primitive(&prim_b)?;
+
+    assert_ne!(digest_a, digest_b, "Set output changes Aggregate digest");
+    Ok(())
+}
+#[test]
+fn direct_digest_reduce_body_set_value_changes_digest()
+-> Result<(), crate::mod_compile_errors::CompileErrors> {
+    let body_a = vec![StepAst {
+        id: "step_a".to_string(),
+        name: None,
+        condition: None,
+        primitive: StepPrimitive::Set {
+            output: "x".to_string(),
+            value: "1".to_string(),
+        },
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
+    }];
+    let mut body_b = body_a.clone();
+    body_b[0].primitive = StepPrimitive::Set {
+        output: "x".to_string(),
+        value: "2".to_string(),
+    };
+
+    let prim_a = make_reduce("acc", "items", "0", body_a);
+    let prim_b = make_reduce("acc", "items", "0", body_b);
+
+    let digest_a = try_digest_primitive(&prim_a)?;
+    let digest_b = try_digest_primitive(&prim_b)?;
+
+    assert_ne!(digest_a, digest_b, "Set value changes Aggregate digest");
+    Ok(())
+}
