@@ -5,7 +5,7 @@
 // This file binds the Verus proof to the in-tree production mirror at
 // `production_inner/cancel_kill_lattice_production.rs`. The mirror captures the
 // production cancel/kill lifecycle surface from
-// `crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:127-174`.
+// `crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:183-243`.
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
