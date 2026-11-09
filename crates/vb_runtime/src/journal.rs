@@ -11,7 +11,7 @@ mod tests {
     include!("journal/tests/chunk_002.rs");
     include!("journal/tests/chunk_003.rs");
     include!("journal/tests/chunk_004.rs");
-    include!("journal/tests/proptest_vb_edvbj_all_21_variants.rs");
+    include!("journal/tests/proptest_vb_edvbj_all_24_variants.rs");
     include!("journal/tests/proptest_vb_edvbj_resumed_replay.rs");
 }
 
