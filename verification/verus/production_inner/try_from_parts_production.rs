@@ -25,10 +25,12 @@
 //      element type and the same `.len()` access shape so the spec
 //      proofs can reason about the counts.
 //
-//   3. Local `pub struct StepIdx(pub u16)` etc. newtype mirrors of the
-//      production `vb_core::ids::numeric_id!(StepIdx, u16, get)` macro.
-//      The mirror exposes the inner field as `pub` so spec proofs can
-//      read `.0`. Field NAME and TYPE match production exactly.
+//   3. The `pub struct StepIdx(pub u16)` etc. newtype mirrors of the
+//      production `vb_core::ids::numeric_id!(StepIdx, u16, get)` macro
+//      live in the sibling `try_from_parts_production_ids.rs` file and
+//      are re-exported below. The mirror exposes the inner field as
+//      `pub` so spec proofs can read `.0`. Field NAME and TYPE match
+//      production exactly.
 //
 //   4. Local `CompiledNodeKind` enum carrying the production variant
 //      shape used by sibling lowering fns (the full production enum
@@ -59,144 +61,27 @@
 #![allow(unused_imports)]
 
 // ---------------------------------------------------------------------------
-// Local stub: `vb_core::ids::*` newtypes
+// Numeric-id and scalar mirrors: `production_inner/`
+// `try_from_parts_production_ids.rs`
 // ---------------------------------------------------------------------------
 //
-// Production `crates/vb_core/src/ids/mod.rs` generates
-// `pub struct $name(u16);` (private inner field) via the
-// `numeric_id!(StepIdx, u16, get)` macro for each newtype. Mirrors
-// below expose the inner field as `pub` so spec proofs can name `.0`.
-
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct StepIdx(pub u16);
-
-impl StepIdx {
-    pub const fn new(value: u16) -> Self {
-        Self(value)
-    }
-    pub const fn get(self) -> u16 {
-        self.0
-    }
-}
-
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SlotIdx(pub u16);
-
-impl SlotIdx {
-    pub const fn new(value: u16) -> Self {
-        Self(value)
-    }
-    pub const fn get(self) -> u16 {
-        self.0
-    }
-}
-
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ConstIdx(pub u16);
-
-impl ConstIdx {
-    pub const fn new(value: u16) -> Self {
-        Self(value)
-    }
-}
-
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ActionId(pub u16);
-
-impl ActionId {
-    pub const fn new(value: u16) -> Self {
-        Self(value)
-    }
-    pub const fn get(self) -> u16 {
-        self.0
-    }
-}
-
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ExprIdx(pub u32);
-
-impl ExprIdx {
-    pub const fn new(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AccessorIdx(pub u32);
-
-impl AccessorIdx {
-    pub const fn new(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SymbolId(pub u32);
-
-impl SymbolId {
-    pub const fn new(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Local stub: `vb_core::WorkflowDigest`
-// ---------------------------------------------------------------------------
-//
-// Production `crates/vb_core/src/ids/mod.rs` declares `WorkflowDigest`
-// as a `[u8; 32]` byte array via a macro. The mirror retains the
-// same shape.
-
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct WorkflowDigest(pub [u8; 32]);
-
-impl WorkflowDigest {
-    pub const fn new(value: [u8; 32]) -> Self {
-        Self(value)
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Local stub: `vb_core::value::FiniteF64`
-// ---------------------------------------------------------------------------
-//
-// Production `FiniteF64` at `crates/vb_core/src/value.rs:72-104` is a
-// `#[repr(transparent)]` newtype over `f64` that rejects NaN and
-// infinities at construction. The mirror carries the same payload type
-// and the manual `Eq` impl; the construction-time finiteness invariant
-// lives in production `FiniteF64::new` and is not modelled here.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-#[repr(transparent)]
-pub struct FiniteF64(pub f64);
-
-impl Eq for FiniteF64 {}
-
-// ---------------------------------------------------------------------------
-// Local stub: `vb_core::value::ConstValue`
-// ---------------------------------------------------------------------------
-//
-// Production `crates/vb_core/src/value.rs:169-180` declares `ConstValue`
-// with five scalar variants. The mirror carries all five in production
-// order, plus a mirror-only `String` variant retained from the earlier
-// subset (production has no `String` variant).
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ConstValue {
-    Null,
-    Bool(bool),
-    I64(i64),
-    F64(FiniteF64),
-    Symbol(SymbolId),
-    String(Box<str>),
-}
+// The `StepIdx` / `SlotIdx` / `ConstIdx` / `ActionId` / `ExprIdx` /
+// `AccessorIdx` / `SymbolId` / `WorkflowDigest` / `FiniteF64` /
+// `ConstValue` mirrors live in the sibling file so this mirror stays
+// under the 800-line source-length limit. They are re-exported here so
+// existing `production_try_from_parts::X` paths keep working.
+#[path = "try_from_parts_production_ids.rs"]
+pub mod ids_and_scalars;
+pub use ids_and_scalars::AccessorIdx;
+pub use ids_and_scalars::ActionId;
+pub use ids_and_scalars::ConstIdx;
+pub use ids_and_scalars::ConstValue;
+pub use ids_and_scalars::ExprIdx;
+pub use ids_and_scalars::FiniteF64;
+pub use ids_and_scalars::SlotIdx;
+pub use ids_and_scalars::StepIdx;
+pub use ids_and_scalars::SymbolId;
+pub use ids_and_scalars::WorkflowDigest;
 
 // ---------------------------------------------------------------------------
 // Local stub: `vb_core::workflow::ResourceContract`
