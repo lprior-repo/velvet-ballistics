@@ -46,7 +46,7 @@
 // rewritten spec.
 //
 // The pre-split spec bound this file to `lower_canonical_collect` at
-// part_03.rs:195-256 with fixed offsets (body=id+1, page=id+2,
+// part_03.rs with fixed offsets (body=id+1, page=id+2,
 // done=id+3), a 4-node emission with a single `SetConst` body node,
 // and a +1 slot delta. That binding is false for current production
 // whenever the body has more than one step: the consecutiveness
@@ -1890,7 +1890,7 @@ pub proof fn lemma_collect_body_length_overflow_fails(
 /// projection returns `ok = false` with `error_kind =
 /// SPEC_ERR_SLOT_RANGE` and emits no nodes. This matches the
 /// production's `CompileError::SlotIndexOutOfRange` from the slot
-/// budget (`allocate_slot` at part_08.rs:29-39 and the per-step
+/// budget (`allocate_slot` at crates/vb_compile/src/mod_compile_lowering/part_08.rs:29-38 and the per-step
 /// allocation in `emit_scoped_flat_body`); the projection pre-checks
 /// the full-call budget, while production fails late during body
 /// emission with partial nodes already pushed.

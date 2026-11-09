@@ -32,29 +32,29 @@
 // BINDING LEDGER
 // ============================================================================
 //   - `ActionReplayTracker` (production type)
-//                            <- crates/vb_storage/src/recovery/types.rs:870-875
+//                            <- crates/vb_storage/src/recovery/types.rs:1446-1451
 //   - `ActionReplayTracker::new`
-//                            <- crates/vb_storage/src/recovery/types.rs:899-908
+//                            <- crates/vb_storage/src/recovery/types.rs:1479-1486
 //   - `ActionReplayTracker::mark_completed`
-//                            <- crates/vb_storage/src/recovery/types.rs:960-964
+//                            <- crates/vb_storage/src/recovery/types.rs:1549-1551
 //   - `ActionReplayTracker::mark_failed`
-//                            <- crates/vb_storage/src/recovery/types.rs:1024-1027
+//                            <- crates/vb_storage/src/recovery/types.rs:1638-1640
 //   - `ActionReplayTracker::is_resolved`
-//                            <- crates/vb_storage/src/recovery/types.rs:1041-1046
+//                            <- crates/vb_storage/src/recovery/types.rs:1657-1659
 //   - `ActionReplayTracker::has_completed`
-//                            <- crates/vb_storage/src/recovery/types.rs:1029-1033
+//                            <- crates/vb_storage/src/recovery/types.rs:1644-1646
 //   - `ActionReplayTracker::has_failed`
-//                            <- crates/vb_storage/src/recovery/types.rs:1035-1039
+//                            <- crates/vb_storage/src/recovery/types.rs:1650-1652
 //
 // Spec-side projection of the production surface into mathematical Set
 // algebra:
-//   - `spec_is_resolved`            <- production `is_resolved` (types.rs:1041-1046)
-//   - `spec_mark_completed`         <- production `mark_completed` (types.rs:960-964)
-//   - `spec_mark_failed`            <- production `mark_failed` (types.rs:1024-1027)
+//   - `spec_is_resolved`            <- production `is_resolved` (crates/vb_storage/src/recovery/types.rs:1657-1659)
+//   - `spec_mark_completed`         <- production `mark_completed` (crates/vb_storage/src/recovery/types.rs:1549-1551)
+//   - `spec_mark_failed`            <- production `mark_failed` (crates/vb_storage/src/recovery/types.rs:1638-1640)
 //   - `spec_replay_action_*`        <- production replay dispatch in
-//                                      crates/vb_storage/src/recovery/replay/core.rs:82-110
+//                                      crates/vb_storage/src/recovery/replay/core.rs:73-100
 //   - `spec_retry_allowed`          <- production reject_if_resolved at
-//                                      crates/vb_storage/src/recovery/replay/core.rs:185-194
+//                                      crates/vb_storage/src/recovery/replay/core.rs:246-255
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -112,7 +112,7 @@ pub use production::prod_src::StepIdx as SpecStepIdx;
 // `ExTaint`). The bridges are zero-cost: they only name the
 // production type; the production bodies remain opaque.
 /// Spec-mode name for the production `ActionReplayTracker` struct at
-/// `crates/vb_storage/src/recovery/types.rs:870-875`. The struct
+/// `crates/vb_storage/src/recovery/types.rs:1446-1451`. The struct
 /// fields `completed` and `failed` (HashSet views) are spec-visible
 /// via this bridge so the `assume_specification` post-conditions can
 /// reason about membership.
@@ -162,12 +162,12 @@ pub struct ExSlotIdx(pub production::prod_src::SlotIdx);
 pub struct ExTaint(pub production::prod_src::Taint);
 
 /// Spec-mode name for the production `ActionId` (u16 newtype) at
-/// `crates/vb_core/src/ids/mod.rs:58`.
+/// `crates/vb_core/src/ids/mod.rs:73`.
 #[verifier::external_type_specification]
 pub struct ExActionId(SpecActionId);
 
 /// Spec-mode name for the production `StepIdx` (u16 newtype) at
-/// `crates/vb_core/src/ids/mod.rs:55`.
+/// `crates/vb_core/src/ids/mod.rs:70`.
 #[verifier::external_type_specification]
 pub struct ExStepIdx(SpecStepIdx);
 
@@ -191,7 +191,7 @@ pub enum ReplayActionOutcome {
 /// `completed` set OR the `failed` set.
 ///
 /// Mirrors the production body at
-/// `crates/vb_storage/src/recovery/types.rs:1041-1046`:
+/// `crates/vb_storage/src/recovery/types.rs:1657-1659`:
 /// ```text
 /// self.completed.contains(&(action, step)) || self.failed.contains(&(action, step))
 /// ```
@@ -209,7 +209,7 @@ pub open spec fn spec_is_resolved(
 /// `(action, step)` into `completed`.
 ///
 /// Mirrors the production body at
-/// `crates/vb_storage/src/recovery/types.rs:960-964`
+/// `crates/vb_storage/src/recovery/types.rs:1549-1551`
 /// (`self.completed.insert((action, step));`).
 pub open spec fn spec_mark_completed(
     completed: Set<(int, int)>,
@@ -225,7 +225,7 @@ pub open spec fn spec_mark_completed(
 /// `(action, step)` into `failed`.
 ///
 /// Mirrors the production body at
-/// `crates/vb_storage/src/recovery/types.rs:1024-1027`
+/// `crates/vb_storage/src/recovery/types.rs:1638-1640`
 /// (`self.failed.insert((action, step));`).
 pub open spec fn spec_mark_failed(
     completed: Set<(int, int)>,
@@ -239,7 +239,7 @@ pub open spec fn spec_mark_failed(
 /// Spec predicate: an action may be retried iff it is NOT resolved
 /// OR it is idempotent. Mirrors the production rejection gate
 /// `reject_if_resolved` at
-/// `crates/vb_storage/src/recovery/replay/core.rs:185-194`.
+/// `crates/vb_storage/src/recovery/replay/core.rs:246-255`.
 pub open spec fn spec_retry_allowed(
     completed: Set<(int, int)>,
     failed: Set<(int, int)>,
@@ -255,7 +255,7 @@ pub open spec fn spec_retry_allowed(
 /// unresolved event continues.
 ///
 /// Mirrors the production dispatch at
-/// `crates/vb_storage/src/recovery/replay/core.rs:118-120`.
+/// `crates/vb_storage/src/recovery/replay/core.rs:160-162`.
 pub open spec fn spec_replay_action_scheduled(
     completed: Set<(int, int)>,
     failed: Set<(int, int)>,
@@ -274,7 +274,7 @@ pub open spec fn spec_replay_action_scheduled(
 /// `(completed, failed)` set pair is updated via `spec_mark_completed`.
 ///
 /// Mirrors the production dispatch at
-/// `crates/vb_storage/src/recovery/replay/core.rs:133-137`.
+/// `crates/vb_storage/src/recovery/replay/core.rs:181-185`.
 pub open spec fn spec_replay_action_completed(
     completed: Set<(int, int)>,
     failed: Set<(int, int)>,
@@ -327,7 +327,7 @@ pub open spec fn spec_replay_action_failed(
 /// production `completed` HashSet view.
 ///
 /// Mirrors the production body at
-/// `crates/vb_storage/src/recovery/types.rs:1029-1033`
+/// `crates/vb_storage/src/recovery/types.rs:1644-1646`
 /// (`self.completed.contains(&(action, step))`).
 pub open spec fn spec_has_completed(
     tracker: production::ActionReplayTracker,
@@ -355,7 +355,7 @@ pub open spec fn spec_has_completed(
 /// production `failed` HashSet view.
 ///
 /// Mirrors the production body at
-/// `crates/vb_storage/src/recovery/types.rs:836-838`
+/// `crates/vb_storage/src/recovery/types.rs:1650-1652`
 /// (`self.failed.contains(&(action, step))`).
 pub open spec fn spec_has_failed(
     tracker: production::ActionReplayTracker,
@@ -446,10 +446,10 @@ pub assume_specification[ production::ActionReplayTracker::mark_completed ](
 /// other `(a', s')` pairs in `failed@`.
 ///
 /// Mirrors the production body at
-/// `crates/vb_storage/src/recovery/types.rs:824-826`
+/// `crates/vb_storage/src/recovery/types.rs:1638-1640`
 /// (`self.failed.insert((action, step));`). The production body does
 /// not mutate `completed`, `scheduled_tickets`, or
-/// `completed_envelopes` (production body lines 824-826).
+/// `completed_envelopes` (production body lines 1638-1640).
 pub assume_specification[ production::ActionReplayTracker::mark_failed ](
     tracker: &mut production::ActionReplayTracker,
     action: SpecActionId,
@@ -510,7 +510,7 @@ pub assume_specification[ production::ActionReplayTracker::has_completed ](
 /// `true` iff `spec_has_failed` holds.
 ///
 /// Mirrors the production body at
-/// `crates/vb_storage/src/recovery/types.rs:836-838`
+/// `crates/vb_storage/src/recovery/types.rs:1650-1652`
 /// (`self.failed.contains(&(action, step))`).
 pub assume_specification[ production::ActionReplayTracker::has_failed ](
     tracker: &production::ActionReplayTracker,
