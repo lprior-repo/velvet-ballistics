@@ -605,6 +605,14 @@
     }
 
     #[test]
+    fn eval_helper_length_returns_zero_for_null() -> ExprResult<()> {
+        let args = [SlotValue::Null];
+        let result = eval_helper(ExprHelper::Length, &args)?;
+        assert_eq!(result, SlotValue::I64(0));
+        Ok(())
+    }
+
+    #[test]
     fn eval_helper_empty_returns_true_for_null() -> ExprResult<()> {
         let args = [SlotValue::Null];
         let result = eval_helper(ExprHelper::Empty, &args)?;

@@ -120,7 +120,8 @@ fn eval_helper_length(args: &[SlotValue]) -> ExprResult<SlotValue> {
             expected: "list, text, or object".into(),
             found: "number".into(),
         }),
-        SlotValue::List(_) | SlotValue::Null => Err(ExprError::TypeMismatch {
+        SlotValue::Null => Ok(SlotValue::I64(0)),
+        SlotValue::List(_) => Err(ExprError::TypeMismatch {
             expected: "value-store context required for list length".into(),
             found: "list handle without store".into(),
         }),

@@ -18,6 +18,7 @@ pub(super) fn eval_helper_length_with_store(
     store: &mut ValueStore,
 ) -> ExprResult<SlotValue> {
     let len = match *value {
+        SlotValue::Null => 0,
         SlotValue::Symbol(id) => store
             .symbol(id)
             .map_err(|_| ExprError::InvalidReference {
@@ -85,6 +86,9 @@ pub(super) fn eval_helper_count_with_store(
     value: &SlotValue,
     store: &mut ValueStore,
 ) -> ExprResult<SlotValue> {
+    if matches!(value, SlotValue::Null) {
+        return Ok(SlotValue::I64(0));
+    }
     let list_id = expect_list(*value)?;
     let items = store
         .list(list_id)

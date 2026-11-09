@@ -236,6 +236,24 @@
     }
 
     #[test]
+    fn eval_helper_with_store_length_returns_zero_for_null() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let args = [SlotValue::Null];
+        let result = eval_helper_with_store(ExprHelper::Length, &args, &mut store)?;
+        assert_eq!(result, SlotValue::I64(0));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_helper_with_store_count_returns_zero_for_null() -> ExprResult<()> {
+        let mut store = ValueStore::new();
+        let args = [SlotValue::Null];
+        let result = eval_helper_with_store(ExprHelper::Count, &args, &mut store)?;
+        assert_eq!(result, SlotValue::I64(0));
+        Ok(())
+    }
+
+    #[test]
     fn eval_helper_with_store_length_returns_symbol_length() -> ExprResult<()> {
         let mut store = ValueStore::new();
         let sym = store
