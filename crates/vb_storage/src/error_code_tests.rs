@@ -310,4 +310,27 @@ mod error_code_tests {
             "delegation must not collapse to INTERNAL_INVARIANT"
         );
     }
+
+    #[test]
+    fn artifact_version_incompatible_maps_to_artifact_malformed_code() {
+        let err = JournalError::ArtifactVersionIncompatible {
+            held: crate::compat::SchemaVersion::new(2, 0, 0),
+            required: crate::compat::CURRENT_IR_VERSION,
+            class: crate::compat::CompatibilityClass::Rejected,
+        };
+        assert_eq!(
+            err.diagnostic_code(),
+            DiagnosticCode::new(0x4017),
+            "version-incompatible artifacts report in the artifact-malformed bucket"
+        );
+        assert_eq!(
+            err.symbolic_code(),
+            JournalError::ArtifactMalformed.symbolic_code(),
+            "version-incompatible artifacts report in the artifact-malformed bucket"
+        );
+        assert_eq!(
+            format!("{err}"),
+            "artifact IR version 2.0.0 is not admissible against current IR version 1.0.0: Rejected"
+        );
+    }
 }

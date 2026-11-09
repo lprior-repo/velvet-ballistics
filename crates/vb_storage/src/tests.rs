@@ -7684,6 +7684,7 @@ mod tests {
                     "emergency_deny_marker_unsupported_version"
                 }
                 JournalError::EmergencyDenyMarkerMalformed => "emergency_deny_marker_malformed",
+                JournalError::ArtifactVersionIncompatible { .. } => "artifact_version_incompatible",
                 JournalError::OwnedInputs(_) => "owned_inputs",
             }
         }

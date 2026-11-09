@@ -195,6 +195,14 @@ pub enum JournalError {
     EmergencyDenyMarkerUnsupportedVersion { version: u8 },
     #[error("emergency deny marker is malformed (wrong length or encoding)")]
     EmergencyDenyMarkerMalformed,
+    #[error(
+        "artifact IR version {held} is not admissible against current IR version {required}: {class:?}"
+    )]
+    ArtifactVersionIncompatible {
+        held: crate::compat::SchemaVersion,
+        required: crate::compat::SchemaVersion,
+        class: crate::compat::CompatibilityClass,
+    },
 }
 
 #[path = "conversions.rs"]

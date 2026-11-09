@@ -126,6 +126,7 @@ fn assert_known_journal_error(error: JournalError) -> Result<(), TestCaseError> 
         | JournalError::ArtifactActionRegistry(_)
         | JournalError::Trim(_)
         | JournalError::EmergencyDenyMarkerUnsupportedVersion { .. }
-        | JournalError::EmergencyDenyMarkerMalformed => Ok(()),
+        | JournalError::EmergencyDenyMarkerMalformed
+        | JournalError::ArtifactVersionIncompatible { .. } => Ok(()),
     }
 }

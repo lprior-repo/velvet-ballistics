@@ -156,6 +156,7 @@ impl JournalError {
             | Self::FrameAllocationFailed
             | Self::AdmissionJournalFailed
             | Self::StrictDurabilityFailed
+            | Self::ArtifactVersionIncompatible { .. }
             | Self::ClockUnavailable => Self::ARTIFACT_MALFORMED_CODE,
             Self::TooManyEvents { .. } => Self::TOO_MANY_EVENTS_CODE,
             Self::ReplayAllocationFailed { .. } => Self::REPLAY_ALLOCATION_FAILED_CODE,
@@ -250,6 +251,7 @@ impl JournalError {
             | Self::FrameAllocationFailed
             | Self::AdmissionJournalFailed
             | Self::StrictDurabilityFailed
+            | Self::ArtifactVersionIncompatible { .. }
             | Self::ClockUnavailable => "ARTIFACT_MALFORMED",
             Self::TooManyEvents { .. } => "TOO_MANY_EVENTS",
             Self::ReplayAllocationFailed { .. } => "REPLAY_ALLOCATION_FAILED",
