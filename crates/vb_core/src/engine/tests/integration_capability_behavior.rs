@@ -86,10 +86,7 @@ fn capability_check_missing_capability_when_name_mismatch() -> Result<(), String
 #[test]
 fn capability_check_missing_capability_when_both_mismatch() -> Result<(), String> {
     let set = CapabilitySet::from_grants(Box::new([cap("network", ActionId::new(1))]));
-    ensure_equal(
-        set.grants(&cap("secrets", ActionId::new(2))),
-        false,
-    )
+    ensure_equal(set.grants(&cap("secrets", ActionId::new(2))), false)
 }
 
 // =============================================================================
@@ -150,10 +147,7 @@ fn capability_exact_match_grants_even_with_dotted_names() -> Result<(), String> 
 #[test]
 fn capability_scope_multiple_grants_first_fails_second_matches() -> Result<(), String> {
     let action = ActionId::new(1);
-    let set = CapabilitySet::from_grants(Box::new([
-        cap("wrong", action),
-        cap("correct", action),
-    ]));
+    let set = CapabilitySet::from_grants(Box::new([cap("wrong", action), cap("correct", action)]));
     ensure_equal(set.grants(&cap("correct", action)), true)?;
     ensure_equal(set.grants(&cap("wrong", action)), true)
 }
@@ -197,10 +191,8 @@ fn capability_expiration_api_note_no_time_fields_on_capability() {
 #[test]
 fn capability_serialization_roundtrip_preserves_all_fields() -> Result<(), String> {
     let original = cap("network.http.post", ActionId::new(42));
-    let bytes = postcard::to_allocvec(&original)
-        .map_err(|e| e.to_string())?;
-    let recovered: Capability = postcard::from_bytes(&bytes)
-        .map_err(|e| e.to_string())?;
+    let bytes = postcard::to_allocvec(&original).map_err(|e| e.to_string())?;
+    let recovered: Capability = postcard::from_bytes(&bytes).map_err(|e| e.to_string())?;
     ensure_equal(recovered.name(), original.name())?;
     ensure_equal(recovered.action_id(), original.action_id())?;
     ensure_equal(recovered, original)
@@ -213,14 +205,15 @@ fn capability_set_serialization_roundtrip() -> Result<(), String> {
         cap("secrets.read", ActionId::new(2)),
         cap("storage.s3", ActionId::new(3)),
     ]));
-    let bytes = postcard::to_allocvec(&original)
-        .map_err(|e| e.to_string())?;
-    let recovered: CapabilitySet = postcard::from_bytes(&bytes)
-        .map_err(|e| e.to_string())?;
+    let bytes = postcard::to_allocvec(&original).map_err(|e| e.to_string())?;
+    let recovered: CapabilitySet = postcard::from_bytes(&bytes).map_err(|e| e.to_string())?;
     ensure_equal(recovered.len(), original.len())?;
     ensure_equal(recovered.is_empty(), original.is_empty())?;
     ensure_equal(recovered.grants(&cap("network", ActionId::new(1))), true)?;
-    ensure_equal(recovered.grants(&cap("secrets.read", ActionId::new(2))), true)?;
+    ensure_equal(
+        recovered.grants(&cap("secrets.read", ActionId::new(2))),
+        true,
+    )?;
     ensure_equal(recovered.grants(&cap("storage.s3", ActionId::new(3))), true)?;
     ensure_equal(recovered.grants(&cap("absent", ActionId::new(1))), false)?;
     ensure_equal(recovered, original)
@@ -246,7 +239,8 @@ fn idempotency_same_key_slots_twice_yields_same_ok_result() -> Result<(), String
         required_capabilities: Box::new([]),
     };
     let mut frame = test_frame(2, 2);
-    let write_result = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean);
+    let write_result =
+        frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean);
     assert!(write_result.is_ok());
     let key_slots = [SlotIdx::new(0)];
     let result_a = verify_idempotency(&contract, &key_slots, &frame);
@@ -271,7 +265,8 @@ fn idempotency_same_key_twice_yields_same_err_result() -> Result<(), String> {
         required_capabilities: Box::new([]),
     };
     let mut frame = test_frame(2, 2);
-    let write_result = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
+    let write_result =
+        frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
     assert!(write_result.is_ok());
     let key_slots = [SlotIdx::new(0)];
     let result_a = verify_idempotency(&contract, &key_slots, &frame);
@@ -656,7 +651,12 @@ fn retry_safety_unsafe_with_destroys_fails() -> Result<(), String> {
 
 #[test]
 fn retry_safety_key_required_with_empty_keys_all_side_effects_fail() -> Result<(), String> {
-    for se in [SideEffect::Writes, SideEffect::Sends, SideEffect::Creates, SideEffect::Destroys] {
+    for se in [
+        SideEffect::Writes,
+        SideEffect::Sends,
+        SideEffect::Creates,
+        SideEffect::Destroys,
+    ] {
         let contract = ActionContract {
             id: ActionId::new(100),
             name: ActionName::new("test-action").unwrap(),
@@ -681,7 +681,12 @@ fn retry_safety_key_required_with_empty_keys_all_side_effects_fail() -> Result<(
 
 #[test]
 fn retry_safety_key_required_with_clean_keys_all_side_effects_pass() -> Result<(), String> {
-    for se in [SideEffect::Writes, SideEffect::Sends, SideEffect::Creates, SideEffect::Destroys] {
+    for se in [
+        SideEffect::Writes,
+        SideEffect::Sends,
+        SideEffect::Creates,
+        SideEffect::Destroys,
+    ] {
         let contract = ActionContract {
             id: ActionId::new(200),
             name: ActionName::new("test-action").unwrap(),
@@ -705,7 +710,11 @@ fn retry_safety_key_required_with_clean_keys_all_side_effects_pass() -> Result<(
 
 #[test]
 fn retry_safety_none_side_effect_passes_for_all_retry_safeties() -> Result<(), String> {
-    for rs in [RetrySafety::Safe, RetrySafety::KeyRequired, RetrySafety::Unsafe] {
+    for rs in [
+        RetrySafety::Safe,
+        RetrySafety::KeyRequired,
+        RetrySafety::Unsafe,
+    ] {
         let contract = ActionContract {
             id: ActionId::new(300),
             name: ActionName::new("test-action").unwrap(),
@@ -744,7 +753,11 @@ fn taint_validation_secret_key_rejected() -> Result<(), String> {
 #[test]
 fn taint_validation_derived_from_secret_key_rejected() -> Result<(), String> {
     let mut frame = test_frame(2, 2);
-    let wr = frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(99), Taint::DerivedFromSecret);
+    let wr = frame.write_slot_with_taint(
+        SlotIdx::new(1),
+        SlotValue::I64(99),
+        Taint::DerivedFromSecret,
+    );
     assert!(wr.is_ok());
     let key_slots = [SlotIdx::new(1)];
     ensure_equal(
@@ -790,7 +803,8 @@ fn taint_validation_clean_key_passes() -> Result<(), String> {
 }
 
 #[test]
-fn taint_validation_mixed_key_first_clean_second_secret_short_circuits_on_secret() -> Result<(), String> {
+fn taint_validation_mixed_key_first_clean_second_secret_short_circuits_on_secret()
+-> Result<(), String> {
     let mut frame = test_frame(4, 2);
     let _ = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean);
     let _ = frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Secret);
@@ -969,7 +983,8 @@ mod kani {
         let action = ActionId::new(1);
         let required = Capability::new("target".into(), action);
 
-        let set_small = CapabilitySet::from_grants(Box::new([Capability::new("target".into(), action)]));
+        let set_small =
+            CapabilitySet::from_grants(Box::new([Capability::new("target".into(), action)]));
         let was_granted = set_small.grants(&required);
         kani::assert(was_granted, "single grant must match");
 

@@ -4,8 +4,10 @@
 mod integration_accessor;
 mod integration_basic;
 mod integration_budget;
+mod integration_capability_behavior;
 mod integration_choose;
 mod integration_error_routing_behavior;
 mod integration_eval;
+mod integration_frame_behavior;
 mod integration_taint_propagation;
 mod integration_workflow;

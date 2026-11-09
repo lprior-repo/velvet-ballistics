@@ -38,6 +38,10 @@ fn kani_step_state_transition_matches_contract() {
         current == StepState::Waiting && next == StepState::Running,
         "suspended resume transition covered",
     );
+    kani::cover(
+        current == StepState::Succeeded && next == StepState::Pending,
+        "loop re-entry transition covered",
+    );
 
     kani::assert(
         is_valid_step_state_transition(current, next) == transition_contract(current, next),
@@ -64,6 +68,8 @@ fn transition_contract(current: StepState, next: StepState) -> bool {
             | StepState::Skipped,
         ) => true,
         (StepState::Waiting | StepState::Asking, StepState::Running) => true,
+        // Master SS1940: bounded loop body re-entry through jump_to_body.
+        (StepState::Succeeded, StepState::Pending) => true,
         _ => false,
     }
 }
