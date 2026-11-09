@@ -27,12 +27,11 @@ use vb_core::workflow::CompiledWorkflow;
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::InspectResponse;
-use vb_runtime::trace::TraceEvent;
 
 #[path = "common/mod.rs"]
 mod common;
 
-use common::runtime_fixture::{relaxed_config, shard_count, tick_count};
+use common::runtime_fixture::{relaxed_config, shard_count, tick_and_drain, tick_count};
 use common::workflow_fixture::{action_then_finish_workflow, finished_workflow};
 
 fn required_capability(action: ActionId) -> Capability {
@@ -126,15 +125,6 @@ fn action_output(value: SlotValue) -> ActionOutputReady {
         taint: Taint::Clean,
         encoded_len: 8,
     }
-}
-
-fn tick_and_drain(runtime: &mut Runtime) -> Result<Vec<TraceEvent>, String> {
-    assert_eq!(
-        runtime.tick_all(),
-        Ok(true),
-        "tick_all should return true when shards alive"
-    );
-    Ok(Vec::new())
 }
 
 // =============================================================================

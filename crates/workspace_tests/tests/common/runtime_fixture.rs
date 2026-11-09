@@ -58,3 +58,14 @@ pub(crate) fn action_ticket(runtime: &Runtime, run: RunId) -> Result<ActionTicke
         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
         .ok_or_else(|| format!("run {run:?} has no pending action ticket for step 0"))
 }
+
+pub(crate) fn tick_and_drain(
+    runtime: &mut Runtime,
+) -> Result<Vec<vb_runtime::trace::TraceEvent>, String> {
+    assert_eq!(
+        runtime.tick_all(),
+        Ok(true),
+        "tick_all should return true when shards alive"
+    );
+    Ok(Vec::new())
+}

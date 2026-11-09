@@ -126,3 +126,18 @@ pub(crate) fn action_output(
         encoded_len,
     })
 }
+
+pub(crate) fn encoded(value: vb_core::value::SlotValue) -> Result<Vec<u8>, postcard::Error> {
+    postcard::to_allocvec(&value)
+}
+
+pub(crate) fn finish_node(id: u16, result: u16) -> CompiledNode {
+    node(
+        id,
+        None,
+        None,
+        CompiledNodeKind::Finish {
+            result: SlotIdx::new(result),
+        },
+    )
+}

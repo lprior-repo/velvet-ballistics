@@ -25,9 +25,10 @@ use vb_validate::shared::{ValidationPipeline, validate};
 // Helpers
 // ---------------------------------------------------------------------------
 
-fn encoded(value: SlotValue) -> Result<Vec<u8>, postcard::Error> {
-    postcard::to_allocvec(&value)
-}
+#[path = "common/mod.rs"]
+mod common;
+
+use common::workflow_fixture::encoded;
 
 fn make_compiled_workflow(name: &str, node_count: u16, slot_count: u16) -> CompiledWorkflow {
     let nodes: Vec<CompiledNode> = (0..node_count)

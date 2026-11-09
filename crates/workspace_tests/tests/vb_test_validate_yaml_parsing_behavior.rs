@@ -22,23 +22,16 @@ use vb_validate::shared::{ValidationPipeline, validate, validate_with_contracts}
 // Helper constructors
 // ---------------------------------------------------------------------------
 
+#[path = "common/mod.rs"]
+mod common;
+
+use common::workflow_fixture::finish_node;
 fn make_workflow(fields: Vec<(&str, FieldValue)>) -> WorkflowDoc {
     WorkflowDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
 }
 
 fn make_step(fields: Vec<(&str, FieldValue)>) -> StepDoc {
     StepDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
-}
-
-fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(index),
-        CompiledNodeKind::Finish {
-            result: SlotIdx::new(result_slot),
-        },
-        None,
-        None,
-    )
 }
 
 fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {

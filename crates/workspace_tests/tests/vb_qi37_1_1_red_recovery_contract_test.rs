@@ -12,9 +12,10 @@ use vb_storage::{
     StorageLimits,
 };
 
-fn encoded(value: SlotValue) -> Result<Vec<u8>, postcard::Error> {
-    postcard::to_allocvec(&value)
-}
+#[path = "common/mod.rs"]
+mod common;
+
+use common::workflow_fixture::encoded;
 
 fn complete_slot_events(
     run: RunId,

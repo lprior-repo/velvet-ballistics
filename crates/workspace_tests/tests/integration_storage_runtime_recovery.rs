@@ -22,9 +22,10 @@ use vb_storage::{EventSeq, JournalEvent};
 // Helpers
 // ---------------------------------------------------------------------------
 
-fn encoded(value: SlotValue) -> Result<Vec<u8>, postcard::Error> {
-    postcard::to_allocvec(&value)
-}
+#[path = "common/mod.rs"]
+mod common;
+
+use common::workflow_fixture::encoded;
 
 fn run_accepted_event(run: RunId, workflow: WorkflowDigest) -> JournalEvent {
     JournalEvent::RunAccepted {

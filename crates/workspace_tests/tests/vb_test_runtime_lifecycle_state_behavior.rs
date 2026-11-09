@@ -35,7 +35,9 @@ use vb_runtime::trace::TraceEvent;
 #[path = "common/mod.rs"]
 mod common;
 
-use common::runtime_fixture::{action_ticket, relaxed_config, shard_count, tick_count};
+use common::runtime_fixture::{
+    action_ticket, relaxed_config, shard_count, tick_and_drain, tick_count,
+};
 use common::workflow_fixture::action_output;
 use common::workflow_fixture::{action_then_finish_workflow, finished_workflow};
 
@@ -102,15 +104,6 @@ fn submit_action_then_finish(
         action_grants(action),
         action_contracts_through(action, 1, 1),
     )
-}
-
-fn tick_and_drain(runtime: &mut Runtime) -> Result<Vec<TraceEvent>, String> {
-    assert_eq!(
-        runtime.tick_all(),
-        Ok(true),
-        "tick_all should return true when shards alive"
-    );
-    Ok(Vec::new())
 }
 
 // =============================================================================

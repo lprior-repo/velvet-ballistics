@@ -40,6 +40,10 @@ use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalEvent};
 // ============================================================================
 
 /// Creates a test workflow from a vector of compiled nodes and constants.
+#[path = "common/mod.rs"]
+mod common;
+
+use common::workflow_fixture::finish_node;
 fn make_workflow(
     nodes: Vec<CompiledNode>,
     slot_count: u16,
@@ -89,16 +93,6 @@ fn nop_node(id: u16, next: u16) -> CompiledNode {
 }
 
 /// Creates a Finish node: terminates the workflow with a result slot value.
-fn finish_node(id: u16, result: u16) -> CompiledNode {
-    node(
-        StepIdx::new(id),
-        CompiledNodeKind::Finish {
-            result: SlotIdx::new(result),
-        },
-        None,
-        None,
-    )
-}
 
 /// Creates a Copy node: copies a source slot to an output slot.
 fn copy_node(id: u16, source: u16, output: u16, next: u16) -> CompiledNode {
