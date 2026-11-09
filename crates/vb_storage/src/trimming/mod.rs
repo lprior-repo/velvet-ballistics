@@ -151,6 +151,7 @@ pub struct TrimDiagnostic {
 
 pub(crate) mod helpers;
 pub(crate) mod logic;
+pub(crate) mod retention;
 
 #[cfg(test)]
 mod tests;
