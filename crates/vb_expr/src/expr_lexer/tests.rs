@@ -138,6 +138,21 @@ fn rejects_token_limit() {
 }
 
 #[test]
+fn rejects_exactly_one_token_over_limit() {
+    let over = crate::lexer::MAX_TOKENS.saturating_add(1);
+    let source = "1 ".repeat(over);
+    let result = lex_expr(&source);
+    assert!(
+        matches!(
+            result,
+            Err(ExprError::ExpressionTooLong { len, max })
+            if len == over && max == crate::lexer::MAX_TOKENS
+        ),
+        "exactly MAX_TOKENS+1 content tokens must be rejected with exact len/max"
+    );
+}
+
+#[test]
 fn rejects_source_length_limit() {
     let source = "1".repeat(crate::lexer::MAX_SOURCE_BYTES.saturating_add(1));
     let result = lex_expr(&source);
