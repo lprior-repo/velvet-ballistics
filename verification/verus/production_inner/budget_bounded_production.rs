@@ -6,7 +6,8 @@
 //
 // This file is the WEAK (production_inner/) production mirror for the
 // `budget_bounded.rs` Verus spec. It is a hand-written structural mirror
-// of the production surface in `crates/vb_core/src/budget.rs` with the
+// of the production surface in `crates/vb_core/src/budget.rs` and its
+// `budget/` submodules (`usage.rs`, `loop_body.rs`) with the
 // following substitutions relative to direct `#[path]` inclusion of the
 // production source:
 //
@@ -34,7 +35,8 @@
 //      proofs discharge.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_core/src/budget.rs` whenever production changes. The
+// `crates/vb_core/src/budget.rs` and its `budget/` submodules
+// (`usage.rs`, `loop_body.rs`) whenever production changes. The
 // mirror is annotated at the top of every section with the
 // originating production line range so regeneration is mechanical.
 //
@@ -68,24 +70,24 @@
 //   - `AggregateResourceUsage`               <- crates/vb_core/src/budget.rs:969-1003
 // Production `crates/vb_core/src/budget.rs:969-1003`
 //   - `AggregateResourceUsage::try_add_budget`
-//                                            <- crates/vb_core/src/budget.rs:1217-1331
-// Production `crates/vb_core/src/budget.rs:1217-1331`
+//                                            <- crates/vb_core/src/budget/usage.rs:11-125
+// Production `crates/vb_core/src/budget/usage.rs:11-125`
 //   - `AggregateResourceUsage::try_subtract_budget`
-//                                            <- crates/vb_core/src/budget.rs:1333-1447
-// Production `crates/vb_core/src/budget.rs:1333-1447`
-//   - `AggregateResourceUsage::fits_within`   <- crates/vb_core/src/budget.rs:1449-1578
-// Production `crates/vb_core/src/budget.rs:1449-1578`
-//   - `AggregateResourceUsage::check_policy` <- crates/vb_core/src/budget.rs:1583-1674
-// Production `crates/vb_core/src/budget.rs:1583-1674`
-//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget.rs:1714-1848
-// Production `crates/vb_core/src/budget.rs:1714-1848`
-//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:2111-2146
-//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:2148-2166
-// Production `crates/vb_core/src/budget.rs:2148-2166`
+//                                            <- crates/vb_core/src/budget/usage.rs:127-241
+// Production `crates/vb_core/src/budget/usage.rs:127-241`
+//   - `AggregateResourceUsage::fits_within`   <- crates/vb_core/src/budget/usage.rs:243-372
+// Production `crates/vb_core/src/budget/usage.rs:243-372`
+//   - `AggregateResourceUsage::check_policy` <- crates/vb_core/src/budget/usage.rs:377-468
+// Production `crates/vb_core/src/budget/usage.rs:377-468`
+//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget.rs:1256-1390
+// Production `crates/vb_core/src/budget.rs:1256-1390`
+//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:1396-1431
+//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:1433-1451
+// Production `crates/vb_core/src/budget.rs:1433-1451`
 //                                            (pure checked_add / checked_sub;
 //                                             these are the pure decision fns
 //                                             we exercise via `assume_specification`)
-//   - `count_total_steps`                    <- crates/vb_core/src/budget.rs:2232-2238
+//   - `count_total_steps`                    <- crates/vb_core/src/budget/loop_body.rs:11-17
 //                                            (pure DFS step counter; spec mirror is
 //                                             `spec_count_total_steps_result` below)
 //
@@ -523,10 +525,10 @@ pub struct AggregateResourceUsage {
 // AggregateBudgetError — production mirror (restricted variants)
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget.rs:1079-1148`.
+// Mirror of `crates/vb_core/src/budget.rs:1082-1151`.
 
 /// Mirror of production `AggregateBudgetError` at
-/// `crates/vb_core/src/budget.rs:1079-1148`. All 9 production variants
+/// `crates/vb_core/src/budget.rs:1082-1151`. All 9 production variants
 /// are mirrored.
 #[derive(Clone, Copy)]
 pub enum AggregateBudgetError {
@@ -595,7 +597,7 @@ pub fn boundedness_policy_validate(
 }
 
 /// Production wrapper for `validate_aggregate_budget` at
-/// `crates/vb_core/src/budget.rs:1714-1848`. Body skipped by Verus.
+/// `crates/vb_core/src/budget.rs:1256-1390`. Body skipped by Verus.
 #[verifier::external]
 pub fn validate_aggregate_budget(
     budget: &AggregateResourceBudget,
@@ -608,17 +610,47 @@ pub fn validate_aggregate_budget(
 }
 
 /// Production wrapper for `validate_step_ceilings` at
-/// `crates/vb_core/src/budget.rs:2111-2146`. Body skipped by Verus.
+/// `crates/vb_core/src/budget.rs:1396-1431`. Body is a faithful copy
+/// of the production body; the local hard-limit constants are part
+/// of that body. Body skipped by Verus.
 #[verifier::external]
 pub fn validate_step_ceilings(
     budget: &AggregateResourceBudget,
 ) -> Result<(), AggregateBudgetError> {
-    let _ = budget;
-    loop {}
+    const HARD_MAX_STEP_BUDGET_PER_TICK: u64 = 1_000_000;
+    const HARD_MAX_TRANSITIONS_PER_TICK: u64 = 1_000_000;
+
+    if budget.max_step_budget_per_tick == 0 {
+        return Err(AggregateBudgetError::StepCeilingExceeded {
+            requested: 0,
+            limit: HARD_MAX_STEP_BUDGET_PER_TICK,
+        });
+    }
+    if budget.max_step_budget_per_tick > HARD_MAX_STEP_BUDGET_PER_TICK {
+        return Err(AggregateBudgetError::StepCeilingExceeded {
+            requested: budget.max_step_budget_per_tick,
+            limit: HARD_MAX_STEP_BUDGET_PER_TICK,
+        });
+    }
+
+    if budget.max_transitions_per_tick == 0 {
+        return Err(AggregateBudgetError::PerTickCeilingExceeded {
+            requested: 0,
+            limit: HARD_MAX_TRANSITIONS_PER_TICK,
+        });
+    }
+    if budget.max_transitions_per_tick > HARD_MAX_TRANSITIONS_PER_TICK {
+        return Err(AggregateBudgetError::PerTickCeilingExceeded {
+            requested: budget.max_transitions_per_tick,
+            limit: HARD_MAX_TRANSITIONS_PER_TICK,
+        });
+    }
+
+    Ok(())
 }
 
 /// Production wrapper for `add_dim` at
-/// `crates/vb_core/src/budget.rs:2148-2156`. Pure checked_add — this
+/// `crates/vb_core/src/budget.rs:1433-1441`. Pure checked_add — this
 /// is a pure decision fn and the spec attaches an `assume_specification`
 /// contract in `budget_bounded.rs`.
 #[verifier::external]
@@ -633,7 +665,7 @@ pub fn add_dim(
 }
 
 /// Production wrapper for `sub_dim` at
-/// `crates/vb_core/src/budget.rs:2158-2166`. Pure checked_sub — pure
+/// `crates/vb_core/src/budget.rs:1443-1451`. Pure checked_sub — pure
 /// decision fn with `assume_specification` contract in the spec.
 #[verifier::external]
 pub fn sub_dim(
@@ -647,7 +679,7 @@ pub fn sub_dim(
 }
 
 /// Production wrapper for `AggregateResourceUsage::try_add_budget` at
-/// `crates/vb_core/src/budget.rs:1217-1331`.
+/// `crates/vb_core/src/budget/usage.rs:11-125`.
 #[verifier::external]
 pub fn aggregate_resource_usage_try_add_budget(
     usage: &AggregateResourceUsage,
@@ -658,7 +690,7 @@ pub fn aggregate_resource_usage_try_add_budget(
 }
 
 /// Production wrapper for `AggregateResourceUsage::try_subtract_budget`
-/// at `crates/vb_core/src/budget.rs:1333-1447`.
+/// at `crates/vb_core/src/budget/usage.rs:127-241`.
 #[verifier::external]
 pub fn aggregate_resource_usage_try_subtract_budget(
     usage: &AggregateResourceUsage,
@@ -669,7 +701,7 @@ pub fn aggregate_resource_usage_try_subtract_budget(
 }
 
 /// Production wrapper for `AggregateResourceUsage::fits_within` at
-/// `crates/vb_core/src/budget.rs:1449-1578`.
+/// `crates/vb_core/src/budget/usage.rs:243-372`.
 #[verifier::external]
 pub fn aggregate_resource_usage_fits_within(
     usage: &AggregateResourceUsage,
@@ -680,7 +712,7 @@ pub fn aggregate_resource_usage_fits_within(
 }
 
 /// Production wrapper for `AggregateResourceUsage::check_policy` at
-/// `crates/vb_core/src/budget.rs:1583-1674`.
+/// `crates/vb_core/src/budget/usage.rs:377-468`.
 #[verifier::external]
 pub fn aggregate_resource_usage_check_policy(
     usage: &AggregateResourceUsage,

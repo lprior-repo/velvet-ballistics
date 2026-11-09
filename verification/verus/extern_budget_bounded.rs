@@ -33,10 +33,10 @@
 //   - `AggregateResourceBudget`              <- crates/vb_core/src/budget.rs:882-920
 //   - `AggregateResourceUsage`               <- crates/vb_core/src/budget.rs:969-1003
 //   - `AggregateBudgetError`                 <- crates/vb_core/src/budget.rs:1079-1148
-//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget.rs:1714-1848
-//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:2111-2146
-//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:2148-2166
-//   - `count_total_steps`                    <- crates/vb_core/src/budget.rs:2232-2238
+//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget.rs:1256-1390
+//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:1396-1431
+//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:1433-1451
+//   - `count_total_steps`                    <- crates/vb_core/src/budget/loop_body.rs:11-17
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -48,7 +48,6 @@
 // behavior the spec proofs discharge. Drift between the mirror and
 // the production source is reported as binding-debt tracked outside
 // Verus.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -279,7 +278,6 @@ fn prod_methods_drift_check(
 }
 
 } // verus!
-
 // Re-export the production types and exec wrappers so the spec file
 // can reference them via `crate::production::*`. The mirror module
 // is included inside `verus!` so the type declarations are nameable

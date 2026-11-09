@@ -8,7 +8,8 @@
 // `budget_computation.rs` Verus spec. It is a hand-written structural
 // mirror of the production CollectStart / ForEachStart / RepeatStart /
 // ReduceStart budget arithmetic surface in `crates/vb_core/src/budget.rs`
-// with the following substitutions relative to direct `#[path]`
+// and its `budget/` submodules (`loop_body.rs`, `loop_region.rs`,
+// `reachable.rs`) with the following substitutions relative to direct `#[path]`
 // inclusion of the production source:
 //
 //   1. Production `use thiserror::Error;` and `#[derive(... serde::Serialize,
@@ -40,7 +41,9 @@
 //      is visible by direct comparison.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_core/src/budget.rs` whenever production changes. The
+// `crates/vb_core/src/budget.rs` and its `budget/` submodules
+// (`loop_body.rs`, `loop_region.rs`, `reachable.rs`) whenever
+// production changes. The
 // mirror is annotated at the top of every section with the
 // originating production line range so regeneration is mechanical.
 //
@@ -55,52 +58,52 @@
 // ============================================================================
 // BINDING LEDGER — production ↔ mirror ↔ spec
 // ============================================================================
-//   - `count_and_push_loop_body`            <- crates/vb_core/src/budget.rs:2474-2500
+//   - `count_and_push_loop_body`            <- crates/vb_core/src/budget/loop_body.rs:216-242
 //        (production: CollectStart / ForEachStart / RepeatStart /
 //         ReduceStart body multiplication by iteration limit;
 //         the multiplication is `body_count.checked_mul(iter_count)` at
-//         budget.rs:2487 and the addition is `total.checked_add(product)`
-//         at budget.rs:2493; the trailing `push_done_continuation`
-//         call at budget.rs:2498 is performed inline via the
+//         loop_body.rs:229 and the addition is `total.checked_add(product)`
+//         at loop_body.rs:235; the trailing `push_done_continuation`
+//         call at loop_body.rs:240 is performed inline via the
 //         `push_done_continuation` mirror below; `body_count` is a
 //         factored input, production computes it via
-//         `count_body_region_nodes` at budget.rs:2484)
+//         `count_body_region_nodes` at loop_body.rs:226)
 //        -> mirrored as `count_and_push_loop_body`
 //
-//   - `find_node_position`                   <- crates/vb_core/src/budget.rs:2240-2267
+//   - `find_node_position`                   <- crates/vb_core/src/budget.rs:1517-1541
 //        (production: direct-index fast path, linear id scan, direct
 //         fallback; `StepOutOfBounds` only when the step id is absent
 //         and `step.as_usize() >= node_count`)
 //        -> mirrored as `find_node_position`
 //
-//   - `push_done_continuation`              <- crates/vb_core/src/budget.rs:2502-2522
+//   - `push_done_continuation`              <- crates/vb_core/src/budget/loop_body.rs:244-261
 //        (production: pushes the successor id when the done node ends
 //         the workflow (`NodeContinuation::End`) and a successor node
 //         exists, then always pushes `done`; lookup failure converts
-//         via `From<BudgetTraversalError>` at budget.rs:2209-2216 to
+//         via `From<BudgetTraversalError>` at budget.rs:1494-1501 to
 //         `TotalStepsExceeded { actual: u64::MAX, limit: u64::MAX }`)
 //        -> mirrored as `push_done_continuation`
 //
-//   - `checked_step_add`                    <- crates/vb_core/src/budget.rs:2464-2469
+//   - `checked_step_add`                    <- crates/vb_core/src/budget/loop_body.rs:206-211
 //        (production: pure checked_add of two u64 step totals with
 //         StepCountOverflow error)
 //        -> mirrored as `checked_step_add`
 //
 //   - `update_workflow_metrics` CollectStart arm
-//                                          <- crates/vb_core/src/budget.rs:3091-3104
+//                                          <- crates/vb_core/src/budget/reachable.rs:166-179
 //        (production: `pages = ceil(limit / max(page_size, 1))`,
 //         `u32::try_from(pages)`, `max_gather_pages.checked_add(pages)`
 //         and `max_gather_items.checked_add(*limit)`)
 //        -> mirrored as `collect_start_update_metrics`
 //
-//   - `visit_node_for_total_steps`          <- crates/vb_core/src/budget.rs:2279-2402
+//   - `visit_node_for_total_steps`          <- crates/vb_core/src/budget/loop_body.rs:21-144
 //        (production: DFS step counter; only the per-step
-//         `total.checked_add(1)` at budget.rs:2301-2303 is referenced,
+//         `total.checked_add(1)` at loop_body.rs:43-47 is referenced,
 //         failing with `StepOutOfBounds` on u64 overflow)
 //        -> mirrored as `count_total_steps_step_increment`
 //
-//   - `visit_body_region_node`              <- crates/vb_core/src/budget.rs:2537-2636
-//        (production: per-body `count.checked_add(1)` at budget.rs:2559-2564
+//   - `visit_body_region_node`              <- crates/vb_core/src/budget/loop_region.rs:25-124
+//        (production: per-body `count.checked_add(1)` at loop_region.rs:47-52
 //         with `TotalStepsExceeded` on u64 overflow)
 //        -> mirrored as `body_region_step_increment`
 //
@@ -350,13 +353,13 @@ impl ErrorRouting {
 // BudgetTraversalError / BudgetError — restricted mirrors
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget.rs:256-280` and `:703-750`.
+// Mirror of `crates/vb_core/src/budget.rs:259-283` and `:706-753`.
 // Restricted to the discriminant arms referenced by the CollectStart
 // budget arithmetic surface (StepCountOverflow, EntryOutOfBounds,
 // StepOutOfBounds, JumpCycle, DepthOverflow, TotalStepsExceeded).
 
 /// Mirror of production `BudgetTraversalError` discriminant set at
-/// `crates/vb_core/src/budget.rs:256-280`. Restricted to the
+/// `crates/vb_core/src/budget.rs:259-283`. Restricted to the
 /// variants the CollectStart budget arithmetic surface can produce.
 #[derive(Clone, Copy)]
 pub enum BudgetTraversalError {
@@ -368,7 +371,7 @@ pub enum BudgetTraversalError {
 }
 
 /// Mirror of production `BudgetError` discriminant set at
-/// `crates/vb_core/src/budget.rs:703-750`. Restricted to the variants
+/// `crates/vb_core/src/budget.rs:706-753`. Restricted to the variants
 /// the CollectStart budget arithmetic surface produces
 /// (`TotalStepsExceeded` from `count_and_push_loop_body` /
 /// `count_nested_for_region`).
@@ -432,7 +435,7 @@ pub mod workflow {
 // `budget_computation.rs`.
 
 /// Production wrapper for `count_and_push_loop_body` at
-/// `crates/vb_core/src/budget.rs:2474-2500`. Body performs the same
+/// `crates/vb_core/src/budget/loop_body.rs:216-242`. Body performs the same
 /// `checked_mul` + `checked_add` + done-continuation push as production.
 /// Body skipped by Verus.
 ///
@@ -440,13 +443,13 @@ pub mod workflow {
 /// loop header (CollectStart / ForEachStart / RepeatStart /
 /// ReduceStart):
 ///   1. `let body_count = count_body_region_nodes(...)`
-///   2. `let product = body_count.checked_mul(iter_count)` (line 2486-2491)
-///   3. `total = total.checked_add(product)` (line 2492-2497)
+///   2. `let product = body_count.checked_mul(iter_count)` (loop_body.rs:228-233)
+///   3. `total = total.checked_add(product)` (loop_body.rs:234-239)
 ///   4. `push_done_continuation(nodes, done, node_count, stack)?`
-///      (line 2498), performed below via the `push_done_continuation` mirror.
+///      (loop_body.rs:240), performed below via the `push_done_continuation` mirror.
 ///
 /// The `body_count` parameter is a factored input: production computes
-/// it via `count_body_region_nodes` (budget.rs:2526-2532, delegating to
+/// it via `count_body_region_nodes` (loop_region.rs:14-21, delegating to
 /// the recursive `region_counter::count`), which has no mirror yet.
 /// The stack effect of step 4 is part of this mirror, so the bridge
 /// contract in the companion spec file covers the arithmetic and the
@@ -461,7 +464,7 @@ pub fn count_and_push_loop_body(
     node_count: usize,
     stack: &mut Vec<StepIdx>,
 ) -> Result<u64, BudgetError> {
-    // Production body (budget.rs:2474-2500):
+    // Production body (loop_body.rs:216-242):
     //   let body_count = count_body_region_nodes(nodes, body, done, node_count)?;
     //   let iter_count = iter_count.max(1);
     //   let product = body_count
@@ -499,7 +502,7 @@ pub fn count_and_push_loop_body(
 }
 
 /// Production wrapper for `find_node_position` at
-/// `crates/vb_core/src/budget.rs:2240-2267`. Body is a faithful copy
+/// `crates/vb_core/src/budget.rs:1517-1541`. Body is a faithful copy
 /// of the production body with one substitution: the production
 /// `&[CompiledNode]` slice parameter is `&Vec<CompiledNode>` here.
 /// Body skipped by Verus.
@@ -536,13 +539,13 @@ pub fn find_node_position(
 }
 
 /// Production wrapper for `push_done_continuation` at
-/// `crates/vb_core/src/budget.rs:2502-2522`. Body is a faithful copy
+/// `crates/vb_core/src/budget/loop_body.rs:244-261`. Body is a faithful copy
 /// of the production body with two substitutions: the production
 /// `&[CompiledNode]` slice parameter is `&Vec<CompiledNode>` here,
 /// and the `?` error conversion is written out as a `match` returning
 /// `TotalStepsExceeded { actual: u64::MAX, limit: u64::MAX }`, which
 /// is exactly the production `From<BudgetTraversalError>` mapping at
-/// budget.rs:2209-2216. The nested `if let` chain of production is
+/// budget.rs:1494-1501. The nested `if let` chain of production is
 /// written as nested `if` blocks with identical short-circuit order.
 /// Body skipped by Verus.
 ///
@@ -584,7 +587,7 @@ pub fn push_done_continuation(
 }
 
 /// Production wrapper for `checked_step_add` at
-/// `crates/vb_core/src/budget.rs:2464-2469`. Pure checked_add of two
+/// `crates/vb_core/src/budget/loop_body.rs:206-211`. Pure checked_add of two
 /// u64 step totals. Body skipped by Verus.
 #[verifier::external]
 pub fn checked_step_add(left: u64, right: u64) -> Result<u64, BudgetTraversalError> {
@@ -595,7 +598,7 @@ pub fn checked_step_add(left: u64, right: u64) -> Result<u64, BudgetTraversalErr
 }
 
 /// Production mirror of the `CollectStart` arm of
-/// `update_workflow_metrics` at `crates/vb_core/src/budget.rs:3091-3104`:
+/// `update_workflow_metrics` at `crates/vb_core/src/budget/reachable.rs:166-179`:
 ///
 ///   CompiledNodeKind::CollectStart { limit, page_size, .. } => {
 ///       let per_page = u64::from(*page_size).max(1);
@@ -645,7 +648,7 @@ pub fn collect_start_update_metrics(
 }
 
 /// Production wrapper for the per-step increment in
-/// `visit_node_for_total_steps` at `crates/vb_core/src/budget.rs:2301-2303`:
+/// `visit_node_for_total_steps` at `crates/vb_core/src/budget/loop_body.rs:43-47`:
 ///
 ///   total = match total.checked_add(1) {
 ///       Some(v) => v,
@@ -668,7 +671,7 @@ pub fn count_total_steps_step_increment(
 }
 
 /// Production wrapper for the per-body increment in
-/// `visit_body_region_node` at `crates/vb_core/src/budget.rs:2559-2564`:
+/// `visit_body_region_node` at `crates/vb_core/src/budget/loop_region.rs:47-52`:
 ///
 ///   count = count
 ///       .checked_add(1)
