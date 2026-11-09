@@ -1,9 +1,12 @@
 mod api;
+#[path = "../../../xtask/src/boundary_inventory/inventory.rs"]
 mod inventory;
+#[path = "../../../xtask/src/boundary_inventory/parser.rs"]
 mod parser;
 mod record;
 mod status;
 mod types;
+#[path = "../../../xtask/src/boundary_inventory/validation.rs"]
 mod validation;
 
 pub use api::{
