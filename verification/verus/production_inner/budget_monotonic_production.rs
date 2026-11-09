@@ -32,7 +32,8 @@
 //      production behavior the spec proofs discharge.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_core/src/budget.rs` and `crates/vb_core/src/budget/compute.rs`
+// `crates/vb_core/src/budget.rs`, `crates/vb_core/src/budget/traversal_error.rs`
+// and `crates/vb_core/src/budget/compute.rs`
 // whenever production changes. The
 // mirror is annotated at the top of every section with the
 // originating production line range so regeneration is mechanical.
@@ -67,7 +68,7 @@
 //                                               crates/vb_core/src/workflow/mod.rs:666-880)
 //   - `BudgetTraversalError`                <- extern_budget_monotonic.rs
 //                                               (mirror of
-//                                               crates/vb_core/src/budget.rs:11-37)
+//                                               crates/vb_core/src/budget/traversal_error.rs:11-37)
 //   - `WholeWorkflowBudget`                 <- extern_budget_monotonic.rs
 //                                               (mirror of
 //                                               crates/vb_core/src/budget/compute.rs:15-93)
@@ -467,7 +468,7 @@ pub mod workflow {
     /// Mirror of production `WorkflowError` discriminant set at
     /// `crates/vb_core/src/workflow/mod.rs:666-880`. Restricted to the
     /// variants reachable from `BudgetTraversalError` via the `From`
-    /// conversion at `crates/vb_core/src/budget.rs:39-52` plus the
+    /// conversion at `crates/vb_core/src/budget/traversal_error.rs:39-52` plus the
     /// direct `WorkflowError` returns in `compute_budget_local`.
     #[derive(Clone, Copy)]
     pub enum WorkflowError {
@@ -550,7 +551,7 @@ pub struct ResourceContract {
 }
 
 // ============================================================================
-// BudgetTraversalError — mirror of `crates/vb_core/src/budget.rs:11-37`
+// BudgetTraversalError — mirror of `crates/vb_core/src/budget/traversal_error.rs:11-37`
 // ============================================================================
 //
 // Mirror of `BudgetTraversalError` (the narrow error type returned by
@@ -558,7 +559,7 @@ pub struct ResourceContract {
 // any variant drift breaks the mirror.
 
 /// Mirror of production `BudgetTraversalError` at
-/// `crates/vb_core/src/budget.rs:11-37`.
+/// `crates/vb_core/src/budget/traversal_error.rs:11-37`.
 #[derive(Clone, Copy)]
 pub enum BudgetTraversalError {
     EntryOutOfBounds { entry: StepIdx },

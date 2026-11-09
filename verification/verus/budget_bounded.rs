@@ -461,7 +461,7 @@ pub open spec fn spec_count_total_steps_result(result: Result<int, SpecWorkflowE
 // section.
 /// Bridge contract: `add_dim` returns Ok iff the checked_add does not
 /// overflow. Mirrors production body at
-/// `crates/vb_core/src/budget.rs:104-112`:
+/// `crates/vb_core/src/budget.rs:61-69`:
 ///   `current.checked_add(requested).ok_or(AggregateBudgetError::Overflow { resource })`
 pub assume_specification[ production::add_dim ](
     current: u64,
@@ -481,7 +481,7 @@ pub assume_specification[ production::add_dim ](
 
 /// Bridge contract: `sub_dim` returns Ok iff the checked_sub does not
 /// underflow. Mirrors production body at
-/// `crates/vb_core/src/budget.rs:114-122`.
+/// `crates/vb_core/src/budget.rs:71-79`.
 pub assume_specification[ production::sub_dim ](
     current: u64,
     requested: u64,
@@ -973,7 +973,7 @@ pub assume_specification[ production::validate_aggregate_budget ](
 /// Bridge contract: `validate_step_ceilings` returns Ok iff
 /// `max_step_budget_per_tick <= 1_000_000` and
 /// `max_transitions_per_tick <= 1_000_000`. Mirrors
-/// `crates/vb_core/src/budget.rs:67-102`.
+/// `crates/vb_core/src/budget.rs:22-59`.
 pub assume_specification[ production::validate_step_ceilings ](
     budget: &AggregateResourceBudget,
 ) -> (result: Result<(), AggregateBudgetError>)
@@ -1264,7 +1264,7 @@ pub proof fn proof_aggregate_refines_verified_whole(steps: int, actions: int)
 /// Spec predicate: proof-visible diagnostic projection is total only
 /// when every required field is present. Spec-side only: no production
 /// `DiagnosticEnvelope` type exists, and production `StepCountOverflow`
-/// carries only `{ actual }` (`crates/vb_core/src/budget.rs:20-22`).
+/// carries only `{ actual }` (`crates/vb_core/src/budget/traversal_error.rs:20-22`).
 pub open spec fn diagnostic_complete(
     has_resource: bool,
     has_primitive: bool,

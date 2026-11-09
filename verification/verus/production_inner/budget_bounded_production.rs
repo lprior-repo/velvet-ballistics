@@ -81,9 +81,9 @@
 // Production `crates/vb_core/src/budget/usage.rs:377-468`
 //   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:109-243
 // Production `crates/vb_core/src/budget/aggregate_validate.rs:109-243`
-//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:65-102
-//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:104-122
-// Production `crates/vb_core/src/budget.rs:104-122`
+//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:22-59
+//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:61-79
+// Production `crates/vb_core/src/budget.rs:61-79`
 //                                            (pure checked_add / checked_sub;
 //                                             these are the pure decision fns
 //                                             we exercise via `assume_specification`)
@@ -610,7 +610,7 @@ pub fn validate_aggregate_budget(
 }
 
 /// Production wrapper for `validate_step_ceilings` at
-/// `crates/vb_core/src/budget.rs:65-102`. Body is a faithful copy
+/// `crates/vb_core/src/budget.rs:22-59`. Body is a faithful copy
 /// of the production body; the local hard-limit constants are part
 /// of that body. Body skipped by Verus.
 #[verifier::external]
@@ -650,7 +650,7 @@ pub fn validate_step_ceilings(
 }
 
 /// Production wrapper for `add_dim` at
-/// `crates/vb_core/src/budget.rs:104-112`. Pure checked_add — this
+/// `crates/vb_core/src/budget.rs:61-69`. Pure checked_add — this
 /// is a pure decision fn and the spec attaches an `assume_specification`
 /// contract in `budget_bounded.rs`.
 #[verifier::external]
@@ -665,7 +665,7 @@ pub fn add_dim(
 }
 
 /// Production wrapper for `sub_dim` at
-/// `crates/vb_core/src/budget.rs:114-122`. Pure checked_sub — pure
+/// `crates/vb_core/src/budget.rs:71-79`. Pure checked_sub — pure
 /// decision fn with `assume_specification` contract in the spec.
 #[verifier::external]
 pub fn sub_dim(
