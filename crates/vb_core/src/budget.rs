@@ -186,6 +186,7 @@ mod reachable;
 mod remaining;
 mod successors;
 mod usage;
+mod usage_arith;
 
 mod tests_and_verification;
 

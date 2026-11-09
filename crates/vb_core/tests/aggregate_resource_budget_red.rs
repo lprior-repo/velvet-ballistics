@@ -2,17 +2,20 @@
 
 // `budget.rs` is a shell over sibling modules in `budget/`. `include_str!`
 // of the shell alone would miss contract tokens declared in the modules, so
-// we concatenate the shell + the loop-body, usage, aggregate, compute,
-// small-linear, traversal-error, and validation modules into `BUDGET_RS` here at compile
-// time. Every existing macro invocation still references `BUDGET_RS`, so no
-// other edits are required: contract searches now see the same surface a
-// real `cargo build` of the budget module would see.
+// we concatenate the shell + the loop-body, usage, usage-arithmetic,
+// aggregate, compute, small-linear, traversal-error, and validation modules
+// into `BUDGET_RS` here at compile time. Every existing macro invocation
+// still references `BUDGET_RS`, so no other edits are required: contract
+// searches now see the same surface a real `cargo build` of the budget
+// module would see.
 const BUDGET_RS: &str = concat!(
     include_str!("../src/budget.rs"),
     "\n",
     include_str!("../src/budget/loop_body.rs"),
     "\n",
     include_str!("../src/budget/usage.rs"),
+    "\n",
+    include_str!("../src/budget/usage_arith.rs"),
     "\n",
     include_str!("../src/budget/aggregate.rs"),
     "\n",

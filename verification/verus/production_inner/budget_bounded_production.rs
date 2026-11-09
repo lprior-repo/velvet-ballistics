@@ -36,7 +36,7 @@
 //
 // DRIFT POLICY: This file MUST be regenerated from
 // `crates/vb_core/src/budget.rs` and its `budget/` submodules
-// (`usage.rs`, `loop_body.rs`, `aggregate.rs`, `aggregate_validate.rs`, `validate.rs`, `validate_error.rs`, `compute.rs`, `small_linear.rs`) whenever production changes. The
+// (`usage.rs`, `usage_arith.rs`, `loop_body.rs`, `aggregate.rs`, `aggregate_validate.rs`, `validate.rs`, `validate_error.rs`, `compute.rs`, `small_linear.rs`) whenever production changes. The
 // mirror is annotated at the top of every section with the
 // originating production line range so regeneration is mechanical.
 //
@@ -70,15 +70,15 @@
 //   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:98-132
 // Production `crates/vb_core/src/budget/aggregate.rs:98-132`
 //   - `AggregateResourceUsage::try_add_budget`
-//                                            <- crates/vb_core/src/budget/usage.rs:11-125
-// Production `crates/vb_core/src/budget/usage.rs:11-125`
+//                                            <- crates/vb_core/src/budget/usage_arith.rs:9-123
+// Production `crates/vb_core/src/budget/usage_arith.rs:9-123`
 //   - `AggregateResourceUsage::try_subtract_budget`
-//                                            <- crates/vb_core/src/budget/usage.rs:127-241
-// Production `crates/vb_core/src/budget/usage.rs:127-241`
-//   - `AggregateResourceUsage::fits_within`   <- crates/vb_core/src/budget/usage.rs:243-372
-// Production `crates/vb_core/src/budget/usage.rs:243-372`
-//   - `AggregateResourceUsage::check_policy` <- crates/vb_core/src/budget/usage.rs:377-468
-// Production `crates/vb_core/src/budget/usage.rs:377-468`
+//                                            <- crates/vb_core/src/budget/usage_arith.rs:125-239
+// Production `crates/vb_core/src/budget/usage_arith.rs:125-239`
+//   - `AggregateResourceUsage::fits_within`   <- crates/vb_core/src/budget/usage.rs:11-140
+// Production `crates/vb_core/src/budget/usage.rs:11-140`
+//   - `AggregateResourceUsage::check_policy` <- crates/vb_core/src/budget/usage.rs:145-236
+// Production `crates/vb_core/src/budget/usage.rs:145-236`
 //   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:109-243
 // Production `crates/vb_core/src/budget/aggregate_validate.rs:109-243`
 //   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:24-59
@@ -679,7 +679,7 @@ pub fn sub_dim(
 }
 
 /// Production wrapper for `AggregateResourceUsage::try_add_budget` at
-/// `crates/vb_core/src/budget/usage.rs:11-125`.
+/// `crates/vb_core/src/budget/usage_arith.rs:9-123`.
 #[verifier::external]
 pub fn aggregate_resource_usage_try_add_budget(
     usage: &AggregateResourceUsage,
@@ -690,7 +690,7 @@ pub fn aggregate_resource_usage_try_add_budget(
 }
 
 /// Production wrapper for `AggregateResourceUsage::try_subtract_budget`
-/// at `crates/vb_core/src/budget/usage.rs:127-241`.
+/// at `crates/vb_core/src/budget/usage_arith.rs:125-239`.
 #[verifier::external]
 pub fn aggregate_resource_usage_try_subtract_budget(
     usage: &AggregateResourceUsage,
@@ -701,7 +701,7 @@ pub fn aggregate_resource_usage_try_subtract_budget(
 }
 
 /// Production wrapper for `AggregateResourceUsage::fits_within` at
-/// `crates/vb_core/src/budget/usage.rs:243-372`.
+/// `crates/vb_core/src/budget/usage.rs:11-140`.
 #[verifier::external]
 pub fn aggregate_resource_usage_fits_within(
     usage: &AggregateResourceUsage,
@@ -712,7 +712,7 @@ pub fn aggregate_resource_usage_fits_within(
 }
 
 /// Production wrapper for `AggregateResourceUsage::check_policy` at
-/// `crates/vb_core/src/budget/usage.rs:377-468`.
+/// `crates/vb_core/src/budget/usage.rs:145-236`.
 #[verifier::external]
 pub fn aggregate_resource_usage_check_policy(
     usage: &AggregateResourceUsage,
