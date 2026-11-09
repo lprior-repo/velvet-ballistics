@@ -136,11 +136,17 @@ pub enum ShardCommand {
     },
     /// Submit an operator decision to an open manual gate.
     SubmitGateDecision {
+        /// Run the gate belongs to; the decision counts against the
+        /// run's admitted per-run queue depth.
+        run: RunId,
         /// Operator submission for the open gate.
         input: GateDecisionInput,
     },
     /// Escalate an open manual gate whose deadline has passed.
     EscalateGate {
+        /// Run the gate belongs to; the escalation counts against the
+        /// run's admitted per-run queue depth.
+        run: RunId,
         /// Gate to escalate.
         gate: GateId,
         /// Escalation time in milliseconds since the UNIX epoch.
@@ -258,7 +264,8 @@ impl ShardCommand {
             Self::AskAnswered { answer } => Some(answer.ticket.run),
             Self::Recover { command } => Some(command.run),
             Self::OpenGate { gate, .. } => Some(gate.run),
-            Self::SubmitGateDecision { .. } | Self::EscalateGate { .. } | Self::Shutdown => None,
+            Self::SubmitGateDecision { run, .. } | Self::EscalateGate { run, .. } => Some(*run),
+            Self::Shutdown => None,
         }
     }
 }

@@ -16,7 +16,7 @@ use crate::admission::RunAdmission;
 use crate::engine::types::{EvidenceCollector, RuntimeEngineError, RuntimeSignal};
 use crate::error::RuntimeResult;
 use crate::journal::{RuntimeJournal, RuntimeJournalEvent};
-use crate::shard::types::{OpenGate, RuntimeState, Shard, ShardCommand};
+use crate::shard::types::{OpenGate, RuntimeState, Shard, ShardCommand, ShardConfig};
 
 use super::{ask_workflow, require_workflow, small_config, suspension_budget, suspended_workflow};
 
@@ -218,8 +218,15 @@ fn chain_workflow() -> Option<CompiledWorkflow> {
 fn make_running_shard(
     run: RunId,
 ) -> Result<(Shard, Arc<RecordingJournal>), Box<dyn std::error::Error>> {
+    make_running_shard_with_config(run, small_config())
+}
+
+fn make_running_shard_with_config(
+    run: RunId,
+    config: ShardConfig,
+) -> Result<(Shard, Arc<RecordingJournal>), Box<dyn std::error::Error>> {
     let journal = RecordingJournal::shared();
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let mut shard = Shard::new_with_journal(config, journal.clone());
     let workflow = require_workflow("chain", chain_workflow())?;
     shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
         run,
@@ -576,7 +583,7 @@ fn submit_approve_resumes_run() -> Result<(), Box<dyn std::error::Error>> {
     let (mut shard, journal) = make_running_shard(run)?;
 
     open_test_gate(&mut shard, run, 7)?;
-    let record = shard.submit_gate_decision(test_input(7, GateDecision::Approve))?;
+    let record = shard.submit_gate_decision(run, test_input(7, GateDecision::Approve))?;
 
     assert_eq!(record.outcome, GateOutcome::Approved);
     assert!(record.receipt.is_some(), "approval must carry a receipt");
@@ -607,7 +614,7 @@ fn submit_deny_fails_run() -> Result<(), Box<dyn std::error::Error>> {
     let (mut shard, journal) = make_running_shard(run)?;
 
     open_test_gate(&mut shard, run, 7)?;
-    let record = shard.submit_gate_decision(test_input(7, GateDecision::Deny))?;
+    let record = shard.submit_gate_decision(run, test_input(7, GateDecision::Deny))?;
 
     assert_eq!(record.outcome, GateOutcome::Denied);
     assert!(record.receipt.is_none(), "denial must carry no receipt");
@@ -640,7 +647,7 @@ fn submit_more_evidence_keeps_gate_open() -> Result<(), Box<dyn std::error::Erro
     let (mut shard, journal) = make_running_shard(run)?;
 
     open_test_gate(&mut shard, run, 7)?;
-    let record = shard.submit_gate_decision(test_input(7, GateDecision::RequestMoreEvidence))?;
+    let record = shard.submit_gate_decision(run, test_input(7, GateDecision::RequestMoreEvidence))?;
 
     assert_eq!(record.outcome, GateOutcome::MoreEvidenceRequested);
     assert!(record.receipt.is_none());
@@ -670,7 +677,7 @@ fn submit_delegate_restricts_next_approver() -> Result<(), Box<dyn std::error::E
     open_test_gate(&mut shard, run, 7)?;
     let mut delegate = test_input(7, GateDecision::Delegate);
     delegate.delegated_to = Some(person("carol"));
-    let record = shard.submit_gate_decision(delegate)?;
+    let record = shard.submit_gate_decision(run, delegate)?;
     assert_eq!(record.outcome, GateOutcome::Delegated);
     assert_eq!(record.delegated_to, Some(person("carol")));
     assert_eq!(
@@ -680,7 +687,7 @@ fn submit_delegate_restricts_next_approver() -> Result<(), Box<dyn std::error::E
     );
 
     let err = shard
-        .submit_gate_decision(test_input(7, GateDecision::Approve))
+        .submit_gate_decision(run, test_input(7, GateDecision::Approve))
         .err()
         .ok_or("expected the original approver to be rejected after delegation")?;
     match err {
@@ -698,7 +705,7 @@ fn submit_delegate_restricts_next_approver() -> Result<(), Box<dyn std::error::E
 
     let mut carol = test_input(7, GateDecision::Approve);
     carol.approver = person("carol");
-    let record = shard.submit_gate_decision(carol)?;
+    let record = shard.submit_gate_decision(run, carol)?;
     assert_eq!(record.outcome, GateOutcome::Approved);
     assert_eq!(
         shard.open_gate_for(run),
@@ -719,7 +726,7 @@ fn submit_unknown_gate_rejected() -> Result<(), Box<dyn std::error::Error>> {
     let (mut shard, _journal) = make_running_shard(run)?;
 
     let err = shard
-        .submit_gate_decision(test_input(7, GateDecision::Approve))
+        .submit_gate_decision(run, test_input(7, GateDecision::Approve))
         .err()
         .ok_or("expected a decision for an unknown gate to be rejected")?;
     match err {
@@ -746,7 +753,7 @@ fn submit_wrong_role_rejected_gate_stays_open() -> Result<(), Box<dyn std::error
     let mut bad = test_input(7, GateDecision::Approve);
     bad.approver_role = ApproverRole::new("viewer".to_string()).unwrap();
     let err = shard
-        .submit_gate_decision(bad)
+        .submit_gate_decision(run, bad)
         .err()
         .ok_or("expected a wrong-role decision to be rejected")?;
     match err {
@@ -790,7 +797,7 @@ fn submit_after_deadline_rejected() -> Result<(), Box<dyn std::error::Error>> {
     let mut late = test_input(7, GateDecision::Approve);
     late.decided_at_ms = 1_001;
     let err = shard
-        .submit_gate_decision(late)
+        .submit_gate_decision(run, late)
         .err()
         .ok_or("expected a late decision to be rejected")?;
     match err {
@@ -819,7 +826,7 @@ fn escalate_timed_out_gate_fails_run() -> Result<(), Box<dyn std::error::Error>>
     let (mut shard, journal) = make_running_shard(run)?;
 
     open_test_gate(&mut shard, run, 7)?;
-    let record = shard.escalate_timed_out_gate(GateId::new(7), 2_000)?;
+    let record = shard.escalate_timed_out_gate(run, GateId::new(7), 2_000)?;
 
     assert_eq!(record.outcome, GateOutcome::Escalated);
     assert_eq!(record.decision, None);
@@ -854,7 +861,7 @@ fn escalate_before_deadline_rejected() -> Result<(), Box<dyn std::error::Error>>
 
     open_test_gate(&mut shard, run, 7)?;
     let err = shard
-        .escalate_timed_out_gate(GateId::new(7), 1_000)
+        .escalate_timed_out_gate(run, GateId::new(7), 1_000)
         .err()
         .ok_or("expected escalation before the deadline to be rejected")?;
     match err {
@@ -894,7 +901,7 @@ fn journal_failure_leaves_gate_open() -> Result<(), Box<dyn std::error::Error>> 
         operation: "test_gate_journal_failure",
     })?;
     let err = shard
-        .submit_gate_decision(test_input(7, GateDecision::Approve))
+        .submit_gate_decision(run, test_input(7, GateDecision::Approve))
         .err()
         .ok_or("expected the journal failure to propagate")?;
     match err {
@@ -935,7 +942,7 @@ fn submit_break_glass_approves_without_role() -> Result<(), Box<dyn std::error::
     let mut input = test_input(7, GateDecision::BreakGlass);
     input.approver_role = ApproverRole::new("viewer".to_string()).unwrap();
     input.break_glass_justification = Some("prod is down".to_string());
-    let record = shard.submit_gate_decision(input)?;
+    let record = shard.submit_gate_decision(run, input)?;
 
     assert_eq!(record.outcome, GateOutcome::BreakGlassApproved);
     assert!(record.break_glass);
@@ -971,6 +978,7 @@ fn command_queue_flow_opens_and_decides_gate() -> Result<(), Box<dyn std::error:
     );
 
     shard.enqueue(ShardCommand::SubmitGateDecision {
+        run,
         input: test_input(7, GateDecision::Approve),
     })?;
     assert!(shard.tick()?, "submit-decision tick must continue");
@@ -994,6 +1002,197 @@ fn command_queue_flow_opens_and_decides_gate() -> Result<(), Box<dyn std::error:
         calls[0].0.outcome,
         GateOutcome::Approved,
         "journaled outcome must be approval"
+    );
+    Ok(())
+}
+
+#[test]
+fn gate_decision_commands_carry_their_run() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(92018);
+    assert_eq!(
+        ShardCommand::SubmitGateDecision {
+            run,
+            input: test_input(7, GateDecision::Approve),
+        }
+        .run_id(),
+        Some(run),
+        "a gate decision must resolve to its run for per-run queue accounting"
+    );
+    assert_eq!(
+        ShardCommand::EscalateGate {
+            run,
+            gate: GateId::new(7),
+            now_ms: 2_000,
+        }
+        .run_id(),
+        Some(run),
+        "a gate escalation must resolve to its run for per-run queue accounting"
+    );
+    Ok(())
+}
+
+#[test]
+fn submit_gate_decision_counts_against_per_run_queue_depth() -> Result<(), Box<dyn std::error::Error>>
+{
+    let run = RunId::new(92019);
+    let config = ShardConfig {
+        command_queue_capacity: 4096,
+        ..small_config()
+    };
+    let (mut shard, _journal) = make_running_shard_with_config(run, config)?;
+    let workflow = require_workflow("chain", chain_workflow())?;
+    let limit = vb_core::budget::AggregateResourceBudget::from_workflow(&workflow)
+        .expect("aggregate budget derives from workflow")
+        .max_queue_depth;
+
+    open_test_gate(&mut shard, run, 7)?;
+    assert_eq!(
+        shard.command_queue_pending_for(run),
+        0,
+        "no command may be pending before the queue is filled"
+    );
+    let mut filled = 0u32;
+    while filled < limit - 1 {
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: u64::from(filled),
+        })?;
+        filled += 1;
+    }
+    assert_eq!(
+        shard.command_queue_pending_for(run),
+        limit - 1,
+        "fill must leave exactly one free slot"
+    );
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitGateDecision {
+            run,
+            input: test_input(7, GateDecision::Approve),
+        }),
+        Ok(()),
+        "one decision must fit in the last free queue slot"
+    );
+    assert_eq!(
+        shard.command_queue_pending_for(run),
+        limit,
+        "decision must count against the run's pending depth"
+    );
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitGateDecision {
+            run,
+            input: test_input(7, GateDecision::Approve),
+        }),
+        Err(RuntimeError::PerRunQueueDepthExceeded {
+            run,
+            pending: limit,
+            limit,
+        }),
+        "a second decision past the admitted depth must be rejected"
+    );
+    assert_eq!(
+        shard.command_queue_pending_for(run),
+        limit,
+        "rejected decision must not occupy a queue slot"
+    );
+    Ok(())
+}
+
+#[test]
+fn escalate_gate_counts_against_per_run_queue_depth() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(92020);
+    let config = ShardConfig {
+        command_queue_capacity: 4096,
+        ..small_config()
+    };
+    let (mut shard, _journal) = make_running_shard_with_config(run, config)?;
+    let workflow = require_workflow("chain", chain_workflow())?;
+    let limit = vb_core::budget::AggregateResourceBudget::from_workflow(&workflow)
+        .expect("aggregate budget derives from workflow")
+        .max_queue_depth;
+
+    open_test_gate(&mut shard, run, 7)?;
+    let mut filled = 0u32;
+    while filled < limit - 1 {
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: u64::from(filled),
+        })?;
+        filled += 1;
+    }
+    assert_eq!(
+        shard.enqueue(ShardCommand::EscalateGate {
+            run,
+            gate: GateId::new(7),
+            now_ms: 2_000,
+        }),
+        Ok(()),
+        "one escalation must fit in the last free queue slot"
+    );
+    assert_eq!(
+        shard.command_queue_pending_for(run),
+        limit,
+        "escalation must count against the run's pending depth"
+    );
+    assert_eq!(
+        shard.enqueue(ShardCommand::EscalateGate {
+            run,
+            gate: GateId::new(7),
+            now_ms: 2_000,
+        }),
+        Err(RuntimeError::PerRunQueueDepthExceeded {
+            run,
+            pending: limit,
+            limit,
+        }),
+        "a second escalation past the admitted depth must be rejected"
+    );
+    Ok(())
+}
+
+#[test]
+fn submit_gate_decision_rejects_run_mismatch() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(92021);
+    let other = RunId::new(92022);
+    let (mut shard, _journal) = make_running_shard(run)?;
+
+    open_test_gate(&mut shard, run, 7)?;
+    assert_eq!(
+        shard.submit_gate_decision(other, test_input(7, GateDecision::Approve)),
+        Err(RuntimeError::GateRunMismatch {
+            gate: GateId::new(7),
+            expected: run,
+            actual: other,
+        }),
+        "a decision naming another run must be rejected with the typed mismatch"
+    );
+    assert_eq!(
+        shard.open_gate_for(run),
+        Some(GateId::new(7)),
+        "gate must stay open after a rejected mismatched decision"
+    );
+    Ok(())
+}
+
+#[test]
+fn escalate_gate_rejects_run_mismatch() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(92023);
+    let other = RunId::new(92024);
+    let (mut shard, _journal) = make_running_shard(run)?;
+
+    open_test_gate(&mut shard, run, 7)?;
+    assert_eq!(
+        shard.escalate_timed_out_gate(other, GateId::new(7), 2_000),
+        Err(RuntimeError::GateRunMismatch {
+            gate: GateId::new(7),
+            expected: run,
+            actual: other,
+        }),
+        "an escalation naming another run must be rejected with the typed mismatch"
+    );
+    assert_eq!(
+        shard.open_gate_for(run),
+        Some(GateId::new(7)),
+        "gate must stay open after a rejected mismatched escalation"
     );
     Ok(())
 }

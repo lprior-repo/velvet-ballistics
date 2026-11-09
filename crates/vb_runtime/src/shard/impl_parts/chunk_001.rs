@@ -821,11 +821,11 @@ impl Shard {
             } => {
                 self.open_gate(gate, opened_at_ms, requester)?;
             }
-            ShardCommand::SubmitGateDecision { input } => {
-                self.submit_gate_decision(input)?;
+            ShardCommand::SubmitGateDecision { run, input } => {
+                self.submit_gate_decision(run, input)?;
             }
-            ShardCommand::EscalateGate { gate, now_ms } => {
-                self.escalate_timed_out_gate(gate, now_ms)?;
+            ShardCommand::EscalateGate { run, gate, now_ms } => {
+                self.escalate_timed_out_gate(run, gate, now_ms)?;
             }
             ShardCommand::RegisteredActionCompleted { ticket, receipt, output } => {
                 self.handle_registered_action_completion(ticket, receipt, output)?;

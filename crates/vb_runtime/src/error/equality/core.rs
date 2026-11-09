@@ -227,6 +227,18 @@ fn runtime_error_gate_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
             },
         ) => a == b && ea == eb && aa == ab,
         (
+            RuntimeError::GateRunMismatch {
+                gate: ga,
+                expected: ea,
+                actual: aa,
+            },
+            RuntimeError::GateRunMismatch {
+                gate: gb,
+                expected: eb,
+                actual: ab,
+            },
+        ) => ga == gb && ea == eb && aa == ab,
+        (
             RuntimeError::GateOpenBlocksResume { run: a, gate: ga },
             RuntimeError::GateOpenBlocksResume { run: b, gate: gb },
         ) => a == b && ga == gb,
