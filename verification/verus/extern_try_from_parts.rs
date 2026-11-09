@@ -1092,17 +1092,17 @@ pub fn input_constraint_error(constraint: SpecInputConstraint) -> Option<SpecWor
 /// `validate_node_kind` (`crates/vb_core/src/workflow/mod.rs:1718-1847`)
 /// checks the kind payload references in inventory order and returns
 /// the first failure production's `?`-propagation would return:
-/// `SlotOutOfBounds` (`validate_slot`, mod.rs:2030-2036),
-/// `StepOutOfBounds` (`validate_step`, mod.rs:2022-2028),
-/// `ConstOutOfBounds` (`validate_const`, mod.rs:2038-2044),
-/// `ExpressionInvalid` (`validate_expr`, mod.rs:2012-2020, which
+/// `SlotOutOfBounds` (`validate_slot`, crates/vb_core/src/workflow/mod.rs:2030-2036),
+/// `StepOutOfBounds` (`validate_step`, crates/vb_core/src/workflow/mod.rs:2022-2028),
+/// `ConstOutOfBounds` (`validate_const`, crates/vb_core/src/workflow/mod.rs:2038-2044),
+/// `ExpressionInvalid` (`validate_expr`, crates/vb_core/src/workflow/mod.rs:2012-2020, which
 /// returns `WorkflowError::Expression(CoreError::ExprOutOfBounds)`),
 /// `ResourceContractExceeded` for a count over its cap
 /// (`validate_build_list` / `validate_build_object`,
-/// mod.rs:1860-1867 / 1869-1882) or a zero nonzero-checked value
-/// (`validate_nonzero_u16`, mod.rs:1927-1933). Returns `None` when
+/// crates/vb_core/src/workflow/mod.rs:1860-1867 / 1869-1882) or a zero nonzero-checked value
+/// (`validate_nonzero_u16`, crates/vb_core/src/workflow/mod.rs:1927-1933). Returns `None` when
 /// every inventory entry is in bounds. The `EmptyBranchTable` check
-/// (`validate_branch_route`, mod.rs:1997-2006) runs before this
+/// (`validate_branch_route`, crates/vb_core/src/workflow/mod.rs:1997-2006) runs before this
 /// inventory in production and is handled by the caller.
 #[verifier::external]
 pub fn kind_ref_error(
@@ -1309,7 +1309,7 @@ fn expr_stack_effect(op: SpecExprOp) -> (u32, u32) {
 /// effect matters). Depth and required are `u32`: the per-op
 /// capacity check keeps depth at or below the claimed `max_stack`,
 /// and step 1a already enforces
-/// `max_stack <= contract.max_expr_stack <= 64` (limits.rs:43),
+/// `max_stack <= contract.max_expr_stack <= 64` (crates/vb_core/src/limits.rs:43),
 /// so the `u8` checked-add overflow arm of
 /// `apply_expr_stack_effect` is unreachable on inputs that reach
 /// step 1c and no overflow is modelled here.
@@ -1356,7 +1356,7 @@ pub fn expr_error(program: &SpecExprProgram, accessors_len: u32) -> Option<SpecW
 /// Pure projection of `validate_accessor_paths`
 /// (workflow/mod.rs:2089-2119) for one accessor program, in
 /// production order: the path length against `MAX_PATH_DEPTH`
-/// (crates/vb_core/src/limits.rs:59, 16), then each segment in
+/// (crates/vb_core/src/limits.rs:59), then each segment in
 /// order — `Field(symbol)` via `validate_symbol`
 /// (workflow/mod.rs:2150-2156, `symbol.get() < symbols_count`
 /// else `SymbolOutOfBounds`), `Index(u32::MAX)` via the reserved
@@ -1512,7 +1512,7 @@ pub fn validate_node_pure(
 // ============================================================================
 /// Shape equality for the loop pairing check: a start owns a control
 /// iff body, done, and both state slots agree
-/// (`start_shape(node) == Some(shape)` in pairing.rs:33-50, where
+/// (`start_shape(node) == Some(shape)` in crates/vb_core/src/workflow/loop_regions/pairing.rs:33-50, where
 /// `LoopShape` is compared by value).
 pub const fn loop_shape_matches(control: SpecNodeMeta, start: SpecNodeMeta) -> bool {
     control.ctrl_body == start.start_body
@@ -1522,7 +1522,7 @@ pub const fn loop_shape_matches(control: SpecNodeMeta, start: SpecNodeMeta) -> b
 }
 
 /// Pure projection of the `unique_owner` scan
-/// (pairing.rs:33-50) for one cached control. Returns the unique
+/// (crates/vb_core/src/workflow/loop_regions/pairing.rs:33-50) for one cached control. Returns the unique
 /// ordered start owning the control, or `None` when the owner is
 /// missing, duplicated, or unordered. Shared by
 /// `loop_pairing_error` and `loop_regions_table` so the pairing
@@ -1546,10 +1546,10 @@ pub fn pairing_owner(parts: &SpecWorkflowParts, control: SpecNodeMeta) -> Option
 }
 
 /// Pure projection of the pairing step of `loop_regions::validate`
-/// (`cache_control` + `unique_owner`, pairing.rs:8-50), applied to
+/// (`cache_control` + `unique_owner`, crates/vb_core/src/workflow/loop_regions/pairing.rs:8-50), applied to
 /// the whole node table in table order. A cached control is a node
 /// with a derivable control shape whose body does not follow its own
-/// id (`shape.body > node.id` skips the control, pairing.rs:8-31).
+/// id (`shape.body > node.id` skips the control, crates/vb_core/src/workflow/loop_regions/pairing.rs:8-31).
 /// Each cached control needs exactly one matching start shape with
 /// `start.id < body < control < done`; a missing, duplicate, or
 /// unordered owner returns `LoopRegionUnpaired`, the first such
@@ -1573,7 +1573,7 @@ pub fn loop_pairing_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError
 }
 
 /// Builds the validated loop-region table from the pairing step
-/// (`cache_control`, pairing.rs:8-31): one `SpecLoopRegion` per
+/// (`cache_control`, crates/vb_core/src/workflow/loop_regions/pairing.rs:8-31): one `SpecLoopRegion` per
 /// cached control, in node-table order (ascending control id, since
 /// step 1e validates `meta.id` against the table position before
 /// this step runs). Returns `None` exactly when `loop_pairing_error`
@@ -1600,7 +1600,7 @@ pub fn loop_regions_table(parts: &SpecWorkflowParts) -> Option<Vec<SpecLoopRegio
 }
 
 /// Pure projection of `validate_region_relations`
-/// (pairing.rs:52-71): every pair of cached regions, first in
+/// (crates/vb_core/src/workflow/loop_regions/pairing.rs:52-71): every pair of cached regions, first in
 /// ascending control order, must share no start and must be
 /// disjoint or strictly nested. A shared start returns
 /// `LoopRegionUnpaired`; a partially overlapping pair returns
@@ -2640,7 +2640,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     }
     // 1f. validate_accessor_paths (workflow/mod.rs:2089-2119) —
     // per accessor, in order: path depth against MAX_PATH_DEPTH
-    // (limits.rs:59), then per-segment Field symbol bounds and
+    // (crates/vb_core/src/limits.rs:59), then per-segment Field symbol bounds and
     // reserved Index(u32::MAX). Runs after the per-node loop, in
     // production position.
     for accessor in &parts.accessors {
@@ -2693,8 +2693,8 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // ---- Step 2: loop-region validation ----
     // Production calls loop_regions::validate (loop_regions.rs:59-72)
     // next, in this order: pairing (`cache_control` +
-    // `unique_owner`, pairing.rs:8-50), region relations
-    // (`validate_region_relations`, pairing.rs:52-71), then edge
+    // `unique_owner`, crates/vb_core/src/workflow/loop_regions/pairing.rs:8-50), region relations
+    // (`validate_region_relations`, crates/vb_core/src/workflow/loop_regions/pairing.rs:52-71), then edge
     // closure and recovery support (`validate_region_edges`,
     // edges.rs:14-39). The projection models each step here, in
     // the same order, over the region table the pairing step
@@ -2731,7 +2731,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         return SpecValidationResult::Err(err);
     }
     // ---- Step 5: input slot validation ----
-    // Production calls validate_input_slots(&parts)? (workflow/mod.rs:42,
+    // Production calls validate_input_slots(&parts)? (crates/vb_core/src/workflow/mod.rs:47,
     // body at workflow/mod.rs:1394-1425). The projection checks: all
     // input slot indices in-bounds, no duplicates, strictly increasing,
     // then the per-slot validate_input_constraint (1427-1451) from the
