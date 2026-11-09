@@ -22,7 +22,7 @@
 //! - `initialized_slot_entry` - the free function used by
 //!   `RunFrame::initialized_slots`
 //!
-//! Kani harnesses live alongside under the same directory and are
+//! Kani harnesses live in `verification/kani/` (frame_parts_* prefix) and are
 //! `include!`-d only when `cfg(kani)` is active so non-Kani builds do
 //! not see them:
 //!
@@ -126,19 +126,19 @@ include!("frame/parts/initialized_slot_entry.rs");
 mod tests_and_verification;
 
 #[cfg(kani)]
-include!("frame/parts/kani_helpers.rs");
+include!("verification/kani/frame_parts_kani_helpers.rs");
 
 #[cfg(kani)]
-include!("frame/parts/kani_f1_exhaustive.rs");
+include!("verification/kani/frame_parts_kani_f1_exhaustive.rs");
 
 #[cfg(kani)]
-include!("frame/parts/kani_f2345_transitions.rs");
+include!("verification/kani/frame_parts_kani_f2345_transitions.rs");
 
 #[cfg(kani)]
-include!("frame/parts/kani_pc_proofs.rs");
+include!("verification/kani/frame_parts_kani_pc_proofs.rs");
 
 #[cfg(kani)]
-include!("frame/parts/kani_slot_proofs.rs");
+include!("verification/kani/frame_parts_kani_slot_proofs.rs");
 
 #[cfg(kani)]
-include!("frame/parts/kani_parallel.rs");
+include!("verification/kani/frame_parts_kani_parallel.rs");

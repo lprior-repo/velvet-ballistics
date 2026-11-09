@@ -7,6 +7,7 @@ pub mod expr_bytecode;
 pub mod expr_eval;
 pub mod expr_lexer;
 pub mod expr_parser;
+#[path = "verification/kani/expr_proofs/mod.rs"]
 pub mod expr_proofs;
 pub mod expr_stack_ops;
 pub mod expr_typecheck;

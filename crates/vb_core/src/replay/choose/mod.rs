@@ -237,4 +237,5 @@ mod tests {
 }
 
 #[cfg(kani)]
+#[path = "../../verification/kani/replay_choose_kani/mod.rs"]
 mod kani;

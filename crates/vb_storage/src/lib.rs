@@ -46,68 +46,92 @@ pub mod indexes;
 pub mod inputs;
 pub mod journal;
 #[cfg(all(kani, feature = "legacy-kani"))]
+#[path = "verification/kani/kani_codec.rs"]
 pub mod kani_codec;
 
 #[cfg(all(kani, feature = "legacy-kani"))]
+#[path = "verification/kani/kani_record_magic.rs"]
 pub mod kani_record_magic;
 
 #[cfg(all(kani, feature = "legacy-kani"))]
+#[path = "verification/kani/kani_record_schema.rs"]
 pub mod kani_record_schema;
 
 #[cfg(all(kani, feature = "legacy-kani"))]
+#[path = "verification/kani/kani_record_kind.rs"]
 pub mod kani_record_kind;
 
 #[cfg(all(kani, feature = "legacy-kani"))]
+#[path = "verification/kani/kani_record_payload_len.rs"]
 pub mod kani_record_payload_len;
 
 #[cfg(all(kani, feature = "legacy-kani"))]
+#[path = "verification/kani/kani_record_crc.rs"]
 pub mod kani_record_crc;
 
 #[cfg(all(kani, feature = "legacy-kani"))]
+#[path = "verification/kani/kani_digest_checks_vb_2bzz.rs"]
 pub mod kani_digest_checks_vb_2bzz;
 
 #[cfg(all(kani, feature = "legacy-kani"))]
+#[path = "verification/kani/kani_hydrate_proofs.rs"]
 pub mod kani_hydrate_proofs;
 
 #[cfg(all(kani, feature = "legacy-kani"))]
+#[path = "verification/kani/kani_admission.rs"]
 pub mod kani_admission;
 
 #[cfg(all(kani, feature = "legacy-kani"))]
+#[path = "verification/kani/kani_postcard_envelope_wire.rs"]
 pub mod kani_postcard_envelope_wire;
 
 #[cfg(all(kani, feature = "kani-typed-partitioned-ids"))]
+#[path = "verification/kani/kani_typed_partitioned_ids.rs"]
 pub mod kani_typed_partitioned_ids;
 
 #[cfg(all(kani, feature = "kani-vb-u8gi-decode-taxonomy"))]
+#[path = "verification/kani/kani_vb_u8gi_storage_decode_order.rs"]
 pub mod kani_vb_u8gi_storage_decode_order;
 
 #[cfg(all(kani, feature = "kani-vb-u8gi-decode-taxonomy"))]
+#[path = "verification/kani/kani_vb_u8gi_storage_numeric_fields.rs"]
 pub mod kani_vb_u8gi_storage_numeric_fields;
 
 #[cfg(all(kani, feature = "kani-vb-u8gi-decode-taxonomy"))]
+#[path = "verification/kani/kani_vb_u8gi_storage_payload_bounds.rs"]
 pub mod kani_vb_u8gi_storage_payload_bounds;
 
 // --- vb-vzcuf Kani harnesses (PS-001 through PS-009) ---
 #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+#[path = "verification/kani/kani_vb_vzcuf_ps001.rs"]
 pub mod kani_vb_vzcuf_ps001;
 #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+#[path = "verification/kani/kani_vb_vzcuf_ps002.rs"]
 pub mod kani_vb_vzcuf_ps002;
 #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+#[path = "verification/kani/kani_vb_vzcuf_ps003.rs"]
 pub mod kani_vb_vzcuf_ps003;
 #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+#[path = "verification/kani/kani_vb_vzcuf_ps004.rs"]
 pub mod kani_vb_vzcuf_ps004;
 #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+#[path = "verification/kani/kani_vb_vzcuf_ps005.rs"]
 pub mod kani_vb_vzcuf_ps005;
 #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+#[path = "verification/kani/kani_vb_vzcuf_ps006.rs"]
 pub mod kani_vb_vzcuf_ps006;
 #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+#[path = "verification/kani/kani_vb_vzcuf_ps007.rs"]
 pub mod kani_vb_vzcuf_ps007;
 #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+#[path = "verification/kani/kani_vb_vzcuf_ps008.rs"]
 pub mod kani_vb_vzcuf_ps008;
 #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+#[path = "verification/kani/kani_vb_vzcuf_ps009.rs"]
 pub mod kani_vb_vzcuf_ps009;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_vbjpq733_proofs.rs"]
 pub mod kani_vbjpq733_proofs;
 
 pub mod keys;

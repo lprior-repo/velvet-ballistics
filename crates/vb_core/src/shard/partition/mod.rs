@@ -275,7 +275,9 @@ pub mod proptest_strategies {
 // ============================================================================
 
 #[cfg(kani)]
+#[path = "../../verification/kani/partition_kani_key_range_properties.rs"]
 pub mod kani_key_range_properties;
 
 #[cfg(kani)]
+#[path = "../../verification/kani/partition_kani_partition_plan_safety.rs"]
 pub mod kani_partition_plan_safety;

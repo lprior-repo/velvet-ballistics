@@ -49,6 +49,7 @@ fn minimal_valid_workflow() -> CompiledWorkflow {
                 None,
             ),
         ]),
+        input_slots: Box::new([]),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: Box::new([ConstValue::I64(42)]),

@@ -2,36 +2,6 @@
 // 
 // This module is conditionally compiled and does not contribute to the production build.
 
-#[cfg(kani)]
-mod kani_harnesses {
-    fn same_static_str(left: &'static str, right: &'static str) -> bool {
-        left.len() == right.len() && core::ptr::eq(left.as_ptr(), right.as_ptr())
-    }
-
-    /// PO-012: capped ValueStore rejects inserts with exact BudgetExceeded parity.
-    #[kani::proof]
-    fn value_store_cap_rejects_insert_with_budget_exceeded_max_slots() {
-        let mut store = super::ValueStore::with_max_slots(1);
-
-        match store.insert_blob(bytes::Bytes::new()) {
-            Ok(_) => {}
-            Err(_) => assert!(false),
-        }
-        assert!(store.total_arena_count() == 1);
-
-        let result = store.insert_blob(bytes::Bytes::new());
-        match &result {
-            Err(super::CoreError::BudgetExceeded { budget, limit }) => {
-                assert!(same_static_str(budget, "max_slots"));
-                assert!(*limit == 1);
-            }
-            Ok(_) => assert!(false),
-            Err(_) => assert!(false),
-        }
-        core::mem::forget(result);
-        assert!(store.total_arena_count() == 1);
-    }
-}
 
 #[cfg(test)]
 mod verification_tests {

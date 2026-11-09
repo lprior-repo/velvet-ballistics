@@ -42,58 +42,79 @@ pub mod workflow;
 pub mod proof_kernels;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_expr_bound.rs"]
 pub mod kani_expr_bound;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_capability_harnesses.rs"]
 pub mod kani_capability_harnesses;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_idempotency_gates.rs"]
 pub mod kani_idempotency_gates;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_taint_propagation.rs"]
 pub mod kani_taint_propagation;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_step_budget_zero.rs"]
 pub mod kani_step_budget_zero;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_step_budget_one.rs"]
 pub mod kani_step_budget_one;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_step_budget.rs"]
 pub mod kani_step_budget;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_step_budget_try_take_arbitrary.rs"]
 pub mod kani_step_budget_try_take_arbitrary;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_budget_arithmetic_refinement.rs"]
 pub mod kani_budget_arithmetic_refinement;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_index_access.rs"]
 pub mod kani_index_access;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_resource_budget_bounded.rs"]
 pub mod kani_resource_budget_bounded;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_workflow_arbitrary.rs"]
 pub mod kani_workflow_arbitrary;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_workflow_budget_harnesses.rs"]
 pub mod kani_workflow_budget_harnesses;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_step_harnesses.rs"]
 pub mod kani_step_harnesses;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_step_state_transition.rs"]
 pub mod kani_step_state_transition;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_taint.rs"]
 pub mod kani_taint;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_vbjpq733_proofs.rs"]
 pub mod kani_vbjpq733_proofs;
 
 #[cfg(all(kani, feature = "kani-diagnostic-codes"))]
+#[path = "verification/kani/diagnostic/mod.rs"]
 pub mod kani;
+
+// Verification harnesses (gated internally via cfg).
+mod verification;
 
 pub use action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionFailureReport,

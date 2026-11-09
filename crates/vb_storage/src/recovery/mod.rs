@@ -21,6 +21,7 @@ pub mod replay;
 pub mod types;
 
 #[cfg(kani)]
+#[path = "../verification/kani/recovery_kani.rs"]
 pub mod kani;
 
 // Flux-rs compiler-injected refinements for replay bounds.

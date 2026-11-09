@@ -26,15 +26,19 @@ pub mod payloads;
 pub mod server;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_ipc_header.rs"]
 pub mod kani_ipc_header;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_ipc_header_rejects_oversize.rs"]
 pub mod kani_ipc_header_rejects_oversize;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_ipc_decode_order.rs"]
 pub mod kani_ipc_decode_order;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_flag_validation.rs"]
 pub mod kani_flag_validation;
 
 pub use crate::action_output::IpcActionOutputPayload;

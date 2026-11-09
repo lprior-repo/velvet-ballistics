@@ -95,10 +95,13 @@ include!("parts/chunk_001_custom_types.rs");
 mod tests_and_verification;
 
 #[cfg(kani)]
+#[path = "../verification/kani/ids_kani_id_bounds.rs"]
 pub mod kani_id_bounds;
 
 #[cfg(kani)]
+#[path = "../verification/kani/ids_kani_id_arbitrary.rs"]
 pub mod kani_id_arbitrary;
 
 #[cfg(kani)]
+#[path = "../verification/kani/ids_kani_shard_index_bounds.rs"]
 pub mod kani_shard_index_bounds;

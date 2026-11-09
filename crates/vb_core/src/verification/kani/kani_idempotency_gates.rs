@@ -175,6 +175,7 @@ fn symbolic_ticket() -> ActionTicket {
         attempt: kani::any(),
         idempotency_key: kani::any(),
         capacity: kani::any(),
+        fencing_token: kani::any(),
     }
 }
 
@@ -660,6 +661,7 @@ fn check_ticket_key_case(run_raw: u64, seq_raw: u64, action_raw: u16, use_canoni
         attempt: kani::any(),
         idempotency_key,
         capacity: kani::any(),
+        fencing_token: kani::any(),
     };
     let observed = action_ticket_has_valid_key(ticket);
     kani::cover!(

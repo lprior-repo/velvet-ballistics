@@ -12,6 +12,7 @@ pub mod yaml_profile;
 pub mod yaml_source_map;
 
 #[cfg(kani)]
+#[path = "verification/kani/yaml_kani/mod.rs"]
 pub mod yaml_kani;
 
 #[cfg(test)]

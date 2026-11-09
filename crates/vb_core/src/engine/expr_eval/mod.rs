@@ -11,9 +11,11 @@ pub use accessors::{eval_accessor, eval_accessor_with_store};
 pub use core::{eval_expr, eval_expr_with_store};
 
 #[cfg(kani)]
+#[path = "../../verification/kani/expr_eval_kani_stack.rs"]
 mod kani_stack;
 
 #[cfg(kani)]
+#[path = "../../verification/kani/expr_eval_kani_div_zero.rs"]
 mod kani_div_zero;
 
 #[cfg(test)]

@@ -290,4 +290,5 @@ pub use step::replay_step;
 mod tests;
 
 #[cfg(kani)]
+#[path = "../verification/kani/replay_kani_harnesses.rs"]
 mod kani_harnesses;

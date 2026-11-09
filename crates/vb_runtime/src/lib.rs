@@ -60,26 +60,35 @@ pub mod idempotency;
 pub mod ipc_refinement;
 pub mod journal;
 #[cfg(all(kani, feature = "kani-capability-harnesses"))]
+#[path = "verification/kani/kani_capability_harnesses.rs"]
 pub mod kani_capability_harnesses;
 #[cfg(all(kani, feature = "kani-engine-yaml-admission"))]
+#[path = "verification/kani/kani_engine_yaml_admission.rs"]
 pub mod kani_engine_yaml_admission;
 #[cfg(all(kani, feature = "kani-shard-command-queue"))]
+#[path = "verification/kani/kani_shard_command_queue.rs"]
 pub mod kani_shard_command_queue;
 #[cfg(all(kani, feature = "kani-trace-ring"))]
+#[path = "verification/kani/kani_trace_ring.rs"]
 pub mod kani_trace_ring;
 pub mod manual_gate;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_vb_edvbj_storage_event_no_fabricate.rs"]
 pub mod kani_vb_edvbj_storage_event_no_fabricate;
 
 #[cfg(kani)]
+#[path = "verification/kani/kani_vb_edvbj_propagation_strict_gate.rs"]
 pub mod kani_vb_edvbj_propagation_strict_gate;
 #[cfg(all(kani, feature = "kani-vt2f-runtime-facade"))]
+#[path = "verification/kani/kani_vt2f_runtime_facade.rs"]
 pub mod kani_vt2f_runtime_facade;
 #[cfg(all(kani, feature = "kani-vt2f-shard-lower-semantics"))]
+#[path = "verification/kani/kani_vt2f_shard_lower_semantics.rs"]
 pub mod kani_vt2f_shard_lower_semantics;
 
 #[cfg(all(kani, feature = "kani-admission-store"))]
+#[path = "verification/kani/kani_admission_store.rs"]
 pub mod kani_admission_store;
 
 #[cfg(loom)]

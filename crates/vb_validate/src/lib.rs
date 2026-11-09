@@ -66,6 +66,7 @@ pub mod verification;
 // Kani verification harness directory
 // ============================================================================
 #[cfg(kani)]
+#[path = "verification/kani/validation/mod.rs"]
 pub mod kani;
 
 // ============================================================================

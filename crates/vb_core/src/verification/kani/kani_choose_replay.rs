@@ -12,7 +12,7 @@
 #![forbid(unsafe_code)]
 #![cfg(kani)]
 
-use vb_core::{
+use crate::{
     ReplayAction, ReplayError,
     frame::RunFrame,
     ids::{RunId, SlotIdx, StepIdx},
