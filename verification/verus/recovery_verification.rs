@@ -75,7 +75,7 @@
 //                                            (mirror of crates/vb_storage/src/recovery/types.rs:38-147,
 //                                             4 variants exercised)
 //   - `RuntimeError` (spec subset)      <- extern_recovery_verification.rs
-//                                            (mirror of error/mod.rs:7-203,
+//                                            (mirror of crates/vb_runtime/src/error/mod.rs:7-203,
 //                                             5 variants exercised)
 //
 //   - `reject_unsupported_live_frame_state_pure`
