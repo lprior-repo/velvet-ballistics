@@ -26,13 +26,13 @@
 //
 // BINDING LEDGER (mirrors production_inner/budget_computation_production.rs)
 // ============================================================================
-//   - `count_and_push_loop_body`            <- crates/vb_core/src/budget.rs:2474-2500
-//   - `find_node_position`                  <- crates/vb_core/src/budget.rs:2240-2267
-//   - `push_done_continuation`              <- crates/vb_core/src/budget.rs:2502-2522
-//   - `checked_step_add`                    <- crates/vb_core/src/budget.rs:2464-2469
-//   - `max_gather_pages`                    <- crates/vb_core/src/budget.rs:3091-3104
-//   - `total`                               <- crates/vb_core/src/budget.rs:2301-2303
-//   - `count`                               <- crates/vb_core/src/budget.rs:2559-2564
+//   - `count_and_push_loop_body`            <- crates/vb_core/src/budget/loop_body.rs:216-242
+//   - `find_node_position`                  <- crates/vb_core/src/budget.rs:1517-1541
+//   - `push_done_continuation`              <- crates/vb_core/src/budget/loop_body.rs:244-261
+//   - `checked_step_add`                    <- crates/vb_core/src/budget/loop_body.rs:206-211
+//   - `max_gather_pages`                    <- crates/vb_core/src/budget/reachable.rs:166-179
+//   - `total`                               <- crates/vb_core/src/budget/loop_body.rs:43-47
+//   - `count`                               <- crates/vb_core/src/budget/loop_region.rs:47-52
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -44,7 +44,6 @@
 // production behavior the spec proofs discharge. Drift between the
 // mirror and the production source is reported as binding-debt
 // tracked outside Verus.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -80,13 +79,13 @@ pub mod production_inner;
 // The drift check references every production method that the spec
 // file attaches an `assume_specification` bridge to:
 //
-//   - count_and_push_loop_body      (budget.rs:2474-2500)
-//   - find_node_position            (budget.rs:2240-2267)
-//   - push_done_continuation        (budget.rs:2502-2522)
-//   - checked_step_add              (budget.rs:2464-2469)
-//   - collect_start_update_metrics  (budget.rs:3091-3104)
-//   - count_total_steps_step_increment (budget.rs:2301-2303)
-//   - body_region_step_increment    (budget.rs:2559-2564)
+//   - count_and_push_loop_body      (budget/loop_body.rs:216-242)
+//   - find_node_position            (budget.rs:1517-1541)
+//   - push_done_continuation        (budget/loop_body.rs:244-261)
+//   - checked_step_add              (budget/loop_body.rs:206-211)
+//   - collect_start_update_metrics  (budget/reachable.rs:166-179)
+//   - count_total_steps_step_increment (budget/loop_body.rs:43-47)
+//   - body_region_step_increment    (budget/loop_region.rs:47-52)
 //
 // Plus the production type discriminants referenced by the spec
 // (BudgetTraversalError::StepCountOverflow, BudgetError::TotalStepsExceeded,
@@ -211,11 +210,7 @@ fn prod_methods_drift_check() {
         0,
         &mut stack,
     );
-    let _ = production_inner::find_node_position(
-        &nodes,
-        production_inner::StepIdx::new(0),
-        0,
-    );
+    let _ = production_inner::find_node_position(&nodes, production_inner::StepIdx::new(0), 0);
     let _ = production_inner::push_done_continuation(
         &nodes,
         production_inner::StepIdx::new(0),
@@ -232,7 +227,6 @@ fn prod_methods_drift_check() {
 }
 
 } // verus!
-
 // Re-export the production types and exec wrappers so the spec file
 // can reference them via `crate::production::*`. The mirror module
 // is included inside `verus!` so the type declarations are nameable
