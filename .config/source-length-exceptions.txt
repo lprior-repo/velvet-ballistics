@@ -78,7 +78,6 @@ crates/velvet_ballistics/src/lifecycle.rs|lewis|vb-srclen|split-after-ledger-lan
 crates/velvet_ballistics/tests/cli_integration.rs|lewis|vb-srclen|split-after-ledger-landing|test_top_level 4016 lines (limit 3000) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/workspace_tests/ipc_magic_gate.rs|lewis|vb-srclen|split-after-ledger-landing|production 413 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/workspace_tests/src/acceptance_catalog.rs|lewis|vb-srclen|split-after-ledger-landing|production 529 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
-crates/workspace_tests/src/bdd_runner.rs|lewis|vb-srclen|split-after-ledger-landing|production 458 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 scripts/check-hot-cold-forbidden-apis.rs|lewis|vb-srclen|split-after-ledger-landing|production 331 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 scripts/check-test-integrity.rs|lewis|vb-srclen|split-after-ledger-landing|production 2480 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 scripts/check-workspace-assertions.rs|lewis|vb-srclen|split-after-ledger-landing|production 440 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
