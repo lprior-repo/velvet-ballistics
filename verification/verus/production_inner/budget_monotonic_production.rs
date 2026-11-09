@@ -32,7 +32,8 @@
 //      production behavior the spec proofs discharge.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_core/src/budget.rs` whenever production changes. The
+// `crates/vb_core/src/budget.rs` and `crates/vb_core/src/budget/compute.rs`
+// whenever production changes. The
 // mirror is annotated at the top of every section with the
 // originating production line range so regeneration is mechanical.
 //
@@ -66,15 +67,15 @@
 //                                               crates/vb_core/src/workflow/mod.rs:666-880)
 //   - `BudgetTraversalError`                <- extern_budget_monotonic.rs
 //                                               (mirror of
-//                                               crates/vb_core/src/budget.rs:256-280)
+//                                               crates/vb_core/src/budget.rs:11-37)
 //   - `WholeWorkflowBudget`                 <- extern_budget_monotonic.rs
 //                                               (mirror of
-//                                               crates/vb_core/src/budget.rs:14-90)
-// Production `crates/vb_core/src/budget.rs:14-90`
+//                                               crates/vb_core/src/budget/compute.rs:15-93)
+// Production `crates/vb_core/src/budget/compute.rs:15-93`
 //   - `WholeWorkflowBudget::compute`        <- extern_budget_monotonic.rs
 //                                               `whole_workflow_budget_compute`
 //                                               (mirror of
-//                                               crates/vb_core/src/budget.rs:97-103)
+//                                               crates/vb_core/src/budget/compute.rs:98-106)
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -466,7 +467,7 @@ pub mod workflow {
     /// Mirror of production `WorkflowError` discriminant set at
     /// `crates/vb_core/src/workflow/mod.rs:666-880`. Restricted to the
     /// variants reachable from `BudgetTraversalError` via the `From`
-    /// conversion at `crates/vb_core/src/budget.rs:282-296` plus the
+    /// conversion at `crates/vb_core/src/budget.rs:39-52` plus the
     /// direct `WorkflowError` returns in `compute_budget_local`.
     #[derive(Clone, Copy)]
     pub enum WorkflowError {
@@ -549,7 +550,7 @@ pub struct ResourceContract {
 }
 
 // ============================================================================
-// BudgetTraversalError — mirror of `crates/vb_core/src/budget.rs:256-280`
+// BudgetTraversalError — mirror of `crates/vb_core/src/budget.rs:11-37`
 // ============================================================================
 //
 // Mirror of `BudgetTraversalError` (the narrow error type returned by
@@ -557,7 +558,7 @@ pub struct ResourceContract {
 // any variant drift breaks the mirror.
 
 /// Mirror of production `BudgetTraversalError` at
-/// `crates/vb_core/src/budget.rs:256-280`.
+/// `crates/vb_core/src/budget.rs:11-37`.
 #[derive(Clone, Copy)]
 pub enum BudgetTraversalError {
     EntryOutOfBounds { entry: StepIdx },
@@ -571,12 +572,12 @@ pub enum BudgetTraversalError {
 // WholeWorkflowBudget — production mirror
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget.rs:14-90`. Every field name, type,
+// Mirror of `crates/vb_core/src/budget/compute.rs:15-93`. Every field name, type,
 // and visibility matches production exactly. Drift in any field breaks
 // the mirror.
 
 /// Mirror of production `WholeWorkflowBudget` at
-/// `crates/vb_core/src/budget.rs:14-90`. Field-by-field copy of the
+/// `crates/vb_core/src/budget/compute.rs:15-93`. Field-by-field copy of the
 /// production struct. The exec fn `WholeWorkflowBudget::compute` below
 /// is `#[verifier::external]` and accepts the production signature.
 #[derive(Clone, Copy)]
@@ -615,7 +616,7 @@ pub struct WholeWorkflowBudget {
 
 impl WholeWorkflowBudget {
     /// Production wrapper for `WholeWorkflowBudget::compute` at
-    /// `crates/vb_core/src/budget.rs:97-103`. Body skipped by Verus;
+    /// `crates/vb_core/src/budget/compute.rs:98-106`. Body skipped by Verus;
     /// contract attached via `assume_specification` in the spec file.
     #[verifier::external]
     pub fn compute(
@@ -639,7 +640,7 @@ impl WholeWorkflowBudget {
 // (`budget_monotonic.rs`).
 
 /// Production wrapper for `WholeWorkflowBudget::compute` at
-/// `crates/vb_core/src/budget.rs:97-103`. Body skipped by Verus.
+/// `crates/vb_core/src/budget/compute.rs:98-106`. Body skipped by Verus.
 #[verifier::external]
 pub fn whole_workflow_budget_compute(
     nodes: &[super::workflow::CompiledNode],

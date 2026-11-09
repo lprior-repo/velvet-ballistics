@@ -36,7 +36,7 @@
 //
 // DRIFT POLICY: This file MUST be regenerated from
 // `crates/vb_core/src/budget.rs` and its `budget/` submodules
-// (`usage.rs`, `loop_body.rs`, `aggregate.rs`, `aggregate_validate.rs`, `validate.rs`, `validate_error.rs`) whenever production changes. The
+// (`usage.rs`, `loop_body.rs`, `aggregate.rs`, `aggregate_validate.rs`, `validate.rs`, `validate_error.rs`, `compute.rs`, `small_linear.rs`) whenever production changes. The
 // mirror is annotated at the top of every section with the
 // originating production line range so regeneration is mechanical.
 //
@@ -50,10 +50,10 @@
 // ============================================================================
 // BINDING LEDGER
 // ============================================================================
-//   - `WholeWorkflowBudget`                  <- crates/vb_core/src/budget.rs:14-90
-// Production `crates/vb_core/src/budget.rs:14-90`
-//   - `WholeWorkflowBudget::compute`         <- crates/vb_core/src/budget.rs:97-103
-// Production `crates/vb_core/src/budget.rs:97-103`
+//   - `WholeWorkflowBudget`                  <- crates/vb_core/src/budget/compute.rs:15-93
+// Production `crates/vb_core/src/budget/compute.rs:15-93`
+//   - `WholeWorkflowBudget::compute`         <- crates/vb_core/src/budget/compute.rs:98-106
+// Production `crates/vb_core/src/budget/compute.rs:98-106`
 //   - `BoundednessPolicy`                    <- crates/vb_core/src/budget/validate.rs:7-56
 // Production `crates/vb_core/src/budget/validate.rs:7-56`
 //   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget/validate.rs:88-147
@@ -81,9 +81,9 @@
 // Production `crates/vb_core/src/budget/usage.rs:377-468`
 //   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:109-243
 // Production `crates/vb_core/src/budget/aggregate_validate.rs:109-243`
-//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:468-503
-//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:505-523
-// Production `crates/vb_core/src/budget.rs:505-523`
+//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:65-102
+//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:104-122
+// Production `crates/vb_core/src/budget.rs:104-122`
 //                                            (pure checked_add / checked_sub;
 //                                             these are the pure decision fns
 //                                             we exercise via `assume_specification`)
@@ -247,12 +247,12 @@ pub struct ResourceContract {
 // WholeWorkflowBudget — production mirror
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget.rs:14-90`. Every field name, type,
+// Mirror of `crates/vb_core/src/budget/compute.rs:15-93`. Every field name, type,
 // and visibility matches production exactly. Drift in any field breaks
 // the mirror.
 
 /// Mirror of production `WholeWorkflowBudget` at
-/// `crates/vb_core/src/budget.rs:14-90`. Field-by-field copy of the
+/// `crates/vb_core/src/budget/compute.rs:15-93`. Field-by-field copy of the
 /// production struct. The exec fn `WholeWorkflowBudget::compute` below
 /// is `#[verifier::external]` and accepts the production signature.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -291,7 +291,7 @@ pub struct WholeWorkflowBudget {
 
 impl WholeWorkflowBudget {
     /// Production wrapper for `WholeWorkflowBudget::compute` at
-    /// `crates/vb_core/src/budget.rs:97-103`. Body skipped by Verus;
+    /// `crates/vb_core/src/budget/compute.rs:98-106`. Body skipped by Verus;
     /// contract attached via `assume_specification` in the spec file.
     #[verifier::external]
     pub fn compute(
@@ -576,7 +576,7 @@ pub enum AggregateBudgetError {
 // spec file (`budget_bounded.rs`).
 
 /// Production wrapper for `WholeWorkflowBudget::compute` at
-/// `crates/vb_core/src/budget.rs:97-103`. Body skipped by Verus.
+/// `crates/vb_core/src/budget/compute.rs:98-106`. Body skipped by Verus.
 #[verifier::external]
 pub fn whole_workflow_budget_compute(
     nodes: &[super::workflow::CompiledNode],
@@ -610,7 +610,7 @@ pub fn validate_aggregate_budget(
 }
 
 /// Production wrapper for `validate_step_ceilings` at
-/// `crates/vb_core/src/budget.rs:468-503`. Body is a faithful copy
+/// `crates/vb_core/src/budget.rs:65-102`. Body is a faithful copy
 /// of the production body; the local hard-limit constants are part
 /// of that body. Body skipped by Verus.
 #[verifier::external]
@@ -650,7 +650,7 @@ pub fn validate_step_ceilings(
 }
 
 /// Production wrapper for `add_dim` at
-/// `crates/vb_core/src/budget.rs:505-513`. Pure checked_add — this
+/// `crates/vb_core/src/budget.rs:104-112`. Pure checked_add — this
 /// is a pure decision fn and the spec attaches an `assume_specification`
 /// contract in `budget_bounded.rs`.
 #[verifier::external]
@@ -665,7 +665,7 @@ pub fn add_dim(
 }
 
 /// Production wrapper for `sub_dim` at
-/// `crates/vb_core/src/budget.rs:515-523`. Pure checked_sub — pure
+/// `crates/vb_core/src/budget.rs:114-122`. Pure checked_sub — pure
 /// decision fn with `assume_specification` contract in the spec.
 #[verifier::external]
 pub fn sub_dim(

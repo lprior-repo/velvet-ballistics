@@ -3,7 +3,10 @@
 // the shell alone no longer contains the `AggregateBudgetError` variants.
 // The boundedness policy and error taxonomy moved to `budget/validate.rs`
 // and `budget/validate_error.rs`, so the shell alone no longer contains
-// `BoundednessPolicy` or `BudgetError` either. Concatenate the submodules
+// `BoundednessPolicy` or `BudgetError` either. The budget computation and
+// its small-linear fast path moved to `budget/compute.rs` and
+// `budget/small_linear.rs`, so the shell alone no longer contains
+// `WholeWorkflowBudget` either. Concatenate the submodules
 // so the snapshot sees the same surface the production binary sees.
 // Mirrors the fix in `aggregate_resource_budget_red.rs`.
 const BUDGET_RS: &str = concat!(
@@ -12,6 +15,10 @@ const BUDGET_RS: &str = concat!(
     include_str!("../src/budget/aggregate.rs"),
     "\n",
     include_str!("../src/budget/aggregate_validate.rs"),
+    "\n",
+    include_str!("../src/budget/compute.rs"),
+    "\n",
+    include_str!("../src/budget/small_linear.rs"),
     "\n",
     include_str!("../src/budget/validate.rs"),
     "\n",
