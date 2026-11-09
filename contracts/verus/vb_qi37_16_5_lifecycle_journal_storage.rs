@@ -17,7 +17,6 @@
 // the production `RuntimeJournal::append`. The spec file then attaches
 // production-bound exec fn decoration to bind the production decision fn to
 // the lifecycle state machine spec.
-
 #![allow(unused_imports)]
 use vstd::prelude::*;
 
@@ -29,10 +28,13 @@ mod production;
 // ============================================================
 // Production-bound exec fns (mirror production)
 // ============================================================
-
 // Production mirror of vb_runtime::journal::RuntimeJournalEvent.
 pub use production::RuntimeJournalEvent;
-pub fn run_id(event: &RuntimeJournalEvent) -> RunId { event.run_id() }
+
+pub fn run_id(event: &RuntimeJournalEvent) -> RunId {
+    event.run_id()
+}
+
 pub use production::RunId;
 
 // Production mirror of vb_runtime::journal::RuntimeJournal::append.
@@ -43,7 +45,6 @@ pub fn journal_append_accepts(state: i64, command: i64) -> bool {
 // ============================================================
 // Spec mirrors
 // ============================================================
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum LifecycleState {
     Pending,
@@ -116,7 +117,10 @@ pub open spec fn transition_valid(state: LifecycleState, command: LifecycleComma
     state == command_prior(command)
 }
 
-pub open spec fn spec_transition(state: LifecycleState, command: LifecycleCommand) -> CommandResult {
+pub open spec fn spec_transition(
+    state: LifecycleState,
+    command: LifecycleCommand,
+) -> CommandResult {
     if transition_valid(state, command) {
         CommandResult::Accepted(command_next(command))
     } else {
@@ -124,7 +128,10 @@ pub open spec fn spec_transition(state: LifecycleState, command: LifecycleComman
     }
 }
 
-pub open spec fn command_already_advanced(state: LifecycleState, command: LifecycleCommand) -> bool {
+pub open spec fn command_already_advanced(
+    state: LifecycleState,
+    command: LifecycleCommand,
+) -> bool {
     state == command_next(command)
 }
 
@@ -133,7 +140,10 @@ pub open spec fn command_is_stale(state: LifecycleState, command: LifecycleComma
     &&& state != command_next(command)
 }
 
-pub open spec fn validate_command(state: LifecycleState, command: LifecycleCommand) -> CommandResult {
+pub open spec fn validate_command(
+    state: LifecycleState,
+    command: LifecycleCommand,
+) -> CommandResult {
     if transition_valid(state, command) {
         CommandResult::Accepted(command_next(command))
     } else if command_already_advanced(state, command) {
@@ -148,7 +158,6 @@ pub open spec fn validate_command(state: LifecycleState, command: LifecycleComma
 // ============================================================
 // Non-vacuous proofs
 // ============================================================
-
 // Non-vacuous: case analysis over all six LifecycleState variants.
 pub proof fn proof_single_canonical_state(state: LifecycleState)
     ensures
@@ -179,11 +188,15 @@ pub proof fn proof_validate_command_precondition(state: LifecycleState, command:
 }
 
 // Non-vacuous: case analysis on the journal event structure.
-pub proof fn proof_append_event_injective(journal: Seq<RuntimeJournalEvent>, event: RuntimeJournalEvent)
+pub proof fn proof_append_event_injective(
+    journal: Seq<RuntimeJournalEvent>,
+    event: RuntimeJournalEvent,
+)
     ensures
         journal.push(event).len() == journal.len() + 1,
         journal.push(event)[journal.len() as int] == event,
-        forall|i: int| 0 <= i && i < journal.len() ==> #[trigger] journal.push(event)[i] == journal[i],
+        forall|i: int|
+            0 <= i && i < journal.len() ==> #[trigger] journal.push(event)[i] == journal[i],
 {
     // The Seq::push definition makes the first two conjuncts immediate; the
     // third (preservation of prefix) is also immediate by Seq axioms.
@@ -201,13 +214,20 @@ pub proof fn proof_append_event_injective(journal: Seq<RuntimeJournalEvent>, eve
 // Non-vacuous: when all three refutation preconditions hold, validate_command
 // returns Rejected(InvalidTransition) and journal_after_command is the
 // original journal.
-pub proof fn proof_invalid_transition_error(bead: int, journal: Seq<RuntimeJournalEvent>, state: LifecycleState, command: LifecycleCommand)
+pub proof fn proof_invalid_transition_error(
+    bead: int,
+    journal: Seq<RuntimeJournalEvent>,
+    state: LifecycleState,
+    command: LifecycleCommand,
+)
     requires
         !transition_valid(state, command),
         !command_already_advanced(state, command),
         !command_is_stale(state, command),
     ensures
-        validate_command(state, command) == CommandResult::Rejected(LifecycleError::InvalidTransition),
+        validate_command(state, command) == CommandResult::Rejected(
+            LifecycleError::InvalidTransition,
+        ),
         journal_after_command(journal, bead, state, command) == journal,
 {
     reveal(validate_command);
@@ -215,30 +235,46 @@ pub proof fn proof_invalid_transition_error(bead: int, journal: Seq<RuntimeJourn
     reveal(command_already_advanced);
     reveal(command_is_stale);
     reveal(journal_after_command);
-    assert(validate_command(state, command) == CommandResult::Rejected(LifecycleError::InvalidTransition));
+    assert(validate_command(state, command) == CommandResult::Rejected(
+        LifecycleError::InvalidTransition,
+    ));
     assert(journal_after_command(journal, bead, state, command) == journal);
 }
 
 // Non-vacuous: when command is already advanced, validate_command returns
 // Rejected(DuplicateRequest).
-pub proof fn proof_duplicate_request_error(bead: int, journal: Seq<RuntimeJournalEvent>, state: LifecycleState, command: LifecycleCommand)
+pub proof fn proof_duplicate_request_error(
+    bead: int,
+    journal: Seq<RuntimeJournalEvent>,
+    state: LifecycleState,
+    command: LifecycleCommand,
+)
     requires
         command_already_advanced(state, command),
     ensures
-        validate_command(state, command) == CommandResult::Rejected(LifecycleError::DuplicateRequest),
+        validate_command(state, command) == CommandResult::Rejected(
+            LifecycleError::DuplicateRequest,
+        ),
         journal_after_command(journal, bead, state, command) == journal,
 {
     reveal(validate_command);
     reveal(command_already_advanced);
     reveal(transition_valid);
     reveal(journal_after_command);
-    assert(validate_command(state, command) == CommandResult::Rejected(LifecycleError::DuplicateRequest));
+    assert(validate_command(state, command) == CommandResult::Rejected(
+        LifecycleError::DuplicateRequest,
+    ));
     assert(journal_after_command(journal, bead, state, command) == journal);
 }
 
 // Non-vacuous: when command is stale but not already advanced, validate_command
 // returns Rejected(StaleRequest).
-pub proof fn proof_stale_request_error(bead: int, journal: Seq<RuntimeJournalEvent>, state: LifecycleState, command: LifecycleCommand)
+pub proof fn proof_stale_request_error(
+    bead: int,
+    journal: Seq<RuntimeJournalEvent>,
+    state: LifecycleState,
+    command: LifecycleCommand,
+)
     requires
         command_is_stale(state, command),
         !command_already_advanced(state, command),
@@ -251,7 +287,9 @@ pub proof fn proof_stale_request_error(bead: int, journal: Seq<RuntimeJournalEve
     reveal(command_already_advanced);
     reveal(transition_valid);
     reveal(journal_after_command);
-    assert(validate_command(state, command) == CommandResult::Rejected(LifecycleError::StaleRequest));
+    assert(validate_command(state, command) == CommandResult::Rejected(
+        LifecycleError::StaleRequest,
+    ));
     assert(journal_after_command(journal, bead, state, command) == journal);
 }
 

@@ -56,7 +56,6 @@
 // structural resolution and type well-formedness, not the body
 // semantics. The contracts are attached in the companion spec file
 // via `assume_specification` bridges.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]

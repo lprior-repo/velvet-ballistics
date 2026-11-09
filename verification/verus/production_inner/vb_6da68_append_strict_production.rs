@@ -388,11 +388,10 @@ impl SpecFjallJournal {
     /// inserted between pre-check and commit) breaks this body's
     /// structural correspondence with the bridge contract.
     #[verifier::external]
-    pub fn append_strict(
-        &mut self,
-        event: &SpecJournalEvent,
-        commit_ok: bool,
-    ) -> Result<(), SpecJournalError> {
+    pub fn append_strict(&mut self, event: &SpecJournalEvent, commit_ok: bool) -> Result<
+        (),
+        SpecJournalError,
+    > {
         // Mirror of append.rs:38-40: validation gate.
         if !event.valid {
             return Err(SpecJournalError::InvalidEvent);
@@ -400,6 +399,7 @@ impl SpecFjallJournal {
         // Mirror of append.rs:47: run_event_key construction.
         // Abstracted via `event.key_ok`; on failure the production
         // `?` returns KeyCapacity.
+
         if !event.key_ok {
             return Err(SpecJournalError::KeyCapacity);
         }
@@ -409,6 +409,7 @@ impl SpecFjallJournal {
         // I/O error path is folded into the bridge's `Err(Fjall)`
         // arm via the !commit_ok parameter convention (the bridge
         // contract is authoritative, not this stub body).
+
         if self.events.contains(&event.key) {
             return Err(SpecJournalError::DuplicateEvent);
         }
@@ -421,6 +422,7 @@ impl SpecFjallJournal {
         // preconditions under which the proofs run).
         // Mirror of append.rs:56: batch.strict().commit()
         // The real Fjall OwnedWriteBatch::commit happens here.
+
         if !commit_ok {
             // The production `?` lifts fjall::Error into
             // JournalError::Fjall. The trusted atomicity axiom
@@ -435,6 +437,7 @@ impl SpecFjallJournal {
         // body, because the bridge contract is authoritative and
         // HashSet::insert semantics inside an external body are not
         // Verus-verified.
+
         Ok(())
     }
 }

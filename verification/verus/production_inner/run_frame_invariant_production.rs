@@ -38,7 +38,6 @@
 //
 // Included by the companion extern file
 // verification/verus/extern_run_frame_invariant.rs via #[path].
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -50,7 +49,6 @@ verus! {
 // (`run_frame_invariant.rs`) state the production behavior the spec
 // proofs discharge. Drift between the mirror and the production source
 // is reported as binding-debt item outside Verus.
-
 // ============================================================================
 // ID newtypes — mirrors of `crates/vb_core/src/ids/mod.rs`
 // ============================================================================
@@ -61,7 +59,6 @@ verus! {
 // vstd does not model `core::fmt::Debug`, so adding `Debug` here would
 // fail the same way `Clone` on `Box<[T]>` fails. The spec proofs use
 // field-level access and equality, not Debug output.
-
 /// Mirror of `RunId` (u64 newtype) at `crates/vb_core/src/ids/mod.rs:65`.
 /// `PartialEq`/`Eq` are intentionally OMITTED: Verus's vstd does not
 /// fully model the auto-derived `eq_spec` postcondition on newtype
@@ -75,6 +72,7 @@ impl RunId {
     pub const fn new(value: u64) -> Self {
         Self(value)
     }
+
     #[must_use]
     pub const fn get(self) -> u64 {
         self.0
@@ -93,10 +91,12 @@ impl StepIdx {
     pub const fn new(value: u16) -> Self {
         Self(value)
     }
+
     #[must_use]
     pub const fn get(self) -> u16 {
         self.0
     }
+
     #[must_use]
     pub fn as_usize(self) -> usize {
         usize::from(self.0)
@@ -113,10 +113,12 @@ impl SlotIdx {
     pub const fn new(value: u16) -> Self {
         Self(value)
     }
+
     #[must_use]
     pub const fn get(self) -> u16 {
         self.0
     }
+
     #[must_use]
     pub fn as_usize(self) -> usize {
         usize::from(self.0)
@@ -126,7 +128,6 @@ impl SlotIdx {
 // ============================================================================
 // Slot value types — mirrors of `crates/vb_core/src/value.rs`
 // ============================================================================
-
 /// Mirror of the `Taint` discriminant set at `crates/vb_core/src/value.rs:14-25`.
 /// Discriminant order mirrors the production `#[repr(u8)]` ordering
 /// (Clean=0, DerivedFromSecret=1, Secret=2, Random=3, TimeDependent=4).
@@ -154,7 +155,7 @@ pub enum SlotValue {
     Null,
     Bool(bool),
     I64(i64),
-    F64(i64), // F64 placeholder: FiniteF64 is opaque; spec only needs Copy + Eq.
+    F64(i64),  // F64 placeholder: FiniteF64 is opaque; spec only needs Copy + Eq.
     Symbol(u32),
     List(u32),
     Object(u32),
@@ -165,7 +166,6 @@ pub enum SlotValue {
 // CoreError — minimal mirror of the two variants reachable from
 // `RunFrame::new` / `RunFrame::reinitialize` / `RunFrame::set_pc`.
 // ============================================================================
-
 /// Mirror of the two `CoreError` variants the spec bindings care about.
 /// `CoreError` is `#[non_exhaustive]` in production
 /// (`crates/vb_core/src/errors.rs:165-167`); the mirror mirrors only the
@@ -186,7 +186,6 @@ pub type CoreResult<T> = Result<T, CoreError>;
 // ============================================================================
 // StepState — mirror of `crates/vb_core/src/frame.rs:47-64`
 // ============================================================================
-
 /// Mirror of the closed `StepState` discriminant set at
 /// `crates/vb_core/src/frame.rs:47-64`. The 8 variants are the exact set
 /// used by `is_valid_step_state_transition` and the step-state-machine
@@ -216,7 +215,6 @@ pub enum StepState {
 // model `core::fmt::Formatter` or `Box<[T]>::clone`). The spec proofs
 // use field-level access (`frame.step_count`, `frame.states@.len()`,
 // etc.) and `Box<[T]>` is modeled as `Seq<T>` in Verus's math layer.
-
 pub struct RunFrame {
     pub run_id: RunId,
     pub pc: StepIdx,
@@ -235,7 +233,6 @@ pub struct RunFrame {
 // the body. The body matches production's branching exactly so the
 // `assume_specification` contract below is faithful.
 // ============================================================================
-
 /// Mirror of `RunFrame::new` at
 /// `crates/vb_core/src/frame/parts/impl_001_construct.rs:3-31`.
 ///
@@ -260,9 +257,7 @@ pub fn run_frame_new(
 ) -> CoreResult<RunFrame> {
     let states_len = usize::from(step_count);
     if states_len == 0 {
-        return Err(CoreError::InvalidCompiledWorkflow {
-            reason: "step_count_zero",
-        });
+        return Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" });
     }
     if first_step.as_usize() >= states_len {
         return Err(CoreError::InvalidProgramCounter { step: first_step });
@@ -281,18 +276,20 @@ pub fn run_frame_new(
     for _ in 0..slots_len {
         taint.push(Taint::Clean);
     }
-    Ok(RunFrame {
-        run_id,
-        pc: first_step,
-        executed: 0,
-        step_count,
-        slot_count,
-        max_parallel_in_flight: u16::MAX,
-        parallel_in_flight: 0,
-        states: states.into_boxed_slice(),
-        slots: slots.into_boxed_slice(),
-        taint: taint.into_boxed_slice(),
-    })
+    Ok(
+        RunFrame {
+            run_id,
+            pc: first_step,
+            executed: 0,
+            step_count,
+            slot_count,
+            max_parallel_in_flight: u16::MAX,
+            parallel_in_flight: 0,
+            states: states.into_boxed_slice(),
+            slots: slots.into_boxed_slice(),
+            taint: taint.into_boxed_slice(),
+        },
+    )
 }
 
 /// Mirror of `RunFrame::reinitialize` at
@@ -318,17 +315,13 @@ pub fn run_frame_reinitialize(
 ) -> CoreResult<()> {
     let states_len = usize::from(step_count);
     if states_len == 0 {
-        return Err(CoreError::InvalidCompiledWorkflow {
-            reason: "step_count_zero",
-        });
+        return Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" });
     }
     if first_step.as_usize() >= states_len {
         return Err(CoreError::InvalidProgramCounter { step: first_step });
     }
     if frame.step_count != step_count || frame.slot_count != slot_count {
-        return Err(CoreError::InvalidCompiledWorkflow {
-            reason: "frame_dimension_mismatch",
-        });
+        return Err(CoreError::InvalidCompiledWorkflow { reason: "frame_dimension_mismatch" });
     }
     frame.run_id = run_id;
     frame.pc = first_step;
@@ -401,9 +394,7 @@ pub fn run_frame_write_slot_with_taint(
 ) -> CoreResult<()> {
     let index = slot.as_usize();
     if index >= frame.slots.len() {
-        return Err(CoreError::InvalidCompiledWorkflow {
-            reason: "slot_index_out_of_bounds",
-        });
+        return Err(CoreError::InvalidCompiledWorkflow { reason: "slot_index_out_of_bounds" });
     }
     frame.slots[index] = Some(value);
     frame.taint[index] = taint;
@@ -449,6 +440,7 @@ pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> boo
     // Inlined mirror of the `VALID_TRANSITIONS` table at
     // `crates/vb_core/src/frame.rs:72-91`. Drift between this list and
     // the production table is a binding-debt item outside Verus.
+
     step_state_eq(current, StepState::Pending) && step_state_eq(new, StepState::Running)
         || step_state_eq(current, StepState::Pending) && step_state_eq(new, StepState::Succeeded)
         || step_state_eq(current, StepState::Pending) && step_state_eq(new, StepState::Failed)

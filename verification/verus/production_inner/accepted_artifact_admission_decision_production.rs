@@ -19,7 +19,6 @@
 // Regenerate this file whenever production changes. Any new variant
 // added to `ArtifactEnvelopeError` or any signature change in the
 // strict-branch decision surface breaks the `extern_*` Verus build.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]

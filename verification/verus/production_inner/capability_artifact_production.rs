@@ -31,7 +31,6 @@
 // Regenerate this file whenever production changes. Any rename of
 // `Capability`, `RuntimePolicy`, or `AdmissionError` variants breaks
 // the `extern_capability_artifact_model` Verus build.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -54,7 +53,10 @@ pub enum SpecRuntimePolicy {
 #[derive(Clone, Copy)]
 pub enum SpecAdmitError {
     Ok,
-    CapabilityCountMismatch { required_count: u64, granted_count: u64 },
+    CapabilityCountMismatch {
+        required_count: u64,
+        granted_count: u64,
+    },
     CapabilityDenied,
     ArtifactNotFound,
     ArtifactEnvelopeDecodeFailed,
@@ -79,7 +81,10 @@ pub fn admit_artifact_run_with_certificate_floor(
             } else if !all_required_granted {
                 SpecAdmitError::CapabilityDenied
             } else if required_count != granted_count {
-                SpecAdmitError::CapabilityCountMismatch { required_count, granted_count }
+                SpecAdmitError::CapabilityCountMismatch {
+                    required_count,
+                    granted_count,
+                }
             } else {
                 SpecAdmitError::Ok
             }

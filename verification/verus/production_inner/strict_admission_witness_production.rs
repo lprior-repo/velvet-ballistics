@@ -37,7 +37,6 @@
 // `SpecRuntimePolicy`, `SpecWitnessKind`, or `SpecStrictWitnessResult`
 // variants breaks the `extern_strict_admission_witness` Verus build
 // at compile time.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]

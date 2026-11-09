@@ -34,7 +34,6 @@
 // Regenerate this file whenever production changes. Any rename of
 // `digest`, `source_digest`, `verification.digest`, or `artifact_digest`
 // breaks the `extern_accepted_cli_digest_binding` Verus build.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -111,11 +110,15 @@ pub fn production_proof_digest_eq_artifact(artifact: &SpecAcceptedArtifact) -> b
 
 #[verifier::external]
 pub fn production_run_admission_new_digest(digest: SpecWorkflowDigest) -> SpecRunAdmission {
-    SpecRunAdmission { artifact_digest: digest }
+    SpecRunAdmission {
+        artifact_digest: digest,
+    }
 }
 
 #[verifier::external]
-pub fn production_run_admission_artifact_digest(admission: &SpecRunAdmission) -> SpecWorkflowDigest {
+pub fn production_run_admission_artifact_digest(
+    admission: &SpecRunAdmission,
+) -> SpecWorkflowDigest {
     admission.artifact_digest
 }
 

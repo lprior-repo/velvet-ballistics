@@ -56,7 +56,6 @@
 // `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`
 // whenever production changes. Each section header cites the
 // originating production line range.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -123,7 +122,6 @@ impl SlotIdx {
 // `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:125-141`.
 // Each tag is a unique spec-side handle for one of the production
 // `StepPrimitive` variants.
-
 /// Production: `StepPrimitive::Set { .. }` (part_05_digest.rs:127)
 pub const PRIMITIVE_SET_TAG: u8 = 0;
 
@@ -178,7 +176,6 @@ pub const PRIMITIVE_FINISH_TAG: u8 = 11;
 // literals. The field types are preserved structurally to surface
 // drift: any rename, type change, or arity change in the production
 // variants breaks the mirror and the `assume_specification` contract.
-
 /// Mirror of the two `CompileError` variants constructed by
 /// `emit_single_body_set`.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -221,7 +218,6 @@ pub const EXPECTED_ONE_SET_STEP: u8 = 1;
 // ============================================================================
 // Production exec wrapper — `#[verifier::external]` projection
 // ============================================================================
-
 /// Mirror of the production dispatch in `emit_single_body_set` at
 /// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`.
 ///

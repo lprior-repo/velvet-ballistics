@@ -46,7 +46,6 @@
 // as plain Rust (no `verus!` block, no `vstd` import) and is checked by
 // the Verus invocation purely for structural resolution and type
 // well-formedness — Verus never reasons about the bodies.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -140,14 +139,8 @@ pub enum Taint {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum RecoveryError {
-    NonIdempotentActionBlocked {
-        action: ActionId,
-        step: StepIdx,
-    },
-    ReplayDivergence {
-        step: StepIdx,
-        detail: String,
-    },
+    NonIdempotentActionBlocked { action: ActionId, step: StepIdx },
+    ReplayDivergence { step: StepIdx, detail: String },
 }
 
 pub type RecoveryResult<T> = Result<T, RecoveryError>;
@@ -176,7 +169,8 @@ pub struct ActionReplayTracker {
     pub scheduled_tickets: std::collections::HashMap<(ActionId, StepIdx), ActionScheduleEvidence>,
     pub completed: std::collections::HashSet<(ActionId, StepIdx)>,
     pub failed: std::collections::HashSet<(ActionId, StepIdx)>,
-    pub completed_envelopes: std::collections::HashMap<(ActionId, StepIdx), ActionCompletionEvidence>,
+    pub completed_envelopes:
+        std::collections::HashMap<(ActionId, StepIdx), ActionCompletionEvidence>,
 }
 
 // Note on visibility: production declares `ActionScheduleEvidence` and
@@ -315,7 +309,9 @@ impl ActionReplayTracker {
             if schedule.ticket != ticket || schedule.output != output {
                 return Err(RecoveryError::ReplayDivergence {
                     step: ticket.step,
-                    detail: String::from("action completion envelope does not match schedule ticket"),
+                    detail: String::from(
+                        "action completion envelope does not match schedule ticket",
+                    ),
                 });
             }
         }

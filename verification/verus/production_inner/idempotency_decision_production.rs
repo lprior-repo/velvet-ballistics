@@ -26,7 +26,6 @@
 // Regenerate this file whenever production changes. Any rename of
 // the contract enums or signature change in `is_statically_idempotent_contract`
 // breaks the `extern_idempotency_decision` Verus build.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]

@@ -41,7 +41,6 @@
 // Regenerate this mirror whenever production changes. Each section
 // header below cites the originating production line range so
 // regeneration is mechanical.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
@@ -184,10 +183,7 @@ pub fn execute_do_pure_decision(
 /// while `input_taint != Clean` (i.e. taint was erased on a tainted
 /// input). This is the same boolean the decision fn above consumes via
 /// `output_taint_cleanable_from_tainted`.
-pub fn spec_propagate_action_taint(
-    contract_idempotency_disc: u8,
-    input_taint_disc: u8,
-) -> bool {
+pub fn spec_propagate_action_taint(contract_idempotency_disc: u8, input_taint_disc: u8) -> bool {
     // Clean == 0. Anything other than Clean in input must propagate to
     // a non-Clean output. The production `propagate_action_taint` returns
     // `input_taint` for SideEffecting variants; for DeterministicPure
@@ -238,9 +234,7 @@ pub const fn spec_action_outcome_kind_valid(kind: SpecActionOutcomeKind) -> bool
 /// set is `{ErrTaintViolation, ErrCapabilityDenied}`. Both are already
 /// covered by `SpecOutcomeKind`, so we reuse that enum.
 #[verifier::external]
-pub fn execute_do_without_contract_pure_decision(
-    input_taint_disc: u8,
-) -> SpecOutcomeKind {
+pub fn execute_do_without_contract_pure_decision(input_taint_disc: u8) -> SpecOutcomeKind {
     if input_taint_disc != 0 {
         SpecOutcomeKind::ErrTaintViolation
     } else {

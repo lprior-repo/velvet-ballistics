@@ -53,7 +53,6 @@
 // compiles as plain Rust (no `verus!` block, no `vstd` import) and is
 // checked by the Verus invocation purely for structural resolution
 // and type well-formedness — Verus never reasons about the bodies.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -576,36 +575,107 @@ impl CompiledWorkflow {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorkflowError {
-    RepeatCounterForeignWrite { owner: StepIdx, writer: StepIdx, slot: SlotIdx },
+    RepeatCounterForeignWrite {
+        owner: StepIdx,
+        writer: StepIdx,
+        slot: SlotIdx,
+    },
     EmptyNodes,
-    EntryOutOfBounds { entry: StepIdx },
-    StepOutOfBounds { step: StepIdx },
-    SlotOutOfBounds { slot: SlotIdx },
-    ConstOutOfBounds { constant: ConstIdx },
-    NodeIdMismatch { expected: StepIdx, actual: StepIdx },
+    EntryOutOfBounds {
+        entry: StepIdx,
+    },
+    StepOutOfBounds {
+        step: StepIdx,
+    },
+    SlotOutOfBounds {
+        slot: SlotIdx,
+    },
+    ConstOutOfBounds {
+        constant: ConstIdx,
+    },
+    NodeIdMismatch {
+        expected: StepIdx,
+        actual: StepIdx,
+    },
     Expression(CoreError),
-    ResourceContractExceeded { resource: ContractResource },
-    ResourceContractTooLarge { resource: ContractResource },
+    ResourceContractExceeded {
+        resource: ContractResource,
+    },
+    ResourceContractTooLarge {
+        resource: ContractResource,
+    },
     EmptyBranchTable,
-    UnreachableNode { step: StepIdx },
-    BackwardEdge { from: StepIdx, to: StepIdx },
-    ReduceBranchTargetAlias { step: StepIdx, target: StepIdx },
-    ForEachBranchTargetAlias { step: StepIdx, target: StepIdx },
-    ImproperLoopNesting { inner: StepIdx, outer_done: StepIdx },
-    BudgetPolicyExceeded { detail: BudgetDimension },
-    StepCountOverflow { actual: u64 },
-    DepthOverflow { depth: u16 },
-    SymbolOutOfBounds { symbol: SymbolId },
-    AccessorPathTooDeep { depth: usize, max: usize },
-    JumpCycle { step: StepIdx, target: StepIdx },
-    NestedTogether { outer: StepIdx, inner: StepIdx },
-    InputSlotOutOfBounds { slot: SlotIdx, kind: InputSlotKind },
-    DuplicateInputSlot { slot: SlotIdx, kind: InputSlotKind },
-    NonCanonicalInputSlotOrder { prev_slot: SlotIdx, curr_slot: SlotIdx },
-    InconsistentInputConstraint { slot: SlotIdx, issue: InputConstraintIssue },
-    LoopRegionUnpaired { control: StepIdx },
-    LoopRegionCrossing { control: StepIdx, from: StepIdx, to: StepIdx },
-    LoopRegionUnsupported { control: StepIdx, step: StepIdx },
+    UnreachableNode {
+        step: StepIdx,
+    },
+    BackwardEdge {
+        from: StepIdx,
+        to: StepIdx,
+    },
+    ReduceBranchTargetAlias {
+        step: StepIdx,
+        target: StepIdx,
+    },
+    ForEachBranchTargetAlias {
+        step: StepIdx,
+        target: StepIdx,
+    },
+    ImproperLoopNesting {
+        inner: StepIdx,
+        outer_done: StepIdx,
+    },
+    BudgetPolicyExceeded {
+        detail: BudgetDimension,
+    },
+    StepCountOverflow {
+        actual: u64,
+    },
+    DepthOverflow {
+        depth: u16,
+    },
+    SymbolOutOfBounds {
+        symbol: SymbolId,
+    },
+    AccessorPathTooDeep {
+        depth: usize,
+        max: usize,
+    },
+    JumpCycle {
+        step: StepIdx,
+        target: StepIdx,
+    },
+    NestedTogether {
+        outer: StepIdx,
+        inner: StepIdx,
+    },
+    InputSlotOutOfBounds {
+        slot: SlotIdx,
+        kind: InputSlotKind,
+    },
+    DuplicateInputSlot {
+        slot: SlotIdx,
+        kind: InputSlotKind,
+    },
+    NonCanonicalInputSlotOrder {
+        prev_slot: SlotIdx,
+        curr_slot: SlotIdx,
+    },
+    InconsistentInputConstraint {
+        slot: SlotIdx,
+        issue: InputConstraintIssue,
+    },
+    LoopRegionUnpaired {
+        control: StepIdx,
+    },
+    LoopRegionCrossing {
+        control: StepIdx,
+        from: StepIdx,
+        to: StepIdx,
+    },
+    LoopRegionUnsupported {
+        control: StepIdx,
+        step: StepIdx,
+    },
 }
 
 // ===========================================================================
@@ -753,7 +823,9 @@ pub mod loop_regions {
 
     /// Stub for production `loop_regions::validate`: builds a
     /// control-indexed cache without changing serialized workflow parts.
-    pub fn validate(_parts: &WorkflowParts) -> Result<Vec<Option<CompiledLoopRegion>>, WorkflowError> {
+    pub fn validate(
+        _parts: &WorkflowParts,
+    ) -> Result<Vec<Option<CompiledLoopRegion>>, WorkflowError> {
         Ok(Vec::new())
     }
 

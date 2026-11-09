@@ -36,7 +36,6 @@
 // `#[verifier::external_body]` so the body is opaque while the
 // signature participates in `assume_specification` binding in the
 // companion spec file `signals_invariant.rs`.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -54,7 +53,6 @@ verus! {
 // spec only cares about the discriminant set (specifically the
 // `StepCounterOverflow` variant used by `StepBudget::try_take`), so we
 // mirror the relevant enum variants opaquely.
-
 #[derive(Clone)]
 pub enum SlotValue {
     Null,
@@ -72,19 +70,15 @@ pub enum Taint {
 // ============================================================================
 // EngineError stub — mirrors the production error variants used by signals.rs
 // ============================================================================
-
 #[derive(Clone)]
 pub enum EngineError {
     StepCounterOverflow,
-    BudgetParse {
-        reason: &'static str,
-    },
+    BudgetParse { reason: &'static str },
 }
 
 // ============================================================================
 // Production type mirrors
 // ============================================================================
-
 /// Stub for the production `MAX_STEP_BUDGET` u64 constant
 /// (production at `crates/vb_core/src/limits.rs:94 = 10_000`).
 pub const MAX_STEP_BUDGET: u64 = 10_000;
@@ -112,9 +106,7 @@ pub struct StepBudget {
 
 impl StepBudget {
     /// Mirror of `StepBudget::MAX` at signals.rs:19-22.
-    pub const MAX: Self = Self {
-        remaining: MAX_STEP_BUDGET,
-    };
+    pub const MAX: Self = Self { remaining: MAX_STEP_BUDGET };
 
     /// Mirror of `StepBudget::new(value: u64) -> Self` at
     /// signals.rs:26-35. Verbatim body; the spec contract is attached
@@ -176,15 +168,13 @@ impl StepBudget {
     pub fn from_env() -> Result<Self, EngineError> {
         match std::env::var(Self::BENCH_LATENCY_BUDGET_US) {
             Ok(raw) => {
-                let parsed = raw.parse::<u64>().map_err(|_| EngineError::BudgetParse {
-                    reason: "invalid u64 value",
-                })?;
+                let parsed = raw.parse::<u64>().map_err(
+                    |_| EngineError::BudgetParse { reason: "invalid u64 value" },
+                )?;
                 Ok(Self::new(parsed))
-            }
+            },
             Err(std::env::VarError::NotPresent) => Ok(Self::new(Self::DEFAULT_BUDGET)),
-            Err(_) => Err(EngineError::BudgetParse {
-                reason: "env var access error",
-            }),
+            Err(_) => Err(EngineError::BudgetParse { reason: "env var access error" }),
         }
     }
 }

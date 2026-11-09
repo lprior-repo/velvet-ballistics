@@ -159,9 +159,14 @@ impl MirrorBoundedPayload {
     #[verifier::external]
     pub fn new(payload_len: usize, max: MirrorMaxPayloadBytes) -> Result<Self, MirrorIpcError> {
         if payload_len > max.value {
-            Err(MirrorIpcError::PayloadTooLarge { actual: payload_len, limit: max.value })
+            Err(MirrorIpcError::PayloadTooLarge {
+                actual: payload_len,
+                limit: max.value,
+            })
         } else {
-            Ok(Self { bytes_len: payload_len })
+            Ok(Self {
+                bytes_len: payload_len,
+            })
         }
     }
 }
@@ -187,7 +192,10 @@ impl MirrorMemoryIngress {
     /// at `crates/vb_ipc/src/ingress.rs:76-79`.
     #[verifier::external]
     pub fn bounded(capacity: MirrorQueueCapacity) -> Self {
-        Self { capacity: capacity.value, len: 0 }
+        Self {
+            capacity: capacity.value,
+            len: 0,
+        }
     }
 
     /// Mirror of production `MemoryIngress::try_submit` at
