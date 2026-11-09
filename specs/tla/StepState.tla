@@ -1,6 +1,6 @@
 (* StepState.tla
  *
- * Per-step execution state machine from crates/vb_core/src/frame.rs:394-431.
+ * Per-step execution state machine from crates/vb_core/src/frame.rs:50-101.
  *
  * Valid transitions (matching Rust validate_transition()):
  *   Pending -> Running, Succeeded, Failed, Cancelled, Skipped
@@ -8,6 +8,8 @@
  *   Waiting | Asking -> Running
  *   state == next  (idempotent re-mark, always valid)
  *   Terminal states (Succeeded, Failed, Cancelled, Skipped) block outward transitions
+ *   NOTE: live is_valid_step_state_transition() also admits Succeeded -> Pending;
+ *   the model above does not cover that re-mark (Pt 23 open item).
  *)
 
 ---- MODULE StepState ----
