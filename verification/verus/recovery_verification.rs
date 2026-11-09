@@ -43,36 +43,36 @@
 // ============================================================================
 //   - `UnsupportedRecoveryState`        <- extern_recovery_verification.rs
 //                                            (mirror of
-//                                            types.rs:577-649)
+//                                            crates/vb_storage/src/recovery/types.rs:839-848)
 //   - `RecoveryCannotResumeState`        <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:680-834)
+//                                            (mirror of crates/vb_storage/src/recovery/types.rs:1083-1110)
 //   - `RecoveredStepState`              <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:533-544)
+//                                            (mirror of crates/vb_storage/src/recovery/types.rs:795-806)
 //   - `RecoveredStepEntry`              <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:548-553)
+//                                            (mirror of crates/vb_storage/src/recovery/types.rs:810-815)
 //   - `RecoveredSlotEntry`              <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:557-564)
+//                                            (mirror of crates/vb_storage/src/recovery/types.rs:819-826)
 //   - `RecoveredPendingAction`          <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:568-573)
+//                                            (mirror of crates/vb_storage/src/recovery/types.rs:830-835)
 //   - `RecoveryTerminalState`           <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:454-466)
+//                                            (mirror of crates/vb_storage/src/recovery/types.rs:550-562)
 //   - `RecoveryRuntimeSummary`          <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:470-493)
+//                                            (mirror of crates/vb_storage/src/recovery/types.rs:566-589)
 //   - `RecoveryFrameSeed`               <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:653-672)
+//                                            (mirror of crates/vb_storage/src/recovery/types.rs:941-960)
 //   - `RecoveryHydration`               <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:512-528)
+//                                            (mirror of crates/vb_storage/src/recovery/types.rs:614-619)
 //   - `DigestCheck`                     <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:1058-1065)
+//                                            (mirror of crates/vb_storage/src/recovery/types.rs:1671-1678)
 //   - `DigestVerificationRequest`       <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:383-449)
+//                                            (mirror of crates/vb_storage/src/recovery/types.rs:479-505)
 //   - `FullDigestEvidence`              <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:326-379)
+//                                            (mirror of crates/vb_storage/src/recovery/types.rs:422-425)
 //   - `DigestPair` / `ActionAbiDigestComparison`
 //                                       <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:269-322)
+//                                            (mirror of crates/vb_storage/src/recovery/types.rs:365-387)
 //   - `RecoveryError` (spec subset)     <- extern_recovery_verification.rs
-//                                            (mirror of types.rs:39-158,
+//                                            (mirror of crates/vb_storage/src/recovery/types.rs:38-147,
 //                                             4 variants exercised)
 //   - `RuntimeError` (spec subset)      <- extern_recovery_verification.rs
 //                                            (mirror of error/mod.rs:7-203,
