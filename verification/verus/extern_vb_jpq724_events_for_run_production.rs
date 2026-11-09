@@ -15,15 +15,15 @@
 //       * events_for_run_full     (replay.rs:74-79)
 //       * events_for_run_bounded  (replay.rs:99-115)
 //       * events_for_run_full_bounded (replay.rs:120-127)
-//       * events_for_run_from     (replay.rs:130-161)
-//       * validate_replay_sequence (replay.rs:164-176)
+//       * events_for_run_from     (crates/vb_storage/src/journal/replay.rs:130-163)
+//       * validate_replay_sequence (crates/vb_storage/src/journal/replay.rs:182-194)
 //   - crates/vb_storage/src/codec/mod.rs
-//       * next_seq                (codec/mod.rs:153-158)
-//       * validate_replayed_event (codec/mod.rs:149-167)
+//       * next_seq                (crates/vb_storage/src/codec/mod.rs:183-188)
+//       * validate_replayed_event (crates/vb_storage/src/codec/mod.rs:190-208)
 //   - crates/vb_storage/src/trimming/logic.rs::FjallJournal
-//       * latest_durable_snapshot_seq (trimming/logic.rs:24-41)
+//       * latest_durable_snapshot_seq (crates/vb_storage/src/trimming/logic.rs:26-36)
 //   - crates/vb_storage/src/journal/core.rs::FjallJournal
-//       * the FjallJournal struct itself (core.rs:51-70)
+//       * the FjallJournal struct itself (crates/vb_storage/src/journal/core.rs:45-75)
 //
 // ============================================================================
 // WHY NOT FULL `#[path]` INCLUSION OF replay.rs / codec/mod.rs
@@ -53,7 +53,7 @@
 //      `crate::error::JournalError`. The transitive surface is too
 //      wide for standalone inclusion.
 //
-//   4. `events.rs:6-9` imports `chrono`, `vb_core::ActionId`,
+//   4. `crates/vb_storage/src/events/event.rs:7-13` imports `chrono`, `vb_core::ActionId`,
 //      `vb_core::ActionTicket`, `vb_core::CapabilitySet`, etc. The
 //      spec only needs `run_id` and `seq` from each event variant;
 //      including the full enum would require stubbing all of those
@@ -80,7 +80,7 @@
 //                                          (u64 newtype)
 //   - `EventReplayLimit`                 <- crates/vb_storage/src/journal/core.rs:22-24
 //                                          (struct { max_events: usize })
-//   - `MirrorJournalError`               <- crates/vb_storage/src/error/mod.rs:21-198
+//   - `MirrorJournalError`               <- crates/vb_storage/src/error/mod.rs:21-206
 //                                          (restricted subset of variants
 //                                          relevant to replay seams:
 //                                          SequenceOverflow, WrongRun,
@@ -98,7 +98,7 @@
 //                                          contract reasons only about
 //                                          run_id and seq contiguity)
 //   - `MirrorJournal`                    <- restricted mirror of
-//                                          `FjallJournal` (core.rs:51-70)
+//                                          `FjallJournal` (crates/vb_storage/src/journal/core.rs:45-75)
 //                                          containing only the storage
 //                                          surface the spec exercises:
 //                                          per-run event log + per-run
@@ -223,7 +223,7 @@ pub struct EventReplayLimit {
 }
 
 impl EventReplayLimit {
-    /// Mirror of `EventReplayLimit::DEFAULT` (core.rs:31 = 65_536).
+    /// Mirror of `EventReplayLimit::DEFAULT` (crates/vb_storage/src/journal/core.rs:28 = 65_536).
     pub const DEFAULT: Self = Self { max_events: 65_536 };
 
     pub const fn new(max_events: usize) -> Option<Self> {
@@ -245,22 +245,22 @@ impl EventReplayLimit {
 // ============================================================================
 
 /// Mirror of `JournalError` at
-/// `crates/vb_storage/src/error/mod.rs:21-163`. Only the variants
+/// `crates/vb_storage/src/error/mod.rs:21-206`. Only the variants
 /// the spec contract exercises are mirrored; production has 50+
 /// variants but the spec reasoning surface is bounded to the
 /// replay-path failures.
 ///
 /// Field shapes mirror production line-by-line:
 ///   - `WrongRun { expected: RunId, actual: RunId }`
-///       <- error/mod.rs:47
+///       <- crates/vb_storage/src/error/mod.rs:47
 ///   - `SequenceGap { expected: EventSeq, actual: EventSeq }`
-///       <- error/mod.rs:49-52
+///       <- crates/vb_storage/src/error/mod.rs:49-52
 ///   - `BadMagic { found: u32 }`
-///       <- error/mod.rs:56
+///       <- crates/vb_storage/src/error/mod.rs:72
 ///   - `TooManyEvents { run: RunId, limit: usize, observed: usize }`
-///       <- error/mod.rs:141-145
+///       <- crates/vb_storage/src/error/mod.rs:163-167
 ///   - `ReplayAllocationFailed { run: RunId, requested: usize }`
-///       <- error/mod.rs:147
+///       <- crates/vb_storage/src/error/mod.rs:169
 #[derive(Clone, Copy)]
 pub enum MirrorJournalError {
     SequenceOverflow,
