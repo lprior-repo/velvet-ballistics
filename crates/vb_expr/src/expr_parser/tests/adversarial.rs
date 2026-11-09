@@ -4,40 +4,10 @@
 #![allow(dead_code, unused_imports)]
 
 use crate::ExprError;
-use crate::lexer::{BinaryOp, UnaryOp, lex_expr};
-use crate::parser::{ExprAst, ExprHelper, ExprLiteral, parse_expr};
+use crate::lexer::{BinaryOp, UnaryOp};
+use crate::parser::{ExprAst, ExprHelper, ExprLiteral};
 
-fn parse(source: &str) -> crate::ExprResult<ExprAst> {
-    let tokens = lex_expr(source)?;
-    parse_expr(&tokens)
-}
-
-fn as_binary(expr: &ExprAst) -> crate::ExprResult<(BinaryOp, &ExprAst, &ExprAst)> {
-    match expr {
-        ExprAst::Binary { op, left, right } => Ok((*op, left, right)),
-        other => Err(ExprError::UnexpectedToken {
-            token: format!("expected binary, got {other:?}"),
-        }),
-    }
-}
-
-fn as_unary(expr: &ExprAst) -> crate::ExprResult<(UnaryOp, &ExprAst)> {
-    match expr {
-        ExprAst::Unary { op, expr } => Ok((*op, expr)),
-        other => Err(ExprError::UnexpectedToken {
-            token: format!("expected unary, got {other:?}"),
-        }),
-    }
-}
-
-fn as_helper(expr: &ExprAst) -> crate::ExprResult<(ExprHelper, &[ExprAst])> {
-    match expr {
-        ExprAst::Helper { name, args } => Ok((*name, args)),
-        other => Err(ExprError::UnexpectedToken {
-            token: format!("expected helper, got {other:?}"),
-        }),
-    }
-}
+use super::{as_binary, as_helper, as_unary, parse};
 
 #[test]
 fn parse_expr_chained_unary_not_true() -> crate::ExprResult<()> {
@@ -415,23 +385,41 @@ fn parse_expr_mixed_precedence_chain() -> crate::ExprResult<()> {
 #[test]
 fn parse_expr_all_comparisons_in_one_expr() -> crate::ExprResult<()> {
     let expr = parse("1 < 2 and 3 <= 4 and 5 > 4 and 6 >= 5 and 7 == 7 and 8 != 9")?;
-    let mut cur = &expr;
-    for _ in 0..5 {
-        let (op, left, right) = as_binary(cur)?;
-        assert_eq!(op, BinaryOp::And);
-        cur = left;
-        let _ = right;
-    }
-    let (op_last, _l, _r) = as_binary(cur)?;
-    assert!(matches!(
-        op_last,
-        BinaryOp::Lt
-            | BinaryOp::Lte
-            | BinaryOp::Gt
-            | BinaryOp::Gte
-            | BinaryOp::Eq
-            | BinaryOp::NotEq
-    ));
+    // Five `and`s form the left spine. Rights descend, leftmost leaf is Lt 1,2.
+    let (op1, left1, right1) = as_binary(&expr)?;
+    assert_eq!(op1, BinaryOp::And);
+    let (op_b1, bl1, br1) = as_binary(right1)?;
+    assert_eq!(op_b1, BinaryOp::NotEq);
+    assert_eq!(*bl1, ExprAst::Literal(ExprLiteral::I64(8)));
+    assert_eq!(*br1, ExprAst::Literal(ExprLiteral::I64(9)));
+    let (op2, left2, right2) = as_binary(left1)?;
+    assert_eq!(op2, BinaryOp::And);
+    let (op_b2, bl2, br2) = as_binary(right2)?;
+    assert_eq!(op_b2, BinaryOp::Eq);
+    assert_eq!(*bl2, ExprAst::Literal(ExprLiteral::I64(7)));
+    assert_eq!(*br2, ExprAst::Literal(ExprLiteral::I64(7)));
+    let (op3, left3, right3) = as_binary(left2)?;
+    assert_eq!(op3, BinaryOp::And);
+    let (op_b3, bl3, br3) = as_binary(right3)?;
+    assert_eq!(op_b3, BinaryOp::Gte);
+    assert_eq!(*bl3, ExprAst::Literal(ExprLiteral::I64(6)));
+    assert_eq!(*br3, ExprAst::Literal(ExprLiteral::I64(5)));
+    let (op4, left4, right4) = as_binary(left3)?;
+    assert_eq!(op4, BinaryOp::And);
+    let (op_b4, bl4, br4) = as_binary(right4)?;
+    assert_eq!(op_b4, BinaryOp::Gt);
+    assert_eq!(*bl4, ExprAst::Literal(ExprLiteral::I64(5)));
+    assert_eq!(*br4, ExprAst::Literal(ExprLiteral::I64(4)));
+    let (op5, left5, right5) = as_binary(left4)?;
+    assert_eq!(op5, BinaryOp::And);
+    let (op_b5, bl5, br5) = as_binary(right5)?;
+    assert_eq!(op_b5, BinaryOp::Lte);
+    assert_eq!(*bl5, ExprAst::Literal(ExprLiteral::I64(3)));
+    assert_eq!(*br5, ExprAst::Literal(ExprLiteral::I64(4)));
+    let (op_last, ll, lr) = as_binary(left5)?;
+    assert_eq!(op_last, BinaryOp::Lt);
+    assert_eq!(*ll, ExprAst::Literal(ExprLiteral::I64(1)));
+    assert_eq!(*lr, ExprAst::Literal(ExprLiteral::I64(2)));
     Ok(())
 }
 
