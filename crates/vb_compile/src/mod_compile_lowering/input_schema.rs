@@ -27,6 +27,12 @@ pub(super) fn kind_from_input_schema(value: &AuthorValue) -> Result<InputSlotKin
             }),
         },
         AuthorValue::Mapping(entries) => {
+            if entries.iter().filter(|e| e.key == "is").count() > 1 {
+                return Err(CompileError::InvalidInputSchema {
+                    field: "inputs",
+                    expected: "a single is discriminator in an allowed input schema",
+                });
+            }
             let is_entry = entries.iter().find(|e| e.key == "is");
             match is_entry {
                 Some(entry) => match &entry.value {
@@ -87,5 +93,29 @@ pub(super) fn constraint_from_input_schema(
             field: "inputs",
             expected: "an allowed input schema",
         }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::kind_from_input_schema;
+    use crate::{AuthorEntry, AuthorValue, CompileError};
+
+    #[test]
+    fn kind_from_input_schema_rejects_repeated_is_discriminator() {
+        let value = AuthorValue::Mapping(vec![
+            AuthorEntry {
+                key: "is".into(),
+                value: AuthorValue::Text("text".into()),
+            },
+            AuthorEntry {
+                key: "is".into(),
+                value: AuthorValue::Text("number".into()),
+            },
+        ]);
+        assert!(matches!(
+            kind_from_input_schema(&value),
+            Err(CompileError::InvalidInputSchema { .. })
+        ));
     }
 }
