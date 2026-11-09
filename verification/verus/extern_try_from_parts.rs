@@ -60,9 +60,9 @@
 //   - `validate_budget_result` budget error collapse
 //     <- crates/vb_core/src/workflow/mod.rs:1461-1470
 //   - `WholeWorkflowBudget` field set
-//     <- crates/vb_core/src/budget.rs:16-92
+//     <- crates/vb_core/src/budget/compute.rs:17-93
 //   - `WholeWorkflowBudget::compute`
-//     <- crates/vb_core/src/budget.rs:99-105
+//     <- crates/vb_core/src/budget/compute.rs:100-106
 //   - `BoundednessPolicy` field set
 //     <- crates/vb_core/src/budget/validate.rs:9-56
 //   - `BoundednessPolicy::DEFAULT`
@@ -644,9 +644,9 @@ pub enum SpecKindRef {
     NonZero(u32),
 }
 /// Mirrors the production `WholeWorkflowBudget` field set at
-/// `crates/vb_core/src/budget.rs:16-92`: the computed budget
+/// `crates/vb_core/src/budget/compute.rs:17-93`: the computed budget
 /// `WholeWorkflowBudget::compute` derives by walking the IR
-/// (budget.rs:99-105). Production `u64` fields stay `u64`;
+/// (budget/compute.rs:100-106). Production `u64` fields stay `u64`;
 /// production `u16` fields are promoted to `u32` per this
 /// file's numeric-mirror convention. The seven fields
 /// `BoundednessPolicy::DEFAULT.validate` never reads
@@ -823,7 +823,7 @@ pub struct SpecWorkflowParts {
     /// `validate_constants_symbols` (workflow/mod.rs:2122-2132).
     /// `constants_symbols` lists, in pool order, the `SymbolId`
     /// of every `ConstValue::Symbol` constant
-    /// (value.rs:165); non-`Symbol` constants contribute no
+    /// (value.rs:169); non-`Symbol` constants contribute no
     /// entry, so the inventory is symbol-only by construction
     /// and no sentinel is needed. The projection returns
     /// `SymbolOutOfBounds` for the first entry at or beyond
@@ -843,7 +843,7 @@ pub struct SpecWorkflowParts {
     /// Caller-supplied computed budget consumed by step 4
     /// (`validate_budget`, workflow/mod.rs:1453-1459). Production
     /// derives it with `WholeWorkflowBudget::compute`
-    /// (budget.rs:99-105) and validates it against
+    /// (budget/compute.rs:100-106) and validates it against
     /// `BoundednessPolicy::DEFAULT` (budget/validate.rs:60-84); the
     /// projection checks the supplied value with `budget_error`
     /// instead, so the compute walk stays with the caller.
@@ -986,7 +986,7 @@ pub struct SpecLoopRegion {
     pub done: u32,
 }
 /// Const-fn mirror of `CompiledLoopRegion::contains`
-/// (loop_regions.rs:40-42): the step lies in the inclusive body /
+/// (loop_regions.rs:46-48): the step lies in the inclusive body /
 /// control activation interval.
 pub const fn region_contains(region: SpecLoopRegion, step: u32) -> bool {
     region.body <= step && step <= region.control
@@ -1974,10 +1974,10 @@ fn loop_span_end(parts: &SpecWorkflowParts, index: usize) -> Option<u32> {
 }
 
 /// Pure projection of `repeat_check_validate::validate`
-/// (workflow/mod.rs:2465-2587) for a `RepeatCheck` node at
+/// (workflow/mod.rs:2465-2582) for a `RepeatCheck` node at
 /// `check_index` whose routing `next` step `back_target` points
 /// backward: the nearest active enclosing structured start
-/// (`nearest_active_owner`, workflow/mod.rs:2470-2489) must be a
+/// (`nearest_active_owner`, workflow/mod.rs:2470-2488) must be a
 /// `RepeatStart` whose body is the back target, whose done
 /// matches the check's done, and whose output slot is the check's
 /// attempt slot; the owner must precede the check, its body must
@@ -2095,7 +2095,7 @@ fn kind_target_forward_error(
 /// Pure projection of the forward check over every
 /// `kind_targets` entry of one node (`validate_choose_slot_edges`
 /// / `validate_choose_expr_edges` /
-/// `validate_together_start_edges`, workflow/mod.rs:2428-2442,
+/// `validate_together_start_edges`, workflow/mod.rs:2428-2441,
 /// 2443-2457, 2598-2609): branch targets in inventory order,
 /// then the fallback / join.
 #[verifier::external]
@@ -2117,7 +2117,7 @@ fn kind_targets_forward_error(
 }
 
 /// Pure projection of `validate_kind_edges`
-/// (workflow/mod.rs:2367-2427) for one node: which
+/// (workflow/mod.rs:2367-2426) for one node: which
 /// `kind_targets` positions production checks depends on the
 /// kind. Loop `*Next` / `*Attempt` / `RetryCheck` / `RepeatCheck`
 /// / `ErrorHandler` kinds check only their forward target
@@ -2501,7 +2501,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // over-cap arm returns ResourceContractTooLarge, matching
     // production; the zero-transitions check below returns
     // ResourceContractExceeded after the expr-stack loop, matching
-    // `validate_transitions_nonzero` (workflow/mod.rs:1600-1606).
+    // `validate_transitions_nonzero` (workflow/mod.rs:1600-1607).
     // The caller-supplied `slot_count`,
     // `accessors_len`, and `expressions_len` are trusted to be the
     // true inventory lengths. Each is checked against its contract
@@ -2718,7 +2718,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // from already-validated nodes, so the projection treats it as
     // passing for inputs that reached this step.
     // ---- Step 4: budget validation ----
-    // Production calls WholeWorkflowBudget::compute (budget.rs:99-105)
+    // Production calls WholeWorkflowBudget::compute (budget/compute.rs:100-106)
     // then BoundednessPolicy::DEFAULT.validate (budget/validate.rs:88-147);
     // validate_budget_result (workflow/mod.rs:1461-1470) collapses
     // any BudgetError to BudgetPolicyExceeded. The projection checks

@@ -25,16 +25,16 @@
 //
 // BINDING LEDGER (mirrors production_inner/budget_bounded_production.rs)
 // ============================================================================
-//   - `WholeWorkflowBudget`                  <- crates/vb_core/src/budget/compute.rs:15-93
-//   - `WholeWorkflowBudget::compute`         <- crates/vb_core/src/budget/compute.rs:98-106
-//   - `BoundednessPolicy`                    <- crates/vb_core/src/budget/validate.rs:7-56
+//   - `WholeWorkflowBudget`                  <- crates/vb_core/src/budget/compute.rs:17-93
+//   - `WholeWorkflowBudget::compute`         <- crates/vb_core/src/budget/compute.rs:100-106
+//   - `BoundednessPolicy`                    <- crates/vb_core/src/budget/validate.rs:9-56
 //   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget/validate.rs:88-147
-//   - `BudgetError`                          <- crates/vb_core/src/budget/validate_error.rs:7-57
-//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:9-49
-//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:96-132
-//   - `AggregateBudgetError`                 <- crates/vb_core/src/budget/aggregate.rs:205-277
+//   - `BudgetError`                          <- crates/vb_core/src/budget/validate_error.rs:10-57
+//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:11-49
+//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:98-132
+//   - `AggregateBudgetError`                 <- crates/vb_core/src/budget/aggregate.rs:208-277
 //   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:109-243
-//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:22-59
+//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:24-59
 //   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:61-79
 //   - `count_total_steps`                    <- crates/vb_core/src/budget/loop_body.rs:11-17
 //
@@ -107,7 +107,7 @@ fn prod_methods_drift_check(
     let policy = production_inner::BoundednessPolicy::DEFAULT;
 
     // Reference every field of WholeWorkflowBudget to surface any
-    // rename in budget/compute.rs:15-93.
+    // rename in budget/compute.rs:17-93.
     let budget = production_inner::WholeWorkflowBudget {
         max_total_steps: 0,
         max_total_slots: 0,
@@ -142,7 +142,7 @@ fn prod_methods_drift_check(
     };
 
     // Reference every field of AggregateResourceBudget to surface any
-    // rename in budget/aggregate.rs:9-49.
+    // rename in budget/aggregate.rs:11-49.
     let arb = production_inner::AggregateResourceBudget {
         max_steps_executable: 0,
         max_action_tickets: 0,
@@ -175,11 +175,11 @@ fn prod_methods_drift_check(
     };
 
     // AggregateResourceUsage derives Default; use it to surface the
-    // production field set (budget/aggregate.rs:96-132).
+    // production field set (budget/aggregate.rs:98-132).
     let aru = production_inner::AggregateResourceUsage::default();
 
     // Reference every field of AggregateResourceCapacity to surface
-    // any rename in budget/aggregate.rs:51-94.
+    // any rename in budget/aggregate.rs:53-94.
     let cap = production_inner::AggregateResourceCapacity {
         max_steps_executable: 0,
         max_action_tickets: 0,

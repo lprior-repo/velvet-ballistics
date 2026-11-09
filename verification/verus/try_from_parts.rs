@@ -56,7 +56,7 @@
 //      deterministic model: its only production sites are the
 //      `try_reserve_exact` / `checked_add` failure paths in
 //      loop_regions.rs:85-98, loop_regions/edges.rs:52-55, and
-//      loop_regions/nested_entries.rs:24-30, all via `resource_error()`.
+//      loop_regions/nested_entries.rs:24-31, all via `resource_error()`.
 //   3. loop_regions::nested_activation_map
 //      (workflow/loop_regions.rs:78-83): per-node nested-activation
 //      flags derived from the region table.
@@ -368,9 +368,9 @@ pub assume_specification[ production::build_object_symbols_error ](
 /// Spec-level mirror of `production::budget_error`. Returns
 /// `Some(BudgetPolicyExceeded)` for the first dimension of the
 /// supplied computed budget over its `BoundednessPolicy::DEFAULT`
-/// cap, in production `validate` order (budget.rs:534-592, via
-/// `validate_extended_budget` at 644-661, `validate_payload_budget`
-/// at 663-698, and `validate_budget_dimensions` at 595-642), or
+/// cap, in production `validate` order (budget/validate.rs:88-147, via
+/// `validate_extended_budget` at 198-215, `validate_payload_budget`
+/// at 217-252, and `validate_budget_dimensions` at 149-196), or
 /// `None` when every dimension is within caps.
 pub assume_specification[ production::budget_error ](
     budget: SpecComputedBudget,
@@ -734,7 +734,7 @@ pub open spec fn spec_expr_error(
 
 /// Spec-level mirror of the step-1a per-expression `max_stack`
 /// check in `validate_expr_stack_usage`
-/// (workflow/mod.rs:1656-1668): walks `parts.expressions` from
+/// (workflow/mod.rs:1657-1671): walks `parts.expressions` from
 /// index `i` and returns `Some(ResourceContractExceeded)` for the
 /// first program whose `max_stack` exceeds the contract cap, or
 /// `None` when every program fits. Production rejects when any
@@ -985,7 +985,7 @@ pub open spec fn validate_node_pure_spec(
 
 /// Spec-level mirror of `production::budget_error`. Checks the 23
 /// validated dimensions of the supplied computed budget against
-/// the `BoundednessPolicy::DEFAULT` caps (budget.rs:506-530) in
+/// the `BoundednessPolicy::DEFAULT` caps (budget/validate.rs:60-84) in
 /// production `validate` first-violation order and returns
 /// `Some(BudgetPolicyExceeded)` for the first exceeded dimension,
 /// or `None` when every dimension is within caps. The seven
@@ -1438,7 +1438,7 @@ pub open spec fn spec_pairing_error(metas: &Vec<SpecNodeMeta>, i: int) -> Option
 /// Spec predicate: a step lies in a region's inclusive body /
 /// control activation interval. Mirrors `region_contains` in
 /// `extern_try_from_parts.rs` (`CompiledLoopRegion::contains`,
-/// loop_regions.rs:40-42).
+/// loop_regions.rs:46-48).
 pub open spec fn spec_region_contains(region: SpecLoopRegion, step: u32) -> bool {
     region.body <= step && step <= region.control
 }
@@ -2095,7 +2095,7 @@ pub open spec fn spec_kind_target_at(
 }
 
 /// Spec mirror of one `kind_targets` entry of
-/// `validate_kind_edges` (workflow/mod.rs:2367-2427): the target
+/// `validate_kind_edges` (workflow/mod.rs:2367-2426): the target
 /// at `pos` must point strictly forward from the node. A missing
 /// inventory entry, or a missing position, means the caller
 /// supplied no target there, so the check passes. Positions are
@@ -2123,7 +2123,7 @@ pub open spec fn spec_kind_target_forward(
 /// Spec mirror of the forward check over every `kind_targets`
 /// entry of one node (`validate_choose_slot_edges` /
 /// `validate_choose_expr_edges` /
-/// `validate_together_start_edges`, workflow/mod.rs:2428-2442,
+/// `validate_together_start_edges`, workflow/mod.rs:2428-2441,
 /// 2443-2457, 2598-2609), from position `k` onward, in
 /// inventory order.
 pub open spec fn spec_kind_targets_forward_from(
@@ -2143,7 +2143,7 @@ pub open spec fn spec_kind_targets_forward_from(
 }
 
 /// Spec mirror of `validate_kind_edges`
-/// (workflow/mod.rs:2367-2427) for the node at `index`: which
+/// (workflow/mod.rs:2367-2426) for the node at `index`: which
 /// `kind_targets` positions production checks depends on the
 /// kind (see `kind_edges_error` in `extern_try_from_parts.rs`
 /// for the position table).
@@ -2221,7 +2221,7 @@ pub open spec fn spec_loop_span_end(parts: &SpecWorkflowParts, index: int) -> Op
 }
 
 /// Spec mirror of the `nearest_active_owner` scan
-/// (workflow/mod.rs:2470-2489): the nearest structured start
+/// (workflow/mod.rs:2470-2488): the nearest structured start
 /// before `check_index` whose span end lies past the check, or
 /// `None` when there is none. Scans upward from `j`, carrying
 /// the nearest active start seen so far in `best`.
@@ -2265,7 +2265,7 @@ pub open spec fn spec_repeat_owner(
 }
 
 /// Spec mirror of `repeat_check_validate::validate`
-/// (workflow/mod.rs:2465-2587): the owner found by
+/// (workflow/mod.rs:2465-2582): the owner found by
 /// `spec_repeat_owner` must be a `RepeatStart` with an output
 /// slot, whose body is the back target, whose done matches the
 /// check's done, and whose output slot is the check's attempt
@@ -3956,7 +3956,7 @@ pub proof fn lemma_forward_edge_routing_next_rejected(parts: &SpecWorkflowParts)
 /// Lemma 37: the backward kind-edge rejection. A `Jump` node
 /// whose kind target points backward (or at itself) is rejected
 /// with `BackwardEdge` (production `validate_kind_edges`,
-/// workflow/mod.rs:2367-2427). The node carries a forward error
+/// workflow/mod.rs:2367-2426). The node carries a forward error
 /// handler to the second node so the fixture passes the
 /// reachability step that runs before the forward-edges step in
 /// production order.
@@ -4033,7 +4033,7 @@ pub proof fn lemma_forward_edge_jump_target_rejected(parts: &SpecWorkflowParts)
 /// `RepeatCheck` whose routing `next` returns to the owner's
 /// body with matching attempt slot and done) is NOT rejected by
 /// the forward-edges step (production
-/// `repeat_check_validate`, workflow/mod.rs:2465-2587). This is
+/// `repeat_check_validate`, workflow/mod.rs:2465-2582). This is
 /// the no-over-reject witness for the forward-edges step.
 pub proof fn lemma_forward_edge_repeat_check_exempt(parts: &SpecWorkflowParts)
     requires
@@ -4102,7 +4102,7 @@ pub proof fn lemma_forward_edge_repeat_check_exempt(parts: &SpecWorkflowParts)
 /// A `RepeatCheck` whose routing `next` points backward with no
 /// enclosing structured start is rejected with `BackwardEdge`
 /// (production `repeat_check_validate`,
-/// workflow/mod.rs:2465-2587). The entry node carries a forward
+/// workflow/mod.rs:2465-2582). The entry node carries a forward
 /// routing `next` to the check so the fixture passes the
 /// reachability step that runs before the forward-edges step in
 /// production order.
@@ -4198,7 +4198,7 @@ pub proof fn lemma_forward_edge_repeat_check_no_owner_rejected(parts: &SpecWorkf
 /// A `RepeatCheck` whose nearest active enclosing start is a
 /// `ForEachStart` rather than a `RepeatStart` is rejected with
 /// `BackwardEdge` (production `repeat_check_validate`,
-/// workflow/mod.rs:2465-2587). The body node carries a forward
+/// workflow/mod.rs:2465-2582). The body node carries a forward
 /// routing `next` to the check so the fixture passes the
 /// reachability step that runs before the forward-edges step in
 /// production order.
@@ -5118,7 +5118,7 @@ pub proof fn lemma_kind_ref_well_formed_accepted(
 /// Lemma 55: the within-caps acceptance. A computed budget with
 /// every validated dimension within its `DEFAULT` cap passes the
 /// budget policy check (production `BoundednessPolicy::validate`,
-/// budget.rs:534-592, returns `Ok`).
+/// budget/validate.rs:88-147, returns `Ok`).
 pub proof fn lemma_budget_within_caps_accepted(budget: SpecComputedBudget)
     requires
         (budget.max_total_steps as int) <= 1_000_000,
@@ -5152,7 +5152,7 @@ pub proof fn lemma_budget_within_caps_accepted(budget: SpecComputedBudget)
 
 /// Lemma 56: the total-steps rejection. A computed budget
 /// with `max_total_steps` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget/validate.rs:88-147 returns
 /// `BudgetError::TotalStepsExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5167,7 +5167,7 @@ pub proof fn lemma_budget_total_steps_rejected(budget: SpecComputedBudget)
 
 /// Lemma 57: the total-slots rejection. A computed budget
 /// with `max_total_slots` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget/validate.rs:88-147 returns
 /// `BudgetError::TotalSlotsExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5183,7 +5183,7 @@ pub proof fn lemma_budget_total_slots_rejected(budget: SpecComputedBudget)
 
 /// Lemma 58: the fanout rejection. A computed budget
 /// with `max_fanout` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget/validate.rs:88-147 returns
 /// `BudgetError::FanoutExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5200,7 +5200,7 @@ pub proof fn lemma_budget_fanout_rejected(budget: SpecComputedBudget)
 
 /// Lemma 59: the nesting-depth rejection. A computed budget
 /// with `max_nesting_depth` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget/validate.rs:88-147 returns
 /// `BudgetError::NestingDepthExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5218,7 +5218,7 @@ pub proof fn lemma_budget_nesting_depth_rejected(budget: SpecComputedBudget)
 
 /// Lemma 60: the action-tickets rejection. A computed budget
 /// with `max_action_tickets` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget/validate.rs:88-147 returns
 /// `BudgetError::ActionTicketsExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5237,7 +5237,7 @@ pub proof fn lemma_budget_action_tickets_rejected(budget: SpecComputedBudget)
 
 /// Lemma 61: the parallel rejection. A computed budget
 /// with `max_parallel_in_flight` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget/validate.rs:88-147 returns
 /// `BudgetError::ParallelExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5257,7 +5257,7 @@ pub proof fn lemma_budget_parallel_rejected(budget: SpecComputedBudget)
 
 /// Lemma 62: the run-time rejection. A computed budget
 /// with `max_run_time_seconds` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget/validate.rs:88-147 returns
 /// `BudgetError::RunTimeExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5278,7 +5278,7 @@ pub proof fn lemma_budget_run_time_rejected(budget: SpecComputedBudget)
 
 /// Lemma 63: the result-bytes rejection. A computed budget
 /// with `max_result_bytes` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget/validate.rs:88-147 returns
 /// `BudgetError::ResultBytesExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5300,7 +5300,7 @@ pub proof fn lemma_budget_result_bytes_rejected(budget: SpecComputedBudget)
 
 /// Lemma 64: the steps-executable rejection. A computed budget
 /// with `max_steps_executable` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget/validate.rs:88-147 returns
 /// `BudgetError::StepsExecutableExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5323,7 +5323,7 @@ pub proof fn lemma_budget_steps_executable_rejected(budget: SpecComputedBudget)
 
 /// Lemma 65: the timer-entries rejection. A computed budget
 /// with `max_timer_entries` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `validate_extended_budget`, budget.rs:644-661 returns
+/// `BudgetPolicyExceeded` (production `validate_extended_budget`, budget/validate.rs:198-215 returns
 /// `BudgetError::TimerEntriesExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5347,7 +5347,7 @@ pub proof fn lemma_budget_timer_entries_rejected(budget: SpecComputedBudget)
 
 /// Lemma 66: the trace-events rejection. A computed budget
 /// with `max_trace_events` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `validate_extended_budget`, budget.rs:644-661 returns
+/// `BudgetPolicyExceeded` (production `validate_extended_budget`, budget/validate.rs:198-215 returns
 /// `BudgetError::TraceEventsExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5372,7 +5372,7 @@ pub proof fn lemma_budget_trace_events_rejected(budget: SpecComputedBudget)
 
 /// Lemma 67: the journal-batch-bytes rejection. A computed budget
 /// with `max_journal_batch_bytes` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `validate_payload_budget`, budget.rs:663-698 returns
+/// `BudgetPolicyExceeded` (production `validate_payload_budget`, budget/validate.rs:217-252 returns
 /// `BudgetError::JournalBatchBytesExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5398,7 +5398,7 @@ pub proof fn lemma_budget_journal_batch_bytes_rejected(budget: SpecComputedBudge
 
 /// Lemma 68: the queue-depth rejection. A computed budget
 /// with `max_queue_depth` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `validate_payload_budget`, budget.rs:663-698 returns
+/// `BudgetPolicyExceeded` (production `validate_payload_budget`, budget/validate.rs:217-252 returns
 /// `BudgetError::QueueDepthExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5425,7 +5425,7 @@ pub proof fn lemma_budget_queue_depth_rejected(budget: SpecComputedBudget)
 
 /// Lemma 69: the ipc-payload-bytes rejection. A computed budget
 /// with `max_ipc_payload_bytes` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `validate_payload_budget`, budget.rs:663-698 returns
+/// `BudgetPolicyExceeded` (production `validate_payload_budget`, budget/validate.rs:217-252 returns
 /// `BudgetError::IpcPayloadBytesExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5453,7 +5453,7 @@ pub proof fn lemma_budget_ipc_payload_bytes_rejected(budget: SpecComputedBudget)
 
 /// Lemma 70: the blob-bytes rejection. A computed budget
 /// with `max_blob_bytes` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `validate_payload_budget`, budget.rs:663-698 returns
+/// `BudgetPolicyExceeded` (production `validate_payload_budget`, budget/validate.rs:217-252 returns
 /// `BudgetError::BlobBytesExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5482,7 +5482,7 @@ pub proof fn lemma_budget_blob_bytes_rejected(budget: SpecComputedBudget)
 
 /// Lemma 71: the input-bytes rejection. A computed budget
 /// with `max_input_bytes` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `validate_payload_budget`, budget.rs:663-698 returns
+/// `BudgetPolicyExceeded` (production `validate_payload_budget`, budget/validate.rs:217-252 returns
 /// `BudgetError::InputBytesExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5512,7 +5512,7 @@ pub proof fn lemma_budget_input_bytes_rejected(budget: SpecComputedBudget)
 
 /// Lemma 72: the open-gates rejection. A computed budget
 /// with `max_open_gates` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget.rs:595-642 returns
+/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget/validate.rs:149-196 returns
 /// `BudgetError::OpenGatesExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5543,7 +5543,7 @@ pub proof fn lemma_budget_open_gates_rejected(budget: SpecComputedBudget)
 
 /// Lemma 73: the signal-subscriptions rejection. A computed budget
 /// with `max_signal_subscriptions` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget.rs:595-642 returns
+/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget/validate.rs:149-196 returns
 /// `BudgetError::SignalSubscriptionsExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5575,7 +5575,7 @@ pub proof fn lemma_budget_signal_subscriptions_rejected(budget: SpecComputedBudg
 
 /// Lemma 74: the incident-emissions rejection. A computed budget
 /// with `max_incident_emissions` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget.rs:595-642 returns
+/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget/validate.rs:149-196 returns
 /// `BudgetError::IncidentEmissionsExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5608,7 +5608,7 @@ pub proof fn lemma_budget_incident_emissions_rejected(budget: SpecComputedBudget
 
 /// Lemma 75: the transitions rejection. A computed budget
 /// with `max_transitions` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget.rs:595-642 returns
+/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget/validate.rs:149-196 returns
 /// `BudgetError::TransitionsExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5642,7 +5642,7 @@ pub proof fn lemma_budget_transitions_rejected(budget: SpecComputedBudget)
 
 /// Lemma 76: the journal-bytes-total rejection. A computed budget
 /// with `max_journal_bytes_total` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget.rs:595-642 returns
+/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget/validate.rs:149-196 returns
 /// `BudgetError::JournalBytesTotalExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5677,7 +5677,7 @@ pub proof fn lemma_budget_journal_bytes_total_rejected(budget: SpecComputedBudge
 
 /// Lemma 77: the value-store-entries rejection. A computed budget
 /// with `max_value_store_entries` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget.rs:595-642 returns
+/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget/validate.rs:149-196 returns
 /// `BudgetError::ValueStoreEntriesExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -5713,7 +5713,7 @@ pub proof fn lemma_budget_value_store_entries_rejected(budget: SpecComputedBudge
 
 /// Lemma 78: the cost-units rejection. A computed budget
 /// with `max_cost_units` over the `DEFAULT` cap is rejected with
-/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget.rs:595-642 returns
+/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget/validate.rs:149-196 returns
 /// `BudgetError::CostUnitsExceeded`, collapsed by `validate_budget_result`,
 /// workflow/mod.rs:1461-1470). All earlier dimensions are within
 /// caps, so this is the first violation production reports.
@@ -6456,7 +6456,7 @@ pub proof fn lemma_accessor_path_before_reachability(parts: &SpecWorkflowParts)
 /// Lemma 106: the over-cap expression rejection. A workflow
 /// whose only expression claims a `max_stack` above the contract
 /// cap is rejected with `ResourceContractExceeded` (production
-/// `validate_expr_stack_usage`, workflow/mod.rs:1656-1668).
+/// `validate_expr_stack_usage`, workflow/mod.rs:1657-1671).
 pub proof fn lemma_expr_stack_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
         parts.expressions.len() == 1,
@@ -6471,7 +6471,7 @@ pub proof fn lemma_expr_stack_over_cap_rejected(parts: &SpecWorkflowParts)
 /// Lemma 107: the at-cap expression is accepted. A workflow whose
 /// only expression claims a `max_stack` exactly equal to the
 /// contract cap validates: production rejects only when
-/// `max_stack > max_expr_stack` (workflow/mod.rs:1656-1668).
+/// `max_stack > max_expr_stack` (workflow/mod.rs:1657-1671).
 pub proof fn lemma_expr_stack_at_cap_accepted(parts: &SpecWorkflowParts)
     requires
         parts.expressions.len() == 1,
@@ -6488,7 +6488,7 @@ pub proof fn lemma_expr_stack_at_cap_accepted(parts: &SpecWorkflowParts)
 /// within it reports the over-cap error from the first expression:
 /// the scan returns the first expression's decision without
 /// consulting later expressions (production iterates expressions
-/// in order, workflow/mod.rs:1656-1668).
+/// in order, workflow/mod.rs:1657-1671).
 pub proof fn lemma_expr_stack_first_over_cap_wins(parts: &SpecWorkflowParts)
     requires
         parts.expressions.len() == 2,
@@ -6826,7 +6826,7 @@ pub proof fn lemma_constants_symbols_before_build_object(parts: &SpecWorkflowPar
 /// Lemma 119: the constants-count rejection. A workflow whose
 /// constant pool is longer than the contract cap is rejected with
 /// `ResourceContractExceeded` (production
-/// `validate_resource_usage`, workflow/mod.rs:1614-1644, Constants
+/// `validate_resource_usage`, workflow/mod.rs:1614-1643, Constants
 /// arm: `parts.constants.len()` against `max_constants`).
 pub proof fn lemma_constants_count_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
@@ -6864,7 +6864,7 @@ pub proof fn lemma_constants_count_over_cap_rejected(parts: &SpecWorkflowParts)
 /// Lemma 120: the accessors-count rejection. A workflow whose
 /// accessor table is longer than the contract cap is rejected with
 /// `ResourceContractExceeded` (production
-/// `validate_resource_usage`, workflow/mod.rs:1614-1644, Accessors
+/// `validate_resource_usage`, workflow/mod.rs:1614-1643, Accessors
 /// arm: `parts.accessors.len()` against `max_accessors`).
 pub proof fn lemma_accessors_count_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
@@ -6903,7 +6903,7 @@ pub proof fn lemma_accessors_count_over_cap_rejected(parts: &SpecWorkflowParts)
 /// Lemma 121: the expressions-count rejection. A workflow whose
 /// expression table is longer than the contract cap is rejected with
 /// `ResourceContractExceeded` (production
-/// `validate_resource_usage`, workflow/mod.rs:1614-1644, Expressions
+/// `validate_resource_usage`, workflow/mod.rs:1614-1643, Expressions
 /// arm: `parts.expressions.len()` against `max_expressions`).
 pub proof fn lemma_expressions_count_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
@@ -6946,7 +6946,7 @@ pub proof fn lemma_expressions_count_over_cap_rejected(parts: &SpecWorkflowParts
 /// `ResourceContractExceeded` (production
 /// `validate_resource_usage` runs the Constants arm before the
 /// Accessors arm before the Expressions arm,
-/// workflow/mod.rs:1614-1644). All three arms return the same
+/// workflow/mod.rs:1614-1643). All three arms return the same
 /// `ResourceContractExceeded` value, so their relative order is
 /// unobservable in the top-level result; this pins the combined
 /// rejection with the Constants arm first in production order,
@@ -7247,7 +7247,7 @@ pub proof fn lemma_contract_limits_before_usage(parts: &SpecWorkflowParts)
 /// rejected with the usage error, not the limits error (production
 /// `check_resource_contract_limits` passes, then
 /// `validate_resource_usage` runs, workflow/mod.rs:1587-1593 and
-/// 1614-1644).
+/// 1614-1643).
 pub proof fn lemma_contract_limits_within_cap_reaches_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -7600,7 +7600,7 @@ pub proof fn lemma_byte_budget_limits_before_usage(parts: &SpecWorkflowParts)
 /// (production
 /// `check_resource_contract_limits` passes, then
 /// `validate_resource_usage` runs, workflow/mod.rs:1587-1593 and
-/// 1614-1644).
+/// 1614-1643).
 pub proof fn lemma_byte_budget_limits_within_cap_reaches_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -7904,7 +7904,7 @@ pub proof fn lemma_retry_fanout_collect_queue_limits_before_usage(parts: &SpecWo
 /// over its contract cap is rejected with the usage error, not the
 /// limits error (production `check_resource_contract_limits`
 /// passes, then `validate_resource_usage` runs,
-/// workflow/mod.rs:1587-1593 and 1614-1644).
+/// workflow/mod.rs:1587-1593 and 1614-1643).
 pub proof fn lemma_retry_fanout_collect_queue_limits_within_cap_reaches_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -8334,7 +8334,7 @@ pub proof fn lemma_transitions_limit_before_usage(parts: &SpecWorkflowParts)
 /// usage error, not the limits error (production
 /// `check_resource_contract_limits` passes, then
 /// `validate_resource_usage` runs, workflow/mod.rs:1587-1593 and
-/// 1614-1644).
+/// 1614-1643).
 pub proof fn lemma_transitions_within_cap_reaches_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -8524,7 +8524,7 @@ pub proof fn lemma_steps_slots_limits_first_over_cap_wins(parts: &SpecWorkflowPa
 /// `validate_resource_contract` runs
 /// `check_resource_contract_limits` before
 /// `validate_resource_usage`, workflow/mod.rs:1587-1593 and
-/// 1614-1644).
+/// 1614-1643).
 pub proof fn lemma_steps_slots_within_cap_reaches_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
