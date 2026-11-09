@@ -3,10 +3,7 @@
 
 use crate::errors::{CoreError, CoreResult};
 use crate::ids::{BlobId, ListId, ObjectId, SymbolId};
-use crate::limits::{
-    MAX_BLOB_BYTES_PER_VALUE, MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE,
-    MAX_SYMBOL_BYTES_PER_VALUE,
-};
+
 use crate::value::{SlotValue, Taint};
 use bytes::Bytes;
 use indexmap::IndexMap;
@@ -20,36 +17,16 @@ pub use transport::{
 
 mod checkpoint;
 pub use checkpoint::ValueStoreCheckpointV1;
+mod blobs;
+mod lists;
+mod objects;
+mod symbols;
+use blobs::{blob_index, next_blob_id, validate_blob_len};
 pub(crate) use checkpoint::{validate_checkpoint, validate_value_reference};
-
-/// Deterministic object field stored in insertion order.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct ObjectField {
-    /// Interned field name.
-    pub key: SymbolId,
-    /// Handle-only field value.
-    pub value: SlotValue,
-    /// Taint level of the field value.
-    pub taint: Taint,
-}
-
-impl ObjectField {
-    /// Creates a clean-tainted object field.
-    #[must_use]
-    pub const fn clean(key: SymbolId, value: SlotValue) -> Self {
-        Self {
-            key,
-            value,
-            taint: Taint::Clean,
-        }
-    }
-
-    /// Creates an object field with explicit taint.
-    #[must_use]
-    pub const fn with_taint(key: SymbolId, value: SlotValue, taint: Taint) -> Self {
-        Self { key, value, taint }
-    }
-}
+use lists::{list_index, next_list_id, validate_list_len};
+pub use objects::ObjectField;
+use objects::{next_object_id, object_index, validate_object_len};
+use symbols::{next_symbol_id, symbol_index, validate_symbol_len};
 
 /// Cold value arenas for strings, lists, objects, and blobs.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -420,90 +397,6 @@ fn len_to_u64(len: usize) -> CoreResult<u64> {
     })
 }
 
-fn next_symbol_id(len: usize) -> CoreResult<SymbolId> {
-    u32::try_from(len)
-        .map(SymbolId::new)
-        .map_err(|_| CoreError::ResourceLimitExceeded {
-            resource: "symbols",
-        })
-}
-
-fn next_list_id(len: usize) -> CoreResult<ListId> {
-    u32::try_from(len)
-        .map(ListId::new)
-        .map_err(|_| CoreError::ResourceLimitExceeded { resource: "lists" })
-}
-
-fn next_object_id(len: usize) -> CoreResult<ObjectId> {
-    u32::try_from(len)
-        .map(ObjectId::new)
-        .map_err(|_| CoreError::ResourceLimitExceeded {
-            resource: "objects",
-        })
-}
-
-fn next_blob_id(len: usize) -> CoreResult<BlobId> {
-    u64::try_from(len)
-        .map(BlobId::new)
-        .map_err(|_| CoreError::ResourceLimitExceeded { resource: "blobs" })
-}
-
-fn validate_list_len(len: usize) -> CoreResult<()> {
-    if len > MAX_LIST_ITEMS_PER_VALUE {
-        Err(CoreError::ResourceLimitExceeded {
-            resource: "list_items",
-        })
-    } else {
-        Ok(())
-    }
-}
-
-fn validate_symbol_len(len: usize) -> CoreResult<()> {
-    if len > MAX_SYMBOL_BYTES_PER_VALUE {
-        Err(CoreError::ResourceLimitExceeded {
-            resource: "symbol_bytes",
-        })
-    } else {
-        Ok(())
-    }
-}
-
-fn validate_blob_len(len: usize) -> CoreResult<()> {
-    if len > MAX_BLOB_BYTES_PER_VALUE {
-        Err(CoreError::ResourceLimitExceeded {
-            resource: "blob_bytes",
-        })
-    } else {
-        Ok(())
-    }
-}
-
-fn validate_object_len(len: usize) -> CoreResult<()> {
-    if len > MAX_OBJECT_FIELDS_PER_VALUE {
-        Err(CoreError::ResourceLimitExceeded {
-            resource: "object_fields",
-        })
-    } else {
-        Ok(())
-    }
-}
-
-fn symbol_index(id: SymbolId) -> CoreResult<usize> {
-    usize::try_from(id.get()).map_err(|_| CoreError::SymbolOutOfBounds { symbol: id })
-}
-
-fn list_index(id: ListId) -> CoreResult<usize> {
-    usize::try_from(id.get()).map_err(|_| CoreError::ListOutOfBounds { list: id })
-}
-
-fn object_index(id: ObjectId) -> CoreResult<usize> {
-    usize::try_from(id.get()).map_err(|_| CoreError::ObjectOutOfBounds { object: id })
-}
-
-fn blob_index(id: BlobId) -> CoreResult<usize> {
-    usize::try_from(id.get()).map_err(|_| CoreError::BlobOutOfBounds { blob: id })
-}
-
 #[cfg(kani)]
 mod kani_harnesses {
     fn same_static_str(left: &'static str, right: &'static str) -> bool {
@@ -537,6 +430,9 @@ mod kani_harnesses {
 
 #[cfg(test)]
 mod extended_tests;
+
+#[cfg(any(test, kani))]
+include!("value_store/tests_and_verification.rs");
 
 #[cfg(test)]
 #[path = "value_store/tests.rs"]

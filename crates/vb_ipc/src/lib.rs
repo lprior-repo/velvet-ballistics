@@ -60,5 +60,9 @@ pub use crate::payloads::{IpcPayload, IpcTraceEvent, IpcTraceEventKind, SubmitRu
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+#[path = "queue/tests/array_queue_tests.rs"]
+mod array_queue_tests;
+
 // #[cfg(test)]
 // mod property_tests;

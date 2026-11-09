@@ -33,11 +33,11 @@ use crate::ingress::{IngressFrame, MemoryIngress};
 // ─── Test helpers ──────────────────────────────────────────────────────────────
 
 /// Creates a minimal valid `IngressFrame` for testing.
-fn make_frame(run_id_val: u64, payload_bytes: impl Into<Bytes>) -> IngressFrame {
+fn make_frame(run_id_val: u64, payload_bytes: impl AsRef<[u8]>) -> IngressFrame {
     IngressFrame::new(
         RunId::new(run_id_val),
         WorkflowDigest::from_bytes([0u8; 32]),
-        payload_bytes.into(),
+        Bytes::copy_from_slice(payload_bytes.as_ref()),
         MaxPayloadBytes::DEFAULT,
     )
     .expect("test frame must be valid")
@@ -207,11 +207,13 @@ fn ingress_frame_new_with_empty_payload_and_min_max_succeeds() {
         min_max,
     );
 
-    let expected = IngressFrame {
-        run_id: RunId::new(1),
-        workflow: WorkflowDigest::from_bytes([0u8; 32]),
-        payload: BoundedPayload::new(Bytes::new(), min_max).unwrap(),
-    };
+    let expected = IngressFrame::new(
+        RunId::new(1),
+        WorkflowDigest::from_bytes([0u8; 32]),
+        Bytes::new(),
+        min_max,
+    )
+    .expect("expected frame must be valid");
     assert_eq!(
         result,
         Ok(expected),
@@ -234,11 +236,13 @@ fn ingress_frame_new_with_payload_at_exactly_max_boundary_succeeds() {
         max,
     );
 
-    let expected = IngressFrame {
-        run_id: RunId::new(1),
-        workflow: WorkflowDigest::from_bytes([0u8; 32]),
-        payload: BoundedPayload::new(payload, max).unwrap(),
-    };
+    let expected = IngressFrame::new(
+        RunId::new(1),
+        WorkflowDigest::from_bytes([0u8; 32]),
+        payload,
+        max,
+    )
+    .expect("expected frame must be valid");
     assert_eq!(
         result,
         Ok(expected),
@@ -589,7 +593,7 @@ fn memory_ingress_is_empty_equals_len_zero_invariant() {
 #[test]
 fn ingress_frame_new_accepts_single_byte_payloads_within_limit() {
     for byte in [0x00u8, 0x7F, 0x80, 0xFF] {
-        let payload = Bytes::from_static(&[byte]);
+        let payload = Bytes::copy_from_slice(&[byte]);
         let result = IngressFrame::new(
             RunId::new(1),
             WorkflowDigest::from_bytes([0u8; 32]),
@@ -667,18 +671,15 @@ fn bounded_payload_rejects_exactly_one_over_nonzero_min_limit() {
 
 /// Strategy: arbitrary non-zero capacity capped at 1024.
 fn arb_capacity() -> impl Strategy<Value = QueueCapacity> {
-    any::<NonZeroUsize>()
-        .prop_filter("capacity must be > 0 and ≤ 1024", |nz| nz.get() <= 1024)
-        .prop_map(QueueCapacity::new)
+    (1usize..=1024)
+        .prop_map(|n| QueueCapacity::new(NonZeroUsize::new(n).expect("strategy range starts at 1")))
 }
 
 /// Strategy: arbitrary `IngressFrame` within default payload limit.
 fn arb_ingress_frame() -> impl Strategy<Value = IngressFrame> {
     // Generate payloads up to 1024 bytes for test speed.
-    (0..=1024usize).prop_flat_map(move |payload_len| {
-        let payload_bytes: Vec<u8> =
-            proptest::collection::vec(proptest::prelude::any::<u8>(), payload_len);
-        payload_bytes.prop_map(move |bytes| {
+    (0..=1024usize).prop_flat_map(|payload_len| {
+        proptest::collection::vec(proptest::prelude::any::<u8>(), payload_len).prop_map(|bytes| {
             IngressFrame::new(
                 RunId::new(1),
                 WorkflowDigest::from_bytes([0u8; 32]),
@@ -753,7 +754,7 @@ proptest! {
                 }
                 Err(IpcError::Full) => {
                     // Queue is full — now drain it
-                    while let Ok(Some(())) = ingress.try_recv() {
+                    while let Ok(Some(_)) = ingress.try_recv() {
                         // drain
                     }
                     expected_empty = true;
@@ -765,41 +766,6 @@ proptest! {
                 }
             }
         }
-    }
-
-    /// Invariant: capacity-1 queue must exhibit correct full/empty signaling.
-    /// Sequence: submit×2 → first succeeds, second returns Full;
-    ///           recv×2   → first returns frame, second returns None.
-    #[test]
-    fn capacity_one_full_empty_signaling_invariant() {
-        let ingress = MemoryIngress::bounded(capacity(1));
-
-        let frame1 = make_frame(1, b"first");
-        let frame2 = make_frame(2, b"second");
-
-        // Step 1: First submit must succeed
-        let r1 = ingress.try_submit(frame1.clone());
-        prop_assert_eq!(r1, Ok(()), "first submit on capacity-1 must succeed");
-
-        // Step 2: Second submit must return Full
-        let r2 = ingress.try_submit(frame2.clone());
-        prop_assert_eq!(
-            r2,
-            Err(IpcError::Full),
-            "second submit on full queue must return Full"
-        );
-
-        // Step 3: First recv must return frame1
-        let r3 = ingress.try_recv();
-        prop_assert_eq!(
-            r3,
-            Ok(Some(frame1)),
-            "first recv must return first frame"
-        );
-
-        // Step 4: Second recv must return None (queue empty)
-        let r4 = ingress.try_recv();
-        prop_assert_eq!(r4, Ok(None), "second recv on empty queue must return None");
     }
 
     /// Invariant: `len()` always returns exact count regardless of interleaving.
@@ -833,6 +799,37 @@ proptest! {
             }
         }
     }
+}
+
+/// Invariant: capacity-1 queue must exhibit correct full/empty signaling.
+/// Sequence: submit×2 → first succeeds, second returns Full;
+///       recv×2   → first returns frame, second returns None.
+#[test]
+fn capacity_one_full_empty_signaling_invariant() {
+    let ingress = MemoryIngress::bounded(capacity(1));
+
+    let frame1 = make_frame(1, b"first");
+    let frame2 = make_frame(2, b"second");
+
+    // Step 1: First submit must succeed
+    let r1 = ingress.try_submit(frame1.clone());
+    assert_eq!(r1, Ok(()), "first submit on capacity-1 must succeed");
+
+    // Step 2: Second submit must return Full
+    let r2 = ingress.try_submit(frame2.clone());
+    assert_eq!(
+        r2,
+        Err(IpcError::Full),
+        "second submit on full queue must return Full"
+    );
+
+    // Step 3: First recv must return frame1
+    let r3 = ingress.try_recv();
+    assert_eq!(r3, Ok(Some(frame1)), "first recv must return first frame");
+
+    // Step 4: Second recv must return None (queue empty)
+    let r4 = ingress.try_recv();
+    assert_eq!(r4, Ok(None), "second recv on empty queue must return None");
 }
 
 // ════════════════════════════════════════════════════════════════════════════════════════

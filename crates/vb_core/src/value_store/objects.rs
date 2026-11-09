@@ -3,7 +3,7 @@ use crate::ids::{ObjectId, SymbolId};
 use crate::limits::MAX_OBJECT_FIELDS_PER_VALUE;
 use crate::value::{SlotValue, Taint};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ObjectField {
     pub key: SymbolId,
     pub value: SlotValue,
@@ -26,7 +26,7 @@ impl ObjectField {
     }
 }
 
-pub fn next_object_id(len: usize) -> CoreResult<ObjectId> {
+pub(crate) fn next_object_id(len: usize) -> CoreResult<ObjectId> {
     u32::try_from(len)
         .map(ObjectId::new)
         .map_err(|_| CoreError::ResourceLimitExceeded {
@@ -34,7 +34,7 @@ pub fn next_object_id(len: usize) -> CoreResult<ObjectId> {
         })
 }
 
-pub fn validate_object_len(len: usize) -> CoreResult<()> {
+pub(crate) fn validate_object_len(len: usize) -> CoreResult<()> {
     if len > MAX_OBJECT_FIELDS_PER_VALUE {
         Err(CoreError::ResourceLimitExceeded {
             resource: "object_fields",
@@ -44,6 +44,6 @@ pub fn validate_object_len(len: usize) -> CoreResult<()> {
     }
 }
 
-pub fn object_index(id: ObjectId) -> CoreResult<usize> {
+pub(crate) fn object_index(id: ObjectId) -> CoreResult<usize> {
     usize::try_from(id.get()).map_err(|_| CoreError::ObjectOutOfBounds { object: id })
 }

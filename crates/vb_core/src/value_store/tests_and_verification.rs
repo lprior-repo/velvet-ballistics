@@ -1,6 +1,6 @@
-//! Tests and formal verification harnesses for value_store.
-//!
-//! This module is conditionally compiled and does not contribute to the production build.
+// Tests and formal verification harnesses for value_store.
+// 
+// This module is conditionally compiled and does not contribute to the production build.
 
 #[cfg(kani)]
 mod kani_harnesses {
@@ -34,7 +34,7 @@ mod kani_harnesses {
 }
 
 #[cfg(test)]
-mod tests {
+mod verification_tests {
     use super::{ObjectField, ValueStore};
     use crate::errors::CoreError;
     use crate::ids::SymbolId;
