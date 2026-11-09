@@ -1,15 +1,15 @@
 # hammer lane D benchmark evidence raw log for engine_run_until_blocked_budget_10_small_workflow
-# binary: target/release/deps/velvet_ballistics-6ca1badb5e5dbc25 sha256:5efe1d5c084896f06dc74f9a6428de7a24dcfbbdde1ea28ea7508202115be7e6
-# commit: 73f3a610c458d1ddfbff11249070cdd6f7ab09d1
-# command: target/release/deps/velvet_ballistics-6ca1badb5e5dbc25 engine_run_until_blocked_budget_10_small_workflow --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
+# binary: target/release/deps/velvet_ballistics-66611718ca9bc986 sha256:09771be18b271b8bfcced52eee5b6c12159c6bec95dd79dc24e6f21414ca981d
+# commit: df1f5d7e7b86c2a15337b8818a68743d1ce658cf
+# command: target/release/deps/velvet_ballistics-66611718ca9bc986 engine_run_until_blocked_budget_10_small_workflow --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
 # timing: criterion run (a); allocations: heaptrack run (b) of the same command; instructions: callgrind run (c) of the same command (perf absent/blocked on this VM)
 === criterion stdout ===
 runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;dura...
-                        time:   [47.728 ns 50.043 ns 55.927 ns]
-                        change: [−3.4982% +1.6987% +11.454%] (p = 0.52 > 0.05)
-                        No change in performance detected.
+                        time:   [48.581 ns 49.027 ns 49.528 ns]
+                        change: [−20.244% −11.540% −4.2018%] (p = 0.02 < 0.05)
+                        Performance has improved.
 Found 1 outliers among 10 measurements (10.00%)
-  1 (10.00%) high severe
+  1 (10.00%) high mild
 
 === criterion stderr ===
 Gnuplot not found, using plotters backend
@@ -25,227 +25,227 @@ latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; 
 latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=0; budget_us=100000; utilization_pct=0
 latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=0; budget_us=100000; utilization_pct=0
 latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=0; budget_us=100000; utilization_pct=0
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=83; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=11; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=19; budget_us=100000; utilization_pct=0
 latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=0; budget_us=100000; utilization_pct=0
 latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=59; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=14; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=11; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=11; budget_us=100000; utilization_pct=0
 latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=13; budget_us=100000; utilization_pct=0
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=0; budget_us=100000; utilization_pct=0
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=28; budget_us=100000; utilization_pct=0
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=37; budget_us=100000; utilization_pct=0
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=18; budget_us=100000; utilization_pct=0
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=212; budget_us=100000; utilization_pct=0
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=1182; budget_us=100000; utilization_pct=1
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=311; budget_us=100000; utilization_pct=0
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=4716; budget_us=100000; utilization_pct=4
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=5699; budget_us=100000; utilization_pct=5
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=665; budget_us=100000; utilization_pct=0
-Benchmarking runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;dura...: Collecting 10 samples in estimated 1.0000 s (9.7M iterations)
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=23; budget_us=100000; utilization_pct=0
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=32; budget_us=100000; utilization_pct=0
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=31; budget_us=100000; utilization_pct=0
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=87; budget_us=100000; utilization_pct=0
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=179; budget_us=100000; utilization_pct=0
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=19257; budget_us=100000; utilization_pct=19
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=224; budget_us=100000; utilization_pct=0
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=394; budget_us=100000; utilization_pct=0
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=241; budget_us=100000; utilization_pct=0
-latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=63; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=170; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=1523; budget_us=100000; utilization_pct=1
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=1389; budget_us=100000; utilization_pct=1
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=1324; budget_us=100000; utilization_pct=1
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=1820; budget_us=100000; utilization_pct=1
+Benchmarking runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;dura...: Collecting 10 samples in estimated 1.0000 s (9.6M iterations)
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=21; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=17; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=12; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=365; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=129; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=70; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=204; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=2080; budget_us=100000; utilization_pct=2
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=940; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=98; budget_us=100000; utilization_pct=0
 Benchmarking runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;dura...: Analyzing
 === heaptrack ===
-reading file "/home/hatch/workspace/velvet-work/bench-logs/evidence-1109/ht-engine_run_until_blocked_budget_10_small_workflow.gz" - please wait, this might take some time...
-Debuggee command was: ./target/release/deps/velvet_ballistics-6ca1badb5e5dbc25 engine_run_until_blocked_budget_10_small_workflow --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
+reading file "/home/hatch/workspace/velvet-work/bench-logs/evidence-1109b/ht-engine_run_until_blocked_budget_10_small_workflow.gz" - please wait, this might take some time...
+Debuggee command was: ./target/release/deps/velvet_ballistics-66611718ca9bc986 engine_run_until_blocked_budget_10_small_workflow --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
 finished reading file, now analyzing data:
 
 MOST CALLS TO ALLOCATION FUNCTIONS
-571883 calls to allocation functions with 8.82M peak consumption from
-0x5bd1bac2f9eb
-  in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-7584 calls with 0B peak consumption from:
-    0x5bd1bad961b6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9af53
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9af53
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bade432b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab60505
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f6d1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5ecf6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f28a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315c3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+578205 calls to allocation functions with 8.82M peak consumption from
+0x57e69fb7e00b
+  in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+6643 calls with 0B peak consumption from:
+    0x57e69f91cadc
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9422f4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9422f4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f994872
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8e5a5
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d771
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cd96
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d32a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbe3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
     __clone3
       at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
       in /lib/x86_64-linux-gnu/libc.so.6
-7584 calls with 0B peak consumption from:
-    0x5bd1bad961b6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9af53
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bade432b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab60505
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f6d1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5ecf6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f28a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315c3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+6643 calls with 0B peak consumption from:
+    0x57e69f91cadc
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9422f4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9422f4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f994872
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8e5a5
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d771
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cd96
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d32a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbe3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
     __clone3
       at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
       in /lib/x86_64-linux-gnu/libc.so.6
-7584 calls with 0B peak consumption from:
-    0x5bd1bad961b6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9af53
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bade432b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab60505
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f6d1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5ecf6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f28a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315c3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+6643 calls with 0B peak consumption from:
+    0x57e69f91cadc
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9422f4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9422f4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f994872
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8e5a5
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d771
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cd96
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d32a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbe3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
     __clone3
       at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
       in /lib/x86_64-linux-gnu/libc.so.6
-7584 calls with 0B peak consumption from:
-    0x5bd1bad961b6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9af53
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9af53
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bade432b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab60505
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f6d1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5ecf6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f28a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315c3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+6641 calls with 0B peak consumption from:
+    0x57e69f91cadc
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9422f4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f994872
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8e5a5
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d771
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cd96
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d32a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbe3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
     __clone3
       at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
       in /lib/x86_64-linux-gnu/libc.so.6
-6636 calls with 0B peak consumption from:
-    0x5bd1bad961b6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9af53
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bade432b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab60505
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f6d1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5ecf6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f28a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315c3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+6641 calls with 0B peak consumption from:
+    0x57e69f91cadc
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9422f4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f994872
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8e5a5
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d771
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cd96
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d32a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbe3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
     __clone3
       at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
       in /lib/x86_64-linux-gnu/libc.so.6
-  and 534911 from 16554 other places
+  and 544994 from 20466 other places
 
 711 calls to allocation functions with 0B peak consumption from
 __opendir::opendir_tail::__alloc_dir
@@ -256,63 +256,63 @@ __opendir::opendir_tail
 __opendir
   at ./dirent/../sysdeps/unix/sysv/linux/opendir.c:86
 710 calls with 0B peak consumption from:
-    0x5bd1bac29a68
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3fc7a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3f435
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae40d00
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa67e30
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb64d5
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb78088
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8e29a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8da55
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8f320
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f995330
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04af5
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 1 calls with 0B peak consumption from:
-    0x5bd1bac29a68
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3fc7a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3f435
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae40bb4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa67e30
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb64d5
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb78088
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8e29a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8da55
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8f1d4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f995330
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04af5
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 
 66 calls to allocation functions with 0B peak consumption from
 __alloc_dir
@@ -322,182 +322,182 @@ __alloc_dir
     __fdopendir
       at ../sysdeps/unix/sysv/linux/fdopendir.c:56
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1bac2df84
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac2e11f
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac2e11f
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac2e11f
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac28bd7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac3e2bd
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badafa1a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc652
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb7c5a4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7c73f
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7c73f
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7c73f
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb771f7
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb8c8dd
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcfe03a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0ac72
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 18 calls with 0B peak consumption from:
     __fdopendir
       at ../sysdeps/unix/sysv/linux/fdopendir.c:56
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1bac2df84
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac2e11f
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac2e11f
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac2e11f
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac28bd7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac3e2bd
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badafa7c
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc652
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb7c5a4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7c73f
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7c73f
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7c73f
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb771f7
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb8c8dd
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcfe09c
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0ac72
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 13 calls with 0B peak consumption from:
     __fdopendir
       at ../sysdeps/unix/sysv/linux/fdopendir.c:56
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1bac2df84
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac2e11f
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac2e11f
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac28bd7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac3e2bd
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badafa1a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc652
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb7c5a4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7c73f
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7c73f
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb771f7
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb8c8dd
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcfe03a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0ac72
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 13 calls with 0B peak consumption from:
     __fdopendir
       at ../sysdeps/unix/sysv/linux/fdopendir.c:56
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1bac2df84
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac2e11f
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac2e11f
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac28bd7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac3e2bd
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badafa7c
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc652
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb7c5a4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7c73f
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7c73f
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb771f7
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb8c8dd
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcfe09c
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0ac72
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 1 calls with 0B peak consumption from:
     __fdopendir
       at ../sysdeps/unix/sysv/linux/fdopendir.c:56
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1bac2df84
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac28bd7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac3e2bd
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badafa1a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc652
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb7c5a4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb771f7
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb8c8dd
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcfe03a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0ac72
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
   and 3 from 3 other places
 
 18 calls to allocation functions with 288B peak consumption from
@@ -505,14 +505,14 @@ __cxa_thread_atexit_impl
   at ./stdlib/cxa_thread_atexit_impl.c:106
   in /lib/x86_64-linux-gnu/libc.so.6
 8 calls with 0B peak consumption from:
-    0x5bd1bac1d677
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa8ef6c
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa993d3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315c3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb6bc97
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9bc46c
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9c68d3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbe3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
@@ -520,14 +520,14 @@ __cxa_thread_atexit_impl
       at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
       in /lib/x86_64-linux-gnu/libc.so.6
 4 calls with 128B peak consumption from:
-    0x5bd1bac1d677
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5ecdc
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f27c
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315c3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb6bc97
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cd7c
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d31c
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbe3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
@@ -535,22 +535,22 @@ __cxa_thread_atexit_impl
       at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
       in /lib/x86_64-linux-gnu/libc.so.6
 4 calls with 128B peak consumption from:
-    0x5bd1bab5c15f
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab6016c
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab6031a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab603e2
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f6d1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5ecf6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f28a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315c3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fa8a1ff
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8e20c
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8e3ba
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8e482
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d771
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cd96
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d32a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbe3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
@@ -558,87 +558,87 @@ __cxa_thread_atexit_impl
       at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
       in /lib/x86_64-linux-gnu/libc.so.6
 1 calls with 32B peak consumption from:
-    0x5bd1bac2bfc2
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab611be
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5cdd2
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5eee6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac14a08
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab60e0b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa34d2b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad8c17b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc43d
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb7a5e2
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8f25e
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8ae72
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cf86
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb63028
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8eeab
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f96222b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcd3c6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0aa5d
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 1 calls with 0B peak consumption from:
-    0x5bd1baacd5af
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baad1b86
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baae7925
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab01fa1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab2a8c0
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bacfdfa9
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bada93af
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc652
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f9faaaf
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9ff086
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa14d45
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa2f131
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa57dc0
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fc4c5c9
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcf79cf
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0ac72
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 
 13 calls to allocation functions with 0B peak consumption from
 __pthread_getattr_np
   at ./nptl/pthread_getattr_np.c:180
   in /lib/x86_64-linux-gnu/libc.so.6
 12 calls with 0B peak consumption from:
-    0x5bd1bac30e5e
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315b9
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb7f47e
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbd9
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
@@ -646,18 +646,18 @@ __pthread_getattr_np
       at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
       in /lib/x86_64-linux-gnu/libc.so.6
 1 calls with 0B peak consumption from:
-    0x5bd1bac2687d
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb74e9d
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 
 13 calls to allocation functions with 0B peak consumption from
 __GI___pthread_attr_setaffinity_np
@@ -667,10 +667,10 @@ __GI___pthread_attr_setaffinity_np
     __pthread_getattr_np
       at ./nptl/pthread_getattr_np.c:194
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1bac30e5e
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315b9
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb7f47e
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbd9
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
@@ -681,18 +681,18 @@ __GI___pthread_attr_setaffinity_np
     __pthread_getattr_np
       at ./nptl/pthread_getattr_np.c:194
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1bac2687d
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb74e9d
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 
 13 calls to allocation functions with 0B peak consumption from
 __pthread_attr_extension
@@ -705,10 +705,10 @@ __pthread_attr_extension
     __pthread_getattr_np
       at ./nptl/pthread_getattr_np.c:194
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1bac30e5e
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315b9
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb7f47e
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbd9
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
@@ -722,18 +722,18 @@ __pthread_attr_extension
     __pthread_getattr_np
       at ./nptl/pthread_getattr_np.c:194
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1bac2687d
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb74e9d
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 
 12 calls to allocation functions with 1.41K peak consumption from
 __GI__dl_allocate_tls::allocate_dtv::calloc
@@ -749,210 +749,210 @@ __GI__dl_allocate_tls
       in /lib/x86_64-linux-gnu/libc.so.6
     __pthread_create_2_1
       at ./nptl/./nptl/pthread_create.c:655
-    0x5bd1bac14763
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab61348
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5cdd2
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5eee6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac14a08
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab60e0b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa34d2b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad8c17b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc43d
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb62d83
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8f3e8
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8ae72
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cf86
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb63028
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8eeab
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f96222b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcd3c6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0aa5d
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 3 calls with 0B peak consumption from:
     __pthread_create_2_1::allocate_stack
       at ./nptl/allocatestack.c:429
       in /lib/x86_64-linux-gnu/libc.so.6
     __pthread_create_2_1
       at ./nptl/./nptl/pthread_create.c:655
-    0x5bd1bac14763
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baabf4d1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baaac340
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baaa3bd9
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baaa4367
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baaa44b4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad7eda6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bada9080
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc652
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb62d83
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9ec9d1
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9d9840
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9d10d9
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9d1867
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9d19b4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fccd216
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcf76a0
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0ac72
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 3 calls with 0B peak consumption from:
     __pthread_create_2_1::allocate_stack
       at ./nptl/allocatestack.c:429
       in /lib/x86_64-linux-gnu/libc.so.6
     __pthread_create_2_1
       at ./nptl/./nptl/pthread_create.c:655
-    0x5bd1bac14763
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baabf4d1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baaac340
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baaa3bd9
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baaa4367
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baaa44b4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad7eda6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bada925e
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc652
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb62d83
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9ec9d1
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9d9840
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9d10d9
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9d1867
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9d19b4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fccd216
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcf787e
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0ac72
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 1 calls with 0B peak consumption from:
     __pthread_create_2_1::allocate_stack
       at ./nptl/allocatestack.c:429
       in /lib/x86_64-linux-gnu/libc.so.6
     __pthread_create_2_1
       at ./nptl/./nptl/pthread_create.c:655
-    0x5bd1bac14763
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baabf4d1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baaac243
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baaa3bd9
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baaa4367
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baaa44b4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad7eda6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bada9080
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc652
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb62d83
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9ec9d1
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9d9743
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9d10d9
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9d1867
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9d19b4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fccd216
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcf76a0
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0ac72
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 1 calls with 0B peak consumption from:
     __pthread_create_2_1::allocate_stack
       at ./nptl/allocatestack.c:429
       in /lib/x86_64-linux-gnu/libc.so.6
     __pthread_create_2_1
       at ./nptl/./nptl/pthread_create.c:655
-    0x5bd1bac14763
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baabf4d1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baaac243
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baaa3bd9
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baaa4367
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baaa44b4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad7eda6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bada925e
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc652
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb62d83
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9ec9d1
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9d9743
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9d10d9
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9d1867
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9d19b4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fccd216
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcf787e
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0ac72
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 
 1 calls to allocation functions with 0B peak consumption from
 _IO_new_fopen::__fopen_internal
@@ -964,18 +964,18 @@ _IO_new_fopen
     __pthread_getattr_np
       at ./nptl/pthread_getattr_np.c:85
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1bac2687d
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb74e9d
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 
 1 calls to allocation functions with 0B peak consumption from
 __GI___getdelim
@@ -985,177 +985,177 @@ __GI___getdelim
     __pthread_getattr_np
       at ./nptl/pthread_getattr_np.c:122
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1bac2687d
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb74e9d
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 
 
 PEAK MEMORY CONSUMERS
-8.82M peak memory consumed over 571883 calls from
-0x5bd1bac2f9eb
-  in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+8.82M peak memory consumed over 578205 calls from
+0x57e69fb7e00b
+  in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 1.29M consumed over 1 calls from:
-    0x5bd1bad95afc
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9b285
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad96509
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad8eff0
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad8c802
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc43d
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fce411c
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce98c8
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce4b29
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdd610
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcd42f2
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0aa5d
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 1.29M consumed over 1 calls from:
-    0x5bd1bad95afc
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9b2a8
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad96509
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad8eff0
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad8c802
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc43d
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fce411c
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce98a5
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce4b29
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdd610
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcd42f2
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0aa5d
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 800.00K consumed over 1 calls from:
-    0x5bd1ba9ef11c
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa1232b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1ba9efc18
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa34d68
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad8c17b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc43d
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fcdd3d8
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcd42f2
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0aa5d
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 800.00K consumed over 1 calls from:
-    0x5bd1ba9ef11c
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa1234e
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1ba9efc18
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa34d68
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad8c17b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc43d
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f91c61c
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f93f808
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d118
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f962268
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcd3c6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0aa5d
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 800.00K consumed over 1 calls from:
-    0x5bd1bad8edb8
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad8c802
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc43d
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f91c61c
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f93f82b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d118
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f962268
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcd3c6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0aa5d
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-  and 3.83M from 16554 other places
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+  and 3.83M from 20466 other places
 
 73.73K peak memory consumed over 1 calls from
-0x7261592a738e
+0x76616f9b038e
   in /lib/x86_64-linux-gnu/libstdc++.so.6
 73.73K consumed over 1 calls from:
     call_init
@@ -1183,56 +1183,56 @@ __GI__dl_allocate_tls
       in /lib/x86_64-linux-gnu/libc.so.6
     __pthread_create_2_1
       at ./nptl/./nptl/pthread_create.c:655
-    0x5bd1bac14763
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab61348
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5cdd2
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5eee6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac14a08
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab60e0b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa34d2b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad8c17b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc43d
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb62d83
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8f3e8
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8ae72
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cf86
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb63028
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8eeab
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f96222b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcd3c6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0aa5d
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 
 288B peak memory consumed over 18 calls from
 __cxa_thread_atexit_impl
   at ./stdlib/cxa_thread_atexit_impl.c:106
   in /lib/x86_64-linux-gnu/libc.so.6
 128B consumed over 4 calls from:
-    0x5bd1bac1d677
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5ecdc
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f27c
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315c3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb6bc97
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cd7c
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d31c
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbe3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
@@ -1240,22 +1240,22 @@ __cxa_thread_atexit_impl
       at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
       in /lib/x86_64-linux-gnu/libc.so.6
 128B consumed over 4 calls from:
-    0x5bd1bab5c15f
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab6016c
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab6031a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab603e2
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f6d1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5ecf6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f28a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315c3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fa8a1ff
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8e20c
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8e3ba
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8e482
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d771
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cd96
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d32a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbe3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
@@ -1263,237 +1263,237 @@ __cxa_thread_atexit_impl
       at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
       in /lib/x86_64-linux-gnu/libc.so.6
 32B consumed over 1 calls from:
-    0x5bd1bac2bfc2
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab611be
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5cdd2
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5eee6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac14a08
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab60e0b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa34d2b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad8c17b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badbc43d
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb7a5e2
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8f25e
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8ae72
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cf86
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb63028
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8eeab
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f96222b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcd3c6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd0aa5d
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 
 
 MOST TEMPORARY ALLOCATIONS
-223274 temporary allocations of 571883 allocations in total (39.04%) from
-0x5bd1bac2f9eb
-  in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-7491 temporary allocations of 7584 allocations in total (98.77%) from:
-    0x5bd1bad961b6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9af53
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9af53
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bade432b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab60505
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f6d1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5ecf6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f28a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315c3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+223040 temporary allocations of 578205 allocations in total (38.57%) from
+0x57e69fb7e00b
+  in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+6573 temporary allocations of 6643 allocations in total (98.95%) from:
+    0x57e69f91cadc
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9422f4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9422f4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f994872
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8e5a5
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d771
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cd96
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d32a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbe3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
     __clone3
       at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
       in /lib/x86_64-linux-gnu/libc.so.6
-7470 temporary allocations of 7584 allocations in total (98.50%) from:
-    0x5bd1bad961b6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9af53
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bade432b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab60505
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f6d1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5ecf6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f28a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315c3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+6555 temporary allocations of 6639 allocations in total (98.73%) from:
+    0x57e69f91cadc
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f994872
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8e5a5
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d771
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cd96
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d32a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbe3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
     __clone3
       at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
       in /lib/x86_64-linux-gnu/libc.so.6
-6572 temporary allocations of 6636 allocations in total (99.04%) from:
-    0x5bd1bad961b6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9af53
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bade432b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab60505
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f6d1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5ecf6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f28a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315c3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+6554 temporary allocations of 6641 allocations in total (98.69%) from:
+    0x57e69f91cadc
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9422f4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f994872
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8e5a5
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d771
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cd96
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d32a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbe3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
     __clone3
       at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
       in /lib/x86_64-linux-gnu/libc.so.6
-6245 temporary allocations of 6320 allocations in total (98.81%) from:
-    0x5bd1bad961b6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9adb7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad964a3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bade432b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab60505
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f6d1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5ecf6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f28a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315c3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+6540 temporary allocations of 6639 allocations in total (98.51%) from:
+    0x57e69f91cadc
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9422f4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9420aa
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f91d040
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f994872
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8e5a5
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d771
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cd96
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d32a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbe3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
     __clone3
       at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
       in /lib/x86_64-linux-gnu/libc.so.6
-6183 temporary allocations of 6251 allocations in total (98.91%) from:
-    0x5bd1ba9ef5dc
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa14df4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1ba9efb40
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa14df4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1ba9efb40
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa14df4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1ba9efb40
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa14baa
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1ba9efb40
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa67372
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab60505
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f6d1
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5ecf6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bab5f28a
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac315c3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+6270 temporary allocations of 6320 allocations in total (99.21%) from:
+    0x57e69fce47d6
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce9573
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce4ac3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce93d7
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce4ac3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce93d7
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce4ac3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce93d7
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce4ac3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd3294b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8e5a5
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d771
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8cd96
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fa8d32a
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb7fbe3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     start_thread
       at ./nptl/pthread_create.c:447
       in /lib/x86_64-linux-gnu/libc.so.6
     __clone3
       at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
       in /lib/x86_64-linux-gnu/libc.so.6
-  and 189.31K from 16554 other places
+  and 190.55K from 20466 other places
 
 1 temporary allocations of 1 allocations in total (100.00%) from
-0x7261592a738e
+0x76616f9b038e
   in /lib/x86_64-linux-gnu/libstdc++.so.6
 1 temporary allocations of 1 allocations in total (100.00%) from:
     call_init
@@ -1515,18 +1515,18 @@ __GI___getdelim
     __pthread_getattr_np
       at ./nptl/pthread_getattr_np.c:122
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1bac2687d
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb74e9d
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 
 1 temporary allocations of 1 allocations in total (100.00%) from
 __posix_spawn_file_actions_realloc
@@ -1536,60 +1536,60 @@ __posix_spawn_file_actions_realloc
     __posix_spawn_file_actions_adddup2
       at ./posix/spawn_faction_adddup2.c:37
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1bac1341b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac252f6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa7bb68
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa12b71
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac14a08
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1ba9bc7f3
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa12be6
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac14a08
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1ba9bc845
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1baa640f7
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6561
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1badb6430
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad91622
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bad9a858
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bac26a76
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
-    0x5bd1bae3c54b
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69fb61a3b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb73916
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9a9068
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f940071
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb63028
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f8e9cf3
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9400e6
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb63028
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f8e9d45
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69f9915f7
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04b81
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd04a50
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fcdfc42
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fce8e78
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fb75096
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
+    0x57e69fd8ab6b
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
     __libc_start_call_main
       at ../sysdeps/nptl/libc_start_call_main.h:58
       in /lib/x86_64-linux-gnu/libc.so.6
     __libc_start_main_impl
       at ../csu/libc-start.c:360
       in /lib/x86_64-linux-gnu/libc.so.6
-    0x5bd1ba9354e4
-      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-6ca1badb5e5dbc25
+    0x57e69f8629e4
+      in /home/hatch/workspace/velvet-work/clones/vb-hammer-d-1108-2249/target/release/deps/velvet_ballistics-66611718ca9bc986
 
 
-total runtime: 22.65s.
-calls to allocation functions: 572735 (25286/s)
-temporary memory allocations: 223277 (9857/s)
-peak heap memory consumption: 8.90M
-peak RSS (including heaptrack overhead): 27.74M
-total memory leaked: 46.94K
+total runtime: 20.48s.
+calls to allocation functions: 579057 (28279/s)
+temporary memory allocations: 223043 (10892/s)
+peak heap memory consumption: 8.89M
+peak RSS (including heaptrack overhead): 29.97M
+total memory leaked: 42.84K
 === callgrind ===
-==233723== I   refs:      597,480
-==233722== I   refs:      26,597,956,987
+==110233== I   refs:      599,685
+==110228== I   refs:      38,138,356,471
 --- callgrind_annotate totals ---
 Ir
 --------------------------------------------------------------------------------
-26,597,956,987 (100.0%)  PROGRAM TOTALS
+38,138,356,471 (100.0%)  PROGRAM TOTALS
 --
 Ir                       file:function
