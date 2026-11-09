@@ -361,14 +361,10 @@ fn runtime_tick_shard_continue_returns_ok_true_with_empty_queue() {
 /// Runtime increments steps_executed when Continue directive processes a multi-step run.
 ///
 /// The action_then_finish_workflow has exactly 2 steps (Do + Finish).
-/// Two tick_shard(Continue) calls drive it to completion. The shard counter
-/// reads 1, not 2: the runtime's manual action-completion path
-/// (`apply_action_completion` -> `advance_after_action_completion`) advances
-/// the program counter without incrementing the frame's executed count for
-/// the resumed Do step, unlike the engine's `resume_action_completion`.
-/// Only the Finish step is counted. That undercount is a production
-/// follow-up (counter semantics, Pt 22 territory), not a test defect, so
-/// this test pins the verified value and the run-completion outcome.
+/// Two tick_shard(Continue) calls drive it to completion. Both steps count:
+/// the Do step counts at action-completion resume (mirroring the engine's
+/// `resume_action_completion` increment; see bead vb-huoen) and the Finish
+/// step counts when the engine drives it. Total is exactly 2.
 #[test]
 fn runtime_tick_shard_continue_processes_action_then_finish_workflow() {
     // Given: A 1-shard runtime with action_then_finish_workflow enqueued.
@@ -413,11 +409,11 @@ fn runtime_tick_shard_continue_processes_action_then_finish_workflow() {
     );
 
     // Then: both steps processed — the run completed — and the counter reads
-    // exactly 1 (Finish only; see doc comment above).
+    // exactly 2 (Do counted at completion resume, Finish counted by engine).
     let snap = runtime.counters_snapshot();
     assert_eq!(snap.runs_submitted, 1);
     assert_eq!(snap.runs_completed, 1);
-    assert_eq!(snap.steps_executed, 1);
+    assert_eq!(snap.steps_executed, 2);
 }
 
 // =============================================================================

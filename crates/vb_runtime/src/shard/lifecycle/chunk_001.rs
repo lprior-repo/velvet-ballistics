@@ -749,6 +749,10 @@ impl Shard {
             .mark_succeeded(preflight.ticket.step)
             .map_err(|_| RuntimeError::InvalidActionCompletion)?;
         crate::shard::helpers::advance_after_action_completion(state, preflight.ticket.step)?;
+        state
+            .frame
+            .increment_executed()
+            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
         let _removed_ticket = self.pending_action_remove(run);
         self.trace_ring.push(TraceEvent::SlotWritten {
             run,
@@ -794,6 +798,10 @@ impl Shard {
             .mark_succeeded(ticket.step)
             .map_err(|_| RuntimeError::RunNotFound)?;
         crate::shard::helpers::advance_after_action_completion(state, ticket.step)?;
+        state
+            .frame
+            .increment_executed()
+            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
         let _removed_ticket = self.pending_action_remove(run);
         self.trace_ring.push(TraceEvent::ActionCompleted {
             run,
