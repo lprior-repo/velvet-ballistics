@@ -1269,6 +1269,86 @@ mod tests {
         );
     }
 
+    #[test]
+    fn runtime_cancel_run_finds_run_on_migrated_shard() {
+        // Given a 2-shard runtime; run lives on shard 0 (vb-906ix).
+        let Some(shard_count) = NonZeroUsize::new(2) else {
+            return;
+        };
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        // Find a run whose home shard is 0 so migration to shard 1 is real.
+        let Some(run) = (1..=64)
+            .map(vb_core::ids::RunId::new)
+            .find(|candidate| runtime.shard_index(*candidate) == 0)
+        else {
+            panic!("no run id in 1..=64 homes to shard 0");
+        };
+        let home_index = 0usize;
+        let destination = 1usize;
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert!(runtime.shards[home_index].run_state_contains(run));
+        assert_eq!(
+            migrate_active_run_for_test(&mut runtime, home_index, destination, run),
+            Ok(())
+        );
+        assert!(runtime.shards[destination].run_state_contains(run));
+        // When cancelling, the command must reach the owning shard.
+        assert_eq!(runtime.cancel_run(run), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        // Then the cancel took effect instead of stranding on the home shard:
+        // the migrated run must leave the owning shard's active set.
+        assert!(!runtime.shards[destination].run_state_contains(run));
+        let snap = runtime.counters_snapshot();
+        assert_eq!(snap.runs_failed, 1);
+    }
+
+    #[test]
+    fn runtime_snapshot_run_finds_run_on_migrated_shard() {
+        // Given a 2-shard runtime; run lives on shard 0 (vb-906ix).
+        let Some(shard_count) = NonZeroUsize::new(2) else {
+            return;
+        };
+        let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        // Find a run whose home shard is 0 so migration to shard 1 is real.
+        let Some(run) = (1..=64)
+            .map(vb_core::ids::RunId::new)
+            .find(|candidate| runtime.shard_index(*candidate) == 0)
+        else {
+            panic!("no run id in 1..=64 homes to shard 0");
+        };
+        let home_index = 0usize;
+        let destination = 1usize;
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
+        assert_eq!(runtime.tick_all(), Ok(true));
+        assert_eq!(
+            migrate_active_run_for_test(&mut runtime, home_index, destination, run),
+            Ok(())
+        );
+        assert!(runtime.shards[destination].run_state_contains(run));
+        assert!(!runtime.shards[home_index].run_state_contains(run));
+        assert_eq!(
+            runtime.shards[home_index].snapshot_run(run, 42),
+            InspectResponse::NotFound {
+                run,
+                correlation: 42
+            }
+        );
+        // When snapshotting, the response must come from the owning shard.
+        match runtime.snapshot_run(run, 42) {
+            Ok(InspectResponse::Found(snapshot)) => {
+                assert_eq!(snapshot.run, run);
+            }
+            other => panic!("expected Found snapshot for migrated run, got {other:?}"),
+        }
+    }
+
     // ----------------------------------------------------------------
     // RA-030 wave-15 follow-up (vb-sxkz6) regression tests
     // Each test mirrors runtime_answer_ask_finds_run_on_migrated_shard

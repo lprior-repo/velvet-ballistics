@@ -1548,14 +1548,32 @@ impl Runtime {
         index
     }
 
+    /// Routes to the shard that currently owns `run` (vb-906ix).
+    ///
+    /// Existing runs are routed by owner scan so commands reach the run
+    /// after migration; a run with no owner yet (new submission, or an
+    /// unknown run) falls back to its home shard, preserving the previous
+    /// placement and error behavior.
     fn shard_for(&self, run: RunId) -> Result<&Shard, RuntimeError> {
-        let index = self.shard_index(run);
-        self.shards.get(index).ok_or(RuntimeError::RunNotFound)
+        match self.shard_for_run(run) {
+            Ok(shard) => Ok(shard),
+            Err(_) => {
+                let index = self.shard_index(run);
+                self.shards.get(index).ok_or(RuntimeError::RunNotFound)
+            }
+        }
     }
 
+    /// Mutable variant of [`Self::shard_for`] (vb-906ix).
     fn shard_for_mut(&mut self, run: RunId) -> Result<&mut Shard, RuntimeError> {
-        let index = self.shard_index(run);
-        self.shards.get_mut(index).ok_or(RuntimeError::RunNotFound)
+        let owner_index = self
+            .shards
+            .iter()
+            .position(|shard| shard.run_state_contains(run) || shard.terminal_runs_contains(run))
+            .unwrap_or_else(|| self.shard_index(run));
+        self.shards
+            .get_mut(owner_index)
+            .ok_or(RuntimeError::RunNotFound)
     }
 
     /// Returns the shard that currently owns `run`, scanning all shards.
