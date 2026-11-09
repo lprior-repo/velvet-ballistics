@@ -14,76 +14,24 @@
 //! - Edge cases: stale guard drop, unregister_all
 //! - Contract assertions: no global mutable state, cold-path formatting
 
-use std::num::NonZeroUsize;
-
-use vb_core::ids::{ConstIdx, RunId, SlotIdx, StepIdx};
-use vb_core::value::ConstValue;
-use vb_core::workflow::{
-    CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
-};
+use vb_core::ids::RunId;
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{
     InspectResponse, InspectSnapshotFormatter, IntrospectionRegistry, RegisterOverlapOutcome,
-    ShardConfig, UnregisterOutcome,
+    UnregisterOutcome,
 };
 
 // ============================================================================
 // Test Fixtures and Helpers
 // ============================================================================
 
-fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
-    NonZeroUsize::new(value).ok_or_else(|| format!("expected non-zero shard count, got {value}"))
-}
+#[path = "common/mod.rs"]
+mod common;
 
-fn relaxed_config() -> ShardConfig {
-    ShardConfig {
-        command_queue_capacity: 32,
-        trace_capacity: 64,
-        step_budget_per_tick: 16,
-        max_active_runs: 8,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
-    }
-}
+use common::runtime_fixture::{relaxed_config, shard_count};
+use common::workflow_fixture::finished_workflow;
 
 /// Creates a finished workflow (SetConst -> Finish).
-fn finished_workflow() -> Result<CompiledWorkflow, String> {
-    let nodes = Box::from([
-        node(
-            StepIdx::ZERO,
-            CompiledNodeKind::SetConst {
-                value: ConstIdx::new(0),
-            },
-            Some(SlotIdx::ZERO),
-            Some(StepIdx::new(1)),
-        ),
-        node(
-            StepIdx::new(1),
-            CompiledNodeKind::Finish {
-                result: SlotIdx::ZERO,
-            },
-            None,
-            None,
-        ),
-    ]);
-
-    let parts = WorkflowParts {
-        semantic_source_identity: None,
-        input_slots: Box::new([]),
-        name: Box::from("test_finished"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0x21; 32]),
-        nodes,
-        expressions: Box::from([]),
-        accessors: Box::from([]),
-        constants: Box::from([ConstValue::Bool(true)]),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::ZERO,
-        step_names: Box::from([]),
-        resource_contract: ResourceContract::DEFAULT,
-    };
-
-    CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("workflow creation failed: {e:?}"))
-}
 
 // ============================================================================
 // Happy Path Tests
@@ -97,7 +45,7 @@ fn raii_registry_register_handle_makes_run_visible_to_snapshot() -> Result<(), S
     let run = RunId::new(1001);
 
     // Submit a simple workflow that finishes immediately
-    let workflow = finished_workflow()?;
+    let workflow = finished_workflow("test_finished", 0x21)?;
 
     runtime
         .submit_direct(run, workflow)
@@ -449,7 +397,7 @@ fn raii_registry_full_lifecycle_with_inspect() -> Result<(), String> {
     let run = RunId::new(1040);
 
     // Submit and drive a workflow to completion
-    let workflow = finished_workflow()?;
+    let workflow = finished_workflow("test_finished", 0x21)?;
 
     runtime
         .submit_direct(run, workflow)

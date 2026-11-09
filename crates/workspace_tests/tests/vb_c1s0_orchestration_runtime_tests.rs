@@ -16,7 +16,6 @@
 //! Trophy allocation: 4 unit / 14 integration / 4 e2e
 //! Unit tests are in vb_runtime/src/action_queue.rs (backpressure coverage)
 
-use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::action::{
@@ -25,12 +24,11 @@ use vb_core::action::{
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx};
-use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
 use vb_runtime::journal::VolatileRuntimeJournal;
 use vb_runtime::runtime::Runtime;
-use vb_runtime::shard::{InspectResponse, ShardConfig};
+use vb_runtime::shard::InspectResponse;
 use vb_runtime::trace::TraceEvent;
 
 // Target file for reference: crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs
@@ -42,23 +40,10 @@ use vb_runtime::trace::TraceEvent;
 #[path = "common/mod.rs"]
 mod common;
 
+use common::runtime_fixture::{action_ticket, relaxed_config, run_one_tick, shard_count};
 use common::workflow_fixture::{
     action_then_finish_workflow, finished_workflow, node, workflow_from_parts,
 };
-
-fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
-    NonZeroUsize::new(value).ok_or_else(|| format!("expected non-zero shard count, got {value}"))
-}
-
-fn relaxed_config() -> ShardConfig {
-    ShardConfig {
-        command_queue_capacity: 32,
-        trace_capacity: 64,
-        step_budget_per_tick: 16,
-        max_active_runs: 8,
-        policy: RuntimePolicy::Relaxed,
-    }
-}
 
 fn budget_chain_workflow() -> Result<CompiledWorkflow, String> {
     workflow_from_parts(
@@ -175,12 +160,6 @@ fn submit_action_workflow(
     )
 }
 
-fn action_ticket(runtime: &Runtime, run: RunId) -> Result<ActionTicket, String> {
-    runtime
-        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
-        .ok_or_else(|| format!("run {run:?} has no pending action ticket for step 0"))
-}
-
 fn action_output(value: SlotValue, taint: Taint) -> ActionOutputReady {
     let encoded = postcard::to_allocvec(&value).expect("test slot value encodes");
     let encoded_len = u32::try_from(encoded.len()).expect("test output length fits u32");
@@ -190,11 +169,6 @@ fn action_output(value: SlotValue, taint: Taint) -> ActionOutputReady {
         taint,
         encoded_len,
     }
-}
-
-fn run_one_tick(runtime: &mut Runtime) -> Result<(), String> {
-    assert_eq!(runtime.tick_all(), Ok(true));
-    Ok(())
 }
 
 // =============================================================================

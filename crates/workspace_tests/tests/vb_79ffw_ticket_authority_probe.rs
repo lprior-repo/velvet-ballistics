@@ -10,8 +10,8 @@ use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::action::{
-    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
-    Idempotency, RetrySafety, SideEffect,
+    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionTicket, Idempotency,
+    RetrySafety, SideEffect,
 };
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
@@ -26,6 +26,10 @@ use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::ShardConfig;
 use vb_storage::{EventSeq, FjallJournal, JournalEvent};
 
+#[path = "common/mod.rs"]
+mod common;
+
+use common::workflow_fixture::action_output;
 fn shard_count() -> Result<NonZeroUsize, String> {
     NonZeroUsize::new(1).ok_or_else(|| "shard count must be non-zero".to_string())
 }
@@ -103,18 +107,6 @@ fn non_retryable_failure() -> ActionFailure {
         encoded_len: 0,
         taint: Taint::Clean,
     }
-}
-
-fn action_output(value: SlotValue) -> Result<ActionOutputReady, String> {
-    let encoded = postcard::to_allocvec(&value).map_err(|e| format!("encode failed: {e}"))?;
-    let encoded_len =
-        u32::try_from(encoded.len()).map_err(|_| "encoded length exceeds u32".to_string())?;
-    Ok(ActionOutputReady {
-        output_slot: SlotIdx::new(1),
-        value,
-        taint: Taint::Clean,
-        encoded_len,
-    })
 }
 
 fn pending_ticket(runtime: &Runtime, run: RunId) -> Result<ActionTicket, String> {

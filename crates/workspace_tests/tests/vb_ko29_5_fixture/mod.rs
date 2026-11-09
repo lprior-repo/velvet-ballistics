@@ -7,13 +7,12 @@
 use std::sync::Arc;
 
 use vb_core::action::{
-    ActionContract, ActionName, ActionOutputReady, ActionTicket, Idempotency, RetrySafety,
-    SideEffect,
+    ActionContract, ActionName, ActionTicket, Idempotency, RetrySafety, SideEffect,
 };
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
-use vb_core::value::{SlotValue, Taint};
+use vb_core::value::SlotValue;
 use vb_core::workflow::{
     CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
 };
@@ -26,6 +25,10 @@ pub(crate) fn shard_count() -> Result<std::num::NonZeroUsize, String> {
     std::num::NonZeroUsize::new(1).ok_or_else(|| "shard count must be non-zero".to_string())
 }
 // ABI digest is now extracted from the journal event after scheduling.
+#[path = "../common/mod.rs"]
+mod common;
+
+use common::workflow_fixture::action_output;
 fn canonical_workflow_digest(parts: &WorkflowParts) -> Result<WorkflowDigest, String> {
     let mut canonical = parts.clone();
     canonical.digest = WorkflowDigest::from_bytes([0u8; 32]);
@@ -84,19 +87,6 @@ fn action_contract() -> Result<ActionContract, String> {
         side_effect: SideEffect::None,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::from([]),
-    })
-}
-
-fn action_output(value: SlotValue) -> Result<ActionOutputReady, String> {
-    let encoded =
-        postcard::to_allocvec(&value).map_err(|e| format!("slot encoding failed: {e}"))?;
-    let encoded_len =
-        u32::try_from(encoded.len()).map_err(|e| format!("slot length overflowed u32: {e}"))?;
-    Ok(ActionOutputReady {
-        output_slot: SlotIdx::new(1),
-        value,
-        taint: Taint::Clean,
-        encoded_len,
     })
 }
 

@@ -21,3 +21,6 @@ mod forged_admission_test;
 
 #[path = "vb_hk1j8_fixture/scoped_grant_fixture.rs"]
 mod scoped_grant_fixture;
+
+#[path = "common/mod.rs"]
+mod common;

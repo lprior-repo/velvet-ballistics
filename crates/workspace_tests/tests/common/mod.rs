@@ -5,4 +5,5 @@
 //! harness lives here rather than in `src/`). Builders preserve workflow
 //! bytes exactly; callers pass name/digest/action parameters.
 
+pub(crate) mod runtime_fixture;
 pub(crate) mod workflow_fixture;

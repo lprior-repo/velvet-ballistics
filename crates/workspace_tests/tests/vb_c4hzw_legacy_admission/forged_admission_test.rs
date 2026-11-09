@@ -1,4 +1,3 @@
-use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
@@ -7,7 +6,6 @@ use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, StepIdx, WorkflowDigest};
 use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::runtime::Runtime;
-use vb_runtime::shard::ShardConfig;
 use vb_storage::executor::ExecutorCatalog;
 use vb_storage::executor::FjallRegister;
 use vb_storage::{JournalEvent, RunInputBinding, RunPolicyPin};
@@ -17,19 +15,7 @@ use crate::legacy_workflow::legacy_ask_action_workflow;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
-    NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
-}
-
-fn strict_config() -> ShardConfig {
-    ShardConfig {
-        command_queue_capacity: 32,
-        trace_capacity: 64,
-        step_budget_per_tick: 16,
-        max_active_runs: 8,
-        policy: vb_core::policy::RuntimePolicy::Strict,
-    }
-}
+use crate::common::runtime_fixture::{shard_count, strict_config};
 
 fn scope() -> CapabilityScopeSpec {
     CapabilityScopeSpec {

@@ -13,12 +13,10 @@
 //! - Resource cleanup: frame release, counter updates, journal events, trace events
 //! - Shutdown: graceful drain, tick_all behavior post-shutdown
 
-use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::action::{
-    ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy,
-    RetrySafety, SideEffect,
+    ActionFailure, ActionFailureCode, Idempotency, RetryPolicy, RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
@@ -37,21 +35,9 @@ use vb_runtime::trace::TraceEvent;
 #[path = "common/mod.rs"]
 mod common;
 
+use common::runtime_fixture::{action_ticket, relaxed_config, shard_count, tick_count};
+use common::workflow_fixture::action_output;
 use common::workflow_fixture::{action_then_finish_workflow, finished_workflow};
-
-fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
-    NonZeroUsize::new(value).ok_or_else(|| format!("expected non-zero shard count, got {value}"))
-}
-
-fn test_config() -> ShardConfig {
-    ShardConfig {
-        command_queue_capacity: 32,
-        trace_capacity: 64,
-        step_budget_per_tick: 16,
-        max_active_runs: 8,
-        policy: RuntimePolicy::Relaxed,
-    }
-}
 
 fn required_capability(action: ActionId) -> Capability {
     Capability::new(Box::from("test.contract.required"), action)
@@ -118,25 +104,6 @@ fn submit_action_then_finish(
     )
 }
 
-fn action_ticket(runtime: &Runtime, run: RunId) -> Result<ActionTicket, String> {
-    runtime
-        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
-        .ok_or_else(|| format!("run {run:?} has no pending action ticket for step 0"))
-}
-
-fn action_output(value: SlotValue) -> Result<ActionOutputReady, String> {
-    let encoded =
-        postcard::to_allocvec(&value).map_err(|error| format!("slot encoding failed: {error}"))?;
-    let encoded_len = u32::try_from(encoded.len())
-        .map_err(|error| format!("encoded slot length overflowed u32: {error}"))?;
-    Ok(ActionOutputReady {
-        output_slot: SlotIdx::new(1),
-        value,
-        taint: Taint::Clean,
-        encoded_len,
-    })
-}
-
 fn tick_and_drain(runtime: &mut Runtime) -> Result<Vec<TraceEvent>, String> {
     assert_eq!(
         runtime.tick_all(),
@@ -144,17 +111,6 @@ fn tick_and_drain(runtime: &mut Runtime) -> Result<Vec<TraceEvent>, String> {
         "tick_all should return true when shards alive"
     );
     Ok(Vec::new())
-}
-
-fn tick_count(runtime: &mut Runtime, count: usize) -> Result<(), String> {
-    for _ in 0..count {
-        assert_eq!(
-            runtime.tick_all(),
-            Ok(true),
-            "tick_all should return true while draining queued commands"
-        );
-    }
-    Ok(())
 }
 
 // =============================================================================
@@ -165,7 +121,7 @@ fn tick_count(runtime: &mut Runtime, count: usize) -> Result<(), String> {
 #[test]
 fn submit_transitions_run_from_absent_to_initial() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(10001);
 
     // Submit a finished workflow
@@ -198,7 +154,7 @@ fn submit_transitions_run_from_absent_to_initial() -> Result<(), String> {
 #[test]
 fn action_suspension_transitions_run_to_resumable() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(10002);
 
     // Submit workflow that suspends on action
@@ -242,7 +198,7 @@ fn action_suspension_transitions_run_to_resumable() -> Result<(), String> {
 #[test]
 fn action_completion_transitions_run_from_resumable_to_finished() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(10003);
 
     // Submit and tick to suspend
@@ -288,7 +244,7 @@ fn action_completion_transitions_run_from_resumable_to_finished() -> Result<(), 
 #[test]
 fn fail_action_transitions_run_to_failed() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(10004);
 
     // Submit and tick to suspend
@@ -338,7 +294,7 @@ fn fail_action_transitions_run_to_failed() -> Result<(), String> {
 #[test]
 fn cancel_run_transitions_run_to_failed() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(10005);
 
     // Submit and tick to make active
@@ -383,7 +339,7 @@ fn cancel_run_transitions_run_to_failed() -> Result<(), String> {
 /// L1-6: Terminal state is final - no further transitions occur
 #[test]
 fn terminal_state_is_final_no_further_transitions() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(10006);
 
     // Submit and wait for completion
@@ -432,7 +388,7 @@ fn terminal_state_is_final_no_further_transitions() -> Result<(), String> {
 #[test]
 fn submit_lifecycle_event_recorded_before_tick() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(20001);
 
     // Submit - event is recorded when the shard processes the queued command.
@@ -459,7 +415,7 @@ fn submit_lifecycle_event_recorded_before_tick() -> Result<(), String> {
 #[test]
 fn action_scheduled_lifecycle_event_recorded() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(20002);
 
     // Submit workflow that suspends
@@ -495,7 +451,7 @@ fn action_scheduled_lifecycle_event_recorded() -> Result<(), String> {
 #[test]
 fn step_started_lifecycle_event_recorded() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(20003);
 
     // Submit workflow that suspends on action
@@ -527,7 +483,7 @@ fn step_started_lifecycle_event_recorded() -> Result<(), String> {
 #[test]
 fn run_finished_lifecycle_event_recorded() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(20004);
 
     // Submit and complete a simple workflow
@@ -554,7 +510,7 @@ fn run_finished_lifecycle_event_recorded() -> Result<(), String> {
 #[test]
 fn run_failed_lifecycle_event_recorded() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(20005);
 
     // Submit and fail
@@ -601,7 +557,7 @@ fn run_failed_lifecycle_event_recorded() -> Result<(), String> {
 /// L3-1: Frame is released when run finishes
 #[test]
 fn frame_released_on_run_finish() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(30001);
 
     // Submit and complete
@@ -629,7 +585,7 @@ fn frame_released_on_run_finish() -> Result<(), String> {
 /// L3-2: Pending timers are cleaned up when run finishes
 #[test]
 fn pending_timers_cleaned_up_on_run_finish() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(30002);
 
     // Submit and complete - no pending timers for simple workflow
@@ -648,7 +604,7 @@ fn pending_timers_cleaned_up_on_run_finish() -> Result<(), String> {
 /// L3-3: Counters are updated correctly on submit
 #[test]
 fn counters_updated_on_submit() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
 
     // Submit multiple runs
     assert_eq!(
@@ -684,7 +640,7 @@ fn counters_updated_on_submit() -> Result<(), String> {
 /// L3-4: Counters are updated correctly on completion
 #[test]
 fn counters_updated_on_completion() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
 
     // Submit and tick to complete
     assert_eq!(
@@ -708,7 +664,7 @@ fn counters_updated_on_completion() -> Result<(), String> {
 #[test]
 fn counters_updated_on_failure() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(30030);
 
     // Submit, suspend, then fail
@@ -745,7 +701,7 @@ fn counters_updated_on_failure() -> Result<(), String> {
 /// L3-6: Trace events are recorded for run lifecycle
 #[test]
 fn trace_events_recorded_for_run_lifecycle() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(30040);
 
     // Submit
@@ -782,7 +738,7 @@ fn trace_events_recorded_for_run_lifecycle() -> Result<(), String> {
 #[test]
 fn shutdown_drains_before_journal_drain() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(30050);
 
     // Submit a run that will complete
@@ -820,7 +776,7 @@ fn shutdown_drains_before_journal_drain() -> Result<(), String> {
 /// L4-1: snapshot_run returns exact NotFound for finished run
 #[test]
 fn snapshot_run_returns_not_found_for_finished_run() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(40001);
 
     assert_eq!(
@@ -845,7 +801,7 @@ fn snapshot_run_returns_not_found_for_finished_run() -> Result<(), String> {
 #[test]
 fn snapshot_run_returns_found_with_exact_fields() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(40002);
 
     // Submit a suspended workflow
@@ -884,7 +840,7 @@ fn snapshot_run_returns_found_with_exact_fields() -> Result<(), String> {
 /// L4-3: Counters return exact zero values initially
 #[test]
 fn counters_return_exact_zero_initially() -> Result<(), String> {
-    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
 
     let counters = runtime.counters_snapshot();
     assert_eq!(counters.runs_submitted, 0, "runs_submitted must be 0");
@@ -897,7 +853,7 @@ fn counters_return_exact_zero_initially() -> Result<(), String> {
 /// L4-4: tick_all returns exact true when all shards alive
 #[test]
 fn tick_all_returns_exact_true_when_alive() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
 
     let result = runtime.tick_all();
     assert_eq!(result, Ok(true), "tick_all must return Ok(true) when alive");
@@ -907,7 +863,7 @@ fn tick_all_returns_exact_true_when_alive() -> Result<(), String> {
 /// L4-5: tick_all returns exact false after shutdown
 #[test]
 fn tick_all_returns_exact_false_after_shutdown() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
 
     assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
     assert_eq!(
@@ -948,7 +904,7 @@ fn submit_returns_exact_queue_full_on_full_queue() -> Result<(), String> {
 /// L4-7: Error variants are exact - ShardNotFound on invalid shard
 #[test]
 fn tick_shard_returns_exact_shard_not_found() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(2)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(2)?, relaxed_config());
 
     // Invalid shard index
     let result = runtime.tick_shard(99, ShardDirective::Continue);
@@ -997,7 +953,7 @@ fn runtime_state_is_resumable_is_exact() -> Result<(), String> {
 /// L5-1: ShardDirective::Continue processes one command
 #[test]
 fn shard_directive_continue_processes_one_command() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(50001);
 
     assert_eq!(
@@ -1022,7 +978,7 @@ fn shard_directive_continue_processes_one_command() -> Result<(), String> {
 /// L5-2: ShardDirective::Suspend preserves queue without processing
 #[test]
 fn shard_directive_suspend_preserves_queue() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(50002);
 
     assert_eq!(
@@ -1053,7 +1009,7 @@ fn shard_directive_suspend_preserves_queue() -> Result<(), String> {
 /// L5-3: ShardDirective::Shutdown drains and returns false
 #[test]
 fn shard_directive_shutdown_drains_and_returns_false() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
 
     // Shutdown directive
     let result = runtime.tick_shard(0, ShardDirective::Shutdown);
@@ -1072,7 +1028,7 @@ fn shard_directive_shutdown_drains_and_returns_false() -> Result<(), String> {
 /// L5-4: ShardDirective::Migrate to self returns MigrateSelf error
 #[test]
 fn shard_directive_migrate_to_self_returns_migrate_self() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(2)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(2)?, relaxed_config());
 
     // Migrate to self is an error
     let result = runtime.tick_shard(0, ShardDirective::Migrate { target: 0 });
@@ -1087,7 +1043,7 @@ fn shard_directive_migrate_to_self_returns_migrate_self() -> Result<(), String> 
 /// L5-5: ShardDirective::Migrate to invalid shard returns ShardNotFound
 #[test]
 fn shard_directive_migrate_to_invalid_returns_shard_not_found() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(2)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(2)?, relaxed_config());
 
     // Migrate to non-existent shard
     let result = runtime.tick_shard(0, ShardDirective::Migrate { target: 99 });
@@ -1105,7 +1061,7 @@ fn shard_directive_migrate_to_invalid_returns_shard_not_found() -> Result<(), St
 /// L5-6: ShardDirective::Cancel is unsupported
 #[test]
 fn shard_directive_cancel_is_unsupported() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
 
     let result = runtime.tick_shard(0, ShardDirective::Cancel);
     match result {
@@ -1124,7 +1080,7 @@ fn shard_directive_cancel_is_unsupported() -> Result<(), String> {
 /// L5-7: ShardDirective::Barrier is unsupported
 #[test]
 fn shard_directive_barrier_is_unsupported() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
 
     let result = runtime.tick_shard(0, ShardDirective::Barrier);
     match result {
@@ -1150,7 +1106,7 @@ fn shard_directive_barrier_is_unsupported() -> Result<(), String> {
 /// RunAlreadyExists (if still on shard) or behave inconsistently.
 #[test]
 fn same_run_id_routes_to_same_shard() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(2)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(2)?, relaxed_config());
     let run = RunId::new(7); // 7 % 2 = 1 (shard 1)
 
     // Submit and complete
@@ -1189,7 +1145,7 @@ fn same_run_id_routes_to_same_shard() -> Result<(), String> {
 /// L6-2: tick_all processes one command per shard
 #[test]
 fn tick_all_processes_one_command_per_shard() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(3)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(3)?, relaxed_config());
 
     // Submit 3 runs to 3 different shards (run_id % 3 = shard)
     // Run 0 -> shard 0, Run 1 -> shard 1, Run 2 -> shard 2
@@ -1218,7 +1174,7 @@ fn tick_all_processes_one_command_per_shard() -> Result<(), String> {
 /// L6-3: Shutdown processes all shards
 #[test]
 fn shutdown_processes_all_shards() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(3)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(3)?, relaxed_config());
 
     // Shutdown all shards
     assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
@@ -1293,7 +1249,7 @@ fn active_runs_tracked_per_shard_independently() -> Result<(), String> {
 /// L7-1: Trace events appear in deterministic order
 #[test]
 fn trace_events_appear_in_deterministic_order() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(70001);
 
     // Submit and complete
@@ -1333,7 +1289,7 @@ fn trace_events_appear_in_deterministic_order() -> Result<(), String> {
 /// L7-2: list_events is non-destructive (idempotent)
 #[test]
 fn list_events_is_non_destructive() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(70002);
 
     assert_eq!(
@@ -1361,7 +1317,7 @@ fn list_events_is_non_destructive() -> Result<(), String> {
 /// L7-3: drain_trace removes events from trace ring
 #[test]
 fn drain_trace_removes_events() -> Result<(), String> {
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(70003);
 
     assert_eq!(

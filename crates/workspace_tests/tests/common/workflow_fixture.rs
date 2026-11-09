@@ -111,3 +111,18 @@ pub(crate) fn action_then_finish_workflow(
         2,
     )
 }
+
+pub(crate) fn action_output(
+    value: vb_core::value::SlotValue,
+) -> Result<vb_core::action::ActionOutputReady, String> {
+    let encoded =
+        postcard::to_allocvec(&value).map_err(|error| format!("slot encoding failed: {error}"))?;
+    let encoded_len = u32::try_from(encoded.len())
+        .map_err(|error| format!("encoded slot length overflowed u32: {error}"))?;
+    Ok(vb_core::action::ActionOutputReady {
+        output_slot: vb_core::ids::SlotIdx::new(1),
+        value,
+        taint: vb_core::value::Taint::Clean,
+        encoded_len,
+    })
+}

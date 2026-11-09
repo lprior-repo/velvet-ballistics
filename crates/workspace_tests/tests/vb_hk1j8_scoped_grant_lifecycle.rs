@@ -4,7 +4,6 @@
 //! typed dispatch view. Wrong bindings, expired windows, and revocation
 //! reject before any effect; recovery reads stay identity-gated only.
 
-use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
@@ -14,43 +13,23 @@ use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::manual_gate::{ApproverId, GateDigest};
 use vb_core::policy::{DecisionCode, PolicyDigest, PolicyRule, RuntimePolicy};
 use vb_core::value::SlotValue;
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
 use vb_core::{
     ActionTicket, GrantDispatchContext, GrantError, GrantId, GrantTimeMs, RevocationEpoch,
     ScopedDispatch, ScopedGrant, ScopedGrantParams,
 };
 use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::runtime::{RegisteredExecutionError, Runtime};
-use vb_runtime::shard::ShardConfig;
 use vb_storage::executor::{ExecutorCatalog, ExecutorError, FjallRegister, RegisterGrant};
 use vb_storage::{FjallConfig, FjallJournal, JournalEvent};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
-fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
-    NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
-}
+#[path = "common/mod.rs"]
+mod common;
 
-fn strict_config() -> ShardConfig {
-    ShardConfig {
-        command_queue_capacity: 32,
-        trace_capacity: 64,
-        step_budget_per_tick: 16,
-        max_active_runs: 8,
-        policy: RuntimePolicy::Strict,
-    }
-}
-
-fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(id),
-        kind,
-        output.map(SlotIdx::new),
-        next.map(StepIdx::new),
-    )
-}
+use common::runtime_fixture::{shard_count, strict_config};
+use common::workflow_fixture::node;
 
 fn two_action_workflow() -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {

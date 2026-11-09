@@ -6,7 +6,6 @@ mod source_layout;
 #[path = "vb_vt2f_direct_runtime_api_acceptance/source_wait.rs"]
 mod source_wait;
 
-use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::action::{
@@ -30,23 +29,10 @@ const DIRECT_API_TARGET: &str =
 #[path = "common/mod.rs"]
 mod common;
 
+use common::runtime_fixture::{relaxed_config, run_one_tick, shard_count};
 use common::workflow_fixture::{
     action_then_finish_workflow, finished_workflow, node, workflow_from_parts,
 };
-
-fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
-    NonZeroUsize::new(value).ok_or_else(|| format!("expected non-zero shard count, got {value}"))
-}
-
-fn relaxed_config() -> ShardConfig {
-    ShardConfig {
-        command_queue_capacity: 32,
-        trace_capacity: 64,
-        step_budget_per_tick: 16,
-        max_active_runs: 8,
-        policy: RuntimePolicy::Relaxed,
-    }
-}
 
 fn strict_config() -> ShardConfig {
     ShardConfig {
@@ -204,11 +190,6 @@ fn ask_answer(ticket: AskTicket, value: SlotValue, taint: Taint) -> AskAnswer {
         taint,
         encoded_len: 8,
     }
-}
-
-fn run_one_tick(runtime: &mut Runtime) -> Result<(), String> {
-    assert_eq!(runtime.tick_all(), Ok(true));
-    Ok(())
 }
 
 fn encoded(value: &SlotValue) -> Result<Vec<u8>, String> {

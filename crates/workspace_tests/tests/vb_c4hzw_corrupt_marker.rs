@@ -3,7 +3,6 @@
 // Verifies that a corrupted emergency deny marker causes precise typed failure
 // rather than silent default to inactive.
 
-use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
@@ -19,7 +18,6 @@ mod scoped_grant_fixture;
 use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::runtime::RegisteredExecutionError;
 use vb_runtime::runtime::Runtime;
-use vb_runtime::shard::ShardConfig;
 use vb_storage::JournalEvent;
 use vb_storage::executor::{ExecutorCatalog, FjallRegister};
 use vb_storage::{FjallConfig, FjallJournal};
@@ -29,21 +27,8 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 #[path = "common/mod.rs"]
 mod common;
 
+use common::runtime_fixture::{shard_count, strict_config};
 use common::workflow_fixture::node;
-
-fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
-    NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
-}
-
-fn strict_config() -> ShardConfig {
-    ShardConfig {
-        command_queue_capacity: 32,
-        trace_capacity: 64,
-        step_budget_per_tick: 16,
-        max_active_runs: 8,
-        policy: RuntimePolicy::Strict,
-    }
-}
 
 fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {
