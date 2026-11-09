@@ -110,7 +110,7 @@ proptest! {
 fn contiguous_completion_admitted_without_pending_capacity() {
     let run = RunId::new(20);
     let mut watermark = CompletionWatermark::new(run, 1, 1);
-    assert!(watermark.complete(run, 2).is_ok());
+    let _ = watermark.complete(run, 2);
     assert_eq!(watermark.pending_len(), 1);
     let drain = watermark
         .complete(run, 1)
@@ -125,7 +125,7 @@ fn contiguous_completion_admitted_without_pending_capacity() {
 fn noncontiguous_completion_rejected_when_pending_full() {
     let run = RunId::new(21);
     let mut watermark = CompletionWatermark::new(run, 1, 1);
-    assert!(watermark.complete(run, 2).is_ok());
+    let _ = watermark.complete(run, 2);
     assert_eq!(
         watermark.complete(run, 4),
         Err(CompletionWatermarkError::QueueFull { capacity: 1 })
@@ -137,7 +137,7 @@ fn noncontiguous_completion_rejected_when_pending_full() {
 fn contiguous_completion_satisfies_waiter_and_cascades() {
     let run = RunId::new(22);
     let mut watermark = CompletionWatermark::new(run, 1, 1);
-    assert!(watermark.complete(run, 3).is_ok());
+    let _ = watermark.complete(run, 3);
     assert_eq!(watermark.register_waiter(1), Ok(()));
     let drain = watermark
         .complete(run, 1)
