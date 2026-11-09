@@ -21,6 +21,29 @@ fn parse_error(source: &[u8]) -> Result<CompileError, String> {
     }
 }
 
+/// Shared immutable fixture: last step uses `save` (not a terminal step).
+const LAST_STEP_SAVE_SOURCE: &[u8] = br#"version: velvet-ballistics/v1
+name: test
+when:
+  manual: {}
+steps:
+  - id: done
+    save:
+      value: 1
+"#;
+
+/// Shared immutable fixture: last step carries an unknown field.
+const UNKNOWN_STEP_FIELD_SOURCE: &[u8] = br#"version: velvet-ballistics/v1
+name: test
+when:
+  manual: {}
+steps:
+  - id: done
+    unknown_field: true
+    finish:
+      result: 0
+"#;
+
 // ── EmptySource variant ────────────────────────────────────────────────────────
 
 #[test]
@@ -91,16 +114,7 @@ steps:
 
 #[test]
 fn unknown_step_field_rejected_with_unknown_step_field() {
-    let source = br#"version: velvet-ballistics/v1
-name: test
-when:
-  manual: {}
-steps:
-  - id: done
-    unknown_field: true
-    finish:
-      result: 0
-"#;
+    let source = UNKNOWN_STEP_FIELD_SOURCE;
     let result = YamlCompiler::default().parse_ast(source);
     assert!(
         matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnknownStepField { step: 0, .. })))
@@ -268,15 +282,7 @@ steps: []
 
 #[test]
 fn last_step_not_finish_rejected_with_last_step_must_finish() {
-    let source = br#"version: velvet-ballistics/v1
-name: test
-when:
-  manual: {}
-steps:
-  - id: done
-    save:
-      value: 1
-"#;
+    let source = LAST_STEP_SAVE_SOURCE;
     let result = YamlCompiler::default().parse_ast(source);
     assert!(
         matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::LastStepMustFinish)))
@@ -372,15 +378,7 @@ steps:
 
 #[test]
 fn compile_errors_first_returns_first_error() {
-    let source = br#"version: velvet-ballistics/v1
-name: test
-when:
-  manual: {}
-steps:
-  - id: done
-    save:
-      value: 1
-"#;
+    let source = LAST_STEP_SAVE_SOURCE;
     let result = YamlCompiler::default().parse_ast(source);
     let Err(CompileErrors(errors)) = result else {
         panic!("expected error");
@@ -393,15 +391,7 @@ steps:
 
 #[test]
 fn compile_errors_len_and_is_empty() {
-    let source = br#"version: velvet-ballistics/v1
-name: test
-when:
-  manual: {}
-steps:
-  - id: done
-    save:
-      value: 1
-"#;
+    let source = LAST_STEP_SAVE_SOURCE;
     let result = YamlCompiler::default().parse_ast(source);
     let Err(CompileErrors(errors)) = result else {
         panic!("expected error");
@@ -414,15 +404,7 @@ steps:
 
 #[test]
 fn compile_errors_iter_works() {
-    let source = br#"version: velvet-ballistics/v1
-name: test
-when:
-  manual: {}
-steps:
-  - id: done
-    save:
-      value: 1
-"#;
+    let source = LAST_STEP_SAVE_SOURCE;
     let result = YamlCompiler::default().parse_ast(source);
     let Err(CompileErrors(errors)) = result else {
         panic!("expected error");
@@ -435,15 +417,7 @@ steps:
 
 #[test]
 fn compile_errors_as_slice_returns_all_errors() {
-    let source = br#"version: velvet-ballistics/v1
-name: test
-when:
-  manual: {}
-steps:
-  - id: done
-    save:
-      value: 1
-"#;
+    let source = LAST_STEP_SAVE_SOURCE;
     let result = YamlCompiler::default().parse_ast(source);
     let Err(CompileErrors(errors)) = result else {
         panic!("expected error");
@@ -806,32 +780,14 @@ steps:
 
 #[test]
 fn parse_error_returns_first_error() {
-    let source = br#"version: velvet-ballistics/v1
-name: test
-when:
-  manual: {}
-steps:
-  - id: done
-    unknown_field: true
-    finish:
-      result: 0
-"#;
+    let source = UNKNOWN_STEP_FIELD_SOURCE;
     let error = parse_error(source).expect("expected error");
     assert!(matches!(error, CompileError::UnknownStepField { .. }));
 }
 
 #[test]
 fn compile_errors_iter_count_matches_len() {
-    let source = br#"version: velvet-ballistics/v1
-name: test
-when:
-  manual: {}
-steps:
-  - id: done
-    unknown_field: true
-    finish:
-      result: 0
-"#;
+    let source = UNKNOWN_STEP_FIELD_SOURCE;
     let Err(CompileErrors(errors)) = YamlCompiler::default().parse_ast(source) else {
         panic!("expected error");
     };
