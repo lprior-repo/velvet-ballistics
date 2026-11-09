@@ -11,8 +11,14 @@ const BUDGET_USAGE_RS: &str = include_str!("../src/budget/usage.rs");
 // `budget/aggregate.rs` and `budget/aggregate_validate.rs` in the
 // source-length split series, so the shell alone no longer contains
 // `AggregateResourceBudget` or its dimension names.
+// The boundedness policy, budget error taxonomy, and dimension
+// classification moved to `budget/validate.rs` and
+// `budget/validate_error.rs` in the source-length split series, so the
+// shell alone no longer contains `BoundednessPolicy` or `BudgetError`.
 const BUDGET_AGGREGATE_RS: &str = include_str!("../src/budget/aggregate.rs");
 const BUDGET_AGGREGATE_VALIDATE_RS: &str = include_str!("../src/budget/aggregate_validate.rs");
+const BUDGET_VALIDATE_RS: &str = include_str!("../src/budget/validate.rs");
+const BUDGET_VALIDATE_ERROR_RS: &str = include_str!("../src/budget/validate_error.rs");
 // The admission shell is split across focused chunks under `parts/` that
 // are `include!`-d into `admission.rs` at compile time. The runtime-source
 // literals this proptest searches for (`admit_run_with_budget`,
@@ -51,6 +57,10 @@ fn budget_production_surface() -> String {
     s.push_str(BUDGET_AGGREGATE_RS);
     s.push('\n');
     s.push_str(BUDGET_AGGREGATE_VALIDATE_RS);
+    s.push('\n');
+    s.push_str(BUDGET_VALIDATE_RS);
+    s.push('\n');
+    s.push_str(BUDGET_VALIDATE_ERROR_RS);
     s
 }
 
