@@ -147,16 +147,16 @@
 //         reality.
 //
 //   - D3: production `CANNOT_RESUME_REASONS` array at
-//         `crates/vb_storage/src/recovery/types.rs:801-818` is
+//         `crates/vb_storage/src/recovery/types.rs:1255-1269` is
 //         redeclared in the extern mirror
 //         (`verification/verus/extern_recovery_verification.rs`).
 //         The priority ordering of the 13 reason tokens matches
 //         production line-by-line. `RecoveryCannotResumeState::unsupported_reason()`
-//         is refactored to a priority-typed (`CannotResumePriority`)
-//         first-match dispatch (helper `CannotResumePriority::first_match`
-//         + `CannotResumePriority::reason`) at production
-//         `types.rs:801-887`, with each helper bounded to <=25 lines
-//         to satisfy Farley. The spec proof
+//         is refactored to a priority-typed (`CannotResumeClass`)
+//         first-match dispatch (helpers `priority_class_first_half`,
+//         `priority_class_second_half`, `priority_reason`) at production
+//         `crates/vb_storage/src/recovery/types.rs:1301-1412`, with each
+//         helper bounded to <=25 lines to satisfy Farley. The spec proof
 //         `proof_unsupported_reason_first_match_wins` below
 //         discharges the priority invariant: when a higher-priority
 //         flag is true, the returned reason is the highest-priority
@@ -203,17 +203,17 @@
 //         source. The bind lives in
 //         `verification/verus/_production_strong_bind_recovery.rs`,
 //         which is a verbatim line-for-line mirror of production
-//         `types.rs:758-1200` with `#[path]`-style drift comments
+//         `crates/vb_storage/src/recovery/types.rs:972-1412` with `#[path]`-style drift comments
 //         pointing to the exact source line ranges (see the bind file
 //         header). The bind is NARROW (only the round-8 decision
 //         surface) because full `#[path]` inclusion of `types.rs` is
 //         blocked by:
-//           - types.rs:9 `use crate::{EventSeq, JournalError};`
+//           - `crates/vb_storage/src/recovery/types.rs:9` `use crate::{EventSeq, JournalError};`
 //             (requires vb_storage crate root not registered under
 //             `verus --crate-type=lib`).
-//           - types.rs:10-13 `use vb_core::{...};` (requires vb_core
+//           - `crates/vb_storage/src/recovery/types.rs:10-13` `use vb_core::{...};` (requires vb_core
 //             extern crate alias wired through workspace Cargo.toml).
-//           - types.rs:1217
+//           - `crates/vb_storage/src/recovery/types.rs:1429`
 //             `#[derive(... serde::Serialize, serde::Deserialize)]`
 //             on `RunSnapshot` (requires serde extern crate).
 //         The NARROW bind gives Verus a parseable surface that
@@ -461,7 +461,7 @@ pub open spec fn spec_summary_boundary_never_hydrates() -> bool {
 
 /// Spec-side predicate mirroring
 /// [`RecoveryCannotResumeState::is_resumable`] at
-/// `crates/vb_storage/src/recovery/types.rs:785-799`. Returns true iff
+/// `crates/vb_storage/src/recovery/types.rs:1236-1250`. Returns true iff
 /// every cannot-resume flag is false.
 pub open spec fn spec_cannot_resume_is_resumable(state: RecoveryCannotResumeState) -> bool {
     !state.slot_values && !state.slot_taint && !state.action_payloads && !state.pending_actions
@@ -472,7 +472,7 @@ pub open spec fn spec_cannot_resume_is_resumable(state: RecoveryCannotResumeStat
 }
 
 /// Spec-side decision fn mirroring `RecoveryCannotResumeState::from_seed`
-/// at `crates/vb_storage/src/recovery/types.rs:748-757`. Returns the
+/// at `crates/vb_storage/src/recovery/types.rs:1160-1168`. Returns the
 /// priority-ordered lower-level reason for a non-resumable seed (the
 /// first true non-`RESUMABLE` flag wins, matching the priority order
 /// of the canonical reason priority list).
@@ -546,7 +546,7 @@ pub open spec fn spec_classify_seed_cannot_resume(
 // ============================================================================
 /// Production-bound exec fn: `reject_unsupported_live_frame_state`
 /// decision projection. Returns true iff the production body returns
-/// Ok. Mirrors `crates/vb_runtime/src/recovery.rs:109-115`.
+/// Ok. Mirrors `crates/vb_storage/src/recovery/types.rs:1236-1250`.
 pub fn reject_unsupported_live_frame_state(state: RecoveryCannotResumeState) -> bool {
     production::reject_unsupported_live_frame_state_pure(state)
 }
@@ -608,7 +608,7 @@ pub fn recover_runtime_summary(has_events: bool, summary_ok: bool) -> bool {
 /// Production-bound exec fn: `hydrate_run_frame` precondition
 /// projection. Mirrors
 /// `crates/vb_storage/src/recovery/hydrate.rs:206-225` AND
-/// `crates/vb_runtime/src/recovery.rs:99-105`.
+/// `crates/vb_runtime/src/recovery.rs:187-189`.
 pub fn hydrate_run_frame_preconditions(
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
@@ -637,7 +637,7 @@ pub fn hydrate_run_frame_preconditions(
 
 /// Production-bound exec fn: `SummaryRecoveryBoundary::hydrate_run_frame`
 /// decision projection. Mirrors
-/// `crates/vb_runtime/src/recovery.rs:188-190`.
+/// `crates/vb_runtime/src/recovery.rs:230-232`.
 pub fn summary_boundary_hydrate() -> bool {
     production::summary_recovery_boundary_hydrate_pure()
 }
@@ -645,26 +645,26 @@ pub fn summary_boundary_hydrate() -> bool {
 /// Production-bound exec fn: `RecoveryFrameSeed::cannot_resume_state`
 /// decision projection. Returns the production
 /// `RecoveryCannotResumeState` for the supplied seed. Mirrors
-/// `crates/vb_storage/src/recovery/types.rs:836-848`.
+/// `crates/vb_storage/src/recovery/types.rs:1417-1419`.
 pub fn cannot_resume_state(seed: RecoveryFrameSeed) -> RecoveryCannotResumeState {
     // The mirror exposes `RecoveryCannotResumeState::from_seed` as a
     // free helper (not a method) so the spec-side proof surface can
     // attach a contract via `assume_specification`. Mirrors the
     // production `from_seed(&RecoveryFrameSeed) -> Self` at
-    // types.rs:748-757.
+    // `crates/vb_storage/src/recovery/types.rs:1160-1168`.
     RecoveryCannotResumeState::from_seed_pure(seed)
 }
 
 /// Production-bound exec fn: `RecoveryCannotResumeState::is_resumable`
 /// decision projection. Returns true iff every cannot-resume flag
-/// is false. Mirrors `crates/vb_storage/src/recovery/types.rs:783-799`.
+/// is false. Mirrors `crates/vb_storage/src/recovery/types.rs:1236-1250`.
 pub fn cannot_resume_is_resumable(state: RecoveryCannotResumeState) -> bool {
     state.is_resumable()
 }
 
 /// Production-bound exec fn: `RecoveryCannotResumeState::unsupported_reason`
 /// decision projection. Returns the priority-ordered canonical reason
-/// string. Mirrors `crates/vb_storage/src/recovery/types.rs:801-832`.
+/// string. Mirrors `crates/vb_storage/src/recovery/types.rs:1301-1309`.
 pub fn unsupported_reason(state: RecoveryCannotResumeState) -> &'static str {
     state.unsupported_reason_pure()
 }
@@ -675,7 +675,7 @@ pub fn unsupported_reason(state: RecoveryCannotResumeState) -> &'static str {
 // crates/vb_storage/src/recovery/hydrate.rs:22-70)
 // ============================================================================
 /// Production-bound exec fn: `hydrate_snapshot_tail_run_matches`
-/// decision projection. Mirrors `hydrate.rs:22-28`.
+/// decision projection. Mirrors `crates/vb_storage/src/recovery/hydrate.rs:22-28`.
 pub fn hydrate_snapshot_tail_run_matches(
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
@@ -684,13 +684,13 @@ pub fn hydrate_snapshot_tail_run_matches(
 }
 
 /// Production-bound exec fn: `hydrate_snapshot_tail_seq_after_snapshot`
-/// decision projection. Mirrors `hydrate.rs:32-37`.
+/// decision projection. Mirrors `crates/vb_storage/src/recovery/hydrate.rs:32-37`.
 pub fn hydrate_snapshot_tail_seq_after_snapshot(tail_seq_after_snapshot: bool) -> bool {
     production::hydrate_snapshot_tail_seq_after_snapshot_pure(tail_seq_after_snapshot)
 }
 
 /// Production-bound exec fn: `hydrate_snapshot_tail_has_evidence`
-/// decision projection. Mirrors `hydrate.rs:41-46`.
+/// decision projection. Mirrors `crates/vb_storage/src/recovery/hydrate.rs:41-46`.
 pub fn hydrate_snapshot_tail_has_evidence(
     tail_events_empty: bool,
     snapshot_slots_empty: bool,
@@ -704,7 +704,7 @@ pub fn hydrate_snapshot_tail_has_evidence(
 }
 
 /// Production-bound exec fn: `hydrate_dimensions_positive` decision
-/// projection. Mirrors `hydrate.rs:67-70`.
+/// projection. Mirrors `crates/vb_storage/src/recovery/hydrate.rs:68-70`.
 pub fn hydrate_dimensions_positive(step_count_positive: bool, slot_count_positive: bool) -> bool {
     production::hydrate_dimensions_positive_pure(step_count_positive, slot_count_positive)
 }
@@ -719,7 +719,7 @@ pub fn hydrate_dimensions_positive(step_count_positive: bool, slot_count_positiv
 // contracts via the exec wrappers above.
 /// Bridge contract: `reject_unsupported_live_frame_state` succeeds
 /// iff the typed cannot-resume witness is fully resumable. Mirrors
-/// production body at `crates/vb_runtime/src/recovery.rs:109-115`.
+/// production body at `crates/vb_storage/src/recovery/types.rs:1236-1250`.
 pub assume_specification[ production::reject_unsupported_live_frame_state_pure ](
     state: RecoveryCannotResumeState,
 ) -> (result: bool)
@@ -799,7 +799,7 @@ pub assume_specification[ production::recover_runtime_summary_pure ](
 /// Bridge contract: `hydrate_run_frame` precondition decision.
 /// Mirrors production body at
 /// `crates/vb_storage/src/recovery/hydrate.rs:206-225` AND
-/// `crates/vb_runtime/src/recovery.rs:99-115`.
+/// `crates/vb_runtime/src/recovery.rs:187-189`.
 pub assume_specification[ production::hydrate_run_frame_preconditions_pure ](
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
@@ -830,7 +830,7 @@ pub assume_specification[ production::hydrate_run_frame_preconditions_pure ](
 /// Bridge contract: `SummaryRecoveryBoundary::hydrate_run_frame`
 /// always returns false (production always returns
 /// `UnsupportedFullRecoveryHydration`). Mirrors production body at
-/// `crates/vb_runtime/src/recovery.rs:188-190`.
+/// `crates/vb_runtime/src/recovery.rs:230-232`.
 pub assume_specification[ production::summary_recovery_boundary_hydrate_pure ]() -> (result: bool)
     ensures
         result == spec_summary_boundary_never_hydrates(),
@@ -838,7 +838,7 @@ pub assume_specification[ production::summary_recovery_boundary_hydrate_pure ]()
 
 /// Bridge contract: `hydrate_snapshot_tail_run_matches` returns true
 /// iff snapshot.run matches AND all tail events match the run id.
-/// Mirrors production body at `hydrate.rs:22-28`.
+/// Mirrors production body at `crates/vb_storage/src/recovery/hydrate.rs:22-28`.
 pub assume_specification[ production::hydrate_snapshot_tail_run_matches_pure ](
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
@@ -849,7 +849,7 @@ pub assume_specification[ production::hydrate_snapshot_tail_run_matches_pure ](
 
 /// Bridge contract: `hydrate_snapshot_tail_seq_after_snapshot`
 /// returns true iff every tail event has seq strictly after snapshot
-/// seq. Mirrors production body at `hydrate.rs:32-37`.
+/// seq. Mirrors production body at `crates/vb_storage/src/recovery/hydrate.rs:32-37`.
 pub assume_specification[ production::hydrate_snapshot_tail_seq_after_snapshot_pure ](
     tail_seq_after_snapshot: bool,
 ) -> (result: bool)
@@ -860,7 +860,7 @@ pub assume_specification[ production::hydrate_snapshot_tail_seq_after_snapshot_p
 /// Bridge contract: `hydrate_snapshot_tail_has_evidence` returns true
 /// iff at least one of: tail events non-empty, snapshot slots
 /// non-empty, snapshot taint non-empty. Mirrors production body at
-/// `hydrate.rs:41-46`.
+/// `crates/vb_storage/src/recovery/hydrate.rs:41-46`.
 pub assume_specification[ production::hydrate_snapshot_tail_has_evidence_pure ](
     tail_events_empty: bool,
     snapshot_slots_empty: bool,
@@ -872,7 +872,7 @@ pub assume_specification[ production::hydrate_snapshot_tail_has_evidence_pure ](
 
 /// Bridge contract: `hydrate_dimensions_positive` returns true iff
 /// both step_count and slot_count are positive. Mirrors production
-/// body at `hydrate.rs:67-70`.
+/// body at `crates/vb_storage/src/recovery/hydrate.rs:68-70`.
 pub assume_specification[ production::hydrate_dimensions_positive_pure ](
     step_count_positive: bool,
     slot_count_positive: bool,
@@ -884,7 +884,7 @@ pub assume_specification[ production::hydrate_dimensions_positive_pure ](
 /// Bridge contract: `RecoveryCannotResumeState::unsupported_reason`
 /// returns the priority-ordered canonical reason string. Mirrors
 /// production body at
-/// `crates/vb_storage/src/recovery/types.rs:801-832`.
+/// `crates/vb_storage/src/recovery/types.rs:1301-1309`.
 pub assume_specification[ <RecoveryCannotResumeState>::unsupported_reason_pure ](
     state: RecoveryCannotResumeState,
 ) -> (result: &'static str)
@@ -895,7 +895,7 @@ pub assume_specification[ <RecoveryCannotResumeState>::unsupported_reason_pure ]
 /// Bridge contract: `RecoveryCannotResumeState::from_seed` always
 /// produces a state where the seven `*_missing` full-RunState flags
 /// are true. Mirrors production body at
-/// `crates/vb_storage/src/recovery/types.rs:748-757`.
+/// `crates/vb_storage/src/recovery/types.rs:1160-1168`.
 pub assume_specification[ <RecoveryCannotResumeState>::from_seed_pure ](
     seed: RecoveryFrameSeed,
 ) -> (result: RecoveryCannotResumeState)
@@ -997,8 +997,8 @@ pub proof fn proof_workflow_source_mismatch_detected(
 }
 
 /// Proof: `check_workflow_source_digest` fails when the journal has
-/// no RunAccepted event (production line
-/// `crates/vb_storage/src/recovery/recover.rs:49`).
+/// no RunAccepted event (production
+/// `crates/vb_storage/src/recovery/recover.rs:32-50`).
 pub proof fn proof_workflow_source_no_acceptance_record_detected(
     has_acceptance_record: bool,
     workflow_source_matches: bool,
@@ -1011,7 +1011,7 @@ pub proof fn proof_workflow_source_no_acceptance_record_detected(
 }
 
 /// Proof: `check_compiled_ir_digest` fails on mismatch (production
-/// line `crates/vb_storage/src/recovery/recover.rs:60`).
+/// `crates/vb_storage/src/recovery/recover.rs:53-62`).
 pub proof fn proof_compiled_ir_mismatch_detected(matches: bool)
     requires
         !matches,
@@ -1021,7 +1021,7 @@ pub proof fn proof_compiled_ir_mismatch_detected(matches: bool)
 }
 
 /// Proof: `check_action_abi_digest` fails on mismatch (production
-/// line `crates/vb_storage/src/recovery/recover.rs:72`).
+/// `crates/vb_storage/src/recovery/recover.rs:65-75`).
 pub proof fn proof_action_abi_mismatch_detected(matches: bool)
     requires
         !matches,
@@ -1030,8 +1030,8 @@ pub proof fn proof_action_abi_mismatch_detected(matches: bool)
 {
 }
 
-/// Proof: `check_policy_digest` fails on mismatch (production line
-/// `crates/vb_storage/src/recovery/recover.rs:84`).
+/// Proof: `check_policy_digest` fails on mismatch (production
+/// `crates/vb_storage/src/recovery/recover.rs:78-88`).
 pub proof fn proof_policy_digest_mismatch_detected(matches: bool)
     requires
         !matches,
@@ -1182,8 +1182,8 @@ pub proof fn proof_verify_digests_full_policy_failure(
 }
 
 /// Proof: `recover_runtime_summary` fails when the journal is empty
-/// (production line
-/// `crates/vb_storage/src/recovery/recover.rs:184`).
+/// (production
+/// `crates/vb_storage/src/recovery/recover.rs:178-187`).
 pub proof fn proof_recover_runtime_summary_empty_journal_detected(
     has_events: bool,
     summary_ok: bool,
@@ -1196,8 +1196,8 @@ pub proof fn proof_recover_runtime_summary_empty_journal_detected(
 }
 
 /// Proof: `SummaryRecoveryBoundary::hydrate_run_frame` never
-/// hydrates (production line
-/// `crates/vb_runtime/src/recovery.rs:152`).
+/// hydrates (production
+/// `crates/vb_runtime/src/recovery.rs:230-232`).
 pub proof fn proof_summary_only_never_hydrates_empty_frame()
     ensures
         !spec_summary_boundary_never_hydrates(),
@@ -1209,8 +1209,8 @@ pub proof fn proof_summary_only_never_hydrates_empty_frame()
 /// flag is true. This is the type-system invariant that makes
 /// `RecoveryResumeStatus::Resumable` structurally unreachable from a
 /// frame seed (FINDING-001, BLOCKER 3). Mirrors production body at
-/// `crates/vb_storage/src/recovery/types.rs:748-757`
-/// (`mark_full_run_state_missing` at types.rs:759-767).
+/// `crates/vb_storage/src/recovery/types.rs:1160-1168`
+/// (`mark_full_run_state_missing` at `crates/vb_storage/src/recovery/types.rs:1216-1218`).
 pub proof fn proof_classify_seed_marks_all_full_state_missing()
     ensures
         ({
@@ -1244,7 +1244,7 @@ pub proof fn proof_unsupported_reason_priority_slot_values(state: RecoveryCannot
 /// still picks `"slot_values"` — never the lower-priority token.
 /// Demonstrates that `unsupported_reason`'s const-table walk does not
 /// stop at the first lower-priority match when an earlier-priority
-/// match exists. Mirrors production `types.rs:820-855` refactor.
+/// match exists. Mirrors production `crates/vb_storage/src/recovery/types.rs:1301-1412` refactor.
 pub proof fn proof_unsupported_reason_first_match_wins(state: RecoveryCannotResumeState)
     requires
         state.slot_values,
@@ -1297,7 +1297,7 @@ pub proof fn proof_classify_seed_is_never_resumable()
 //
 // The proofs reason purely over the NARROW STRONG production bind
 // (`production_strong::` module, line-for-line mirror of production
-// `crates/vb_storage/src/recovery/types.rs:758-1200`) plus the
+// `crates/vb_storage/src/recovery/types.rs:972-1412`) plus the
 // `spec_unsupported_reason_strong` spec fn (priority chain spec).
 // Verus accepts these proofs because the narrow bind has zero
 // proc-macro derives — see the narrow-bind header for the BLOCKER B
@@ -1499,9 +1499,9 @@ pub proof fn proof_hydrate_run_frame_snapshot_run_mismatch_detected(
 }
 
 /// Proof: `hydrate_run_frame` precondition fails when step_count is
-/// zero (production line
-/// `crates/vb_storage/src/recovery/hydrate.rs:190` +
-/// `crates/vb_storage/src/recovery/hydrate.rs:276-284`).
+/// zero (production
+/// `crates/vb_storage/src/recovery/hydrate.rs:232` +
+/// `crates/vb_storage/src/recovery/hydrate.rs:499-507`).
 pub proof fn proof_hydrate_run_frame_zero_step_count_detected(
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
@@ -1533,8 +1533,8 @@ pub proof fn proof_hydrate_run_frame_zero_step_count_detected(
 }
 
 /// Proof: `hydrate_run_frame` precondition fails when pc is out of
-/// bounds (production line
-/// `crates/vb_runtime/src/recovery.rs:109-111`).
+/// bounds (production `RunFrame::new` pc check at
+/// `crates/vb_core/src/frame/parts/impl_001_construct.rs:3-31`).
 pub proof fn proof_hydrate_run_frame_pc_out_of_bounds_detected(
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
@@ -1569,7 +1569,7 @@ pub proof fn proof_hydrate_run_frame_pc_out_of_bounds_detected(
 /// `reject_unsupported_live_frame_state` driver would reject. The
 /// runtime driver now rejects whenever the 13-flag cannot-resume
 /// witness is not fully resumable. Mirrors
-/// `crates/vb_runtime/src/recovery.rs:109-115`.
+/// `crates/vb_storage/src/recovery/types.rs:1236-1250`.
 pub proof fn proof_hydrate_run_frame_unsupported_rejection_propagates(
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
