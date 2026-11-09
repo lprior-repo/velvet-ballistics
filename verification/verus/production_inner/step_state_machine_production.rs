@@ -32,7 +32,7 @@
 //      require the field to be readable in spec mode.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_core/src/engine/signals.rs:1-607` and
+// `crates/vb_core/src/engine/signals.rs:1-171` and
 // crates/vb_core/src/engine/step.rs whenever production changes.
 // Field NAME and TYPE are preserved byte-for-byte; any drift breaks
 // the verification build.

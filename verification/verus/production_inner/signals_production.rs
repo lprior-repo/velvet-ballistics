@@ -24,7 +24,7 @@
 //      remain production-identical so any drift breaks this Verus build.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_core/src/engine/signals.rs:1-607` whenever production changes.
+// `crates/vb_core/src/engine/signals.rs:1-171` whenever production changes.
 // The mirror is annotated at the top of every section with the
 // originating production line range so regeneration is mechanical.
 //
