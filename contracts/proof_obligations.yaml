@@ -117,7 +117,7 @@ obligations:
     crate: vb_core
     files:
       - crates/vb_core/src/value.rs
-      - crates/vb_core/src/eval.rs
+      - crates/vb_core/src/engine/step.rs
     required:
       kani: kani_taint_propagation.rs
       tests: [taint_eval_expr_join, taint_build_object_join, taint_build_list_join]
@@ -234,7 +234,7 @@ obligations:
     proof_level: L3
     crate: vb_core
     files:
-      - crates/vb_core/src/ids.rs
+      - crates/vb_core/src/ids/mod.rs
     required:
       kani: kani_index_access.rs
       tests: [checked_index_validates_bounds]
@@ -413,7 +413,7 @@ obligations:
     proof_level: L3
     crate: vb_storage
     files:
-      - crates/vb_storage/src/record.rs
+      - crates/vb_storage/src/codec/header.rs
     required:
       kani: kani_record_magic.rs
       tests: [magic_validated_before_alloc]
@@ -428,7 +428,7 @@ obligations:
     proof_level: L3
     crate: vb_storage
     files:
-      - crates/vb_storage/src/record.rs
+      - crates/vb_storage/src/codec/header.rs
     required:
       kani: kani_record_schema.rs
     commands:
@@ -441,7 +441,7 @@ obligations:
     proof_level: L3
     crate: vb_storage
     files:
-      - crates/vb_storage/src/record.rs
+      - crates/vb_storage/src/codec/header.rs
     required:
       kani: kani_record_kind.rs
     commands:
@@ -454,7 +454,7 @@ obligations:
     proof_level: L3
     crate: vb_storage
     files:
-      - crates/vb_storage/src/record.rs
+      - crates/vb_storage/src/codec/header.rs
     required:
       kani: kani_record_payload_len.rs
       fuzz: [decode_record]
@@ -469,7 +469,7 @@ obligations:
     proof_level: L3
     crate: vb_storage
     files:
-      - crates/vb_storage/src/record.rs
+      - crates/vb_storage/src/codec/header.rs
     required:
       kani: kani_record_crc.rs
       tests: [crc_validated_before_decode]
@@ -484,7 +484,7 @@ obligations:
     proof_level: L3
     crate: vb_storage
     files:
-      - crates/vb_storage/src/record.rs
+      - crates/vb_storage/src/codec/payload.rs
     required:
       kani: kani_record_digest.rs
       tests: [digest_validated_before_decode]
@@ -673,7 +673,7 @@ obligations:
     proof_level: L6
     crate: vb_storage
     files:
-      - crates/vb_storage/src/fjall.rs
+      - crates/vb_storage/src/journal/append.rs
     required:
       supply_chain: [cargo_vet_audit]
       tests: [fjall_fsync_boundary]
@@ -692,8 +692,8 @@ obligations:
     proof_level: L2
     crate: vb_expr
     files:
-      - crates/vb_expr/src/eval.rs
-      - crates/vb_expr/src/bytecode.rs
+      - crates/vb_expr/src/expr_eval.rs
+      - crates/vb_expr/src/expr_bytecode/mod.rs
     required:
       differential_tests: [bytecode_vs_ast]
       fuzz: [expr_bytecode]
@@ -708,7 +708,7 @@ obligations:
     proof_level: L3
     crate: vb_expr
     files:
-      - crates/vb_expr/src/stack.rs
+      - crates/vb_expr/src/expr_stack_ops.rs
     required:
       kani: kani_expr_stack.rs
       property_tests: [expr_stack_bounds]
@@ -724,8 +724,8 @@ obligations:
     proof_level: L2
     crate: vb_expr
     files:
-      - crates/vb_expr/src/eval.rs
-      - crates/vb_expr/src/typecheck.rs
+      - crates/vb_expr/src/expr_eval.rs
+      - crates/vb_expr/src/expr_typecheck/mod.rs
     required:
       tests: [f64_rejected_or_implemented]
       fuzz: [expr_eval]
@@ -891,7 +891,7 @@ obligations:
     proof_level: L3
     crate: vb_runtime
     files:
-      - crates/vb_runtime/src/journal/writer.rs
+      - crates/vb_storage/src/queue/writer.rs
     required:
       loom: journal_writer_queue
     commands:
@@ -1041,9 +1041,9 @@ verus_registry:
     production: crates/vb_storage/src/admission.rs
 
   - id: PO-VERUS-015
-    description: "CLI digest-binding: cli_digest matches accepted artifact pre/post conditions at production admission.rs:711-725 (VERUS-CLI-DIGEST-002 / PO-002)."
+    description: "CLI digest-binding: cli_digest matches accepted artifact pre/post conditions at production crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-122 (pre) and :165-174 (post) (VERUS-CLI-DIGEST-002 / PO-002)."
     verus: verification/verus/accepted_cli_digest_binding.rs
-    production: crates/vb_runtime/src/admission.rs
+    production: crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs
 
   - id: PO-VERUS-016
     description: "Strict admission witness: prepared-proof shape (gate_count 0) invariant; model-level strict admission failure classification (PO-003)."
@@ -1051,7 +1051,7 @@ verus_registry:
     production: crates/vb_runtime/src/admission.rs
 
   - id: PO-VERUS-017
-    description: "Idempotency decision table: 5 idempotency decision fns (vb-ko29.2) bound to production admission.rs:531-545 and vb_validate/src/idempotency_contract.rs:140-187 (VERUS-DECISION-001..005, VERUS-PARITY-003)."
+    description: "Idempotency decision table (vb-ko29.2; VERUS-DECISION-001..005, VERUS-PARITY-003) bound to production is_contract_idempotency_accepted at crates/vb_storage/src/admission.rs:427-441 and is_statically_idempotent_contract at crates/vb_validate/src/idempotency_contract.rs:140-187."
     verus: verification/verus/idempotency_decision.rs
     production: crates/vb_storage/src/admission.rs
 
@@ -1081,7 +1081,7 @@ verus_registry:
   #   Per GOD RULE 2, the file was deleted (not bound).
 
   - id: PO-VERUS-020
-    description: "ActionReplayTracker monotonicity: tracker only records action attempts, never rewinds; matches production types.rs:666-852 verbatim (VERUS-REPLAY-004)."
+    description: "ActionReplayTracker monotonicity: tracker only records action attempts, never rewinds; matches production crates/vb_storage/src/recovery/types.rs:1446-1714 verbatim (VERUS-REPLAY-004)."
     verus: verification/verus/idempotency_replay_tracker.rs
     production: crates/vb_storage/src/recovery/types.rs
 
@@ -1113,12 +1113,12 @@ verus_registry:
     production: crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs
 
   - id: PO-VERUS-026
-    description: "emit_single_body_set error invariants: SpecCompileError::StepFieldShape emission bound to production part_04.rs:213-297 (PO-006, PO-009, PO-018)."
+    description: "emit_single_body_set error invariants: SpecCompileError::StepFieldShape emission bound to production crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179 (PO-006, PO-009, PO-018)."
     verus: verification/verus/emit_single_body_set.rs
     production: crates/vb_compile/src/mod_compile_lowering/part_04.rs
 
   - id: PO-VERUS-027
-    description: "Error parity invariant: emit_single_body_set + lower_set + body_constant_index + integer_error_value error variant parity bound to production part_04.rs:213-297 + part_05_digest.rs:6-22 (PO-030)."
+    description: "Error parity invariant: emit_single_body_set + lower_set + body_constant_index + integer_error_value error variant parity bound to production crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179 + crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:125-141 (PO-030)."
     verus: verification/verus/error_parity.rs
     production: crates/vb_compile/src/mod_compile_lowering/part_04.rs
 
@@ -1130,10 +1130,11 @@ verus_registry:
   - id: PO-VERUS-029
     description: "Diagnostic envelope construction soundness: public CLI exit codes exactly bounded by 0..=8; schema version invariant (INV-001, INV-005)."
     verus: verification/verus/diagnostic_envelope_verus.rs
-    production: crates/vb_cli/src/exit_code.rs
+    production: crates/velvet_ballistics/src/exit_code.rs
+    note: "Production drift: CliExitCode gained a 10th variant LifecycleError = 9 (exit_code.rs:33), so the 0..=8 bound no longer matches production; the Verus spec still proves 0..=8. Needs a spec decision (lane C)."
 
   - id: PO-VERUS-030
-    description: "Cancel/kill lattice: cancel/kill only on live runs (REQ-cancel-kill-live-only), exactly one terminal event per run (REQ-single-terminal-winner), cancel/kill invalidates stale authority (REQ-stale-authority-cleanup); bound to production handle_cancel/handle_kill at chunk_002.rs:127-174 (PO-VERUS-001..003)."
+    description: "Cancel/kill lattice: cancel/kill only on live runs (REQ-cancel-kill-live-only), exactly one terminal event per run (REQ-single-terminal-winner), cancel/kill invalidates stale authority (REQ-stale-authority-cleanup); bound to production handle_cancel/handle_kill at crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:183-243 (PO-VERUS-001..003)."
     verus: verification/verus/cancel_kill_lattice.rs
     production: crates/vb_runtime/src/shard/lifecycle/chunk_002.rs
 
