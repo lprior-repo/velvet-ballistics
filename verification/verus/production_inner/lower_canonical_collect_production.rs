@@ -42,7 +42,6 @@
 // `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-260`
 // whenever production changes. Section headers cite the originating
 // production line range so regeneration is mechanical.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -61,7 +60,6 @@ verus! {
 // reason about the value via `.0` (e.g. `id.0 + 3`). Field NAME and
 // TYPE match production exactly so any rename or type change breaks
 // this mirror.
-
 /// Mirror of `vb_core::ids::StepIdx` (u16 newtype) at
 /// `crates/vb_core/src/ids/mod.rs:55`.
 #[derive(Clone, Copy, PartialEq, Eq)]

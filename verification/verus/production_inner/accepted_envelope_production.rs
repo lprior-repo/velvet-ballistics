@@ -38,7 +38,6 @@
 // production line ranges so regeneration is mechanical. The companion
 // extern file `extern_accepted_envelope.rs` includes this file via
 // `#[path = "production_inner/accepted_envelope_production.rs"]`.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]

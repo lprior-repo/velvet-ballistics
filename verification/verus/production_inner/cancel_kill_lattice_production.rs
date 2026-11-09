@@ -12,7 +12,6 @@
 // production cancel/kill lifecycle behavior changes.
 //
 // Production `crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:179-239`
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
@@ -115,7 +114,10 @@ impl Shard {
     pub fn run_state_remove(&mut self, _run: RunId) -> Option<RunState> {
         if self.run_state_present {
             self.run_state_present = false;
-            Some(RunState { frame: Frame(0), run_attempt: 0 })
+            Some(RunState {
+                frame: Frame(0),
+                run_attempt: 0,
+            })
         } else {
             None
         }

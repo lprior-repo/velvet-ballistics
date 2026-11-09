@@ -60,7 +60,6 @@
 // production line ranges so regeneration is mechanical. The companion
 // extern file `extern_admission_artifact_model.rs` includes this file
 // via `#[path = "production_inner/admission_artifact_production.rs"]`.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -179,10 +178,18 @@ pub enum AssumptionId {
 // order with their digest fields.
 #[derive(Clone, Copy)]
 pub enum ObligationClosure {
-    StaticProof { proof_digest: WorkflowDigest },
-    RuntimeValidated { verifier_digest: WorkflowDigest },
-    RuntimeEvidenced { journal_schema_digest: WorkflowDigest },
-    OperatorAttested { approval_policy_digest: WorkflowDigest },
+    StaticProof {
+        proof_digest: WorkflowDigest,
+    },
+    RuntimeValidated {
+        verifier_digest: WorkflowDigest,
+    },
+    RuntimeEvidenced {
+        journal_schema_digest: WorkflowDigest,
+    },
+    OperatorAttested {
+        approval_policy_digest: WorkflowDigest,
+    },
     ExternalAssumption {
         assumption_id: AssumptionId,
         evidence_digest: WorkflowDigest,

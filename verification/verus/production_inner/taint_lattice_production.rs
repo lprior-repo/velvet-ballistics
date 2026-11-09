@@ -72,7 +72,6 @@
 // avoid a rustc panic in trait resolution when the spec invokes
 // these fns through the bridge.
 // ============================================================================
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
@@ -130,7 +129,11 @@ pub fn join_taint(a: Taint, b: Taint) -> Taint {
         Taint::Random => 3,
         Taint::TimeDependent => 4,
     };
-    if a_disc >= b_disc { a } else { b }
+    if a_disc >= b_disc {
+        a
+    } else {
+        b
+    }
 }
 
 // ----------------------------------------------------------------------------

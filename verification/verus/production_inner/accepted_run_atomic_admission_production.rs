@@ -41,7 +41,6 @@
 // Regenerate this file whenever production changes. Any rename of
 // `PayloadTag::AcceptedArtifact` or body change in the submit path
 // breaks the `extern_run_atomic_admission` Verus build.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -82,7 +81,10 @@ pub fn is_strict_accepted_artifact_tag(tag: PayloadTag) -> bool {
 // (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-91)
 // and is rejected by real validation.
 #[verifier::external]
-pub fn all_required_gates_accepted(gate_count: u8, all_required_gate_proofs_accepted: bool) -> bool {
+pub fn all_required_gates_accepted(
+    gate_count: u8,
+    all_required_gate_proofs_accepted: bool,
+) -> bool {
     gate_count == 0 && all_required_gate_proofs_accepted
 }
 

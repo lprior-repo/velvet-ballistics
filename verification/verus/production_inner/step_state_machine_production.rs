@@ -39,7 +39,6 @@
 //
 // Included by the companion extern file
 // verification/verus/extern_step_state_machine.rs via #[path].
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -60,7 +59,6 @@ verus! {
 // without dragging in the full value model (which would pull in
 // `serde::Serialize/Deserialize` derives blocked by the same issue as
 // in `extern_budget_bounded.rs`).
-
 /// Mirror of `SlotValue` discriminant set at
 /// `crates/vb_core/src/value.rs:50+`. Only the variants referenced by
 /// `EngineSignal::Finished` payload are mirrored; the rest are folded
@@ -93,7 +91,6 @@ pub enum SpecTaint {
 // The production `StepBudget::try_take` returns `Err(EngineError
 // ::StepCounterOverflow)`. We mirror only the variants exercised by
 // signals.rs to keep the binding narrow.
-
 /// Mirror of `EngineError::StepCounterOverflow` and `EngineError
 /// ::BudgetParse { reason }` from `crates/vb_core/src/errors.rs:241` and
 /// `:396`.
@@ -106,14 +103,12 @@ pub enum SpecEngineError {
 // ============================================================================
 // Production type mirrors
 // ============================================================================
-
 // `SPEC_MAX_STEP_BUDGET` constant is declared inside the spec file's
 // `verus!` block, not here. Declaring a `pub const` in this extern file
 // triggers a Verus internal error (`VerusErasureCtxt has not been
 // initialized`) on the `--crate-type=lib` invocation that does NOT pass
 // `--no-lifetime`. The spec file mirrors the constant at limits.rs:94
 // with the same value of 10_000.
-
 // Mirror of `EngineSignal` at
 /// `crates/vb_core/src/engine/signals.rs:100-115`. The discriminant set
 /// is exactly the production set: 7 variants.
@@ -155,7 +150,6 @@ pub struct StepBudget {
 // Each wrapper mirrors the production signature exactly. The body is
 // opaque to Verus; the spec file attaches `assume_specification`
 // contracts that the spec proofs discharge.
-
 /// Mirror of `StepBudget::MAX` at `signals.rs:19-22`.
 #[verifier::external]
 pub fn step_budget_max() -> StepBudget {
@@ -239,7 +233,6 @@ pub fn step_budget_from_env() -> Result<StepBudget, SpecEngineError> {
 // This decision fn is NOT marked `#[verifier::external]` because it is
 // pure and Verus can verify its body — the spec proofs below require
 // this. The mapping logic is exhaustively matched over all 7 variants.
-
 /// Pure decision fn mirroring the discriminant projection of
 /// `mark_step_after_signal` at `crates/vb_core/src/engine/step.rs:109-121`.
 /// Returns the expected `SpecStepState` after the signal is processed.

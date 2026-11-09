@@ -74,7 +74,6 @@
 // and the production source is reported as binding-debt tracked
 // outside Verus.
 // ============================================================================
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -91,7 +90,6 @@ verus! {
 // The production struct is `pub struct StepIdx(u16)` (private field).
 // The mirror exposes the inner field as `pub` so the spec proofs can
 // name `id.0` for arithmetic reasoning.
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct StepIdx(pub u16);
 
@@ -163,7 +161,6 @@ impl StepIdx {
 // returned Ok or Err, not about the error payload contents. Field
 // types are still mirrored structurally to surface drift (renamed
 // field, type change, or arity change breaks the mirror).
-
 #[derive(Clone, Copy)]
 pub enum SpecCompileError {
     /// Production: `CompileError::PrimitiveLoweringLimitExceeded`
@@ -204,7 +201,6 @@ pub enum SpecCompileError {
 // The four production arguments are preserved exactly. The body is
 // opaque to Verus; the spec file attaches an `assume_specification`
 // contract that the spec proofs discharge.
-
 /// Mirror of `checked_step_offset(id: StepIdx, offset: u16, primitive:
 /// &'static str, field: &'static str) -> Result<StepIdx, CompileError>`
 /// at `crates/vb_compile/src/mod_compile_lowering/part_12.rs:199-212`.
@@ -215,12 +211,14 @@ pub fn checked_step_offset(
     primitive: &'static str,
     field: &'static str,
 ) -> Result<StepIdx, SpecCompileError> {
-    id.checked_add(offset).ok_or(SpecCompileError::PrimitiveLoweringLimitExceeded {
-        primitive,
-        field,
-        value: id.get() as u64,
-        limit: u16::MAX as u64,
-    })
+    id.checked_add(offset).ok_or(
+        SpecCompileError::PrimitiveLoweringLimitExceeded {
+            primitive,
+            field,
+            value: id.get() as u64,
+            limit: u16::MAX as u64,
+        },
+    )
 }
 
 } // verus!

@@ -46,7 +46,6 @@
 // Regenerate this file whenever production changes. Any rename of
 // `max_events` or body change in `events_for_run_from` breaks the
 // `extern_vb_jpq724_events_for_run_production` Verus build.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -58,7 +57,6 @@ verus! {
 // ---------------------------------------------------------------------------
 // Drift-detection stubs
 // ---------------------------------------------------------------------------
-
 /// Mirror of production `EventSeq` newtype at
 /// `crates/vb_storage/src/types.rs:73`. Production is a u64 newtype;
 /// the stub carries the SAME field shape so any rename breaks the
@@ -70,6 +68,7 @@ impl EventSeqStub {
     /// Mirror of production `EventSeq::MAX = Self(u64::MAX)` at
     /// `crates/vb_storage/src/types.rs:93`.
     pub const MAX: Self = Self(u64::MAX);
+
     /// Mirror of production `EventSeq::ZERO = Self(0)` at
     /// `crates/vb_storage/src/types.rs:89`.
     pub const ZERO: Self = Self(0);

@@ -37,7 +37,6 @@
 // Regenerate this file whenever production changes. Any rename of
 // `max_arena_entries` or change to `check_arena_cap` body breaks the
 // `extern_value_store_invariant` Verus build.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -49,7 +48,6 @@ verus! {
 // ---------------------------------------------------------------------------
 // Drift-detection stubs
 // ---------------------------------------------------------------------------
-
 /// Mirror of production `ValueStore::max_arena_entries` field at
 /// `crates/vb_core/src/value_store.rs:57`. The stub struct carries the
 /// SAME field name (`max_arena_entries`) and type (`u64`) so any rename

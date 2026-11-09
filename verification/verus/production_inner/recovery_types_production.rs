@@ -95,7 +95,6 @@ verus! {
 // Source: crates/vb_core/src/ids/mod.rs
 // Drift policy: any production rename of the newtype inner primitive
 // type breaks the field shape comparison in the spec bridge.
-
 /// Mirror of `RunId(u64)` at `crates/vb_core/src/ids/mod.rs:65`.
 #[derive(Clone, Copy)]
 pub struct StubRunId(pub u64);
@@ -123,7 +122,6 @@ pub struct StubWorkflowDigest(pub u64);
 // ---------------------------------------------------------------------------
 // RecoveryTerminalState stub — types.rs:550-562
 // ---------------------------------------------------------------------------
-
 /// Mirror of `RecoveryTerminalState` at
 /// `crates/vb_storage/src/recovery/types.rs:550-562`. The closed variant
 /// set is `Cancelled`, `Killed`, `Finished { result: SlotIdx }`, `Failed`.
@@ -141,7 +139,6 @@ pub enum RecoveryTerminalStateStub {
 // ---------------------------------------------------------------------------
 // RecoveredStepState stub — types.rs:793-804
 // ---------------------------------------------------------------------------
-
 /// Mirror of `RecoveredStepState` at
 /// `crates/vb_storage/src/recovery/types.rs:793-804`. The closed
 /// variant set is `Running`, `Succeeded`, `Failed`, `Waiting`,
@@ -158,7 +155,6 @@ pub enum RecoveredStepStateStub {
 // ---------------------------------------------------------------------------
 // RecoveryRuntimeSummary stub — types.rs:566-589
 // ---------------------------------------------------------------------------
-
 /// Mirror of `RecoveryRuntimeSummary` at
 /// `crates/vb_storage/src/recovery/types.rs:566-589`. All fields
 /// preserved by name, order, and primitive type category.
@@ -197,7 +193,6 @@ pub struct RecoveryRuntimeSummaryStub {
 // Spec proofs reason about the `summary()` method on `RecoveryHydration`
 // only; the FrameSeed payload is reduced to a length-counters struct.
 // ---------------------------------------------------------------------------
-
 /// Minimal stub of `RecoveryFrameSeed` so `RecoveryHydration` can be
 /// mirrored in full. Field shape mirrors production at the count level.
 #[derive(Clone, Copy)]
@@ -212,7 +207,6 @@ pub struct RecoveryFrameSeedStub {
 // ---------------------------------------------------------------------------
 // RecoveryHydration stub — types.rs:612-617
 // ---------------------------------------------------------------------------
-
 /// Mirror of `RecoveryHydration` at
 /// `crates/vb_storage/src/recovery/types.rs:612-617`. The closed
 /// variant set is `Summary(RecoveryRuntimeSummary)` and
@@ -248,7 +242,6 @@ impl RecoveryHydrationStub {
 // ---------------------------------------------------------------------------
 // UnsupportedRecoveryState stub — types.rs:837-846
 // ---------------------------------------------------------------------------
-
 /// Mirror of `UnsupportedRecoveryState` at
 /// `crates/vb_storage/src/recovery/types.rs:837-846`. All four fields
 /// are `bool`; the mirror is bit-identical to production.
@@ -303,7 +296,6 @@ impl UnsupportedRecoveryStateStub {
 // Phantom drift-detection helpers — force Rust to resolve every
 // production item by name + signature.
 // ---------------------------------------------------------------------------
-
 /// Phantom: forces resolution of every production-stub item. A rename,
 /// signature change, or field-type change in production breaks the
 /// references below at compile time.
@@ -338,17 +330,18 @@ fn prod_items_drift_check(
     let _ = step;
     // RecoveryHydration variants + summary method.
     let _ = RecoveryHydrationStub::Summary(summ);
-    let _ = RecoveryHydrationStub::FrameSeed(RecoveryFrameSeedStub {
-        summary: summ,
-        first_step: StubStepIdx(0),
-        step_count: 0,
-        slot_count: 0,
-        pc: 0,
-    });
+    let _ = RecoveryHydrationStub::FrameSeed(
+        RecoveryFrameSeedStub {
+            summary: summ,
+            first_step: StubStepIdx(0),
+            step_count: 0,
+            slot_count: 0,
+            pc: 0,
+        },
+    );
     let _h = hyd.summary();
     // UnsupportedRecoveryState field + const + method drift.
-    let _supported: UnsupportedRecoveryStateStub =
-        UnsupportedRecoveryStateStub::SUPPORTED;
+    let _supported: UnsupportedRecoveryStateStub = UnsupportedRecoveryStateStub::SUPPORTED;
     let _u = unsup_a.union(unsup_b);
     let _f = unsup_a.is_fully_supported();
     let _sv1 = unsup_a.slot_values;
@@ -362,7 +355,6 @@ fn prod_items_drift_check(
 // refer to `production::RecoveryTerminalState` etc. instead of needing
 // to qualify through the bridge's outer `pub use` block.
 // ---------------------------------------------------------------------------
-
 pub use RecoveryFrameSeedStub as RecoveryFrameSeed;
 pub use RecoveryHydrationStub as RecoveryHydration;
 pub use RecoveryRuntimeSummaryStub as RecoveryRuntimeSummary;
