@@ -248,6 +248,12 @@
 #[verifier::external]
 #[path = "production_inner/try_from_parts_production.rs"]
 pub mod production_try_from_parts;
+// Numeric-id and scalar mirrors live in the sibling production_inner
+// file so the mirror above stays under the 800-line source-length
+// limit; `production_try_from_parts` re-exports them.
+#[verifier::external]
+#[path = "production_inner/try_from_parts_production_ids.rs"]
+pub mod production_try_from_parts_ids;
 use vstd::prelude::*;
 
 /// Pins the `production_try_from_parts::CompiledNodeKind` payloads
