@@ -41,7 +41,7 @@
 //   - `RunFrame::slot_count`            <- extern::run_frame_slot_count
 //                                          (mirror of crates/vb_core/src/frame/parts/impl_002_accessors.rs:28-30)
 //   - `RunFrame::pc`                    <- extern::run_frame_pc
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_002_accessors.rs:10-12)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_002_accessors.rs:10-12; returns StepIdx)
 //   - `RunFrame::set_pc`                <- extern::run_frame_set_pc
 //                                          (mirror of crates/vb_core/src/frame/parts/impl_002_accessors.rs:80-86)
 //   - `RunFrame::states_snapshot`       <- extern::run_frame_states_snapshot

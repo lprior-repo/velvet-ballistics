@@ -140,10 +140,10 @@ pub open spec fn spec_cli_exit_code_distinct(
 // (production at `crates/velvet_ballistics/src/cli_envelope.rs:18`). Spec
 // projection is the integer 1; the invariant is `version >= 1`.
 //
-// Drift in the production schema version string would be detected by
-// the `cli_envelope_production.rs` mirror at
-// `verification/verus/production_inner/cli_envelope_production.rs:84`,
-// which is in scope of the broader envelope binding ledger.
+// Drift in the production schema version string is pinned by the
+// `SCHEMA_VERSION` cite above
+// (`crates/velvet_ballistics/src/cli_envelope.rs:18`); no
+// `production_inner` mirror of the CLI envelope exists today.
 pub open spec fn current_schema_version_value() -> int {
     1
 }
