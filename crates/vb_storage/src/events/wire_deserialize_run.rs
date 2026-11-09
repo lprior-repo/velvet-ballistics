@@ -12,6 +12,7 @@ where
         RecordKind::RunAccepted => deserialize_accepted(variant),
         RecordKind::RunAdmission => deserialize_admission(variant),
         RecordKind::RunAdmissionBudget => deserialize_budget_admission(variant),
+        RecordKind::TenantAdmission => deserialize_tenant_admission(variant),
         RecordKind::RunAdmissionBound => deserialize_bound_admission(variant),
         RecordKind::RunAdmissionPinned => deserialize_pinned_admission(variant),
         RecordKind::RunAdmissionBoundPinned => deserialize_pinned_admission_bound(variant),
@@ -81,6 +82,19 @@ where
         granted_capabilities,
         policy,
         budget,
+    })
+}
+
+fn deserialize_tenant_admission<'de, A>(variant: A) -> Result<JournalEvent, A::Error>
+where
+    A: VariantAccess<'de>,
+{
+    let (run, seq, tenant, cost_units) = variant.newtype_variant()?;
+    Ok(JournalEvent::TenantAdmissionEvent {
+        run,
+        seq,
+        tenant,
+        cost_units,
     })
 }
 

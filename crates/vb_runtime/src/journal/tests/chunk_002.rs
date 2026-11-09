@@ -828,3 +828,86 @@ fn storage_event_maps_compat_decision_to_compat_decision_event() {
         } if mapped_run == run && mapped_seq == seq && mapped_decision == decision
     ));
 }
+
+#[test]
+fn storage_event_maps_tenant_admission_to_tenant_admission_event() {
+    let run = RunId::new(204);
+    let seq = EventSeq::new(5);
+    let event = RuntimeJournalEvent::TenantAdmission {
+        run,
+        tenant: vb_core::ids::TenantId::new(7),
+        cost_units: 42,
+    };
+    assert_eq!(event.run_id(), run);
+    assert_eq!(event.kind(), "TenantAdmission");
+    let mapped = StorageRuntimeJournal::storage_event(event, seq).expect("tenant admission maps");
+    assert_eq!(
+        mapped,
+        JournalEvent::TenantAdmissionEvent {
+            run,
+            seq,
+            tenant: vb_core::ids::TenantId::new(7),
+            cost_units: 42,
+        }
+    );
+}
+
+#[test]
+fn tenant_admission_event_needs_tenant_and_budget() {
+    let run = RunId::new(205);
+    let workflow = WorkflowDigest::from_bytes([42; 32]);
+    let budget = vb_core::budget::AggregateResourceBudget {
+        max_steps_executable: 10,
+        max_action_tickets: 1,
+        max_parallel_in_flight: 1,
+        max_retries_per_action: 1,
+        max_gather_pages: 1,
+        max_gather_items: 1,
+        max_for_each_iterations: 1,
+        max_together_branches: 1,
+        max_repeat_attempts: 1,
+        max_run_time_seconds: 10,
+        max_result_bytes: 1,
+        max_total_slots_written: 1,
+        max_timer_entries: 1,
+        max_trace_events: 1,
+        max_queue_depth: 1,
+        max_journal_batch_bytes: 1,
+        max_ipc_payload_bytes: 1,
+        max_blob_bytes: 1,
+        max_input_bytes: 1,
+        max_step_budget_per_tick: 1,
+        max_transitions_per_tick: 1,
+        max_open_gates: 1,
+        max_signal_subscriptions: 1,
+        max_incident_emissions: 1,
+        max_transitions: 1,
+        max_journal_bytes_total: 1,
+        max_value_store_entries: 1,
+        max_cost_units: 42,
+    };
+    let plain = crate::admission::RunAdmission::new(
+        workflow,
+        run,
+        vb_core::capability::CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+    );
+    assert_eq!(super::tenant_admission_event(&plain, run), None);
+    let budgeted = crate::admission::RunAdmission::with_budget(
+        workflow,
+        run,
+        vb_core::capability::CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        budget,
+    );
+    assert_eq!(super::tenant_admission_event(&budgeted, run), None);
+    let tenant_scoped = budgeted.with_tenant(vb_core::ids::TenantId::new(7));
+    assert_eq!(
+        super::tenant_admission_event(&tenant_scoped, run),
+        Some(RuntimeJournalEvent::TenantAdmission {
+            run,
+            tenant: vb_core::ids::TenantId::new(7),
+            cost_units: 42,
+        })
+    );
+}

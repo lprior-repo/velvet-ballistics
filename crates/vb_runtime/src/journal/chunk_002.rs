@@ -144,6 +144,16 @@ impl StorageRuntimeJournal {
             RuntimeJournalEvent::CompatibilityDecision { run, decision } => {
                 Ok(Some(JournalEvent::CompatibilityDecisionEvent { run, seq, decision }))
             }
+            RuntimeJournalEvent::TenantAdmission {
+                run,
+                tenant,
+                cost_units,
+            } => Ok(Some(JournalEvent::TenantAdmissionEvent {
+                run,
+                seq,
+                tenant,
+                cost_units,
+            })),
             RuntimeJournalEvent::RunFailed { run, attempt } => {
                 Ok(Some(JournalEvent::RunFailedEvent { run, seq, attempt }))
             }
@@ -269,6 +279,7 @@ impl StorageRuntimeJournal {
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunAdmission { .. }
             | RuntimeJournalEvent::CompatibilityDecision { .. }
+            | RuntimeJournalEvent::TenantAdmission { .. }
             | RuntimeJournalEvent::RetryCheckpoint { .. }
             | RuntimeJournalEvent::RunFinished { .. }
             | RuntimeJournalEvent::RunFailed { .. }
@@ -348,6 +359,7 @@ impl StorageRuntimeJournal {
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunAdmission { .. }
             | RuntimeJournalEvent::CompatibilityDecision { .. }
+            | RuntimeJournalEvent::TenantAdmission { .. }
             | RuntimeJournalEvent::RetryCheckpoint { .. }
             | RuntimeJournalEvent::RunFinished { .. }
             | RuntimeJournalEvent::RunFailed { .. }
@@ -373,6 +385,7 @@ impl StorageRuntimeJournal {
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunAdmission { .. }
             | RuntimeJournalEvent::CompatibilityDecision { .. }
+            | RuntimeJournalEvent::TenantAdmission { .. }
             | RuntimeJournalEvent::RetryCheckpoint { .. }
             | RuntimeJournalEvent::RunFinished { .. }
             | RuntimeJournalEvent::RunFailed { .. }

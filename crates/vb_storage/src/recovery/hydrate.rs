@@ -809,7 +809,8 @@ fn classify_metadata_event(event: &JournalEvent) -> RecoveryResult<bool> {
         | JournalEvent::PolicyDecisionEvent { .. }
         | JournalEvent::GateDecisionEvent { .. } => Ok(true),
         JournalEvent::GateOpenedEvent { .. } => Ok(true),
-        JournalEvent::CompatibilityDecisionEvent { .. } => Ok(true),
+        JournalEvent::CompatibilityDecisionEvent { .. }
+        | JournalEvent::TenantAdmissionEvent { .. } => Ok(true),
         JournalEvent::ActionScheduled { .. }
         | JournalEvent::ActionScheduledTicket { .. }
         | JournalEvent::ActionCompletedEvent { .. }
