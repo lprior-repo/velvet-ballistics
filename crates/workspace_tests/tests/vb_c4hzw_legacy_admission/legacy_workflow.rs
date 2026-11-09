@@ -1,17 +1,7 @@
+use crate::common::workflow_fixture::node;
 use blake3::Hasher;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
-};
-
-fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(id),
-        kind,
-        output.map(SlotIdx::new),
-        next.map(StepIdx::new),
-    )
-}
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
 
 /// Workflow with genuine Ask step (slot 0), AskResume (slot 1),
 /// Do action (slot 1→2), Finish (slot 2). Three slots.

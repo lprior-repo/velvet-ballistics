@@ -1,36 +1,14 @@
+use crate::common::workflow_fixture::node;
 use std::num::NonZeroUsize;
 
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::action_pack::CapabilityScopeSpec;
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::policy::RuntimePolicy;
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
-};
-use vb_runtime::shard::ShardConfig;
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
 
 pub(super) fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
     NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
-}
-
-pub(super) fn strict_config() -> ShardConfig {
-    ShardConfig {
-        command_queue_capacity: 32,
-        trace_capacity: 64,
-        step_budget_per_tick: 16,
-        max_active_runs: 8,
-        policy: RuntimePolicy::Strict,
-    }
-}
-
-fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(id),
-        kind,
-        output.map(SlotIdx::new),
-        next.map(StepIdx::new),
-    )
 }
 
 pub(super) fn build_workflow() -> Result<CompiledWorkflow, String> {

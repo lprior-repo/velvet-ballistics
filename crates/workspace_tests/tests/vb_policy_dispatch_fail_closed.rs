@@ -7,6 +7,9 @@
 //! real FjallRegister effects (or lack thereof). No fake state or cache
 //! substitutes.
 
+#[path = "common/mod.rs"]
+mod common;
+
 #[path = "vb_policy_dispatch_fail_closed/fixtures.rs"]
 mod fixtures;
 

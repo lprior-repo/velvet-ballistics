@@ -7,6 +7,9 @@
 #[path = "vb_c4hzw_emergency_reopen/oracle.rs"]
 mod oracle;
 
+#[path = "common/mod.rs"]
+mod common;
+
 #[path = "vb_c4hzw_emergency_reopen/fixtures.rs"]
 mod fixtures;
 
@@ -29,7 +32,8 @@ use vb_storage::executor::{ExecutorCatalog, FjallRegister};
 use vb_storage::journal::EmergencyDenyState;
 use vb_storage::{FjallConfig, FjallJournal};
 
-use fixtures::{action_grants, build_contract, build_workflow, scope, shard_count, strict_config};
+use crate::common::runtime_fixture::strict_config;
+use fixtures::{action_grants, build_contract, build_workflow, scope, shard_count};
 use oracle::{admission_pin_from_artifact, compute_expected_input_digest, current_live_configured};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

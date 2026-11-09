@@ -1,5 +1,8 @@
 #![forbid(unsafe_code)]
 
+#[path = "common/mod.rs"]
+mod common;
+
 #[path = "vb_c4hzw_historical_replay/fixtures.rs"]
 mod fixtures;
 
@@ -21,7 +24,8 @@ use vb_storage::executor::{ExecutorCatalog, FjallRegister};
 use vb_storage::journal::EmergencyDenyState;
 use vb_storage::{FjallConfig, FjallJournal};
 
-use fixtures::{action_grants, build_contract, build_workflow, scope, shard_count, strict_config};
+use crate::common::runtime_fixture::strict_config;
+use fixtures::{action_grants, build_contract, build_workflow, scope, shard_count};
 use vb_core::action_pack::RecoveryClass;
 
 fn run_historical_replay_test() -> Result<(), Box<dyn std::error::Error>> {
