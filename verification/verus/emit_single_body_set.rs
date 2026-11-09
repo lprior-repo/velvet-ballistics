@@ -61,7 +61,7 @@
 //   - `emit_single_body_set_projection`     <- extern_emit_single_body_set.rs
 //                                               (mirror of
 //                                                emit_single_body_set decision shape
-//                                                at part_04.rs:96-179)
+//                                                at crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179)
 //
 // ============================================================================
 // UPGRADE FROM PREVIOUS SPEC
