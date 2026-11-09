@@ -18,7 +18,6 @@
 // attaches `assume_specification` to that production decision fn, and
 // each proof fn non-vacuously proves a different structural property of
 // the spec.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
@@ -55,7 +54,6 @@ pub mod prod;
 // this Verus-native type in `Result<..., SpecArtifactEnvelopeError>`
 // positions; the wrapper below converts from the production type
 // (which is opaque to Verus) to this Verus-visible type.
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SpecArtifactEnvelopeError {
     ArtifactNotFound,
@@ -76,7 +74,9 @@ pub enum SpecArtifactEnvelopeError {
 // discriminant. Both enums share the same discriminant set; this
 // function performs a direct mapping.
 #[verifier::external]
-fn convert_artifact_envelope_error(e: prod::ArtifactEnvelopeErrorKind) -> SpecArtifactEnvelopeError {
+fn convert_artifact_envelope_error(
+    e: prod::ArtifactEnvelopeErrorKind,
+) -> SpecArtifactEnvelopeError {
     match e {
         prod::ArtifactEnvelopeErrorKind::ArtifactNotFound => SpecArtifactEnvelopeError::ArtifactNotFound,
         prod::ArtifactEnvelopeErrorKind::PostcardDecodeFailed => SpecArtifactEnvelopeError::PostcardDecodeFailed,
@@ -120,8 +120,7 @@ pub fn proof_matches_prepared_shape(
         idempotency_verified_claimed,
         artifact_digest_matches,
         idempotency_attestation_absent,
-    )
-    .map_err(convert_artifact_envelope_error)
+    ).map_err(convert_artifact_envelope_error)
 }
 
 } // verus!

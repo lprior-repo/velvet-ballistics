@@ -55,7 +55,6 @@
 // recorded as a trusted base in the binding ledger. Each proof below
 // operates on the projection; any divergence between the projection and
 // the production body is a binding debt item tracked outside Verus.
-
 use vstd::prelude::*;
 
 verus! {
@@ -66,19 +65,24 @@ mod production;
 // ============================================================================
 // Re-export the production-bound types and the pure projection
 // ============================================================================
-
 pub use production::{
-    SpecActionOutcomeKind, SpecOutcomeKind, SpecResumeKind, compute_idempotency_key_pure,
-    execute_do_pure_decision, execute_do_without_contract_pure_decision,
-    execute_error_handler_pure_decision, execute_retry_check_pure_decision,
-    resolve_contract_pure_decision, resume_action_outcome_pure_decision,
-    spec_action_outcome_kind_valid, spec_propagate_action_taint,
+    SpecActionOutcomeKind,
+    SpecOutcomeKind,
+    SpecResumeKind,
+    compute_idempotency_key_pure,
+    execute_do_pure_decision,
+    execute_do_without_contract_pure_decision,
+    execute_error_handler_pure_decision,
+    execute_retry_check_pure_decision,
+    resolve_contract_pure_decision,
+    resume_action_outcome_pure_decision,
+    spec_action_outcome_kind_valid,
+    spec_propagate_action_taint,
 };
 
 // ============================================================================
 // Spec predicates (mathematical model used by proofs)
 // ============================================================================
-
 /// Spec predicate: two `SpecOutcomeKind` values agree.
 pub open spec fn spec_outcome_kind_eq(a: SpecOutcomeKind, b: SpecOutcomeKind) -> bool {
     a == b
@@ -211,22 +215,21 @@ pub open spec fn spec_execute_do_deterministic(
         retry_max_attempts,
         read_taint_failed,
         output_taint_cleanable_from_tainted,
+    ) == spec_execute_do_decision(
+        run_id,
+        step,
+        action,
+        input,
+        seq,
+        input_taint_disc,
+        contract_id,
+        contract_idempotency_disc,
+        registry_action_match,
+        all_required_caps_granted,
+        retry_max_attempts,
+        read_taint_failed,
+        output_taint_cleanable_from_tainted,
     )
-        == spec_execute_do_decision(
-            run_id,
-            step,
-            action,
-            input,
-            seq,
-            input_taint_disc,
-            contract_id,
-            contract_idempotency_disc,
-            registry_action_match,
-            all_required_caps_granted,
-            retry_max_attempts,
-            read_taint_failed,
-            output_taint_cleanable_from_tainted,
-        )
 }
 
 // ============================================================================
@@ -237,7 +240,6 @@ pub open spec fn spec_execute_do_deterministic(
 //
 // Each spec fn mirrors the pure projection defined in extern_runtime_execute_do.rs.
 // ============================================================================
-
 /// Spec-side mirror of `execute_do_without_contract_pure_decision`.
 /// Mirrors the production body at crates/vb_runtime/src/engine/action.rs:76-106.
 pub open spec fn spec_execute_do_without_contract_decision(
@@ -358,7 +360,6 @@ pub open spec fn spec_resolve_contract_decision(id_at_index_match: bool) -> bool
 // file; Verus accepts the ensures via `assume_specification` but does not
 // verify the body itself. This matches the binding ledger entry for the
 // fuzz-gap coverage.
-
 pub assume_specification[ production::execute_do_pure_decision ](
     _run_id: u64,
     _step: u32,
@@ -401,7 +402,6 @@ pub assume_specification[ production::execute_do_pure_decision ](
 // crates/vb_runtime/src/engine/action.rs through the pure projection in
 // extern_runtime_execute_do.rs. The Verus-native contract is the spec fn
 // immediately above each bridge.
-
 pub assume_specification[ production::execute_do_without_contract_pure_decision ](
     input_taint_disc: u8,
 ) -> (kind: SpecOutcomeKind)
@@ -417,12 +417,7 @@ pub assume_specification[ production::execute_retry_check_pure_decision ](
     exhausted: u32,
 ) -> (target: u32)
     ensures
-        target == spec_execute_retry_check_decision(
-            current_attempt,
-            max_attempts,
-            body,
-            exhausted,
-        ),
+        target == spec_execute_retry_check_decision(current_attempt, max_attempts, body, exhausted),
 ;
 
 pub assume_specification[ production::execute_error_handler_pure_decision ](
@@ -466,10 +461,11 @@ pub assume_specification[ production::compute_idempotency_key_pure ](
     action: u32,
 ) -> (key: u128)
     ensures
-        // Equality with the spec-mirror arithmetic. The production body
-        // delegates to `compute_action_idempotency_key` which is a
-        // wrapping-multiply-add hash; the projection uses the same
-        // arithmetic. Wrapping modulo 2^128 is implicit in u128 ops.
+// Equality with the spec-mirror arithmetic. The production body
+// delegates to `compute_action_idempotency_key` which is a
+// wrapping-multiply-add hash; the projection uses the same
+// arithmetic. Wrapping modulo 2^128 is implicit in u128 ops.
+
         key as int == spec_compute_idempotency_key_decision(run, seq, action),
 ;
 
@@ -483,7 +479,6 @@ pub assume_specification[ production::resolve_contract_pure_decision ](
 // ============================================================================
 // Production-bound exec fn with requires/ensures
 // ============================================================================
-
 /// Production-bound exec wrapper that exercises the pure projection twice
 /// with identical inputs and asserts the outcome kinds agree.
 ///
@@ -508,9 +503,10 @@ pub exec fn checked_prod_execute_do_deterministic(
     output_taint_cleanable_from_tainted: bool,
 ) -> (outcome: SpecOutcomeKind)
     requires
-        // Taint discriminant must be one of the five documented Taint variants
-        // (0..=4). The production Taint enum is `#[repr(u8)] #[non_exhaustive]`
-        // but the documented variants span 0..=4. We allow 0..=4 here.
+// Taint discriminant must be one of the five documented Taint variants
+// (0..=4). The production Taint enum is `#[repr(u8)] #[non_exhaustive]`
+// but the documented variants span 0..=4. We allow 0..=4 here.
+
         input_taint_disc <= 4,
         // Idempotency discriminant must be one of the three documented
         // variants (0=DeterministicPure, 1=IdempotentExternal,
@@ -520,10 +516,11 @@ pub exec fn checked_prod_execute_do_deterministic(
         // Retry policy capacity must fit in u16 (it is a u16 in production).
         retry_max_attempts <= u16::MAX,
     ensures
-        // Determinism bound: same inputs yield the same outcome kind.
-        // This is the spec-level characterization of the missing fuzz
-        // target: any two invocations with identical scalars produce
-        // identical outcome-kind discriminants.
+// Determinism bound: same inputs yield the same outcome kind.
+// This is the spec-level characterization of the missing fuzz
+// target: any two invocations with identical scalars produce
+// identical outcome-kind discriminants.
+
         outcome == spec_execute_do_decision(
             run_id,
             step,
@@ -616,10 +613,7 @@ pub exec fn checked_spec_propagate_action_taint(
         contract_idempotency_disc <= 2,
         input_taint_disc <= 4,
     ensures
-        cleanable == spec_propagate_action_taint_spec(
-            contract_idempotency_disc,
-            input_taint_disc,
-        ),
+        cleanable == spec_propagate_action_taint_spec(contract_idempotency_disc, input_taint_disc),
         // Tautology from the spec definition: cleanable iff input_taint != 0.
         cleanable == (input_taint_disc != 0),
 {
@@ -634,17 +628,15 @@ pub exec fn checked_spec_propagate_action_taint(
 /// discriminant. (The discriminant set is closed, so the wrapper is
 /// only ever called with valid kinds; this exec fn is the per-kind
 /// witness.)
-pub exec fn checked_spec_action_outcome_kind_valid(
-    kind: SpecActionOutcomeKind,
-) -> (valid: bool)
+pub exec fn checked_spec_action_outcome_kind_valid(kind: SpecActionOutcomeKind) -> (valid: bool)
     ensures
-        // The postcondition ties the wrapper output to the spec-level
-        // predicate, which enumerates the documented discriminant set.
+// The postcondition ties the wrapper output to the spec-level
+// predicate, which enumerates the documented discriminant set.
+
         valid == spec_post_resume_outcome_kind_valid(kind),
         // A refined ensures: every documented variant is classified valid.
-        (kind == SpecActionOutcomeKind::Ready
-            || kind == SpecActionOutcomeKind::Suspended
-            || kind == SpecActionOutcomeKind::Failed) ==> valid,
+        (kind == SpecActionOutcomeKind::Ready || kind == SpecActionOutcomeKind::Suspended || kind
+            == SpecActionOutcomeKind::Failed) ==> valid,
 {
     let v = match kind {
         SpecActionOutcomeKind::Ready => true,
@@ -660,7 +652,6 @@ pub exec fn checked_spec_action_outcome_kind_valid(
 // Production-bound exec wrappers for the 6 remaining production exec fns in
 // crates/vb_runtime/src/engine/action.rs.
 // ============================================================================
-
 /// Production-bound exec wrapper that exercises
 /// `execute_do_without_contract_pure_decision`.
 ///
@@ -668,9 +659,8 @@ pub exec fn checked_spec_action_outcome_kind_valid(
 /// `extern_runtime_execute_do.rs`; the production body of
 /// `execute_do_without_contract` at crates/vb_runtime/src/engine/action.rs:76-106
 /// is documented in the binding ledger but not verified by this file.
-pub exec fn checked_prod_execute_do_without_contract(
-    input_taint_disc: u8,
-) -> (outcome: SpecOutcomeKind)
+pub exec fn checked_prod_execute_do_without_contract(input_taint_disc: u8) -> (outcome:
+    SpecOutcomeKind)
     requires
         input_taint_disc <= 4,
     ensures
@@ -693,12 +683,7 @@ pub exec fn checked_prod_execute_retry_check(
     exhausted: u32,
 ) -> (target: u32)
     ensures
-        target == spec_execute_retry_check_decision(
-            current_attempt,
-            max_attempts,
-            body,
-            exhausted,
-        ),
+        target == spec_execute_retry_check_decision(current_attempt, max_attempts, body, exhausted),
 {
     let first = execute_retry_check_pure_decision(current_attempt, max_attempts, body, exhausted);
     assert(first == spec_execute_retry_check_decision(
@@ -793,11 +778,7 @@ pub exec fn checked_prod_resume_action_outcome(
 /// `compute_idempotency_key_pure`. Mirrors the production body at
 /// crates/vb_runtime/src/engine/action.rs:206-208 and
 /// crates/vb_core/src/action/ticket.rs:25-35.
-pub exec fn checked_prod_compute_idempotency_key(
-    run: u64,
-    seq: u64,
-    action: u32,
-) -> (key: u128)
+pub exec fn checked_prod_compute_idempotency_key(run: u64, seq: u64, action: u32) -> (key: u128)
     ensures
         key as int == spec_compute_idempotency_key_decision(run, seq, action),
 {
@@ -821,7 +802,6 @@ pub exec fn checked_prod_resolve_contract(id_at_index_match: bool) -> (resolved:
 // ============================================================================
 // Non-vacuous proofs
 // ============================================================================
-
 /// Non-vacuous: every documented `SpecOutcomeKind` variant is in the
 /// closed discriminant set. This is the closure witness for the
 /// outcome-kind validity bound.
@@ -935,21 +915,23 @@ pub proof fn proof_deterministic_outcome_kind_valid(
             read_taint_failed,
             output_taint_cleanable_from_tainted,
         ),
-        spec_outcome_kind_valid(spec_execute_do_decision(
-            run_id,
-            step,
-            action,
-            input,
-            seq,
-            input_taint_disc,
-            contract_id,
-            contract_idempotency_disc,
-            registry_action_match,
-            all_required_caps_granted,
-            retry_max_attempts,
-            read_taint_failed,
-            output_taint_cleanable_from_tainted,
-        )),
+        spec_outcome_kind_valid(
+            spec_execute_do_decision(
+                run_id,
+                step,
+                action,
+                input,
+                seq,
+                input_taint_disc,
+                contract_id,
+                contract_idempotency_disc,
+                registry_action_match,
+                all_required_caps_granted,
+                retry_max_attempts,
+                read_taint_failed,
+                output_taint_cleanable_from_tainted,
+            ),
+        ),
 {
     reveal(spec_execute_do_deterministic);
     reveal(spec_execute_do_decision);
@@ -1012,10 +994,8 @@ pub proof fn proof_propagate_action_taint_clean_iff_clean_input(
         contract_idempotency_disc <= 2,
         input_taint_disc <= 4,
     ensures
-        spec_propagate_action_taint_spec(
-            contract_idempotency_disc,
-            input_taint_disc,
-        ) == (input_taint_disc != 0),
+        spec_propagate_action_taint_spec(contract_idempotency_disc, input_taint_disc) == (
+        input_taint_disc != 0),
 {
     reveal(spec_propagate_action_taint_spec);
 }
@@ -1023,7 +1003,6 @@ pub proof fn proof_propagate_action_taint_clean_iff_clean_input(
 // ============================================================================
 // Non-vacuous proofs for the 6 additional production exec wrappers
 // ============================================================================
-
 /// Non-vacuous: every documented `SpecResumeKind` variant is in the
 /// closed discriminant set produced by `resume_action_outcome`.
 pub proof fn proof_resume_kind_closed(kind: SpecResumeKind)
@@ -1048,9 +1027,7 @@ pub proof fn proof_execute_do_without_contract_outcome_valid(input_taint_disc: u
     requires
         input_taint_disc <= 4,
     ensures
-        spec_outcome_kind_valid(
-            spec_execute_do_without_contract_decision(input_taint_disc),
-        ),
+        spec_outcome_kind_valid(spec_execute_do_without_contract_decision(input_taint_disc)),
 {
     reveal(spec_execute_do_without_contract_decision);
     reveal(spec_outcome_kind_valid);
@@ -1065,20 +1042,18 @@ pub proof fn proof_execute_retry_check_branch(
     exhausted: u32,
 )
     ensures
-        current_attempt < max_attempts
-            ==> spec_execute_retry_check_decision(
-                current_attempt,
-                max_attempts,
-                body,
-                exhausted,
-            ) == body,
-        current_attempt >= max_attempts
-            ==> spec_execute_retry_check_decision(
-                current_attempt,
-                max_attempts,
-                body,
-                exhausted,
-            ) == exhausted,
+        current_attempt < max_attempts ==> spec_execute_retry_check_decision(
+            current_attempt,
+            max_attempts,
+            body,
+            exhausted,
+        ) == body,
+        current_attempt >= max_attempts ==> spec_execute_retry_check_decision(
+            current_attempt,
+            max_attempts,
+            body,
+            exhausted,
+        ) == exhausted,
 {
     reveal(spec_execute_retry_check_decision);
 }
@@ -1096,18 +1071,18 @@ pub proof fn proof_execute_error_handler_branch(
     ensures
         (failure_retry_policy_disc == 0 || failure_code_disc != 255)
             ==> spec_execute_error_handler_decision(
-                failure_retry_policy_disc,
-                failure_code_disc,
-                handler,
-                body,
-            ) == handler,
+            failure_retry_policy_disc,
+            failure_code_disc,
+            handler,
+            body,
+        ) == handler,
         (failure_retry_policy_disc != 0 && failure_code_disc == 255)
             ==> spec_execute_error_handler_decision(
-                failure_retry_policy_disc,
-                failure_code_disc,
-                handler,
-                body,
-            ) == body,
+            failure_retry_policy_disc,
+            failure_code_disc,
+            handler,
+            body,
+        ) == body,
 {
     reveal(spec_execute_error_handler_decision);
 }
@@ -1115,14 +1090,7 @@ pub proof fn proof_execute_error_handler_branch(
 /// Non-vacuous: `resume_action_outcome` Ready case maps to Continue.
 pub proof fn proof_resume_ready_is_continue()
     ensures
-        spec_resume_action_outcome_decision(
-            0,
-            0,
-            0,
-            0,
-            false,
-            false,
-        ) == SpecResumeKind::Continue,
+        spec_resume_action_outcome_decision(0, 0, 0, 0, false, false) == SpecResumeKind::Continue,
 {
     reveal(spec_resume_action_outcome_decision);
 }
@@ -1130,43 +1098,25 @@ pub proof fn proof_resume_ready_is_continue()
 /// Non-vacuous: `resume_action_outcome` Suspended case maps to AwaitingAction.
 pub proof fn proof_resume_suspended_is_awaiting()
     ensures
-        spec_resume_action_outcome_decision(
-            1,
-            0,
-            0,
-            0,
-            false,
-            false,
-        ) == SpecResumeKind::AwaitingAction,
+        spec_resume_action_outcome_decision(1, 0, 0, 0, false, false)
+            == SpecResumeKind::AwaitingAction,
 {
     reveal(spec_resume_action_outcome_decision);
 }
 
 /// Non-vacuous: `resume_action_outcome` Failed-retryable-with-capacity maps to AwaitingAction.
-pub proof fn proof_resume_failed_retryable_with_capacity_is_awaiting(
-    attempt: u16,
-    capacity: u16,
-)
+pub proof fn proof_resume_failed_retryable_with_capacity_is_awaiting(attempt: u16, capacity: u16)
     requires
         attempt < capacity,
     ensures
-        spec_resume_action_outcome_decision(
-            2,
-            attempt,
-            capacity,
-            0,
-            false,
-            false,
-        ) == SpecResumeKind::AwaitingAction,
+        spec_resume_action_outcome_decision(2, attempt, capacity, 0, false, false)
+            == SpecResumeKind::AwaitingAction,
 {
     reveal(spec_resume_action_outcome_decision);
 }
 
 /// Non-vacuous: `resume_action_outcome` Failed-retryable-exhausted maps to ErrRetryExhausted.
-pub proof fn proof_resume_failed_retryable_exhausted_is_retry_exhausted(
-    attempt: u16,
-    capacity: u16,
-)
+pub proof fn proof_resume_failed_retryable_exhausted_is_retry_exhausted(attempt: u16, capacity: u16)
     ensures
         spec_resume_action_outcome_decision(
             2,
@@ -1183,14 +1133,8 @@ pub proof fn proof_resume_failed_retryable_exhausted_is_retry_exhausted(
 /// Non-vacuous: `resume_action_outcome` Failed-non-retryable maps to ErrUnsupportedPrimitive.
 pub proof fn proof_resume_failed_non_retryable_is_unsupported()
     ensures
-        spec_resume_action_outcome_decision(
-            2,
-            0,
-            0,
-            1,
-            false,
-            false,
-        ) == SpecResumeKind::ErrUnsupportedPrimitive,
+        spec_resume_action_outcome_decision(2, 0, 0, 1, false, false)
+            == SpecResumeKind::ErrUnsupportedPrimitive,
 {
     reveal(spec_resume_action_outcome_decision);
 }
@@ -1206,11 +1150,7 @@ pub proof fn proof_resolve_contract_matches_id(id_at_index_match: bool)
 /// Non-vacuous: `compute_idempotency_key` is deterministic — two
 /// invocations with identical inputs produce identical keys. The
 /// arithmetic is referentially transparent.
-pub proof fn proof_compute_idempotency_key_deterministic(
-    run: u64,
-    seq: u64,
-    action: u32,
-)
+pub proof fn proof_compute_idempotency_key_deterministic(run: u64, seq: u64, action: u32)
     ensures
         spec_compute_idempotency_key_decision(run, seq, action)
             == spec_compute_idempotency_key_decision(run, seq, action),
@@ -1218,6 +1158,7 @@ pub proof fn proof_compute_idempotency_key_deterministic(
     reveal(spec_compute_idempotency_key_decision);
 }
 
-fn main() {}
+fn main() {
+}
 
 } // verus!

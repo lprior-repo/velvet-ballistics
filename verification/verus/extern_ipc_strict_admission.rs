@@ -46,7 +46,6 @@
 // production behavior the spec proofs discharge. Drift between the
 // mirror and the production source is reported as binding-debt
 // tracked outside Verus.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -71,7 +70,6 @@ verus! {
 pub mod production_inner;
 
 } // verus!
-
 // Re-export the production types and exec wrappers so the spec file
 // can reference them via `crate::production::*`. The mirror module
 // is included inside `verus!` so the type declarations are nameable

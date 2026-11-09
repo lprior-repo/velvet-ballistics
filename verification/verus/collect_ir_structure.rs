@@ -154,7 +154,6 @@
 //        -> pre_slot_count + 3 + body_len > u16::MAX produces
 //           ok=false and error_kind=SPEC_ERR_SLOT_RANGE with 0
 //           emitted nodes.
-
 use vstd::prelude::*;
 
 verus! {
@@ -180,7 +179,6 @@ pub use production::{
 // ============================================================================
 // Spec-side constants and predicates
 // ============================================================================
-
 pub open spec fn u16_max() -> int {
     65535
 }
@@ -212,9 +210,8 @@ pub open spec fn spec_collect_ir_ok(
     body_node_count: int,
     pre_slot_count: int,
 ) -> bool {
-    body_len >= 1 && id + 1 <= u16_max() && body_len + 1 <= u16_max()
-        && id + body_len + 1 <= u16_max() && body_len + 2 <= u16_max()
-        && id + body_len + 2 <= u16_max()
+    body_len >= 1 && id + 1 <= u16_max() && body_len + 1 <= u16_max() && id + body_len + 1
+        <= u16_max() && body_len + 2 <= u16_max() && id + body_len + 2 <= u16_max()
         && pre_slot_count + 3 + body_len <= u16_max()
 }
 
@@ -272,13 +269,10 @@ pub open spec fn collect_ir_inputs_valid(
     body_node_count: int,
     pre_slot_count: int,
 ) -> bool {
-    bounded_u16(id) && id + body_len + 2 <= u16_max() && body_len >= 1
-        && body_len + 1 <= u16_max() && body_len + 2 <= u16_max()
-        && body_len <= body_node_count && bounded_u16(body_node_count)
-        && bounded_u16(source) && 1 <= limit && limit <= u32_max()
-        && 1 <= page_size && page_size <= u32_max()
-        && bounded_u16(pre_slot_count)
-        && pre_slot_count + 3 + body_len <= u16_max()
+    bounded_u16(id) && id + body_len + 2 <= u16_max() && body_len >= 1 && body_len + 1 <= u16_max()
+        && body_len + 2 <= u16_max() && body_len <= body_node_count && bounded_u16(body_node_count)
+        && bounded_u16(source) && 1 <= limit && limit <= u32_max() && 1 <= page_size && page_size
+        <= u32_max() && bounded_u16(pre_slot_count) && pre_slot_count + 3 + body_len <= u16_max()
 }
 
 // ============================================================================
@@ -310,7 +304,6 @@ pub open spec fn collect_ir_inputs_valid(
 //
 // The failure path zeros out all node fields and sets
 // emitted_node_count = 0.
-
 pub open spec fn spec_collect_ir_outcome(
     id: int,
     source: int,
@@ -656,7 +649,6 @@ pub open spec fn spec_collect_ir_outcome(
 // arms are stated separately so the contract is exact on both paths:
 // on failure every node field is zero, unlike the pre-split bridge,
 // which stated success-path field values unconditionally.
-
 pub assume_specification[ production::lower_bounded_collect_ir_projection ](
     id: StepIdx,
     source: SlotIdx,
@@ -680,8 +672,7 @@ pub assume_specification[ production::lower_bounded_collect_ir_projection ](
                     pre_slot_count as int,
                 )
                 &&& outcome.pre_slot_count == pre_slot_count
-                &&& outcome.post_slot_count as int
-                    == pre_slot_count as int + 3 + body_len as int
+                &&& outcome.post_slot_count as int == pre_slot_count as int + 3 + body_len as int
                 &&& outcome.emitted_node_count as int == body_node_count as int + 3
                 &&& outcome.collector_slot as int == pre_slot_count as int + 1
                 &&& outcome.finish_slot as int == pre_slot_count as int + 2
@@ -694,8 +685,8 @@ pub assume_specification[ production::lower_bounded_collect_ir_projection ](
                 &&& outcome.body_first_step_id as int == id.0 as int + 1
                 &&& outcome.body_last_step_id as int == id.0 as int + body_len as int
                 &&& outcome.body_first_output_slot as int == pre_slot_count as int + 3
-                &&& outcome.body_last_output_slot as int
-                    == pre_slot_count as int + 3 + body_len as int - 1
+                &&& outcome.body_last_output_slot as int == pre_slot_count as int + 3
+                    + body_len as int - 1
                 &&& outcome.next_step_id as int == id.0 as int + body_len as int + 1
                 &&& outcome.next_collector_slot == outcome.collector_slot
                 &&& outcome.next_body_id as int == id.0 as int + 1
@@ -765,7 +756,6 @@ pub assume_specification[ production::lower_bounded_collect_ir_projection ](
 // The wrapper body carries explicit `assert(...)` calls to discharge
 // the assume_specification contract — Verus requires the contract to
 // be unfolded before the ensures clause can be verified.
-
 /// Production-bound exec wrapper for `lower_bounded_collect`.
 /// Requires the production preconditions for the success path:
 ///   - id + body_len + 2 fits in u16 (so checked_step_offset for
@@ -812,8 +802,7 @@ pub exec fn checked_prod_lower_bounded_collect_ir(
         outcome.body_first_step_id as int == id.0 as int + 1,
         outcome.body_last_step_id as int == id.0 as int + body_len as int,
         outcome.body_first_output_slot as int == pre_slot_count as int + 3,
-        outcome.body_last_output_slot as int
-            == pre_slot_count as int + 3 + body_len as int - 1,
+        outcome.body_last_output_slot as int == pre_slot_count as int + 3 + body_len as int - 1,
         // CollectNext node
         outcome.next_step_id as int == id.0 as int + body_len as int + 1,
         outcome.next_collector_slot == outcome.collector_slot,
@@ -852,8 +841,7 @@ pub exec fn checked_prod_lower_bounded_collect_ir(
     assert(outcome.body_first_step_id as int == id.0 as int + 1);
     assert(outcome.body_last_step_id as int == id.0 as int + body_len as int);
     assert(outcome.body_first_output_slot as int == pre_slot_count as int + 3);
-    assert(outcome.body_last_output_slot as int
-        == pre_slot_count as int + 3 + body_len as int - 1);
+    assert(outcome.body_last_output_slot as int == pre_slot_count as int + 3 + body_len as int - 1);
     assert(outcome.next_step_id as int == id.0 as int + body_len as int + 1);
     assert(outcome.next_collector_slot == outcome.collector_slot);
     assert(outcome.next_body_id as int == id.0 as int + 1);
@@ -881,9 +869,7 @@ pub exec fn checked_prod_lower_bounded_collect_ir(
 // projection and the `checked_prod_lower_bounded_collect_ir` exec
 // wrapper above, which together establish that the production
 // projection returns exactly this spec outcome on the success path.
-
 // ---------- L1: Node IDs ----------
-
 /// PO-012 / L1: The emitted node ids are id (CollectStart), id+1 ..
 /// id+body_len (body), id+body_len+1 (CollectNext), id+body_len+2
 /// (CollectFinish). This matches the production
@@ -999,7 +985,6 @@ pub proof fn lemma_collect_node_ids(
 }
 
 // ---------- L2: Node 0 is CollectStart with correct fields ----------
-
 /// PO-012 / L2: Node 0 is `CompiledNodeKind::CollectStart` with
 /// source/limit/page_size from the inputs, body=id+1,
 /// done=id+body_len+2, and output slot collector_slot.
@@ -1099,7 +1084,6 @@ pub proof fn lemma_node_0_is_collect_start(
 }
 
 // ---------- L3: Body nodes occupy ids id+1 .. id+body_len ----------
-
 /// PO-012 / L3: Body nodes occupy consecutive ids id+1 ..
 /// id+body_len with output slots pre_slot_count+3 ..
 /// pre_slot_count+3+body_len-1. Body node kinds vary with the body
@@ -1165,7 +1149,6 @@ pub proof fn lemma_body_nodes(
 }
 
 // ---------- L4: CollectNext node with correct fields ----------
-
 /// PO-012 / L4: The CollectNext node is at id+body_len+1 with
 /// collector_slot, body=id+1, done=id+body_len+2.
 pub proof fn lemma_node_next_is_collect_next(
@@ -1245,7 +1228,6 @@ pub proof fn lemma_node_next_is_collect_next(
 }
 
 // ---------- L5: CollectFinish node with correct fields ----------
-
 /// PO-012 / L5: The CollectFinish node is at id+body_len+2 with
 /// collector_slot and output slot finish_slot.
 pub proof fn lemma_node_finish_is_collect_finish(
@@ -1316,7 +1298,6 @@ pub proof fn lemma_node_finish_is_collect_finish(
 }
 
 // ---------- L6: Emission count is exactly 3 + body_node_count ----------
-
 /// PO-012 / L6: The total node count is exactly 3 + body_node_count
 /// on the success path (CollectStart + body emission + CollectNext +
 /// CollectFinish).
@@ -1362,7 +1343,6 @@ pub proof fn lemma_collect_node_count(
 }
 
 // ---------- L7: Slot count delta is exactly +3+body_len ----------
-
 /// PO-012 / L7: The slot count delta is exactly +3+body_len on the
 /// success path (one `record_slot(source)` plus two `allocate_slot`
 /// calls plus one per body step, under the fresh-source assumption).
@@ -1425,7 +1405,6 @@ pub proof fn lemma_collect_slot_delta(
 }
 
 // ---------- L8: Full emission chain ----------
-
 /// PO-012 / L8: Full emission chain — all nodes are emitted with the
 /// documented kinds and field values, the slot count increases by
 /// exactly 3+body_len, and the emission succeeds. Conjunction of
@@ -1450,7 +1429,8 @@ pub proof fn lemma_collect_full_emission_chain(
             pre_slot_count,
         ),
     ensures
-        // ok + counts
+// ok + counts
+
         spec_collect_ir_outcome(
             id,
             source,
@@ -1744,7 +1724,6 @@ pub proof fn lemma_collect_full_emission_chain(
 }
 
 // ---------- Failure-path proofs ----------
-
 /// PO-012 / F1: If id + 1 overflows u16, the projection returns
 /// `ok = false` with `error_kind = SPEC_ERR_LIMIT_EXCEEDED` and emits
 /// no nodes. This matches the production's

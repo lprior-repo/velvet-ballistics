@@ -45,7 +45,6 @@
 //                               for CliExitCode` at exit_code.rs:63-68
 //
 // Source: vb-diagnostic-envelope proof-obligations.planned.jsonl
-
 #[path = "extern_diagnostic_envelope_verus.rs"]
 mod production;
 
@@ -68,7 +67,6 @@ verus! {
 // wrapper IS the external type, so it can appear in
 // `assume_specification` bridge parameter lists and exec wrapper
 // signatures.
-
 /// External type specification bridge for the production
 /// `CoreError` enum declared in the mirror module
 /// `production::production_exit_code`.
@@ -127,7 +125,10 @@ pub open spec fn spec_cli_exit_code_in_range_0_to_8(code: production::CliExitCod
 /// discriminants iff they are distinct variants. Mirrors the
 /// production test `all_variants_are_distinct` at
 /// `crates/velvet_ballistics/src/exit_code.rs:136-153`.
-pub open spec fn spec_cli_exit_code_distinct(code1: production::CliExitCode, code2: production::CliExitCode) -> bool {
+pub open spec fn spec_cli_exit_code_distinct(
+    code1: production::CliExitCode,
+    code2: production::CliExitCode,
+) -> bool {
     spec_cli_exit_code_discriminant(code1) != spec_cli_exit_code_discriminant(code2)
 }
 
@@ -143,7 +144,9 @@ pub open spec fn spec_cli_exit_code_distinct(code1: production::CliExitCode, cod
 // the `cli_envelope_production.rs` mirror at
 // `verification/verus/production_inner/cli_envelope_production.rs:84`,
 // which is in scope of the broader envelope binding ledger.
-pub open spec fn current_schema_version_value() -> int { 1 }
+pub open spec fn current_schema_version_value() -> int {
+    1
+}
 
 /// Spec invariant: schema version is at least 1 (INV-005).
 pub open spec fn spec_schema_version_valid(version: int) -> bool {
@@ -164,9 +167,8 @@ pub open spec fn spec_schema_version_valid(version: int) -> bool {
 // production repr(u8) tag for the input variant. Mirrors the
 // production body of `From<CliExitCode> for u8` at
 // `crates/velvet_ballistics/src/exit_code.rs:42-53`.
-pub assume_specification[ production::cli_exit_code_to_u8 ](
-    code: production::CliExitCode,
-) -> (r: u8)
+pub assume_specification[ production::cli_exit_code_to_u8 ](code: production::CliExitCode) -> (r:
+    u8)
     ensures
         r == spec_cli_exit_code_discriminant(code),
         spec_cli_exit_code_in_range_0_to_8(code),
@@ -209,7 +211,6 @@ pub assume_specification[ production::journal_error_to_cli_exit_code ](
 // projection and assert the spec relationship holds. The proof
 // lemmas below then reason about the production discriminant
 // properties using the bridge contracts' postconditions as premises.
-
 // Exec wrapper: `cli_exit_code_to_u8(code)` returns the spec
 // discriminant (which equals the production repr(u8) tag).
 pub exec fn exec_proof_u8_from_cli_exit_code_in_range(code: production::CliExitCode) -> (r: u8)
@@ -264,12 +265,12 @@ pub exec fn exec_proof_journal_error_maps_to_storage_error(
 // invoke the production exec fn directly. Instead, the exec
 // wrappers above discharge the bridge contracts, and the lemmas use
 // the bridge contracts' postconditions as their premises.
-
 /// Lemma: every `CliExitCode` discriminant is in the public range
 /// 0..=8 (INV-001). Discharged by case analysis on
 /// `spec_cli_exit_code_discriminant`.
 pub proof fn lemma_cli_exit_code_in_range_0_to_8(code: production::CliExitCode)
-    ensures spec_cli_exit_code_in_range_0_to_8(code),
+    ensures
+        spec_cli_exit_code_in_range_0_to_8(code),
 {
     // The match expression in spec_cli_exit_code_discriminant covers
     // all 9 production variants and returns an integer in [0, 8].
@@ -283,27 +284,75 @@ pub proof fn lemma_cli_exit_code_in_range_0_to_8(code: production::CliExitCode)
 /// `all_variants_are_distinct` at exit_code.rs:136-153.
 pub proof fn lemma_cli_exit_codes_distinct()
     ensures
-        spec_cli_exit_code_distinct(production::CliExitCode::Success, production::CliExitCode::RuntimeFailed),
-        spec_cli_exit_code_distinct(production::CliExitCode::RuntimeFailed, production::CliExitCode::ValidationFailed),
-        spec_cli_exit_code_distinct(production::CliExitCode::ValidationFailed, production::CliExitCode::CompileFailed),
-        spec_cli_exit_code_distinct(production::CliExitCode::CompileFailed, production::CliExitCode::VerificationFailed),
-        spec_cli_exit_code_distinct(production::CliExitCode::VerificationFailed, production::CliExitCode::StorageError),
-        spec_cli_exit_code_distinct(production::CliExitCode::StorageError, production::CliExitCode::IpcError),
-        spec_cli_exit_code_distinct(production::CliExitCode::IpcError, production::CliExitCode::ActionPolicyError),
-        spec_cli_exit_code_distinct(production::CliExitCode::ActionPolicyError, production::CliExitCode::ReplayDivergence),
+        spec_cli_exit_code_distinct(
+            production::CliExitCode::Success,
+            production::CliExitCode::RuntimeFailed,
+        ),
+        spec_cli_exit_code_distinct(
+            production::CliExitCode::RuntimeFailed,
+            production::CliExitCode::ValidationFailed,
+        ),
+        spec_cli_exit_code_distinct(
+            production::CliExitCode::ValidationFailed,
+            production::CliExitCode::CompileFailed,
+        ),
+        spec_cli_exit_code_distinct(
+            production::CliExitCode::CompileFailed,
+            production::CliExitCode::VerificationFailed,
+        ),
+        spec_cli_exit_code_distinct(
+            production::CliExitCode::VerificationFailed,
+            production::CliExitCode::StorageError,
+        ),
+        spec_cli_exit_code_distinct(
+            production::CliExitCode::StorageError,
+            production::CliExitCode::IpcError,
+        ),
+        spec_cli_exit_code_distinct(
+            production::CliExitCode::IpcError,
+            production::CliExitCode::ActionPolicyError,
+        ),
+        spec_cli_exit_code_distinct(
+            production::CliExitCode::ActionPolicyError,
+            production::CliExitCode::ReplayDivergence,
+        ),
 {
     // All 9 variants map to distinct integers 0..=8 by the match
     // expression in spec_cli_exit_code_discriminant. The bridge
     // contract on cli_exit_code_to_u8 (above) confirms the spec
     // mapping equals the production repr(u8) tags.
-    assert(spec_cli_exit_code_distinct(production::CliExitCode::Success, production::CliExitCode::RuntimeFailed));
-    assert(spec_cli_exit_code_distinct(production::CliExitCode::RuntimeFailed, production::CliExitCode::ValidationFailed));
-    assert(spec_cli_exit_code_distinct(production::CliExitCode::ValidationFailed, production::CliExitCode::CompileFailed));
-    assert(spec_cli_exit_code_distinct(production::CliExitCode::CompileFailed, production::CliExitCode::VerificationFailed));
-    assert(spec_cli_exit_code_distinct(production::CliExitCode::VerificationFailed, production::CliExitCode::StorageError));
-    assert(spec_cli_exit_code_distinct(production::CliExitCode::StorageError, production::CliExitCode::IpcError));
-    assert(spec_cli_exit_code_distinct(production::CliExitCode::IpcError, production::CliExitCode::ActionPolicyError));
-    assert(spec_cli_exit_code_distinct(production::CliExitCode::ActionPolicyError, production::CliExitCode::ReplayDivergence));
+    assert(spec_cli_exit_code_distinct(
+        production::CliExitCode::Success,
+        production::CliExitCode::RuntimeFailed,
+    ));
+    assert(spec_cli_exit_code_distinct(
+        production::CliExitCode::RuntimeFailed,
+        production::CliExitCode::ValidationFailed,
+    ));
+    assert(spec_cli_exit_code_distinct(
+        production::CliExitCode::ValidationFailed,
+        production::CliExitCode::CompileFailed,
+    ));
+    assert(spec_cli_exit_code_distinct(
+        production::CliExitCode::CompileFailed,
+        production::CliExitCode::VerificationFailed,
+    ));
+    assert(spec_cli_exit_code_distinct(
+        production::CliExitCode::VerificationFailed,
+        production::CliExitCode::StorageError,
+    ));
+    assert(spec_cli_exit_code_distinct(
+        production::CliExitCode::StorageError,
+        production::CliExitCode::IpcError,
+    ));
+    assert(spec_cli_exit_code_distinct(
+        production::CliExitCode::IpcError,
+        production::CliExitCode::ActionPolicyError,
+    ));
+    assert(spec_cli_exit_code_distinct(
+        production::CliExitCode::ActionPolicyError,
+        production::CliExitCode::ReplayDivergence,
+    ));
 }
 
 /// Lemma: the 9 production `CliExitCode` variants cover the full
@@ -340,19 +389,21 @@ pub proof fn lemma_cli_exit_codes_cover_full_range()
 // =============================================================================
 // Spec proof lemmas — schema-version invariant (INV-005)
 // =============================================================================
-
 /// Lemma: schema version 1 is valid (INV-005). Discharged by the
 /// arithmetic fact that 1 >= 1.
 pub proof fn lemma_schema_version_valid(version: int)
-    requires version >= 1,
-    ensures spec_schema_version_valid(version),
+    requires
+        version >= 1,
+    ensures
+        spec_schema_version_valid(version),
 {
     assert(spec_schema_version_valid(version));
 }
 
 /// Lemma: the current schema version value 1 is valid (INV-005).
 pub proof fn lemma_current_schema_version_valid()
-    ensures spec_schema_version_valid(current_schema_version_value()),
+    ensures
+        spec_schema_version_valid(current_schema_version_value()),
 {
     assert(spec_schema_version_valid(current_schema_version_value()));
 }
@@ -360,17 +411,18 @@ pub proof fn lemma_current_schema_version_valid()
 // =============================================================================
 // Composed invariant — exit-code surface is bounded and closed (INV-001)
 // =============================================================================
-
 /// Composed lemma: every `CliExitCode` value satisfies the bounded
 /// discriminant invariant. This is the unified INV-001 discharge
 /// witness, delegating to `lemma_cli_exit_code_in_range_0_to_8`.
 pub proof fn lemma_cli_exit_code_invariants(code: production::CliExitCode)
-    ensures spec_cli_exit_code_in_range_0_to_8(code),
+    ensures
+        spec_cli_exit_code_in_range_0_to_8(code),
 {
     // Lemma 1: discriminant is in [0, 8] by case analysis.
     lemma_cli_exit_code_in_range_0_to_8(code);
 }
 
-fn main() {}
+fn main() {
+}
 
 } // verus!

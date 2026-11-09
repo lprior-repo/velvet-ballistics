@@ -45,7 +45,6 @@
 //   - production::EngineError::StepCounterOverflow <- crates/vb_core/src/errors.rs:241
 //
 // Source: vb-qi37.2.5 proof-obligations.planned.jsonl VERUS-INV-001
-
 #[path = "extern_signals_invariant.rs"]
 mod production;
 
@@ -80,7 +79,6 @@ verus! {
 // the same type when the bridge is present, so spec contracts can
 // use either name; this spec uses `production::StepBudget` directly
 // throughout.
-
 /// Spec-mode alias for the mirror `StepBudget` struct at
 /// `production_inner/signals_production.rs` (verbatim mirror of
 /// production `StepBudget` at signals.rs:13-16). The mirror struct
@@ -93,7 +91,6 @@ pub struct ExStepBudget(production::StepBudget);
 // =============================================================================
 // Spec constants
 // =============================================================================
-
 /// Spec-side projection of the production `MAX_STEP_BUDGET` u64 constant
 /// (production at `crates/vb_core/src/limits.rs:94 = 10_000`).
 #[allow(non_upper_case_globals)]
@@ -107,7 +104,6 @@ pub open spec fn max_step_budget() -> int {
 // =============================================================================
 // Spec invariants and functions (production-anchored via assume_specification)
 // =============================================================================
-
 /// The StepBudget invariant: remaining is always in [0, MAX_STEP_BUDGET].
 pub open spec fn spec_step_budget_invariant(remaining: int) -> bool {
     0 <= remaining && remaining <= max_step_budget()
@@ -151,16 +147,14 @@ pub open spec fn spec_try_take(remaining: int) -> (bool, int) {
 // verbatim mirror impls (with `#[verifier::external]` bodies). The
 // spec proofs below exercise the contracts via exec fns that call
 // the mirror methods directly.
-
 /// Bridge contract: `production::StepBudget::new(v)` returns a
 /// StepBudget whose `remaining` field equals `min(v,
 /// MAX_STEP_BUDGET)` and satisfies the bounded invariant.
 ///
 /// Mirrors the production body at
 /// `crates/vb_core/src/engine/signals.rs:27-35`.
-pub assume_specification[ production::StepBudget::new ](
-    value: u64,
-) -> (budget: production::StepBudget)
+pub assume_specification[ production::StepBudget::new ](value: u64) -> (budget:
+    production::StepBudget)
     ensures
         budget.remaining as int == spec_new(value as int),
         spec_step_budget_invariant(budget.remaining as int),
@@ -188,14 +182,13 @@ pub assume_specification[ production::StepBudget::try_take ](
         spec_step_budget_invariant(old(budget).remaining as int),
     ensures
         match r {
-            Ok(true) =>
-                old(budget).remaining as int > 0
-                && final(budget).remaining as int == old(budget).remaining as int - 1,
-            Ok(false) =>
-                old(budget).remaining as int == 0
-                && final(budget).remaining as int == old(budget).remaining as int,
-            Err(_) =>
-                old(budget).remaining as int > max_step_budget()
+            Ok(true) => old(budget).remaining as int > 0 && final(budget).remaining as int == old(
+                budget,
+            ).remaining as int - 1,
+            Ok(false) => old(budget).remaining as int == 0 && final(budget).remaining as int == old(
+                budget,
+            ).remaining as int,
+            Err(_) => old(budget).remaining as int > max_step_budget()
                 && final(budget).remaining as int == old(budget).remaining as int,
         },
         spec_step_budget_invariant(final(budget).remaining as int),
@@ -224,7 +217,6 @@ pub assume_specification[ production::StepBudget::remaining ](
 // in the next section exercise the contract through actual
 // `production::StepBudget::*` calls, completing the production
 // binding.
-
 /// proof_remaining_bounded: After construction, remaining is always in
 /// [0, MAX_STEP_BUDGET]. Discharged by the production-bound contract on
 /// `production::StepBudget::new` and the spec function `spec_new`.
@@ -356,7 +348,6 @@ pub proof fn proof_try_take_never_increases(remaining: int)
 // proofs above are not just abstract reasoning over `spec_try_take`
 // — they reason over the production behavior of
 // `production::StepBudget::try_take` and `::new`.
-
 /// Exec proof: `production::StepBudget::new(value)` produces a
 /// StepBudget whose `remaining` field equals `min(value,
 /// MAX_STEP_BUDGET)`.
@@ -394,6 +385,7 @@ pub fn exec_proof_step_budget_try_take(initial: u64) -> (budget: production::Ste
     budget
 }
 
-fn main() {}
+fn main() {
+}
 
 } // verus!

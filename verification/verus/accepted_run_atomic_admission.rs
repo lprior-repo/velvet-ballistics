@@ -30,7 +30,6 @@
 //     prepared shape by recompute-and-compare, any deviation returned as
 //     ArtifactEvidenceInvalid
 //     (crates/vb_runtime/src/admission/registered_verification.rs:5-28).
-
 use vstd::prelude::*;
 
 verus! {
@@ -41,7 +40,6 @@ mod production;
 // ============================================================
 // Production-bound exec fns (mirror production decision fns)
 // ============================================================
-
 // Production decision fn: is_strict_accepted_artifact_tag mirrors the
 // strict admission tag check at
 // vb_storage::admission::submit_artifact_with_contracts strict branch.
@@ -49,7 +47,10 @@ pub fn is_strict_accepted_artifact_tag(tag: production::PayloadTag) -> bool {
     production::is_strict_accepted_artifact_tag(tag)
 }
 
-pub fn all_required_gates_accepted(gate_count: u8, all_required_gate_proofs_accepted: bool) -> bool {
+pub fn all_required_gates_accepted(
+    gate_count: u8,
+    all_required_gate_proofs_accepted: bool,
+) -> bool {
     production::all_required_gates_accepted(gate_count, all_required_gate_proofs_accepted)
 }
 
@@ -95,7 +96,12 @@ pub fn valid_commit_input(
     )
 }
 
-pub fn bind_accepted_at_seq(artifact_run: i64, event_run: i64, accepted_at_seq: i64, run_accepted_seq: i64) -> bool {
+pub fn bind_accepted_at_seq(
+    artifact_run: i64,
+    event_run: i64,
+    accepted_at_seq: i64,
+    run_accepted_seq: i64,
+) -> bool {
     production::bind_accepted_at_seq(artifact_run, event_run, accepted_at_seq, run_accepted_seq)
 }
 
@@ -105,7 +111,12 @@ pub fn required_index_preconditions(
     workflow_points_to_run: bool,
     action_points_to_run: bool,
 ) -> bool {
-    production::required_index_preconditions(committed, status_points_to_run, workflow_points_to_run, action_points_to_run)
+    production::required_index_preconditions(
+        committed,
+        status_points_to_run,
+        workflow_points_to_run,
+        action_points_to_run,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -116,17 +127,18 @@ pub fn required_index_preconditions(
 // in `production_inner/accepted_run_atomic_admission_production.rs`.
 // The body of each extern fn is opaque to Verus; the spec proofs
 // below exercise the contracts via the exec wrappers above.
-
 pub assume_specification[ production::is_strict_accepted_artifact_tag ](
     tag: production::PayloadTag,
 ) -> (r: bool)
     ensures
-        r == spec_strict_payload_is_accepted_artifact(match tag {
-            production::PayloadTag::AcceptedArtifact => SpecPayloadTag::AcceptedArtifact,
-            production::PayloadTag::RawWorkflowParts => SpecPayloadTag::RawWorkflowParts,
-            production::PayloadTag::LegacyCompiledIr => SpecPayloadTag::LegacyCompiledIr,
-            production::PayloadTag::Malformed => SpecPayloadTag::Malformed,
-        }),
+        r == spec_strict_payload_is_accepted_artifact(
+            match tag {
+                production::PayloadTag::AcceptedArtifact => SpecPayloadTag::AcceptedArtifact,
+                production::PayloadTag::RawWorkflowParts => SpecPayloadTag::RawWorkflowParts,
+                production::PayloadTag::LegacyCompiledIr => SpecPayloadTag::LegacyCompiledIr,
+                production::PayloadTag::Malformed => SpecPayloadTag::Malformed,
+            },
+        ),
 ;
 
 pub assume_specification[ production::all_required_gates_accepted ](
@@ -214,7 +226,6 @@ pub assume_specification[ production::required_index_preconditions ](
 // ============================================================
 // Spec mirrors
 // ============================================================
-
 pub enum SpecPayloadTag {
     AcceptedArtifact,
     RawWorkflowParts,
@@ -349,14 +360,30 @@ pub open spec fn spec_outcome_is_err(outcome: SpecAdmissionOutcome) -> bool {
 
 pub open spec fn spec_admission_outcome(cause: SpecFailureCause) -> SpecAdmissionOutcome {
     match cause {
-        SpecFailureCause::InvalidAcceptedArtifact => SpecAdmissionOutcome::Err(SpecAdmissionError::InvalidAcceptedArtifact),
-        SpecFailureCause::InconsistentAdmissionInput => SpecAdmissionOutcome::Err(SpecAdmissionError::InconsistentAdmissionInput),
-        SpecFailureCause::BatchStageFailed => SpecAdmissionOutcome::Err(SpecAdmissionError::BatchStageFailed),
-        SpecFailureCause::BatchCommitFailed => SpecAdmissionOutcome::Err(SpecAdmissionError::BatchCommitFailed),
-        SpecFailureCause::PartialVisibilityDetected => SpecAdmissionOutcome::Err(SpecAdmissionError::PartialVisibilityDetected),
-        SpecFailureCause::SequenceBindingFailed => SpecAdmissionOutcome::Err(SpecAdmissionError::SequenceBindingFailed),
-        SpecFailureCause::StrictRawWorkflowPartsRejected => SpecAdmissionOutcome::Err(SpecAdmissionError::StrictRawWorkflowPartsRejected),
-        SpecFailureCause::IndexDerivationFailed => SpecAdmissionOutcome::Err(SpecAdmissionError::IndexDerivationFailed),
+        SpecFailureCause::InvalidAcceptedArtifact => SpecAdmissionOutcome::Err(
+            SpecAdmissionError::InvalidAcceptedArtifact,
+        ),
+        SpecFailureCause::InconsistentAdmissionInput => SpecAdmissionOutcome::Err(
+            SpecAdmissionError::InconsistentAdmissionInput,
+        ),
+        SpecFailureCause::BatchStageFailed => SpecAdmissionOutcome::Err(
+            SpecAdmissionError::BatchStageFailed,
+        ),
+        SpecFailureCause::BatchCommitFailed => SpecAdmissionOutcome::Err(
+            SpecAdmissionError::BatchCommitFailed,
+        ),
+        SpecFailureCause::PartialVisibilityDetected => SpecAdmissionOutcome::Err(
+            SpecAdmissionError::PartialVisibilityDetected,
+        ),
+        SpecFailureCause::SequenceBindingFailed => SpecAdmissionOutcome::Err(
+            SpecAdmissionError::SequenceBindingFailed,
+        ),
+        SpecFailureCause::StrictRawWorkflowPartsRejected => SpecAdmissionOutcome::Err(
+            SpecAdmissionError::StrictRawWorkflowPartsRejected,
+        ),
+        SpecFailureCause::IndexDerivationFailed => SpecAdmissionOutcome::Err(
+            SpecAdmissionError::IndexDerivationFailed,
+        ),
     }
 }
 
@@ -379,7 +406,6 @@ pub open spec fn spec_error_classifies_failure(
 // ============================================================
 // Non-vacuous proofs
 // ============================================================
-
 // Non-vacuous: derives each required-family conjunct from spec_valid_commit_input.
 pub proof fn proof_valid_input_has_required_families(
     same_run: bool,
@@ -546,10 +572,16 @@ pub proof fn proof_error_taxonomy_exhaustive(cause: SpecFailureCause)
     reveal(spec_outcome_is_err);
     match cause {
         SpecFailureCause::InvalidAcceptedArtifact => {
-            assert(spec_error_classifies_failure(cause, SpecAdmissionError::InvalidAcceptedArtifact));
+            assert(spec_error_classifies_failure(
+                cause,
+                SpecAdmissionError::InvalidAcceptedArtifact,
+            ));
         },
         SpecFailureCause::InconsistentAdmissionInput => {
-            assert(spec_error_classifies_failure(cause, SpecAdmissionError::InconsistentAdmissionInput));
+            assert(spec_error_classifies_failure(
+                cause,
+                SpecAdmissionError::InconsistentAdmissionInput,
+            ));
         },
         SpecFailureCause::BatchStageFailed => {
             assert(spec_error_classifies_failure(cause, SpecAdmissionError::BatchStageFailed));
@@ -558,13 +590,19 @@ pub proof fn proof_error_taxonomy_exhaustive(cause: SpecFailureCause)
             assert(spec_error_classifies_failure(cause, SpecAdmissionError::BatchCommitFailed));
         },
         SpecFailureCause::PartialVisibilityDetected => {
-            assert(spec_error_classifies_failure(cause, SpecAdmissionError::PartialVisibilityDetected));
+            assert(spec_error_classifies_failure(
+                cause,
+                SpecAdmissionError::PartialVisibilityDetected,
+            ));
         },
         SpecFailureCause::SequenceBindingFailed => {
             assert(spec_error_classifies_failure(cause, SpecAdmissionError::SequenceBindingFailed));
         },
         SpecFailureCause::StrictRawWorkflowPartsRejected => {
-            assert(spec_error_classifies_failure(cause, SpecAdmissionError::StrictRawWorkflowPartsRejected));
+            assert(spec_error_classifies_failure(
+                cause,
+                SpecAdmissionError::StrictRawWorkflowPartsRejected,
+            ));
         },
         SpecFailureCause::IndexDerivationFailed => {
             assert(spec_error_classifies_failure(cause, SpecAdmissionError::IndexDerivationFailed));
@@ -596,6 +634,7 @@ pub proof fn proof_prepared_gate_count_accepted()
     assert(spec_all_required_gates_accepted(0, true));
 }
 
-fn main() {}
+fn main() {
+}
 
 } // verus!

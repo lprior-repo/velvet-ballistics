@@ -124,9 +124,17 @@ mod production;
 // below reference them as `production::StepIdx`,
 // `production::lower_bounded_collect_projection`, etc.
 pub use production::{
-    lower_bounded_collect_offsets, lower_bounded_collect_projection, SlotIdx, SpecCollectOutcome,
-    SpecCompileError, StepIdx, SPEC_ERR_INDEX_RANGE, SPEC_ERR_LIMIT_EXCEEDED, SPEC_ERR_NONE,
-    SPEC_ERR_SLOT_RANGE, SPEC_ERR_STEP_SHAPE,
+    lower_bounded_collect_offsets,
+    lower_bounded_collect_projection,
+    SlotIdx,
+    SpecCollectOutcome,
+    SpecCompileError,
+    StepIdx,
+    SPEC_ERR_INDEX_RANGE,
+    SPEC_ERR_LIMIT_EXCEEDED,
+    SPEC_ERR_NONE,
+    SPEC_ERR_SLOT_RANGE,
+    SPEC_ERR_STEP_SHAPE,
 };
 
 // ============================================================================
@@ -172,6 +180,7 @@ pub assume_specification[ production::StepIdx::checked_add ](
             None => self_.0 as int + rhs as int > u16_max(),
         },
 ;
+
 // --------------------------------------------------------------------------
 // Bridge: `lower_bounded_collect_offsets` matches production semantics.
 // --------------------------------------------------------------------------
@@ -204,10 +213,15 @@ pub assume_specification[ production::lower_bounded_collect_offsets ](
                 &&& a as int <= u16_max()
                 &&& d as int <= u16_max()
             },
-            Err(production::SpecCompileError::PrimitiveLoweringLimitExceeded { .. }) => spec_offsets_limit_case(id, body_len),
-            Err(production::SpecCompileError::StepIndexOutOfRange { .. }) => spec_offsets_index_case(id, body_len),
+            Err(
+                production::SpecCompileError::PrimitiveLoweringLimitExceeded { .. },
+            ) => spec_offsets_limit_case(id, body_len),
+            Err(
+                production::SpecCompileError::StepIndexOutOfRange { .. },
+            ) => spec_offsets_index_case(id, body_len),
         },
 ;
+
 // --------------------------------------------------------------------------
 // Bridge: `lower_bounded_collect_projection` matches production emission.
 // --------------------------------------------------------------------------
@@ -278,10 +292,8 @@ pub exec fn step_idx_checked_add_matches(id: production::StepIdx, rhs: u16) -> (
 /// `production::lower_bounded_collect_offsets` and assert that the
 /// returned triple equals the spec contract `spec_collect_offsets_ok`
 /// iff the projection succeeds.
-pub exec fn lower_bounded_collect_offsets_matches(
-    id: production::StepIdx,
-    body_len: u16,
-) -> (r: bool)
+pub exec fn lower_bounded_collect_offsets_matches(id: production::StepIdx, body_len: u16) -> (r:
+    bool)
     ensures
         r == spec_collect_offsets_ok(id, body_len),
 {
@@ -295,8 +307,13 @@ pub exec fn lower_bounded_collect_offsets_matches(
             &&& a as int <= u16_max()
             &&& d as int <= u16_max()
         },
-        Err(production::SpecCompileError::PrimitiveLoweringLimitExceeded { .. }) => spec_offsets_limit_case(id, body_len),
-        Err(production::SpecCompileError::StepIndexOutOfRange { .. }) => spec_offsets_index_case(id, body_len),
+        Err(
+            production::SpecCompileError::PrimitiveLoweringLimitExceeded { .. },
+        ) => spec_offsets_limit_case(id, body_len),
+        Err(production::SpecCompileError::StepIndexOutOfRange { .. }) => spec_offsets_index_case(
+            id,
+            body_len,
+        ),
     });
     result.is_ok()
 }
@@ -396,7 +413,8 @@ pub open spec fn spec_offsets_limit_case(id: production::StepIdx, body_len: u16)
         true
     } else if body_len as int + 1 <= u16_max() && id.0 as int + body_len as int + 1 > u16_max() {
         true
-    } else if body_len as int + 1 <= u16_max() && id.0 as int + body_len as int + 1 <= u16_max() && body_len as int + 2 <= u16_max() && id.0 as int + body_len as int + 2 > u16_max() {
+    } else if body_len as int + 1 <= u16_max() && id.0 as int + body_len as int + 1 <= u16_max()
+        && body_len as int + 2 <= u16_max() && id.0 as int + body_len as int + 2 > u16_max() {
         true
     } else {
         false
@@ -409,7 +427,8 @@ pub open spec fn spec_offsets_limit_case(id: production::StepIdx, body_len: u16)
 pub open spec fn spec_offsets_index_case(id: production::StepIdx, body_len: u16) -> bool {
     if id.0 as int + 1 <= u16_max() && body_len as int + 1 > u16_max() {
         true
-    } else if body_len as int + 1 <= u16_max() && id.0 as int + body_len as int + 1 <= u16_max() && body_len as int + 2 > u16_max() {
+    } else if body_len as int + 1 <= u16_max() && id.0 as int + body_len as int + 1 <= u16_max()
+        && body_len as int + 2 > u16_max() {
         true
     } else {
         false
@@ -452,16 +471,15 @@ pub open spec fn spec_collect_error_kind(
 // (i.e. all edge sums fit in u16), the body offset is strictly less
 // than the advance offset, which is strictly less than the done
 // offset.
-pub proof fn lemma_collect_steps_strictly_increasing(
-    id: production::StepIdx,
-    body_len: u16,
-)
+pub proof fn lemma_collect_steps_strictly_increasing(id: production::StepIdx, body_len: u16)
     requires
         spec_collect_offsets_ok(id, body_len),
         body_len as int >= 1,
     ensures
-        spec_offset_ok(id, 1) && spec_offset_ok(id, body_len as int + 1)
-            && spec_offset_ok(id, body_len as int + 2),
+        spec_offset_ok(id, 1) && spec_offset_ok(id, body_len as int + 1) && spec_offset_ok(
+            id,
+            body_len as int + 2,
+        ),
         id.0 as int + 1 < id.0 as int + body_len as int + 1,
         id.0 as int + body_len as int + 1 < id.0 as int + body_len as int + 2,
         id.0 as int + 1 < id.0 as int + body_len as int + 2,
@@ -629,7 +647,8 @@ pub proof fn lemma_valid_collect_emission_chain(
         body_len as int >= 1,
         pre_slot_count as int + 3 <= u16_max(),
     ensures
-        // L1
+// L1
+
         id.0 as int + 1 < id.0 as int + body_len as int + 1,
         id.0 as int + body_len as int + 1 < id.0 as int + body_len as int + 2,
         // L2
@@ -682,6 +701,7 @@ pub proof fn lemma_collect_projection_contract_holds(
     assert(id.0 as int + body_len as int + 2 <= u16_max());
 }
 
-fn main() {}
+fn main() {
+}
 
 } // verus!

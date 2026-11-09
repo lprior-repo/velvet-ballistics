@@ -117,7 +117,6 @@ verus! {
 pub mod production_inner;
 
 } // verus!
-
 // Re-export the production types so the spec file can reference them
 // as `production::SpecJournalError` etc. The `pub use` is at the top
 // level so `production::SpecFjallJournal::append_strict` resolves

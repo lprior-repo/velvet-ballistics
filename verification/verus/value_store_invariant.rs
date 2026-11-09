@@ -472,12 +472,10 @@ pub fn exec_proof_check_arena_cap_ok_after_construction(max_slots: u16) -> (r: R
 // below bring them into spec mode as newtype wrappers; the exec
 // wrappers then pass the production values through the bridges and
 // project the results to verus-visible primitive types.
-
 // ---------------------------------------------------------------------------
 // External-type bridges — bring production MirrorValueStore / MirrorCoreError
 // into spec mode as newtype wrappers.
 // ---------------------------------------------------------------------------
-
 /// External-type bridge for the production `MirrorValueStore` declared
 /// in `extern_value_store_invariant.rs`. From Verus's perspective,
 /// `ExMirrorValueStore` IS `production::MirrorValueStore`; the
@@ -494,7 +492,6 @@ pub struct ExMirrorCoreError(pub production::MirrorCoreError);
 // ---------------------------------------------------------------------------
 // assume_specification bridges — bring production functions into spec mode
 // ---------------------------------------------------------------------------
-
 /// Bridge: production `MirrorValueStore::with_max_slots(max_slots)`
 /// returns a `MirrorValueStore` whose `max_arena_entries` field equals
 /// `u64::from(max_slots)` and whose `total_arena_count_field` is 0.
@@ -502,9 +499,8 @@ pub struct ExMirrorCoreError(pub production::MirrorCoreError);
 /// Mirrors production body at
 /// `crates/vb_core/src/value_store.rs:77-89` (via the
 /// `extern_value_store_invariant.rs` mirror).
-pub assume_specification[ production::MirrorValueStore::with_max_slots ](
-    max_slots: u16,
-) -> (store: production::MirrorValueStore)
+pub assume_specification[ production::MirrorValueStore::with_max_slots ](max_slots: u16) -> (store:
+    production::MirrorValueStore)
     ensures
         store.max_arena_entries == max_slots as u64,
         store.total_arena_count_field == 0,
@@ -544,19 +540,18 @@ pub assume_specification[ production::MirrorValueStore::check_arena_cap ](
     ensures
         match r {
             Ok(()) => {
-                store.max_arena_entries == 0u64
-                    || store.total_arena_count_field < store.max_arena_entries
+                store.max_arena_entries == 0u64 || store.total_arena_count_field
+                    < store.max_arena_entries
             },
             Err(production::MirrorCoreError::BudgetExceeded { budget, limit }) => {
-                store.max_arena_entries > 0u64
-                    && store.total_arena_count_field >= store.max_arena_entries
-                    && budget == "max_slots"
-                    && limit == store.max_arena_entries
+                store.max_arena_entries > 0u64 && store.total_arena_count_field
+                    >= store.max_arena_entries && budget == "max_slots" && limit
+                    == store.max_arena_entries
             },
             Err(_) => false,
         },
-        r.is_ok() == (store.max_arena_entries == 0u64
-            || store.total_arena_count_field < store.max_arena_entries),
+        r.is_ok() == (store.max_arena_entries == 0u64 || store.total_arena_count_field
+            < store.max_arena_entries),
 ;
 
 /// Production-bound exec wrapper: invoke the production

@@ -351,12 +351,19 @@ pub struct SpecCollectIROutcome {
 }
 
 pub const SPEC_ERR_NONE: u8 = 0;
+
 pub const SPEC_ERR_LIMIT_EXCEEDED: u8 = 1;
+
 pub const SPEC_ERR_STEP_SHAPE: u8 = 2;
+
 pub const SPEC_ERR_INDEX_RANGE: u8 = 3;
+
 pub const SPEC_ERR_SLOT_RANGE: u8 = 4;
+
 pub const KIND_COLLECT_START: u8 = 0;
+
 pub const KIND_COLLECT_NEXT: u8 = 1;
+
 pub const KIND_COLLECT_FINISH: u8 = 2;
 
 // ============================================================================

@@ -44,7 +44,6 @@
 // behavior the spec proofs discharge. Drift between the mirror and
 // the production source is reported as binding-debt tracked outside
 // Verus.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -126,10 +125,7 @@ fn prod_methods_drift_check(
     let _err = production_inner::BudgetTraversalError::StepOutOfBounds { step };
     let _err = production_inner::BudgetTraversalError::StepCountOverflow { actual: 0 };
     let _err = production_inner::BudgetTraversalError::DepthOverflow { depth: 0 };
-    let _err = production_inner::BudgetTraversalError::JumpCycle {
-        step,
-        target: step,
-    };
+    let _err = production_inner::BudgetTraversalError::JumpCycle { step, target: step };
 
     // Reference every CompiledNodeKind variant whose fields this
     // mirror aligns with production (workflow/mod.rs:1191-1357).
@@ -180,9 +176,7 @@ fn prod_methods_drift_check(
         body: step,
         done: step,
     };
-    let _kind = production_inner::workflow::CompiledNodeKind::ReduceFinish {
-        accumulator: slot,
-    };
+    let _kind = production_inner::workflow::CompiledNodeKind::ReduceFinish { accumulator: slot };
     let _kind = production_inner::workflow::CompiledNodeKind::RepeatAttempt {
         attempt_slot: slot,
         body: step,
@@ -192,9 +186,7 @@ fn prod_methods_drift_check(
         attempt_slot: slot,
         done: step,
     };
-    let _kind = production_inner::workflow::CompiledNodeKind::RepeatFinish {
-        result: slot,
-    };
+    let _kind = production_inner::workflow::CompiledNodeKind::RepeatFinish { result: slot };
     let _kind = production_inner::workflow::CompiledNodeKind::RetryCheck {
         policy_slot: slot,
         body: step,
@@ -205,9 +197,7 @@ fn prod_methods_drift_check(
         handler: step,
         error_slot: None,
     };
-    let _kind = production_inner::workflow::CompiledNodeKind::WaitUntil {
-        deadline_slot: slot,
-    };
+    let _kind = production_inner::workflow::CompiledNodeKind::WaitUntil { deadline_slot: slot };
     let _kind = production_inner::workflow::CompiledNodeKind::WaitEvent {
         event: slot,
         timeout_slot: None,
@@ -216,12 +206,8 @@ fn prod_methods_drift_check(
         prompt: slot,
         timeout_slot: None,
     };
-    let _kind = production_inner::workflow::CompiledNodeKind::AskResume {
-        answer: slot,
-    };
-    let _kind = production_inner::workflow::CompiledNodeKind::Finish {
-        result: slot,
-    };
+    let _kind = production_inner::workflow::CompiledNodeKind::AskResume { answer: slot };
+    let _kind = production_inner::workflow::CompiledNodeKind::Finish { result: slot };
 
     // Force resolution of the production method by invoking it with
     // phantom arguments. The body is opaque to Verus but the rustc
@@ -259,7 +245,6 @@ fn prod_methods_drift_check(
 }
 
 } // verus!
-
 // Re-export the production types and exec wrappers so the spec file
 // can reference them via `crate::production::*`. The mirror module
 // is included inside `verus!` so the type declarations are nameable

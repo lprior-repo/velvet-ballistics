@@ -76,7 +76,6 @@
 // (verbatim copy of `crates/vb_storage/src/recovery/types.rs:1400-1604`)
 // Production extern: `verification/verus/extern_idempotency_replay_tracker.rs`
 // (binds the mirror via `#[path]` + module-level `#[verifier::external]`)
-
 #[path = "extern_idempotency_replay_tracker.rs"]
 mod production;
 
@@ -112,7 +111,6 @@ pub use production::prod_src::StepIdx as SpecStepIdx;
 // lines 88-89 (where `production::Taint` is bridged via
 // `ExTaint`). The bridges are zero-cost: they only name the
 // production type; the production bodies remain opaque.
-
 /// Spec-mode name for the production `ActionReplayTracker` struct at
 /// `crates/vb_storage/src/recovery/types.rs:870-875`. The struct
 /// fields `completed` and `failed` (HashSet views) are spec-visible
@@ -183,7 +181,6 @@ pub struct ExStepIdx(SpecStepIdx);
 // and the proof fns reason about. The `Set<(int, int)>` space is
 // derived from the production `Set<(ActionId, StepIdx)>` view via the
 // `int` projection `key.0.0 as int` (ActionId wraps u16).
-
 // ReplayActionOutcome — decision enum produced by the replay dispatch.
 pub enum ReplayActionOutcome {
     Continue,
@@ -325,7 +322,6 @@ pub open spec fn spec_replay_action_failed(
 // for set-algebra reasoning, we project each `(ActionId, StepIdx)`
 // pair to `(int, int)` via the inner u16 access
 // `(key.0.0 as int, key.1.0 as int)`.
-
 /// Spec predicate: production `tracker.has_completed(action, step)`
 /// returns `true` iff `(action, step)` (projected to int) is in the
 /// production `completed` HashSet view.
@@ -346,11 +342,12 @@ pub open spec fn spec_has_completed(
     // newtype. The spec predicate is true iff there exists a key in
     // the production HashSet view whose projections match
     // (action, step).
-    exists|key: (SpecActionId, SpecStepIdx)| {
-        &&& key.0.0 as int == action
-        &&& key.1.0 as int == step
-        &&& tracker.completed@.contains(key)
-    }
+    exists|key: (SpecActionId, SpecStepIdx)|
+        {
+            &&& key.0.0 as int == action
+            &&& key.1.0 as int == step
+            &&& tracker.completed@.contains(key)
+        }
 }
 
 /// Spec predicate: production `tracker.has_failed(action, step)`
@@ -368,11 +365,12 @@ pub open spec fn spec_has_failed(
     recommends
         0 <= action < 65536 && 0 <= step < 65536,
 {
-    exists|key: (SpecActionId, SpecStepIdx)| {
-        &&& key.0.0 as int == action
-        &&& key.1.0 as int == step
-        &&& tracker.failed@.contains(key)
-    }
+    exists|key: (SpecActionId, SpecStepIdx)|
+        {
+            &&& key.0.0 as int == action
+            &&& key.1.0 as int == step
+            &&& tracker.failed@.contains(key)
+        }
 }
 
 /// Spec predicate: `tracker.is_resolved(action, step)` returns
@@ -406,7 +404,6 @@ pub open spec fn spec_action_step_in_range(action: int, step: int) -> bool {
 // method is opaque to Verus (module-level `#[verifier::external]` in
 // the extern file); the contract below states the production behavior
 // the spec proofs reason about.
-
 /// Bridge contract: `tracker.mark_completed(action, step)` inserts
 /// `(action, step)` into `tracker.completed@`, leaves
 /// `tracker.failed@` unchanged, and does not affect membership of
@@ -425,18 +422,22 @@ pub assume_specification[ production::ActionReplayTracker::mark_completed ](
     requires
         spec_action_step_in_range(action.0 as int, step.0 as int),
     ensures
-        // Membership update: the marked key is now in completed.
+// Membership update: the marked key is now in completed.
+
         spec_has_completed(*final(tracker), action.0 as int, step.0 as int),
         // Membership preservation: any other (a', s') keeps the same
         // membership it had before mark_completed.
-        forall |a: int, s: int|
-            spec_action_step_in_range(a, s) && (a != action.0 as int || s != step.0 as int) ==>
-                spec_has_completed(*old(tracker), a, s)
-                    == spec_has_completed(*final(tracker), a, s),
+        forall|a: int, s: int|
+            spec_action_step_in_range(a, s) && (a != action.0 as int || s != step.0 as int)
+                ==> spec_has_completed(*old(tracker), a, s) == spec_has_completed(
+                *final(tracker),
+                a,
+                s,
+            ),
         // Field preservation: failed is entirely unchanged.
-        forall |a: int, s: int|
-            spec_action_step_in_range(a, s) ==>
-                spec_has_failed(*old(tracker), a, s) == spec_has_failed(*final(tracker), a, s),
+        forall|a: int, s: int|
+            spec_action_step_in_range(a, s) ==> spec_has_failed(*old(tracker), a, s)
+                == spec_has_failed(*final(tracker), a, s),
 ;
 
 /// Bridge contract: `tracker.mark_failed(action, step)` inserts
@@ -457,18 +458,18 @@ pub assume_specification[ production::ActionReplayTracker::mark_failed ](
     requires
         spec_action_step_in_range(action.0 as int, step.0 as int),
     ensures
-        // Membership update: the marked key is now in failed.
+// Membership update: the marked key is now in failed.
+
         spec_has_failed(*final(tracker), action.0 as int, step.0 as int),
         // Membership preservation: any other (a', s') keeps the same
         // membership it had before mark_failed.
-        forall |a: int, s: int|
-            spec_action_step_in_range(a, s) && (a != action.0 as int || s != step.0 as int) ==>
-                spec_has_failed(*old(tracker), a, s)
-                    == spec_has_failed(*final(tracker), a, s),
+        forall|a: int, s: int|
+            spec_action_step_in_range(a, s) && (a != action.0 as int || s != step.0 as int)
+                ==> spec_has_failed(*old(tracker), a, s) == spec_has_failed(*final(tracker), a, s),
         // Field preservation: completed is entirely unchanged.
-        forall |a: int, s: int|
-            spec_action_step_in_range(a, s) ==>
-                spec_has_completed(*old(tracker), a, s) == spec_has_completed(*final(tracker), a, s),
+        forall|a: int, s: int|
+            spec_action_step_in_range(a, s) ==> spec_has_completed(*old(tracker), a, s)
+                == spec_has_completed(*final(tracker), a, s),
 ;
 
 /// Bridge contract: `tracker.is_resolved(action, step)` returns
@@ -530,7 +531,6 @@ pub assume_specification[ production::ActionReplayTracker::has_failed ](
 // contract and states a requires/ensures pair that is provable from
 // the bridge. The wrappers are the proof witnesses that the bridge is
 // not used as a vacuum (GOD RULE 2).
-
 /// Happy-path wrapper: after `mark_completed(action, step)`, the
 /// tracker reports `is_resolved(action, step) == true`. This is the
 /// production-bound witness for the Set-algebra fact
@@ -545,9 +545,9 @@ pub exec fn wrapper_mark_completed_makes_resolved(
     ensures
         spec_has_completed(*final(tracker), action.0 as int, step.0 as int),
         spec_tracker_is_resolved(*final(tracker), action.0 as int, step.0 as int),
-        forall |a: int, s: int|
-            spec_action_step_in_range(a, s) ==>
-                spec_has_failed(*old(tracker), a, s) == spec_has_failed(*final(tracker), a, s),
+        forall|a: int, s: int|
+            spec_action_step_in_range(a, s) ==> spec_has_failed(*old(tracker), a, s)
+                == spec_has_failed(*final(tracker), a, s),
 {
     tracker.mark_completed(action, step);
 }
@@ -566,9 +566,9 @@ pub exec fn wrapper_mark_failed_makes_resolved(
     ensures
         spec_has_failed(*final(tracker), action.0 as int, step.0 as int),
         spec_tracker_is_resolved(*final(tracker), action.0 as int, step.0 as int),
-        forall |a: int, s: int|
-            spec_action_step_in_range(a, s) ==>
-                spec_has_completed(*old(tracker), a, s) == spec_has_completed(*final(tracker), a, s),
+        forall|a: int, s: int|
+            spec_action_step_in_range(a, s) ==> spec_has_completed(*old(tracker), a, s)
+                == spec_has_completed(*final(tracker), a, s),
 {
     tracker.mark_failed(action, step);
 }
@@ -591,13 +591,14 @@ pub exec fn wrapper_resolution_monotone_under_completed(
         // Pre-condition: the old key is already resolved.
         spec_tracker_is_resolved(*old(tracker), old_a.0 as int, old_s.0 as int),
     ensures
-        // Post-condition: the old key remains resolved.
+// Post-condition: the old key remains resolved.
+
         spec_tracker_is_resolved(*final(tracker), old_a.0 as int, old_s.0 as int),
         // And the new key is now resolved (via mark_completed).
         spec_tracker_is_resolved(*final(tracker), new_a.0 as int, new_s.0 as int),
-        forall |a: int, s: int|
-            spec_action_step_in_range(a, s) ==>
-                spec_has_failed(*old(tracker), a, s) == spec_has_failed(*final(tracker), a, s),
+        forall|a: int, s: int|
+            spec_action_step_in_range(a, s) ==> spec_has_failed(*old(tracker), a, s)
+                == spec_has_failed(*final(tracker), a, s),
 {
     tracker.mark_completed(new_a, new_s);
 }
@@ -620,13 +621,14 @@ pub exec fn wrapper_resolution_monotone_under_failed(
         // Pre-condition: the old key is already resolved.
         spec_tracker_is_resolved(*old(tracker), old_a.0 as int, old_s.0 as int),
     ensures
-        // Post-condition: the old key remains resolved.
+// Post-condition: the old key remains resolved.
+
         spec_tracker_is_resolved(*final(tracker), old_a.0 as int, old_s.0 as int),
         // And the new key is now resolved (via mark_failed).
         spec_tracker_is_resolved(*final(tracker), new_a.0 as int, new_s.0 as int),
-        forall |a: int, s: int|
-            spec_action_step_in_range(a, s) ==>
-                spec_has_completed(*old(tracker), a, s) == spec_has_completed(*final(tracker), a, s),
+        forall|a: int, s: int|
+            spec_action_step_in_range(a, s) ==> spec_has_completed(*old(tracker), a, s)
+                == spec_has_completed(*final(tracker), a, s),
 {
     tracker.mark_failed(new_a, new_s);
 }
@@ -641,11 +643,9 @@ pub exec fn wrapper_resolution_monotone_under_failed(
 // surface via the `assume_specification` bridges and the exec
 // wrappers above — the proofs are NOT vacuum reasoning about abstract
 // Sets; they discharge the production-bound contracts.
-
 // ---------------------------------------------------------------------------
 // PO-1: resolved_action_monotonic
 // ---------------------------------------------------------------------------
-
 /// Monotonicity: an action NOT in completed/failed stays unresolved;
 /// after `spec_mark_completed`, the action IS resolved. This is the
 /// mathematical Set-algebra fact behind the production
@@ -676,7 +676,6 @@ pub proof fn proof_resolved_action_monotonic(
 // ---------------------------------------------------------------------------
 // PO-2: resolved_non_idempotent_not_rescheduled
 // ---------------------------------------------------------------------------
-
 /// Resolved-and-non-idempotent actions cannot be re-scheduled. This
 /// is the Set-algebra face of the production reject_if_resolved gate.
 pub proof fn proof_resolved_non_idempotent_not_rescheduled()
@@ -698,7 +697,6 @@ pub proof fn proof_resolved_non_idempotent_not_rescheduled()
 // ---------------------------------------------------------------------------
 // PO-3: unresolved_action_may_be_scheduled
 // ---------------------------------------------------------------------------
-
 /// Unresolved actions can always be re-scheduled. Set-algebra face of
 /// the production `reject_if_resolved` "Ok(())" branch.
 pub proof fn proof_unresolved_action_may_be_scheduled(
@@ -721,7 +719,6 @@ pub proof fn proof_unresolved_action_may_be_scheduled(
 // ---------------------------------------------------------------------------
 // PO-4: resolved_idempotent_retry_is_only_collapsed_observation
 // ---------------------------------------------------------------------------
-
 /// Idempotent resolved actions are retry-eligible (collapsed-observation
 /// replay). Set-algebra face of the production idempotency guard.
 pub proof fn proof_resolved_idempotent_retry_is_only_collapsed_observation(
@@ -743,7 +740,6 @@ pub proof fn proof_resolved_idempotent_retry_is_only_collapsed_observation(
 // ---------------------------------------------------------------------------
 // PO-5: replay_scheduled_blocks_resolved
 // ---------------------------------------------------------------------------
-
 /// `spec_replay_action_scheduled` blocks resolved keys.
 pub proof fn proof_replay_scheduled_blocks_resolved(
     completed: Set<(int, int)>,
@@ -762,7 +758,6 @@ pub proof fn proof_replay_scheduled_blocks_resolved(
 // ---------------------------------------------------------------------------
 // PO-6: replay_completed_marks_unresolved
 // ---------------------------------------------------------------------------
-
 /// `spec_replay_action_completed` marks unresolved keys as completed
 /// and resolved.
 pub proof fn proof_replay_completed_marks_unresolved(
@@ -776,8 +771,7 @@ pub proof fn proof_replay_completed_marks_unresolved(
     ensures
         spec_replay_action_completed(completed, failed, action, step).0
             == ReplayActionOutcome::Continue,
-        spec_replay_action_completed(completed, failed, action, step).1
-            .contains((action, step)),
+        spec_replay_action_completed(completed, failed, action, step).1.contains((action, step)),
         spec_is_resolved(
             spec_replay_action_completed(completed, failed, action, step).1,
             spec_replay_action_completed(completed, failed, action, step).2,
@@ -791,7 +785,6 @@ pub proof fn proof_replay_completed_marks_unresolved(
 // ---------------------------------------------------------------------------
 // PO-7: replay_failed_marks_unresolved
 // ---------------------------------------------------------------------------
-
 /// `spec_replay_action_failed` marks unresolved keys as failed and
 /// resolved.
 pub proof fn proof_replay_failed_marks_unresolved(
@@ -805,8 +798,7 @@ pub proof fn proof_replay_failed_marks_unresolved(
     ensures
         spec_replay_action_failed(completed, failed, action, step).0
             == ReplayActionOutcome::Continue,
-        spec_replay_action_failed(completed, failed, action, step).2
-            .contains((action, step)),
+        spec_replay_action_failed(completed, failed, action, step).2.contains((action, step)),
         spec_is_resolved(
             spec_replay_action_failed(completed, failed, action, step).1,
             spec_replay_action_failed(completed, failed, action, step).2,
@@ -817,6 +809,7 @@ pub proof fn proof_replay_failed_marks_unresolved(
     // Set::insert axiom: failed.insert((action, step)).contains((action, step)).
 }
 
-fn main() {}
+fn main() {
+}
 
 } // verus!

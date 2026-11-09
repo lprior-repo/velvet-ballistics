@@ -51,7 +51,6 @@
 // production behavior the spec proofs discharge. Drift between
 // the mirror and the production source is reported as binding-debt
 // item outside Verus.
-
 use vstd::prelude::*;
 
 verus! {
@@ -62,8 +61,13 @@ mod production;
 // Re-export the production-bound types and exec wrappers so the
 // spec proofs below reference them by short name.
 pub use production::{
-    EventReplayLimit, EventSeq, MirrorJournal, MirrorJournalError, MirrorJournalEvent,
-    ReplayPushLimitDecision, RunId,
+    EventReplayLimit,
+    EventSeq,
+    MirrorJournal,
+    MirrorJournalError,
+    MirrorJournalEvent,
+    ReplayPushLimitDecision,
+    RunId,
 };
 
 // ============================================================
@@ -74,7 +78,6 @@ pub use production::{
 // replay seam must satisfy. The `assume_specification` bridges
 // below attach this contract to the production exec fns so any
 // drift in production breaks the verification build.
-
 // Spec mirror of EventSeq (crates/vb_storage/src/types.rs)
 pub struct SpecEventSeq {
     pub value: int,
@@ -180,10 +183,10 @@ pub enum SpecSnapshotStatus {
     WrongSeq,
 }
 
-pub open spec fn spec_next_seq(
-    seq: SpecEventSeq,
-    max_seq: int,
-) -> Result<SpecEventSeq, SpecJournalErrorKind> {
+pub open spec fn spec_next_seq(seq: SpecEventSeq, max_seq: int) -> Result<
+    SpecEventSeq,
+    SpecJournalErrorKind,
+> {
     if seq.value < max_seq {
         Ok(SpecEventSeq { value: seq.value + 1 })
     } else {
@@ -253,7 +256,6 @@ pub open spec fn spec_events_for_run_from_contract(
 // exec-level `Vec<MirrorJournalEvent>` and `Result<_, MirrorJournalError>`
 // returned by the production exec fns. The `assume_specification`
 // bridge postconditions reference these projections.
-
 pub open spec fn spec_events_for_run_from_vec_contract(
     run: int,
     first_event_seq: int,
@@ -285,8 +287,8 @@ pub open spec fn events_for_run_from_seq_contiguous(
     match result {
         Ok(events) => forall|i: int|
             #![trigger events@[i].seq.0 as int]
-            0 <= i && i < events@.len() as int - 1 ==> events@[i].seq.0 as int
-                + 1 == events@[((i + 1) as nat) as int].seq.0 as int,
+            0 <= i && i < events@.len() as int - 1 ==> events@[i].seq.0 as int + 1 == events@[((i
+                + 1) as nat) as int].seq.0 as int,
         Err(_) => true,
     }
 }
@@ -316,10 +318,15 @@ pub open spec fn spec_events_for_run_vec_contract(
     snapshot_seq: Option<int>,
     result: Result<Vec<MirrorJournalEvent>, MirrorJournalError>,
 ) -> bool {
-    &&& ((snapshot_seq.is_some() && result matches Ok(_))
-        ==> events_for_run_after_snapshot(run, snapshot_seq.unwrap(), result))
-    &&& ((snapshot_seq.is_none() && result matches Ok(_))
-        ==> events_for_run_no_snapshot(run, result))
+    &&& ((snapshot_seq.is_some() && result matches Ok(_)) ==> events_for_run_after_snapshot(
+        run,
+        snapshot_seq.unwrap(),
+        result,
+    ))
+    &&& ((snapshot_seq.is_none() && result matches Ok(_)) ==> events_for_run_no_snapshot(
+        run,
+        result,
+    ))
     &&& (result matches Err(_) ==> true)
 }
 
@@ -399,14 +406,14 @@ pub open spec fn spec_expected_seq_view(expected: Option<EventSeq>) -> EventSeq 
 // fns in `extern_vb_jpq724_events_for_run_production.rs`. The
 // bodies are opaque to Verus; the witness exec fns below exercise
 // the contracts and discharge them via exec-level reasoning.
-
 /// Bridge contract: `production_codec_next_seq` returns
 /// `Ok(seq+1)` unless `seq == u64::MAX`, in which case it returns
 /// `Err(SequenceOverflow)`. Mirrors `codec::next_seq` at
 /// `crates/vb_storage/src/codec/mod.rs:142-147`.
-pub assume_specification[ production::production_codec_next_seq ](
-    seq: EventSeq,
-) -> (result: Result<EventSeq, MirrorJournalError>)
+pub assume_specification[ production::production_codec_next_seq ](seq: EventSeq) -> (result: Result<
+    EventSeq,
+    MirrorJournalError,
+>)
     ensures
         match result {
             Ok(next) => next.0 as int == seq.0 as int + 1,
@@ -429,10 +436,10 @@ pub assume_specification[ production::production_validate_replayed_event ](
     ensures
         match result {
             Ok(_) => event.run_id.0 == run.0 && event.seq.0 == expected.0,
-            Err(MirrorJournalError::WrongRun { expected: e, actual: a }) =>
-                e.0 == run.0 && a.0 == event.run_id.0 && event.seq.0 == expected.0,
-            Err(MirrorJournalError::SequenceGap { expected: e, actual: a }) =>
-                event.run_id.0 == run.0 && e.0 == expected.0 && a.0 == event.seq.0,
+            Err(MirrorJournalError::WrongRun { expected: e, actual: a }) => e.0 == run.0 && a.0
+                == event.run_id.0 && event.seq.0 == expected.0,
+            Err(MirrorJournalError::SequenceGap { expected: e, actual: a }) => event.run_id.0
+                == run.0 && e.0 == expected.0 && a.0 == event.seq.0,
             Err(_) => false,
         },
 ;
@@ -467,14 +474,15 @@ pub assume_specification[ production::production_validate_replay_sequence ](
                     Some(s) => s,
                     None => event.seq,
                 };
-                event.run_id.0 == run.0 && event.seq.0 == expected_seq.0
-                    && next == Some(production_next_seq_view(expected_seq))
+                event.run_id.0 == run.0 && event.seq.0 == expected_seq.0 && next == Some(
+                    production_next_seq_view(expected_seq),
+                )
             },
-            Err(MirrorJournalError::WrongRun { expected: e, actual: a }) =>
-                e.0 == run.0 && a.0 == event.run_id.0 && event.run_id.0 != run.0,
-            Err(MirrorJournalError::SequenceGap { expected: e, actual: a }) =>
-                event.run_id.0 == run.0 && e.0 == spec_expected_seq_view(expected).0
-                    && a.0 == event.seq.0 && event.seq.0 != spec_expected_seq_view(expected).0,
+            Err(MirrorJournalError::WrongRun { expected: e, actual: a }) => e.0 == run.0 && a.0
+                == event.run_id.0 && event.run_id.0 != run.0,
+            Err(MirrorJournalError::SequenceGap { expected: e, actual: a }) => event.run_id.0
+                == run.0 && e.0 == spec_expected_seq_view(expected).0 && a.0 == event.seq.0
+                && event.seq.0 != spec_expected_seq_view(expected).0,
             Err(_) => false,
         },
 ;
@@ -534,10 +542,10 @@ pub assume_specification[ production::production_classify_replay_push_len ](
 ) -> (decision: ReplayPushLimitDecision)
     ensures
         match decision {
-            ReplayPushLimitDecision::Accept { observed } =>
-                observed == current_len + 1 && (observed as int) <= limit.max_events as int,
-            ReplayPushLimitDecision::TooMany { limit: l, observed } =>
-                l == limit.max_events as int && (observed as int) > limit.max_events as int,
+            ReplayPushLimitDecision::Accept { observed } => observed == current_len + 1 && (
+            observed as int) <= limit.max_events as int,
+            ReplayPushLimitDecision::TooMany { limit: l, observed } => l == limit.max_events as int
+                && (observed as int) > limit.max_events as int,
         },
 ;
 
@@ -552,7 +560,6 @@ pub assume_specification[ production::production_classify_replay_push_len ](
 // reasoning without re-verifying the production body. Together
 // with the spec proofs below, this closes the loop between the
 // production exec behavior and the spec algebra.
-
 /// Witness: `production_codec_next_seq` returns `Ok(seq+1)`
 /// unless `seq == u64::MAX`.
 pub fn witness_codec_next_seq(seq: EventSeq) -> (result: Result<EventSeq, MirrorJournalError>)
@@ -576,10 +583,10 @@ pub fn witness_validate_replayed_event(
     ensures
         match result {
             Ok(_) => event.run_id.0 == run.0 && event.seq.0 == expected.0,
-            Err(MirrorJournalError::WrongRun { expected: e, actual: a }) =>
-                e.0 == run.0 && a.0 == event.run_id.0,
-            Err(MirrorJournalError::SequenceGap { expected: e, actual: a }) =>
-                e.0 == expected.0 && a.0 == event.seq.0,
+            Err(MirrorJournalError::WrongRun { expected: e, actual: a }) => e.0 == run.0 && a.0
+                == event.run_id.0,
+            Err(MirrorJournalError::SequenceGap { expected: e, actual: a }) => e.0 == expected.0
+                && a.0 == event.seq.0,
             Err(_) => false,
         },
 {
@@ -588,10 +595,9 @@ pub fn witness_validate_replayed_event(
 
 /// Witness: `production_latest_durable_snapshot_seq` returns the
 /// per-run snapshot seq stored in the mirror journal.
-pub fn witness_latest_durable_snapshot_seq(
-    journal: &MirrorJournal,
-    run: RunId,
-) -> (result: Option<u64>)
+pub fn witness_latest_durable_snapshot_seq(journal: &MirrorJournal, run: RunId) -> (result: Option<
+    u64,
+>)
     ensures
         result == spec_latest_snapshot_seq_view(journal, run),
 {
@@ -623,10 +629,10 @@ pub fn witness_events_for_run_from(
 /// event has `run_id == run`, whose seqs are strictly increasing
 /// by 1, and whose first event's seq is bounded below by
 /// `snapshot_seq + 1` (with snapshot) or 0 (no snapshot).
-pub fn witness_events_for_run(
-    journal: &MirrorJournal,
-    run: RunId,
-) -> (result: Result<Vec<MirrorJournalEvent>, MirrorJournalError>)
+pub fn witness_events_for_run(journal: &MirrorJournal, run: RunId) -> (result: Result<
+    Vec<MirrorJournalEvent>,
+    MirrorJournalError,
+>)
     ensures
         spec_events_for_run_vec_contract(
             run.0 as int,
@@ -643,16 +649,14 @@ pub fn witness_events_for_run(
 /// Witness: `production_classify_replay_push_len` returns
 /// `Accept` when `current_len + 1 <= limit.max_events`,
 /// `TooMany` otherwise.
-pub fn witness_classify_replay_push_len(
-    current_len: usize,
-    limit: EventReplayLimit,
-) -> (decision: ReplayPushLimitDecision)
+pub fn witness_classify_replay_push_len(current_len: usize, limit: EventReplayLimit) -> (decision:
+    ReplayPushLimitDecision)
     ensures
         match decision {
-            ReplayPushLimitDecision::Accept { observed } =>
-                observed == current_len + 1 && (observed as int) <= limit.max_events as int,
-            ReplayPushLimitDecision::TooMany { limit: l, observed } =>
-                l == limit.max_events as int && (observed as int) > limit.max_events as int,
+            ReplayPushLimitDecision::Accept { observed } => observed == current_len + 1 && (
+            observed as int) <= limit.max_events as int,
+            ReplayPushLimitDecision::TooMany { limit: l, observed } => l == limit.max_events as int
+                && (observed as int) > limit.max_events as int,
         },
 {
     production::production_classify_replay_push_len(current_len, limit)
@@ -662,7 +666,6 @@ pub fn witness_classify_replay_push_len(
 // Spec proofs — discharge properties of the spec algebra and
 // show the bound contract surface is non-vacuous.
 // ============================================================
-
 pub proof fn proof_events_for_run_from_strict_ordering(
     run: SpecRunId,
     start_seq: SpecEventSeq,
@@ -770,6 +773,5 @@ pub proof fn proof_events_for_run_propagates_snapshot_error(
 // + proof_events_for_run_*) reason about the spec algebra and
 // remain valid since the algebra is unchanged by the binding
 // additions.
-
 } // verus!
 fn main() {}

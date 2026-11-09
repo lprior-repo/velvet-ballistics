@@ -6,7 +6,6 @@
 // `production_inner/cancel_kill_lattice_production.rs`. The mirror captures the
 // production cancel/kill lifecycle surface from
 // `crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:127-174`.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 

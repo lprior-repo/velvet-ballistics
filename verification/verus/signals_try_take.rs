@@ -34,7 +34,6 @@
 //   - production::EngineError::StepCounterOverflow <- crates/vb_core/src/errors.rs:241
 //
 // Source: vb-qi37.2.5 proof-obligations.planned.jsonl VERUS-INV-006
-
 #[path = "extern_signals_invariant.rs"]
 mod production;
 
@@ -53,7 +52,6 @@ verus! {
 // the `verus!` block (via the companion extern file's `#[path]`
 // inclusion of the production mirror). The production field remains private;
 // this bridge uses only the verifier mirror's field visibility relaxation.
-
 /// Spec-mode alias for the production `StepBudget` struct surfaced
 /// through the drift-gated `signals_production` mirror. The mirror relaxes only
 /// `StepBudget::remaining` field visibility for Verus while preserving field
@@ -64,7 +62,6 @@ pub struct ExStepBudget(production::StepBudget);
 // =============================================================================
 // Spec constants
 // =============================================================================
-
 /// Spec-side projection of the production `MAX_STEP_BUDGET` u64 constant
 /// (production at `crates/vb_core/src/limits.rs:94 = 10_000`).
 #[allow(non_upper_case_globals)]
@@ -78,7 +75,6 @@ pub open spec fn max_step_budget() -> int {
 // =============================================================================
 // Spec invariants and functions (production-anchored via assume_specification)
 // =============================================================================
-
 /// The StepBudget invariant: remaining is always in [0, MAX_STEP_BUDGET].
 pub open spec fn spec_remaining_bounded(remaining: int) -> bool {
     0 <= remaining && remaining <= max_step_budget()
@@ -127,16 +123,14 @@ pub open spec fn spec_try_take(remaining: int) -> (bool, int) {
 // method bodies are opaque to Verus (declared OUTSIDE `verus!`); the
 // spec contracts below state the production behavior the spec proofs
 // discharge. Field access is limited to the drift-gated verifier mirror.
-
 /// Bridge contract: `production::StepBudget::new(v)` returns a
 /// StepBudget whose `remaining` field equals `min(v,
 /// MAX_STEP_BUDGET)` and satisfies the bounded invariant.
 ///
 /// Mirrors the production body at
 /// `crates/vb_core/src/engine/signals.rs:28-36`.
-pub assume_specification[ production::StepBudget::new ](
-    value: u64,
-) -> (budget: production::StepBudget)
+pub assume_specification[ production::StepBudget::new ](value: u64) -> (budget:
+    production::StepBudget)
     ensures
         budget.remaining as int == spec_new(value as int),
         spec_step_budget_invariant(budget.remaining as int),
@@ -164,14 +158,13 @@ pub assume_specification[ production::StepBudget::try_take ](
         spec_step_budget_invariant(old(budget).remaining as int),
     ensures
         match r {
-            Ok(true) =>
-                old(budget).remaining as int > 0
-                && final(budget).remaining as int == old(budget).remaining as int - 1,
-            Ok(false) =>
-                old(budget).remaining as int == 0
-                && final(budget).remaining as int == old(budget).remaining as int,
-            Err(_) =>
-                old(budget).remaining as int > max_step_budget()
+            Ok(true) => old(budget).remaining as int > 0 && final(budget).remaining as int == old(
+                budget,
+            ).remaining as int - 1,
+            Ok(false) => old(budget).remaining as int == 0 && final(budget).remaining as int == old(
+                budget,
+            ).remaining as int,
+            Err(_) => old(budget).remaining as int > max_step_budget()
                 && final(budget).remaining as int == old(budget).remaining as int,
         },
         spec_step_budget_invariant(final(budget).remaining as int),
@@ -199,7 +192,6 @@ pub assume_specification[ production::StepBudget::remaining ](
 // proofs in the next section exercise the contract through actual
 // `production::StepBudget::try_take` calls, completing the production
 // binding.
-
 /// proof_try_take_monotonic: after each call, remaining is unchanged
 /// (if false or Err) or decreased by exactly 1 (if true). In all
 /// cases, remaining is never increased and the bounded invariant
@@ -212,10 +204,12 @@ pub proof fn proof_try_take_monotonic(remaining: int)
             let (_, new_rem) = spec_try_take(remaining);
             new_rem <= remaining
         }),
-        spec_remaining_bounded({
-            let (_, new_rem) = spec_try_take(remaining);
-            new_rem
-        }),
+        spec_remaining_bounded(
+            {
+                let (_, new_rem) = spec_try_take(remaining);
+                new_rem
+            },
+        ),
 {
     let (ok, new_rem) = spec_try_take(remaining);
     if remaining > 0 && remaining <= max_step_budget() {
@@ -249,12 +243,12 @@ pub proof fn proof_try_take_never_negative(remaining: int)
     let (_, new_rem) = spec_try_take(remaining);
     if remaining > 0 && remaining <= max_step_budget() {
         assert(new_rem == remaining - 1);
-        assert(new_rem >= 0); // remaining >= 1
+        assert(new_rem >= 0);  // remaining >= 1
     } else if remaining == 0 {
         assert(new_rem == 0);
         assert(new_rem >= 0);
     } else {
-        assert(false); // excluded by precondition
+        assert(false);  // excluded by precondition
     }
 }
 
@@ -314,7 +308,6 @@ pub proof fn proof_try_take_decreases_by_one(initial: int)
 // proofs above are not just abstract reasoning over `spec_try_take`
 // — they reason over the production behavior of
 // `production::StepBudget::try_take` and `::new`.
-
 /// Exec proof: `production::StepBudget::try_take` is monotonic —
 /// remaining is never increased. The postcondition `budget.remaining
 /// <= initial` holds in ALL three branches of the production
@@ -407,18 +400,18 @@ pub fn exec_proof_try_take_zero_returns_false() -> (result: (bool, production::S
     match r {
         Ok(true) => {
             assert(false);
-        }
-        Ok(false) => {}
+        },
+        Ok(false) => {},
         Err(_) => {
             assert(false);
-        }
+        },
     }
     let took = match r {
         Ok(v) => v,
         Err(_) => {
             // Unreachable (see above).
             true
-        }
+        },
     };
     (took, b)
 }
@@ -445,6 +438,7 @@ pub fn exec_proof_try_take_round_trip(initial: u64) -> (budget: production::Step
     b
 }
 
-fn main() {}
+fn main() {
+}
 
 } // verus!

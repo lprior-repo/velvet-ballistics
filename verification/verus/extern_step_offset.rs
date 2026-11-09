@@ -62,7 +62,6 @@
 // between the production mirror and the production source is reported
 // as binding-debt item tracked outside Verus.
 // ============================================================================
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]

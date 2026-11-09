@@ -141,7 +141,6 @@
 //
 // Verifier command:
 //   `verus --crate-type=lib verification/verus/admission_artifact_model.rs`
-
 use vstd::prelude::*;
 
 verus! {
@@ -149,7 +148,6 @@ verus! {
 // ============================================================================
 // Production extern surface — `#[path]`-bound mirror of admission.rs
 // ============================================================================
-
 #[path = "extern_admission_artifact_model.rs"]
 mod production;
 
@@ -178,7 +176,6 @@ pub use production::{
 // ============================================================================
 // Spec constants (mirrors of production constants)
 // ============================================================================
-
 /// Mirror of the gate_count `verification_proof_core` forces
 /// (`crates/vb_storage/src/admission.rs:113-128`).
 pub const PREPARED_GATE_COUNT: u8 = 0;
@@ -201,7 +198,6 @@ pub open spec fn prepared_evidence_version() -> int {
 // ============================================================================
 // Production-bound exec wrappers (call the production extern fns)
 // ============================================================================
-
 // Production decision fn: `proof_matches_prepared_shape` mirrors the
 // prepared-proof shape production constructs for every admitted
 // artifact: `verification_proof_core` forces gate_count 0, durable
@@ -223,28 +219,21 @@ pub open spec fn prepared_evidence_version() -> int {
 // admission validity: `verify_accepted_artifact` enforces it by
 // recomputing the expected artifact and rejecting any deviation with
 // `ArtifactEvidenceInvalid`.
-pub fn proof_matches_prepared_shape_exec(
-    proof: &production::VerificationProof,
-) -> bool {
+pub fn proof_matches_prepared_shape_exec(proof: &production::VerificationProof) -> bool {
     production::proof_matches_prepared_shape(proof)
 }
 
 // Production decision fn: `digest_eq` mirrors the `PartialEq` impl
 // derived on `vb_core::ids::WorkflowDigest` at
 // `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:239`.
-pub fn digest_eq_exec(
-    a: &production::WorkflowDigest,
-    b: &production::WorkflowDigest,
-) -> bool {
+pub fn digest_eq_exec(a: &production::WorkflowDigest, b: &production::WorkflowDigest) -> bool {
     production::digest_eq(a, b)
 }
 
 // Production decision fn: `artifact_digest_bound` mirrors
 // `vb_storage::admission::bind_artifact_digest` at
 // `crates/vb_storage/src/admission.rs:179-184`.
-pub fn artifact_digest_bound_exec(
-    artifact: &production::AcceptedArtifact,
-) -> bool {
+pub fn artifact_digest_bound_exec(artifact: &production::AcceptedArtifact) -> bool {
     production::artifact_digest_bound(artifact)
 }
 
@@ -257,7 +246,6 @@ pub fn artifact_digest_bound_exec(
 // extern fn is opaque to Verus (`#[verifier::external]`); the spec
 // proofs below exercise the contracts via the exec wrappers in the
 // "Production-bound exec fns" section.
-
 // --------------------------------------------------------------------------
 // Bridge: `proof_matches_prepared_shape` returns true iff the proof
 // carries the spec's `prepared_proof_shape`.
@@ -321,7 +309,6 @@ pub assume_specification[ production::artifact_digest_bound ](
 // ============================================================================
 // Spec fns (mathematical model of the production contract)
 // ============================================================================
-
 /// Spec view: true iff the proof flags carry exactly the prepared
 /// values: `bounded_claimed` and `idempotency_verified_claimed` true,
 /// `taint_safe_claimed`, `retry_safe_claimed`, `durable`, and
@@ -365,9 +352,7 @@ pub open spec fn prepared_proof_collections(
 /// `crates/vb_storage/src/admission/verification.rs:100-113` rejects
 /// `Unverified`, `Packed`, and any `Verified` evidence at a stale
 /// schema version).
-pub open spec fn evidence_is_verified_v3(
-    evidence: &production::ArtifactEvidence,
-) -> bool {
+pub open spec fn evidence_is_verified_v3(evidence: &production::ArtifactEvidence) -> bool {
     match evidence {
         production::ArtifactEvidence::Verified(inner) => {
             inner.schema_version as int == prepared_evidence_version()
@@ -394,7 +379,14 @@ pub open spec fn prepared_proof_shape(
     evidence: &production::ArtifactEvidence,
 ) -> bool {
     &&& gate_count == prepared_gate_count()
-    &&& prepared_proof_flags(bounded, taint_safe, retry_safe, durable, replayable, idempotency_verified)
+    &&& prepared_proof_flags(
+        bounded,
+        taint_safe,
+        retry_safe,
+        durable,
+        replayable,
+        idempotency_verified,
+    )
     &&& prepared_proof_collections(keyed_empty, attested_empty, warnings_empty)
     &&& evidence_is_verified_v3(evidence)
 }
@@ -434,7 +426,19 @@ pub open spec fn strict_admission_valid(
     header_digest: int,
     admission_digest: int,
 ) -> bool {
-    &&& prepared_proof_shape(gate_count, bounded, taint_safe, retry_safe, durable, replayable, idempotency_verified, keyed_empty, attested_empty, warnings_empty, evidence)
+    &&& prepared_proof_shape(
+        gate_count,
+        bounded,
+        taint_safe,
+        retry_safe,
+        durable,
+        replayable,
+        idempotency_verified,
+        keyed_empty,
+        attested_empty,
+        warnings_empty,
+        evidence,
+    )
     &&& digest_binding_valid(accepted_digest, compiled_digest, header_digest, admission_digest)
 }
 
@@ -442,7 +446,6 @@ pub open spec fn strict_admission_valid(
 // Non-vacuous proofs: 11 structural properties discharged via the
 // `assume_specification` contracts above.
 // ============================================================================
-
 // --------------------------------------------------------------------------
 // VERUS-GATE-004 — prepared-proof shape requirement for admission.
 // --------------------------------------------------------------------------
@@ -522,11 +525,35 @@ pub proof fn proof_nonzero_gate_count_denies(
     requires
         gate_count != prepared_gate_count(),
     ensures
-        !prepared_proof_shape(gate_count, bounded, taint_safe, retry_safe, durable, replayable, idempotency_verified, keyed_empty, attested_empty, warnings_empty, evidence),
+        !prepared_proof_shape(
+            gate_count,
+            bounded,
+            taint_safe,
+            retry_safe,
+            durable,
+            replayable,
+            idempotency_verified,
+            keyed_empty,
+            attested_empty,
+            warnings_empty,
+            evidence,
+        ),
 {
     reveal(prepared_proof_shape);
     reveal(prepared_gate_count);
-    let valid = prepared_proof_shape(gate_count, bounded, taint_safe, retry_safe, durable, replayable, idempotency_verified, keyed_empty, attested_empty, warnings_empty, evidence);
+    let valid = prepared_proof_shape(
+        gate_count,
+        bounded,
+        taint_safe,
+        retry_safe,
+        durable,
+        replayable,
+        idempotency_verified,
+        keyed_empty,
+        attested_empty,
+        warnings_empty,
+        evidence,
+    );
     assert(!valid);
 }
 
@@ -551,11 +578,35 @@ pub proof fn proof_missing_required_flag_denies(
     requires
         !bounded || !idempotency_verified,
     ensures
-        !prepared_proof_shape(gate_count, bounded, taint_safe, retry_safe, durable, replayable, idempotency_verified, keyed_empty, attested_empty, warnings_empty, evidence),
+        !prepared_proof_shape(
+            gate_count,
+            bounded,
+            taint_safe,
+            retry_safe,
+            durable,
+            replayable,
+            idempotency_verified,
+            keyed_empty,
+            attested_empty,
+            warnings_empty,
+            evidence,
+        ),
 {
     reveal(prepared_proof_shape);
     reveal(prepared_proof_flags);
-    let valid = prepared_proof_shape(gate_count, bounded, taint_safe, retry_safe, durable, replayable, idempotency_verified, keyed_empty, attested_empty, warnings_empty, evidence);
+    let valid = prepared_proof_shape(
+        gate_count,
+        bounded,
+        taint_safe,
+        retry_safe,
+        durable,
+        replayable,
+        idempotency_verified,
+        keyed_empty,
+        attested_empty,
+        warnings_empty,
+        evidence,
+    );
     assert(!valid);
 }
 
@@ -580,11 +631,35 @@ pub proof fn proof_forbidden_flag_denies(
     requires
         taint_safe || retry_safe || durable || replayable,
     ensures
-        !prepared_proof_shape(gate_count, bounded, taint_safe, retry_safe, durable, replayable, idempotency_verified, keyed_empty, attested_empty, warnings_empty, evidence),
+        !prepared_proof_shape(
+            gate_count,
+            bounded,
+            taint_safe,
+            retry_safe,
+            durable,
+            replayable,
+            idempotency_verified,
+            keyed_empty,
+            attested_empty,
+            warnings_empty,
+            evidence,
+        ),
 {
     reveal(prepared_proof_shape);
     reveal(prepared_proof_flags);
-    let valid = prepared_proof_shape(gate_count, bounded, taint_safe, retry_safe, durable, replayable, idempotency_verified, keyed_empty, attested_empty, warnings_empty, evidence);
+    let valid = prepared_proof_shape(
+        gate_count,
+        bounded,
+        taint_safe,
+        retry_safe,
+        durable,
+        replayable,
+        idempotency_verified,
+        keyed_empty,
+        attested_empty,
+        warnings_empty,
+        evidence,
+    );
     assert(!valid);
 }
 
@@ -594,9 +669,7 @@ pub proof fn proof_forbidden_flag_denies(
 // --------------------------------------------------------------------------
 // Non-vacuous: a non-empty slice fails the collections conjunct
 // (`prepared_proof_collections`), so the conjunction is false.
-pub proof fn proof_nonempty_keyed_denies(
-    proof: &production::VerificationProof,
-)
+pub proof fn proof_nonempty_keyed_denies(proof: &production::VerificationProof)
     requires
         proof.idempotency_keyed@.len() != 0,
     ensures
@@ -638,9 +711,7 @@ pub proof fn proof_nonempty_keyed_denies(
 // --------------------------------------------------------------------------
 // Non-vacuous: a non-empty slice fails the collections conjunct
 // (`prepared_proof_collections`), so the conjunction is false.
-pub proof fn proof_nonempty_attested_denies(
-    proof: &production::VerificationProof,
-)
+pub proof fn proof_nonempty_attested_denies(proof: &production::VerificationProof)
     requires
         proof.idempotency_attested@.len() != 0,
     ensures
@@ -682,9 +753,7 @@ pub proof fn proof_nonempty_attested_denies(
 // --------------------------------------------------------------------------
 // Non-vacuous: a non-empty vec fails the collections conjunct
 // (`prepared_proof_collections`), so the conjunction is false.
-pub proof fn proof_nonempty_warnings_denies(
-    proof: &production::VerificationProof,
-)
+pub proof fn proof_nonempty_warnings_denies(proof: &production::VerificationProof)
     requires
         proof.warnings@.len() != 0,
     ensures
@@ -727,9 +796,7 @@ pub proof fn proof_nonempty_warnings_denies(
 // Non-vacuous: `Unverified`, `Packed`, or `Verified` at a stale schema
 // version fails the evidence conjunct (`evidence_is_verified_v3`), so
 // the conjunction is false.
-pub proof fn proof_unverified_evidence_denies(
-    proof: &production::VerificationProof,
-)
+pub proof fn proof_unverified_evidence_denies(proof: &production::VerificationProof)
     requires
         !evidence_is_verified_v3(&proof.evidence),
     ensures
@@ -829,14 +896,18 @@ pub proof fn proof_digest_mismatch_denies(
     admission_digest: int,
 )
     requires
-        accepted_digest != compiled_digest
-            || compiled_digest != header_digest
-            || header_digest != admission_digest,
+        accepted_digest != compiled_digest || compiled_digest != header_digest || header_digest
+            != admission_digest,
     ensures
         !digest_binding_valid(accepted_digest, compiled_digest, header_digest, admission_digest),
 {
     reveal(digest_binding_valid);
-    let valid = digest_binding_valid(accepted_digest, compiled_digest, header_digest, admission_digest);
+    let valid = digest_binding_valid(
+        accepted_digest,
+        compiled_digest,
+        header_digest,
+        admission_digest,
+    );
     assert(!valid);
 }
 
@@ -845,7 +916,6 @@ pub proof fn proof_digest_mismatch_denies(
 // the production code path and discharge the assume_specification
 // contracts via direct `assert(...)`.
 // ============================================================================
-
 // Prepared evidence value: a `Verified` evidence at schema version 3
 // with the production canonical ten-obligation ledger
 // (`obligation_ledger` at
@@ -1126,7 +1196,8 @@ pub fn exec_witness_nonempty_warnings_denied() -> (result: bool)
         replayable_claimed: false,
         idempotency_keyed: vec![],
         idempotency_attested: vec![],
-        warnings: vec![production::VerificationWarning {
+        warnings:
+            vec![production::VerificationWarning {
             code: 1,
             message: String::from("gate warning"),
             gate: 1,
@@ -1214,12 +1285,14 @@ pub fn exec_witness_packed_evidence_denied() -> (result: bool)
         idempotency_keyed: vec![],
         idempotency_attested: vec![],
         warnings: vec![],
-        evidence: production::ArtifactEvidence::Packed(Box::new(
-            production::PackedArtifactEvidence {
-                base: prepared_verification_evidence(),
-                packs: vec![],
-            },
-        )),
+        evidence: production::ArtifactEvidence::Packed(
+            Box::new(
+                production::PackedArtifactEvidence {
+                    base: prepared_verification_evidence(),
+                    packs: vec![],
+                },
+            ),
+        ),
     };
     let r = production::proof_matches_prepared_shape(&proof);
     assert(r == false);
@@ -1324,7 +1397,6 @@ pub fn exec_witness_artifact_digest_bound_false() -> (result: bool)
 // End-to-end production-bound proof: composes the prepared-proof-shape
 // witness with the spec-level structural proof.
 // ============================================================================
-
 // Non-vacuous composition proof: given a production VerificationProof
 // satisfying the structural preconditions (gate_count == 0, bounded
 // and idempotency claimed, every other flag false, durable false,
@@ -1335,9 +1407,7 @@ pub fn exec_witness_artifact_digest_bound_false() -> (result: bool)
 // production-bound property. The proof fn composition itself is the
 // non-vacuous witness that the spec surface matches the production
 // exec wrapper's contract.
-pub proof fn proof_compose_prepared_proof_shape(
-    proof: &production::VerificationProof,
-)
+pub proof fn proof_compose_prepared_proof_shape(proof: &production::VerificationProof)
     requires
         proof.gate_count as int == prepared_gate_count(),
         proof.bounded_claimed,
@@ -1351,8 +1421,9 @@ pub proof fn proof_compose_prepared_proof_shape(
         proof.warnings@.len() == 0,
         evidence_is_verified_v3(&proof.evidence),
     ensures
-        // After composition: each spec-level property holds
-        // (trivially, by the explicit preconditions above).
+// After composition: each spec-level property holds
+// (trivially, by the explicit preconditions above).
+
         proof.gate_count as int == prepared_gate_count(),
         proof.bounded_claimed,
         proof.idempotency_verified_claimed,
@@ -1369,6 +1440,7 @@ pub proof fn proof_compose_prepared_proof_shape(
     assert(proof.gate_count as int == prepared_gate_count());
 }
 
-fn main() {}
+fn main() {
+}
 
 } // verus!

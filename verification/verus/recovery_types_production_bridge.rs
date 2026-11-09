@@ -152,9 +152,7 @@ pub use production::{
 // ============================================================================
 // Spec predicates (mathematical model over production mirror types)
 // ============================================================================
-
 // ---------- PO-VB-001: terminal state ----------
-
 /// `valid_recovery_terminal_state(st)` — every documented
 /// `RecoveryTerminalState` variant is valid. Production uses
 /// `#[non_exhaustive]`; the spec projection enumerates the closed
@@ -179,27 +177,24 @@ pub open spec fn terminal_state_eq(
     a: production::RecoveryTerminalState,
     b: production::RecoveryTerminalState,
 ) -> bool {
-    &&& (matches!(a, production::RecoveryTerminalState::Cancelled) <==>
-             matches!(b, production::RecoveryTerminalState::Cancelled))
-    &&& (matches!(a, production::RecoveryTerminalState::Killed) <==>
-             matches!(b, production::RecoveryTerminalState::Killed))
-    &&& (matches!(a, production::RecoveryTerminalState::Failed) <==>
-             matches!(b, production::RecoveryTerminalState::Failed))
+    &&& (matches!(a, production::RecoveryTerminalState::Cancelled)
+        <==> matches!(b, production::RecoveryTerminalState::Cancelled))
+    &&& (matches!(a, production::RecoveryTerminalState::Killed)
+        <==> matches!(b, production::RecoveryTerminalState::Killed))
+    &&& (matches!(a, production::RecoveryTerminalState::Failed)
+        <==> matches!(b, production::RecoveryTerminalState::Failed))
     &&& (match a {
-            production::RecoveryTerminalState::Finished { result } => {
-                match b {
-                    production::RecoveryTerminalState::Finished { result: r2 } => {
-                        result.0 == r2.0
-                    },
-                    _ => false,
-                }
-            },
-            _ => true,
-        })
+        production::RecoveryTerminalState::Finished { result } => {
+            match b {
+                production::RecoveryTerminalState::Finished { result: r2 } => { result.0 == r2.0 },
+                _ => false,
+            }
+        },
+        _ => true,
+    })
 }
 
 // ---------- PO-VB-002: runtime summary ----------
-
 /// `recovery_runtime_summary_inv(s)` — the production invariant over
 /// `RecoveryRuntimeSummary`:
 ///   - `first_seq <= last_seq`
@@ -213,7 +208,6 @@ pub open spec fn recovery_runtime_summary_inv(s: production::RecoveryRuntimeSumm
 }
 
 // ---------- PO-VB-003: recovered step state ----------
-
 /// `valid_recovered_step_state(st)` — every documented
 /// `RecoveredStepState` variant is valid. Production uses
 /// `#[non_exhaustive]`; the spec projection enumerates the closed
@@ -235,20 +229,19 @@ pub open spec fn recovered_step_state_eq(
     a: production::RecoveredStepState,
     b: production::RecoveredStepState,
 ) -> bool {
-    (matches!(a, production::RecoveredStepState::Running) <==>
-        matches!(b, production::RecoveredStepState::Running))
-    && (matches!(a, production::RecoveredStepState::Succeeded) <==>
-        matches!(b, production::RecoveredStepState::Succeeded))
-    && (matches!(a, production::RecoveredStepState::Failed) <==>
-        matches!(b, production::RecoveredStepState::Failed))
-    && (matches!(a, production::RecoveredStepState::Waiting) <==>
-        matches!(b, production::RecoveredStepState::Waiting))
-    && (matches!(a, production::RecoveredStepState::Asking) <==>
-        matches!(b, production::RecoveredStepState::Asking))
+    (matches!(a, production::RecoveredStepState::Running)
+        <==> matches!(b, production::RecoveredStepState::Running)) && (
+    matches!(a, production::RecoveredStepState::Succeeded)
+        <==> matches!(b, production::RecoveredStepState::Succeeded)) && (
+    matches!(a, production::RecoveredStepState::Failed)
+        <==> matches!(b, production::RecoveredStepState::Failed)) && (
+    matches!(a, production::RecoveredStepState::Waiting)
+        <==> matches!(b, production::RecoveredStepState::Waiting)) && (
+    matches!(a, production::RecoveredStepState::Asking)
+        <==> matches!(b, production::RecoveredStepState::Asking))
 }
 
 // ---------- PO-VB-NEW-1..3: unsupported union ----------
-
 /// `unsupported_state_eq(a, b)` — closed spec fn for field-wise
 /// equality on `UnsupportedRecoveryState` (all 4 bool fields).
 pub open spec fn unsupported_state_eq(
@@ -287,21 +280,17 @@ pub open spec fn production_supported_spec() -> production::UnsupportedRecoveryS
 }
 
 // ---------- PO-VB-NEW-4..5: hydration summary ----------
-
 /// `hydration_summary_eq(actual, expected)` — equality over the
 /// `RecoveryRuntimeSummary` payload the hydration contract returns.
 pub open spec fn hydration_summary_eq(
     actual: production::RecoveryRuntimeSummary,
     expected: production::RecoveryRuntimeSummary,
 ) -> bool {
-    actual.run.0 == expected.run.0
-        && actual.first_seq.0 == expected.first_seq.0
-        && actual.last_seq.0 == expected.last_seq.0
-        && actual.steps_started == expected.steps_started
-        && actual.steps_succeeded == expected.steps_succeeded
-        && actual.actions_scheduled == expected.actions_scheduled
-        && actual.actions_resolved == expected.actions_resolved
-        && actual.suspensions == expected.suspensions
+    actual.run.0 == expected.run.0 && actual.first_seq.0 == expected.first_seq.0
+        && actual.last_seq.0 == expected.last_seq.0 && actual.steps_started
+        == expected.steps_started && actual.steps_succeeded == expected.steps_succeeded
+        && actual.actions_scheduled == expected.actions_scheduled && actual.actions_resolved
+        == expected.actions_resolved && actual.suspensions == expected.suspensions
         && actual.slots_written == expected.slots_written
 }
 
@@ -309,7 +298,9 @@ pub open spec fn hydration_summary_eq(
 /// in spec context and returns the expected summary payload.
 /// This is the Verus-native spec contract for the production
 /// `RecoveryHydration::summary` method.
-pub open spec fn hydration_summary_spec(h: production::RecoveryHydration) -> production::RecoveryRuntimeSummary {
+pub open spec fn hydration_summary_spec(
+    h: production::RecoveryHydration,
+) -> production::RecoveryRuntimeSummary {
     match h {
         production::RecoveryHydration::Summary(s) => s,
         production::RecoveryHydration::FrameSeed(seed) => seed.summary,
@@ -326,9 +317,7 @@ pub open spec fn hydration_summary_spec(h: production::RecoveryHydration) -> pro
 // bodies are `#[verifier::external]` so Verus skips body
 // verification; the spec proofs below exercise the contracts via
 // exec wrappers that call the mirror methods.
-
 // ---------- PO-VB-NEW-1..3: UnsupportedRecoveryState union ----------
-
 // Bridge contract: `state.is_fully_supported()` returns `true` iff
 // `is_fully_supported_spec(state)` holds.
 pub assume_specification[ production::UnsupportedRecoveryState::is_fully_supported ](
@@ -365,7 +354,10 @@ pub assume_specification[ production::RecoveryHydration::summary ](
     ensures
         match *self_ {
             production::RecoveryHydration::Summary(s) => hydration_summary_eq(result, s),
-            production::RecoveryHydration::FrameSeed(seed) => hydration_summary_eq(result, seed.summary),
+            production::RecoveryHydration::FrameSeed(seed) => hydration_summary_eq(
+                result,
+                seed.summary,
+            ),
         },
 ;
 
@@ -377,9 +369,7 @@ pub assume_specification[ production::RecoveryHydration::summary ](
 // the bridge contract and states a requires/ensures pair provable
 // from the bridge. The wrappers are the proof witnesses that the
 // bridge is not used as a vacuum (GOD RULE 2).
-
 // ---------- PO-VB-001: terminal state variant closure ----------
-
 /// PO-VB-001 wrapper: every documented `RecoveryTerminalState`
 /// variant satisfies `valid_recovery_terminal_state`. The exec
 /// wrapper constructs the four-variant literal set; the ensures
@@ -400,18 +390,14 @@ pub exec fn wrapper_all_terminal_states_valid()
 }
 
 // ---------- PO-VB-002: runtime summary invariant ----------
-
 /// PO-VB-002 wrapper (first_seq <= last_seq).
 pub exec fn wrapper_first_seq_le_last_seq(s: production::RecoveryRuntimeSummary)
     requires
         s.first_seq.0 <= s.last_seq.0,
     ensures
         s.first_seq.0 <= s.last_seq.0,
-        recovery_runtime_summary_inv(s)
-            || !(
-                s.steps_started >= s.steps_succeeded
-                && s.actions_scheduled >= s.actions_resolved
-            ),
+        recovery_runtime_summary_inv(s) || !(s.steps_started >= s.steps_succeeded
+            && s.actions_scheduled >= s.actions_resolved),
 {
 }
 
@@ -421,11 +407,8 @@ pub exec fn wrapper_steps_started_ge_succeeded(s: production::RecoveryRuntimeSum
         s.steps_started >= s.steps_succeeded,
     ensures
         s.steps_started >= s.steps_succeeded,
-        recovery_runtime_summary_inv(s)
-            || !(
-                s.first_seq.0 <= s.last_seq.0
-                && s.actions_scheduled >= s.actions_resolved
-            ),
+        recovery_runtime_summary_inv(s) || !(s.first_seq.0 <= s.last_seq.0 && s.actions_scheduled
+            >= s.actions_resolved),
 {
 }
 
@@ -435,16 +418,12 @@ pub exec fn wrapper_actions_scheduled_ge_resolved(s: production::RecoveryRuntime
         s.actions_scheduled >= s.actions_resolved,
     ensures
         s.actions_scheduled >= s.actions_resolved,
-        recovery_runtime_summary_inv(s)
-            || !(
-                s.first_seq.0 <= s.last_seq.0
-                && s.steps_started >= s.steps_succeeded
-            ),
+        recovery_runtime_summary_inv(s) || !(s.first_seq.0 <= s.last_seq.0 && s.steps_started
+            >= s.steps_succeeded),
 {
 }
 
 // ---------- PO-VB-003: recovered step state variant closure ----------
-
 /// PO-VB-003 wrapper: every documented `RecoveredStepState` variant
 /// satisfies `valid_recovered_step_state`.
 pub exec fn wrapper_all_step_states_valid()
@@ -458,7 +437,6 @@ pub exec fn wrapper_all_step_states_valid()
 }
 
 // ---------- PO-VB-NEW-1: unsupported union idempotent ----------
-
 /// PO-VB-NEW-1 wrapper: `a.union(a) == a`.
 pub exec fn wrapper_unsupported_union_idempotent(a: production::UnsupportedRecoveryState)
     ensures
@@ -468,7 +446,6 @@ pub exec fn wrapper_unsupported_union_idempotent(a: production::UnsupportedRecov
 }
 
 // ---------- PO-VB-NEW-2: unsupported union commutative ----------
-
 /// PO-VB-NEW-2 wrapper: `a.union(b) == b.union(a)`.
 pub exec fn wrapper_unsupported_union_commutative(
     a: production::UnsupportedRecoveryState,
@@ -482,11 +459,8 @@ pub exec fn wrapper_unsupported_union_commutative(
 }
 
 // ---------- PO-VB-NEW-3: unsupported union identity ----------
-
 /// PO-VB-NEW-3 wrapper (right identity): `a.union(SUPPORTED) == a`.
-pub exec fn wrapper_unsupported_union_right_identity(
-    a: production::UnsupportedRecoveryState,
-)
+pub exec fn wrapper_unsupported_union_right_identity(a: production::UnsupportedRecoveryState)
     ensures
         unsupported_state_eq(unsupported_union_spec(a, production_supported_spec()), a),
 {
@@ -494,9 +468,7 @@ pub exec fn wrapper_unsupported_union_right_identity(
 }
 
 /// PO-VB-NEW-3 wrapper (left identity): `SUPPORTED.union(a) == a`.
-pub exec fn wrapper_unsupported_union_left_identity(
-    a: production::UnsupportedRecoveryState,
-)
+pub exec fn wrapper_unsupported_union_left_identity(a: production::UnsupportedRecoveryState)
     ensures
         unsupported_state_eq(unsupported_union_spec(production_supported_spec(), a), a),
 {
@@ -504,7 +476,6 @@ pub exec fn wrapper_unsupported_union_left_identity(
 }
 
 // ---------- PO-VB-NEW-4: hydration summary on Summary variant ----------
-
 /// PO-VB-NEW-4 wrapper: `RecoveryHydration::summary(Summary(s))`
 /// returns the Summary payload `s`.
 pub exec fn wrapper_hydration_summary_for_summary(s: production::RecoveryRuntimeSummary)
@@ -517,12 +488,14 @@ pub exec fn wrapper_hydration_summary_for_summary(s: production::RecoveryRuntime
 }
 
 // ---------- PO-VB-NEW-5: hydration summary on FrameSeed variant ----------
-
 /// PO-VB-NEW-5 wrapper: `RecoveryHydration::summary(FrameSeed(seed))`
 /// returns the FrameSeed's embedded `seed.summary`.
 pub exec fn wrapper_hydration_summary_for_frame_seed(seed: production::RecoveryFrameSeed)
     ensures
-        hydration_summary_eq(hydration_summary_spec(production::RecoveryHydration::FrameSeed(seed)), seed.summary),
+        hydration_summary_eq(
+            hydration_summary_spec(production::RecoveryHydration::FrameSeed(seed)),
+            seed.summary,
+        ),
 {
     let result = production::RecoveryHydration::FrameSeed(seed).summary();
     // result should equal seed.summary per bridge contract
@@ -532,9 +505,7 @@ pub exec fn wrapper_hydration_summary_for_frame_seed(seed: production::RecoveryF
 // ============================================================================
 // Non-vacuous proofs — production-bound reasoning
 // ============================================================================
-
 // ---------- PO-VB-001 ----------
-
 /// PO-VB-001: every documented `RecoveryTerminalState` variant
 /// satisfies `valid_recovery_terminal_state`. The proof witnesses
 /// are the `wrapper_all_terminal_states_valid` exec wrapper which
@@ -561,7 +532,6 @@ pub proof fn proof_all_terminal_states_valid()
 }
 
 // ---------- PO-VB-002 ----------
-
 /// PO-VB-002: the `recovery_runtime_summary_inv` predicate holds
 /// under its three component invariants. The proof witnesses
 /// (`wrapper_first_seq_le_last_seq`,
@@ -615,7 +585,6 @@ pub proof fn proof_actions_scheduled_ge_resolved(s: production::RecoveryRuntimeS
 }
 
 // ---------- PO-VB-003 ----------
-
 /// PO-VB-003: every documented `RecoveredStepState` variant
 /// satisfies `valid_recovered_step_state`.
 pub proof fn proof_all_step_states_valid()
@@ -634,7 +603,6 @@ pub proof fn proof_all_step_states_valid()
 }
 
 // ---------- PO-VB-NEW-1 ----------
-
 /// PO-VB-NEW-1: `union(a, a) == a` for all `a`.
 ///
 /// Proof witness: `wrapper_unsupported_union_idempotent` exercises
@@ -653,7 +621,6 @@ pub proof fn proof_unsupported_union_idempotent(a: production::UnsupportedRecove
 }
 
 // ---------- PO-VB-NEW-2 ----------
-
 /// PO-VB-NEW-2: `union(a, b) == union(b, a)`.
 ///
 /// Proof witness: `wrapper_unsupported_union_commutative` exercises
@@ -669,18 +636,21 @@ pub proof fn proof_unsupported_union_commutative(
 {
     assert(unsupported_union_spec(a, b).slot_values == unsupported_union_spec(b, a).slot_values);
     assert(unsupported_union_spec(a, b).slot_taint == unsupported_union_spec(b, a).slot_taint);
-    assert(unsupported_union_spec(a, b).action_payloads == unsupported_union_spec(b, a).action_payloads);
-    assert(unsupported_union_spec(a, b).pending_actions == unsupported_union_spec(b, a).pending_actions);
+    assert(unsupported_union_spec(a, b).action_payloads == unsupported_union_spec(
+        b,
+        a,
+    ).action_payloads);
+    assert(unsupported_union_spec(a, b).pending_actions == unsupported_union_spec(
+        b,
+        a,
+    ).pending_actions);
     assert(unsupported_state_eq(unsupported_union_spec(a, b), unsupported_union_spec(b, a)));
 }
 
 // ---------- PO-VB-NEW-3 ----------
-
 /// PO-VB-NEW-3: `union(a, SUPPORTED) == a` (right identity) and
 /// `union(SUPPORTED, a) == a` (left identity).
-pub proof fn proof_unsupported_union_identity(
-    a: production::UnsupportedRecoveryState,
-)
+pub proof fn proof_unsupported_union_identity(a: production::UnsupportedRecoveryState)
     ensures
         unsupported_state_eq(unsupported_union_spec(a, production_supported_spec()), a),
         unsupported_state_eq(unsupported_union_spec(production_supported_spec(), a), a),
@@ -688,19 +658,22 @@ pub proof fn proof_unsupported_union_identity(
     // Right identity: `a.f || false == a.f`.
     assert(unsupported_union_spec(a, production_supported_spec()).slot_values == a.slot_values);
     assert(unsupported_union_spec(a, production_supported_spec()).slot_taint == a.slot_taint);
-    assert(unsupported_union_spec(a, production_supported_spec()).action_payloads == a.action_payloads);
-    assert(unsupported_union_spec(a, production_supported_spec()).pending_actions == a.pending_actions);
+    assert(unsupported_union_spec(a, production_supported_spec()).action_payloads
+        == a.action_payloads);
+    assert(unsupported_union_spec(a, production_supported_spec()).pending_actions
+        == a.pending_actions);
     assert(unsupported_state_eq(unsupported_union_spec(a, production_supported_spec()), a));
     // Left identity: `false || a.f == a.f`.
     assert(unsupported_union_spec(production_supported_spec(), a).slot_values == a.slot_values);
     assert(unsupported_union_spec(production_supported_spec(), a).slot_taint == a.slot_taint);
-    assert(unsupported_union_spec(production_supported_spec(), a).action_payloads == a.action_payloads);
-    assert(unsupported_union_spec(production_supported_spec(), a).pending_actions == a.pending_actions);
+    assert(unsupported_union_spec(production_supported_spec(), a).action_payloads
+        == a.action_payloads);
+    assert(unsupported_union_spec(production_supported_spec(), a).pending_actions
+        == a.pending_actions);
     assert(unsupported_state_eq(unsupported_union_spec(production_supported_spec(), a), a));
 }
 
 // ---------- PO-VB-NEW-4 ----------
-
 /// PO-VB-NEW-4: `RecoveryHydration::summary(Summary(s)) == s`.
 ///
 /// Proof strategy: the production `summary()` method is exec-mode
@@ -726,7 +699,6 @@ pub proof fn proof_hydration_summary_for_summary(s: production::RecoveryRuntimeS
 }
 
 // ---------- PO-VB-NEW-5 ----------
-
 /// PO-VB-NEW-5: `RecoveryHydration::summary(FrameSeed(seed)) == seed.summary`.
 ///
 /// Proof strategy: construct the FrameSeed variant hydration, use the
@@ -736,7 +708,10 @@ pub proof fn proof_hydration_summary_for_summary(s: production::RecoveryRuntimeS
 /// `seed.summary` directly.
 pub proof fn proof_hydration_summary_for_frame_seed(seed: production::RecoveryFrameSeed)
     ensures
-        hydration_summary_eq(hydration_summary_spec(production::RecoveryHydration::FrameSeed(seed)), seed.summary),
+        hydration_summary_eq(
+            hydration_summary_spec(production::RecoveryHydration::FrameSeed(seed)),
+            seed.summary,
+        ),
 {
     // By the definition of `hydration_summary_spec` on the FrameSeed variant,
     // the spec returns `seed.summary` directly, so the equality holds.
@@ -748,7 +723,6 @@ pub proof fn proof_hydration_summary_for_frame_seed(seed: production::RecoveryFr
 // SUPPORTED-shape invariant (carried over from the original spec's
 // `spec_unsupported_supported()` / `valid_unsupported_recovery_state`)
 // ============================================================================
-
 /// PO-VB-NEW-SUPPORTED: `production_supported_spec()` is fully
 /// supported (every flag is `false`, so `is_fully_supported` returns
 /// `true`).
@@ -771,6 +745,7 @@ pub proof fn proof_supported_is_fully_supported()
     assert(is_fully_supported_spec(production_supported_spec()));
 }
 
-fn main() {}
+fn main() {
+}
 
 } // verus!

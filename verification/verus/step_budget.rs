@@ -40,7 +40,6 @@
 //   - production::StepBudget::remaining <- crates/vb_core/src/engine/signals.rs:65-67
 //   - production::StepBudget::MAX       <- crates/vb_core/src/engine/signals.rs:21-23
 //   - production::EngineError::StepCounterOverflow <- crates/vb_core/src/errors.rs:241
-
 #[path = "extern_signals_invariant.rs"]
 mod production;
 
@@ -71,7 +70,6 @@ pub struct ExStepBudget(production::StepBudget);
 // =============================================================================
 // Spec constants
 // =============================================================================
-
 /// Spec-side projection of the production `MAX_STEP_BUDGET` u64 constant
 /// (production at `crates/vb_core/src/limits.rs:94 = 10_000`).
 #[allow(non_upper_case_globals)]
@@ -85,7 +83,6 @@ pub open spec fn max_step_budget() -> int {
 // =============================================================================
 // Spec invariants and functions (production-anchored via assume_specification)
 // =============================================================================
-
 /// The StepBudget invariant: remaining is always in [0, MAX_STEP_BUDGET].
 pub open spec fn spec_remaining_bounded(remaining: int) -> bool {
     0 <= remaining && remaining <= max_step_budget()
@@ -134,16 +131,14 @@ pub open spec fn spec_try_take(remaining: int) -> (bool, int) {
 // bodies are opaque to Verus (declared OUTSIDE `verus!`); the spec
 // contracts below state the production behavior the spec proofs
 // discharge.
-
 /// Bridge contract: `production::StepBudget::new(v)` returns a
 /// StepBudget whose public `remaining()` accessor equals `min(v,
 /// MAX_STEP_BUDGET)` and satisfies the bounded invariant.
 ///
 /// Mirrors the production body at
 /// `crates/vb_core/src/engine/signals.rs:28-36`.
-pub assume_specification[ production::StepBudget::new ](
-    value: u64,
-) -> (budget: production::StepBudget)
+pub assume_specification[ production::StepBudget::new ](value: u64) -> (budget:
+    production::StepBudget)
     ensures
         budget.remaining as int == spec_new(value as int),
         spec_step_budget_invariant(budget.remaining as int),
@@ -168,14 +163,13 @@ pub assume_specification[ production::StepBudget::try_take ](
         spec_step_budget_invariant(old(budget).remaining as int),
     ensures
         match r {
-            Ok(true) =>
-                old(budget).remaining as int > 0
-                && final(budget).remaining as int == old(budget).remaining as int - 1,
-            Ok(false) =>
-                old(budget).remaining as int == 0
-                && final(budget).remaining as int == old(budget).remaining as int,
-            Err(_) =>
-                old(budget).remaining as int > max_step_budget()
+            Ok(true) => old(budget).remaining as int > 0 && final(budget).remaining as int == old(
+                budget,
+            ).remaining as int - 1,
+            Ok(false) => old(budget).remaining as int == 0 && final(budget).remaining as int == old(
+                budget,
+            ).remaining as int,
+            Err(_) => old(budget).remaining as int > max_step_budget()
                 && final(budget).remaining as int == old(budget).remaining as int,
         },
         spec_step_budget_invariant(final(budget).remaining as int),
@@ -203,7 +197,6 @@ pub assume_specification[ production::StepBudget::remaining ](
 // `proof_try_take_*` proofs also exercise production semantics via
 // the exec proofs in the next section, completing the production
 // binding end-to-end.
-
 /// PS-001: try_take remaining is monotonically non-increasing.
 /// When the invariant holds, `spec_try_take(remaining).1 <= remaining`.
 pub proof fn proof_try_take_monotonic(remaining: int)
@@ -234,7 +227,9 @@ pub proof fn proof_try_take_never_negative(remaining: int)
         assert(spec_try_take(remaining) == (false, 0int));
         assert(spec_try_take(remaining).1 == 0 >= 0);
     } else {
-        assert(remaining >= 1) by { assert(remaining > 0); };
+        assert(remaining >= 1) by {
+            assert(remaining > 0);
+        };
         assert(remaining > 0 && remaining <= max_step_budget());
         assert(spec_try_take(remaining) == (true, remaining - 1));
         assert(remaining - 1 >= 0);
@@ -311,7 +306,6 @@ pub proof fn proof_new_clamps(value: int)
 // proofs above are not just abstract reasoning over `spec_try_take`
 // — they reason over the production behavior of
 // `production::StepBudget::try_take` and `::new`.
-
 /// Exec proof (PS-001): `production::StepBudget::try_take` is
 /// monotonic — remaining is never increased. Discharged by the
 /// production contract on `production::StepBudget::try_take`.
@@ -378,17 +372,15 @@ pub fn exec_proof_try_take_zero_returns_false() -> (result: (bool, production::S
     match r {
         Ok(true) => {
             assert(false);
-        }
-        Ok(false) => {}
+        },
+        Ok(false) => {},
         Err(_) => {
             assert(false);
-        }
+        },
     }
     let took = match r {
         Ok(v) => v,
-        Err(_) => {
-            true
-        }
+        Err(_) => { true },
     };
     (took, b)
 }
@@ -405,6 +397,7 @@ pub fn exec_proof_new_clamps(value: u64) -> (budget: production::StepBudget)
     budget
 }
 
-fn main() {}
+fn main() {
+}
 
 } // verus!

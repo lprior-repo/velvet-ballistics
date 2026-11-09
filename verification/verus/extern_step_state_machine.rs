@@ -52,10 +52,17 @@ verus! {
 pub mod step_state_machine_production;
 
 pub use step_state_machine_production::{
-    EngineSignal, SpecEngineError, SpecStepStateMirror, StepBudget,
-    engine_signal_discriminant, spec_mark_step_after_signal,
-    step_budget_from_env, step_budget_max, step_budget_new,
-    step_budget_remaining, step_budget_try_take,
+    EngineSignal,
+    SpecEngineError,
+    SpecStepStateMirror,
+    StepBudget,
+    engine_signal_discriminant,
+    spec_mark_step_after_signal,
+    step_budget_from_env,
+    step_budget_max,
+    step_budget_new,
+    step_budget_remaining,
+    step_budget_try_take,
 };
 
 } // verus!

@@ -27,7 +27,6 @@
 // (defined in the production_inner mirror) is NOT verified by Verus.
 // Drift between the projection body and the production source is
 // reported as binding-debt outside Verus.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]

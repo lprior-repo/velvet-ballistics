@@ -151,7 +151,6 @@
 // in the companion spec file state the production behavior the spec
 // proofs discharge. Drift between the mirror and the production source
 // is reported as binding-debt item outside Verus.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -174,11 +173,9 @@ verus! {
 pub mod prod_src;
 
 } // verus!
-
 // ============================================================================
 // ID type mirrors — vb_core/vb_storage newtypes
 // ============================================================================
-
 /// Mirror of `RunId` (u64 newtype) at `crates/vb_core/src/ids/mod.rs`.
 /// Production stores `run.get()` as a u64 with `RunId::ZERO = 0`.
 #[derive(Clone, Copy)]
@@ -267,13 +264,28 @@ impl EventReplayLimit {
 #[derive(Clone, Copy)]
 pub enum MirrorJournalError {
     SequenceOverflow,
-    WrongRun { expected: RunId, actual: RunId },
-    SequenceGap { expected: EventSeq, actual: EventSeq },
-    BadMagic { found: u32 },
+    WrongRun {
+        expected: RunId,
+        actual: RunId,
+    },
+    SequenceGap {
+        expected: EventSeq,
+        actual: EventSeq,
+    },
+    BadMagic {
+        found: u32,
+    },
     PayloadDigestMismatch,
     PostcardDecodeFailed,
-    TooManyEvents { run: RunId, limit: usize, observed: usize },
-    ReplayAllocationFailed { run: RunId, requested: usize },
+    TooManyEvents {
+        run: RunId,
+        limit: usize,
+        observed: usize,
+    },
+    ReplayAllocationFailed {
+        run: RunId,
+        requested: usize,
+    },
     UnexpectedEof,
 }
 
@@ -431,10 +443,7 @@ pub fn production_validate_replayed_event(
 ///
 /// Body skipped by Verus; contract attached via `assume_specification`.
 #[verifier::external]
-pub fn production_latest_durable_snapshot_seq(
-    journal: &MirrorJournal,
-    run: RunId,
-) -> Option<u64> {
+pub fn production_latest_durable_snapshot_seq(journal: &MirrorJournal, run: RunId) -> Option<u64> {
     journal.latest_snapshot_seq(run)
 }
 

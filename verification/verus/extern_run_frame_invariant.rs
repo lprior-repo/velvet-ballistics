@@ -62,11 +62,25 @@ verus! {
 pub mod run_frame_invariant_production;
 
 pub use run_frame_invariant_production::{
-    CoreError, CoreResult, RunFrame, RunId, SlotIdx, SlotValue, StepIdx,
-    StepState, Taint, is_valid_step_state_transition, run_frame_new,
-    run_frame_pc, run_frame_reinitialize, run_frame_set_pc,
-    run_frame_slot_count, run_frame_slots_snapshot, run_frame_states_snapshot,
-    run_frame_step_count, run_frame_taint_snapshot,
+    CoreError,
+    CoreResult,
+    RunFrame,
+    RunId,
+    SlotIdx,
+    SlotValue,
+    StepIdx,
+    StepState,
+    Taint,
+    is_valid_step_state_transition,
+    run_frame_new,
+    run_frame_pc,
+    run_frame_reinitialize,
+    run_frame_set_pc,
+    run_frame_slot_count,
+    run_frame_slots_snapshot,
+    run_frame_states_snapshot,
+    run_frame_step_count,
+    run_frame_taint_snapshot,
     run_frame_write_slot_with_taint,
 };
 

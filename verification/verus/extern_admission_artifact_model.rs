@@ -24,7 +24,6 @@
 // re-declared with `#[verifier::external]` so Verus skips their
 // bodies, and the companion spec file attaches `assume_specification`
 // contracts to those re-declarations.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
@@ -56,10 +55,23 @@ verus! {
 // root, and the spec file references them as `production::WorkflowDigest`,
 // `production::proof_matches_prepared_shape`, etc.
 pub use prod::{
-    artifact_digest_bound, digest_eq, proof_matches_prepared_shape, AcceptedArtifact,
-    ActionId, ActionPack, ArtifactEvidence, ArtifactVerificationEvidence, AssumptionId,
-    ObligationClosure, ObligationKind, PackedArtifactEvidence, RuntimePolicy,
-    VerificationLedgerEntry, VerificationProof, VerificationWarning, WorkflowDigest,
+    artifact_digest_bound,
+    digest_eq,
+    proof_matches_prepared_shape,
+    AcceptedArtifact,
+    ActionId,
+    ActionPack,
+    ArtifactEvidence,
+    ArtifactVerificationEvidence,
+    AssumptionId,
+    ObligationClosure,
+    ObligationKind,
+    PackedArtifactEvidence,
+    RuntimePolicy,
+    VerificationLedgerEntry,
+    VerificationProof,
+    VerificationWarning,
+    WorkflowDigest,
 };
 
 } // verus!
