@@ -106,22 +106,11 @@ pub(crate) use validation::validate_public_name;
 // validator's error domain without depending on `vb_validate` directly.
 pub use vb_validate::{ValidationError, ValidationResult};
 
-// Provide convenience wrapper functions that delegate to vb_yaml
-pub fn parse_yaml_events(text: &str) -> YamlResult<Vec<YamlEvent>> {
-    vb_yaml::parse_yaml_events(text)
-}
-
-pub fn parse_workflow_source(text: &str) -> YamlResult<WorkflowSource> {
-    vb_yaml::parse_workflow_source(text)
-}
-
-pub fn load_fixture_source(text: &str) -> YamlResult<WorkflowSource> {
-    vb_yaml::load_fixture_source(text)
-}
-
-pub fn reject_forbidden_yaml_features(events: &[YamlEvent]) -> YamlResult<()> {
-    vb_yaml::reject_forbidden_yaml_features(events)
-}
+// Re-export the YAML entry points directly from the dedicated `vb_yaml` crate,
+// which owns these functions. Names and signatures are unchanged.
+pub use vb_yaml::{
+    load_fixture_source, parse_workflow_source, parse_yaml_events, reject_forbidden_yaml_features,
+};
 
 // Test-only module: it exercises test-gated `vb_yaml` internals and holds
 // no production items, so normal builds exclude it entirely.
