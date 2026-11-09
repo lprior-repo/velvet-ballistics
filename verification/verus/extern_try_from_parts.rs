@@ -60,27 +60,27 @@
 //   - `validate_budget_result` budget error collapse
 //     <- crates/vb_core/src/workflow/mod.rs:1461-1470
 //   - `WholeWorkflowBudget` field set
-//     <- crates/vb_core/src/budget.rs:14-90
+//     <- crates/vb_core/src/budget.rs:16-92
 //   - `WholeWorkflowBudget::compute`
-//     <- crates/vb_core/src/budget.rs:97-103
+//     <- crates/vb_core/src/budget.rs:99-105
 //   - `BoundednessPolicy` field set
-//     <- crates/vb_core/src/budget.rs:455-502
+//     <- crates/vb_core/src/budget/validate.rs:9-56
 //   - `BoundednessPolicy::DEFAULT`
-//     <- crates/vb_core/src/budget.rs:506-530
+//     <- crates/vb_core/src/budget/validate.rs:60-84
 //   - `BoundednessPolicy::validate`
-//     <- crates/vb_core/src/budget.rs:534-592
+//     <- crates/vb_core/src/budget/validate.rs:88-147
 //   - `validate_budget_dimensions`
-//     <- crates/vb_core/src/budget.rs:595-642
+//     <- crates/vb_core/src/budget/validate.rs:149-196
 //   - `validate_extended_budget`
-//     <- crates/vb_core/src/budget.rs:644-661
+//     <- crates/vb_core/src/budget/validate.rs:198-215
 //   - `validate_payload_budget`
-//     <- crates/vb_core/src/budget.rs:663-698
+//     <- crates/vb_core/src/budget/validate.rs:217-252
 //   - `BudgetError`
-//     <- crates/vb_core/src/budget.rs:703-750
+//     <- crates/vb_core/src/budget/validate_error.rs:10-57
 //   - `BudgetError::dimension`
-//     <- crates/vb_core/src/budget.rs:758-784
+//     <- crates/vb_core/src/budget/validate_error.rs:65-91
 //   - `BudgetDimension`
-//     <- crates/vb_core/src/budget.rs:793-840
+//     <- crates/vb_core/src/budget/validate_error.rs:100-147
 //   - `validate_resource_contract`
 //     <- crates/vb_core/src/workflow/mod.rs:1587-1593
 //   - `validate_entry`
@@ -644,9 +644,9 @@ pub enum SpecKindRef {
     NonZero(u32),
 }
 /// Mirrors the production `WholeWorkflowBudget` field set at
-/// `crates/vb_core/src/budget.rs:14-90`: the computed budget
+/// `crates/vb_core/src/budget.rs:16-92`: the computed budget
 /// `WholeWorkflowBudget::compute` derives by walking the IR
-/// (budget.rs:97-103). Production `u64` fields stay `u64`;
+/// (budget.rs:99-105). Production `u64` fields stay `u64`;
 /// production `u16` fields are promoted to `u32` per this
 /// file's numeric-mirror convention. The seven fields
 /// `BoundednessPolicy::DEFAULT.validate` never reads
@@ -843,8 +843,8 @@ pub struct SpecWorkflowParts {
     /// Caller-supplied computed budget consumed by step 4
     /// (`validate_budget`, workflow/mod.rs:1453-1459). Production
     /// derives it with `WholeWorkflowBudget::compute`
-    /// (budget.rs:97-103) and validates it against
-    /// `BoundednessPolicy::DEFAULT` (budget.rs:506-530); the
+    /// (budget.rs:99-105) and validates it against
+    /// `BoundednessPolicy::DEFAULT` (budget/validate.rs:60-84); the
     /// projection checks the supplied value with `budget_error`
     /// instead, so the compute walk stays with the caller.
     pub computed_budget: SpecComputedBudget,
@@ -1151,13 +1151,13 @@ pub fn kind_ref_error(
 
 /// Pure projection of `BoundednessPolicy::DEFAULT.validate` applied
 /// to a caller-supplied computed budget
-/// (`crates/vb_core/src/budget.rs:534-592`, via
-/// `validate_extended_budget` at 644-661,
-/// `validate_payload_budget` at 663-698, and
-/// `validate_budget_dimensions` at 595-642). Checks the 23
+/// (`crates/vb_core/src/budget/validate.rs:88-147`, via
+/// `validate_extended_budget` at budget/validate.rs:198-215,
+/// `validate_payload_budget` at budget/validate.rs:217-252, and
+/// `validate_budget_dimensions` at budget/validate.rs:149-196). Checks the 23
 /// validated dimensions in production first-violation order and
 /// returns `BudgetPolicyExceeded` for the first dimension over
-/// its `DEFAULT` cap (budget.rs:506-530), or `None` when every
+/// its `DEFAULT` cap (budget/validate.rs:60-84), or `None` when every
 /// dimension is within caps. Production collapses the typed
 /// `BudgetError` to `WorkflowError::BudgetPolicyExceeded`
 /// (`validate_budget_result`, workflow/mod.rs:1461-1470), so the
@@ -2718,8 +2718,8 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // from already-validated nodes, so the projection treats it as
     // passing for inputs that reached this step.
     // ---- Step 4: budget validation ----
-    // Production calls WholeWorkflowBudget::compute (budget.rs:97-103)
-    // then BoundednessPolicy::DEFAULT.validate (budget.rs:534-592);
+    // Production calls WholeWorkflowBudget::compute (budget.rs:99-105)
+    // then BoundednessPolicy::DEFAULT.validate (budget/validate.rs:88-147);
     // validate_budget_result (workflow/mod.rs:1461-1470) collapses
     // any BudgetError to BudgetPolicyExceeded. The projection checks
     // the caller-supplied `computed_budget` inventory with
