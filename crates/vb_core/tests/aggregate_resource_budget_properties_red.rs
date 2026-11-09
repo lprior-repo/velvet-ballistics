@@ -18,12 +18,16 @@ const BUDGET_USAGE_RS: &str = include_str!("../src/budget/usage.rs");
 // The budget computation and its small-linear fast path moved to
 // `budget/compute.rs` and `budget/small_linear.rs`, so the shell alone
 // no longer contains `WholeWorkflowBudget` or `compute_budget_local`.
+// The traversal error type and its conversions moved to
+// `budget/traversal_error.rs`, so the shell alone no longer contains
+// `BudgetTraversalError` or its `From` conversions.
 const BUDGET_AGGREGATE_RS: &str = include_str!("../src/budget/aggregate.rs");
 const BUDGET_AGGREGATE_VALIDATE_RS: &str = include_str!("../src/budget/aggregate_validate.rs");
 const BUDGET_COMPUTE_RS: &str = include_str!("../src/budget/compute.rs");
 const BUDGET_SMALL_LINEAR_RS: &str = include_str!("../src/budget/small_linear.rs");
 const BUDGET_VALIDATE_RS: &str = include_str!("../src/budget/validate.rs");
 const BUDGET_VALIDATE_ERROR_RS: &str = include_str!("../src/budget/validate_error.rs");
+const BUDGET_TRAVERSAL_ERROR_RS: &str = include_str!("../src/budget/traversal_error.rs");
 // The admission shell is split across focused chunks under `parts/` that
 // are `include!`-d into `admission.rs` at compile time. The runtime-source
 // literals this proptest searches for (`admit_run_with_budget`,
@@ -70,6 +74,8 @@ fn budget_production_surface() -> String {
     s.push_str(BUDGET_VALIDATE_RS);
     s.push('\n');
     s.push_str(BUDGET_VALIDATE_ERROR_RS);
+    s.push('\n');
+    s.push_str(BUDGET_TRAVERSAL_ERROR_RS);
     s
 }
 

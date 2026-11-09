@@ -34,8 +34,8 @@
 //   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:96-132
 //   - `AggregateBudgetError`                 <- crates/vb_core/src/budget/aggregate.rs:205-277
 //   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:109-243
-//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:65-102
-//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:104-122
+//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:22-59
+//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:61-79
 //   - `count_total_steps`                    <- crates/vb_core/src/budget/loop_body.rs:11-17
 //
 // ============================================================================
