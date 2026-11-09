@@ -80,7 +80,7 @@ pub mod production_inner;
 // file attaches an `assume_specification` bridge to:
 //
 //   - count_and_push_loop_body      (budget/loop_body.rs:216-242)
-//   - find_node_position            (budget.rs:143-167)
+//   - find_node_position            (crates/vb_core/src/budget.rs:143-167)
 //   - push_done_continuation        (budget/loop_body.rs:244-261)
 //   - checked_step_add              (budget/loop_body.rs:206-211)
 //   - collect_start_update_metrics  (budget/reachable.rs:166-179)

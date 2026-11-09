@@ -37,12 +37,12 @@
 //
 // BINDING LEDGER:
 //   - `WholeWorkflowBudget`        <- extern_budget_monotonic.rs
-//                                       (mirror of budget.rs:17-93)
+//                                       (mirror of crates/vb_core/src/budget/compute.rs:17-93)
 //   - `WholeWorkflowBudget::compute` <- extern_budget_monotonic.rs
 //                                       `whole_workflow_budget_compute`
-//                                       (mirror of budget.rs:100-106)
+//                                       (mirror of crates/vb_core/src/budget/compute.rs:100-106)
 //   - `BudgetTraversalError`       <- extern_budget_monotonic.rs
-//                                       (mirror of budget.rs:259-283)
+//                                       (mirror of crates/vb_core/src/budget/traversal_error.rs:13-37, 39-52)
 //   - `WorkflowError`              <- extern_budget_monotonic.rs
 //                                       `workflow` submodule
 //                                       (mirror of workflow/mod.rs:666-880)
@@ -299,7 +299,7 @@ pub proof fn proof_run_time_equals_total_steps(b: WholeWorkflowBudget)
 pub proof fn proof_budget_in_bounds(b: WholeWorkflowBudget)
     requires
 // Production premise: b is a budget produced by compute(). The
-// production overflow checks at lines budget/loop_body.rs:43, budget/depth.rs:81, budget/successors.rs:150-152 etc.
+// production overflow checks at lines budget/loop_body.rs:43, budget/depth.rs:79-84, budget/successors.rs:150-152 etc.
 // guarantee every Ok-branch field is within its u-type max.
 
         b.max_total_steps <= u64::MAX,

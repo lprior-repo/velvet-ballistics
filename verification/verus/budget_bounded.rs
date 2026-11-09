@@ -32,7 +32,7 @@
 // BINDING LEDGER:
 //   - `WholeWorkflowBudget`                  <- extern_budget_bounded.rs
 //                                              (mirror of
-//                                              budget.rs:17-93)
+//                                              crates/vb_core/src/budget/compute.rs:17-93)
 //   - `WholeWorkflowBudget::compute`         <- extern_budget_bounded.rs
 //                                              `whole_workflow_budget_compute`
 //   - `BoundednessPolicy::validate`          <- extern_budget_bounded.rs

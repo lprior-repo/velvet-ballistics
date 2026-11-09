@@ -134,7 +134,7 @@ pub use production::{
 pub const U32_MAX: u32 = 4_294_967_295;
 
 /// Production u64::MAX mirror (18_446_744_073_709_551_615) — the upper
-/// bound on `total` step arithmetic (budget/loop_body.rs:43, 229, 235, budget/loop_region.rs:48).
+/// bound on `total` step arithmetic (budget/loop_body.rs:43, 229, 234-239, budget/loop_region.rs:47-52).
 #[allow(non_upper_case_globals)]
 pub const U64_MAX: u64 = 18_446_744_073_709_551_615;
 
