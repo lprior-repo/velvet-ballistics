@@ -56,7 +56,7 @@
 //     bounds. The first two mirror `crates/vb_core/src/limits.rs:11` and
 //     `:94`. The last two are spec-only — production's `BoundednessPolicy
 //     ::DEFAULT.absolute_max_parallel = 256` and `..._action_tickets =
-//     100_000` (budget.rs:509-533) — drift is reported as a binding
+//     100_000` (crates/vb_core/src/budget/validate.rs:60-84) — drift is reported as a binding
 //     debt item outside Verus.
 //
 // ============================================================================
@@ -374,8 +374,8 @@ pub const SPEC_MAX_ACTION_TICKETS: u64 = 1_000_000;
 // ----------------------------------------------------------------------------
 //
 // `MAX_LIST_ITEMS_PER_VALUE` was previously declared inside the
-// production_inner mirror at
-// `verification/verus/production_inner/budget_bounded_production.rs:683`
+// production_inner mirror
+// `verification/verus/production_inner/budget_bounded_production.rs`
 // (inside `pub mod limits { ... }`). Declaring it in that mirror
 // triggered the same Verus internal error
 // (`VerusErasureCtxt has not been initialized`) on the
@@ -461,8 +461,8 @@ pub open spec fn spec_count_total_steps_result(result: Result<int, SpecWorkflowE
 // section.
 /// Bridge contract: `add_dim` returns Ok iff the checked_add does not
 /// overflow. Mirrors production body at
-/// `crates/vb_core/src/budget.rs:930-938`:
-///   `current.checked_add(requested).ok_or(Overflow { resource })`
+/// `crates/vb_core/src/budget.rs:104-112`:
+///   `current.checked_add(requested).ok_or(AggregateBudgetError::Overflow { resource })`
 pub assume_specification[ production::add_dim ](
     current: u64,
     requested: u64,
@@ -481,7 +481,7 @@ pub assume_specification[ production::add_dim ](
 
 /// Bridge contract: `sub_dim` returns Ok iff the checked_sub does not
 /// underflow. Mirrors production body at
-/// `crates/vb_core/src/budget.rs:940-948`.
+/// `crates/vb_core/src/budget.rs:114-122`.
 pub assume_specification[ production::sub_dim ](
     current: u64,
     requested: u64,
@@ -502,7 +502,7 @@ pub assume_specification[ production::sub_dim ](
 /// with `max_total_steps <= u64::MAX` (no u64 overflow) and `Ok` iff the
 /// production DFS did not encounter a back-edge cycle or depth overflow.
 /// Mirrors the success branch of `compute` at
-/// `crates/vb_core/src/budget.rs:100-106` and the success contract of
+/// `crates/vb_core/src/budget/compute.rs:172-204` and the success contract of
 /// `count_total_steps` at `crates/vb_core/src/budget/loop_body.rs:11-17`.
 pub assume_specification[ production::whole_workflow_budget_compute ](
     nodes: &[production::workflow::CompiledNode],
@@ -519,7 +519,7 @@ pub assume_specification[ production::whole_workflow_budget_compute ](
 /// Bridge contract: `boundedness_policy_validate` returns Ok iff every
 /// dimension of the budget is within the policy limits. The closure of
 /// the discriminant set in the ensures matches the production body at
-/// `crates/vb_core/src/budget.rs:537-595` (returns the FIRST violation
+/// `crates/vb_core/src/budget/validate.rs:88-147` (returns the FIRST violation
 /// encountered, or Ok(())).
 ///
 /// The contract uses a spec predicate `spec_policy_violation` to compare
@@ -596,8 +596,8 @@ pub assume_specification[ production::boundedness_policy_validate ](
 // what the arm decides: the positive direction alone cannot detect
 // arm deletion, because the catch-all `Err(_) => true` arm would
 // accept the matching triple anyway. Production order follows
-// `BoundednessPolicy::validate` (budget.rs:537-595) via
-// `validate_budget_dimensions` (budget.rs:598-645).
+// `BoundednessPolicy::validate` (crates/vb_core/src/budget/validate.rs:88-147) via
+// `validate_budget_dimensions` (crates/vb_core/src/budget/validate.rs:149-196).
 /// Lemma: the open-gates arm is load-bearing. A budget over
 /// `policy.absolute_max_open_gates` reported as
 /// `BudgetError::OpenGatesExceeded` with matching `actual`/`limit` is
@@ -973,7 +973,7 @@ pub assume_specification[ production::validate_aggregate_budget ](
 /// Bridge contract: `validate_step_ceilings` returns Ok iff
 /// `max_step_budget_per_tick <= 1_000_000` and
 /// `max_transitions_per_tick <= 1_000_000`. Mirrors
-/// `crates/vb_core/src/budget.rs:893-928`.
+/// `crates/vb_core/src/budget.rs:67-102`.
 pub assume_specification[ production::validate_step_ceilings ](
     budget: &AggregateResourceBudget,
 ) -> (result: Result<(), AggregateBudgetError>)
@@ -1264,7 +1264,7 @@ pub proof fn proof_aggregate_refines_verified_whole(steps: int, actions: int)
 /// Spec predicate: proof-visible diagnostic projection is total only
 /// when every required field is present. Spec-side only: no production
 /// `DiagnosticEnvelope` type exists, and production `StepCountOverflow`
-/// carries only `{ actual }` (`crates/vb_core/src/budget.rs:266-268`).
+/// carries only `{ actual }` (`crates/vb_core/src/budget.rs:20-22`).
 pub open spec fn diagnostic_complete(
     has_resource: bool,
     has_primitive: bool,
