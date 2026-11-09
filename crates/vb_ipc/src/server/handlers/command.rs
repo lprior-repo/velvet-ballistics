@@ -2,26 +2,25 @@
 //! Command handlers that advance run state.
 
 use vb_core::action::{ActionFailure, ActionFailureCode, RetryPolicy};
-use vb_core::ids::SlotIdx;
-use vb_core::value::Taint;
+use vb_core::value::{SlotValue, Taint};
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::AskAnswer;
 
-use super::query::{decode_payload, sanitize_runtime_error};
-use crate::IpcPayload;
+use super::{
+    MAX_ACTION_ERROR_LEN, MAX_ACTION_OUTPUT_LEN, MAX_ANSWER_ASK_BYTES, decode_payload,
+    sanitize_runtime_error,
+};
+use crate::server::IpcResponse;
 use crate::server::ticket::{payload_len, step_from_ticket};
 
-const MAX_ANSWER_ASK_BYTES: usize = 65536;
-const MAX_ACTION_OUTPUT_LEN: usize = 65536;
-const MAX_ACTION_ERROR_LEN: usize = 65536;
-
+/// Handles answer-ask.
 pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let Ok(IpcPayload::AnswerAsk {
+    let Ok(crate::IpcPayload::AnswerAsk {
         run_id,
         ticket,
         answer,
         taint,
-    }) = decode_payload::<IpcPayload>(payload)
+    }) = decode_payload::<crate::IpcPayload>(payload)
     else {
         return IpcResponse::BadRequest;
     };
@@ -40,11 +39,17 @@ pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     let encoded_len = match u32::try_from(answer.len()) {
         Ok(len) => len,
         Err(_) => {
+            // MAX_ANSWER_ASK_BYTES (65536) is well below u32::MAX, so this
+            // branch is logically unreachable due to the prior bounds check.
+            // The match handles the fallible conversion without panicking.
             return IpcResponse::RuntimeError {
                 message: String::from("answer payload size exceeds u32::MAX"),
             };
         }
     };
+    // Decode the caller's answer bytes as a postcard-serialized SlotValue.
+    // The bytes are expected to be valid postcard-encoded SlotValue; if decode
+    // fails, return an error rather than silently discarding the payload.
     let value = match postcard::from_bytes::<SlotValue>(&answer) {
         Ok(v) => v,
         Err(_) => {
@@ -74,12 +79,13 @@ pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     }
 }
 
+/// Handles complete-action.
 pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let Ok(IpcPayload::CompleteAction {
+    let Ok(crate::IpcPayload::CompleteAction {
         run_id,
         ticket,
         output,
-    }) = decode_payload::<IpcPayload>(payload)
+    }) = decode_payload::<crate::IpcPayload>(payload)
     else {
         return IpcResponse::BadRequest;
     };
@@ -112,12 +118,13 @@ pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcRespo
     }
 }
 
+/// Handles fail-action.
 pub fn handle_fail_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let Ok(IpcPayload::FailAction {
+    let Ok(crate::IpcPayload::FailAction {
         run_id,
         ticket,
         error,
-    }) = decode_payload::<IpcPayload>(payload)
+    }) = decode_payload::<crate::IpcPayload>(payload)
     else {
         return IpcResponse::BadRequest;
     };
