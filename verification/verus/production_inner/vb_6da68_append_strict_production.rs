@@ -13,7 +13,7 @@
 //     append_journaled are NOT mirrored here)
 //   * crates/vb_storage/src/batch/commit.rs:1-41
 //     (strict() and commit() bodies)
-//   * crates/vb_storage/src/error/mod.rs:21-198
+//   * crates/vb_storage/src/error/mod.rs:21-206
 //     (JournalError variants reachable from append_strict)
 //
 // The master DRIFT POLICY claim is the authoritative pointer to the
@@ -80,13 +80,13 @@
 // =============================================================================
 //
 // Target: vb_storage::journal::FjallJournal::append_strict
-//   * source: crates/vb_storage/src/journal/append.rs:35-57
+//   * source: crates/vb_storage/src/journal/append.rs:39-61
 //
 // Target: vb_storage::batch::JournalWriteBatch<'j>::strict / ::commit
-//   * source: crates/vb_storage/src/batch/commit.rs:5-26
+//   * source: crates/vb_storage/src/batch/commit.rs:5-40
 //
 // Target: vb_storage::error::JournalError
-//   * source: crates/vb_storage/src/error/mod.rs:21-188 (variants
+//   * source: crates/vb_storage/src/error/mod.rs:21-206 (variants
 //     reachable from append_strict only)
 //
 // =============================================================================
@@ -154,9 +154,9 @@
 //
 //   Function: `batch::WriteBatch::commit` — this IS
 //   `OwnedWriteBatch::commit`; `OwnedWriteBatch` is a re-export of
-//   `batch::WriteBatch` at `src/lib.rs:146`.
+//   `batch::WriteBatch` at `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/lib.rs:146`.
 //
-//   Source location: `src/batch/mod.rs:100-182`.
+//   Source location: `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:100-182`.
 //
 //   The body has EXACTLY TWO `return Err(crate::Error::Poisoned)`
 //   sites, BOTH before the memtable application loop:
@@ -173,9 +173,9 @@
 //   BEFORE the memtable apply loop L147-160 ⇒ no memtable mutation
 //   ⇒ keyspace state unchanged from pre-call. QED.
 //
-//   Supporting: `src/journal/writer.rs:203-234` maps
+//   Supporting: `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:203-234` maps
 //   `PersistMode::SyncAll` to `sync_all()` (the fsync) at L220-225.
-//   Production `strict()` (crates/vb_storage/src/batch/commit.rs:7-9)
+//   Production `strict()` (crates/vb_storage/src/batch/commit.rs:7-10)
 //   sets `durability(Some(fjall::PersistMode::SyncAll))`, so
 //   production exercises exactly the L119-129 fsync path.
 //
@@ -197,7 +197,7 @@
 // failure ⇒ event not-visible ⇒ retry idempotent-Ok.
 //
 // The trusted fact is NOT hidden inside an "infallible commit"
-// assumption (the bug in `vb-vzcuf-PS-004.rs:339-352` that this
+// assumption (the bug in `vb-vzcuf-PS-004.rs:339-352` — superseded artifact, file no longer in-tree — that this
 // artifact supersedes for the vb-6da68 surface). Instead it is
 // localized explicitly as the `Err(Fjall)` postcondition of the
 // `assume_specification` bridge for `append_strict` in the companion
@@ -243,7 +243,7 @@ verus! {
 // Mirror of `JournalError` (variants reachable from `append_strict`)
 // ---------------------------------------------------------------------------
 //
-// Production: `crates/vb_storage/src/error/mod.rs:21-188`. The full enum
+// Production: `crates/vb_storage/src/error/mod.rs:21-206`. The full enum
 // has 50+ variants; only the subset below is reachable from the
 // `append_strict` call graph (validation -> key construction ->
 // pre-check contains_key -> batch.append_event -> batch.strict.commit).
@@ -261,20 +261,20 @@ verus! {
 /// `crates/vb_storage/src/error/mod.rs`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpecJournalError {
-    /// Mirror of `JournalError::InvalidEvent` at error/mod.rs:108-109.
+    /// Mirror of `JournalError::InvalidEvent` at crates/vb_storage/src/error/mod.rs:108-109.
     /// Returned by `append_strict` when `!event.is_valid()` (early
-    /// validation; append.rs:38-40).
+    /// validation; append.rs:42-44).
     InvalidEvent,
-    /// Mirror of `JournalError::KeyCapacity` at error/mod.rs:28-29.
+    /// Mirror of `JournalError::KeyCapacity` at crates/vb_storage/src/error/mod.rs:28-29.
     /// Returned by `append_strict` when `run_event_key` fails
-    /// (append.rs:47). Abstracted via `SpecJournalEvent.key_ok`.
+    /// (append.rs:51). Abstracted via `SpecJournalEvent.key_ok`.
     KeyCapacity,
     /// Mirror of `JournalError::Fjall(#[from] fjall::Error)` at
-    /// error/mod.rs:22-23. Returned by `append_strict` from TWO
+    /// crates/vb_storage/src/error/mod.rs:22-23. Returned by `append_strict` from TWO
     /// production sites:
-    ///   (a) `self.events.contains_key(key)?` at append.rs:48
+    ///   (a) `self.events.contains_key(key)?` at append.rs:52
     ///       (pre-check I/O failure);
-    ///   (b) `batch.strict().commit()` at append.rs:56 (the
+    ///   (b) `batch.strict().commit()` at append.rs:60 (the
     ///       atomic-commit failure mode that is the SUBJECT of
     ///       vb-6da68 and vb-o6qcf.2).
     /// The `Err(Fjall)` arm of the assume_specification bridge in
@@ -282,24 +282,24 @@ pub enum SpecJournalError {
     /// postcondition (events keyspace unchanged).
     Fjall,
     /// Mirror of `JournalError::DuplicateEvent { run, seq }` at
-    /// error/mod.rs:30-31. Returned by `append_strict` when the
+    /// crates/vb_storage/src/error/mod.rs:30-31. Returned by `append_strict` when the
     /// pre-check `events.contains_key(key)` observes the key
-    /// (append.rs:48-53). Can also be returned by
-    /// `batch.append_event` (guard 3, batch/append_event.rs:59-62)
+    /// (append.rs:52-56). Can also be returned by
+    /// `batch.append_event` (guard 4, batch/append_event.rs:61-67)
     /// which sets `aborted = true`. In the spec model the two
     /// production sites are observationally equivalent (the post-
     /// state is identical: events keyspace unchanged, error
     /// variant is DuplicateEvent).
     DuplicateEvent,
     /// Mirror of `JournalError::DuplicateStagedKey { run, seq }` at
-    /// error/mod.rs:32-33. Returned by `batch.append_event` guard 2
+    /// crates/vb_storage/src/error/mod.rs:32-33. Returned by `batch.append_event` guard 3
     /// (same-batch duplicate).
     DuplicateStagedKey,
     /// Mirror of `JournalError::JournalBatchBytesExceeded { attempted,
-    /// limit }` at error/mod.rs:40-41. Returned by
-    /// `batch.append_event` guard 6 (byte-budget overrun).
+    /// limit }` at crates/vb_storage/src/error/mod.rs:40-41. Returned by
+    /// `batch.append_event` guard 7 (byte-budget overrun).
     JournalBatchBytesExceeded { attempted: u64, limit: u64 },
-    /// Mirror of `JournalError::BatchAborted` at error/mod.rs:42-43.
+    /// Mirror of `JournalError::BatchAborted` at crates/vb_storage/src/error/mod.rs:42-43.
     /// Returned by `batch.strict().commit()` at commit.rs:21-23 when
     /// `self.aborted == true` (early short-circuit; does NOT reach
     /// the real Fjall commit).
@@ -317,9 +317,9 @@ pub enum SpecJournalError {
 /// Projected view of `vb_storage::events::JournalEvent` for the
 /// append_strict spec model. The fields capture:
 ///
-///   * `valid: bool`  — mirror of `event.is_valid()` (append.rs:38).
+///   * `valid: bool`  — mirror of `event.is_valid()` (append.rs:42).
 ///   * `key_ok: bool` — mirror of `run_event_key(event.run_id(),
-///                       event.seq())` success (append.rs:47).
+///                       event.seq())` success (append.rs:51).
 ///   * `key: u64`     — mirror of the constructed journal key
 ///                       (the post-`run_event_key` u64). The full
 ///                       17-byte production key is abstracted to a
@@ -366,10 +366,10 @@ impl SpecFjallJournal {
 
     /// Mirror of `FjallJournal::append_strict(&self, event: &JournalEvent)
     /// -> Result<(), JournalError>` at
-    /// `crates/vb_storage/src/journal/append.rs:35-57`.
+    /// `crates/vb_storage/src/journal/append.rs:39-61`.
     ///
     /// `commit_ok: bool` abstracts the Fjall-side decision of
-    /// `batch.strict().commit()` (append.rs:56). This is the standard
+    /// `batch.strict().commit()` (append.rs:60). This is the standard
     /// "Fjall-side observable as exec parameter" abstraction used
     /// throughout vb-vzcuf mirrors (see `journal_has_key`, `encode_ok`
     /// in PS-004/PS-008). It captures the runtime nondeterminism of
@@ -383,7 +383,7 @@ impl SpecFjallJournal {
     /// encodes the ONE named trusted atomicity axiom: events
     /// keyspace unchanged on Err.
     ///
-    /// Body ordering mirrors production append.rs:38-56 byte-for-byte
+    /// Body ordering mirrors production append.rs:42-60 byte-for-byte
     /// so any drift in production ordering (e.g., a new check
     /// inserted between pre-check and commit) breaks this body's
     /// structural correspondence with the bridge contract.
@@ -392,18 +392,18 @@ impl SpecFjallJournal {
         (),
         SpecJournalError,
     > {
-        // Mirror of append.rs:38-40: validation gate.
+        // Mirror of append.rs:42-44: validation gate.
         if !event.valid {
             return Err(SpecJournalError::InvalidEvent);
         }
-        // Mirror of append.rs:47: run_event_key construction.
+        // Mirror of append.rs:51: run_event_key construction.
         // Abstracted via `event.key_ok`; on failure the production
         // `?` returns KeyCapacity.
 
         if !event.key_ok {
             return Err(SpecJournalError::KeyCapacity);
         }
-        // Mirror of append.rs:48-53: pre-check events.contains_key.
+        // Mirror of append.rs:52-56: pre-check events.contains_key.
         // On Some -> Err(DuplicateEvent); on Err -> Err(Fjall).
         // The HashSet lookup here models the Some path; the Fjall
         // I/O error path is folded into the bridge's `Err(Fjall)`
@@ -413,14 +413,14 @@ impl SpecFjallJournal {
         if self.events.contains(&event.key) {
             return Err(SpecJournalError::DuplicateEvent);
         }
-        // Mirror of append.rs:54-55: batch().append_event(event)?
+        // Mirror of append.rs:58-59: batch().append_event(event)?
         // The staging step is abstracted as always-succeeding in
         // this model (the staging guards DuplicateStagedKey /
         // JournalBatchBytesExceeded are reachable in production but
         // orthogonal to the vb-6da68 commit-failure contract; the
         // bridge contract marks them unreachable for the spec
         // preconditions under which the proofs run).
-        // Mirror of append.rs:56: batch.strict().commit()
+        // Mirror of append.rs:60: batch.strict().commit()
         // The real Fjall OwnedWriteBatch::commit happens here.
 
         if !commit_ok {

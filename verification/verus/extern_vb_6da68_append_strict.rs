@@ -19,10 +19,10 @@
 // gate audit walks to.
 //
 // The in-tree mirror is a verbatim copy of the production
-// `FjallJournal::append_strict` (crates/vb_storage/src/journal/append.rs:35-57)
-// + `JournalWriteBatch::{strict, commit}` (batch/commit.rs:5-26) +
+// `FjallJournal::append_strict` (crates/vb_storage/src/journal/append.rs:39-61)
+// + `JournalWriteBatch::{strict, commit}` (batch/commit.rs:5-40) +
 // `JournalError` variants reachable from `append_strict`
-// (error/mod.rs:21-188), with minimal substitutions (spec-mode type
+// (crates/vb_storage/src/error/mod.rs:21-206), with minimal substitutions (spec-mode type
 // aliases like `SpecJournalError` / `SpecJournalEvent` /
 // `SpecFjallJournal`, Fjall internals replaced by a `HashSet<u64>`
 // projection of the events keyspace, and the Fjall commit decision
@@ -68,14 +68,14 @@
 // and the `assume_specification` bridge for the exact statement.
 //
 // SOURCE GROUNDING (fjall skill — source-citable, NOT an assumption):
-//   fjall 3.1.4 src/batch/mod.rs:100-182 (WriteBatch::commit, re-exported
-//   as OwnedWriteBatch at src/lib.rs:146) has exactly two `return Err(_)`
+//   fjall 3.1.4 `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:100-182` (WriteBatch::commit, re-exported
+//   as OwnedWriteBatch at `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/lib.rs:146`) has exactly two `return Err(_)`
 //   sites — L111-113 (poisoned pre-check) and L119-129 (fsync failure
 //   via journal_writer.persist(mode) at L120) — BOTH before the memtable
 //   application loop at L147-160. The function returns Ok(()) at L181
 //   only AFTER the memtable apply; there is no Err return after L160.
 //   SyncAll (production strict()) maps to fsync via
-//   src/journal/writer.rs:220-225 (sync_all()). So commit() Err ⇒ no
+//   `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:220-225` (sync_all()). So commit() Err ⇒ no
 //   memtable mutation ⇒ keyspace unchanged. QED.
 //
 // Compensating evidence:
@@ -88,7 +88,7 @@
 //     at crates/vb_storage/src/edge_case_tests.rs:105
 //
 // The trusted fact is NOT an "infallible commit" assumption (the bug
-// in vb-vzcuf-PS-004.rs:339-352 that this artifact supersedes). It
+// in vb-vzcuf-PS-004.rs:339-352 — superseded artifact, file no longer in-tree — that this artifact supersedes). It
 // explicitly permits `Err(Fjall)` and only asserts atomicity on Err.
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
