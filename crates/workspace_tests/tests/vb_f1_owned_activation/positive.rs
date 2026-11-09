@@ -16,7 +16,7 @@ fn actual_public_runtime_preserves_owned_arenas_at_both_real_collect_cuts() -> T
         super::evidence::execution_prefix(&case, &journal)?;
         assert_eq!(
             journal.events_for_run_full(case.run)?.len(),
-            if after { 35 } else { 32 }
+            if after { 36 } else { 33 }
         );
         assert_eq!(case.source.source, super::support::SOURCE.as_bytes());
     }
@@ -36,7 +36,7 @@ fn actual_public_runtime_finishes_with_all_original_items_once() -> TestResult {
     ));
     super::evidence::terminal_output(&case, &journal, SlotValue::List(case.root))?;
     let events = journal.events_for_run_full(case.run)?;
-    assert_eq!(events.len(), 38);
+    assert_eq!(events.len(), 39);
     assert!(matches!(
         runtime.activate_owned_submission(case.run, case.source.digest),
         Err(RuntimeError::RunAlreadyExists)

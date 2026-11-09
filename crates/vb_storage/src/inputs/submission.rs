@@ -75,6 +75,14 @@ impl RunSubmission {
         Ok(())
     }
 
+    fn ir_compat_decision(&self) -> crate::compat::CompatDecision {
+        crate::compat::decide_boundary(
+            crate::compat::artifact_ir_version_inputs(self.artifact.artifact_version),
+            crate::compat::schema_version_digest(self.artifact.artifact_version),
+            crate::compat::schema_version_digest(crate::compat::CURRENT_IR_VERSION),
+        )
+    }
+
     fn validate_policy(&self, policy: RuntimePolicy) -> Result<(), JournalError> {
         if !matches!(
             policy,
@@ -84,6 +92,16 @@ impl RunSubmission {
         }
         if !self.artifact.required_capabilities.is_empty() {
             return Err(JournalError::CapabilityDenied);
+        }
+        if policy != RuntimePolicy::Relaxed {
+            let decision = self.ir_compat_decision();
+            if decision.authorize_live_effect().is_err() {
+                return Err(JournalError::ArtifactVersionIncompatible {
+                    held: self.artifact.artifact_version,
+                    required: crate::compat::CURRENT_IR_VERSION,
+                    class: decision.class,
+                });
+            }
         }
         crate::admission::verify_accepted_artifact_for_policy(&self.artifact, policy)?;
         Ok(())
@@ -126,7 +144,16 @@ impl RunSubmission {
             return Ok(());
         }
         batch.append_event(&self.accepted_event())?;
-        batch.append_event(&self.admission_event(policy))
+        batch.append_event(&self.admission_event(policy))?;
+        batch.append_event(&self.compatibility_event())
+    }
+
+    fn compatibility_event(&self) -> JournalEvent {
+        JournalEvent::CompatibilityDecisionEvent {
+            run: self.header.run,
+            seq: EventSeq::new(2),
+            decision: self.ir_compat_decision(),
+        }
     }
 
     fn accepted_event(&self) -> JournalEvent {

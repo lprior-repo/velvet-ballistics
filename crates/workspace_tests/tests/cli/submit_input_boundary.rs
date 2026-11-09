@@ -231,6 +231,21 @@ fn test_submit_controls() -> Result<(), Box<dyn std::error::Error>> {
                             } else {
                                 vb_core::RuntimePolicy::Journaled
                             },
+                        },
+                        vb_storage::JournalEvent::CompatibilityDecisionEvent {
+                            run: header.run,
+                            seq: EventSeq::new(2),
+                            decision: vb_storage::compat::decide_boundary(
+                                vb_storage::compat::artifact_ir_version_inputs(
+                                    artifact.artifact_version,
+                                ),
+                                vb_storage::compat::schema_version_digest(
+                                    artifact.artifact_version,
+                                ),
+                                vb_storage::compat::schema_version_digest(
+                                    vb_storage::compat::CURRENT_IR_VERSION,
+                                ),
+                            ),
                         }
                     ]
                 );

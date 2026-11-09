@@ -18,8 +18,12 @@ pub(super) fn execution_prefix(case: &Case, journal: &vb_storage::FjallJournal) 
         1
     );
     assert!(
-        matches!(events.get(2), Some(vb_storage::JournalEvent::StepStarted { run, seq, step, attempt })
-        if *run == case.run && seq.get() == 2 && *step == case.workflow.entry() && *attempt == 1)
+        matches!(events.get(2), Some(vb_storage::JournalEvent::CompatibilityDecisionEvent { run, seq, .. })
+        if *run == case.run && seq.get() == 2)
+    );
+    assert!(
+        matches!(events.get(3), Some(vb_storage::JournalEvent::StepStarted { run, seq, step, attempt })
+        if *run == case.run && seq.get() == 3 && *step == case.workflow.entry() && *attempt == 1)
     );
     for (raw, event) in events.iter().enumerate() {
         assert_eq!(event.seq().get(), u64::try_from(raw)?);

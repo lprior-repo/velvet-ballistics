@@ -68,7 +68,7 @@ fn source_advancement_between_enqueue_and_shard_processing_is_revalidated() -> T
     runtime.activate_owned_submission(case.run, case.source.digest)?;
     journal.append_strict(&vb_storage::JournalEvent::StepStarted {
         run: case.run,
-        seq: vb_storage::EventSeq::new(2),
+        seq: vb_storage::EventSeq::new(3),
         step: case.workflow.entry(),
         attempt: 1,
     })?;
@@ -151,7 +151,7 @@ fn actual_full_capacity_is_rechecked_at_processing_then_submission_can_retry() -
     runtime.activate_owned_submission(second, case.source.digest)?;
     assert!(runtime.tick_all()?);
     let pending = journal.events_for_run_full(second)?;
-    assert_eq!(pending.len(), 2);
+    assert_eq!(pending.len(), 3);
     assert!(matches!(
         runtime.tick_all(),
         Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 1 })

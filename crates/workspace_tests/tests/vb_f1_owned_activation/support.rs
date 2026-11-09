@@ -126,7 +126,7 @@ pub(super) fn runtime(journal: SharedRuntimeJournal, config: ShardConfig) -> Tes
 
 pub(super) fn assert_pristine(case: &Case, journal: &FjallJournal) -> TestResult {
     let events = journal.events_for_run_full(case.run)?;
-    assert_eq!(events.len(), 2);
+    assert_eq!(events.len(), 3);
     assert!(
         matches!(events.first(), Some(vb_storage::JournalEvent::RunAccepted { run, seq, workflow })
         if *run == case.run && seq.get() == 0 && *workflow == case.workflow.digest())
@@ -135,6 +135,12 @@ pub(super) fn assert_pristine(case: &Case, journal: &FjallJournal) -> TestResult
         matches!(events.get(1), Some(vb_storage::JournalEvent::RunAdmission {
         run, seq, input_digest: vb_storage::RunInputBinding::Digest(digest), .. })
         if *run == case.run && seq.get() == 1 && *digest == case.input_digest)
+    );
+    assert!(
+        matches!(events.get(2), Some(vb_storage::JournalEvent::CompatibilityDecisionEvent { run, seq, decision })
+        if *run == case.run && seq.get() == 2
+            && decision.class == vb_storage::compat::CompatibilityClass::Identical
+            && decision.boundary == vb_storage::compat::CompatBoundary::IrVersion)
     );
     let record = journal
         .owned_run_inputs(

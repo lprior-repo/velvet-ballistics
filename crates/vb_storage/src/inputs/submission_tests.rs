@@ -1,5 +1,5 @@
 use super::*;
-use crate::{RunHeaderRecord, WorkflowSourceRecord};
+use crate::{JournalEvent, RunHeaderRecord, WorkflowSourceRecord};
 use vb_core::RuntimePolicy;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -8,8 +8,18 @@ fn submission(
     policy: RuntimePolicy,
     value: i64,
 ) -> Result<RunSubmission, Box<dyn std::error::Error>> {
+    submission_with_version(policy, value, crate::compat::CURRENT_IR_VERSION)
+}
+
+fn submission_with_version(
+    policy: RuntimePolicy,
+    value: i64,
+    version: crate::compat::SchemaVersion,
+) -> Result<RunSubmission, Box<dyn std::error::Error>> {
     let workflow = super::tests::workflow()?;
-    let artifact = crate::admission::prepare_compiled_artifact(&workflow, policy, &[])?;
+    let mut artifact = crate::admission::prepare_compiled_artifact(&workflow, policy, &[])?;
+    artifact.artifact_version = version;
+    crate::admission::bind_artifact_digest(&mut artifact)?;
     let source = b"original source fixture".to_vec();
     let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
     let inputs = RunInputsRecord::new(
@@ -73,12 +83,21 @@ fn injected_atomic_commit_failure_exposes_no_record_or_index_and_retry_succeeds(
         let expected_event_count = if policy == RuntimePolicy::Relaxed {
             0
         } else {
-            2
+            3
         };
-        assert_eq!(
-            journal.events_for_run(retained.run())?.len(),
-            expected_event_count
-        );
+        let events = journal.events_for_run(retained.run())?;
+        assert_eq!(events.len(), expected_event_count);
+        if policy != RuntimePolicy::Relaxed {
+            let decision_event = events
+                .get(2)
+                .ok_or("missing compatibility decision event")?;
+            assert!(matches!(
+                decision_event,
+                JournalEvent::CompatibilityDecisionEvent { decision, .. }
+                    if decision.class == crate::compat::CompatibilityClass::Identical
+                        && decision.boundary == crate::compat::CompatBoundary::IrVersion
+            ));
+        }
         assert!(
             journal.has_workflow_index_entry(crate::keys::index_workflow_key(
                 vb_core::WorkflowId::new(0),
@@ -93,6 +112,31 @@ fn injected_atomic_commit_failure_exposes_no_record_or_index_and_retry_succeeds(
             )?)?
         );
     }
+    Ok(())
+}
+
+#[test]
+fn future_major_ir_version_is_rejected_before_any_write() -> TestResult {
+    for policy in [RuntimePolicy::Journaled, RuntimePolicy::Strict] {
+        let directory = tempfile::tempdir()?;
+        let journal = FjallJournal::open(directory.path(), None)?;
+        let submission =
+            submission_with_version(policy, 5, crate::compat::SchemaVersion::new(2, 0, 0))?;
+        assert!(matches!(
+            journal.commit_run_submission(&submission, policy),
+            Err(JournalError::ArtifactVersionIncompatible { .. })
+        ));
+        assert_empty(&journal)?;
+    }
+    let directory = tempfile::tempdir()?;
+    let journal = FjallJournal::open(directory.path(), None)?;
+    let submission = submission_with_version(
+        RuntimePolicy::Relaxed,
+        5,
+        crate::compat::SchemaVersion::new(2, 0, 0),
+    )?;
+    journal.commit_run_submission(&submission, RuntimePolicy::Relaxed)?;
+    assert_eq!(journal.events_for_run(RunId::new(7))?.len(), 0);
     Ok(())
 }
 
