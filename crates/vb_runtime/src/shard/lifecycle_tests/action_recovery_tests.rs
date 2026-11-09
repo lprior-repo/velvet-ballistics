@@ -911,7 +911,7 @@ fn recover_restores_open_gate_suspends_run_and_approves_to_drive()
         }),
         "resume must stay blocked while the recovered gate is open"
     );
-    let record = shard.submit_gate_decision(recovery_approve_input(7))?;
+    let record = shard.submit_gate_decision(run_id, recovery_approve_input(7))?;
     assert_eq!(
         record.outcome,
         vb_core::manual_gate::GateOutcome::Approved,

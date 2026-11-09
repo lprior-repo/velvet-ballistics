@@ -198,6 +198,16 @@ fn write_runtime_error_dynamic(
                 actual.value()
             )
         }
+        RuntimeError::GateRunMismatch {
+            gate,
+            expected,
+            actual,
+        } => {
+            write!(
+                f,
+                "manual gate {gate:?} belongs to run {expected:?}, not run {actual:?}"
+            )
+        }
         RuntimeError::GateOpenBlocksResume { run, gate } => {
             write!(
                 f,

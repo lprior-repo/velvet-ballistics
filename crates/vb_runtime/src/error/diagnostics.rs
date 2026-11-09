@@ -81,6 +81,7 @@ impl RuntimeError {
             | Self::GateEvaluationFailed { .. }
             | Self::GateRunNotSuspendable { .. }
             | Self::GateWrongDelegate { .. }
+            | Self::GateRunMismatch { .. }
             | Self::GateOpenBlocksResume { .. }
             | Self::StaleAttempt { .. }
             | Self::StaleFencingToken { .. }
@@ -177,6 +178,7 @@ impl RuntimeError {
             | Self::GateEvaluationFailed { .. }
             | Self::GateRunNotSuspendable { .. }
             | Self::GateWrongDelegate { .. }
+            | Self::GateRunMismatch { .. }
             | Self::GateOpenBlocksResume { .. }
             | Self::StaleAttempt { .. }
             | Self::StaleFencingToken { .. }

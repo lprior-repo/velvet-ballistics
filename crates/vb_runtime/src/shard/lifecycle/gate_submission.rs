@@ -112,9 +112,12 @@ impl Shard {
     /// through the strict gate port before any state changes. Approvals
     /// resume the run, denials fail it, more-evidence requests leave the
     /// gate open, and delegations leave the gate open with the delegate
-    /// recorded as the only approver for later submissions.
+    /// recorded as the only approver for later submissions. The command's
+    /// run must match the open gate's run: the queue charges the command
+    /// to that run, so a mismatch would cap the wrong run.
     pub(crate) fn submit_gate_decision(
         &mut self,
+        run: RunId,
         input: GateDecisionInput,
     ) -> RuntimeResult<GateOutcomeRecord> {
         let open = self
@@ -122,6 +125,7 @@ impl Shard {
             .get(&input.gate)
             .ok_or(RuntimeError::GateNotOpen { gate: input.gate })?
             .clone();
+        Self::check_gate_run(&open.gate, run)?;
         let run = open.gate.run;
         if !self.run_state_contains(run) {
             self.open_gates.swap_remove(&input.gate);
@@ -163,9 +167,11 @@ impl Shard {
     ///
     /// The escalation record is journaled through the strict gate port,
     /// the gate is removed, and the run is failed: an unanswered gate
-    /// must not let the run proceed.
+    /// must not let the run proceed. The command's run must match the
+    /// open gate's run, as for a submitted decision.
     pub(crate) fn escalate_timed_out_gate(
         &mut self,
+        run: RunId,
         gate: GateId,
         now_ms: u64,
     ) -> RuntimeResult<GateOutcomeRecord> {
@@ -174,6 +180,7 @@ impl Shard {
             .get(&gate)
             .ok_or(RuntimeError::GateNotOpen { gate })?
             .clone();
+        Self::check_gate_run(&open.gate, run)?;
         let run = open.gate.run;
         if !self.run_state_contains(run) {
             self.open_gates.swap_remove(&gate);
@@ -185,6 +192,22 @@ impl Shard {
         self.open_gates.swap_remove(&gate);
         self.fail_gated_run(run)?;
         Ok(record)
+    }
+
+    /// Rejects a gate command whose run does not match the open gate.
+    ///
+    /// The queue charges a gate command to the run carried on the
+    /// command, so a mismatch would cap the wrong run; fail closed
+    /// before any journal append or state change.
+    fn check_gate_run(gate: &ManualGate, run: RunId) -> RuntimeResult<()> {
+        if gate.run != run {
+            return Err(RuntimeError::GateRunMismatch {
+                gate: gate.id,
+                expected: gate.run,
+                actual: run,
+            });
+        }
+        Ok(())
     }
 
     /// Returns the first open gate id for a run, in opening order, if any.

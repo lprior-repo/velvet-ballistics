@@ -112,6 +112,15 @@ pub enum RuntimeError {
         /// Approver who submitted the decision.
         actual: ApproverId,
     },
+    /// A gate command carried a run that does not match the open gate.
+    GateRunMismatch {
+        /// Gate identifier.
+        gate: GateId,
+        /// Run the open gate belongs to.
+        expected: RunId,
+        /// Run carried by the command.
+        actual: RunId,
+    },
     /// An open manual gate blocks resuming the run; decide the gate first.
     GateOpenBlocksResume {
         /// Run that cannot resume yet.
