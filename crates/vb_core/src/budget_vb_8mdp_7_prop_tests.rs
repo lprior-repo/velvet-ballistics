@@ -19,10 +19,12 @@ use proptest::prelude::*;
 
 use crate::budget::{
     AggregateResourceBudget, AggregateResourceCapacity, AggregateResourceUsage, BoundednessPolicy,
-    BudgetError, WholeWorkflowBudget,
+    WholeWorkflowBudget,
 };
 use crate::ids::{StepIdx, WorkflowDigest};
-use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,};
+use crate::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
+};
 
 // ─────────────────────────────────────────────────────────────────
 // Generation strategies
@@ -30,12 +32,12 @@ use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, Resource
 
 /// Generate a u64 value in 0..=u64::MAX/4.
 fn safe_u64() -> impl Strategy<Value = u64> {
-    (0u64..=u64::MAX / 4)
+    0u64..=u64::MAX / 4
 }
 
 /// Generate a u64 value bounded to u32::MAX for capacity-compatible fields.
 fn safe_u32_max_u64() -> impl Strategy<Value = u64> {
-    (0u64..=u64::from(u32::MAX))
+    0u64..=u64::from(u32::MAX)
 }
 
 /// Generate an AggregateResourceUsage by layering smaller tuples.
@@ -159,9 +161,6 @@ fn arb_budget() -> impl Strategy<Value = AggregateResourceBudget> {
 
 /// Generate a capacity starting from usage, ensuring it's large enough.
 fn arb_capacity_larger_than(usage: &AggregateResourceUsage) -> AggregateResourceCapacity {
-    fn clamp_u64_to_u32(v: u64) -> u32 {
-        u32::try_from(v).unwrap_or(u32::MAX)
-    }
     AggregateResourceCapacity {
         max_steps_executable: usage.max_steps_executable.saturating_add(1_000_000),
         max_action_tickets: usage.max_action_tickets.saturating_add(1_000_000),
@@ -262,11 +261,11 @@ fn budget_zero() -> AggregateResourceBudget {
 }
 
 /// Build a minimal nop workflow for determinism tests.
-/// Build a minimal nop workflow for determinism tests.
 /// Returns None if construction fails (should not happen with valid inputs).
 fn minimal_nop_workflow() -> Option<CompiledWorkflow> {
     let digest = WorkflowDigest::from_bytes([0x11; 32]);
-    let nodes: Box<[CompiledNode]> = Box::new([node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]);
+    let nodes: Box<[CompiledNode]> =
+        Box::new([node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("minimal_nop"),
@@ -280,6 +279,7 @@ fn minimal_nop_workflow() -> Option<CompiledWorkflow> {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([Box::from("nop")]),
+        input_slots: Box::new([]),
     };
     CompiledWorkflow::try_from_parts(parts).ok()
 }
