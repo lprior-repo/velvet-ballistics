@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex};
 use vb_core::Taint;
-use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, TenantId, WorkflowDigest};
 use vb_storage::{
     DurabilityProfile, EventSeq, FjallJournal, JournalEvent, JournalWriterFlushReport,
     JournalWriterQueue,
@@ -35,6 +35,19 @@ pub enum RuntimeJournalEvent {
         run: RunId,
         /// Compatibility decision recorded at admission.
         decision: vb_storage::compat::CompatDecision,
+    },
+    /// §77.18 tenant admission receipt journaled with the admission header
+    /// for a tenant-scoped run. Carries the tenant the run is charged to
+    /// plus the admitted cost units, so recovery can rebuild the per-tenant
+    /// shard usage snapshot from the journal. Replay treats it as
+    /// informational: it authorizes no live effect.
+    TenantAdmission {
+        /// Run identifier.
+        run: RunId,
+        /// Tenant the run is charged to.
+        tenant: TenantId,
+        /// Admitted cost units charged to the tenant.
+        cost_units: u64,
     },
     /// Full typed checkpoint and next-attempt authority for a retry.
     RetryCheckpoint {
@@ -228,6 +241,25 @@ pub enum RuntimeJournalEvent {
     },
 }
 
+/// Builds the tenant admission receipt for a tenant-scoped admission.
+///
+/// Returns `None` when the admission carries no tenant, or when it carries
+/// a tenant but no admitted budget to charge: the receipt records admitted
+/// cost units, and a tenant without a budget has no cost to record.
+#[must_use]
+pub(crate) fn tenant_admission_event(
+    admission: &crate::admission::RunAdmission,
+    run: RunId,
+) -> Option<RuntimeJournalEvent> {
+    let tenant = admission.tenant()?;
+    let budget = admission.budget()?;
+    Some(RuntimeJournalEvent::TenantAdmission {
+        run,
+        tenant,
+        cost_units: budget.max_cost_units,
+    })
+}
+
 impl RuntimeJournalEvent {
     /// Run identifier carried by this runtime event.
     #[must_use]
@@ -254,7 +286,8 @@ impl RuntimeJournalEvent {
             | Self::ActionCompletedEnvelope { ticket, .. }
             | Self::ActionAbandoned { ticket } => ticket.run,
             Self::RunAdmission { admission } => admission.run_id(),
-            Self::CompatibilityDecision { run, .. } => *run,
+            Self::CompatibilityDecision { run, .. }
+            | Self::TenantAdmission { run, .. } => *run,
             Self::RetryCheckpoint { run, .. } => *run,
         }
     }
@@ -266,6 +299,7 @@ impl RuntimeJournalEvent {
             Self::RunSubmitted { .. } => "RunSubmitted",
             Self::RunAdmission { .. } => "RunAdmission",
             Self::CompatibilityDecision { .. } => "CompatibilityDecision",
+            Self::TenantAdmission { .. } => "TenantAdmission",
             Self::RetryCheckpoint { .. } => "RetryCheckpoint",
             Self::RunFinished { .. } => "RunFinished",
             Self::RunFailed { .. } => "RunFailed",

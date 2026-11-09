@@ -10,7 +10,7 @@ use chrono::{DateTime, Utc};
 use vb_core::manual_gate::{ApproverId, ManualGate};
 use vb_core::{
     ActionId, ActionTicket, AggregateResourceBudget, CapabilitySet, ConstValue, RunId,
-    RuntimePolicy, SlotIdx, StepIdx, Taint, WorkflowDigest,
+    RuntimePolicy, SlotIdx, StepIdx, Taint, TenantId, WorkflowDigest,
 };
 
 /// Terminal action outcome captured by durable completion envelopes.
@@ -442,5 +442,21 @@ pub enum JournalEvent {
         opened_at_ms: u64,
         /// Operator who requested the gated action.
         requester: ApproverId,
+    },
+    /// Tenant-scoped admission receipt (MASTER §77.18). Appended at the
+    /// end of the enum; no existing variant was renumbered. Records the
+    /// tenant a run is charged to plus the admitted cost units, so
+    /// recovery can rebuild the per-tenant shard usage snapshot from the
+    /// journal. Carries no effect authority: replay treats it as
+    /// informational, and a later drive-path batch owns the snapshot.
+    TenantAdmissionEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Tenant the run is charged to.
+        tenant: TenantId,
+        /// Admitted cost units charged to the tenant.
+        cost_units: u64,
     },
 }

@@ -55,10 +55,10 @@ impl JournalEvent {
             | Self::PolicyDecisionEvent { run, .. }
             | Self::GateDecisionEvent { run, .. }
             | Self::GateOpenedEvent { run, .. } => *run,
-            Self::CompatibilityDecisionEvent { run, .. } => *run,
+            Self::CompatibilityDecisionEvent { run, .. }
+            | Self::TenantAdmissionEvent { run, .. } => *run,
         }
     }
-
     /// Event sequence carried by this event.
     ///
     /// Lifecycle events (RunResumed, RunRetried, RunAnswered) now carry sequence numbers
@@ -97,7 +97,8 @@ impl JournalEvent {
             | Self::PolicyDecisionEvent { seq, .. }
             | Self::GateDecisionEvent { seq, .. }
             | Self::GateOpenedEvent { seq, .. } => *seq,
-            Self::CompatibilityDecisionEvent { seq, .. } => *seq,
+            Self::CompatibilityDecisionEvent { seq, .. }
+            | Self::TenantAdmissionEvent { seq, .. } => *seq,
         }
     }
 
@@ -156,6 +157,7 @@ impl JournalEvent {
             Self::GateOpenedEvent { .. } => RecordKind::GateOpened,
             Self::CompatibilityDecisionEvent { .. } => RecordKind::CompatibilityDecision,
             Self::RunAdmissionBudget { .. } => RecordKind::RunAdmissionBudget,
+            Self::TenantAdmissionEvent { .. } => RecordKind::TenantAdmission,
         }
     }
 
@@ -236,7 +238,7 @@ impl JournalEvent {
             | Self::PolicyDecisionEvent { .. }
             | Self::GateDecisionEvent { .. }
             | Self::GateOpenedEvent { .. } => None,
-            Self::CompatibilityDecisionEvent { .. } => None,
+            Self::CompatibilityDecisionEvent { .. } | Self::TenantAdmissionEvent { .. } => None,
         }
     }
 
@@ -292,7 +294,7 @@ impl JournalEvent {
             | Self::PolicyDecisionEvent { .. }
             | Self::GateDecisionEvent { .. }
             | Self::GateOpenedEvent { .. } => true,
-            Self::CompatibilityDecisionEvent { .. } => true,
+            Self::CompatibilityDecisionEvent { .. } | Self::TenantAdmissionEvent { .. } => true,
         }
     }
 }

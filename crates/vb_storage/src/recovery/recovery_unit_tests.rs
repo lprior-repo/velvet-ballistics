@@ -1280,6 +1280,7 @@ mod tests {
                 JournalEvent::GateDecisionEvent { .. } => Ok(false),
                 JournalEvent::GateOpenedEvent { .. } => Ok(false),
                 JournalEvent::CompatibilityDecisionEvent { .. } => Ok(false),
+                JournalEvent::TenantAdmissionEvent { .. } => Ok(false),
             }
         }
     };

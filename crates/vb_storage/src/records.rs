@@ -238,6 +238,8 @@ pub enum RecordKind {
     RunAdmissionBudget = 47,
     /// Manual gate opened (§77.15); appended, no old ordinal moved.
     GateOpened = 48,
+    /// Tenant-scoped admission receipt (§77.18); appended, no old ordinal moved.
+    TenantAdmission = 49,
 }
 
 impl RecordKind {
@@ -287,6 +289,7 @@ impl RecordKind {
             Self::CapabilityGrant => 46,
             Self::RunAdmissionBudget => 47,
             Self::GateOpened => 48,
+            Self::TenantAdmission => 49,
             Self::Blob => 40,
             Self::IndexUpdate => 50,
         }
@@ -338,6 +341,7 @@ impl RecordKind {
             46 => Some(Self::CapabilityGrant),
             47 => Some(Self::RunAdmissionBudget),
             48 => Some(Self::GateOpened),
+            49 => Some(Self::TenantAdmission),
             40 => Some(Self::Blob),
             50 => Some(Self::IndexUpdate),
             _ => None,
@@ -383,6 +387,7 @@ impl RecordKind {
             | Self::CapabilityGrant
             | Self::RunAdmissionBudget
             | Self::GateOpened
+            | Self::TenantAdmission
             | Self::RunContinuation => true,
             Self::WorkflowSource
             | Self::CompiledIr

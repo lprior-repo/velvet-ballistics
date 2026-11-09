@@ -3,7 +3,7 @@
 use super::super::super::JournalEvent;
 use super::super::tags::{
     TAG_RETRY_CHECKPOINT, TAG_RUN_ACCEPTED, TAG_RUN_ANSWERED, TAG_RUN_CANCELLED, TAG_RUN_FAILED,
-    TAG_RUN_FINISHED, TAG_RUN_KILLED, TAG_RUN_RESUMED, TAG_RUN_RETRIED,
+    TAG_RUN_FINISHED, TAG_RUN_KILLED, TAG_RUN_RESUMED, TAG_RUN_RETRIED, TAG_TENANT_ADMISSION,
 };
 use super::{serialize_record_kind_variant, serialize_routing_error};
 use serde::Serializer;
@@ -19,6 +19,7 @@ where
         JournalEvent::RunAdmissionBudget { .. } => {
             super::admission::serialize_budget_admission(event, serializer)
         }
+        JournalEvent::TenantAdmissionEvent { .. } => serialize_tenant_admission(event, serializer),
         JournalEvent::RunAccepted { .. } => serialize_accepted(event, serializer),
         JournalEvent::RetryCheckpoint { .. } => serialize_retry_checkpoint(event, serializer),
         JournalEvent::RunCancelled { .. } => serialize_cancelled(event, serializer),
@@ -28,6 +29,26 @@ where
         JournalEvent::RunResumed { .. } => serialize_resumed(event, serializer),
         JournalEvent::RunRetried { .. } => serialize_retried(event, serializer),
         JournalEvent::RunAnswered { .. } => serialize_answered(event, serializer),
+        _ => serialize_routing_error::<S>(),
+    }
+}
+
+fn serialize_tenant_admission<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::TenantAdmissionEvent {
+            run,
+            seq,
+            tenant,
+            cost_units,
+        } => serialize_record_kind_variant(
+            serializer,
+            TAG_TENANT_ADMISSION,
+            "TenantAdmissionEvent",
+            &(run, seq, tenant, cost_units),
+        ),
         _ => serialize_routing_error::<S>(),
     }
 }
