@@ -524,7 +524,7 @@ obligations:
     crate: vb_runtime
     files:
       - crates/vb_runtime/src/journal.rs
-      - crates/vb_runtime/src/engine/action.rs
+      - crates/vb_runtime/src/engine/action/mod.rs
     required:
       tla: JournalBeforeDispatch.tla
       tests: [journal_before_dispatch]
@@ -538,7 +538,7 @@ obligations:
   # ACTION DISPATCHER DETERMINISM (Section 49) - production-bound
   # Verus contracts for vb_runtime::engine::action::execute_do and the
   # six sibling exec wrappers. Pure projections of every public fn in
-  # crates/vb_runtime/src/engine/action.rs are bound via
+  # crates/vb_runtime/src/engine/action/mod.rs are bound via
   # assume_specification; outcome-kind validity and discriminant-set
   # closure are proved non-vacuously.
   # ============================================================
@@ -547,7 +547,7 @@ obligations:
     statement: |
       vb_runtime::engine::action::execute_do is deterministic and
       outcome-kind valid. All seven public exec wrappers in
-      crates/vb_runtime/src/engine/action.rs (execute_do,
+      crates/vb_runtime/src/engine/action/mod.rs (execute_do,
       execute_do_without_contract, execute_retry_check,
       execute_error_handler, resume_action_outcome,
       compute_idempotency_key, resolve_contract) are production-bound
@@ -555,7 +555,7 @@ obligations:
     proof_level: L4
     crate: vb_runtime
     files:
-      - crates/vb_runtime/src/engine/action.rs
+      - crates/vb_runtime/src/engine/action/mod.rs
     required:
       verus: verification/verus/vb_runtime_execute_do_spec.rs
     commands:
@@ -594,7 +594,7 @@ obligations:
     proof_level: L3
     crate: vb_runtime
     files:
-      - crates/vb_runtime/src/engine/action.rs
+      - crates/vb_runtime/src/engine/action/mod.rs
     required:
       tla: AttemptTracking.tla
       tests: [stale_completion_rejected]
@@ -904,7 +904,7 @@ obligations:
     proof_level: L3
     crate: vb_runtime
     files:
-      - crates/vb_runtime/src/engine/action.rs
+      - crates/vb_runtime/src/engine/action/mod.rs
     required:
       loom: action_completion_cancel
     commands:

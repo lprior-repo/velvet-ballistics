@@ -2,7 +2,7 @@
 //
 // PO: VB-RUNTIME-EXEC-DO-001 (registered in contracts/proof_obligations.yaml).
 // The execute_do dispatcher and the six sibling public exec wrappers in
-// crates/vb_runtime/src/engine/action.rs are production-bound via
+// crates/vb_runtime/src/engine/action/mod.rs are production-bound via
 // assume_specification to pure projections defined in
 // extern_runtime_execute_do.rs.
 //
@@ -10,9 +10,9 @@
 // PRODUCTION BINDING (GOD RULE 2 compliance)
 // ============================================================================
 // Target: vb_runtime::engine::action::execute_do
-//   at crates/vb_runtime/src/engine/action.rs:20-74
+//   at crates/vb_runtime/src/engine/action/mod.rs:20-74
 //
-// Production signature (crates/vb_runtime/src/engine/action.rs:19-30):
+// Production signature (crates/vb_runtime/src/engine/action/mod.rs:19-30):
 //   pub fn execute_do(
 //       run: &RunFrame,
 //       step: StepIdx,
@@ -25,7 +25,7 @@
 //       retry_policy: RetryPolicy,
 //   ) -> RuntimeEngineResult<RuntimeSignal>
 //
-// Production decision branches (crates/vb_runtime/src/engine/action.rs:31-73):
+// Production decision branches (crates/vb_runtime/src/engine/action/mod.rs:31-73):
 //   1. registry lookup: registry_contracts[action.get()].id == action
 //      -> Err(UnknownAction) otherwise
 //   2. read_taint(input) failure
@@ -234,14 +234,14 @@ pub open spec fn spec_execute_do_deterministic(
 
 // ============================================================================
 // Spec mirrors for the 6 remaining production exec wrappers in
-// crates/vb_runtime/src/engine/action.rs (execute_do_without_contract,
+// crates/vb_runtime/src/engine/action/mod.rs (execute_do_without_contract,
 // execute_retry_check, execute_error_handler, resume_action_outcome,
 // compute_idempotency_key, resolve_contract).
 //
 // Each spec fn mirrors the pure projection defined in extern_runtime_execute_do.rs.
 // ============================================================================
 /// Spec-side mirror of `execute_do_without_contract_pure_decision`.
-/// Mirrors the production body at crates/vb_runtime/src/engine/action.rs:76-106.
+/// Mirrors the production body at crates/vb_runtime/src/engine/action/mod.rs:76-106.
 pub open spec fn spec_execute_do_without_contract_decision(
     input_taint_disc: u8,
 ) -> SpecOutcomeKind {
@@ -253,7 +253,7 @@ pub open spec fn spec_execute_do_without_contract_decision(
 }
 
 /// Spec-side mirror of `execute_retry_check_pure_decision`.
-/// Mirrors the production body at crates/vb_runtime/src/engine/action.rs:109-120.
+/// Mirrors the production body at crates/vb_runtime/src/engine/action/mod.rs:109-120.
 pub open spec fn spec_execute_retry_check_decision(
     current_attempt: u16,
     max_attempts: u16,
@@ -268,7 +268,7 @@ pub open spec fn spec_execute_retry_check_decision(
 }
 
 /// Spec-side mirror of `execute_error_handler_pure_decision`.
-/// Mirrors the production body at crates/vb_runtime/src/engine/action.rs:123-131.
+/// Mirrors the production body at crates/vb_runtime/src/engine/action/mod.rs:123-131.
 /// Discriminants: RetryPolicy::Retryable=0, ActionFailureCode::Unknown=255.
 pub open spec fn spec_execute_error_handler_decision(
     failure_retry_policy_disc: u8,
@@ -297,7 +297,7 @@ pub open spec fn spec_resume_kind_valid(kind: SpecResumeKind) -> bool {
 }
 
 /// Spec-side mirror of `resume_action_outcome_pure_decision`.
-/// Mirrors the production body at crates/vb_runtime/src/engine/action.rs:138-200.
+/// Mirrors the production body at crates/vb_runtime/src/engine/action/mod.rs:138-200.
 pub open spec fn spec_resume_action_outcome_decision(
     outcome_disc: u8,
     attempt: u16,
@@ -326,7 +326,7 @@ pub open spec fn spec_resume_action_outcome_decision(
 }
 
 /// Spec-side mirror of `compute_idempotency_key_pure`.
-/// Mirrors the production body at crates/vb_runtime/src/engine/action.rs:214-216
+/// Mirrors the production body at crates/vb_runtime/src/engine/action/mod.rs:214-216
 /// and crates/vb_core/src/action/ticket.rs:78-96 (FNV-1a-inspired wrapping
 /// multiply-add hash).
 pub open spec fn spec_compute_idempotency_key_decision(run: u64, seq: u64, action: u32) -> int {
@@ -341,7 +341,7 @@ pub open spec fn spec_compute_idempotency_key_decision(run: u64, seq: u64, actio
 }
 
 /// Spec-side mirror of `resolve_contract_pure_decision`.
-/// Mirrors the production body at crates/vb_runtime/src/engine/action.rs:211-221.
+/// Mirrors the production body at crates/vb_runtime/src/engine/action/mod.rs:211-221.
 pub open spec fn spec_resolve_contract_decision(id_at_index_match: bool) -> bool {
     id_at_index_match
 }
@@ -399,7 +399,7 @@ pub assume_specification[ production::execute_do_pure_decision ](
 // ============================================================================
 //
 // Each `assume_specification` below mirrors the production decision fn in
-// crates/vb_runtime/src/engine/action.rs through the pure projection in
+// crates/vb_runtime/src/engine/action/mod.rs through the pure projection in
 // extern_runtime_execute_do.rs. The Verus-native contract is the spec fn
 // immediately above each bridge.
 pub assume_specification[ production::execute_do_without_contract_pure_decision ](
@@ -650,14 +650,14 @@ pub exec fn checked_spec_action_outcome_kind_valid(kind: SpecActionOutcomeKind) 
 
 // ============================================================================
 // Production-bound exec wrappers for the 6 remaining production exec fns in
-// crates/vb_runtime/src/engine/action.rs.
+// crates/vb_runtime/src/engine/action/mod.rs.
 // ============================================================================
 /// Production-bound exec wrapper that exercises
 /// `execute_do_without_contract_pure_decision`.
 ///
 /// TRUST BOUNDARY: this exec fn calls the projection defined in
 /// `extern_runtime_execute_do.rs`; the production body of
-/// `execute_do_without_contract` at crates/vb_runtime/src/engine/action.rs:76-106
+/// `execute_do_without_contract` at crates/vb_runtime/src/engine/action/mod.rs:76-106
 /// is documented in the binding ledger but not verified by this file.
 pub exec fn checked_prod_execute_do_without_contract(input_taint_disc: u8) -> (outcome:
     SpecOutcomeKind)
@@ -675,7 +675,7 @@ pub exec fn checked_prod_execute_do_without_contract(input_taint_disc: u8) -> (o
 
 /// Production-bound exec wrapper that exercises
 /// `execute_retry_check_pure_decision`. Mirrors the production body at
-/// crates/vb_runtime/src/engine/action.rs:109-120.
+/// crates/vb_runtime/src/engine/action/mod.rs:109-120.
 pub exec fn checked_prod_execute_retry_check(
     current_attempt: u16,
     max_attempts: u16,
@@ -697,7 +697,7 @@ pub exec fn checked_prod_execute_retry_check(
 
 /// Production-bound exec wrapper that exercises
 /// `execute_error_handler_pure_decision`. Mirrors the production body at
-/// crates/vb_runtime/src/engine/action.rs:123-131.
+/// crates/vb_runtime/src/engine/action/mod.rs:123-131.
 pub exec fn checked_prod_execute_error_handler(
     failure_retry_policy_disc: u8,
     failure_code_disc: u8,
@@ -731,7 +731,7 @@ pub exec fn checked_prod_execute_error_handler(
 
 /// Production-bound exec wrapper that exercises
 /// `resume_action_outcome_pure_decision`. Mirrors the production body at
-/// crates/vb_runtime/src/engine/action.rs:138-200.
+/// crates/vb_runtime/src/engine/action/mod.rs:138-200.
 pub exec fn checked_prod_resume_action_outcome(
     outcome_disc: u8,
     attempt: u16,
@@ -776,7 +776,7 @@ pub exec fn checked_prod_resume_action_outcome(
 
 /// Production-bound exec wrapper that exercises
 /// `compute_idempotency_key_pure`. Mirrors the production body at
-/// crates/vb_runtime/src/engine/action.rs:214-216 and
+/// crates/vb_runtime/src/engine/action/mod.rs:214-216 and
 /// crates/vb_core/src/action/ticket.rs:78-96.
 pub exec fn checked_prod_compute_idempotency_key(run: u64, seq: u64, action: u32) -> (key: u128)
     ensures
@@ -789,7 +789,7 @@ pub exec fn checked_prod_compute_idempotency_key(run: u64, seq: u64, action: u32
 
 /// Production-bound exec wrapper that exercises
 /// `resolve_contract_pure_decision`. Mirrors the production body at
-/// crates/vb_runtime/src/engine/action.rs:211-221.
+/// crates/vb_runtime/src/engine/action/mod.rs:211-221.
 pub exec fn checked_prod_resolve_contract(id_at_index_match: bool) -> (resolved: bool)
     ensures
         resolved == spec_resolve_contract_decision(id_at_index_match),
