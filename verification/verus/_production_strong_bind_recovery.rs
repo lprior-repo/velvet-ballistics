@@ -18,14 +18,14 @@
 // Full `#[path = "../../crates/vb_storage/src/recovery/types.rs"]`
 // inclusion is blocked by:
 //
-//   1. `types.rs:9` `use crate::{EventSeq, JournalError};` requires the
+//   1. `crates/vb_storage/src/recovery/types.rs:9` `use crate::{EventSeq, JournalError};` requires the
 //      vb_storage crate root, which is not registered under
 //      `verus --crate-type=lib` (no installs allowed by task brief).
-//   2. `types.rs:10-13` `use vb_core::{...};` requires the `vb_core`
+//   2. `crates/vb_storage/src/recovery/types.rs:10-13` `use vb_core::{...};` requires the `vb_core`
 //      extern crate alias, which is wired through the workspace
 //      `Cargo.toml` and is unavailable in a standalone
 //      `verus --crate-type=lib` invocation.
-//   3. `types.rs:1217`
+//   3. `crates/vb_storage/src/recovery/types.rs:1429`
 //      `#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize,
 //      serde::Deserialize)]` on `RunSnapshot` requires the `serde`
 //      extern crate, also unavailable under the no-installs
@@ -52,19 +52,19 @@
 // If the drift gate reports drift on the line ranges listed below, this
 // file MUST be updated to match. Production source coverage:
 //
-//   - `MissingRunStateComponent`         <- crates/vb_storage/src/recovery/types.rs:758-773
-//   - `MissingRunStateComponents`        <- crates/vb_storage/src/recovery/types.rs:786-861
-//   - `RecoveryCannotResumeState`        <- crates/vb_storage/src/recovery/types.rs:869-1098
+//   - `MissingRunStateComponent`         <- crates/vb_storage/src/recovery/types.rs:972-987
+//   - `MissingRunStateComponents`        <- crates/vb_storage/src/recovery/types.rs:1001-1016
+//   - `RecoveryCannotResumeState`        <- crates/vb_storage/src/recovery/types.rs:1083-1310
 //                                            (struct + from_unsupported + from_seed
 //                                            + mark_missing_components +
 //                                            mark_full_run_state_missing +
 //                                            classify_step_state + is_resumable +
 //                                            CANNOT_RESUME_REASONS + flag_at +
 //                                            unsupported_reason)
-//   - `CannotResumeClass`                <- crates/vb_storage/src/recovery/types.rs:1105-1119
-//   - `priority_class_first_half`        <- crates/vb_storage/src/recovery/types.rs:1126-1146
-//   - `priority_class_second_half`       <- crates/vb_storage/src/recovery/types.rs:1152-1175
-//   - `priority_reason`                  <- crates/vb_storage/src/recovery/types.rs:1184-1200
+//   - `CannotResumeClass`                <- crates/vb_storage/src/recovery/types.rs:1317-1331
+//   - `priority_class_first_half`        <- crates/vb_storage/src/recovery/types.rs:1338-1358
+//   - `priority_class_second_half`       <- crates/vb_storage/src/recovery/types.rs:1364-1387
+//   - `priority_reason`                  <- crates/vb_storage/src/recovery/types.rs:1396-1412
 //
 // ============================================================================
 // ROUND 8 CHANGES (vb-wy33p.11)
@@ -121,7 +121,7 @@ verus! {
 /// [`MissingRunStateComponents::single`]) without constructing the
 /// whole bitmask.
 ///
-/// Mirror of `crates/vb_storage/src/recovery/types.rs:758-773`.
+/// Mirror of `crates/vb_storage/src/recovery/types.rs:972-987`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MissingRunStateComponent {
     /// A compiled workflow is required by the live runtime but is not represented.
@@ -148,7 +148,7 @@ pub enum MissingRunStateComponent {
 /// [`RecoveryCannotResumeState::unsupported_reason`] can exercise
 /// every reachable token, not just the first one in priority order.
 ///
-/// Mirror of `crates/vb_storage/src/recovery/types.rs:786-861`.
+/// Mirror of `crates/vb_storage/src/recovery/types.rs:1001-1016`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct MissingRunStateComponents {
     /// Compile workflow digest is not represented in the seed.
@@ -221,7 +221,7 @@ impl MissingRunStateComponents {
 /// because live runtime boundary state is not represented by
 /// `RunFrame`.
 ///
-/// Mirror of `crates/vb_storage/src/recovery/types.rs:869-1098`.
+/// Mirror of `crates/vb_storage/src/recovery/types.rs:1083-1110`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RecoveryCannotResumeState {
     /// Slot values are not present or cannot be reconstructed.
@@ -273,7 +273,7 @@ impl RecoveryCannotResumeState {
     /// Apply a parameter-mask of missing full-RunState components,
     /// setting the corresponding `*_missing` flags.
     ///
-    /// Mirror of `crates/vb_storage/src/recovery/types.rs:966-992`.
+    /// Mirror of `crates/vb_storage/src/recovery/types.rs:1180-1203`.
     ///
     /// Implementation note: the production source uses `mut self`
     /// (sequential flag writes); this narrow-bind rewrite uses
@@ -302,7 +302,7 @@ impl RecoveryCannotResumeState {
     }
 
     /// Returns true only when every cannot-resume flag is false.
-    /// Mirror of `crates/vb_storage/src/recovery/types.rs:1025-1039`.
+    /// Mirror of `crates/vb_storage/src/recovery/types.rs:1236-1250`.
     #[must_use]
     pub const fn is_resumable(self) -> bool {
         !self.slot_values && !self.slot_taint && !self.action_payloads && !self.pending_actions
@@ -314,7 +314,7 @@ impl RecoveryCannotResumeState {
 
     /// Returns the cannot-resume flag at priority index `i`. Out-of-
     /// range indices return `false` so the walk above terminates.
-    /// Mirror of `crates/vb_storage/src/recovery/types.rs:1063-1080`.
+    /// Mirror of `crates/vb_storage/src/recovery/types.rs:1274-1291`.
     #[must_use]
     pub const fn flag_at(self, i: usize) -> bool {
         match i {
@@ -338,7 +338,7 @@ impl RecoveryCannotResumeState {
     /// Canonical reason string for a typed `UnsupportedFrameSeed`
     /// error. The first true flag in classification-priority order
     /// wins; `"resumable"` is the fallback when every flag is false.
-    /// Mirror of `crates/vb_storage/src/recovery/types.rs:1089-1097`.
+    /// Mirror of `crates/vb_storage/src/recovery/types.rs:1301-1309`.
     #[must_use]
     pub const fn unsupported_reason(self) -> &'static str {
         match self.priority_class_first_half() {
@@ -352,7 +352,7 @@ impl RecoveryCannotResumeState {
 
     /// First-half priority scan (storage-layer + pending-boundary
     /// flags 0..6). Mirror of
-    /// `crates/vb_storage/src/recovery/types.rs:1126-1146`.
+    /// `crates/vb_storage/src/recovery/types.rs:1338-1358`.
     const fn priority_class_first_half(self) -> Option<CannotResumeClass> {
         if self.slot_values {
             return Some(CannotResumeClass::SlotValues);
@@ -377,7 +377,7 @@ impl RecoveryCannotResumeState {
 
     /// Second-half priority scan (the seven `*_missing` full-RunState
     /// flags 6..13). Mirror of
-    /// `crates/vb_storage/src/recovery/types.rs:1152-1175`.
+    /// `crates/vb_storage/src/recovery/types.rs:1364-1387`.
     const fn priority_class_second_half(self) -> Option<CannotResumeClass> {
         if self.workflow_missing {
             return Some(CannotResumeClass::WorkflowMissing);
@@ -406,7 +406,7 @@ impl RecoveryCannotResumeState {
 
 /// Classification priority for the cannot-resume reason tokens.
 /// The first-matching rule (highest enum variant above) wins.
-/// Mirror of `crates/vb_storage/src/recovery/types.rs:1105-1119`.
+/// Mirror of `crates/vb_storage/src/recovery/types.rs:1317-1331`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CannotResumeClass {
     SlotValues,
@@ -425,7 +425,7 @@ pub enum CannotResumeClass {
 }
 
 /// Maps a [`CannotResumeClass`] to its canonical reason token.
-/// Mirror of `crates/vb_storage/src/recovery/types.rs:1184-1200`.
+/// Mirror of `crates/vb_storage/src/recovery/types.rs:1396-1412`.
 #[must_use]
 pub const fn priority_reason(class: CannotResumeClass) -> &'static str {
     match class {
