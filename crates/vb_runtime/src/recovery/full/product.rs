@@ -1,11 +1,11 @@
 #![forbid(unsafe_code)]
 
 use vb_core::frame::RunFrame;
-use vb_core::ids::{RunId, StepIdx, WorkflowDigest};
+use vb_core::ids::{RunId, WorkflowDigest};
 use vb_storage::EventSeq;
 use vb_storage::recovery::{RecoveryCannotResumeState, RecoveryRuntimeSummary};
 
-use super::RecoveredPendingActionTicket;
+use super::boundary::{RecoveredRunBoundary, RecoveredRunBoundaryKind};
 
 /// Public recovery product emitted by the durable runtime recovery boundary.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -116,111 +116,6 @@ impl NonResumableRecoveryProduct {
     }
 }
 
-/// Kind tag for a recovered external boundary.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum RecoveredRunBoundaryKind {
-    /// No suspended external boundary remains.
-    None,
-    /// A durable action ticket was recovered.
-    PendingAction,
-    /// An ask with no timeout was recovered from the frame state.
-    OpenAsk,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RecoveredRunBoundaryInner {
-    None,
-    PendingAction(RecoveredPendingActionTicket),
-    OpenAsk(RecoveredOpenAsk),
-}
-
-/// Typed recovered external-boundary authority.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RecoveredRunBoundary {
-    inner: RecoveredRunBoundaryInner,
-}
-
-impl RecoveredRunBoundary {
-    #[must_use]
-    pub(crate) const fn none() -> Self {
-        Self {
-            inner: RecoveredRunBoundaryInner::None,
-        }
-    }
-
-    #[must_use]
-    pub(crate) const fn from_pending_action(ticket: RecoveredPendingActionTicket) -> Self {
-        Self {
-            inner: RecoveredRunBoundaryInner::PendingAction(ticket),
-        }
-    }
-
-    #[must_use]
-    pub(crate) const fn from_open_ask(ask: RecoveredOpenAsk) -> Self {
-        Self {
-            inner: RecoveredRunBoundaryInner::OpenAsk(ask),
-        }
-    }
-
-    #[must_use]
-    pub const fn kind(self) -> RecoveredRunBoundaryKind {
-        match self.inner {
-            RecoveredRunBoundaryInner::None => RecoveredRunBoundaryKind::None,
-            RecoveredRunBoundaryInner::PendingAction(_) => RecoveredRunBoundaryKind::PendingAction,
-            RecoveredRunBoundaryInner::OpenAsk(_) => RecoveredRunBoundaryKind::OpenAsk,
-        }
-    }
-
-    #[must_use]
-    pub(crate) const fn pending_action_ticket(self) -> Option<RecoveredPendingActionTicket> {
-        match self.inner {
-            RecoveredRunBoundaryInner::PendingAction(ticket) => Some(ticket),
-            RecoveredRunBoundaryInner::None | RecoveredRunBoundaryInner::OpenAsk(_) => None,
-        }
-    }
-
-    #[must_use]
-    pub const fn open_ask(self) -> Option<RecoveredOpenAsk> {
-        match self.inner {
-            RecoveredRunBoundaryInner::OpenAsk(ask) => Some(ask),
-            RecoveredRunBoundaryInner::None | RecoveredRunBoundaryInner::PendingAction(_) => None,
-        }
-    }
-
-    #[must_use]
-    pub(crate) fn is_open_ask_step(self, step: StepIdx) -> bool {
-        match self.inner {
-            RecoveredRunBoundaryInner::OpenAsk(ask) => ask.step == step,
-            RecoveredRunBoundaryInner::None | RecoveredRunBoundaryInner::PendingAction(_) => false,
-        }
-    }
-}
-
-/// Durable proof that a suspended ask had no timer authority to recover.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RecoveredOpenAsk {
-    step: StepIdx,
-    boundary_seq: vb_storage::EventSeq,
-}
-
-impl RecoveredOpenAsk {
-    #[must_use]
-    pub(crate) const fn new(step: StepIdx, boundary_seq: vb_storage::EventSeq) -> Self {
-        Self { step, boundary_seq }
-    }
-
-    #[must_use]
-    pub const fn step(self) -> StepIdx {
-        self.step
-    }
-
-    #[must_use]
-    pub(crate) const fn boundary_seq(self) -> vb_storage::EventSeq {
-        self.boundary_seq
-    }
-}
-
 /// Resumable product with private construction and private live-frame fields.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResumableRecoveryProduct {
@@ -232,6 +127,7 @@ pub struct ResumableRecoveryProduct {
     next_seq: EventSeq,
     collect_states: crate::primitives::collect::CollectStates,
     boundary: RecoveredRunBoundary,
+    open_gates: Vec<crate::shard::types::OpenGate>,
     /// Original historical admission validated against the durable artifact;
     /// must be restored verbatim rather than rebuilt from current policy.
     admission: crate::admission::RunAdmission,
@@ -249,6 +145,7 @@ impl ResumableRecoveryProduct {
             next_seq: parts.next_seq,
             collect_states: parts.collect_states,
             boundary: parts.boundary,
+            open_gates: parts.open_gates,
             admission: parts.admission,
         }
     }
@@ -279,6 +176,7 @@ impl ResumableRecoveryProduct {
             self.collect_states,
             self.boundary,
         )
+        .with_open_gates(self.open_gates)
         .with_validated_admission(self.admission)
     }
 }
@@ -293,6 +191,7 @@ pub(crate) struct ResumableRecoveryParts {
     pub(crate) next_seq: EventSeq,
     pub(crate) collect_states: crate::primitives::collect::CollectStates,
     pub(crate) boundary: RecoveredRunBoundary,
+    pub(crate) open_gates: Vec<crate::shard::types::OpenGate>,
     /// Original historical admission validated against the durable artifact;
     /// must be restored verbatim rather than rebuilt from current policy.
     pub(crate) admission: crate::admission::RunAdmission,

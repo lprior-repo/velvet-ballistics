@@ -926,6 +926,8 @@ impl Runtime {
             initial_inputs,
         )?;
         let collect_states = Self::hydrate_recovered_collect_states(&context.prefix.events)?;
+        let open_gates = crate::manual_gate::reconstruct_open_gates(&context.prefix.events)
+            .map_err(|source| RuntimeError::GateEvaluationFailed { source })?;
         Ok(crate::recovery::RuntimeRecoveryProduct::resumable(
             crate::recovery::ResumableRecoveryProduct::new(
                 crate::recovery::ResumableRecoveryParts {
@@ -937,6 +939,7 @@ impl Runtime {
                     next_seq: context.prefix.next_seq,
                     collect_states,
                     boundary: context.boundary,
+                    open_gates,
                     admission: context.prefix.admission.clone(),
                 },
             ),

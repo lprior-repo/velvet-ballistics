@@ -489,3 +489,63 @@ fn one_hot_required_dimensions_bind_their_own_recorded_limits() -> TestResult {
     }
     Ok(())
 }
+
+#[test]
+fn recovery_product_carries_reconstructed_open_gate_into_command() -> TestResult {
+    let fixture = durable_fixture(false)?;
+    let gate = vb_core::manual_gate::ManualGate {
+        id: vb_core::manual_gate::GateId::new(7),
+        run: fixture.run,
+        action: ActionId::new(9),
+        risk: vb_core::manual_gate::RiskClass::High,
+        compensatable: false,
+        required_role: vb_core::manual_gate::ApproverRole::new("deploy-approver".to_string())
+            .ok_or("gate role must be valid")?,
+        separation_of_duties: vb_core::manual_gate::SeparationOfDuties::DistinctFromRequester,
+        evidence_bundle_digest: vb_core::manual_gate::GateDigest::from_bytes([1u8; 32]),
+        prompt_digest: vb_core::manual_gate::GateDigest::from_bytes([2u8; 32]),
+        timeout_ms: 1_000,
+        escalation_policy_digest: vb_core::manual_gate::GateDigest::from_bytes([3u8; 32]),
+        break_glass_allowed: true,
+        approval_reason_required: true,
+    };
+    let requester = vb_core::manual_gate::ApproverId::new("bob".to_string())
+        .ok_or("requester must be valid")?;
+    let opened = crate::manual_gate::gate_opened_event(
+        gate.clone(),
+        0,
+        requester.clone(),
+        vb_storage::EventSeq::new(4),
+    );
+    fixture.journal.append_strict(&opened)?;
+    let product = match fixture.runtime.recover_product(fixture.run)? {
+        crate::recovery::RuntimeRecoveryProduct::Resumable(product) => product,
+        other => {
+            return Err(format!("expected resumable recovery product, got {other:?}").into());
+        }
+    };
+    let command = product.into_recover_command();
+    assert_eq!(
+        command.open_gates.len(),
+        1,
+        "recovery command must carry exactly one reconstructed open gate"
+    );
+    let open = &command.open_gates[0];
+    assert_eq!(
+        open.gate, gate,
+        "carried gate must match the journaled gate"
+    );
+    assert_eq!(
+        open.opened_at_ms, 0,
+        "carried gate must keep its opening time"
+    );
+    assert_eq!(
+        open.requester, requester,
+        "carried gate must keep its requester"
+    );
+    assert_eq!(
+        open.delegated_to, None,
+        "freshly opened gate has no delegate"
+    );
+    Ok(())
+}

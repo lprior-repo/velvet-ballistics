@@ -517,10 +517,10 @@ pub fn gate_opened_event(
 /// Replay performs no external effect; the returned gates are in opening
 /// order.
 ///
-/// No recovery path calls this yet: threading the reconstructed gates
-/// through `ResumableRecoveryProduct` into `RecoverRunCommand` is the
-/// follow-up batch. Until then the seam is exercised by its tests.
-#[cfg_attr(not(test), allow(dead_code))]
+/// The runtime recovery path calls this over the full per-run journal and
+/// threads the result through `ResumableRecoveryProduct` into
+/// `RecoverRunCommand`, so a crash after opening leaves the gate open
+/// across recovery instead of silently resuming the gated run.
 pub(crate) fn reconstruct_open_gates(
     events: &[vb_storage::JournalEvent],
 ) -> Result<Vec<OpenGate>, GateError> {

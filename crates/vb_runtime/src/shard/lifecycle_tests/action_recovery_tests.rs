@@ -665,3 +665,393 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
 
     Ok(())
 }
+
+fn recovery_gate_digest(byte: u8) -> vb_core::manual_gate::GateDigest {
+    vb_core::manual_gate::GateDigest::from_bytes([byte; 32])
+}
+
+fn recovery_gate_role() -> vb_core::manual_gate::ApproverRole {
+    vb_core::manual_gate::ApproverRole::new("deploy-approver".to_string()).unwrap()
+}
+
+fn recovery_gate_person(value: &str) -> vb_core::manual_gate::ApproverId {
+    vb_core::manual_gate::ApproverId::new(value.to_string()).unwrap()
+}
+
+fn recovery_test_gate(run: vb_core::ids::RunId, id: u64) -> vb_core::manual_gate::ManualGate {
+    vb_core::manual_gate::ManualGate {
+        id: vb_core::manual_gate::GateId::new(id),
+        run,
+        action: vb_core::ids::ActionId::new(9),
+        risk: vb_core::manual_gate::RiskClass::High,
+        compensatable: false,
+        required_role: recovery_gate_role(),
+        separation_of_duties: vb_core::manual_gate::SeparationOfDuties::DistinctFromRequester,
+        evidence_bundle_digest: recovery_gate_digest(1),
+        prompt_digest: recovery_gate_digest(2),
+        timeout_ms: 1_000,
+        escalation_policy_digest: recovery_gate_digest(3),
+        break_glass_allowed: true,
+        approval_reason_required: true,
+    }
+}
+
+fn recovery_test_open_gate(
+    run: vb_core::ids::RunId,
+    id: u64,
+) -> crate::shard::types::OpenGate {
+    crate::shard::types::OpenGate {
+        gate: recovery_test_gate(run, id),
+        opened_at_ms: 0,
+        requester: recovery_gate_person("bob"),
+        delegated_to: None,
+    }
+}
+
+fn recovery_approve_input(id: u64) -> vb_core::manual_gate::GateDecisionInput {
+    vb_core::manual_gate::GateDecisionInput {
+        gate: vb_core::manual_gate::GateId::new(id),
+        decision: vb_core::manual_gate::GateDecision::Approve,
+        approver: recovery_gate_person("alice"),
+        approver_role: recovery_gate_role(),
+        requester: recovery_gate_person("bob"),
+        reason: Some("checked the rollout plan".to_string()),
+        evidence_shown: true,
+        evidence_bundle_digest: recovery_gate_digest(1),
+        delegated_to: None,
+        break_glass_justification: None,
+        decided_at_ms: 500,
+    }
+}
+
+#[derive(Debug, Default)]
+struct RecoveryGateJournal {
+    decisions: std::sync::Mutex<Vec<vb_core::manual_gate::GateOutcomeRecord>>,
+}
+
+impl RecoveryGateJournal {
+    fn shared() -> std::sync::Arc<Self> {
+        std::sync::Arc::new(Self::default())
+    }
+
+    fn decisions(
+        &self,
+    ) -> Result<Vec<vb_core::manual_gate::GateOutcomeRecord>, crate::RuntimeError> {
+        self.decisions
+            .lock()
+            .map(|guard| guard.clone())
+            .map_err(|_| crate::RuntimeError::JournalPoisoned)
+    }
+}
+
+impl crate::journal::RuntimeJournal for RecoveryGateJournal {
+    fn append(&self, _event: crate::journal::RuntimeJournalEvent) -> crate::error::RuntimeResult<()> {
+        Ok(())
+    }
+
+    fn append_sequenced_batch(
+        &self,
+        events: &[crate::journal::RuntimeJournalEvent],
+        _start_seq: vb_storage::EventSeq,
+    ) -> crate::error::RuntimeResult<()> {
+        for event in events {
+            self.append(event.clone())?;
+        }
+        Ok(())
+    }
+
+    fn append_gate_decision_strict(
+        &self,
+        record: vb_core::manual_gate::GateOutcomeRecord,
+        _seq: vb_storage::EventSeq,
+    ) -> crate::error::RuntimeResult<()> {
+        self.decisions
+            .lock()
+            .map_err(|_| crate::RuntimeError::JournalPoisoned)?
+            .push(record);
+        Ok(())
+    }
+
+    fn append_gate_opened_strict(
+        &self,
+        _gate: vb_core::manual_gate::ManualGate,
+        _opened_at_ms: u64,
+        _requester: vb_core::manual_gate::ApproverId,
+        _seq: vb_storage::EventSeq,
+    ) -> crate::error::RuntimeResult<()> {
+        Ok(())
+    }
+
+    fn probe(&self) -> crate::error::RuntimeResult<()> {
+        Ok(())
+    }
+}
+
+fn recovery_gate_shard() -> Result<
+    (
+        crate::shard::Shard,
+        std::sync::Arc<RecoveryGateJournal>,
+        vb_core::ids::RunId,
+        vb_core::ids::WorkflowDigest,
+        vb_core::ids::WorkflowDigest,
+    ),
+    Box<dyn std::error::Error>,
+> {
+    let run_id = vb_core::ids::RunId::new(1);
+    let workflow_digest = vb_core::ids::WorkflowDigest::from_bytes([42u8; 32]);
+    let artifact_digest = vb_core::ids::WorkflowDigest::from_bytes([43u8; 32]);
+    let do_node = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, vb_core::workflow::CompiledNodeKind::Do { action: vb_core::ids::ActionId::new(0), input: vb_core::ids::SlotIdx::new(0), }, Some(vb_core::ids::SlotIdx::new(1)), Some(vb_core::ids::StepIdx::new(1)));
+    let finish_node = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::new(1), }, None, None);
+    let parts = vb_core::workflow::WorkflowParts {
+        semantic_source_identity: None,
+        name: Box::from("recovery-test"),
+        digest: workflow_digest,
+        nodes: Box::from([do_node, finish_node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    let workflow_ir = postcard::to_allocvec(&parts)?;
+    let contract = action_recovery_test_contract()?;
+    let policy_digest = vb_storage::admission::compute_policy_digest(
+        &vb_core::workflow::CompiledWorkflow::try_from_parts(parts)?,
+    )?;
+    let config = crate::shard::ShardConfig {
+        command_queue_capacity: 64,
+        trace_capacity: 64,
+        step_budget_per_tick: 4,
+        max_active_runs: 8,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let store = action_recovery_contract_store(
+        artifact_digest,
+        workflow_digest,
+        policy_digest,
+        workflow_ir,
+        contract,
+    );
+    let journal = RecoveryGateJournal::shared();
+    let shard = crate::shard::Shard::new_with_journal_and_artifact_store(
+        config,
+        journal.clone(),
+        store,
+    );
+    Ok((shard, journal, run_id, artifact_digest, workflow_digest))
+}
+
+fn recovery_gate_frame(
+    run_id: vb_core::ids::RunId,
+) -> Result<vb_core::frame::RunFrame, Box<dyn std::error::Error>> {
+    let mut frame = vb_core::frame::RunFrame::new(run_id, vb_core::ids::StepIdx::ZERO, 2, 2)?;
+    frame.write_slot(
+        vb_core::ids::SlotIdx::new(0),
+        vb_core::value::SlotValue::I64(0),
+    )?;
+    Ok(frame)
+}
+
+fn recovery_gate_command(
+    run_id: vb_core::ids::RunId,
+    artifact_digest: vb_core::ids::WorkflowDigest,
+    workflow_digest: vb_core::ids::WorkflowDigest,
+    boundary: RecoveredRunBoundary,
+    open_gates: Vec<crate::shard::types::OpenGate>,
+) -> Result<RecoverRunCommand, Box<dyn std::error::Error>> {
+    Ok(RecoverRunCommand::new(
+        run_id,
+        recovery_gate_frame(run_id)?,
+        artifact_digest,
+        workflow_digest,
+        vb_storage::types::EventSeq::new(1),
+        crate::primitives::collect::CollectStates::new(),
+        boundary,
+    )
+    .with_open_gates(open_gates))
+}
+
+#[test]
+fn recover_restores_open_gate_suspends_run_and_approves_to_drive()
+-> Result<(), Box<dyn std::error::Error>> {
+    let (mut shard, journal, run_id, artifact_digest, workflow_digest) =
+        recovery_gate_shard()?;
+    let gate = recovery_test_gate(run_id, 7);
+    let command = recovery_gate_command(
+        run_id,
+        artifact_digest,
+        workflow_digest,
+        RecoveredRunBoundary::none(),
+        vec![recovery_test_open_gate(run_id, 7)],
+    )?;
+    shard.handle_recover(command)?;
+    assert_eq!(
+        shard.open_gate_for(run_id),
+        Some(gate.id),
+        "recovered gate must be registered in the shard registry"
+    );
+    assert_eq!(
+        shard.runtime_state_get(run_id),
+        Some(crate::shard::types::RuntimeState::Resumable),
+        "recovered gated run must stay suspended, not running"
+    );
+    assert!(
+        shard.pending_action_get(run_id).is_none(),
+        "gated run must not be driven: no action may be scheduled"
+    );
+    assert_eq!(
+        shard.handle_resume(run_id),
+        Err(crate::shard::types::ResumeError::GateOpen {
+            run_id,
+            gate: gate.id,
+        }),
+        "resume must stay blocked while the recovered gate is open"
+    );
+    let record = shard.submit_gate_decision(recovery_approve_input(7))?;
+    assert_eq!(
+        record.outcome,
+        vb_core::manual_gate::GateOutcome::Approved,
+        "approval of the recovered gate must succeed"
+    );
+    let journaled = journal.decisions()?;
+    assert_eq!(
+        journaled.len(),
+        1,
+        "exactly one gate decision must reach the strict journal port"
+    );
+    assert_eq!(
+        journaled[0], record,
+        "journaled decision must match the returned record"
+    );
+    assert_eq!(
+        shard.open_gate_for(run_id),
+        None,
+        "approved gate must be removed from the registry"
+    );
+    let ticket = shard
+        .pending_action_get(run_id)
+        .ok_or("approved run must drive and schedule its action")?;
+    assert_eq!(ticket.run, run_id);
+    assert_eq!(ticket.step, vb_core::ids::StepIdx::ZERO);
+    assert_eq!(ticket.action, vb_core::ids::ActionId::new(0));
+    assert_eq!(ticket.attempt, 1);
+    Ok(())
+}
+
+#[test]
+fn recover_rejects_open_gate_with_suspended_boundary()
+-> Result<(), Box<dyn std::error::Error>> {
+    let (mut shard, _journal, run_id, artifact_digest, workflow_digest) =
+        recovery_gate_shard()?;
+    let ask = crate::recovery::RecoveredOpenAsk::new(
+        vb_core::ids::StepIdx::ZERO,
+        vb_storage::EventSeq::new(1),
+    );
+    let command = recovery_gate_command(
+        run_id,
+        artifact_digest,
+        workflow_digest,
+        RecoveredRunBoundary::from_open_ask(ask),
+        vec![recovery_test_open_gate(run_id, 7)],
+    )?;
+    assert_eq!(
+        shard.handle_recover(command),
+        Err(crate::RuntimeError::Recovery {
+            error: "recovered run has both an open gate and a suspended boundary".to_string(),
+        }),
+        "gate plus boundary is inconsistent evidence and must fail recovery"
+    );
+    assert_eq!(
+        shard.open_gate_for(run_id),
+        None,
+        "rejected recovery must not register the gate"
+    );
+    Ok(())
+}
+
+#[test]
+fn restore_open_gates_rejects_foreign_run_gate() -> Result<(), Box<dyn std::error::Error>> {
+    let config = crate::shard::ShardConfig {
+        command_queue_capacity: 64,
+        trace_capacity: 64,
+        step_budget_per_tick: 4,
+        max_active_runs: 8,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut shard = crate::shard::Shard::new(config);
+    let run_id = vb_core::ids::RunId::new(1);
+    let foreign = recovery_test_open_gate(vb_core::ids::RunId::new(99), 7);
+    assert_eq!(
+        shard.restore_open_gates(run_id, std::slice::from_ref(&foreign)),
+        Err(crate::RuntimeError::Recovery {
+            error: "recovered open gate 7 belongs to a different run".to_string(),
+        }),
+        "a gate for another run must fail restore"
+    );
+    assert_eq!(
+        shard.open_gate_for(run_id),
+        None,
+        "rejected restore must not register the gate"
+    );
+    Ok(())
+}
+
+#[test]
+fn restore_open_gates_rejects_duplicate_gate_id() -> Result<(), Box<dyn std::error::Error>> {
+    let config = crate::shard::ShardConfig {
+        command_queue_capacity: 64,
+        trace_capacity: 64,
+        step_budget_per_tick: 4,
+        max_active_runs: 8,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut shard = crate::shard::Shard::new(config);
+    let run_id = vb_core::ids::RunId::new(1);
+    let open = recovery_test_open_gate(run_id, 7);
+    shard.restore_open_gates(run_id, std::slice::from_ref(&open))?;
+    assert_eq!(
+        shard.restore_open_gates(run_id, std::slice::from_ref(&open)),
+        Err(crate::RuntimeError::GateAlreadyOpen {
+            gate: vb_core::manual_gate::GateId::new(7),
+        }),
+        "restoring the same gate id twice must fail"
+    );
+    assert_eq!(
+        shard.open_gate_for(run_id),
+        Some(vb_core::manual_gate::GateId::new(7)),
+        "the first restored gate must remain registered"
+    );
+    Ok(())
+}
+
+#[test]
+fn restore_open_gates_enforces_registry_cap() -> Result<(), Box<dyn std::error::Error>> {
+    let config = crate::shard::ShardConfig {
+        command_queue_capacity: 64,
+        trace_capacity: 64,
+        step_budget_per_tick: 4,
+        max_active_runs: 2,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut shard = crate::shard::Shard::new(config);
+    let run_id = vb_core::ids::RunId::new(1);
+    let first = recovery_test_open_gate(run_id, 7);
+    let second = recovery_test_open_gate(run_id, 8);
+    let third = recovery_test_open_gate(run_id, 9);
+    shard.restore_open_gates(run_id, &[first, second])?;
+    assert_eq!(
+        shard.restore_open_gates(run_id, std::slice::from_ref(&third)),
+        Err(crate::RuntimeError::ActiveRunCapacityExceeded { capacity: 2 }),
+        "restoring past the registry cap must fail"
+    );
+    assert_eq!(
+        shard.open_gate_for(run_id),
+        Some(vb_core::manual_gate::GateId::new(7)),
+        "cap failure must not drop the gates already restored"
+    );
+    Ok(())
+}
