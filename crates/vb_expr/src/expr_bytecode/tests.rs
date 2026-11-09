@@ -304,7 +304,7 @@ fn check_expr_stack_bound_returns_ok_within_limit() -> crate::ExprResult<()> {
         ExprOp::Add,
     ];
     let max_stack = check_expr_stack_bound(&ops)?;
-    assert!(max_stack > 0, "max_stack should be positive");
+    assert_eq!(max_stack, 2, "two loads then one add peaks at depth 2");
     Ok(())
 }
 
@@ -513,7 +513,11 @@ fn push_constant_returns_correct_index() -> crate::ExprResult<()> {
     let mut constants: Vec<ConstValue> = vec![ConstValue::I64(1), ConstValue::I64(2)];
     let idx = push_constant(ConstValue::I64(3), &mut constants)?;
     assert_eq!(idx, ConstIdx::new(2));
-    assert_eq!(constants.len(), 3);
+    assert_eq!(
+        constants,
+        vec![ConstValue::I64(1), ConstValue::I64(2), ConstValue::I64(3)],
+        "pool must contain the two seeded constants plus the pushed one in order"
+    );
     Ok(())
 }
 
