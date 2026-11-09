@@ -288,12 +288,12 @@ invariants:
   - id: journal_before_dispatch
     applies_to:
       - crates/vb_runtime/src/journal.rs
-      - crates/vb_runtime/src/engine/action.rs
+      - crates/vb_runtime/src/engine/action/mod.rs
     description: "ActionScheduled journal event committed before action dispatched"
 
   - id: action_completion_before_frame_mutation
     applies_to:
-      - crates/vb_runtime/src/engine/action.rs
+      - crates/vb_runtime/src/engine/action/mod.rs
     description: "ActionCompleted journal event committed before frame mutated"
 
   # ============================================================

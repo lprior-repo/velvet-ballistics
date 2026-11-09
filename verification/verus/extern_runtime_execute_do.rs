@@ -9,7 +9,7 @@
 // This file is a thin re-export surface for the production mirror at
 // `verification/verus/production_inner/execute_do_production.rs`,
 // which is a structural mirror of the production fns in
-// `crates/vb_runtime/src/engine/action.rs`.
+// `crates/vb_runtime/src/engine/action/mod.rs`.
 //
 // The companion spec file (`vb_runtime_execute_do_spec.rs`)
 // attaches spec contracts to the projections via
