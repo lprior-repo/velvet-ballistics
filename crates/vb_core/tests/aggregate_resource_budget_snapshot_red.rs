@@ -1,4 +1,16 @@
-const BUDGET_RS: &str = include_str!("../src/budget.rs");
+// The aggregate budget types and validation moved to `budget/aggregate.rs`
+// and `budget/aggregate_validate.rs` in the source-length split series, so
+// the shell alone no longer contains the `AggregateBudgetError` variants.
+// Concatenate the submodules so the snapshot sees the same surface the
+// production binary sees. Mirrors the fix in
+// `aggregate_resource_budget_red.rs`.
+const BUDGET_RS: &str = concat!(
+    include_str!("../src/budget.rs"),
+    "\n",
+    include_str!("../src/budget/aggregate.rs"),
+    "\n",
+    include_str!("../src/budget/aggregate_validate.rs"),
+);
 // `vb_runtime/src/admission.rs` is a 56-line shell that `include!`s
 // focused chunks from `admission/parts/`. `include_str!` of the shell
 // alone would miss contract tokens declared in the chunks, so we

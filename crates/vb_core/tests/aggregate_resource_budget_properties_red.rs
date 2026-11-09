@@ -7,6 +7,12 @@ const BUDGET_RS: &str = include_str!("../src/budget.rs");
 // alone no longer contains `try_add_budget`. Concatenate the submodule
 // so the proptest sees the same surface the production binary sees.
 const BUDGET_USAGE_RS: &str = include_str!("../src/budget/usage.rs");
+// The aggregate budget types and validation moved to
+// `budget/aggregate.rs` and `budget/aggregate_validate.rs` in the
+// source-length split series, so the shell alone no longer contains
+// `AggregateResourceBudget` or its dimension names.
+const BUDGET_AGGREGATE_RS: &str = include_str!("../src/budget/aggregate.rs");
+const BUDGET_AGGREGATE_VALIDATE_RS: &str = include_str!("../src/budget/aggregate_validate.rs");
 // The admission shell is split across focused chunks under `parts/` that
 // are `include!`-d into `admission.rs` at compile time. The runtime-source
 // literals this proptest searches for (`admit_run_with_budget`,
@@ -41,6 +47,10 @@ fn budget_production_surface() -> String {
     let mut s = String::from(BUDGET_RS);
     s.push('\n');
     s.push_str(BUDGET_USAGE_RS);
+    s.push('\n');
+    s.push_str(BUDGET_AGGREGATE_RS);
+    s.push('\n');
+    s.push_str(BUDGET_AGGREGATE_VALIDATE_RS);
     s
 }
 
@@ -65,9 +75,10 @@ proptest! {
             "max_queue_depth",
             "max_journal_batch_bytes",
         ];
+        let budget_rs = budget_production_surface();
 
-        prop_assert_eq!(BUDGET_RS.contains("pub struct AggregateResourceBudget"), true);
-        prop_assert_eq!(BUDGET_RS.contains(dimensions[index]), true);
+        prop_assert_eq!(budget_rs.contains("pub struct AggregateResourceBudget"), true);
+        prop_assert_eq!(budget_rs.contains(dimensions[index]), true);
     }
 
     #[test]

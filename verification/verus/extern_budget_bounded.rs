@@ -30,12 +30,12 @@
 //   - `BoundednessPolicy`                    <- crates/vb_core/src/budget.rs:455-502
 //   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget.rs:534-592
 //   - `BudgetError`                          <- crates/vb_core/src/budget.rs:703-750
-//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget.rs:882-920
-//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget.rs:969-1003
-//   - `AggregateBudgetError`                 <- crates/vb_core/src/budget.rs:1079-1148
-//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget.rs:1256-1390
-//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:1396-1431
-//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:1433-1451
+//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:9-49
+//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:96-132
+//   - `AggregateBudgetError`                 <- crates/vb_core/src/budget/aggregate.rs:205-277
+//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:109-243
+//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:893-928
+//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:930-948
 //   - `count_total_steps`                    <- crates/vb_core/src/budget/loop_body.rs:11-17
 //
 // ============================================================================
@@ -142,7 +142,7 @@ fn prod_methods_drift_check(
     };
 
     // Reference every field of AggregateResourceBudget to surface any
-    // rename in budget.rs:882-920.
+    // rename in budget/aggregate.rs:9-49.
     let arb = production_inner::AggregateResourceBudget {
         max_steps_executable: 0,
         max_action_tickets: 0,
@@ -175,11 +175,11 @@ fn prod_methods_drift_check(
     };
 
     // AggregateResourceUsage derives Default; use it to surface the
-    // production field set (budget.rs:969-1003).
+    // production field set (budget/aggregate.rs:96-132).
     let aru = production_inner::AggregateResourceUsage::default();
 
     // Reference every field of AggregateResourceCapacity to surface
-    // any rename in budget.rs:924-965.
+    // any rename in budget/aggregate.rs:51-94.
     let cap = production_inner::AggregateResourceCapacity {
         max_steps_executable: 0,
         max_action_tickets: 0,

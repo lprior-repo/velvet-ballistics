@@ -1,13 +1,19 @@
 #[cfg(kani)]
 mod aggregate_budget_kani_harnesses {
     // `budget.rs` is a shell over sibling modules in `budget/`; the checked
-    // add/subtract impls live in `budget/usage.rs`, so the shell alone would
-    // miss the tokens these harnesses require. Concatenate both, mirroring
+    // add/subtract impls live in `budget/usage.rs`, and the aggregate types
+    // and validation live in `budget/aggregate.rs` and
+    // `budget/aggregate_validate.rs`, so the shell alone would miss the
+    // tokens these harnesses require. Concatenate them, mirroring
     // `aggregate_resource_budget_red.rs`.
     const BUDGET_RS: &str = concat!(
         include_str!("../src/budget.rs"),
         "\n",
         include_str!("../src/budget/usage.rs"),
+        "\n",
+        include_str!("../src/budget/aggregate.rs"),
+        "\n",
+        include_str!("../src/budget/aggregate_validate.rs"),
     );
     const ADMISSION_RS: &str = include_str!("../../vb_runtime/src/admission.rs");
     const ADMISSION_ERRORS_RS: &str =
