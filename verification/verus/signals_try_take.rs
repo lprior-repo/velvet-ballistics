@@ -48,7 +48,7 @@ verus! {
 // =============================================================================
 //
 // The production `StepBudget` struct at
-// `crates/vb_core/src/engine/signals.rs:13-17` is declared OUTSIDE
+// `crates/vb_core/src/engine/signals.rs:14-16` is declared OUTSIDE
 // the `verus!` block (via the companion extern file's `#[path]`
 // inclusion of the production mirror). The production field remains private;
 // this bridge uses only the verifier mirror's field visibility relaxation.
@@ -128,7 +128,7 @@ pub open spec fn spec_try_take(remaining: int) -> (bool, int) {
 /// MAX_STEP_BUDGET)` and satisfies the bounded invariant.
 ///
 /// Mirrors the production body at
-/// `crates/vb_core/src/engine/signals.rs:28-36`.
+/// `crates/vb_core/src/engine/signals.rs:27-35`.
 pub assume_specification[ production::StepBudget::new ](value: u64) -> (budget:
     production::StepBudget)
     ensures
@@ -144,7 +144,7 @@ pub assume_specification[ production::StepBudget::new ](value: u64) -> (budget:
 /// defense-in-depth overflow guard).
 ///
 /// The postcondition encodes the production logic of
-/// `crates/vb_core/src/engine/signals.rs:51-61`:
+/// `crates/vb_core/src/engine/signals.rs:50-60`:
 ///   1. overflow guard returns Err iff `remaining > MAX_STEP_BUDGET`
 ///   2. remaining == 0 returns Ok(false), remaining unchanged
 ///   3. remaining > 0 returns Ok(true), remaining -= 1
@@ -174,7 +174,7 @@ pub assume_specification[ production::StepBudget::try_take ](
 /// field.
 ///
 /// Mirrors the production body at
-/// `crates/vb_core/src/engine/signals.rs:65-67`.
+/// `crates/vb_core/src/engine/signals.rs:64-66`.
 pub assume_specification[ production::StepBudget::remaining ](
     budget: &production::StepBudget,
 ) -> (r: u64)

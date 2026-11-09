@@ -153,7 +153,7 @@ pub assume_specification[ production::step_budget_new ](value: u64) -> (budget:
 // Bridge: `step_budget_remaining` returns the budget's remaining field.
 // --------------------------------------------------------------------------
 // Mirrors production `StepBudget::remaining(&self) -> u64` at
-// `crates/vb_core/src/engine/signals.rs:62-65`.
+// `crates/vb_core/src/engine/signals.rs:62-66`.
 pub assume_specification[ production::step_budget_remaining ](
     budget: &production::StepBudget,
 ) -> (r: u64)

@@ -40,7 +40,7 @@
 //       * next_seq                (codec/mod.rs:142-147)
 //       * validate_replayed_event (codec/mod.rs:149-167)
 //   - crates/vb_storage/src/trimming/logic.rs::FjallJournal
-//       * latest_durable_snapshot_seq (trimming/logic.rs:24-41)
+//       * latest_durable_snapshot_seq (trimming/logic.rs:26-36)
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -447,7 +447,7 @@ pub assume_specification[ production::production_validate_replayed_event ](
 /// Bridge contract: `production_latest_durable_snapshot_seq`
 /// returns the per-run snapshot seq stored in the mirror journal.
 /// Mirrors `FjallJournal::latest_durable_snapshot_seq` at
-/// `crates/vb_storage/src/trimming/logic.rs:24-41`.
+/// `crates/vb_storage/src/trimming/logic.rs:26-36`.
 pub assume_specification[ production::production_latest_durable_snapshot_seq ](
     journal: &MirrorJournal,
     run: RunId,

@@ -47,7 +47,7 @@
 //      (postcard, blake3) that are not registered under
 //      `verus --crate-type=lib`.
 //
-//   3. `trimming/logic.rs:1-8` references `fjall::Readable` and the
+//   3. `trimming/logic.rs:1-9` references `fjall::Readable` and the
 //      internal `TrimError` / `TrimResult` enums, which in turn pull in
 //      `crate::types::{EventSeq, FjallConfig, KeyspaceProfile}` and
 //      `crate::error::JournalError`. The transitive surface is too
@@ -194,7 +194,7 @@ impl RunId {
 }
 
 /// Mirror of `EventSeq` (u64 newtype) at
-/// `crates/vb_storage/src/types.rs:73`. Production stores
+/// `crates/vb_storage/src/types.rs:71`. Production stores
 /// `seq.get()` as a u64 with `EventSeq::ZERO = 0`,
 /// `EventSeq::MAX = u64::MAX`.
 #[derive(Clone, Copy)]
@@ -320,7 +320,7 @@ pub struct MirrorJournalEvent {
 ///   - per-run event log (mirrors `events: fjall::Keyspace`)
 ///   - per-run latest durable snapshot seq
 ///     (mirrors `latest_durable_snapshot_seq` lookup at
-///      trimming/logic.rs:24-41)
+///      trimming/logic.rs:26-36)
 ///
 /// Production has 9+ keyspaces plus write locks and process locks;
 /// those are irrelevant to the replay seam contract and are
@@ -334,7 +334,7 @@ pub struct MirrorJournal {
     pub events_per_run: Vec<Vec<MirrorJournalEvent>>,
     /// Per-run latest durable snapshot seq indexed by
     /// `RunId.get()`. Mirrors the `run_snapshot` prefix scan at
-    /// `latest_durable_snapshot_seq` (trimming/logic.rs:26-40).
+    /// `latest_durable_snapshot_seq` (trimming/logic.rs:26-36).
     /// `None` means no durable snapshot exists for the run, which
     /// maps to production's `Ok(None)` return.
     pub latest_snapshot_seq_for_run: Vec<Option<u64>>,
@@ -353,7 +353,7 @@ impl Clone for MirrorJournal {
 impl MirrorJournal {
     /// Returns the latest durable snapshot seq for `run`, mirroring
     /// the production `latest_durable_snapshot_seq` flow at
-    /// `trimming/logic.rs:24-41`. Returns `None` when no snapshot
+    /// `trimming/logic.rs:26-36`. Returns `None` when no snapshot
     /// key exists for the run.
     pub fn latest_snapshot_seq(&self, run: RunId) -> Option<u64> {
         let idx = run.get() as usize;
@@ -437,7 +437,7 @@ pub fn production_validate_replayed_event(
 }
 
 /// Production wrapper for `FjallJournal::latest_durable_snapshot_seq`
-/// at `crates/vb_storage/src/trimming/logic.rs:24-41`. Returns the
+/// at `crates/vb_storage/src/trimming/logic.rs:26-36`. Returns the
 /// highest `EventSeq` for the run from the snapshot keyspace, or
 /// `None` when no snapshot exists.
 ///
