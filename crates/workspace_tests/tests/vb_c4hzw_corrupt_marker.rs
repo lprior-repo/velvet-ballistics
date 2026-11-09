@@ -12,9 +12,7 @@ use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::{DecisionCode, PolicyDigest, PolicyRule, RuntimePolicy};
 use vb_core::value::SlotValue;
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
 #[path = "vb_hk1j8_fixture/scoped_grant_fixture.rs"]
 mod scoped_grant_fixture;
 
@@ -28,6 +26,11 @@ use vb_storage::{FjallConfig, FjallJournal};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+#[path = "common/mod.rs"]
+mod common;
+
+use common::workflow_fixture::node;
+
 fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
     NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
 }
@@ -40,15 +43,6 @@ fn strict_config() -> ShardConfig {
         max_active_runs: 8,
         policy: RuntimePolicy::Strict,
     }
-}
-
-fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(id),
-        kind,
-        output.map(SlotIdx::new),
-        next.map(StepIdx::new),
-    )
 }
 
 fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {

@@ -21,12 +21,10 @@ use vb_core::action::{
     RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
-use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
 use vb_core::policy::RuntimePolicy;
-use vb_core::value::{ConstValue, SlotValue, Taint};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
-};
+use vb_core::value::{SlotValue, Taint};
+use vb_core::workflow::CompiledWorkflow;
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{InspectResponse, RuntimeState, ShardConfig, ShardDirective};
@@ -35,6 +33,11 @@ use vb_runtime::trace::TraceEvent;
 // =============================================================================
 // Helper Constructors
 // =============================================================================
+
+#[path = "common/mod.rs"]
+mod common;
+
+use common::workflow_fixture::{action_then_finish_workflow, finished_workflow};
 
 fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
     NonZeroUsize::new(value).ok_or_else(|| format!("expected non-zero shard count, got {value}"))
@@ -48,98 +51,6 @@ fn test_config() -> ShardConfig {
         max_active_runs: 8,
         policy: RuntimePolicy::Relaxed,
     }
-}
-
-fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(id),
-        kind,
-        output.map(SlotIdx::new),
-        next.map(StepIdx::new),
-    )
-}
-
-fn workflow_from_parts(
-    name: &str,
-    digest_byte: u8,
-    nodes: Box<[CompiledNode]>,
-    constants: Box<[ConstValue]>,
-    slot_count: u16,
-) -> Result<CompiledWorkflow, String> {
-    let parts = WorkflowParts {
-        semantic_source_identity: None,
-        input_slots: Box::new([]),
-        name: Box::from(name),
-        digest: WorkflowDigest::from_bytes([digest_byte; 32]),
-        nodes,
-        expressions: Box::from([]),
-        accessors: Box::from([]),
-        constants,
-        slot_count,
-        symbols_count: 0,
-        entry: StepIdx::ZERO,
-        step_names: Box::from([]),
-        resource_contract: ResourceContract::DEFAULT,
-    };
-    CompiledWorkflow::try_from_parts(parts)
-        .map_err(|err| format!("workflow fixture {name} invalid: {err:?}"))
-}
-
-/// Workflow that completes immediately: SetConst → Finish
-fn finished_workflow() -> Result<CompiledWorkflow, String> {
-    workflow_from_parts(
-        "finished",
-        0xA1,
-        Box::from([
-            node(
-                0,
-                Some(0),
-                Some(1),
-                CompiledNodeKind::SetConst {
-                    value: ConstIdx::new(0),
-                },
-            ),
-            node(
-                1,
-                None,
-                None,
-                CompiledNodeKind::Finish {
-                    result: SlotIdx::ZERO,
-                },
-            ),
-        ]),
-        Box::from([ConstValue::Bool(true)]),
-        1,
-    )
-}
-
-/// Workflow with action that completes then finishes: Do → Finish
-fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
-    workflow_from_parts(
-        "action_then_finish",
-        0xA3,
-        Box::from([
-            node(
-                0,
-                Some(1),
-                Some(1),
-                CompiledNodeKind::Do {
-                    action: ActionId::new(7),
-                    input: SlotIdx::ZERO,
-                },
-            ),
-            node(
-                1,
-                None,
-                None,
-                CompiledNodeKind::Finish {
-                    result: SlotIdx::new(1),
-                },
-            ),
-        ]),
-        Box::from([]),
-        2,
-    )
 }
 
 fn required_capability(action: ActionId) -> Capability {
@@ -258,7 +169,10 @@ fn submit_transitions_run_from_absent_to_initial() -> Result<(), String> {
     let run = RunId::new(10001);
 
     // Submit a finished workflow
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
 
     // Submit queues the command; the journal records submission when a tick processes it.
     tick_count(&mut runtime, 2)?;
@@ -289,7 +203,11 @@ fn action_suspension_transitions_run_to_resumable() -> Result<(), String> {
 
     // Submit workflow that suspends on action
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -329,7 +247,11 @@ fn action_completion_transitions_run_from_resumable_to_finished() -> Result<(), 
 
     // Submit and tick to suspend
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_and_drain(&mut runtime)?;
@@ -371,7 +293,11 @@ fn fail_action_transitions_run_to_failed() -> Result<(), String> {
 
     // Submit and tick to suspend
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_and_drain(&mut runtime)?;
@@ -417,7 +343,11 @@ fn cancel_run_transitions_run_to_failed() -> Result<(), String> {
 
     // Submit and tick to make active
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_and_drain(&mut runtime)?;
@@ -457,7 +387,10 @@ fn terminal_state_is_final_no_further_transitions() -> Result<(), String> {
     let run = RunId::new(10006);
 
     // Submit and wait for completion
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
     tick_and_drain(&mut runtime)?;
 
     // Verify terminal state
@@ -503,7 +436,10 @@ fn submit_lifecycle_event_recorded_before_tick() -> Result<(), String> {
     let run = RunId::new(20001);
 
     // Submit - event is recorded when the shard processes the queued command.
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
     tick_and_drain(&mut runtime)?;
 
     // Journal has RunSubmitted after the submit command is processed.
@@ -528,7 +464,11 @@ fn action_scheduled_lifecycle_event_recorded() -> Result<(), String> {
 
     // Submit workflow that suspends
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_and_drain(&mut runtime)?;
@@ -560,7 +500,11 @@ fn step_started_lifecycle_event_recorded() -> Result<(), String> {
 
     // Submit workflow that suspends on action
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_and_drain(&mut runtime)?;
@@ -587,7 +531,10 @@ fn run_finished_lifecycle_event_recorded() -> Result<(), String> {
     let run = RunId::new(20004);
 
     // Submit and complete a simple workflow
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
     tick_and_drain(&mut runtime)?;
 
     // RunFinished must be in journal
@@ -612,7 +559,11 @@ fn run_failed_lifecycle_event_recorded() -> Result<(), String> {
 
     // Submit and fail
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_and_drain(&mut runtime)?;
@@ -654,7 +605,10 @@ fn frame_released_on_run_finish() -> Result<(), String> {
     let run = RunId::new(30001);
 
     // Submit and complete
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
     tick_and_drain(&mut runtime)?;
 
     // Run is terminal - snapshot returns NotFound
@@ -679,7 +633,10 @@ fn pending_timers_cleaned_up_on_run_finish() -> Result<(), String> {
     let run = RunId::new(30002);
 
     // Submit and complete - no pending timers for simple workflow
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
     tick_and_drain(&mut runtime)?;
 
     // Run completed without issues
@@ -695,15 +652,15 @@ fn counters_updated_on_submit() -> Result<(), String> {
 
     // Submit multiple runs
     assert_eq!(
-        runtime.submit_direct(RunId::new(30010), finished_workflow()?),
+        runtime.submit_direct(RunId::new(30010), finished_workflow("finished", 0xA1)?),
         Ok(())
     );
     assert_eq!(
-        runtime.submit_direct(RunId::new(30011), finished_workflow()?),
+        runtime.submit_direct(RunId::new(30011), finished_workflow("finished", 0xA1)?),
         Ok(())
     );
     assert_eq!(
-        runtime.submit_direct(RunId::new(30012), finished_workflow()?),
+        runtime.submit_direct(RunId::new(30012), finished_workflow("finished", 0xA1)?),
         Ok(())
     );
 
@@ -731,11 +688,11 @@ fn counters_updated_on_completion() -> Result<(), String> {
 
     // Submit and tick to complete
     assert_eq!(
-        runtime.submit_direct(RunId::new(30020), finished_workflow()?),
+        runtime.submit_direct(RunId::new(30020), finished_workflow("finished", 0xA1)?),
         Ok(())
     );
     assert_eq!(
-        runtime.submit_direct(RunId::new(30021), finished_workflow()?),
+        runtime.submit_direct(RunId::new(30021), finished_workflow("finished", 0xA1)?),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -756,7 +713,11 @@ fn counters_updated_on_failure() -> Result<(), String> {
 
     // Submit, suspend, then fail
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -788,7 +749,10 @@ fn trace_events_recorded_for_run_lifecycle() -> Result<(), String> {
     let run = RunId::new(30040);
 
     // Submit
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
     tick_and_drain(&mut runtime)?;
 
     // Trace must contain lifecycle events
@@ -822,7 +786,10 @@ fn shutdown_drains_before_journal_drain() -> Result<(), String> {
     let run = RunId::new(30050);
 
     // Submit a run that will complete
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
     assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(false)); // false = all shards shut down
 
@@ -856,7 +823,10 @@ fn snapshot_run_returns_not_found_for_finished_run() -> Result<(), String> {
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
     let run = RunId::new(40001);
 
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
     tick_and_drain(&mut runtime)?;
 
     // EXACT assertion - not just "not Found" but exact NotFound variant
@@ -880,7 +850,11 @@ fn snapshot_run_returns_found_with_exact_fields() -> Result<(), String> {
 
     // Submit a suspended workflow
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_and_drain(&mut runtime)?;
@@ -958,13 +932,13 @@ fn submit_returns_exact_queue_full_on_full_queue() -> Result<(), String> {
 
     // Fill the queue
     assert_eq!(
-        runtime.submit_direct(RunId::new(40010), finished_workflow()?),
+        runtime.submit_direct(RunId::new(40010), finished_workflow("finished", 0xA1)?),
         Ok(())
     );
 
     // Next submit returns exact QueueFull error
     assert_eq!(
-        runtime.submit_direct(RunId::new(40011), finished_workflow()?),
+        runtime.submit_direct(RunId::new(40011), finished_workflow("finished", 0xA1)?),
         Err(vb_runtime::RuntimeError::QueueFull),
         "must return exact QueueFull error variant"
     );
@@ -1026,7 +1000,10 @@ fn shard_directive_continue_processes_one_command() -> Result<(), String> {
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
     let run = RunId::new(50001);
 
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
 
     // Continue directive processes submit command
     assert_eq!(runtime.tick_shard(0, ShardDirective::Continue), Ok(true));
@@ -1048,7 +1025,10 @@ fn shard_directive_suspend_preserves_queue() -> Result<(), String> {
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
     let run = RunId::new(50002);
 
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
 
     // Suspend directive - queue depth unchanged
     assert_eq!(runtime.tick_shard(0, ShardDirective::Suspend), Ok(true));
@@ -1174,7 +1154,10 @@ fn same_run_id_routes_to_same_shard() -> Result<(), String> {
     let run = RunId::new(7); // 7 % 2 = 1 (shard 1)
 
     // Submit and complete
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
     tick_and_drain(&mut runtime)?;
 
     // Verify terminal state
@@ -1188,7 +1171,10 @@ fn same_run_id_routes_to_same_shard() -> Result<(), String> {
 
     // Re-submit same run - if routing were non-deterministic, this might fail
     // With deterministic routing, this succeeds (run was removed from shard)
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
     tick_and_drain(&mut runtime)?;
 
     // Counters show 2 submissions
@@ -1208,15 +1194,15 @@ fn tick_all_processes_one_command_per_shard() -> Result<(), String> {
     // Submit 3 runs to 3 different shards (run_id % 3 = shard)
     // Run 0 -> shard 0, Run 1 -> shard 1, Run 2 -> shard 2
     assert_eq!(
-        runtime.submit_direct(RunId::new(0), finished_workflow()?),
+        runtime.submit_direct(RunId::new(0), finished_workflow("finished", 0xA1)?),
         Ok(())
     );
     assert_eq!(
-        runtime.submit_direct(RunId::new(1), finished_workflow()?),
+        runtime.submit_direct(RunId::new(1), finished_workflow("finished", 0xA1)?),
         Ok(())
     );
     assert_eq!(
-        runtime.submit_direct(RunId::new(2), finished_workflow()?),
+        runtime.submit_direct(RunId::new(2), finished_workflow("finished", 0xA1)?),
         Ok(())
     );
 
@@ -1258,11 +1244,11 @@ fn active_runs_tracked_per_shard_independently() -> Result<(), String> {
 
     // Submit 2 runs (both go to shard 0)
     assert_eq!(
-        runtime.submit_direct(RunId::new(0), finished_workflow()?),
+        runtime.submit_direct(RunId::new(0), finished_workflow("finished", 0xA1)?),
         Ok(())
     );
     assert_eq!(
-        runtime.submit_direct(RunId::new(1), finished_workflow()?),
+        runtime.submit_direct(RunId::new(1), finished_workflow("finished", 0xA1)?),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -1273,11 +1259,11 @@ fn active_runs_tracked_per_shard_independently() -> Result<(), String> {
 
     // Now try to submit more runs
     assert_eq!(
-        runtime.submit_direct(RunId::new(2), finished_workflow()?),
+        runtime.submit_direct(RunId::new(2), finished_workflow("finished", 0xA1)?),
         Ok(())
     );
     assert_eq!(
-        runtime.submit_direct(RunId::new(3), finished_workflow()?),
+        runtime.submit_direct(RunId::new(3), finished_workflow("finished", 0xA1)?),
         Ok(())
     );
 
@@ -1311,7 +1297,10 @@ fn trace_events_appear_in_deterministic_order() -> Result<(), String> {
     let run = RunId::new(70001);
 
     // Submit and complete
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
     tick_and_drain(&mut runtime)?;
 
     // Get events in order
@@ -1347,7 +1336,10 @@ fn list_events_is_non_destructive() -> Result<(), String> {
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
     let run = RunId::new(70002);
 
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
     tick_and_drain(&mut runtime)?;
 
     // Call list_events multiple times
@@ -1372,7 +1364,10 @@ fn drain_trace_removes_events() -> Result<(), String> {
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, test_config());
     let run = RunId::new(70003);
 
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
     tick_and_drain(&mut runtime)?;
 
     // First drain returns events

@@ -19,9 +19,7 @@ use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::{DecisionCode, PolicyDigest, PolicyRule, RuntimePolicy};
 use vb_core::value::SlotValue;
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
 use vb_core::{GrantDispatchContext, ScopedGrant};
 use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::runtime::Runtime;
@@ -45,14 +43,10 @@ fn strict_config() -> ShardConfig {
     }
 }
 
-fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(id),
-        kind,
-        output.map(SlotIdx::new),
-        next.map(StepIdx::new),
-    )
-}
+#[path = "common/mod.rs"]
+mod common;
+
+use common::workflow_fixture::node;
 
 fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {

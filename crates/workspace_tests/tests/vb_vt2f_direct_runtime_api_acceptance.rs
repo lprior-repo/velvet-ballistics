@@ -14,13 +14,10 @@ use vb_core::action::{
     Idempotency, RetryPolicy, RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
-use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, NodeContinuation, NodeOutput,
-    ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, NodeContinuation, NodeOutput};
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{AskAnswer, AskTicket, InspectResponse, ShardConfig};
@@ -29,6 +26,13 @@ use vb_runtime::{RuntimeError, RuntimeResult};
 
 const DIRECT_API_TARGET: &str =
     "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs";
+
+#[path = "common/mod.rs"]
+mod common;
+
+use common::workflow_fixture::{
+    action_then_finish_workflow, finished_workflow, node, workflow_from_parts,
+};
 
 fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
     NonZeroUsize::new(value).ok_or_else(|| format!("expected non-zero shard count, got {value}"))
@@ -56,96 +60,6 @@ fn trace_starved_config() -> ShardConfig {
         trace_capacity: 1,
         ..relaxed_config()
     }
-}
-
-fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(id),
-        kind,
-        output.map(SlotIdx::new),
-        next.map(StepIdx::new),
-    )
-}
-
-fn workflow_from_parts(
-    name: &str,
-    digest_byte: u8,
-    nodes: Box<[CompiledNode]>,
-    constants: Box<[ConstValue]>,
-    slot_count: u16,
-) -> Result<CompiledWorkflow, String> {
-    let parts = WorkflowParts {
-        semantic_source_identity: None,
-        input_slots: Box::new([]),
-        name: Box::from(name),
-        digest: WorkflowDigest::from_bytes([digest_byte; 32]),
-        nodes,
-        expressions: Box::from([]),
-        accessors: Box::from([]),
-        constants,
-        slot_count,
-        symbols_count: 0,
-        entry: StepIdx::ZERO,
-        step_names: Box::from([]),
-        resource_contract: ResourceContract::DEFAULT,
-    };
-    CompiledWorkflow::try_from_parts(parts)
-        .map_err(|err| format!("workflow fixture {name} invalid: {err:?}"))
-}
-
-fn finished_workflow() -> Result<CompiledWorkflow, String> {
-    workflow_from_parts(
-        "vt2f_finished",
-        0x21,
-        Box::from([
-            node(
-                0,
-                Some(0),
-                Some(1),
-                CompiledNodeKind::SetConst {
-                    value: ConstIdx::new(0),
-                },
-            ),
-            node(
-                1,
-                None,
-                None,
-                CompiledNodeKind::Finish {
-                    result: SlotIdx::ZERO,
-                },
-            ),
-        ]),
-        Box::from([ConstValue::Bool(true)]),
-        1,
-    )
-}
-
-fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
-    workflow_from_parts(
-        "vt2f_action_then_finish",
-        0x22,
-        Box::from([
-            node(
-                0,
-                Some(1),
-                Some(1),
-                CompiledNodeKind::Do {
-                    action: ActionId::new(7),
-                    input: SlotIdx::ZERO,
-                },
-            ),
-            node(
-                1,
-                Some(1),
-                None,
-                CompiledNodeKind::Finish {
-                    result: SlotIdx::new(1),
-                },
-            ),
-        ]),
-        Box::from([]),
-        2,
-    )
 }
 
 fn ask_then_finish_workflow() -> Result<CompiledWorkflow, String> {
@@ -327,7 +241,10 @@ fn test_direct_api_submit_to_finish_returns_result_and_taint() -> Result<(), Str
     let expected_bytes = encoded(&expected_value)?;
 
     // When: submitted via Runtime::submit_direct and driven by explicit public tick_all.
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("vt2f_finished", 0x21)?),
+        Ok(())
+    );
     run_one_tick(&mut runtime)?;
 
     // Then: exact result value, taint, event class, counters, and active-list state are observable.
@@ -380,7 +297,16 @@ fn test_direct_api_inspect_known_and_unknown_run_returns_exact_state() -> Result
     let run = RunId::new(1002);
     let absent = RunId::new(9002);
     assert_eq!(
-        submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+        submit_action_workflow(
+            &runtime,
+            run,
+            action_then_finish_workflow(
+                "vt2f_action_then_finish",
+                0x22,
+                ActionId::new(7),
+                Some(1)
+            )?
+        ),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -435,7 +361,16 @@ fn test_direct_api_cancel_known_run_records_cancellation() -> Result<(), String>
     let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let run = RunId::new(1003);
     assert_eq!(
-        submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+        submit_action_workflow(
+            &runtime,
+            run,
+            action_then_finish_workflow(
+                "vt2f_action_then_finish",
+                0x22,
+                ActionId::new(7),
+                Some(1)
+            )?
+        ),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -477,11 +412,29 @@ fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String>
     let run = RunId::new(1004);
     let unrelated = RunId::new(2004);
     assert_eq!(
-        submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+        submit_action_workflow(
+            &runtime,
+            run,
+            action_then_finish_workflow(
+                "vt2f_action_then_finish",
+                0x22,
+                ActionId::new(7),
+                Some(1)
+            )?
+        ),
         Ok(())
     );
     assert_eq!(
-        submit_action_workflow(&runtime, unrelated, action_then_finish_workflow()?),
+        submit_action_workflow(
+            &runtime,
+            unrelated,
+            action_then_finish_workflow(
+                "vt2f_action_then_finish",
+                0x22,
+                ActionId::new(7),
+                Some(1)
+            )?
+        ),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -544,7 +497,16 @@ fn test_direct_api_action_failure_records_typed_failure() -> Result<(), String> 
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(1005);
     assert_eq!(
-        submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+        submit_action_workflow(
+            &runtime,
+            run,
+            action_then_finish_workflow(
+                "vt2f_action_then_finish",
+                0x22,
+                ActionId::new(7),
+                Some(1)
+            )?
+        ),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -585,7 +547,16 @@ fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unre
     let unrelated = RunId::new(2505);
     let absent = RunId::new(9505);
     assert_eq!(
-        submit_action_workflow(&runtime, unrelated, action_then_finish_workflow()?),
+        submit_action_workflow(
+            &runtime,
+            unrelated,
+            action_then_finish_workflow(
+                "vt2f_action_then_finish",
+                0x22,
+                ActionId::new(7),
+                Some(1)
+            )?
+        ),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -690,7 +661,16 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_ru
         Ok(())
     );
     assert_eq!(
-        submit_action_workflow(&runtime, unrelated, action_then_finish_workflow()?),
+        submit_action_workflow(
+            &runtime,
+            unrelated,
+            action_then_finish_workflow(
+                "vt2f_action_then_finish",
+                0x22,
+                ActionId::new(7),
+                Some(1)
+            )?
+        ),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -765,7 +745,16 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evict
         Ok(())
     );
     assert_eq!(
-        submit_action_workflow(&runtime, unrelated, action_then_finish_workflow()?),
+        submit_action_workflow(
+            &runtime,
+            unrelated,
+            action_then_finish_workflow(
+                "vt2f_action_then_finish",
+                0x22,
+                ActionId::new(7),
+                Some(1)
+            )?
+        ),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -884,8 +873,14 @@ fn test_direct_api_list_events_and_drain_trace_have_exact_semantics() -> Result<
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run_a = RunId::new(1007);
     let run_b = RunId::new(2007);
-    assert_eq!(runtime.submit_direct(run_a, finished_workflow()?), Ok(()));
-    assert_eq!(runtime.submit_direct(run_b, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run_a, finished_workflow("vt2f_finished", 0x21)?),
+        Ok(())
+    );
+    assert_eq!(
+        runtime.submit_direct(run_b, finished_workflow("vt2f_finished", 0x21)?),
+        Ok(())
+    );
     // tick_all processes one command per shard per tick; two ticks are
     // required to drain both submits on a 1-shard runtime so that
     // list_events can locate both runs on the owning shard.
@@ -914,7 +909,10 @@ fn test_direct_api_health_and_shutdown_equivalent_behavior() -> Result<(), Strin
     // Given: SCN-VT2F-008 an active runtime with queued work.
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(1008);
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("vt2f_finished", 0x21)?),
+        Ok(())
+    );
     let pre_metrics = runtime.collect_metrics();
 
     // When: graceful shutdown is requested and post-shutdown operations are probed.
@@ -936,7 +934,7 @@ fn test_direct_api_health_and_shutdown_equivalent_behavior() -> Result<(), Strin
     // typed `ShutdownInProgress` error so callers see the runtime is no
     // longer accepting work instead of a phantom enqueue.
     assert_eq!(
-        runtime.submit_direct(RunId::new(9008), finished_workflow()?),
+        runtime.submit_direct(RunId::new(9008), finished_workflow("vt2f_finished", 0x21)?),
         Err(RuntimeError::ShutdownInProgress)
     );
     assert_eq!(runtime.tick_all(), Ok(false));
@@ -948,7 +946,7 @@ fn test_direct_api_health_and_shutdown_equivalent_behavior() -> Result<(), Strin
 fn test_direct_api_rejects_submission_when_accepted_artifact_required() -> Result<(), String> {
     // Given: SCN-VT2F-009 strict/admission-required policy with no accepted artifact record.
     let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, strict_config());
-    let workflow = finished_workflow()?;
+    let workflow = finished_workflow("vt2f_finished", 0x21)?;
     let digest = workflow.digest();
     let run = RunId::new(1009);
 

@@ -24,12 +24,10 @@ use vb_core::action::{
     RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
-use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
 use vb_runtime::journal::VolatileRuntimeJournal;
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{InspectResponse, ShardConfig};
@@ -40,6 +38,13 @@ use vb_runtime::trace::TraceEvent;
 // =============================================================================
 // Helper constructors
 // =============================================================================
+
+#[path = "common/mod.rs"]
+mod common;
+
+use common::workflow_fixture::{
+    action_then_finish_workflow, finished_workflow, node, workflow_from_parts,
+};
 
 fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
     NonZeroUsize::new(value).ok_or_else(|| format!("expected non-zero shard count, got {value}"))
@@ -53,68 +58,6 @@ fn relaxed_config() -> ShardConfig {
         max_active_runs: 8,
         policy: RuntimePolicy::Relaxed,
     }
-}
-
-fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(id),
-        kind,
-        output.map(SlotIdx::new),
-        next.map(StepIdx::new),
-    )
-}
-
-fn workflow_from_parts(
-    name: &str,
-    digest_byte: u8,
-    nodes: Box<[CompiledNode]>,
-    constants: Box<[ConstValue]>,
-    slot_count: u16,
-) -> Result<CompiledWorkflow, String> {
-    let parts = WorkflowParts {
-        semantic_source_identity: None,
-        input_slots: Box::new([]),
-        name: Box::from(name),
-        digest: WorkflowDigest::from_bytes([digest_byte; 32]),
-        nodes,
-        expressions: Box::from([]),
-        accessors: Box::from([]),
-        constants,
-        slot_count,
-        symbols_count: 0,
-        entry: StepIdx::ZERO,
-        step_names: Box::from([]),
-        resource_contract: ResourceContract::DEFAULT,
-    };
-    CompiledWorkflow::try_from_parts(parts)
-        .map_err(|err| format!("workflow fixture {name} invalid: {err:?}"))
-}
-
-fn finished_workflow() -> Result<CompiledWorkflow, String> {
-    workflow_from_parts(
-        "c1s0_finished",
-        0x31,
-        Box::from([
-            node(
-                0,
-                Some(0),
-                Some(1),
-                CompiledNodeKind::SetConst {
-                    value: ConstIdx::new(0),
-                },
-            ),
-            node(
-                1,
-                None,
-                None,
-                CompiledNodeKind::Finish {
-                    result: SlotIdx::ZERO,
-                },
-            ),
-        ]),
-        Box::from([ConstValue::Bool(true)]),
-        1,
-    )
 }
 
 fn budget_chain_workflow() -> Result<CompiledWorkflow, String> {
@@ -170,34 +113,6 @@ fn budget_chain_workflow() -> Result<CompiledWorkflow, String> {
             ConstValue::I64(99),
         ]),
         4,
-    )
-}
-
-fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
-    workflow_from_parts(
-        "c1s0_action_then_finish",
-        0x32,
-        Box::from([
-            node(
-                0,
-                Some(1),
-                Some(1),
-                CompiledNodeKind::Do {
-                    action: ActionId::new(7),
-                    input: SlotIdx::ZERO,
-                },
-            ),
-            node(
-                1,
-                None,
-                None,
-                CompiledNodeKind::Finish {
-                    result: SlotIdx::new(1),
-                },
-            ),
-        ]),
-        Box::from([]),
-        2,
     )
 }
 
@@ -304,8 +219,14 @@ fn runtime_routes_run_to_correct_shard_by_run_id_modulo() -> Result<(), String> 
     let run_b = RunId::new(11); // 11 % 4 = 3
 
     // When: submitting two runs
-    assert_eq!(runtime.submit_direct(run_a, finished_workflow()?), Ok(()));
-    assert_eq!(runtime.submit_direct(run_b, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run_a, finished_workflow("c1s0_finished", 0x31)?),
+        Ok(())
+    );
+    assert_eq!(
+        runtime.submit_direct(run_b, finished_workflow("c1s0_finished", 0x31)?),
+        Ok(())
+    );
 
     // Then: tick_all processes both (one command per shard per tick)
     run_one_tick(&mut runtime)?;
@@ -341,17 +262,26 @@ fn same_run_id_routes_to_same_shard_always() -> Result<(), String> {
     let run = RunId::new(7); // 7 % 3 = 1
 
     // When: submit and cancel multiple times
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("c1s0_finished", 0x31)?),
+        Ok(())
+    );
     run_one_tick(&mut runtime)?; // finishes
 
     // Run is now terminal (Finished), resubmit
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("c1s0_finished", 0x31)?),
+        Ok(())
+    );
     run_one_tick(&mut runtime)?; // finishes again
 
     // The shard routing must be deterministic — same RunId always goes to same shard
     // If this were not the case, the second submit_direct would fail with RunAlreadyExists
     // because the first run might still be registered on a different shard
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("c1s0_finished", 0x31)?),
+        Ok(())
+    );
     Ok(())
 }
 
@@ -367,7 +297,10 @@ fn run_reaches_finished_state_when_workflow_complete() -> Result<(), String> {
     let run = RunId::new(2001);
 
     // Submit and drive to completion
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("c1s0_finished", 0x31)?),
+        Ok(())
+    );
     run_one_tick(&mut runtime)?;
 
     // Then: run is finished
@@ -397,7 +330,11 @@ fn run_reaches_failed_state_when_action_fails() -> Result<(), String> {
     let run = RunId::new(2002);
 
     assert_eq!(
-        submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+        submit_action_workflow(
+            &runtime,
+            run,
+            action_then_finish_workflow("c1s0_action_then_finish", 0x32, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -438,7 +375,11 @@ fn run_reaches_cancelled_state_when_cancel_called() -> Result<(), String> {
     let run = RunId::new(2003);
 
     assert_eq!(
-        submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+        submit_action_workflow(
+            &runtime,
+            run,
+            action_then_finish_workflow("c1s0_action_then_finish", 0x32, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -467,7 +408,11 @@ fn terminal_run_ignores_subsequent_commands() -> Result<(), String> {
 
     // Submit a workflow and capture the real pending action ticket.
     assert_eq!(
-        submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+        submit_action_workflow(
+            &runtime,
+            run,
+            action_then_finish_workflow("c1s0_action_then_finish", 0x32, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -528,7 +473,11 @@ fn action_completion_resumes_at_correct_step_when_valid_ticket() -> Result<(), S
     let run = RunId::new(3001);
 
     assert_eq!(
-        submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+        submit_action_workflow(
+            &runtime,
+            run,
+            action_then_finish_workflow("c1s0_action_then_finish", 0x32, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -567,7 +516,11 @@ fn complete_action_returns_invalid_ticket_error_when_ticket_unknown() -> Result<
 
     // Submit a run first
     assert_eq!(
-        submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+        submit_action_workflow(
+            &runtime,
+            run,
+            action_then_finish_workflow("c1s0_action_then_finish", 0x32, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -596,7 +549,11 @@ fn fail_action_transitions_run_to_failed_state() -> Result<(), String> {
     let run = RunId::new(3003);
 
     assert_eq!(
-        submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+        submit_action_workflow(
+            &runtime,
+            run,
+            action_then_finish_workflow("c1s0_action_then_finish", 0x32, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -652,9 +609,18 @@ fn tick_all_processes_at_most_one_command_per_shard() -> Result<(), String> {
     let run1 = RunId::new(11); // 11 % 3 = 2
     let run2 = RunId::new(12); // 12 % 3 = 0
 
-    assert_eq!(runtime.submit_direct(run0, finished_workflow()?), Ok(()));
-    assert_eq!(runtime.submit_direct(run1, finished_workflow()?), Ok(()));
-    assert_eq!(runtime.submit_direct(run2, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run0, finished_workflow("c1s0_finished", 0x31)?),
+        Ok(())
+    );
+    assert_eq!(
+        runtime.submit_direct(run1, finished_workflow("c1s0_finished", 0x31)?),
+        Ok(())
+    );
+    assert_eq!(
+        runtime.submit_direct(run2, finished_workflow("c1s0_finished", 0x31)?),
+        Ok(())
+    );
 
     // When: tick_all is called once
     assert_eq!(runtime.tick_all(), Ok(true));
@@ -712,7 +678,10 @@ fn shard_commands_processed_in_fifo_order() -> Result<(), String> {
     // Submit 3 runs in sequence — they all go to shard 0
     for i in 0..3 {
         let run = RunId::new(base_run + i);
-        assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+        assert_eq!(
+            runtime.submit_direct(run, finished_workflow("c1s0_finished", 0x31)?),
+            Ok(())
+        );
     }
 
     // Drain in order - each run takes 2 ticks with budget=1
@@ -983,7 +952,11 @@ fn terminal_state_guard_mutation_would_be_caught() -> Result<(), String> {
 
     // Complete an actual action ticket so the workflow reaches Finished.
     assert_eq!(
-        submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+        submit_action_workflow(
+            &runtime,
+            run,
+            action_then_finish_workflow("c1s0_action_then_finish", 0x32, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -1070,7 +1043,10 @@ fn answer_ask_returns_run_not_found_for_terminal_run() -> Result<(), String> {
     let run = RunId::new(6001);
 
     // Submit and finish
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("c1s0_finished", 0x31)?),
+        Ok(())
+    );
     run_one_tick(&mut runtime)?;
 
     // Verify run is terminal
@@ -1099,7 +1075,10 @@ fn tick_shard_continue_directive_processes_command() -> Result<(), String> {
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let run = RunId::new(7001);
 
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("c1s0_finished", 0x31)?),
+        Ok(())
+    );
 
     // When: tick_shard is called with Continue directive
     let result = runtime.tick_shard(0, ShardDirective::Continue);
@@ -1175,7 +1154,7 @@ fn tick_shard_migrate_directive_transfers_commands() -> Result<(), String> {
     let run_on_shard_0 = RunId::new(6); // 6 % 2 = 0 -> shard 0
 
     assert_eq!(
-        runtime.submit_direct(run_on_shard_0, finished_workflow()?),
+        runtime.submit_direct(run_on_shard_0, finished_workflow("c1s0_finished", 0x31)?),
         Ok(())
     );
 
@@ -1202,7 +1181,10 @@ fn migrate_shard_to_self_returns_migrate_self_error() -> Result<(), String> {
 
     // Submit a run to ensure source shard is valid
     let run = RunId::new(7); // 7 % 2 = 1
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("c1s0_finished", 0x31)?),
+        Ok(())
+    );
 
     // When: migrate_shard is called with same source and target
     // This is tested indirectly via tick_shard with Migrate to same shard
@@ -1272,7 +1254,10 @@ fn submit_direct_returns_admission_rejected_for_missing_capability() -> Result<(
     // Submit WITHOUT the required capability grant
     // submit_direct (not submit_direct_with_inputs_grants_and_contracts)
     // This should fail at admission due to missing capability
-    let result = runtime.submit_direct(run, action_then_finish_workflow()?);
+    let result = runtime.submit_direct(
+        run,
+        action_then_finish_workflow("c1s0_action_then_finish", 0x32, ActionId::new(7), None)?,
+    );
 
     // Then: admission rejected due to missing capability
     // The exact error variant depends on capability enforcement at admission

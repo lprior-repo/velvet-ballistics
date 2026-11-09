@@ -38,14 +38,10 @@ fn strict_config() -> ShardConfig {
     }
 }
 
-fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(id),
-        kind,
-        output.map(SlotIdx::new),
-        next.map(StepIdx::new),
-    )
-}
+#[path = "common/mod.rs"]
+mod common;
+
+use common::workflow_fixture::node;
 
 fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     workflow_from_parts(

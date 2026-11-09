@@ -22,16 +22,19 @@ use vb_core::action::{
     SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
-use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, RunId, SlotIdx};
 use vb_core::policy::RuntimePolicy;
-use vb_core::value::{ConstValue, SlotValue, Taint};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
-};
+use vb_core::value::{SlotValue, Taint};
+use vb_core::workflow::CompiledWorkflow;
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{InspectResponse, ShardConfig};
 use vb_runtime::trace::TraceEvent;
+
+#[path = "common/mod.rs"]
+mod common;
+
+use common::workflow_fixture::{action_then_finish_workflow, finished_workflow};
 
 fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
     NonZeroUsize::new(value).ok_or_else(|| format!("expected non-zero shard count, got {value}"))
@@ -45,96 +48,6 @@ fn test_config() -> ShardConfig {
         max_active_runs: 8,
         policy: RuntimePolicy::Relaxed,
     }
-}
-
-fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(id),
-        kind,
-        output.map(SlotIdx::new),
-        next.map(StepIdx::new),
-    )
-}
-
-fn workflow_from_parts(
-    name: &str,
-    digest_byte: u8,
-    nodes: Box<[CompiledNode]>,
-    constants: Box<[ConstValue]>,
-    slot_count: u16,
-) -> Result<CompiledWorkflow, String> {
-    let parts = WorkflowParts {
-        semantic_source_identity: None,
-        input_slots: Box::new([]),
-        name: Box::from(name),
-        digest: WorkflowDigest::from_bytes([digest_byte; 32]),
-        nodes,
-        expressions: Box::from([]),
-        accessors: Box::from([]),
-        constants,
-        slot_count,
-        symbols_count: 0,
-        entry: StepIdx::ZERO,
-        step_names: Box::from([]),
-        resource_contract: ResourceContract::DEFAULT,
-    };
-    CompiledWorkflow::try_from_parts(parts)
-        .map_err(|err| format!("workflow fixture {name} invalid: {err:?}"))
-}
-
-fn finished_workflow() -> Result<CompiledWorkflow, String> {
-    workflow_from_parts(
-        "finished",
-        0xA1,
-        Box::from([
-            node(
-                0,
-                Some(0),
-                Some(1),
-                CompiledNodeKind::SetConst {
-                    value: ConstIdx::new(0),
-                },
-            ),
-            node(
-                1,
-                None,
-                None,
-                CompiledNodeKind::Finish {
-                    result: SlotIdx::ZERO,
-                },
-            ),
-        ]),
-        Box::from([ConstValue::Bool(true)]),
-        1,
-    )
-}
-
-fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
-    workflow_from_parts(
-        "action_then_finish",
-        0xA3,
-        Box::from([
-            node(
-                0,
-                Some(1),
-                Some(1),
-                CompiledNodeKind::Do {
-                    action: ActionId::new(7),
-                    input: SlotIdx::ZERO,
-                },
-            ),
-            node(
-                1,
-                None,
-                None,
-                CompiledNodeKind::Finish {
-                    result: SlotIdx::new(1),
-                },
-            ),
-        ]),
-        Box::from([]),
-        2,
-    )
 }
 
 fn required_capability(action: ActionId) -> Capability {
@@ -266,7 +179,11 @@ fn hp1_cancel_running_run_transitions_to_cancelled() -> Result<(), String> {
     let run = RunId::new(20001);
 
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -314,7 +231,11 @@ fn hp3_cancel_action_suspended_run_removes_pending_action() -> Result<(), String
     let run = RunId::new(20003);
 
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -378,7 +299,11 @@ fn hp4_action_after_cancel_returns_error() -> Result<(), String> {
     let run = RunId::new(20004);
 
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -439,7 +364,11 @@ fn ec1_terminal_cancelled_state_does_not_regress() -> Result<(), String> {
     let run = RunId::new(20005);
 
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -480,7 +409,11 @@ fn inv1_terminal_never_regresses_after_cancel() -> Result<(), String> {
     let run = RunId::new(20006);
 
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -528,7 +461,10 @@ fn inv1_completed_run_terminal_never_regresses() -> Result<(), String> {
     let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());
     let run = RunId::new(20007);
 
-    assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    assert_eq!(
+        runtime.submit_direct(run, finished_workflow("finished", 0xA1)?),
+        Ok(())
+    );
     tick_count(&mut runtime, 2)?;
 
     let counters_before = runtime.counters_snapshot();
@@ -593,7 +529,11 @@ fn cancel_terminal_run_produces_no_side_effects() -> Result<(), String> {
     let run = RunId::new(40002);
 
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -641,7 +581,11 @@ fn second_cancel_after_first_cancel_retains_one_event() -> Result<(), String> {
     let run = RunId::new(50007);
 
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -688,7 +632,11 @@ fn action_completion_after_cancel_returns_error() -> Result<(), String> {
     let run = RunId::new(60001);
 
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -742,7 +690,11 @@ fn action_failure_after_cancel_returns_error() -> Result<(), String> {
     let run = RunId::new(60002);
 
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -803,7 +755,11 @@ fn stale_action_after_cancel_does_not_mutate_state() -> Result<(), String> {
     let run = RunId::new(60005);
 
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -869,7 +825,11 @@ fn kill_live_run_produces_runkilled_journal_event() -> Result<(), String> {
     let run = RunId::new(70001);
 
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -929,7 +889,11 @@ fn kill_on_cancelled_run_is_idempotent() -> Result<(), String> {
     let run = RunId::new(70003);
 
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -972,7 +936,11 @@ fn second_kill_after_first_kill_produces_no_extra_event() -> Result<(), String> 
     let run = RunId::new(70004);
 
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -1014,7 +982,11 @@ fn action_completion_after_kill_returns_error() -> Result<(), String> {
     let run = RunId::new(70005);
 
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
@@ -1068,7 +1040,11 @@ fn cancel_after_kill_is_idempotent() -> Result<(), String> {
     let run = RunId::new(70006);
 
     assert_eq!(
-        submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
+        submit_action_then_finish(
+            &runtime,
+            run,
+            action_then_finish_workflow("action_then_finish", 0xA3, ActionId::new(7), None)?
+        ),
         Ok(())
     );
     tick_count(&mut runtime, 2)?;
