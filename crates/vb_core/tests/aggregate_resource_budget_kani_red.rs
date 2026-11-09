@@ -1,7 +1,8 @@
 #[cfg(kani)]
 mod aggregate_budget_kani_harnesses {
     // `budget.rs` is a shell over sibling modules in `budget/`; the checked
-    // add/subtract impls live in `budget/usage.rs`, the aggregate types
+    // add/subtract impls live in `budget/usage_arith.rs`, the capacity fit
+    // and boundedness-policy check live in `budget/usage.rs`, the aggregate types
     // and validation live in `budget/aggregate.rs` and
     // `budget/aggregate_validate.rs`, the budget computation and its
     // small-linear fast path live in `budget/compute.rs` and
@@ -15,6 +16,8 @@ mod aggregate_budget_kani_harnesses {
         include_str!("../src/budget.rs"),
         "\n",
         include_str!("../src/budget/usage.rs"),
+        "\n",
+        include_str!("../src/budget/usage_arith.rs"),
         "\n",
         include_str!("../src/budget/aggregate.rs"),
         "\n",
