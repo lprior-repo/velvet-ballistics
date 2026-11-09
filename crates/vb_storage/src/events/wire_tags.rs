@@ -36,6 +36,7 @@ pub(super) const TAG_POLICY_DECISION: u16 = RecordKind::PolicyDecision.id();
 pub(super) const TAG_GATE_DECISION: u16 = RecordKind::GateDecision.id();
 pub(super) const TAG_GATE_OPENED: u16 = RecordKind::GateOpened.id();
 pub(super) const TAG_COMPATIBILITY_DECISION: u16 = RecordKind::CompatibilityDecision.id();
+pub(super) const TAG_TENANT_ADMISSION: u16 = RecordKind::TenantAdmission.id();
 
 pub(super) const JOURNAL_EVENT_VARIANTS: &[&str] = &[
     "RunAccepted",
@@ -71,4 +72,5 @@ pub(super) const JOURNAL_EVENT_VARIANTS: &[&str] = &[
     "CompatibilityDecisionEvent",
     "CapabilityGrantEvent",
     "RunAdmissionBudget",
+    "TenantAdmissionEvent",
 ];

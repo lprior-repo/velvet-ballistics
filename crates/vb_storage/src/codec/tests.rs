@@ -1133,6 +1133,35 @@ fn encode_decode_roundtrip_journal_event_run_accepted() -> Result<(), JournalErr
 }
 
 #[test]
+fn encode_decode_roundtrip_journal_event_tenant_admission() -> Result<(), JournalError> {
+    let event = JournalEvent::TenantAdmissionEvent {
+        run: RunId::new(42),
+        seq: EventSeq::new(3),
+        tenant: vb_core::ids::TenantId::new(7),
+        cost_units: 10,
+    };
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::TenantAdmission,
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    let (envelope, decoded_event) = decode_record::<JournalEvent>(
+        &bytes,
+        MAGIC_JOURNAL_EVENT,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    assert_eq!(envelope.magic, MAGIC_JOURNAL_EVENT);
+    assert_eq!(envelope.record_kind, RecordKind::TenantAdmission.id());
+    assert_eq!(envelope.sequence, 3);
+    assert_eq!(decoded_event, event);
+    assert_eq!(decoded_event.record_kind(), RecordKind::TenantAdmission);
+    assert!(decoded_event.is_valid());
+    Ok(())
+}
+
+#[test]
 fn encode_decode_roundtrip_journal_event_step_started() -> Result<(), JournalError> {
     let event = JournalEvent::StepStarted {
         run: RunId::new(100),

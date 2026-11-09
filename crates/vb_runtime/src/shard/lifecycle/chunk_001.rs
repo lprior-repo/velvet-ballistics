@@ -127,37 +127,28 @@ impl Shard {
         let ir_compat_decision = admission
             .as_ref()
             .and_then(|admission| admission.ir_compat_decision());
+        let tenant_admission = admission
+            .as_ref()
+            .and_then(|admission| crate::journal::tenant_admission_event(admission, run));
         let mut header_bytes: u64 = 0;
         if let (true, Some(admission)) = (persist_header, admission.as_ref()) {
-            let header_result = match ir_compat_decision {
-                Some(decision) => {
-                    let events = [
-                        RuntimeJournalEvent::RunSubmitted {
-                            run,
-                            workflow: digest,
-                        },
-                        RuntimeJournalEvent::RunAdmission {
-                            admission: admission.clone(),
-                        },
-                        RuntimeJournalEvent::CompatibilityDecision { run, decision },
-                    ];
-                    header_bytes = Self::journal_batch_bytes(&events)?;
-                    self.append_journal_events_atomically(events)
-                }
-                None => {
-                    let events = [
-                        RuntimeJournalEvent::RunSubmitted {
-                            run,
-                            workflow: digest,
-                        },
-                        RuntimeJournalEvent::RunAdmission {
-                            admission: admission.clone(),
-                        },
-                    ];
-                    header_bytes = Self::journal_batch_bytes(&events)?;
-                    self.append_journal_events_atomically(events)
-                }
-            };
+            let mut events = vec![
+                RuntimeJournalEvent::RunSubmitted {
+                    run,
+                    workflow: digest,
+                },
+                RuntimeJournalEvent::RunAdmission {
+                    admission: admission.clone(),
+                },
+            ];
+            if let Some(decision) = ir_compat_decision {
+                events.push(RuntimeJournalEvent::CompatibilityDecision { run, decision });
+            }
+            if let Some(event) = tenant_admission {
+                events.push(event);
+            }
+            header_bytes = Self::journal_batch_bytes(&events)?;
+            let header_result = self.append_journal_event_batch(&events);
             if let Err(error) = header_result {
                 self.discard_journal_sequence(run);
                 return Err(RuntimeError::admission_header_persistence_failed(error));
@@ -183,6 +174,12 @@ impl Shard {
                 self.append_admission_header_journal_event(run, event)?;
                 if let Some(decision) = ir_compat_decision {
                     let event = RuntimeJournalEvent::CompatibilityDecision { run, decision };
+                    header_bytes = header_bytes
+                        .checked_add(Self::journal_event_bytes(&event)?)
+                        .ok_or(RuntimeError::EncodeFailed)?;
+                    self.append_admission_header_journal_event(run, event)?;
+                }
+                if let Some(event) = tenant_admission {
                     header_bytes = header_bytes
                         .checked_add(Self::journal_event_bytes(&event)?)
                         .ok_or(RuntimeError::EncodeFailed)?;
