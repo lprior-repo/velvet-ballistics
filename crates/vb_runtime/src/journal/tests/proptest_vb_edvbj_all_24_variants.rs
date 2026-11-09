@@ -3,7 +3,7 @@
 // Proptest: every RuntimeJournalEvent variant routes through storage_event
 // without fabricating RunFailedEvent. Only a RunFailed input maps to
 // JournalEvent::RunFailedEvent; every other variant maps to its own storage
-// event. The enum has 24 variants; the file name keeps the older count.
+// event. The enum has 24 variants.
 
 use proptest::prelude::*;
 
