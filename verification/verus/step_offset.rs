@@ -50,7 +50,7 @@
 //                                         crates/vb_core/src/ids/mod.rs:36)
 //   - `StepIdx::get`                  <- extern_step_offset.rs
 //                                         (mirror of
-//                                         crates/vb_core/src/ids/mod.rs:42)
+//                                         crates/vb_core/src/ids/mod.rs:70)
 //   - `StepIdx::checked_add`          <- extern_step_offset.rs
 //                                         (mirror of
 //                                         crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206)

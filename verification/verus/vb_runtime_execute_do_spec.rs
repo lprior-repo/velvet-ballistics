@@ -12,7 +12,7 @@
 // Target: vb_runtime::engine::action::execute_do
 //   at crates/vb_runtime/src/engine/action.rs:20-74
 //
-// Production signature (action.rs:19-30):
+// Production signature (crates/vb_runtime/src/engine/action.rs:19-30):
 //   pub fn execute_do(
 //       run: &RunFrame,
 //       step: StepIdx,
@@ -25,7 +25,7 @@
 //       retry_policy: RetryPolicy,
 //   ) -> RuntimeEngineResult<RuntimeSignal>
 //
-// Production decision branches (action.rs:31-73):
+// Production decision branches (crates/vb_runtime/src/engine/action.rs:31-73):
 //   1. registry lookup: registry_contracts[action.get()].id == action
 //      -> Err(UnknownAction) otherwise
 //   2. read_taint(input) failure
@@ -326,8 +326,8 @@ pub open spec fn spec_resume_action_outcome_decision(
 }
 
 /// Spec-side mirror of `compute_idempotency_key_pure`.
-/// Mirrors the production body at crates/vb_runtime/src/engine/action.rs:206-208
-/// and crates/vb_core/src/action/ticket.rs:25-35 (FNV-1a-inspired wrapping
+/// Mirrors the production body at crates/vb_runtime/src/engine/action.rs:214-216
+/// and crates/vb_core/src/action/ticket.rs:78-96 (FNV-1a-inspired wrapping
 /// multiply-add hash).
 pub open spec fn spec_compute_idempotency_key_decision(run: u64, seq: u64, action: u32) -> int {
     let run_part = run as int * 0x6c62272e07bb0143;
@@ -776,8 +776,8 @@ pub exec fn checked_prod_resume_action_outcome(
 
 /// Production-bound exec wrapper that exercises
 /// `compute_idempotency_key_pure`. Mirrors the production body at
-/// crates/vb_runtime/src/engine/action.rs:206-208 and
-/// crates/vb_core/src/action/ticket.rs:25-35.
+/// crates/vb_runtime/src/engine/action.rs:214-216 and
+/// crates/vb_core/src/action/ticket.rs:78-96.
 pub exec fn checked_prod_compute_idempotency_key(run: u64, seq: u64, action: u32) -> (key: u128)
     ensures
         key as int == spec_compute_idempotency_key_decision(run, seq, action),

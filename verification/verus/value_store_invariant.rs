@@ -58,7 +58,7 @@ verus! {
 // that mirror the production semantics directly. `assume_specification`
 // contracts attach the production behavior to these mirror methods.
 /// Mirror of production `ValueStore::max_arena_entries` (production at
-/// `crates/vb_core/src/value_store.rs:57`) — `u64` field with the
+/// `crates/vb_core/src/value_store.rs:68`) — `u64` field with the
 /// SAME name as production so spec contracts that read
 /// `store.max_arena_entries` resolve naturally.
 pub struct MirrorValueStore {

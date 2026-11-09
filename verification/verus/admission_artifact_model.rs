@@ -38,12 +38,10 @@
 //                                               crates/vb_core/src/artifact.rs:9-30,
 //                                               :34-43, :47-65, :69-76, :80-97,
 //                                               :101-108)
-//   - `PackedArtifactEvidence` / `ActionId` / `RuntimePolicy`
+//   - `PackedArtifactEvidence` (mirror of crates/vb_core/src/action_pack.rs:133-138),
+//     `ActionId` (mirror of crates/vb_core/src/ids/mod.rs:73),
+//     `RuntimePolicy` (mirror of crates/vb_core/src/policy.rs:194-201)
 //                                               <- extern_admission_artifact_model.rs
-//                                               (mirrors of
-//                                               crates/vb_core/src/action_pack.rs:133-138,
-//                                               crates/vb_core/src/ids/mod.rs:73,
-//                                               crates/vb_core/src/policy.rs:194-201)
 //   - `PREPARED_EVIDENCE_VERSION = 3`           (defined in this file;
 //                                               mirror of the evidence schema version
 //                                               at
@@ -61,7 +59,7 @@
 //   - `proof_matches_prepared_shape`           <- extern_admission_artifact_model.rs
 //                                               (mirror of the prepared-proof
 //                                               shape: `verification_proof_core`
-//                                               at admission.rs:113-128 plus
+//                                               at crates/vb_storage/src/admission.rs:113-128 plus
 //                                               the flag assignments and
 //                                               evidence wrap in
 //                                               `prepare_with_profile` at
@@ -204,7 +202,7 @@ pub open spec fn prepared_evidence_version() -> int {
 // false, and every proof flag false
 // (`crates/vb_storage/src/admission.rs:113-128`), `VerificationProof::new`
 // leaves the idempotency slices and warnings empty and the evidence
-// `Unverified` (admission.rs:135-151), and
+// `Unverified` (crates/vb_storage/src/admission.rs:135-151), and
 // `prepare_with_profile` then sets exactly `bounded_claimed` and
 // `idempotency_verified_claimed` true and wraps the rebuilt evidence
 // as `Verified` at schema version 3
@@ -253,7 +251,7 @@ pub fn artifact_digest_bound_exec(artifact: &production::AcceptedArtifact) -> bo
 // Mirrors the prepared-proof shape: `verification_proof_core` at
 // `crates/vb_storage/src/admission.rs:113-128`, the empty collections
 // and `Unverified` evidence `VerificationProof::new` leaves at
-// admission.rs:135-151, plus the flag assignments and evidence wrap
+// crates/vb_storage/src/admission.rs:135-151, plus the flag assignments and evidence wrap
 // in `prepare_with_profile` at
 // `crates/vb_storage/src/admission/verification.rs:35-38`.
 pub assume_specification[ production::proof_matches_prepared_shape ](

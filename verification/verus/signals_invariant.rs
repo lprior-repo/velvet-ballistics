@@ -60,7 +60,7 @@ verus! {
 //
 // The mirror `StepBudget` struct in
 // `production_inner/signals_production.rs` is a verbatim mirror of
-// production `StepBudget` (signals.rs:13-16) with one minimal
+// production `StepBudget` (crates/vb_core/src/engine/signals.rs:13-16) with one minimal
 // substitution:
 //
 //   1. `remaining` is declared `pub` (relaxed from production's
@@ -81,7 +81,7 @@ verus! {
 // throughout.
 /// Spec-mode alias for the mirror `StepBudget` struct at
 /// `production_inner/signals_production.rs` (verbatim mirror of
-/// production `StepBudget` at signals.rs:13-16). The mirror struct
+/// production `StepBudget` at crates/vb_core/src/engine/signals.rs:13-16). The mirror struct
 /// is marked `#[verifier::external]` in the mirror file, so this
 /// `#[verifier::external_type_specification]` bridge is required to
 /// name the type in spec mode.
