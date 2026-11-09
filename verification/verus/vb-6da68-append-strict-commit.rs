@@ -14,7 +14,7 @@
 // Origin: proof-review of vb-6da68 REJECTED the prior Verus coverage
 // of the append_strict commit-failure mode. The only Verus artifact
 // reaching the `JournalWriteBatch::commit` surface
-// (`vb-vzcuf-PS-004.rs:339-352`, WEAK mirror of
+// (`vb-vzcuf-PS-004.rs:339-352` — superseded artifact, file no longer in-tree — WEAK mirror of
 // `JournalWriteBatch::commit`) ASSUMED the Fjall commit is infallible
 // for non-aborted batches:
 //
@@ -40,7 +40,7 @@
 // model that:
 //
 //   1. Models `SpecFjallJournal::append_strict` (the production
-//      entry point at append.rs:35-57) directly, with the Fjall
+//      entry point at crates/vb_storage/src/journal/append.rs:39-61) directly, with the Fjall
 //      commit decision exposed as a `commit_ok: bool` exec parameter.
 //   2. Models `Err(Fjall)` as a first-class return variant
 //      (SpecJournalError::Fjall), reachable from BOTH the pre-check
@@ -59,7 +59,7 @@
 // =============================================================================
 //
 // Target: vb_storage::journal::FjallJournal::append_strict
-//   * source: crates/vb_storage/src/journal/append.rs:35-57
+//   * source: crates/vb_storage/src/journal/append.rs:39-61
 //
 // Binding mechanism: `#[path = "extern_vb_6da68_append_strict.rs"]`
 // brings the production-mirror types (`SpecJournalError`,
@@ -135,7 +135,7 @@
 // cited in the bridge's `Err(Fjall)` postcondition:
 //
 //   On `Err(Fjall)` returned by `batch.strict().commit()` (the path
-//   `append_strict` uses at append.rs:56), the journal's events
+//   `append_strict` uses at crates/vb_storage/src/journal/append.rs:60), the journal's events
 //   keyspace is UNCHANGED from its pre-call state. Equivalently:
 //   Fjall's OwnedWriteBatch::commit is atomic — no partial memtable
 //   application occurs on Err.
@@ -150,23 +150,23 @@
 //
 // Function: `batch::WriteBatch::commit` — this IS `OwnedWriteBatch::commit`;
 //   `OwnedWriteBatch` is a re-export of `batch::WriteBatch` at
-//   `src/lib.rs:146` (`batch::WriteBatch as OwnedWriteBatch`).
+//   `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/lib.rs:146` (`batch::WriteBatch as OwnedWriteBatch`).
 //
-// Source location: `src/batch/mod.rs:100-182`.
+// Source location: `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:100-182`.
 //
 // Proof that `commit() Err ⇒ NO memtable mutation ⇒ keyspace unchanged`:
 //
 //   The body has EXACTLY TWO `return Err(...)` sites, BOTH located BEFORE
 //   the memtable application loop:
 //
-//   (1) `src/batch/mod.rs:111-113` — poisoned-flag pre-check, AFTER
+//   (1) `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:111-113` — poisoned-flag pre-check, AFTER
 //       acquiring the journal writer mutex (L108) but BEFORE the WAL
 //       write (L117) and BEFORE the fsync (L120):
 //         if self.db.is_poisoned.load(Ordering::Relaxed) {
 //             return Err(crate::Error::Poisoned);
 //         }
 //
-//   (2) `src/batch/mod.rs:119-129` — fsync failure path, AFTER the WAL
+//   (2) `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:119-129` — fsync failure path, AFTER the WAL
 //       write (`let _ = journal_writer.write_batch(...)` at L117) but
 //       BEFORE the memtable application loop:
 //         if let Some(mode) = self.durability {
@@ -177,7 +177,7 @@
 //             }
 //         }
 //
-//   The memtable application loop is at `src/batch/mod.rs:147-160`:
+//   The memtable application loop is at `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:147-160`:
 //         for item in std::mem::take(&mut self.data) {
 //             let (item_size, _) = match item.value_type {
 //                 ValueType::Value    => item.keyspace.tree.insert(item.key, item.value, batch_seqno),
@@ -197,7 +197,7 @@
 //   keyspace state unchanged from pre-call. QED.
 //
 // Supporting: the fsync mapping.
-//   `src/journal/writer.rs:203-234` `JournalWriter::persist` maps
+//   `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:203-234` `JournalWriter::persist` maps
 //   `PersistMode::SyncAll` to `self.file.get_mut().sync_all()` (the
 //   fsync) at L220-225. Production `strict()`
 //   (`crates/vb_storage/src/batch/commit.rs:7-9`) sets
@@ -209,10 +209,10 @@
 // Production wiring (unchanged, on main):
 //   * `crates/vb_storage/src/batch/commit.rs:7-9` `strict()` sets
 //     `self.inner = self.inner.durability(Some(fjall::PersistMode::SyncAll))`.
-//   * `crates/vb_storage/src/batch/commit.rs:20-26` `commit()` runs
-//     `self.inner.commit()?` (the Fjall primitive above) and lifts
+//   * `crates/vb_storage/src/batch/commit.rs:20-40` `commit()` runs
+//     `self.inner.commit()?` at L38 (the Fjall primitive above) and lifts
 //     `fjall::Error` into `JournalError::Fjall` via `#[from]`.
-//   * `crates/vb_storage/src/journal/append.rs:56` `append_strict`
+//   * `crates/vb_storage/src/journal/append.rs:60` `append_strict`
 //     calls `batch.strict().commit()`.
 //
 // Fjall is 100% safe Rust (no `unsafe`), so there is no soundness
@@ -297,12 +297,12 @@ pub use production::{SpecFjallJournal, SpecJournalError, SpecJournalEvent};
 // The atomicity fact is source-citable in fjall 3.1.4:
 //   * `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:100-182`
 //     (`WriteBatch::commit`, re-exported as `OwnedWriteBatch` at
-//     `src/lib.rs:146`) has EXACTLY TWO `return Err(crate::Error::Poisoned)`
+//     `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/lib.rs:146`) has EXACTLY TWO `return Err(crate::Error::Poisoned)`
 //     sites — L111-113 (poisoned pre-check) and L119-129 (fsync failure) —
 //     BOTH located BEFORE the memtable application loop at L147-160.
 //     After L160 the function only returns `Ok(())` at L181. There is NO
 //     `return Err(...)` after the memtable apply loop begins.
-//   * `src/journal/writer.rs:203-234` maps `PersistMode::SyncAll` to
+//   * `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:203-234` maps `PersistMode::SyncAll` to
 //     `sync_all()` (the fsync); production `strict()` exercises exactly
 //     this path.
 //   * Conclusion: `commit() Err` ⇒ return at L112 or L127 ⇒ no memtable
@@ -341,7 +341,7 @@ pub open spec fn spec_fjall_commit_atomic_on_err(
 // assume_specification bridge: production contract for `append_strict`
 // =============================================================================
 //
-// Production: `crates/vb_storage/src/journal/append.rs:35-57`.
+// Production: `crates/vb_storage/src/journal/append.rs:39-61`.
 //
 // This is the FULL behavioral contract for the append_strict surface.
 // The bridge encodes:
@@ -360,15 +360,15 @@ pub open spec fn spec_fjall_commit_atomic_on_err(
 //
 // Arm summary (production site -> bridge postcondition):
 //
-//   Err(InvalidEvent)         append.rs:38-40  !event.valid
-//   Err(KeyCapacity)          append.rs:47     !event.key_ok && event.valid
-//   Err(Fjall)                append.rs:48 OR  event.valid && event.key_ok &&
-//                            56                  && !contains_before && !commit_ok
+//   Err(InvalidEvent)         append.rs:42-44  !event.valid
+//   Err(KeyCapacity)          append.rs:51     !event.key_ok && event.valid
+//   Err(Fjall)                append.rs:52 OR  event.valid && event.key_ok &&
+//                            60                  && !contains_before && !commit_ok
 //                                              && events_unchanged (TRUSTED)
-//   Err(DuplicateEvent)       append.rs:48-53  event.valid && event.key_ok &&
+//   Err(DuplicateEvent)       append.rs:52-56  event.valid && event.key_ok &&
 //                                              && contains_before
 //                                              && events_unchanged (no commit)
-//   Ok(())                    append.rs:56      event.valid && event.key_ok
+//   Ok(())                    append.rs:60      event.valid && event.key_ok
 //                                              && !contains_before
 //                                              && commit_ok
 //                                              && events_gained_key (insert)
@@ -391,8 +391,8 @@ pub assume_specification[ production::SpecFjallJournal::append_strict ](
             },
             Err(SpecJournalError::Fjall) => {
                 // REACHABLE from BOTH the pre-check I/O failure
-                // (append.rs:48 contains_key returns Err) AND the
-                // commit failure (append.rs:56 commit returns Err).
+                // (append.rs:52 contains_key returns Err) AND the
+                // commit failure (append.rs:60 commit returns Err).
                 // The bridge folds both into a single arm: the
                 // post-state is identical (events keyspace
                 // unchanged).
@@ -406,9 +406,9 @@ pub assume_specification[ production::SpecFjallJournal::append_strict ](
                 // (spec_fjall_commit_atomic_on_err).
                 //
                 // SOURCE-GROUNDED (fjall skill, NOT an assumption):
-                //   fjall 3.1.4 src/batch/mod.rs:100-182
+                //   fjall 3.1.4 `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:100-182`
                 //   (WriteBatch::commit = OwnedWriteBatch::commit per
-                //   src/lib.rs:146) has exactly two `return Err(_)`
+                //   `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/lib.rs:146`) has exactly two `return Err(_)`
                 //   sites — L111-113 (poisoned pre-check) and L119-129
                 //   (fsync failure via journal_writer.persist(mode) at
                 //   L120) — BOTH before the memtable application loop
@@ -416,7 +416,7 @@ pub assume_specification[ production::SpecFjallJournal::append_strict ](
                 //   only AFTER the memtable apply; there is no Err
                 //   return after L160. SyncAll (production strict(),
                 //   crates/vb_storage/src/batch/commit.rs:7-9) maps to
-                //   fsync via src/journal/writer.rs:220-225
+                //   fsync via `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:220-225`
                 //   (sync_all()). So commit() Err ⇒ no memtable
                 //   mutation ⇒ keyspace unchanged. QED.
                 //
