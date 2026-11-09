@@ -575,68 +575,68 @@ fn public_compile_apis_return_unsupported_step_primitive_for_save_do_choose_only
     Ok(())
 }
 
+const CONTRACT_TAXONOMY_CASES: [(&str, &str, ExpectedCompileError); 9] = [
+    (
+        "empty_steps",
+        "version: velvet-ballistics/v1\nname: empty\nwhen:\n  manual: {}\nsteps: []\n",
+        ExpectedCompileError::EmptySteps,
+    ),
+    (
+        "top_level_result",
+        "version: velvet-ballistics/v1\nname: result_case\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
+        ExpectedCompileError::UnsupportedTopLevelResult,
+    ),
+    (
+        "step_name_control",
+        "  - id: named\n    name: Display\n    set:\n      output: value\n      value: \"1\"\n  - id: done\n    finish:\n      result: value\n",
+        ExpectedCompileError::UnsupportedStepControlField {
+            step: 0,
+            field: "name",
+        },
+    ),
+    (
+        "duplicate_step_id",
+        "  - id: same\n    set:\n      output: first\n      value: \"1\"\n  - id: same\n    finish:\n      result: first\n",
+        ExpectedCompileError::DuplicateStepId("same"),
+    ),
+    (
+        "duplicate_output",
+        "  - id: first\n    set:\n      output: value\n      value: \"1\"\n  - id: second\n    set:\n      output: value\n      value: \"2\"\n  - id: done\n    finish:\n      result: value\n",
+        ExpectedCompileError::DuplicateOutputName("value"),
+    ),
+    (
+        "unknown_output",
+        "  - id: first\n    set:\n      output: value\n      value: \"1\"\n  - id: done\n    finish:\n      result: missing\n",
+        ExpectedCompileError::UnknownOutputName("missing"),
+    ),
+    (
+        "set_value_shape",
+        "  - id: first\n    set:\n      output: value\n      value: not-an-integer\n  - id: done\n    finish:\n      result: value\n",
+        ExpectedCompileError::ExpressionUnknownIdentifier {
+            expression: "not-an-integer",
+            index: 4,
+            identifier: "an",
+        },
+    ),
+    (
+        "repeat_max_attempts_shape",
+        "  - id: retry\n    repeat:\n      max_attempts: 0\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
+        ExpectedCompileError::StepFieldShape {
+            step: 0,
+            field: "repeat.max_attempts",
+            expected: "a value of at least 1 (got 0)",
+        },
+    ),
+    (
+        "slot_index_out_of_range",
+        "  - id: done\n    finish:\n      result: 65536\n",
+        ExpectedCompileError::SlotIndexOutOfRange { value: 65_536 },
+    ),
+];
+
 #[test]
 fn compile_source_returns_exact_error_variants_for_contract_taxonomy() -> Result<(), String> {
-    let cases = [
-        (
-            "empty_steps",
-            "version: velvet-ballistics/v1\nname: empty\nwhen:\n  manual: {}\nsteps: []\n",
-            ExpectedCompileError::EmptySteps,
-        ),
-        (
-            "top_level_result",
-            "version: velvet-ballistics/v1\nname: result_case\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
-            ExpectedCompileError::UnsupportedTopLevelResult,
-        ),
-        (
-            "step_name_control",
-            "  - id: named\n    name: Display\n    set:\n      output: value\n      value: \"1\"\n  - id: done\n    finish:\n      result: value\n",
-            ExpectedCompileError::UnsupportedStepControlField {
-                step: 0,
-                field: "name",
-            },
-        ),
-        (
-            "duplicate_step_id",
-            "  - id: same\n    set:\n      output: first\n      value: \"1\"\n  - id: same\n    finish:\n      result: first\n",
-            ExpectedCompileError::DuplicateStepId("same"),
-        ),
-        (
-            "duplicate_output",
-            "  - id: first\n    set:\n      output: value\n      value: \"1\"\n  - id: second\n    set:\n      output: value\n      value: \"2\"\n  - id: done\n    finish:\n      result: value\n",
-            ExpectedCompileError::DuplicateOutputName("value"),
-        ),
-        (
-            "unknown_output",
-            "  - id: first\n    set:\n      output: value\n      value: \"1\"\n  - id: done\n    finish:\n      result: missing\n",
-            ExpectedCompileError::UnknownOutputName("missing"),
-        ),
-        (
-            "set_value_shape",
-            "  - id: first\n    set:\n      output: value\n      value: not-an-integer\n  - id: done\n    finish:\n      result: value\n",
-            ExpectedCompileError::ExpressionUnknownIdentifier {
-                expression: "not-an-integer",
-                index: 4,
-                identifier: "an",
-            },
-        ),
-        (
-            "repeat_max_attempts_shape",
-            "  - id: retry\n    repeat:\n      max_attempts: 0\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedCompileError::StepFieldShape {
-                step: 0,
-                field: "repeat.max_attempts",
-                expected: "a value of at least 1 (got 0)",
-            },
-        ),
-        (
-            "slot_index_out_of_range",
-            "  - id: done\n    finish:\n      result: 65536\n",
-            ExpectedCompileError::SlotIndexOutOfRange { value: 65_536 },
-        ),
-    ];
-
-    for (case_name, body, expected) in cases {
+    for (case_name, body, expected) in CONTRACT_TAXONOMY_CASES {
         let yaml = if body.starts_with("version:") {
             String::from(body)
         } else {
@@ -654,67 +654,8 @@ fn compile_source_returns_exact_error_variants_for_contract_taxonomy() -> Result
 
 #[test]
 fn public_compile_apis_return_exact_error_variants_for_contract_taxonomy() -> Result<(), String> {
-    let cases = [
-        (
-            "empty_steps",
-            "version: velvet-ballistics/v1\nname: empty\nwhen:\n  manual: {}\nsteps: []\n",
-            ExpectedCompileError::EmptySteps,
-        ),
-        (
-            "top_level_result",
-            "version: velvet-ballistics/v1\nname: result_case\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
-            ExpectedCompileError::UnsupportedTopLevelResult,
-        ),
-        (
-            "step_name_control",
-            "  - id: named\n    name: Display\n    set:\n      output: value\n      value: \"1\"\n  - id: done\n    finish:\n      result: value\n",
-            ExpectedCompileError::UnsupportedStepControlField {
-                step: 0,
-                field: "name",
-            },
-        ),
-        (
-            "duplicate_step_id",
-            "  - id: same\n    set:\n      output: first\n      value: \"1\"\n  - id: same\n    finish:\n      result: first\n",
-            ExpectedCompileError::DuplicateStepId("same"),
-        ),
-        (
-            "duplicate_output",
-            "  - id: first\n    set:\n      output: value\n      value: \"1\"\n  - id: second\n    set:\n      output: value\n      value: \"2\"\n  - id: done\n    finish:\n      result: value\n",
-            ExpectedCompileError::DuplicateOutputName("value"),
-        ),
-        (
-            "unknown_output",
-            "  - id: first\n    set:\n      output: value\n      value: \"1\"\n  - id: done\n    finish:\n      result: missing\n",
-            ExpectedCompileError::UnknownOutputName("missing"),
-        ),
-        (
-            "set_value_shape",
-            "  - id: first\n    set:\n      output: value\n      value: not-an-integer\n  - id: done\n    finish:\n      result: value\n",
-            ExpectedCompileError::ExpressionUnknownIdentifier {
-                expression: "not-an-integer",
-                index: 4,
-                identifier: "an",
-            },
-        ),
-        (
-            "repeat_max_attempts_shape",
-            "  - id: retry\n    repeat:\n      max_attempts: 0\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedCompileError::StepFieldShape {
-                step: 0,
-                field: "repeat.max_attempts",
-                expected: "a value of at least 1 (got 0)",
-            },
-        ),
-        (
-            "slot_index_out_of_range",
-            "  - id: done\n    finish:\n      result: 65536\n",
-            ExpectedCompileError::SlotIndexOutOfRange { value: 65_536 },
-        ),
-    ];
-
     for api_path in PUBLIC_API_PATHS {
-        for (case_name, body, expected) in cases {
+        for (case_name, body, expected) in CONTRACT_TAXONOMY_CASES {
             let errors = compile_document_or_steps_error_with_api(body, *api_path)?;
             let first = first_compile_error(&errors)?;
             assert_expected_compile_error(case_name, first, expected)?;
