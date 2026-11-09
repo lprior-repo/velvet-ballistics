@@ -641,7 +641,7 @@ fn drive_state_fails_when_written_slots_exceed_admitted_limit() {
         total_slots_written_budget(1),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -666,7 +666,7 @@ fn drive_state_at_written_slots_limit_finishes() {
         total_slots_written_budget(2),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
 }
 
@@ -685,7 +685,7 @@ fn drive_state_rewriting_one_slot_stays_within_limit() {
         total_slots_written_budget(1),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
 }
 
@@ -696,7 +696,7 @@ fn drive_state_without_admitted_budget_ignores_written_slots() {
     let mut state = crate::shard::helpers::make_run_state(workflow, run)
         .expect("run state builds");
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
 }
 
@@ -755,7 +755,7 @@ fn drive_state_with_steps_budget(
             .expect("prior execution count increments");
     }
     let mut evidence = EvidenceCollector::new();
-    Shard::drive_state(&mut state, 100, &mut evidence)
+    Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence)
 }
 
 #[test]
@@ -800,7 +800,7 @@ fn drive_state_without_admitted_budget_ignores_steps_executable() {
     let run = RunId::new(758);
     let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
 }
 fn parallel_in_flight_budget(max_parallel_in_flight: u16) -> AggregateResourceBudget {
@@ -940,7 +940,7 @@ fn drive_state_fails_when_parallel_in_flight_exceeds_admitted_limit() {
         parallel_in_flight_budget(1),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -965,7 +965,7 @@ fn drive_state_at_parallel_in_flight_limit_suspends_on_wait() {
         parallel_in_flight_budget(2),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait)));
 }
 
@@ -976,7 +976,7 @@ fn drive_state_without_admitted_budget_ignores_parallel_count() {
     let mut state = crate::shard::helpers::make_run_state(workflow, run)
         .expect("run state builds");
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait)));
 }
 fn timer_entry_budget(max_timer_entries: u32) -> AggregateResourceBudget {
@@ -1119,7 +1119,7 @@ fn drive_state_fails_when_timer_entries_exceed_admitted_limit() {
         timer_entry_budget(0),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -1147,7 +1147,7 @@ fn drive_state_at_timer_entry_limit_suspends_on_wait_until() {
         timer_entry_budget(1),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait)));
 }
 
@@ -1169,7 +1169,7 @@ fn drive_state_fails_when_ask_timer_exceeds_admitted_limit() {
         timer_entry_budget(0),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -1189,7 +1189,7 @@ fn drive_state_without_admitted_budget_ignores_timer_counts() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait)));
 }
 fn incident_budget(max_incident_emissions: u64) -> AggregateResourceBudget {
@@ -1258,7 +1258,7 @@ fn drive_state_within_incident_limit_issues_action() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Ok(RuntimeSignal::AwaitingAction(ticket)) if ticket.step == StepIdx::ZERO
@@ -1271,7 +1271,7 @@ fn drive_state_fails_when_executed_steps_exceed_incident_limit() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -1287,7 +1287,7 @@ fn drive_state_fails_on_exceeded_incidents_without_new_steps() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 0, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 0, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -1320,7 +1320,7 @@ fn drive_state_ignores_incident_check_without_budget() {
         vb_core::policy::RuntimePolicy::Relaxed,
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Ok(RuntimeSignal::AwaitingAction(ticket)) if ticket.step == StepIdx::ZERO
@@ -1392,7 +1392,7 @@ fn drive_state_first_attempt_within_zero_retry_limit_issues_action() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Ok(RuntimeSignal::AwaitingAction(ticket)) if ticket.step == StepIdx::ZERO
@@ -1405,7 +1405,7 @@ fn drive_state_at_retry_limit_issues_action() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Ok(RuntimeSignal::AwaitingAction(ticket)) if ticket.step == StepIdx::ZERO
@@ -1418,7 +1418,7 @@ fn drive_state_fails_when_recorded_retries_exceed_admitted_limit() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -1434,7 +1434,7 @@ fn drive_state_fails_on_recorded_retries_without_new_issue() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 0, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 0, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -1467,7 +1467,7 @@ fn drive_state_ignores_retry_check_without_budget() {
         vb_core::policy::RuntimePolicy::Relaxed,
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Ok(RuntimeSignal::AwaitingAction(ticket)) if ticket.step == StepIdx::ZERO
@@ -1539,7 +1539,7 @@ fn drive_state_fails_when_action_tickets_exceed_admitted_limit() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -1555,7 +1555,7 @@ fn drive_state_at_action_ticket_limit_issues_action() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Ok(RuntimeSignal::AwaitingAction(ticket)) if ticket.step == StepIdx::ZERO
@@ -1568,7 +1568,7 @@ fn drive_state_retry_of_same_action_does_not_count_again() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Ok(RuntimeSignal::AwaitingAction(ticket)) if ticket.step == StepIdx::ZERO
@@ -1581,7 +1581,7 @@ fn drive_state_fails_on_recorded_tickets_without_new_issue() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 0, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 0, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -1611,7 +1611,7 @@ fn drive_state_ignores_ticket_check_without_budget() {
         vb_core::policy::RuntimePolicy::Relaxed,
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Ok(RuntimeSignal::AwaitingAction(ticket)) if ticket.step == StepIdx::ZERO
@@ -1683,7 +1683,7 @@ fn drive_state_fails_when_cost_units_exceed_admitted_limit() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -1699,7 +1699,7 @@ fn drive_state_at_cost_unit_limit_issues_action() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Ok(RuntimeSignal::AwaitingAction(ticket))
@@ -1713,7 +1713,7 @@ fn drive_state_fails_when_recorded_tickets_exceed_limit() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -1729,7 +1729,7 @@ fn drive_state_at_cost_unit_limit_with_recorded_ticket_issues_action() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Ok(RuntimeSignal::AwaitingAction(ticket))
@@ -1757,7 +1757,7 @@ fn drive_state_ignores_cost_check_without_budget() {
         vb_core::policy::RuntimePolicy::Relaxed,
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Ok(RuntimeSignal::AwaitingAction(ticket)) if ticket.step == StepIdx::ZERO
@@ -1857,7 +1857,7 @@ fn drive_state_fails_when_open_gates_exceed_admitted_limit() {
         suspension_budget(0, 1),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -1885,8 +1885,86 @@ fn drive_state_at_open_gate_limit_suspends_on_ask() {
         suspension_budget(1, 1),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::AwaitingAsk)));
+}
+
+#[test]
+fn drive_state_fails_when_manual_gate_pushes_open_gates_over_limit() {
+    let Some(workflow) = ask_workflow() else {
+        return;
+    };
+    let run = RunId::new(725);
+    let digest = workflow.digest();
+    let Some(mut state) = crate::shard::helpers::make_run_state(workflow, run) else {
+        return;
+    };
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        suspension_budget(1, 1),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 1, &mut evidence);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "open_gates",
+            limit: 1,
+        }))
+    ));
+}
+
+#[test]
+fn drive_state_at_combined_open_gate_limit_suspends_on_ask() {
+    let Some(workflow) = ask_workflow() else {
+        return;
+    };
+    let run = RunId::new(726);
+    let digest = workflow.digest();
+    let Some(mut state) = crate::shard::helpers::make_run_state(workflow, run) else {
+        return;
+    };
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        suspension_budget(2, 1),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 1, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::AwaitingAsk)));
+}
+
+#[test]
+fn drive_state_fails_when_manual_gates_alone_exceed_limit() {
+    let Some(workflow) = tiny_journal_finished_workflow() else {
+        return;
+    };
+    let run = RunId::new(727);
+    let digest = workflow.digest();
+    let Some(mut state) = crate::shard::helpers::make_run_state(workflow, run) else {
+        return;
+    };
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        suspension_budget(0, 1),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 1, &mut evidence);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "open_gates",
+            limit: 0,
+        }))
+    ));
 }
 
 #[test]
@@ -1907,7 +1985,7 @@ fn drive_state_fails_when_signal_subscriptions_exceed_admitted_limit() {
         suspension_budget(1, 0),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -1935,7 +2013,7 @@ fn drive_state_at_signal_subscription_limit_suspends_on_wait_event() {
         suspension_budget(1, 1),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait)));
 }
 
@@ -1957,7 +2035,7 @@ fn drive_state_timer_wait_is_not_a_signal_subscription() {
         suspension_budget(1, 0),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait)));
 }
 
@@ -1971,7 +2049,7 @@ fn drive_state_without_admitted_budget_ignores_suspension_counts() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::AwaitingAsk)));
 }
 fn value_store_budget(max_value_store_entries: u64) -> AggregateResourceBudget {
@@ -2069,7 +2147,7 @@ fn drive_state_fails_when_value_store_entries_exceed_admitted_limit() {
         value_store_budget(0),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -2098,7 +2176,7 @@ fn drive_state_at_value_store_limit_drives_to_finish() {
         value_store_budget(1),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
     assert_eq!(state.store.total_arena_count(), 1);
 }
@@ -2113,7 +2191,7 @@ fn drive_state_without_admitted_budget_ignores_value_store_count() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
     assert_eq!(state.store.total_arena_count(), 1);
 }
@@ -2189,7 +2267,7 @@ fn drive_state_fails_when_gather_items_exceed_admitted_limit() {
         gather_items_budget(2),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -2215,7 +2293,7 @@ fn drive_state_at_gather_items_limit_finishes() {
         gather_items_budget(3),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
 }
 
@@ -2227,7 +2305,7 @@ fn drive_state_without_admitted_budget_ignores_gather_items() {
         .expect("run state builds");
     seed_collect_items_consumed(&mut state, run, 3);
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
 }
 
@@ -2328,11 +2406,11 @@ fn drive_state_caps_tick_at_admitted_total_transitions_and_fails_on_exhaustion()
         transition_budget(3),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::StepBudgetExhausted)));
     assert_eq!(state.frame.executed(), 3);
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -2353,7 +2431,7 @@ fn drive_state_without_admitted_budget_drives_to_finish() {
         return;
     };
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
     assert_eq!(state.frame.executed(), 11);
 }
@@ -2563,7 +2641,7 @@ fn drive_state_fails_when_finished_list_deep_size_exceeds_admitted_limit() {
         result_bytes_budget(15),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -2588,7 +2666,7 @@ fn drive_state_at_finished_list_deep_size_limit_finishes() {
         result_bytes_budget(16),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
 }
 
@@ -2599,7 +2677,7 @@ fn drive_state_without_admitted_budget_ignores_finished_list_size() {
     let mut state = crate::shard::helpers::make_run_state(workflow, run)
         .expect("run state builds");
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
 }
 
@@ -2674,7 +2752,7 @@ fn drive_state_fails_when_delivered_pages_exceed_admitted_limit() {
         gather_pages_budget(1),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -2701,7 +2779,7 @@ fn drive_state_at_delivered_pages_limit_finishes() {
         gather_pages_budget(2),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
 }
 
@@ -2714,7 +2792,7 @@ fn drive_state_without_admitted_budget_ignores_delivered_pages() {
     deliver_collect_page(&mut state.collect_states, run, 1);
     deliver_collect_page(&mut state.collect_states, run, 2);
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
 }
 
@@ -2736,7 +2814,7 @@ fn drive_state_fails_when_delivered_pages_exceed_limit_after_removal() {
         gather_pages_budget(1),
     ));
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -2795,7 +2873,7 @@ fn drive_state_fails_when_run_time_exceeds_admitted_limit() {
     ));
     state.run_started_millis = Some(0);
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(
         result,
         Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
@@ -2822,7 +2900,7 @@ fn drive_state_within_run_time_limit_finishes() {
     state.run_started_millis =
         crate::shard::helpers::wall_clock_millis_since_epoch();
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
 }
 
@@ -2842,7 +2920,7 @@ fn drive_state_without_recorded_start_records_wall_clock_on_first_drive() {
     ));
     assert_eq!(state.run_started_millis, None);
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
     assert_ne!(state.run_started_millis, None);
 }
@@ -2855,7 +2933,7 @@ fn drive_state_without_admitted_budget_ignores_run_time() {
         .expect("run state builds");
     state.run_started_millis = Some(0);
     let mut evidence = EvidenceCollector::new();
-    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    let result = Shard::drive_state_with_manual_gates(&mut state, 100, 0, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
 }
 

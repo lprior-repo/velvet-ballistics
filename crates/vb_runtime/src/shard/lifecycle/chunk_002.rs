@@ -152,7 +152,7 @@ impl Shard {
         crate::shard::helpers::advance_after_timer_fire(&mut state, timer)?;
         let rollback_state = state.clone();
         let mut evidence = EvidenceCollector::new();
-        let result = Self::drive_state(&mut state, self.step_budget_per_tick, &mut evidence);
+        let result = self.drive_state(run, &mut state, self.step_budget_per_tick, &mut evidence);
         match self.apply_drive_result(run, state, result, &mut evidence) {
             Ok(()) => Ok(()),
             Err(DriveApplyFailure::BeforeCommit(error)) => {
@@ -251,7 +251,7 @@ impl Shard {
         let mut state = self.take_run_state(run)?;
         let rollback_state = state.clone();
         let mut evidence = EvidenceCollector::new();
-        let result = Self::drive_state(&mut state, self.step_budget_per_tick, &mut evidence);
+        let result = self.drive_state(run, &mut state, self.step_budget_per_tick, &mut evidence);
         match self.apply_drive_result(run, state, result, &mut evidence) {
             Ok(()) => Ok(()),
             Err(DriveApplyFailure::BeforeCommit(error)) => {
