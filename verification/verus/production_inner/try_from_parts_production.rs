@@ -70,16 +70,18 @@
 // `ConstValue` mirrors live in the sibling file so this mirror stays
 // under the 800-line source-length limit. They are re-exported here so
 // existing `production_try_from_parts::X` paths keep working.
-pub use super::try_from_parts_production_ids::AccessorIdx;
-pub use super::try_from_parts_production_ids::ActionId;
-pub use super::try_from_parts_production_ids::ConstIdx;
-pub use super::try_from_parts_production_ids::ConstValue;
-pub use super::try_from_parts_production_ids::ExprIdx;
-pub use super::try_from_parts_production_ids::FiniteF64;
-pub use super::try_from_parts_production_ids::SlotIdx;
-pub use super::try_from_parts_production_ids::StepIdx;
-pub use super::try_from_parts_production_ids::SymbolId;
-pub use super::try_from_parts_production_ids::WorkflowDigest;
+#[path = "try_from_parts_production_ids.rs"]
+pub mod ids_and_scalars;
+pub use ids_and_scalars::AccessorIdx;
+pub use ids_and_scalars::ActionId;
+pub use ids_and_scalars::ConstIdx;
+pub use ids_and_scalars::ConstValue;
+pub use ids_and_scalars::ExprIdx;
+pub use ids_and_scalars::FiniteF64;
+pub use ids_and_scalars::SlotIdx;
+pub use ids_and_scalars::StepIdx;
+pub use ids_and_scalars::SymbolId;
+pub use ids_and_scalars::WorkflowDigest;
 
 // ---------------------------------------------------------------------------
 // Local stub: `vb_core::workflow::ResourceContract`

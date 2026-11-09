@@ -24,13 +24,11 @@
 //      proofs can name `.0`. Field NAME and TYPE match production
 //      exactly.
 //
-// This file exists so the companion `extern_try_from_parts.rs` can
-// include it under `#[path =
-// "production_inner/try_from_parts_production_ids.rs"]` and the
-// `production_try_from_parts` module can re-export the types. Any drift
-// in the production field names or variant sets breaks this mirror at
-// compile time, which is the explicit drift-detection mechanism for the
-// try_from_parts binding.
+// This file exists so the `production_try_from_parts` mirror can include
+// it under `#[path = "try_from_parts_production_ids.rs"]` and re-export
+// the types. Any drift in the production field names or variant sets
+// breaks this mirror at compile time, which is the explicit
+// drift-detection mechanism for the try_from_parts binding.
 //
 // DRIFT POLICY: This file MUST be regenerated from
 // `crates/vb_core/src/value.rs:72-180` and `crates/vb_core/src/ids/mod.rs`
