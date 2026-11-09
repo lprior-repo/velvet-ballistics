@@ -412,35 +412,31 @@ fn direct_digest_collect_items_none_equiv_some1() {
 // Body recursive hashing
 // ─────────────────────────────────────────────────────────────────
 
+fn make_set_step(id: &str, output: &str, value: &str) -> StepAst {
+    StepAst {
+        id: id.to_string(),
+        name: None,
+        condition: None,
+        primitive: StepPrimitive::Set {
+            output: output.to_string(),
+            value: value.to_string(),
+        },
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
+    }
+}
+
 #[test]
 fn direct_digest_collect_body_recursive() {
     // Two Collect primitives identical except body content differs.
-    let body_a = vec![StepAst {
-        id: "step_a".to_string(),
-        name: None,
-        condition: None,
-        primitive: StepPrimitive::Set {
-            output: "a".to_string(),
-            value: "1".to_string(),
-        },
-        with: None,
-        retry: None,
-        on_error: None,
-        then: None,
-    }];
-    let body_b = vec![StepAst {
-        id: "step_b".to_string(), // different id
-        name: None,
-        condition: None,
-        primitive: StepPrimitive::Set {
-            output: "b".to_string(), // different output
-            value: "1".to_string(),
-        },
-        with: None,
-        retry: None,
-        on_error: None,
-        then: None,
-    }];
+    let body_a = vec![make_set_step("step_a", "a", "1")];
+    let body_b = vec![make_set_step(
+        "step_b", // different id
+        "b",      // different output
+        "1",
+    )];
 
     let collect_a = make_collect("x", "items", Some(10), Some(50), body_a);
     let collect_b = make_collect("x", "items", Some(10), Some(50), body_b);
@@ -497,19 +493,7 @@ fn direct_digest_collect_repeated_calls_same_digest() {
 
 #[test]
 fn direct_digest_collect_empty_vs_nonempty_body() {
-    let body = vec![StepAst {
-        id: "inner".to_string(),
-        name: None,
-        condition: None,
-        primitive: StepPrimitive::Set {
-            output: "x".to_string(),
-            value: "1".to_string(),
-        },
-        with: None,
-        retry: None,
-        on_error: None,
-        then: None,
-    }];
+    let body = vec![make_set_step("inner", "x", "1")];
 
     let collect_empty = make_collect("x", "items", Some(10), Some(50), vec![]);
     let collect_nonempty = make_collect("x", "items", Some(10), Some(50), body);
@@ -599,32 +583,8 @@ fn direct_digest_reduce_initial_field() {
 
 #[test]
 fn direct_digest_reduce_body_steps() {
-    let body_a = vec![StepAst {
-        id: "step_a".to_string(),
-        name: None,
-        condition: None,
-        primitive: StepPrimitive::Set {
-            output: "x".to_string(),
-            value: "1".to_string(),
-        },
-        with: None,
-        retry: None,
-        on_error: None,
-        then: None,
-    }];
-    let body_b = vec![StepAst {
-        id: "step_b".to_string(),
-        name: None,
-        condition: None,
-        primitive: StepPrimitive::Set {
-            output: "y".to_string(),
-            value: "2".to_string(),
-        },
-        with: None,
-        retry: None,
-        on_error: None,
-        then: None,
-    }];
+    let body_a = vec![make_set_step("step_a", "x", "1")];
+    let body_b = vec![make_set_step("step_b", "y", "2")];
 
     let reduce_a = make_reduce("acc", "items", "0", body_a);
     let reduce_b = make_reduce("acc", "items", "0", body_b);
@@ -644,19 +604,7 @@ fn direct_digest_reduce_body_steps() {
 
 #[test]
 fn direct_digest_reduce_empty_vs_nonempty_body() {
-    let body = vec![StepAst {
-        id: "inner".to_string(),
-        name: None,
-        condition: None,
-        primitive: StepPrimitive::Set {
-            output: "x".to_string(),
-            value: "1".to_string(),
-        },
-        with: None,
-        retry: None,
-        on_error: None,
-        then: None,
-    }];
+    let body = vec![make_set_step("inner", "x", "1")];
 
     let reduce_empty = make_reduce("acc", "items", "0", vec![]);
     let reduce_nonempty = make_reduce("acc", "items", "0", body);
