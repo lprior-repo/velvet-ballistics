@@ -47,7 +47,7 @@
 //                                              assume_specification below)
 //   - `AggregateResourceBudget`/`Capacity`/`Usage`
 //                                           <- extern_budget_bounded.rs
-//                                              (mirror of budget.rs:885-1006)
+//                                              (mirror of crates/vb_core/src/budget/aggregate.rs:11-132)
 //
 // Spec-mode reasoning:
 //   - The spec constants `max_steps_per_workflow() = 65535`,
@@ -461,7 +461,7 @@ pub open spec fn spec_count_total_steps_result(result: Result<int, SpecWorkflowE
 // section.
 /// Bridge contract: `add_dim` returns Ok iff the checked_add does not
 /// overflow. Mirrors production body at
-/// `crates/vb_core/src/budget.rs:1433-1441`:
+/// `crates/vb_core/src/budget.rs:930-938`:
 ///   `current.checked_add(requested).ok_or(Overflow { resource })`
 pub assume_specification[ production::add_dim ](
     current: u64,
@@ -481,7 +481,7 @@ pub assume_specification[ production::add_dim ](
 
 /// Bridge contract: `sub_dim` returns Ok iff the checked_sub does not
 /// underflow. Mirrors production body at
-/// `crates/vb_core/src/budget.rs:1443-1451`.
+/// `crates/vb_core/src/budget.rs:940-948`.
 pub assume_specification[ production::sub_dim ](
     current: u64,
     requested: u64,
@@ -958,7 +958,7 @@ pub proof fn lemma_policy_violation_cost_units(
 
 /// Bridge contract: `validate_aggregate_budget` returns Ok iff every
 /// dimension of the aggregate budget is within the policy limits.
-/// Mirrors `crates/vb_core/src/budget.rs:1256-1390`.
+/// Mirrors `crates/vb_core/src/budget/aggregate_validate.rs:109-243`.
 pub assume_specification[ production::validate_aggregate_budget ](
     budget: &AggregateResourceBudget,
     policy: &BoundednessPolicy,
@@ -973,7 +973,7 @@ pub assume_specification[ production::validate_aggregate_budget ](
 /// Bridge contract: `validate_step_ceilings` returns Ok iff
 /// `max_step_budget_per_tick <= 1_000_000` and
 /// `max_transitions_per_tick <= 1_000_000`. Mirrors
-/// `crates/vb_core/src/budget.rs:1396-1431`.
+/// `crates/vb_core/src/budget.rs:893-928`.
 pub assume_specification[ production::validate_step_ceilings ](
     budget: &AggregateResourceBudget,
 ) -> (result: Result<(), AggregateBudgetError>)
@@ -1234,7 +1234,7 @@ pub proof fn proof_together_fanout_over_limit_rejects(branch_count: int)
 /// refinement of the verified whole budget. Every dimension present in
 /// `WholeWorkflowBudget` is propagated into `AggregateResourceBudget`
 /// by `AggregateResourceBudget::from_whole_workflow_budget` at
-/// `crates/vb_core/src/budget.rs:1172-1206`.
+/// `crates/vb_core/src/budget/aggregate_validate.rs:25-59`.
 pub open spec fn aggregate_refines_whole(
     whole_steps: int,
     whole_actions: int,
