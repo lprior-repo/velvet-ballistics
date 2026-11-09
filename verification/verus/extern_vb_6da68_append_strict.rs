@@ -88,7 +88,7 @@
 //     at crates/vb_storage/src/edge_case_tests.rs:105
 //
 // The trusted fact is NOT an "infallible commit" assumption (the bug
-// in vb-vzcuf-PS-004.rs:339-352 — superseded artifact, file no longer in-tree — that this artifact supersedes). It
+// in vb-vzcuf-PS-004 — superseded artifact, file no longer in-tree — that this artifact supersedes). It
 // explicitly permits `Err(Fjall)` and only asserts atomicity on Err.
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

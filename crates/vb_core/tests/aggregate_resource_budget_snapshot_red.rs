@@ -6,7 +6,9 @@
 // `BoundednessPolicy` or `BudgetError` either. The budget computation and
 // its small-linear fast path moved to `budget/compute.rs` and
 // `budget/small_linear.rs`, so the shell alone no longer contains
-// `WholeWorkflowBudget` either. Concatenate the submodules
+// `WholeWorkflowBudget` either. The traversal error type and its
+// conversions moved to `budget/traversal_error.rs`, so the shell alone
+// no longer contains `BudgetTraversalError` either. Concatenate the submodules
 // so the snapshot sees the same surface the production binary sees.
 // Mirrors the fix in `aggregate_resource_budget_red.rs`.
 const BUDGET_RS: &str = concat!(
@@ -23,6 +25,8 @@ const BUDGET_RS: &str = concat!(
     include_str!("../src/budget/validate.rs"),
     "\n",
     include_str!("../src/budget/validate_error.rs"),
+    "\n",
+    include_str!("../src/budget/traversal_error.rs"),
 );
 // `vb_runtime/src/admission.rs` is a 56-line shell that `include!`s
 // focused chunks from `admission/parts/`. `include_str!` of the shell

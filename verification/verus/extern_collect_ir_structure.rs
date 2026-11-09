@@ -11,7 +11,7 @@
 // `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-260`.
 //
 // The production fn was split out of `mod_compile_lowering/part_03.rs`
-// (the pre-split `lower_canonical_collect` at part_03.rs:195-256 no
+// (the pre-split `lower_canonical_collect` at part_03.rs no
 // longer exists) and reshaped: edges are now body-length dependent
 // (`plan_compute_edges`, bounded_collect.rs:116-126), the second fixed
 // node is `CollectNext` (not `CollectPage`), the fn returns the finish

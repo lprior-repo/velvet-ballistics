@@ -210,7 +210,7 @@ pub open spec fn spec_collect_pages(limit: u32, page_size: u32) -> int {
 }
 
 /// Spec mirror of the linear id scan in production
-/// `find_node_position` at `crates/vb_core/src/budget.rs:207-211`:
+/// `find_node_position` at `crates/vb_core/src/budget.rs:156-160`:
 /// the first position at or after `start` whose node id equals `step`,
 /// or `None` when no such position exists.
 pub open spec fn spec_find_scan(nodes: Seq<CompiledNode>, step: StepIdx, start: int) -> Option<int>
@@ -226,7 +226,7 @@ pub open spec fn spec_find_scan(nodes: Seq<CompiledNode>, step: StepIdx, start: 
 }
 
 /// Spec mirror of production `find_node_position` at
-/// `crates/vb_core/src/budget.rs:194-218`: the direct-index fast
+/// `crates/vb_core/src/budget.rs:143-167`: the direct-index fast
 /// path, then the linear id scan, then the direct fallback. Returns
 /// `None` exactly when the step id is absent from the node list and
 /// `step.as_usize() >= node_count`.
@@ -345,7 +345,7 @@ pub assume_specification[ production::count_and_push_loop_body ](
 /// located, and returns `Err(TotalStepsExceeded { actual: u64::MAX,
 /// limit: u64::MAX })` exactly when it cannot. The error value is the
 /// production `From<BudgetTraversalError>` mapping at
-/// `crates/vb_core/src/budget.rs:165-172`, which collapses every
+/// `crates/vb_core/src/budget/traversal_error.rs:54-61`, which collapses every
 /// traversal failure to that sentinel.
 /// Mirrors `crates/vb_core/src/budget/loop_body.rs:244-261`.
 pub assume_specification[ production::push_done_continuation ](
@@ -600,7 +600,7 @@ pub fn exec_collect_start_update_metrics(
 //      exists, and fails exactly when the done step cannot be
 //      located.
 //
-//   7. The node lookup (production at crates/vb_core/src/budget.rs:194-218) fails
+//   7. The node lookup (production at crates/vb_core/src/budget.rs:143-167) fails
 //      exactly when the step id is absent from the node list and the
 //      direct index is out of range.
 //
@@ -849,7 +849,7 @@ pub proof fn lemma_loop_body_ok_stack_ends_with_done(
 /// the scanned range carries the step id.
 ///
 /// Mirrors the scan loop in production `find_node_position` at
-/// `crates/vb_core/src/budget.rs:207-211`.
+/// `crates/vb_core/src/budget.rs:156-160`.
 pub proof fn lemma_find_scan_none_iff(nodes: Seq<CompiledNode>, step: StepIdx, start: int)
     requires
         0 <= start,
@@ -878,7 +878,7 @@ pub proof fn lemma_find_scan_none_iff(nodes: Seq<CompiledNode>, step: StepIdx, s
 /// from the node list and the direct index is out of range.
 ///
 /// Mirrors production `find_node_position` at
-/// `crates/vb_core/src/budget.rs:194-218`: the direct fast path and
+/// `crates/vb_core/src/budget.rs:143-167`: the direct fast path and
 /// the direct fallback both return `Some` whenever
 /// `step.as_usize() < node_count`, so failure requires the direct
 /// index out of range and no matching id.

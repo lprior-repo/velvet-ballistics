@@ -7,7 +7,9 @@ mod aggregate_budget_kani_harnesses {
     // small-linear fast path live in `budget/compute.rs` and
     // `budget/small_linear.rs`, and the boundedness policy and error
     // taxonomy live in `budget/validate.rs` and `budget/validate_error.rs`,
-    // so the shell alone would miss the tokens these harnesses require.
+    // and the traversal error type and its conversions live in
+    // `budget/traversal_error.rs`, so the shell alone would miss the
+    // tokens these harnesses require.
     // Concatenate them, mirroring `aggregate_resource_budget_red.rs`.
     const BUDGET_RS: &str = concat!(
         include_str!("../src/budget.rs"),
@@ -25,6 +27,8 @@ mod aggregate_budget_kani_harnesses {
         include_str!("../src/budget/validate.rs"),
         "\n",
         include_str!("../src/budget/validate_error.rs"),
+        "\n",
+        include_str!("../src/budget/traversal_error.rs"),
     );
     const ADMISSION_RS: &str = include_str!("../../vb_runtime/src/admission.rs");
     const ADMISSION_ERRORS_RS: &str =

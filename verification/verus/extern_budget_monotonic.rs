@@ -28,7 +28,7 @@
 // ============================================================================
 //   - `WholeWorkflowBudget`        <- crates/vb_core/src/budget/compute.rs:17-93
 //   - `WholeWorkflowBudget::compute` <- crates/vb_core/src/budget/compute.rs:100-106
-//   - `BudgetTraversalError`       <- crates/vb_core/src/budget.rs:13-37
+//   - `BudgetTraversalError`       <- crates/vb_core/src/budget/traversal_error.rs:13-37
 //   - `WorkflowError`              <- crates/vb_core/src/workflow/mod.rs:666-880
 //   - `ResourceContract`           <- crates/vb_core/src/workflow/mod.rs:252-289
 //   - `CompiledNode`, `CompiledNodeKind`
@@ -119,7 +119,7 @@ fn prod_methods_drift_check(
         max_cost_units: 0,
     };
 
-    // Reference BudgetTraversalError variants (budget.rs:13-37).
+    // Reference BudgetTraversalError variants (budget/traversal_error.rs:13-37).
     let step = production_inner::StepIdx::new(0);
     let _err = production_inner::BudgetTraversalError::EntryOutOfBounds { entry };
     let _err = production_inner::BudgetTraversalError::StepOutOfBounds { step };
