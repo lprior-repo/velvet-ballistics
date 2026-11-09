@@ -1070,3 +1070,53 @@ steps:
         "nested save mapping should validate var references",
     )
 }
+
+#[test]
+fn declared_secret_choose_condition_reference_passes() -> Result<(), String> {
+    let source = br#"version: velvet-ballistics/v1
+name: secret_choose
+when:
+  manual: {}
+secrets:
+  token: TOKEN
+steps:
+  - id: route
+    choose:
+      condition: "$secrets.token"
+      on_true: 1
+      on_false: 1
+  - id: done
+    finish:
+      result: true
+"#;
+    parse_ok(source)
+}
+
+#[test]
+fn undeclared_secret_choose_condition_reference_rejected_with_exact_name() -> Result<(), String> {
+    let source = br#"version: velvet-ballistics/v1
+name: secret_choose
+when:
+  manual: {}
+steps:
+  - id: route
+    choose:
+      condition: "$secrets.token"
+      on_true: 1
+      on_false: 1
+  - id: done
+    finish:
+      result: true
+"#;
+    let error = parse_error(source)?;
+    ensure(
+        matches!(
+            error,
+            CompileError::UnknownReferenceName { kind, reference, name }
+                if kind == "secrets"
+                    && reference.as_ref() == "$secrets.token"
+                    && name.as_ref() == "token"
+        ),
+        "undeclared secret did not produce exact UnknownReferenceName",
+    )
+}
