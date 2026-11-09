@@ -47,7 +47,7 @@ fn test_undefined_name_reference_error() -> Result<(), String> {
 // Negative: forward reference (future is a later step)
 #[test]
 fn test_forward_reference_error() -> Result<(), String> {
-    let yaml = "version: velvet-ballistics/v1\nname: fwd\nwhen: { manual: {} }\nsteps:\n  - id: s1\n    set: { output: x, value: \"$future\" }\n  - id: later_step\n    set: { output: result_y, value: \"1\" }\n  - id: s3\n    finish: { result: 0 }\n";
+    let yaml = "version: velvet-ballistics/v1\nname: fwd\nwhen: { manual: {} }\nsteps:\n  - id: s1\n    set: { output: x, value: \"$future\" }\n  - id: future\n    set: { output: result_y, value: \"1\" }\n  - id: s3\n    finish: { result: 0 }\n";
     match compile_workflow(yaml.as_bytes()) {
         Err(errors) => {
             for e in errors.0.iter() {
@@ -118,7 +118,7 @@ fn test_ambiguous_bare_name_error() -> Result<(), String> {
 // Positive: $step.conflict disambiguates to the step (not the output)
 #[test]
 fn test_step_prefix_disambiguates_to_step() -> Result<(), String> {
-    let yaml = "version: velvet-ballistics/v1\nname: disambig\nwhen: { manual: {} }\nsteps:\n  - id: conflict\n    set: { output: left, value: \"41\" }\n  - id: second\n    set: { output: conflict, value: \"43\" }\n  - id: third\n    set: { output: result, value: \"$step.conflict\" }\n  - id: s4\n    finish: { result: 0 }\n";
+    let yaml = "version: velvet-ballistics/v1\nname: disambig\nwhen: { manual: {} }\nsteps:\n  - id: conflict\n    set: { output: left, value: \"41\" }\n  - id: second\n    set: { output: conflict, value: \"43\" }\n  - id: third\n    set: { output: result, value: \"$step.conflict\" }\n  - id: s4\n    finish: { result: \"$result\" }\n";
     let mut run = crate::vb_f1_scalar_do_support::F1SourceRun::new(yaml)?;
     // $step.conflict resolves to the step's primary output: left=41
     crate::vb_f1_scalar_do_support::assert_finished_with_value(
