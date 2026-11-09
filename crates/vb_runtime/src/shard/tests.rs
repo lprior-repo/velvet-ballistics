@@ -34,6 +34,7 @@ include!("tests/chunk_028.rs");
 include!("tests/chunk_029.rs");
 include!("tests/chunk_030.rs");
 include!("tests/chunk_031.rs");
+include!("tests/tick_shard_tests.rs");
 
 #[path = "tests/submission_parity.rs"]
 mod submission_parity;
