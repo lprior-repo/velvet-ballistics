@@ -364,15 +364,22 @@ pub fn production_validate_ticket_attempt_spec(
     current: u16,
     capacity: u16,
     step_exists: bool,
-) -> Result<(), AttemptFenceError>
+) -> (result: Result<(), AttemptFenceError>)
     requires
         true,
     ensures
-        |result: Result<(), AttemptFenceError>|
-            { spec_action_fence_correctness(incoming, current, capacity, step_exists) },
+        spec_action_fence_correctness(incoming, current, capacity, step_exists),
 {
     // Body replaced by external definition; spec only.
     unimplemented!()
+}
+
+pub closed spec fn spec_max_u16(a: u16, b: u16) -> u16 {
+    if a >= b {
+        a
+    } else {
+        b
+    }
 }
 
 /// Production binding for record_retry_attempt from helpers.rs:274.
@@ -381,23 +388,20 @@ pub fn production_record_retry_spec(
     current_attempt: u16,
     ticket_attempt: u16,
     max_attempts: u16,
-) -> Result<u16, AttemptFenceError>
+) -> (result: Result<u16, AttemptFenceError>)
     requires
         true,
     ensures
-        |result: Result<u16, AttemptFenceError>|
-            {
-                match result {
-                    Ok(new_attempt) => {
-                        new_attempt >= current_attempt && (new_attempt == current_attempt.max(
-                            ticket_attempt,
-                        ) || new_attempt == current_attempt.max(ticket_attempt) + 1 || new_attempt
-                            == max_attempts)
-                    },
-                    Err(_) => ticket_attempt == 0 || max_attempts == 0 || ticket_attempt
-                        > max_attempts,
-                }
+        match result {
+            Ok(new_attempt) => {
+                new_attempt >= current_attempt && (new_attempt == spec_max_u16(
+                    current_attempt,
+                    ticket_attempt,
+                ) || new_attempt == spec_max_u16(current_attempt, ticket_attempt) + 1 || new_attempt
+                    == max_attempts)
             },
+            Err(_) => ticket_attempt == 0 || max_attempts == 0 || ticket_attempt > max_attempts,
+        },
 {
     unimplemented!()
 }
@@ -408,17 +412,14 @@ pub fn production_normalize_scheduled_ticket_spec(
     current: u16,
     ticket_attempt: u16,
     capacity: u16,
-) -> Result<u16, AttemptFenceError>
+) -> (result: Result<u16, AttemptFenceError>)
     requires
         true,
     ensures
-        |result: Result<u16, AttemptFenceError>|
-            {
-                match result {
-                    Ok(attempt) => { attempt >= 1 && (capacity == 0 || attempt <= capacity) },
-                    Err(_) => capacity == 0 || ticket_attempt == 0 || ticket_attempt > capacity,
-                }
-            },
+        match result {
+            Ok(attempt) => attempt >= 1 && (capacity == 0 || attempt <= capacity),
+            Err(_) => capacity == 0 || ticket_attempt == 0 || ticket_attempt > capacity,
+        },
 {
     unimplemented!()
 }
