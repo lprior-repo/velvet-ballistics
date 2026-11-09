@@ -27,7 +27,7 @@
 // BINDING LEDGER (mirrors production_inner/budget_computation_production.rs)
 // ============================================================================
 //   - `count_and_push_loop_body`            <- crates/vb_core/src/budget/loop_body.rs:216-242
-//   - `find_node_position`                  <- crates/vb_core/src/budget.rs:1016-1040
+//   - `find_node_position`                  <- crates/vb_core/src/budget.rs:593-617
 //   - `push_done_continuation`              <- crates/vb_core/src/budget/loop_body.rs:244-261
 //   - `checked_step_add`                    <- crates/vb_core/src/budget/loop_body.rs:206-211
 //   - `max_gather_pages`                    <- crates/vb_core/src/budget/reachable.rs:166-179
@@ -80,7 +80,7 @@ pub mod production_inner;
 // file attaches an `assume_specification` bridge to:
 //
 //   - count_and_push_loop_body      (budget/loop_body.rs:216-242)
-//   - find_node_position            (budget.rs:1016-1040)
+//   - find_node_position            (budget.rs:593-617)
 //   - push_done_continuation        (budget/loop_body.rs:244-261)
 //   - checked_step_add              (budget/loop_body.rs:206-211)
 //   - collect_start_update_metrics  (budget/reachable.rs:166-179)
@@ -163,7 +163,7 @@ fn prod_methods_drift_check() {
     };
 
     // Reference every variant of BudgetTraversalError (budget.rs:256-280)
-    // and BudgetError (budget.rs:703-750) used by the spec.
+    // and BudgetError (budget/validate_error.rs:7-57) used by the spec.
     let _err = production_inner::BudgetTraversalError::StepCountOverflow { actual: 0 };
     let _err = production_inner::BudgetError::TotalStepsExceeded { actual: 0, limit: 0 };
 

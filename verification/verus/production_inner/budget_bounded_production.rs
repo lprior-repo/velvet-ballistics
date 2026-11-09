@@ -36,7 +36,7 @@
 //
 // DRIFT POLICY: This file MUST be regenerated from
 // `crates/vb_core/src/budget.rs` and its `budget/` submodules
-// (`usage.rs`, `loop_body.rs`, `aggregate.rs`, `aggregate_validate.rs`) whenever production changes. The
+// (`usage.rs`, `loop_body.rs`, `aggregate.rs`, `aggregate_validate.rs`, `validate.rs`, `validate_error.rs`) whenever production changes. The
 // mirror is annotated at the top of every section with the
 // originating production line range so regeneration is mechanical.
 //
@@ -54,11 +54,11 @@
 // Production `crates/vb_core/src/budget.rs:14-90`
 //   - `WholeWorkflowBudget::compute`         <- crates/vb_core/src/budget.rs:97-103
 // Production `crates/vb_core/src/budget.rs:97-103`
-//   - `BoundednessPolicy`                    <- crates/vb_core/src/budget.rs:455-502
-// Production `crates/vb_core/src/budget.rs:455-502`
-//   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget.rs:534-592
-// Production `crates/vb_core/src/budget.rs:534-592`
-//   - `BudgetError`                          <- crates/vb_core/src/budget.rs:703-750
+//   - `BoundednessPolicy`                    <- crates/vb_core/src/budget/validate.rs:7-56
+// Production `crates/vb_core/src/budget/validate.rs:7-56`
+//   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget/validate.rs:88-147
+// Production `crates/vb_core/src/budget/validate.rs:88-147`
+//   - `BudgetError`                          <- crates/vb_core/src/budget/validate_error.rs:7-57
 //   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:9-49
 // Production `crates/vb_core/src/budget/aggregate.rs:9-49`
 //   - `AggregateResourceBudget::from_workflow`  <- crates/vb_core/src/budget/aggregate_validate.rs:12-23
@@ -81,9 +81,9 @@
 // Production `crates/vb_core/src/budget/usage.rs:377-468`
 //   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:109-243
 // Production `crates/vb_core/src/budget/aggregate_validate.rs:109-243`
-//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:893-928
-//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:930-948
-// Production `crates/vb_core/src/budget.rs:930-948`
+//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:468-503
+//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:505-523
+// Production `crates/vb_core/src/budget.rs:505-523`
 //                                            (pure checked_add / checked_sub;
 //                                             these are the pure decision fns
 //                                             we exercise via `assume_specification`)
@@ -309,10 +309,10 @@ impl WholeWorkflowBudget {
 // BoundednessPolicy — production mirror
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget.rs:455-502`.
+// Mirror of `crates/vb_core/src/budget/validate.rs:7-56`.
 
 /// Mirror of production `BoundednessPolicy` at
-/// `crates/vb_core/src/budget.rs:455-502`.
+/// `crates/vb_core/src/budget/validate.rs:7-56`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct BoundednessPolicy {
     pub max_total_steps: u64,
@@ -342,7 +342,7 @@ pub struct BoundednessPolicy {
 
 impl BoundednessPolicy {
     /// Production constant `BoundednessPolicy::DEFAULT` at
-    /// `crates/vb_core/src/budget.rs:506-530`. Verus treats this as
+    /// `crates/vb_core/src/budget/validate.rs:60-84`. Verus treats this as
     /// an external constant; the spec mirrors it via
     /// `spec_boundedness_policy_default` in the companion spec file.
     #[allow(non_upper_case_globals)]
@@ -373,7 +373,7 @@ impl BoundednessPolicy {
     };
 
     /// Production wrapper for `BoundednessPolicy::validate` at
-    /// `crates/vb_core/src/budget.rs:534-592`.
+    /// `crates/vb_core/src/budget/validate.rs:88-147`.
     #[verifier::external]
     pub fn validate(&self, _budget: &WholeWorkflowBudget) -> Result<(), BudgetError> {
         loop {}
@@ -384,11 +384,11 @@ impl BoundednessPolicy {
 // BudgetError — production mirror (discriminant set)
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget.rs:703-750`. The full production
+// Mirror of `crates/vb_core/src/budget/validate_error.rs:7-57`. The full production
 // enum has 23 variants, all mirrored here.
 
 /// Mirror of production `BudgetError` discriminant set at
-/// `crates/vb_core/src/budget.rs:703-750`. All 23 production variants
+/// `crates/vb_core/src/budget/validate_error.rs:7-57`. All 23 production variants
 /// are mirrored.
 #[derive(Clone, Copy)]
 pub enum BudgetError {
@@ -587,7 +587,7 @@ pub fn whole_workflow_budget_compute(
 }
 
 /// Production wrapper for `BoundednessPolicy::validate` at
-/// `crates/vb_core/src/budget.rs:534-592`. Body skipped by Verus.
+/// `crates/vb_core/src/budget/validate.rs:88-147`. Body skipped by Verus.
 #[verifier::external]
 pub fn boundedness_policy_validate(
     policy: &BoundednessPolicy,
@@ -610,7 +610,7 @@ pub fn validate_aggregate_budget(
 }
 
 /// Production wrapper for `validate_step_ceilings` at
-/// `crates/vb_core/src/budget.rs:893-928`. Body is a faithful copy
+/// `crates/vb_core/src/budget.rs:468-503`. Body is a faithful copy
 /// of the production body; the local hard-limit constants are part
 /// of that body. Body skipped by Verus.
 #[verifier::external]
@@ -650,7 +650,7 @@ pub fn validate_step_ceilings(
 }
 
 /// Production wrapper for `add_dim` at
-/// `crates/vb_core/src/budget.rs:930-938`. Pure checked_add — this
+/// `crates/vb_core/src/budget.rs:505-513`. Pure checked_add — this
 /// is a pure decision fn and the spec attaches an `assume_specification`
 /// contract in `budget_bounded.rs`.
 #[verifier::external]
@@ -665,7 +665,7 @@ pub fn add_dim(
 }
 
 /// Production wrapper for `sub_dim` at
-/// `crates/vb_core/src/budget.rs:940-948`. Pure checked_sub — pure
+/// `crates/vb_core/src/budget.rs:515-523`. Pure checked_sub — pure
 /// decision fn with `assume_specification` contract in the spec.
 #[verifier::external]
 pub fn sub_dim(

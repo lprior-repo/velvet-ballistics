@@ -27,15 +27,15 @@
 // ============================================================================
 //   - `WholeWorkflowBudget`                  <- crates/vb_core/src/budget.rs:14-90
 //   - `WholeWorkflowBudget::compute`         <- crates/vb_core/src/budget.rs:97-103
-//   - `BoundednessPolicy`                    <- crates/vb_core/src/budget.rs:455-502
-//   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget.rs:534-592
-//   - `BudgetError`                          <- crates/vb_core/src/budget.rs:703-750
+//   - `BoundednessPolicy`                    <- crates/vb_core/src/budget/validate.rs:7-56
+//   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget/validate.rs:88-147
+//   - `BudgetError`                          <- crates/vb_core/src/budget/validate_error.rs:7-57
 //   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:9-49
 //   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:96-132
 //   - `AggregateBudgetError`                 <- crates/vb_core/src/budget/aggregate.rs:205-277
 //   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:109-243
-//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:893-928
-//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:930-948
+//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:468-503
+//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:505-523
 //   - `count_total_steps`                    <- crates/vb_core/src/budget/loop_body.rs:11-17
 //
 // ============================================================================
@@ -103,7 +103,7 @@ fn prod_methods_drift_check(
     contract: production_inner::ResourceContract,
 ) {
     // Reference the BoundednessPolicy::DEFAULT constant (production
-    // constant at budget.rs:506-530).
+    // constant at budget/validate.rs:60-84).
     let policy = production_inner::BoundednessPolicy::DEFAULT;
 
     // Reference every field of WholeWorkflowBudget to surface any
