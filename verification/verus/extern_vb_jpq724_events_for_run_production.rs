@@ -11,10 +11,10 @@
 //
 // The production surface bound here lives in:
 //   - crates/vb_storage/src/journal/replay.rs::FjallJournal
-//       * events_for_run          (replay.rs:59-61)
-//       * events_for_run_full     (replay.rs:74-79)
-//       * events_for_run_bounded  (replay.rs:99-115)
-//       * events_for_run_full_bounded (replay.rs:120-127)
+//       * events_for_run          (crates/vb_storage/src/journal/replay.rs:59-61)
+//       * events_for_run_full     (crates/vb_storage/src/journal/replay.rs:74-79)
+//       * events_for_run_bounded  (crates/vb_storage/src/journal/replay.rs:99-115)
+//       * events_for_run_full_bounded (crates/vb_storage/src/journal/replay.rs:120-127)
 //       * events_for_run_from     (crates/vb_storage/src/journal/replay.rs:130-163)
 //       * validate_replay_sequence (crates/vb_storage/src/journal/replay.rs:182-194)
 //   - crates/vb_storage/src/codec/mod.rs
@@ -26,12 +26,12 @@
 //       * the FjallJournal struct itself (crates/vb_storage/src/journal/core.rs:45-75)
 //
 // ============================================================================
-// WHY NOT FULL `#[path]` INCLUSION OF replay.rs / codec/mod.rs
+// WHY NOT FULL `#[path]` INCLUSION OF crates/vb_storage/src/journal/replay.rs / codec/mod.rs
 // ============================================================================
 //
 // Direct `#[path]` of the production sources is blocked by:
 //
-//   1. `replay.rs:1-10` has `use crate::{codec::decode_journal_event,
+//   1. `crates/vb_storage/src/journal/replay.rs:1-10` has `use crate::{codec::decode_journal_event,
 //      constants::{...}, error::JournalError, events::JournalEvent,
 //      journal::{EventReplayLimit, FjallJournal}, keys::{...},
 //      types::EventSeq}` plus `use fjall::Readable`. The crate-internal
@@ -139,7 +139,7 @@
 //                                       <- crates/vb_storage/src/journal/replay.rs:30-49
 //        (production: returns `Accept { observed }` or
 //                       `TooMany { limit, observed }` for the replay
-//                       limit guard at replay.rs:178-202)
+//                       limit guard at crates/vb_storage/src/journal/replay.rs:196-220)
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -216,7 +216,7 @@ impl EventSeq {
 
 /// Mirror of `EventReplayLimit` at
 /// `crates/vb_storage/src/journal/core.rs:25-27`. The replay limit
-/// gates the per-call event collection bound at replay.rs:157.
+/// gates the per-call event collection bound at crates/vb_storage/src/journal/replay.rs:157.
 #[derive(Clone, Copy)]
 pub struct EventReplayLimit {
     pub max_events: usize,
@@ -329,7 +329,7 @@ pub struct MirrorJournalEvent {
 /// structs with non-Copy fields.
 pub struct MirrorJournal {
     /// Per-run event log indexed by `RunId.get()`. Mirrors the
-    /// Fjall `events` keyspace queried at replay.rs:146 via
+    /// Fjall `events` keyspace queried at crates/vb_storage/src/journal/replay.rs:146 via
     /// `snap.range(&self.events, start_key..)`.
     pub events_per_run: Vec<Vec<MirrorJournalEvent>>,
     /// Per-run latest durable snapshot seq indexed by
@@ -365,7 +365,7 @@ impl MirrorJournal {
     }
 
     /// Returns the per-run event log for `run`, mirroring the
-    /// production range-scan at replay.rs:146. Returns an empty
+    /// production range-scan at crates/vb_storage/src/journal/replay.rs:146. Returns an empty
     /// slice when no events exist for the run.
     pub fn events(&self, run: RunId) -> &[MirrorJournalEvent] {
         let idx = run.get() as usize;
@@ -448,7 +448,7 @@ pub fn production_latest_durable_snapshot_seq(journal: &MirrorJournal, run: RunI
 }
 
 /// Production wrapper for `validate_replay_sequence` at
-/// `crates/vb_storage/src/journal/replay.rs:164-176`.
+/// `crates/vb_storage/src/journal/replay.rs:182-194`.
 ///
 /// Production body:
 /// ```text
@@ -498,7 +498,7 @@ pub fn expected_seq_view(expected: Option<EventSeq>) -> EventSeq {
 }
 
 /// Production wrapper for `FjallJournal::events_for_run_from` at
-/// `crates/vb_storage/src/journal/replay.rs:130-161`. Pure range
+/// `crates/vb_storage/src/journal/replay.rs:130-163`. Pure range
 /// scan from `start_key` decoding each event, validating run_id
 /// + seq contiguity via `validate_replay_sequence`, enforcing
 /// `EventReplayLimit` via `push_replay_event`.

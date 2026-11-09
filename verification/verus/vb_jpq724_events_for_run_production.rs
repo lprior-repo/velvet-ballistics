@@ -22,20 +22,20 @@
 // Production surface bound:
 //
 //   - crates/vb_storage/src/journal/replay.rs::FjallJournal
-//       * events_for_run          (replay.rs:59-61, snapshot+tail
+//       * events_for_run          (crates/vb_storage/src/journal/replay.rs:59-61, snapshot+tail
 //                                   reader delegating to
 //                                   events_for_run_bounded)
-//       * events_for_run_bounded  (replay.rs:99-115, computes
+//       * events_for_run_bounded  (crates/vb_storage/src/journal/replay.rs:99-115, computes
 //                                   start_seq via
 //                                   latest_durable_snapshot_seq +
 //                                   codec::next_seq, delegates to
 //                                   events_for_run_from)
-//       * events_for_run_from     (replay.rs:130-161, range scan,
+//       * events_for_run_from     (crates/vb_storage/src/journal/replay.rs:130-163, range scan,
 //                                   per-event validate_replay_sequence,
 //                                   push_replay_event with limit guard)
-//       * validate_replay_sequence (replay.rs:164-176)
-//       * push_replay_event       (replay.rs:178-202)
-//       * classify_replay_push_len (replay.rs:30-49)
+//       * validate_replay_sequence (crates/vb_storage/src/journal/replay.rs:182-194)
+//       * push_replay_event       (crates/vb_storage/src/journal/replay.rs:196-220)
+//       * classify_replay_push_len (crates/vb_storage/src/journal/replay.rs:30-49)
 //   - crates/vb_storage/src/codec/mod.rs
 //       * next_seq                (codec/mod.rs:142-147)
 //       * validate_replayed_event (codec/mod.rs:149-167)
@@ -389,7 +389,7 @@ pub open spec fn spec_latest_snapshot_seq_view(journal: &MirrorJournal, run: Run
 // Spec-mode helper: extracts the seq cursor from a
 // `Option<EventSeq>` passed to `production_validate_replay_sequence`.
 // Mirrors the projection in the production body at
-// replay.rs:169-172.
+// crates/vb_storage/src/journal/replay.rs:187-190.
 // ============================================================
 pub open spec fn spec_expected_seq_view(expected: Option<EventSeq>) -> EventSeq {
     match expected {
@@ -461,7 +461,7 @@ pub assume_specification[ production::production_latest_durable_snapshot_seq ](
 /// cursor, or surfaces `WrongRun` / `SequenceGap` from the
 /// inner `validate_replayed_event` call. Mirrors
 /// `validate_replay_sequence` at
-/// `crates/vb_storage/src/journal/replay.rs:164-176`.
+/// `crates/vb_storage/src/journal/replay.rs:182-194`.
 pub assume_specification[ production::production_validate_replay_sequence ](
     run: RunId,
     expected: Option<EventSeq>,
@@ -492,7 +492,7 @@ pub assume_specification[ production::production_validate_replay_sequence ](
 /// first-event + seq contiguity invariants. The replay limit
 /// `limit.max_events` bounds the returned event count. Mirrors
 /// `FjallJournal::events_for_run_from` at
-/// `crates/vb_storage/src/journal/replay.rs:130-161`.
+/// `crates/vb_storage/src/journal/replay.rs:130-163`.
 pub assume_specification[ production::production_events_for_run_from ](
     journal: &MirrorJournal,
     run: RunId,
