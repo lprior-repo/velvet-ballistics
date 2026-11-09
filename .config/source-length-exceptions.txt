@@ -59,7 +59,6 @@ crates/vb_storage/src/admission.rs|lewis|vb-srclen|split-after-ledger-landing|pr
 crates/vb_storage/src/codec/tests.rs|lewis|vb-srclen|split-after-ledger-landing|test_in_src 4262 lines (limit 1500) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_storage/src/compat.rs|lewis|vb-srclen|split-after-ledger-landing|production 1284 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_storage/src/events/event.rs|lewis|vb-srclen|split-after-ledger-landing|production 427 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
-crates/vb_storage/src/journal/incident.rs|lewis|vb-srclen|split-after-ledger-landing|production 526 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_storage/src/journal/tests.rs|lewis|vb-srclen|split-after-ledger-landing|test_in_src 3299 lines (limit 1500) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_storage/src/proptest_storage.rs|lewis|vb-srclen|split-after-ledger-landing|production 617 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_storage/src/records.rs|lewis|vb-srclen|split-after-ledger-landing|production 542 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
