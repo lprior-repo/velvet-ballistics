@@ -26,7 +26,7 @@
 // plus the collect lowering in
 // `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs`
 // (`lower_bounded_collect`, split out of `part_03.rs`; the pre-split
-// `lower_canonical_collect` at `part_03.rs:195-256` no longer exists).
+// `lower_canonical_collect` at `part_03.rs` no longer exists).
 // The substitutions relative to direct production `#[path]` inclusion
 // are documented in the mirror's header and at the section heads of
 // each block.
@@ -35,15 +35,15 @@
 // ============================================================================
 //   - lower_set           <- part_05_ir.rs:44-51
 //   - lower_do            <- part_05_ir.rs:54-64
-//   - lower_choose        <- part_06.rs:22-51
-//   - lower_for_each      <- part_06.rs:54-90
-//   - lower_together      <- part_06.rs:93-127
+//   - lower_choose        <- crates/vb_compile/src/mod_compile_lowering/part_06.rs:22-51
+//   - lower_for_each      <- crates/vb_compile/src/mod_compile_lowering/part_06.rs:54-90
+//   - lower_together      <- crates/vb_compile/src/mod_compile_lowering/part_06.rs:93-127
 //   - lower_collect       <- bounded_collect.rs:243-260
-//   - lower_reduce        <- part_06.rs:135-178
-//   - lower_repeat        <- part_07.rs:17-56
-//   - lower_wait          <- part_07.rs:75-95
-//   - lower_ask           <- part_07.rs:98-135
-//   - lower_finish        <- part_07.rs:138-141
+//   - lower_reduce        <- crates/vb_compile/src/mod_compile_lowering/part_06.rs:135-178
+//   - lower_repeat        <- crates/vb_compile/src/mod_compile_lowering/part_07.rs:17-56
+//   - lower_wait          <- crates/vb_compile/src/mod_compile_lowering/part_07.rs:75-95
+//   - lower_ask           <- crates/vb_compile/src/mod_compile_lowering/part_07.rs:98-135
+//   - lower_finish        <- crates/vb_compile/src/mod_compile_lowering/part_07.rs:138-141
 //
 // ============================================================================
 // TRUST BOUNDARY
