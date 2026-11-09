@@ -47,7 +47,6 @@
 //   - `MAX_COMMAND_QUEUE_CAPACITY = 65_536`            <- crates/vb_runtime/src/shard/types.rs:532
 //
 // Source: vb-IPC proof-obligations VERUS-IPC-003..005 / REFINE-IPC-003..005.
-
 #[path = "extern_ipc_runtime_transitions.rs"]
 mod production;
 
@@ -65,7 +64,6 @@ verus! {
 // discriminant sets or field names is caught at compile time via the
 // extern mirror's documented line references and via code review of
 // the `#[verifier::external]` mirror-method bodies below.
-
 // --------------------------------------------------------------------------
 // MirrorRuntimeEvent — 9 variants, mirrors production order
 // --------------------------------------------------------------------------
@@ -103,20 +101,28 @@ pub enum MirrorRuntimeEvent {
 // `verus!`. The values match production exactly.
 #[allow(non_snake_case)]
 pub const MIRROR_RUNTIME_EVENT_SUBMIT_TAG: u8 = 0;
+
 #[allow(non_snake_case)]
 pub const MIRROR_RUNTIME_EVENT_RESUME_TAG: u8 = 1;
+
 #[allow(non_snake_case)]
 pub const MIRROR_RUNTIME_EVENT_RESUME_ROLLBACK_TAG: u8 = 2;
+
 #[allow(non_snake_case)]
 pub const MIRROR_RUNTIME_EVENT_DRIVE_CONTINUE_TAG: u8 = 3;
+
 #[allow(non_snake_case)]
 pub const MIRROR_RUNTIME_EVENT_DRIVE_FINISHED_TAG: u8 = 4;
+
 #[allow(non_snake_case)]
 pub const MIRROR_RUNTIME_EVENT_AWAIT_ACTION_TAG: u8 = 5;
+
 #[allow(non_snake_case)]
 pub const MIRROR_RUNTIME_EVENT_AWAIT_TIMER_TAG: u8 = 6;
+
 #[allow(non_snake_case)]
 pub const MIRROR_RUNTIME_EVENT_FAIL_TAG: u8 = 7;
+
 #[allow(non_snake_case)]
 pub const MIRROR_RUNTIME_EVENT_TERMINAL_REMOVE_TAG: u8 = 8;
 
@@ -142,12 +148,16 @@ pub enum MirrorRuntimeState {
 
 #[allow(non_snake_case)]
 pub const MIRROR_RUNTIME_STATE_INITIAL_TAG: u8 = 0;
+
 #[allow(non_snake_case)]
 pub const MIRROR_RUNTIME_STATE_RUNNING_TAG: u8 = 1;
+
 #[allow(non_snake_case)]
 pub const MIRROR_RUNTIME_STATE_RESUMABLE_TAG: u8 = 2;
+
 #[allow(non_snake_case)]
 pub const MIRROR_RUNTIME_STATE_RESUMING_TAG: u8 = 3;
+
 #[allow(non_snake_case)]
 pub const MIRROR_RUNTIME_STATE_FAILED_TAG: u8 = 4;
 
@@ -204,15 +214,20 @@ pub struct MirrorShardStatus {
 // so existing callers remain unchanged, then bridges the int tags to
 // production discriminant values via `event_to_terminal_tag` and the
 // `assume_specification` contracts below.
-
 /// Spec predicate: the run is in the none-terminal state.
-pub open spec fn none_terminal(state: int) -> bool { state == 0 }
+pub open spec fn none_terminal(state: int) -> bool {
+    state == 0
+}
 
 /// Spec predicate: the run is in the completed-terminal state.
-pub open spec fn completed_terminal(state: int) -> bool { state == 1 }
+pub open spec fn completed_terminal(state: int) -> bool {
+    state == 1
+}
 
 /// Spec predicate: the run is in the cancelled-terminal state.
-pub open spec fn cancelled_terminal(state: int) -> bool { state == 2 }
+pub open spec fn cancelled_terminal(state: int) -> bool {
+    state == 2
+}
 
 /// Spec predicate: the run is in any terminal state.
 pub open spec fn terminal_state(state: int) -> bool {
@@ -229,8 +244,7 @@ pub open spec fn terminal_state(state: int) -> bool {
 /// is a no-op. Hence once terminal, the only legal transition is
 /// identity.
 pub open spec fn legal_terminal_transition(before: int, after: int) -> bool {
-    (none_terminal(before) && terminal_state(after))
-        || (terminal_state(before) && after == before)
+    (none_terminal(before) && terminal_state(after)) || (terminal_state(before) && after == before)
 }
 
 /// Spec predicate: timer eligibility — true iff a run exists, the run
@@ -250,13 +264,19 @@ pub open spec fn timer_eligible(run_exists: bool, terminal: int, cancelled: bool
 /// Production semantics (from `ShardStatus::shutting_down` at
 /// `crates/vb_runtime/src/shard/types.rs:682`): when `shutting_down
 /// == true`, the shard stops accepting new submissions.
-pub open spec fn admission_open(state: int) -> bool { state == 0 }
+pub open spec fn admission_open(state: int) -> bool {
+    state == 0
+}
 
 /// Spec predicate: the shard is in the shutting-down phase.
-pub open spec fn shutting_down(state: int) -> bool { state == 1 }
+pub open spec fn shutting_down(state: int) -> bool {
+    state == 1
+}
 
 /// Spec predicate: the shard is fully closed (post-shutdown).
-pub open spec fn shutdown_closed(state: int) -> bool { state == 2 }
+pub open spec fn shutdown_closed(state: int) -> bool {
+    state == 2
+}
 
 /// Spec predicate: the state is one of the three shutdown phases.
 pub open spec fn shutdown_state(state: int) -> bool {
@@ -274,7 +294,6 @@ pub open spec fn shutdown_monotone(before: int, after: int) -> bool {
 // ============================================================================
 // Production-bound spec helpers
 // ============================================================================
-
 /// Map a `MirrorRuntimeEvent` to the int-encoded terminal state.
 /// Terminal events map to 1 (`completed_terminal`) or 2
 /// (`cancelled_terminal`); non-terminal events map to 0
@@ -330,7 +349,6 @@ pub open spec fn spec_is_resumable_event(event: MirrorRuntimeEvent) -> bool {
 // Each wrapper has a `#[verifier::external]` body that reproduces the
 // production decision logic. The body is opaque to Verus; the
 // `assume_specification` bridge attaches the spec contract.
-
 /// Production-bound exec wrapper for `MirrorRuntimeEvent::is_terminal`.
 ///
 /// Mirrors production `RuntimeEvent::is_terminal` at
@@ -384,7 +402,6 @@ pub exec fn mirror_runtime_state_is_resumable(state: MirrorRuntimeState) -> bool
 // Each bridge attaches a Verus spec contract to the exec wrapper above.
 // The contract asserts the production decision shape; the spec proofs
 // below discharge against these contracts.
-
 // --------------------------------------------------------------------------
 // Bridge: RuntimeEvent::is_terminal
 // --------------------------------------------------------------------------
@@ -393,9 +410,7 @@ pub exec fn mirror_runtime_state_is_resumable(state: MirrorRuntimeState) -> bool
 ///
 /// Mirrors production `RuntimeEvent::is_terminal` at
 /// `crates/vb_runtime/src/shard/types.rs:802-807`.
-pub assume_specification[ mirror_runtime_event_is_terminal ](
-    event: MirrorRuntimeEvent,
-) -> (r: bool)
+pub assume_specification[ mirror_runtime_event_is_terminal ](event: MirrorRuntimeEvent) -> (r: bool)
     ensures
         r == spec_is_terminal_event(event),
 ;
@@ -408,9 +423,8 @@ pub assume_specification[ mirror_runtime_event_is_terminal ](
 ///
 /// Mirrors production `RuntimeEvent::is_resumable` at
 /// `crates/vb_runtime/src/shard/types.rs:811-816`.
-pub assume_specification[ mirror_runtime_event_is_resumable ](
-    event: MirrorRuntimeEvent,
-) -> (r: bool)
+pub assume_specification[ mirror_runtime_event_is_resumable ](event: MirrorRuntimeEvent) -> (r:
+    bool)
     ensures
         r == spec_is_resumable_event(event),
 ;
@@ -423,9 +437,8 @@ pub assume_specification[ mirror_runtime_event_is_resumable ](
 ///
 /// Mirrors production `RuntimeState::is_resumable` at
 /// `crates/vb_runtime/src/shard/types.rs:769-771`.
-pub assume_specification[ mirror_runtime_state_is_resumable ](
-    state: MirrorRuntimeState,
-) -> (r: bool)
+pub assume_specification[ mirror_runtime_state_is_resumable ](state: MirrorRuntimeState) -> (r:
+    bool)
     ensures
         r == spec_is_resumable_state(state),
 ;
@@ -433,7 +446,6 @@ pub assume_specification[ mirror_runtime_state_is_resumable ](
 // ============================================================================
 // Production-bound exec witnesses — discharge the bridges
 // ============================================================================
-
 /// Production-bound exec witness: invoke `MirrorRuntimeEvent::is_terminal`
 /// and return the production-decision bool. Verus discharges the bridge
 /// contract via `assume_specification`.
@@ -466,7 +478,6 @@ pub exec fn mirror_runtime_state_is_resumable_witness(state: MirrorRuntimeState)
 // ============================================================================
 // Spec proofs — terminal-state machine
 // ============================================================================
-
 /// Theorem: terminal → terminal implies identity.
 pub proof fn single_terminal_winner(before: int, after: int)
     requires
@@ -533,7 +544,6 @@ pub proof fn terminal_to_distinct_terminal_illegal(before: int, after: int)
 // ============================================================================
 // Spec proofs — timer eligibility
 // ============================================================================
-
 /// Theorem: timer eligibility implies all three conjuncts.
 pub proof fn timer_requires_eligible_run(run_exists: bool, terminal: int, cancelled: bool)
     requires
@@ -594,7 +604,6 @@ pub proof fn timer_eligible_iff(run_exists: bool, terminal: int, cancelled: bool
 // ============================================================================
 // Spec proofs — shutdown state machine
 // ============================================================================
-
 /// Theorem: shutdown monotonicity is implied by `shutdown_monotone`.
 pub proof fn shutdown_monotonic(before: int, after: int)
     requires
@@ -640,7 +649,6 @@ pub proof fn admission_open_state(state: int)
 // ============================================================================
 // Bridge anchor proofs — connect int-encoded spec to production enums
 // ============================================================================
-
 /// Theorem: `DriveFinished` maps to `completed_terminal(1)`.
 ///
 /// Production binding: `RuntimeEvent::is_terminal(DriveFinished) ==
@@ -771,7 +779,6 @@ pub proof fn bridge_resume_rollback_is_resumable_event()
 //   - `crates/vb_runtime/src/shard/types.rs:802-807`  (RuntimeEvent::is_terminal)
 //   - `crates/vb_runtime/src/shard/types.rs:811-816`  (RuntimeEvent::is_resumable)
 //   - `crates/vb_runtime/src/shard/types.rs:769-771`  (RuntimeState::is_resumable)
-
 /// Production-bound exec wrapper for `production::runtime_event_is_terminal`.
 ///
 /// Calls the production mirror `runtime_event_is_terminal` (production at
@@ -852,7 +859,6 @@ pub fn production_runtime_state_is_resumable_exec_failed() -> (r: bool)
 // Each contract is non-vacuous: the production-side `runtime_event_is_terminal`
 // etc. are `#[verifier::external]` in the mirror, so the contract is the
 // ONLY way Verus can reason about the production return value.
-
 /// Bridge: `production::runtime_event_is_terminal(event)` returns
 /// true iff `event` is `Fail | TerminalRemove | DriveFinished`.
 ///
@@ -862,7 +868,8 @@ pub assume_specification[ production::runtime_event_is_terminal ](
     event: production::RuntimeEvent,
 ) -> (r: bool)
     ensures
-        r == matches!(
+        r
+            == matches!(
             event,
             production::RuntimeEvent::Fail
                 | production::RuntimeEvent::TerminalRemove
@@ -879,7 +886,8 @@ pub assume_specification[ production::runtime_event_is_resumable ](
     event: production::RuntimeEvent,
 ) -> (r: bool)
     ensures
-        r == matches!(
+        r
+            == matches!(
             event,
             production::RuntimeEvent::AwaitAction
                 | production::RuntimeEvent::AwaitTimer
@@ -899,6 +907,7 @@ pub assume_specification[ production::runtime_state_is_resumable ](
         r == matches!(state, production::RuntimeState::Resumable),
 ;
 
-fn main() {}
+fn main() {
+}
 
 } // verus!

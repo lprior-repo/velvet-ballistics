@@ -503,11 +503,15 @@ pub exec fn append_strict_commit_failure_leaves_event_not_visible(
         event.key_ok,
         !old(journal).events@.contains(event.key),
     ensures
-        // The only reachable arm under the preconditions + commit_ok=false.
+// The only reachable arm under the preconditions + commit_ok=false.
+
         match r {
             Err(SpecJournalError::Fjall) => {
                 // TRUSTED ATOMICITY (TBP-008): events keyspace unchanged.
-                &&& spec_fjall_commit_atomic_on_err(*old(journal), *final(journal))
+                &&& spec_fjall_commit_atomic_on_err(
+                    *old(journal),
+                    *final(journal),
+                )
                 // NOT-VISIBLE: the event key is absent in the post-state.
                 &&& !final(journal).events@.contains(event.key)
             },
@@ -539,7 +543,6 @@ pub exec fn append_strict_commit_failure_leaves_event_not_visible(
 // (`!contains_after_first`) which force the Ok(()) arm. The wrapper
 // applies the lemma after the first call to discharge the second
 // call's postcondition.
-
 /// General lemma (idempotent-retry): given the first call's TRUSTED
 /// ATOMICITY postcondition, a second `append_strict` of the same
 /// event with `commit_ok=true` returns `Ok(())`.
@@ -561,9 +564,10 @@ pub proof fn lemma_append_strict_retry_after_failure_is_idempotent(
         // failure left the events keyspace unchanged.
         spec_fjall_commit_atomic_on_err(journal_before, journal_after_first),
     ensures
-        // After the first call, the pre-check on a retry still
-        // observes the event key absent (the precondition for the
-        // second call's Ok(()) arm).
+// After the first call, the pre-check on a retry still
+// observes the event key absent (the precondition for the
+// second call's Ok(()) arm).
+
         !journal_after_first.events@.contains(event.key),
 {
     // Direct from the trusted atomicity axiom + the wrapper
@@ -596,8 +600,9 @@ pub exec fn append_strict_retry_after_failure_is_idempotent(
         event.key_ok,
         !old(journal).events@.contains(event.key),
     ensures
-        // The retry (second call) is Ok — idempotent after a failed
-        // first commit. NOT Err(DuplicateEvent).
+// The retry (second call) is Ok — idempotent after a failed
+// first commit. NOT Err(DuplicateEvent).
+
         r2.is_ok(),
 {
     // ----- Call 1: failed commit (commit_ok=false) ------------------
@@ -612,11 +617,7 @@ pub exec fn append_strict_retry_after_failure_is_idempotent(
     let ghost j_before = *old(journal);
     let ghost j_after_first = *journal;
     proof {
-        lemma_append_strict_retry_after_failure_is_idempotent(
-            j_before,
-            j_after_first,
-            *event,
-        );
+        lemma_append_strict_retry_after_failure_is_idempotent(j_before, j_after_first, *event);
     }
 
     // ----- Call 2: succeeding retry (commit_ok=true) ----------------
@@ -698,7 +699,6 @@ pub exec fn append_strict_failed_commit_returns_fjall_exactly(
 // the conclusion is a non-trivial postcondition derived from the
 // arm. None is a reflexive identity, a boolean tautology, or has
 // its conclusion smuggled into the precondition.
-
 /// General lemma (not-visible): under the bridge's `Err(Fjall)` arm
 /// reachability conditions, the event key is not in the post-state
 /// events keyspace.
@@ -708,14 +708,16 @@ pub proof fn lemma_append_strict_commit_failure_not_visible(
     event: SpecJournalEvent,
 )
     requires
-        // Bridge reachability for the Err(Fjall) arm.
+// Bridge reachability for the Err(Fjall) arm.
+
         event.valid,
         event.key_ok,
         !journal_before.events@.contains(event.key),
         // TRUSTED ATOMICITY (TBP-008).
         spec_fjall_commit_atomic_on_err(journal_before, journal_after),
     ensures
-        // NOT-VISIBLE: event key absent in post-state.
+// NOT-VISIBLE: event key absent in post-state.
+
         !journal_after.events@.contains(event.key),
 {
     // From the trusted atomicity axiom + the precondition that the
@@ -741,9 +743,10 @@ pub proof fn lemma_append_strict_retry_after_failure_is_ok(
         // TRUSTED ATOMICITY (TBP-008) on the first call.
         spec_fjall_commit_atomic_on_err(journal_before, journal_after_first),
     ensures
-        // After the first call the pre-check on a retry still
-        // observes the key absent — the precondition for the Ok(())
-        // arm of the second call holds.
+// After the first call the pre-check on a retry still
+// observes the key absent — the precondition for the Ok(())
+// arm of the second call holds.
+
         !journal_after_first.events@.contains(event.key),
 {
     // Direct from the trusted atomicity axiom.

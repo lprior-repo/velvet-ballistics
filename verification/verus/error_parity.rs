@@ -778,7 +778,6 @@ pub fn lemma_canonical_primitive_name_parity(primitive: StepPrimitive) {
 // proving their behavior in proof mode is a meaningful, non-vacuous
 // exercise of the spec surface bound to production contracts via
 // `assume_specification` above.
-
 /// Proof: `CompileError::StepFieldShape { field: "steps", .. }` classifies
 /// to `SpecParityResult::StepFieldShape`. Mirrors the production arm at
 /// part_04.rs:105-111 (empty-body / multi-body shape mismatch).
@@ -847,8 +846,9 @@ pub proof fn proof_classify_primitive_lowering_limit_exceeded()
 /// part_04.rs:153 (Do-input slot range check).
 pub proof fn proof_classify_slot_index_out_of_range()
     ensures
-        classify_production_error(CompileError::SlotIndexOutOfRange { value: -1i64 })
-            is DownstreamError,
+        classify_production_error(
+            CompileError::SlotIndexOutOfRange { value: -1i64 },
+        ) is DownstreamError,
 {
     let err = CompileError::SlotIndexOutOfRange { value: -1i64 };
     assert(classify_production_error(err) is DownstreamError);

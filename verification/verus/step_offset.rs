@@ -89,7 +89,6 @@
 // the production exec fns and assert the contracts hold. Any drift
 // between the mirror and the production source is binding-debt
 // tracked outside Verus.
-
 use vstd::prelude::*;
 
 verus! {
@@ -97,7 +96,6 @@ verus! {
 // ============================================================================
 // Production extern surface — `#[path]`-bound mirror of vb_core StepIdx
 // ============================================================================
-
 #[path = "extern_step_offset.rs"]
 mod production;
 
@@ -109,17 +107,17 @@ pub use production::{SpecCompileError, StepIdx, checked_step_offset};
 // ============================================================================
 // Machine Integer Model (matches TLA+ MachineInt)
 // ============================================================================
-
 /// The maximum value of u16 (StepIdx inner type).
 /// This is the bound used in the MachineInt model and matches
 /// `u16::MAX` in `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:197`
 /// (`StepIdx::MAX = Self(u16::MAX)`).
-pub open spec fn u16_max() -> int { 65535 }
+pub open spec fn u16_max() -> int {
+    65535
+}
 
 // ============================================================================
 // assume_specification bridges — production contract surface
 // ============================================================================
-
 // --------------------------------------------------------------------------
 // Bridge: `StepIdx::checked_add` matches u16 arithmetic.
 // --------------------------------------------------------------------------
@@ -188,13 +186,11 @@ pub assume_specification[ production::checked_step_offset ](
 // ============================================================================
 // PO-015: checked_step_offset overflow behavior
 // ============================================================================
-
 // --------------------------------------------------------------------------
 // Production-bound exec wrappers
 // --------------------------------------------------------------------------
 // These exec wrappers invoke the production `checked_step_offset` so the
 // proof lemmas below can discharge the `assume_specification` contract.
-
 /// Production-bound exec wrapper: invoke `production::checked_step_offset`
 /// with placeholder primitive/field labels. Returns whether the result
 /// is Err.
@@ -215,10 +211,7 @@ pub exec fn checked_step_offset_is_err(id: production::StepIdx, offset: u16) -> 
 /// Production-bound exec wrapper: invoke `production::checked_step_offset`
 /// and assert that the spec predicate `spec_offset_ok` matches the
 /// production Ok/Err discrimination.
-pub exec fn checked_step_offset_matches_spec(
-    id: production::StepIdx,
-    offset: u16,
-) -> (r: bool)
+pub exec fn checked_step_offset_matches_spec(id: production::StepIdx, offset: u16) -> (r: bool)
     ensures
         r == spec_offset_ok(id, offset as int),
 {
@@ -234,10 +227,7 @@ pub exec fn checked_step_offset_matches_spec(
 
 /// Production-bound exec wrapper: invoke `production::StepIdx::checked_add`
 /// and assert that the result is `Some(v)` where `v.0 == id.0 + rhs`.
-pub exec fn step_idx_checked_add_matches(
-    id: production::StepIdx,
-    rhs: u16,
-) -> (r: bool)
+pub exec fn step_idx_checked_add_matches(id: production::StepIdx, rhs: u16) -> (r: bool)
     ensures
         r == (id.0 as int + rhs as int <= u16_max()),
 {
@@ -255,10 +245,7 @@ pub exec fn step_idx_checked_add_matches(
 /// Proved at the spec level (proof fns cannot call exec fns). The
 /// production exec wrapper `checked_step_offset_is_err` (above)
 /// discharges the `assume_specification` contract independently.
-pub proof fn lemma_step_offset_overflow_returns_error(
-    id: production::StepIdx,
-    offset: u16,
-)
+pub proof fn lemma_step_offset_overflow_returns_error(id: production::StepIdx, offset: u16)
     requires
         id.0 as int + offset as int > u16_max(),
     ensures
@@ -287,7 +274,6 @@ pub proof fn lemma_step_offset_valid_returns_ok(id: production::StepIdx, offset:
 // ============================================================================
 // PO-015 / PO-027: Collect-specific offsets (body=1, page=2, done=3)
 // ============================================================================
-
 /// Spec helper: returns whether the production wrapper
 /// `checked_step_offset` accepts `(id, offset)`. Mirrors the
 /// `assume_specification` contract on `checked_step_offset` above.
@@ -306,7 +292,8 @@ pub proof fn lemma_collect_offsets(id: production::StepIdx)
     requires
         id.0 as int <= u16_max(),
     ensures
-        // Body offset = 1: id + 1 <= u16::MAX iff id < u16::MAX
+// Body offset = 1: id + 1 <= u16::MAX iff id < u16::MAX
+
         spec_offset_ok(id, 1) == ((id.0 as int) < u16_max()),
         // Page offset = 2: id + 2 <= u16::MAX iff id < u16::MAX - 1
         spec_offset_ok(id, 2) == ((id.0 as int) < u16_max() - 1),
@@ -377,7 +364,6 @@ pub proof fn lemma_max_valid_collect_id(id: production::StepIdx)
 // ============================================================================
 // PO-027: Overflow detection near boundary (via StepIdx::checked_add)
 // ============================================================================
-
 /// VERUS-OFFSET-005: The production `StepIdx::checked_add` correctly
 /// detects overflow at the u16 boundary for offsets 1, 2, 3. The
 /// spec contracts are discharged by exercising the production exec
@@ -401,6 +387,7 @@ pub proof fn lemma_boundary_overflow_detection(id: production::StepIdx, offset: 
     };
 }
 
-fn main() {}
+fn main() {
+}
 
 } // verus!

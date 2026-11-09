@@ -47,7 +47,6 @@
 // admitted artifact. The spec file then attaches production-bound exec fn
 // decoration to that production decision fn, and each proof fn
 // non-vacuously proves a different structural property of the spec.
-
 use vstd::prelude::*;
 
 verus! {
@@ -59,17 +58,17 @@ mod production;
 // Spec mirror of the prepared gate count (mirrors the gate_count
 // `verification_proof_core` forces, crates/vb_storage/src/admission.rs:113-128)
 // ============================================================
-
 // Prepared gate count for v1 accepted artifacts. Every artifact
 // `prepare_with_profile` constructs carries gate_count 0; the legacy
 // 15-gate shape is the AlwaysPresentArtifactStore fixture only and is
 // rejected by `verify_accepted_artifact`.
-pub open spec fn PREPARED_GATE_COUNT() -> int { 0 }
+pub open spec fn PREPARED_GATE_COUNT() -> int {
+    0
+}
 
 // ============================================================
 // Production-bound exec fns (mirror production exec fns)
 // ============================================================
-
 // Production decision fn: proof_matches_prepared_shape models the
 // prepared-proof shape production constructs for every admitted
 // artifact: `verification_proof_core`
@@ -130,7 +129,6 @@ pub fn proof_matches_prepared_shape(
 // in `production_inner/accepted_envelope_production.rs` via the extern
 // surface. The body of each extern fn is opaque to Verus; the spec
 // proofs below exercise the contracts via the exec wrappers above.
-
 // Bridge: production `proof_matches_prepared_shape` returns Ok(()) iff
 // all 9 inputs satisfy the spec-side predicate. Mirrors the
 // prepared-proof shape: `verification_proof_core` at
@@ -190,7 +188,6 @@ pub open spec fn spec_proof_matches_prepared_shape(
 // ============================================================
 // Spec predicates (mathematical model used by proofs)
 // ============================================================
-
 pub open spec fn supported_schema(schema_version: int) -> bool {
     schema_version == 1
 }
@@ -235,7 +232,6 @@ pub open spec fn accepted_envelope_valid(
 // ============================================================
 // Non-vacuous proofs: derive conjuncts from the composite predicate
 // ============================================================
-
 // Non-vacuous: derives the schema-version conjunct from the composite.
 pub proof fn proof_valid_envelope_requires_schema_v1(
     schema_version: int,
@@ -348,7 +344,11 @@ pub proof fn proof_invalid_schema_denies(
     reveal(supported_schema);
     assert(!supported_schema(schema_version));
     let valid = accepted_envelope_valid(
-        schema_version, gate_count, durable, stale, all_required_gate_proofs_accepted,
+        schema_version,
+        gate_count,
+        durable,
+        stale,
+        all_required_gate_proofs_accepted,
     );
     assert(!valid);
 }
@@ -376,7 +376,11 @@ pub proof fn proof_invalid_gate_denies(
     reveal(prepared_gate_count);
     assert(!prepared_gate_count(gate_count));
     let valid = accepted_envelope_valid(
-        schema_version, gate_count, durable, stale, all_required_gate_proofs_accepted,
+        schema_version,
+        gate_count,
+        durable,
+        stale,
+        all_required_gate_proofs_accepted,
     );
     assert(!valid);
 }
@@ -404,7 +408,11 @@ pub proof fn proof_durable_or_stale_denies(
     reveal(prepared_durable_flag);
     reveal(fresh_evidence);
     let valid = accepted_envelope_valid(
-        schema_version, gate_count, durable, stale, all_required_gate_proofs_accepted,
+        schema_version,
+        gate_count,
+        durable,
+        stale,
+        all_required_gate_proofs_accepted,
     );
     if durable {
         assert(!prepared_durable_flag(durable));
@@ -441,7 +449,11 @@ pub proof fn proof_unaccepted_gate_status_denies(
     reveal(accepted_gate_status);
     assert(!accepted_gate_status(all_required_gate_proofs_accepted));
     let valid = accepted_envelope_valid(
-        schema_version, gate_count, durable, stale, all_required_gate_proofs_accepted,
+        schema_version,
+        gate_count,
+        durable,
+        stale,
+        all_required_gate_proofs_accepted,
     );
     assert(!valid);
 }
@@ -501,13 +513,35 @@ pub proof fn proof_legacy_fifteen_gate_shape_denied(
 // exec wrapper. This exec fn is the closure witness for VERUS-ENV-006:
 // it actually invokes the production `proof_matches_prepared_shape`
 // (via the extern mirror) and asserts the spec contract.
-pub fn exec_witness_prepared_proof_shape_accepted(
-) -> (result: Result<(), production::SpecArtifactEnvelopeError>)
+pub fn exec_witness_prepared_proof_shape_accepted() -> (result: Result<
+    (),
+    production::SpecArtifactEnvelopeError,
+>)
     ensures
         result.is_ok(),
 {
-    let r = production::proof_matches_prepared_shape(0, true, false, false, false, false, true, true, true);
-    assert(spec_proof_matches_prepared_shape(0, true, false, false, false, false, true, true, true));
+    let r = production::proof_matches_prepared_shape(
+        0,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+    );
+    assert(spec_proof_matches_prepared_shape(
+        0,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+    ));
     assert(r.is_ok());
     r
 }
@@ -515,17 +549,30 @@ pub fn exec_witness_prepared_proof_shape_accepted(
 // Non-vacuous witness: the legacy 15-gate shape is rejected by the
 // production exec wrapper. Discharges VERUS-ENV-006 for the gate-count
 // requirement: the old "valid" shape is not the prepared shape.
-pub fn exec_witness_legacy_gate_count_denied(
-) -> (result: Result<(), production::SpecArtifactEnvelopeError>)
+pub fn exec_witness_legacy_gate_count_denied() -> (result: Result<
+    (),
+    production::SpecArtifactEnvelopeError,
+>)
     ensures
         result.is_err(),
 {
-    let r = production::proof_matches_prepared_shape(15, true, true, true, true, true, true, true, false);
+    let r = production::proof_matches_prepared_shape(
+        15,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+    );
     assert(!spec_proof_matches_prepared_shape(15, true, true, true, true, true, true, true, false));
     assert(r.is_err());
     r
 }
 
-fn main() {}
+fn main() {
+}
 
 } // verus!

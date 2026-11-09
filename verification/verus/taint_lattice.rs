@@ -514,10 +514,10 @@ pub proof fn lemma_time_dependent_top(a: production::Taint)
         spec_join_taint(a, production::Taint::TimeDependent) == production::Taint::TimeDependent,
         spec_join_taint(production::Taint::TimeDependent, a) == production::Taint::TimeDependent,
 {
-    assert(spec_join_taint(a, production::Taint::TimeDependent)
-        == production::Taint::TimeDependent) by (compute);
-    assert(spec_join_taint(production::Taint::TimeDependent, a)
-        == production::Taint::TimeDependent) by (compute);
+    assert(spec_join_taint(a, production::Taint::TimeDependent) == production::Taint::TimeDependent)
+        by (compute);
+    assert(spec_join_taint(production::Taint::TimeDependent, a) == production::Taint::TimeDependent)
+        by (compute);
 }
 
 /// Joining anything at-or-above DerivedFromSecret with DerivedFromSecret
@@ -635,10 +635,8 @@ pub proof fn lemma_production_satisfies_all_lattice_laws(
             == production::Taint::Secret,
         spec_join_taint(production::Taint::Clean, production::Taint::DerivedFromSecret)
             == production::Taint::DerivedFromSecret,
-        spec_join_taint(a, production::Taint::TimeDependent)
-            == production::Taint::TimeDependent,
-        spec_join_taint(production::Taint::TimeDependent, a)
-            == production::Taint::TimeDependent,
+        spec_join_taint(a, production::Taint::TimeDependent) == production::Taint::TimeDependent,
+        spec_join_taint(production::Taint::TimeDependent, a) == production::Taint::TimeDependent,
 {
     // Spec-level proofs discharge the mathematical facts for spec fns.
     // Because each production exec fn is bound to the corresponding

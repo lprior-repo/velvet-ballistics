@@ -39,7 +39,6 @@
 // file (`error_parity.rs`) state the production behavior the spec
 // proofs discharge. Drift between the mirror and the production source
 // is reported as binding-debt outside Verus.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -68,9 +67,7 @@ pub mod prod_src;
 /// this mirror models; constructing each pins its field set.
 #[verifier::external]
 fn compiled_node_kind_drift_check() {
-    let _kind = prod_src::CompiledNodeKind::SetConst {
-        value: prod_src::ConstIdx::new(0),
-    };
+    let _kind = prod_src::CompiledNodeKind::SetConst { value: prod_src::ConstIdx::new(0) };
     let _kind = prod_src::CompiledNodeKind::Do {
         action: prod_src::ActionId::new(0),
         input: prod_src::SlotIdx::new(0),
@@ -125,9 +122,7 @@ fn compiled_node_shape_drift_check() {
                 error_slot: Some(node_slot),
             },
         },
-        kind: prod_src::CompiledNodeKind::SetConst {
-            value: prod_src::ConstIdx::new(0),
-        },
+        kind: prod_src::CompiledNodeKind::SetConst { value: prod_src::ConstIdx::new(0) },
     };
     let _node = prod_src::CompiledNode {
         id: node_step,
@@ -136,9 +131,7 @@ fn compiled_node_shape_drift_check() {
             next: prod_src::NodeContinuation::End,
             error: prod_src::ErrorRouting::None,
         },
-        kind: prod_src::CompiledNodeKind::SetConst {
-            value: prod_src::ConstIdx::new(0),
-        },
+        kind: prod_src::CompiledNodeKind::SetConst { value: prod_src::ConstIdx::new(0) },
     };
 }
 

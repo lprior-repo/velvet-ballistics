@@ -128,10 +128,7 @@ pub mod prod_src;
 #[verifier::external]
 fn prod_methods_drift_check() {
     // Reference every field of ValueStoreStub (production value_store.rs:57).
-    let _stub = prod_src::ValueStoreStub {
-        max_arena_entries: 0,
-        total_arena_count_field: 0,
-    };
+    let _stub = prod_src::ValueStoreStub { max_arena_entries: 0, total_arena_count_field: 0 };
 
     // Reference the production check_arena_cap decision fn
     // (production value_store.rs:316-329).
@@ -139,7 +136,6 @@ fn prod_methods_drift_check() {
 }
 
 } // verus!
-
 // ============================================================================
 // Companion namespace `crate::errors` — mirror of production CoreError
 // ============================================================================
@@ -159,11 +155,9 @@ fn prod_methods_drift_check() {
 // The mirror below replicates every type referenced by `value_store.rs`.
 // Each type exposes the same constructor / accessor surface the
 // production code uses so a signature drift breaks this mirror.
-
 // ============================================================================
 // ObjectField — mirror of `crates/vb_core/src/value_store.rs:14-41`
 // ============================================================================
-
 /// Mirror of production `ObjectField` at
 /// `crates/vb_core/src/value_store.rs:14-23`. Field names and types
 /// match production line-by-line.

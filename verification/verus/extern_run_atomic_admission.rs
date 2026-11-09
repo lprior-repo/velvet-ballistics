@@ -19,7 +19,6 @@
 // with only bounded_claimed and idempotency_verified_claimed set by
 // `prepare_with_profile` at
 // crates/vb_storage/src/admission/verification.rs:26-52).
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
@@ -33,8 +32,12 @@ verus! {
 // Re-export the production types and decision fns so the spec file can
 // reference them.
 pub use prod::{
-    all_required_gates_accepted, artifact_matches_header_and_source, bind_accepted_at_seq,
-    is_strict_accepted_artifact_tag, required_index_preconditions, valid_commit_input,
+    all_required_gates_accepted,
+    artifact_matches_header_and_source,
+    bind_accepted_at_seq,
+    is_strict_accepted_artifact_tag,
+    required_index_preconditions,
+    valid_commit_input,
     PayloadTag,
 };
 

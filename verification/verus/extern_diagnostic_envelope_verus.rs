@@ -89,7 +89,6 @@
 // spec file state the production behaviour the spec proofs
 // discharge. Drift between the production mirror and the production
 // source is reported as binding-debt tracked outside Verus.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]

@@ -63,7 +63,6 @@
 // the production behavior the spec proofs discharge. Drift between
 // the mirror and the production source is detected by
 // `scripts/check-production-inner-drift.sh` (CI gate).
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]

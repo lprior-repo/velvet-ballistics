@@ -13,7 +13,6 @@
 // semantics as the production source for capability admission.
 // Any drift in field names, discriminant sets, or fn signatures in the
 // production source breaks the production_inner mirror at compile time.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
@@ -36,7 +35,10 @@ verus! {
 // Re-export the production types and decision fn so the spec file can
 // reference them.
 pub use prod::{
-    admit_artifact_run_with_certificate_floor, SpecAdmitError, SpecCapability, SpecRuntimePolicy,
+    admit_artifact_run_with_certificate_floor,
+    SpecAdmitError,
+    SpecCapability,
+    SpecRuntimePolicy,
 };
 
 } // verus!

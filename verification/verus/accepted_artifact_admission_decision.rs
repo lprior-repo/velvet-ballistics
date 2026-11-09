@@ -76,7 +76,6 @@
 // production behavior the spec proofs discharge. Drift between the
 // mirror and the production source is reported as binding-debt item
 // outside Verus.
-
 use vstd::prelude::*;
 
 verus! {
@@ -88,14 +87,16 @@ mod production;
 // Re-exports from the production mirror
 // ============================================================================
 pub use production::{
-    admission_decision, admission_decision_ok, SpecAdmissionError,
-    SpecAdmissionOutcome, SpecArtifactEnvelopeError,
+    admission_decision,
+    admission_decision_ok,
+    SpecAdmissionError,
+    SpecAdmissionOutcome,
+    SpecArtifactEnvelopeError,
 };
 
 // ============================================================================
 // Spec predicates (mathematical model of the production contract)
 // ============================================================================
-
 /// Spec predicate: maps a production `ArtifactEnvelopeError` variant to
 /// its corresponding `SpecAdmissionError` class. Mirrors the production
 /// `map_artifact_envelope_error` function at
@@ -107,35 +108,35 @@ pub open spec fn spec_outcome_error(err: SpecArtifactEnvelopeError) -> SpecAdmis
     match err {
         SpecArtifactEnvelopeError::ArtifactNotFound => {
             SpecAdmissionError::StrictAdmissionMissingArtifact
-        }
+        },
         SpecArtifactEnvelopeError::PostcardDecodeFailed => {
             SpecAdmissionError::MalformedAcceptedArtifact
-        }
+        },
         SpecArtifactEnvelopeError::ArtifactEvidenceInvalid => {
             SpecAdmissionError::InvalidVerificationProof
-        }
+        },
         SpecArtifactEnvelopeError::InvalidGateCount => SpecAdmissionError::InvalidVerificationProof,
         SpecArtifactEnvelopeError::MissingRequiredProofFlagBounded => {
             SpecAdmissionError::InvalidVerificationProof
-        }
+        },
         SpecArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe => {
             SpecAdmissionError::InvalidVerificationProof
-        }
+        },
         SpecArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe => {
             SpecAdmissionError::InvalidVerificationProof
-        }
+        },
         SpecArtifactEnvelopeError::MissingRequiredProofFlagDurable => {
             SpecAdmissionError::InvalidVerificationProof
-        }
+        },
         SpecArtifactEnvelopeError::MissingRequiredProofFlagReplayable => {
             SpecAdmissionError::InvalidVerificationProof
-        }
+        },
         SpecArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified => {
             SpecAdmissionError::InvalidVerificationProof
-        }
+        },
         SpecArtifactEnvelopeError::MissingIdempotencyAttestation => {
             SpecAdmissionError::InvalidVerificationProof
-        }
+        },
         SpecArtifactEnvelopeError::ArtifactDigestMismatch => SpecAdmissionError::DigestMismatch,
     }
 }
@@ -205,7 +206,6 @@ pub open spec fn spec_outcome_error_ok() -> SpecAdmissionError {
 //
 // Each bridge is exercised below by an exec wrapper so the
 // `assume_specification` is non-vacuous from the verification side.
-
 /// Bridge: `admission_decision` returns the spec-side outcome for any
 /// `ArtifactEnvelopeError` variant. The postcondition ties the
 /// production exec result to the spec projection: error class matches
@@ -248,13 +248,11 @@ pub assume_specification[ production::admission_decision_ok ]() -> (result: Spec
 // and assert the bridge ties the exec result to the spec decision.
 // Without these exec wrappers the `assume_specification` would be
 // unused (vacuum from the verification side).
-
 /// Production-bound exec wrapper: maps an `ArtifactEnvelopeError`
 /// variant to its admission outcome. Exercises the
 /// `assume_specification[admission_decision]` bridge.
-pub exec fn checked_admission_decision(
-    err: SpecArtifactEnvelopeError,
-) -> (result: SpecAdmissionOutcome)
+pub exec fn checked_admission_decision(err: SpecArtifactEnvelopeError) -> (result:
+    SpecAdmissionOutcome)
     ensures
         result.error == spec_outcome_error(err),
         result.admitted == spec_outcome_admitted(err),
@@ -312,7 +310,6 @@ pub exec fn checked_admission_decision_ok() -> (result: SpecAdmissionOutcome)
 // bound spec surface. The proofs are non-vacuous because they each
 // reveal the spec predicate and apply the `assume_specification`
 // contract via the exec wrapper.
-
 // ---- 1: ArtifactNotFound -> StrictAdmissionMissingArtifact + rejected
 pub proof fn proof_artifact_not_found_rejects_before_ack()
     ensures
@@ -463,9 +460,7 @@ pub proof fn proof_missing_proof_flag_replayable_rejects_before_ack()
         spec_outcome_error(SpecArtifactEnvelopeError::MissingRequiredProofFlagReplayable)
             == SpecAdmissionError::InvalidVerificationProof,
         !spec_outcome_admitted(SpecArtifactEnvelopeError::MissingRequiredProofFlagReplayable),
-        !spec_outcome_acknowledged(
-            SpecArtifactEnvelopeError::MissingRequiredProofFlagReplayable,
-        ),
+        !spec_outcome_acknowledged(SpecArtifactEnvelopeError::MissingRequiredProofFlagReplayable),
         !spec_outcome_run_state_inserted(
             SpecArtifactEnvelopeError::MissingRequiredProofFlagReplayable,
         ),
@@ -481,9 +476,8 @@ pub proof fn proof_missing_proof_flag_replayable_rejects_before_ack()
 // ---- 10: MissingRequiredProofFlagIdempotencyVerified -> InvalidVerificationProof + rejected
 pub proof fn proof_missing_proof_flag_idempotency_verified_rejects_before_ack()
     ensures
-        spec_outcome_error(
-            SpecArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified,
-        ) == SpecAdmissionError::InvalidVerificationProof,
+        spec_outcome_error(SpecArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified)
+            == SpecAdmissionError::InvalidVerificationProof,
         !spec_outcome_admitted(
             SpecArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified,
         ),
@@ -493,7 +487,9 @@ pub proof fn proof_missing_proof_flag_idempotency_verified_rejects_before_ack()
         !spec_outcome_run_state_inserted(
             SpecArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified,
         ),
-        spec_outcome_rejects(SpecArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified),
+        spec_outcome_rejects(
+            SpecArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified,
+        ),
 {
     reveal(spec_outcome_error);
     reveal(spec_outcome_admitted);
@@ -509,9 +505,7 @@ pub proof fn proof_missing_idempotency_attestation_rejects_before_ack()
             == SpecAdmissionError::InvalidVerificationProof,
         !spec_outcome_admitted(SpecArtifactEnvelopeError::MissingIdempotencyAttestation),
         !spec_outcome_acknowledged(SpecArtifactEnvelopeError::MissingIdempotencyAttestation),
-        !spec_outcome_run_state_inserted(
-            SpecArtifactEnvelopeError::MissingIdempotencyAttestation,
-        ),
+        !spec_outcome_run_state_inserted(SpecArtifactEnvelopeError::MissingIdempotencyAttestation),
         spec_outcome_rejects(SpecArtifactEnvelopeError::MissingIdempotencyAttestation),
 {
     reveal(spec_outcome_error);
@@ -585,5 +579,4 @@ pub proof fn proof_success_implies_ack_and_run_state()
 }
 
 } // verus!
-
 fn main() {}

@@ -82,7 +82,6 @@
 //
 // Verifier command:
 //   `verus --crate-type=lib verification/verus/ipc_strict_admission.rs`
-
 use vstd::prelude::*;
 
 verus! {
@@ -93,9 +92,10 @@ mod production;
 // ============================================================================
 // Re-exports from the production mirror
 // ============================================================================
-
 pub use production::{
-    StrictAdmissionRefinement, evidence_complete_projection, is_refined,
+    StrictAdmissionRefinement,
+    evidence_complete_projection,
+    is_refined,
     strict_admission_refinement,
 };
 
@@ -110,7 +110,6 @@ pub use production::{
 // the bound production surface (`strict_admission_witness_production`)
 // and the original predicates remain available as derived projections
 // for backward compatibility.
-
 /// Spec predicate: a SubmitRun admission is admitted (strict-admission
 /// gate green) iff both required evidence is present and the digest
 /// matches. Preserved from the original VACUUM surface.
@@ -141,7 +140,6 @@ pub open spec fn reject_missing_evidence_witness(
 // Verus can resolve them via a single unfold step (the SMT solver's
 // built-in knowledge of `&&` associativity/commutativity then closes
 // the proof obligations on the production-bound exec wrappers).
-
 /// Spec-side lift of the production
 /// `StrictAdmissionRefinement::is_refined` (production line 35).
 /// Mirrors `production::is_refined` exactly.
@@ -194,15 +192,12 @@ pub open spec fn reject_missing_evidence_witness_production(r: StrictAdmissionRe
 // fns implement the spec decision predicates. Each bridge is exercised
 // below by an exec wrapper so the `assume_specification` is non-vacuous
 // from the verification side.
-
 // --------------------------------------------------------------------------
 // Bridge: `is_refined` returns true iff the production refinement
 // carries both required evidence and a digest match (production line
 // 35: `artifact_digest_matches && run_id_matches && policy_matches`).
 // --------------------------------------------------------------------------
-pub assume_specification[ production::is_refined ](
-    r: &StrictAdmissionRefinement,
-) -> (result: bool)
+pub assume_specification[ production::is_refined ](r: &StrictAdmissionRefinement) -> (result: bool)
     ensures
         result == production_is_refined_spec(*r),
         result == strict_admission_witness_production(*r),
@@ -259,7 +254,6 @@ pub assume_specification[ production::strict_admission_refinement ](
 // `recovery_hydration_contracts.rs` was deleted as a vacuum proof
 // — no single production decision fn maps to its 16-field
 // `SpecRecoveryInput` decision lattice).
-
 /// Exec wrapper for the strict-admission `is_refined` decision.
 /// Exercises the production bridge so the `assume_specification` for
 /// `production::is_refined` is non-vacuous from the verification side.
@@ -316,7 +310,6 @@ pub exec fn exec_strict_admission_refinement(
 // names; the second parameter set has been folded into the single
 // `StrictAdmissionRefinement` argument so each proof exercises the
 // production bridge.
-
 // --------------------------------------------------------------------------
 // Original VACUUM `strict_admission_requires_required_gates`:
 //   requires strict_admission_witness(h, d), ensures h && d.
@@ -390,5 +383,4 @@ pub proof fn digest_agreement_preserved(r: StrictAdmissionRefinement)
 }
 
 } // verus!
-
 fn main() {}

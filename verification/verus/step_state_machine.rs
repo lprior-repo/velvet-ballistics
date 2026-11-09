@@ -80,7 +80,6 @@
 // ============================================================================
 // Verifier command: `verus --crate-type=lib verification/verus/step_state_machine.rs`
 // Obligation ID: VB-CORE-STATE-001 (and STATE-002/003/004 by extension).
-
 use vstd::prelude::*;
 
 verus! {
@@ -88,7 +87,6 @@ verus! {
 // ============================================================================
 // Production extern surface — `#[path]`-bound mirror of signals.rs
 // ============================================================================
-
 #[path = "extern_step_state_machine.rs"]
 mod production;
 
@@ -125,7 +123,6 @@ pub const SPEC_MAX_STEP_BUDGET: u64 = 10_000;
 // Verus (`#[verifier::external]`); the spec proofs below exercise the
 // contracts via the exec wrappers in the "Production-bound exec fns"
 // section.
-
 // --------------------------------------------------------------------------
 // Production MAX constant.
 // --------------------------------------------------------------------------
@@ -133,7 +130,6 @@ pub const SPEC_MAX_STEP_BUDGET: u64 = 10_000;
 // Constants do not need `assume_specification`; the spec references
 // `SPEC_MAX_STEP_BUDGET` directly via the `pub use production::SPEC_MAX_STEP_BUDGET`
 // re-export above.
-
 // --------------------------------------------------------------------------
 // Bridge: `step_budget_new` returns a budget clamped to MAX_STEP_BUDGET.
 // --------------------------------------------------------------------------
@@ -143,7 +139,8 @@ pub const SPEC_MAX_STEP_BUDGET: u64 = 10_000;
 //     Self {
 //         remaining: if value > MAX_STEP_BUDGET { MAX_STEP_BUDGET } else { value },
 //     }
-pub assume_specification[ production::step_budget_new ](value: u64) -> (budget: production::StepBudget)
+pub assume_specification[ production::step_budget_new ](value: u64) -> (budget:
+    production::StepBudget)
     ensures
         budget.remaining == if value > SPEC_MAX_STEP_BUDGET {
             SPEC_MAX_STEP_BUDGET
@@ -160,7 +157,8 @@ pub assume_specification[ production::step_budget_new ](value: u64) -> (budget: 
 pub assume_specification[ production::step_budget_remaining ](
     budget: &production::StepBudget,
 ) -> (r: u64)
-    ensures r == budget.remaining,
+    ensures
+        r == budget.remaining,
 ;
 
 // --------------------------------------------------------------------------
@@ -170,7 +168,8 @@ pub assume_specification[ production::step_budget_remaining ](
 //
 //     pub const MAX: Self = Self { remaining: MAX_STEP_BUDGET };
 pub assume_specification[ production::step_budget_max ]() -> (budget: production::StepBudget)
-    ensures budget.remaining == SPEC_MAX_STEP_BUDGET,
+    ensures
+        budget.remaining == SPEC_MAX_STEP_BUDGET,
 ;
 
 // --------------------------------------------------------------------------
@@ -195,11 +194,10 @@ pub assume_specification[ production::step_budget_try_take ](
 ) -> (result: Result<bool, production::SpecEngineError>)
     ensures
         match result {
-            Ok(true) => old(budget).remaining <= SPEC_MAX_STEP_BUDGET
-                && old(budget).remaining > 0
+            Ok(true) => old(budget).remaining <= SPEC_MAX_STEP_BUDGET && old(budget).remaining > 0
                 && old(budget).remaining == final(budget).remaining + 1,
-            Ok(false) => old(budget).remaining == 0
-                && old(budget).remaining == final(budget).remaining,
+            Ok(false) => old(budget).remaining == 0 && old(budget).remaining
+                == final(budget).remaining,
             Err(production::SpecEngineError::StepCounterOverflow) => {
                 old(budget).remaining > SPEC_MAX_STEP_BUDGET
             },
@@ -273,7 +271,6 @@ pub assume_specification[ production::engine_signal_discriminant ](
 // ============================================================================
 // Spec constants and spec-mode state machine model
 // ============================================================================
-
 /// MAX_STEP_BUDGET upper bound as a spec integer.
 pub open spec fn spec_max_step_budget() -> int {
     SPEC_MAX_STEP_BUDGET as int
@@ -309,7 +306,6 @@ pub open spec fn is_suspended_mirror(s: SpecStepStateMirror) -> bool {
 // production `EngineSignal` discriminant set via
 // `spec_mark_step_after_signal` (which is itself a pure projection of
 // the production match at step.rs:109-121).
-
 pub enum SpecStepState {
     Pending,
     Running,
@@ -378,7 +374,8 @@ pub open spec fn validate_transition(current: SpecStepState, next: SpecStepState
 }
 
 pub exec fn validate_transition_exec(current: SpecStepState, next: SpecStepState) -> (res: bool)
-    ensures res == validate_transition(current, next),
+    ensures
+        res == validate_transition(current, next),
 {
     match current {
         SpecStepState::Pending => match next {
@@ -432,9 +429,9 @@ pub exec fn validate_transition_exec(current: SpecStepState, next: SpecStepState
 // ============================================================================
 // Step-state transition lemmas (carry-over from prior spec, unchanged)
 // ============================================================================
-
 pub proof fn proof_idempotent_remark_allowed(current: SpecStepState)
-    ensures validate_transition(current, current),
+    ensures
+        validate_transition(current, current),
 {
     assert(current == current);
 }
@@ -443,7 +440,8 @@ pub proof fn proof_terminal_blocks_outward(current: SpecStepState, next: SpecSte
     requires
         is_terminal(current),
         current != next,
-    ensures !validate_transition(current, next),
+    ensures
+        !validate_transition(current, next),
 {
     match current {
         SpecStepState::Succeeded => assert(!validate_transition(current, next)),
@@ -459,7 +457,8 @@ pub proof fn proof_suspended_resumes_only_to_running(current: SpecStepState, nex
         is_suspended(current),
         current != next,
         validate_transition(current, next),
-    ensures next == SpecStepState::Running,
+    ensures
+        next == SpecStepState::Running,
 {
     match current {
         SpecStepState::Waiting => assert(next == SpecStepState::Running),
@@ -536,7 +535,6 @@ pub proof fn proof_all_pairs()
 // ============================================================================
 // Production-bound exec fns with requires/ensures
 // ============================================================================
-
 /// Spec-mode bridge: convert the production `SpecStepStateMirror` to the
 /// spec-internal `SpecStepState` so spec proofs can compare the signal
 /// mapping against the transition table. Both enums model the SAME
@@ -563,9 +561,10 @@ pub open spec fn mirror_to_spec(m: SpecStepStateMirror) -> SpecStepState {
 /// exec body of `spec_mark_step_after_signal`.
 pub exec fn check_signal_to_state(signal: &EngineSignal) -> (state: SpecStepStateMirror)
     ensures
-        // Production-defined mapping — discharged by the match arms in
-        // `spec_mark_step_after_signal` (extern fn body) and the
-        // spec-mode assertion below.
+// Production-defined mapping — discharged by the match arms in
+// `spec_mark_step_after_signal` (extern fn body) and the
+// spec-mode assertion below.
+
         (match signal {
             EngineSignal::Continue => state == SpecStepStateMirror::Succeeded,
             EngineSignal::Finished => state == SpecStepStateMirror::Succeeded,
@@ -589,7 +588,6 @@ pub exec fn check_signal_to_state(signal: &EngineSignal) -> (state: SpecStepStat
 // These spec fns re-express the production mapping at the spec level so
 // proofs can reason about it without invoking exec wrappers. They are
 // equivalent to `spec_mark_step_after_signal` but spec-pure.
-
 /// Spec projection of the production `mark_step_after_signal` decision.
 /// Mirrors `crates/vb_core/src/engine/step.rs:109-121` projection onto
 /// `SpecStepState` discriminant.
@@ -613,14 +611,14 @@ pub open spec fn spec_signal_to_state(signal: EngineSignal) -> SpecStepState {
 // `SpecEngineSignal`. These proofs instead bind to the production
 // `EngineSignal` discriminant set and discharge the contracts attached
 // to the production-bound exec wrappers via `assume_specification`.
-
 /// All 7 production EngineSignal variants produce a defined SpecStepState.
 /// This is the production-bound version of the prior
 /// `proof_inv_step_state_mapping` (which proved it for the 6-variant
 /// shadow `SpecEngineSignal`).
 pub proof fn proof_production_signal_mapping_total(signal: EngineSignal)
     ensures
-        // Total mapping: every variant maps to exactly one SpecStepState.
+// Total mapping: every variant maps to exactly one SpecStepState.
+
         match signal {
             EngineSignal::Continue => true,
             EngineSignal::Finished => true,
@@ -646,10 +644,14 @@ pub proof fn proof_production_signal_mapping_total(signal: EngineSignal)
     match signal {
         EngineSignal::Continue => assert(spec_signal_to_state(signal) == SpecStepState::Succeeded),
         EngineSignal::Finished => assert(spec_signal_to_state(signal) == SpecStepState::Succeeded),
-        EngineSignal::StepBudgetExhausted => assert(spec_signal_to_state(signal) == SpecStepState::Running),
-        EngineSignal::AwaitingAction => assert(spec_signal_to_state(signal) == SpecStepState::Running),
-        EngineSignal::ActionFailureUnhandled => assert(spec_signal_to_state(signal) == SpecStepState::Failed),
-        EngineSignal::AwaitingWait => assert(spec_signal_to_state(signal) == SpecStepState::Waiting),
+        EngineSignal::StepBudgetExhausted => assert(spec_signal_to_state(signal)
+            == SpecStepState::Running),
+        EngineSignal::AwaitingAction => assert(spec_signal_to_state(signal)
+            == SpecStepState::Running),
+        EngineSignal::ActionFailureUnhandled => assert(spec_signal_to_state(signal)
+            == SpecStepState::Failed),
+        EngineSignal::AwaitingWait => assert(spec_signal_to_state(signal)
+            == SpecStepState::Waiting),
         EngineSignal::AwaitingAsk => assert(spec_signal_to_state(signal) == SpecStepState::Asking),
     }
 }
@@ -667,14 +669,16 @@ pub proof fn proof_continue_finished_maps_to_succeeded()
 /// Production-bound: AwaitingWait maps to Waiting. Mirrors step.rs:115
 /// `EngineSignal::AwaitingWait => run.mark_waiting(step)`.
 pub proof fn proof_awaiting_wait_maps_to_waiting()
-    ensures spec_signal_to_state(EngineSignal::AwaitingWait) == SpecStepState::Waiting,
+    ensures
+        spec_signal_to_state(EngineSignal::AwaitingWait) == SpecStepState::Waiting,
 {
 }
 
 /// Production-bound: AwaitingAsk maps to Asking. Mirrors step.rs:116
 /// `EngineSignal::AwaitingAsk => run.mark_asking(step)`.
 pub proof fn proof_awaiting_ask_maps_to_asking()
-    ensures spec_signal_to_state(EngineSignal::AwaitingAsk) == SpecStepState::Asking,
+    ensures
+        spec_signal_to_state(EngineSignal::AwaitingAsk) == SpecStepState::Asking,
 {
 }
 
@@ -693,7 +697,8 @@ pub proof fn proof_noop_signals_preserve_running()
 /// This is the previously-missing 7th-variant binding. Mirrors step.rs:118
 /// `EngineSignal::ActionFailureUnhandled => run.mark_failed(step)`.
 pub proof fn proof_action_failure_unhandled_maps_to_failed()
-    ensures spec_signal_to_state(EngineSignal::ActionFailureUnhandled) == SpecStepState::Failed,
+    ensures
+        spec_signal_to_state(EngineSignal::ActionFailureUnhandled) == SpecStepState::Failed,
 {
 }
 
@@ -741,7 +746,8 @@ pub proof fn proof_noop_signals_correct()
 /// — the `_` payload wildcards confirm the state is determined by the
 /// discriminant alone, not the payload values.
 pub proof fn proof_finished_payload_independent()
-    ensures spec_signal_to_state(EngineSignal::Finished) == SpecStepState::Succeeded,
+    ensures
+        spec_signal_to_state(EngineSignal::Finished) == SpecStepState::Succeeded,
 {
 }
 
@@ -754,7 +760,6 @@ pub proof fn proof_finished_payload_independent()
 // `step_budget_try_take`. They exercise the production-bound exec
 // wrappers (mirrors of `StepBudget::new`, `::remaining`, `::MAX`,
 // `::try_take`) and verify the contracts hold.
-
 /// Production-bound: `step_budget_new(v).remaining == min(v, MAX)`.
 /// Spec-mode proof that discharges the spec-side characterization of
 /// `assume_specification[step_budget_new]`. The exec wrapper
@@ -792,7 +797,8 @@ pub open spec fn spec_new_remaining(value: u64) -> u64 {
 /// Spec-mode proof that discharges the spec-side characterization of
 /// `assume_specification[step_budget_max]`.
 pub proof fn proof_step_budget_max_is_max()
-    ensures spec_max_remaining() == SPEC_MAX_STEP_BUDGET,
+    ensures
+        spec_max_remaining() == SPEC_MAX_STEP_BUDGET,
 {
     // Pure spec-mode reasoning.
     assert(spec_max_remaining() == SPEC_MAX_STEP_BUDGET);
@@ -806,7 +812,8 @@ pub open spec fn spec_max_remaining() -> u64 {
 /// Production-bound: `step_budget_remaining` returns the underlying field.
 /// Spec-mode proof.
 pub proof fn proof_step_budget_remaining_returns_field(remaining: int)
-    ensures spec_remaining(remaining) == remaining,
+    ensures
+        spec_remaining(remaining) == remaining,
 {
     // Pure spec-mode reasoning.
     assert(spec_remaining(remaining) == remaining);
@@ -825,7 +832,8 @@ pub proof fn proof_step_budget_try_take_valid_range(initial: int)
     requires
         initial >= 0,
         initial <= SPEC_MAX_STEP_BUDGET,
-    ensures true,
+    ensures
+        true,
 {
     let result = spec_try_take_result(initial);
     // Pure spec-mode reasoning — each branch discharges the contract
@@ -869,15 +877,18 @@ pub open spec fn spec_try_take_decrement(remaining: int) -> int {
 /// returns `Err(StepCounterOverflow)`. Mirrors signals.rs:50-53
 /// defense-in-depth overflow guard. Spec-mode proof.
 pub proof fn proof_step_budget_try_take_overflow_guard(remaining: int)
-    requires remaining > SPEC_MAX_STEP_BUDGET,
-    ensures match spec_try_take_result(remaining) {
-        Err(SpecEngineError::StepCounterOverflow) => true,
-        _ => false,
-    },
+    requires
+        remaining > SPEC_MAX_STEP_BUDGET,
+    ensures
+        match spec_try_take_result(remaining) {
+            Err(SpecEngineError::StepCounterOverflow) => true,
+            _ => false,
+        },
 {
     // Pure spec-mode reasoning.
-    assert(spec_try_take_result(remaining)
-        == Err::<bool, SpecEngineError>(SpecEngineError::StepCounterOverflow));
+    assert(spec_try_take_result(remaining) == Err::<bool, SpecEngineError>(
+        SpecEngineError::StepCounterOverflow,
+    ));
 }
 
 // ============================================================================
@@ -885,12 +896,12 @@ pub proof fn proof_step_budget_try_take_overflow_guard(remaining: int)
 // the spec-mode contracts in the body. This is the binding between the
 // production exec surface (extern fns) and the spec-mode proof lemmas.
 // ============================================================================
-
 /// Production-bound exec wrapper for `step_budget_new`. Calls the
 /// production-mirror exec fn (signals.rs:26-35) and asserts the
 /// `assume_specification` contract in spec mode.
 pub exec fn checked_step_budget_new(value: u64) -> (budget: StepBudget)
-    ensures budget.remaining == spec_new_remaining(value),
+    ensures
+        budget.remaining == spec_new_remaining(value),
 {
     let b = step_budget_new(value);
     assert(b.remaining == spec_new_remaining(value));
@@ -899,7 +910,8 @@ pub exec fn checked_step_budget_new(value: u64) -> (budget: StepBudget)
 
 /// Production-bound exec wrapper for `step_budget_max`.
 pub exec fn checked_step_budget_max() -> (budget: StepBudget)
-    ensures budget.remaining == spec_max_remaining(),
+    ensures
+        budget.remaining == spec_max_remaining(),
 {
     let b = step_budget_max();
     assert(b.remaining == SPEC_MAX_STEP_BUDGET);
@@ -908,13 +920,15 @@ pub exec fn checked_step_budget_max() -> (budget: StepBudget)
 
 /// Production-bound exec wrapper for `step_budget_remaining`.
 pub exec fn checked_step_budget_remaining(budget: &StepBudget) -> (r: u64)
-    ensures r == spec_remaining(budget.remaining as int),
+    ensures
+        r == spec_remaining(budget.remaining as int),
 {
     let r = step_budget_remaining(budget);
     assert(r == budget.remaining);
     r
 }
 
-fn main() {}
+fn main() {
+}
 
 } // verus!

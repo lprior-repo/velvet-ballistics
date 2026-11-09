@@ -302,9 +302,7 @@ pub enum SpecCompileError {
     /// at `crates/vb_compile/src/mod_compile_errors/kind.rs:126`.
     /// The payload field is present structurally but the spec proofs
     /// do not inspect it.
-    StepIndexOutOfRange {
-        value: u64,
-    },
+    StepIndexOutOfRange { value: u64 },
 }
 
 /// Error discriminant constants for `SpecCollectOutcome::error_kind`.
@@ -472,7 +470,7 @@ pub fn lower_bounded_collect_projection(
                 advance_offset: 0,
                 done_offset: 0,
             };
-        }
+        },
     };
     let advance_n = match body_len.checked_add(1) {
         Some(value) => value,
@@ -487,7 +485,7 @@ pub fn lower_bounded_collect_projection(
                 advance_offset: 0,
                 done_offset: 0,
             };
-        }
+        },
     };
     let advance = match id.0.checked_add(advance_n) {
         Some(value) => value,
@@ -502,7 +500,7 @@ pub fn lower_bounded_collect_projection(
                 advance_offset: 0,
                 done_offset: 0,
             };
-        }
+        },
     };
     let done_n = match body_len.checked_add(2) {
         Some(value) => value,
@@ -517,7 +515,7 @@ pub fn lower_bounded_collect_projection(
                 advance_offset: 0,
                 done_offset: 0,
             };
-        }
+        },
     };
     let done = match id.0.checked_add(done_n) {
         Some(value) => value,
@@ -532,7 +530,7 @@ pub fn lower_bounded_collect_projection(
                 advance_offset: 0,
                 done_offset: 0,
             };
-        }
+        },
     };
     if pre_slot_count.checked_add(3).is_none() {
         return SpecCollectOutcome {
@@ -566,58 +564,60 @@ pub fn lower_bounded_collect_projection(
 /// handle for L1 (strict monotonicity), L3 (gap scaling with body
 /// length), and L4 (max valid start) properties.
 #[verifier::external]
-pub fn lower_bounded_collect_offsets(
-    id: StepIdx,
-    body_len: u16,
-) -> Result<(u16, u16, u16), SpecCompileError> {
+pub fn lower_bounded_collect_offsets(id: StepIdx, body_len: u16) -> Result<
+    (u16, u16, u16),
+    SpecCompileError,
+> {
     let body = match id.0.checked_add(1) {
         Some(value) => value,
         None => {
-            return Err(SpecCompileError::PrimitiveLoweringLimitExceeded {
-                primitive: "collect",
-                field: "body",
-                value: id.0 as u64,
-                limit: u16::MAX as u64,
-            });
-        }
+            return Err(
+                SpecCompileError::PrimitiveLoweringLimitExceeded {
+                    primitive: "collect",
+                    field: "body",
+                    value: id.0 as u64,
+                    limit: u16::MAX as u64,
+                },
+            );
+        },
     };
     let advance_n = match body_len.checked_add(1) {
         Some(value) => value,
         None => {
-            return Err(SpecCompileError::StepIndexOutOfRange {
-                value: body_len as u64,
-            });
-        }
+            return Err(SpecCompileError::StepIndexOutOfRange { value: body_len as u64 });
+        },
     };
     let advance = match id.0.checked_add(advance_n) {
         Some(value) => value,
         None => {
-            return Err(SpecCompileError::PrimitiveLoweringLimitExceeded {
-                primitive: "collect",
-                field: "page",
-                value: id.0 as u64,
-                limit: u16::MAX as u64,
-            });
-        }
+            return Err(
+                SpecCompileError::PrimitiveLoweringLimitExceeded {
+                    primitive: "collect",
+                    field: "page",
+                    value: id.0 as u64,
+                    limit: u16::MAX as u64,
+                },
+            );
+        },
     };
     let done_n = match body_len.checked_add(2) {
         Some(value) => value,
         None => {
-            return Err(SpecCompileError::StepIndexOutOfRange {
-                value: body_len as u64,
-            });
-        }
+            return Err(SpecCompileError::StepIndexOutOfRange { value: body_len as u64 });
+        },
     };
     let done = match id.0.checked_add(done_n) {
         Some(value) => value,
         None => {
-            return Err(SpecCompileError::PrimitiveLoweringLimitExceeded {
-                primitive: "collect",
-                field: "done",
-                value: id.0 as u64,
-                limit: u16::MAX as u64,
-            });
-        }
+            return Err(
+                SpecCompileError::PrimitiveLoweringLimitExceeded {
+                    primitive: "collect",
+                    field: "done",
+                    value: id.0 as u64,
+                    limit: u16::MAX as u64,
+                },
+            );
+        },
     };
     Ok((body, advance, done))
 }

@@ -24,7 +24,6 @@
 // `assume_specification` in the companion spec file. Drift between
 // the mirror and the production source is reported as binding-debt
 // outside Verus.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 

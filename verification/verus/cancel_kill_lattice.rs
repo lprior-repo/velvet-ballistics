@@ -4,7 +4,6 @@
 // Production mirror: `extern_cancel_kill_lattice.rs` ->
 // `production_inner/cancel_kill_lattice_production.rs`, bound to
 // `crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:127-174`.
-
 use vstd::prelude::*;
 
 verus! {
@@ -25,23 +24,43 @@ pub open spec fn command_is_allowed(s: production::Shard) -> bool {
 }
 
 pub open spec fn next_live(s: production::Shard) -> bool {
-    if command_is_allowed(s) { false } else { s.run_state_present }
+    if command_is_allowed(s) {
+        false
+    } else {
+        s.run_state_present
+    }
 }
 
 pub open spec fn next_terminal(s: production::Shard) -> bool {
-    if command_is_allowed(s) { true } else { s.terminal_runs_present }
+    if command_is_allowed(s) {
+        true
+    } else {
+        s.terminal_runs_present
+    }
 }
 
 pub open spec fn next_pending_timer(s: production::Shard) -> bool {
-    if live(s) { false } else { s.pending_timer_present }
+    if live(s) {
+        false
+    } else {
+        s.pending_timer_present
+    }
 }
 
 pub open spec fn next_terminal_event(s: production::Shard) -> bool {
-    if live(s) { true } else { s.terminal_event_emitted }
+    if live(s) {
+        true
+    } else {
+        s.terminal_event_emitted
+    }
 }
 
 pub open spec fn next_stale_authority(s: production::Shard) -> bool {
-    if command_is_allowed(s) { false } else { s.stale_authority_valid }
+    if command_is_allowed(s) {
+        false
+    } else {
+        s.stale_authority_valid
+    }
 }
 
 pub open spec fn lifecycle_invariant(s: production::Shard) -> bool {
@@ -83,10 +102,8 @@ pub assume_specification[ production::Shard::handle_kill ](
         final(shard).stale_authority_valid == next_stale_authority(*old(shard)),
 ;
 
-pub exec fn wrapper_cancel(
-    shard: &mut production::Shard,
-    run: production::RunId,
-) -> (r: production::RuntimeResult<()>)
+pub exec fn wrapper_cancel(shard: &mut production::Shard, run: production::RunId) -> (r:
+    production::RuntimeResult<()>)
     ensures
         final(shard).run_state_present == next_live(*old(shard)),
         final(shard).terminal_runs_present == next_terminal(*old(shard)),
@@ -96,10 +113,8 @@ pub exec fn wrapper_cancel(
     shard.handle_cancel(run, None)
 }
 
-pub exec fn wrapper_kill(
-    shard: &mut production::Shard,
-    run: production::RunId,
-) -> (r: production::RuntimeResult<()>)
+pub exec fn wrapper_kill(shard: &mut production::Shard, run: production::RunId) -> (r:
+    production::RuntimeResult<()>)
     ensures
         final(shard).run_state_present == next_live(*old(shard)),
         final(shard).terminal_runs_present == next_terminal(*old(shard)),
@@ -179,15 +194,17 @@ pub proof fn proof_cancel_then_kill_single_terminal_winner(s: production::Shard)
         !s.terminal_event_emitted,
     ensures
         next_terminal_event(s),
-        next_terminal_event(production::Shard {
-            run_state_present: next_live(s),
-            terminal_runs_present: next_terminal(s),
-            pending_timer_present: next_pending_timer(s),
-            terminal_event_emitted: next_terminal_event(s),
-            stale_authority_valid: next_stale_authority(s),
-            counters: s.counters,
-            trace_ring: s.trace_ring,
-        }) == next_terminal_event(s),
+        next_terminal_event(
+            production::Shard {
+                run_state_present: next_live(s),
+                terminal_runs_present: next_terminal(s),
+                pending_timer_present: next_pending_timer(s),
+                terminal_event_emitted: next_terminal_event(s),
+                stale_authority_valid: next_stale_authority(s),
+                counters: s.counters,
+                trace_ring: s.trace_ring,
+            },
+        ) == next_terminal_event(s),
 {
     let after_cancel = production::Shard {
         run_state_present: next_live(s),
@@ -202,6 +219,7 @@ pub proof fn proof_cancel_then_kill_single_terminal_winner(s: production::Shard)
     assert(next_terminal_event(after_cancel) == next_terminal_event(s)) by (compute);
 }
 
-fn main() {}
+fn main() {
+}
 
 } // verus!

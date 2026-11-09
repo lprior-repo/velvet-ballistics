@@ -55,7 +55,6 @@
 // `v1_primitive_lowering.rs` state the production behavior the spec
 // proofs discharge. Drift between the mirror and the production source
 // is reported as binding-debt tracked outside Verus.
-
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -100,7 +99,14 @@ fn prod_methods_drift_check(id: production_inner::StepIdx) {
     // Force resolution of every `lower_*_projection` exec fn by
     // invoking it with phantom arguments. The body is opaque to
     // Verus but the rustc compilation resolves the names.
-    let _ = production_inner::lower_set_projection(id, input_slot, production_inner::ConstIdx::new(0), false, 0, pre_slot_count);
+    let _ = production_inner::lower_set_projection(
+        id,
+        input_slot,
+        production_inner::ConstIdx::new(0),
+        false,
+        0,
+        pre_slot_count,
+    );
     let _ = production_inner::lower_do_projection(
         id,
         production_inner::ActionId::new(0),
@@ -147,7 +153,13 @@ fn prod_methods_drift_check(id: production_inner::StepIdx) {
         production_inner::WaitKind::Until { deadline: input_slot },
         pre_slot_count,
     );
-    let _ = production_inner::lower_ask_projection(id, input_slot, item_slot, false, pre_slot_count);
+    let _ = production_inner::lower_ask_projection(
+        id,
+        input_slot,
+        item_slot,
+        false,
+        pre_slot_count,
+    );
     let _ = production_inner::lower_finish_projection(id, input_slot, pre_slot_count);
 
     // Force resolution of the SpecLowerOutcome struct fields and the
@@ -165,7 +177,6 @@ fn prod_methods_drift_check(id: production_inner::StepIdx) {
 }
 
 } // verus!
-
 // Re-export the production types and exec wrappers so the spec file
 // can reference them via `crate::production::*`. The mirror module
 // is included inside `verus!` so the type declarations are nameable
