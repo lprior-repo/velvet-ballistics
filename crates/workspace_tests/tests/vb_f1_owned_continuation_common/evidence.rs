@@ -38,7 +38,18 @@ fn sequence(fixture: &Fixture, events: &[EvidenceEvent], after: bool) -> TestRes
     } else {
         &[0, 1, 2, 3, 1, 2, 3, 1, 2, 3]
     };
-    for (triple, raw) in events.chunks_exact(3).zip(expected) {
+    let mut triples = events.chunks_exact(3);
+    assert!(
+        triples.remainder().is_empty(),
+        "evidence events must form complete triples, got remainder: {:?}",
+        triples.remainder()
+    );
+    assert_eq!(
+        triples.len(),
+        expected.len(),
+        "evidence triple count must match expected steps"
+    );
+    for (triple, raw) in triples.zip(expected) {
         let step = StepIdx::new(*raw);
         let output = if step == NEXT {
             None
