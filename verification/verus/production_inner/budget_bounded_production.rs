@@ -12,7 +12,7 @@
 // production source:
 //
 //   1. Production `use thiserror::Error;` and `#[derive(... serde::Serialize,
-//      serde::Deserialize ...)]` at budget.rs:8 / :881 are NOT re-included.
+//      serde::Deserialize ...)]` at budget.rs:8 / aggregate.rs:10 are NOT re-included.
 //      The mirror uses a `#[derive(Clone, Copy, ...)]` subset that
 //      Verus 0.2026.05.05 can parse without proc-macro support. Field
 //      NAMES and TYPES match production byte-for-byte, so any drift
@@ -36,7 +36,7 @@
 //
 // DRIFT POLICY: This file MUST be regenerated from
 // `crates/vb_core/src/budget.rs` and its `budget/` submodules
-// (`usage.rs`, `loop_body.rs`) whenever production changes. The
+// (`usage.rs`, `loop_body.rs`, `aggregate.rs`, `aggregate_validate.rs`) whenever production changes. The
 // mirror is annotated at the top of every section with the
 // originating production line range so regeneration is mechanical.
 //
@@ -59,16 +59,16 @@
 //   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget.rs:534-592
 // Production `crates/vb_core/src/budget.rs:534-592`
 //   - `BudgetError`                          <- crates/vb_core/src/budget.rs:703-750
-//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget.rs:882-920
-// Production `crates/vb_core/src/budget.rs:882-920`
-//   - `AggregateResourceBudget::from_workflow`  <- crates/vb_core/src/budget.rs:1156-1167
+//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:9-49
+// Production `crates/vb_core/src/budget/aggregate.rs:9-49`
+//   - `AggregateResourceBudget::from_workflow`  <- crates/vb_core/src/budget/aggregate_validate.rs:12-23
 //   - `AggregateResourceBudget::from_whole_workflow_budget`
-//                                            <- crates/vb_core/src/budget.rs:1169-1203
-// Production `crates/vb_core/src/budget.rs:1169-1203`
-//   - `AggregateResourceCapacity`            <- crates/vb_core/src/budget.rs:924-965
-// Production `crates/vb_core/src/budget.rs:924-965`
-//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget.rs:969-1003
-// Production `crates/vb_core/src/budget.rs:969-1003`
+//                                            <- crates/vb_core/src/budget/aggregate_validate.rs:25-59
+// Production `crates/vb_core/src/budget/aggregate_validate.rs:25-59`
+//   - `AggregateResourceCapacity`            <- crates/vb_core/src/budget/aggregate.rs:51-94
+// Production `crates/vb_core/src/budget/aggregate.rs:51-94`
+//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:96-132
+// Production `crates/vb_core/src/budget/aggregate.rs:96-132`
 //   - `AggregateResourceUsage::try_add_budget`
 //                                            <- crates/vb_core/src/budget/usage.rs:11-125
 // Production `crates/vb_core/src/budget/usage.rs:11-125`
@@ -79,11 +79,11 @@
 // Production `crates/vb_core/src/budget/usage.rs:243-372`
 //   - `AggregateResourceUsage::check_policy` <- crates/vb_core/src/budget/usage.rs:377-468
 // Production `crates/vb_core/src/budget/usage.rs:377-468`
-//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget.rs:1256-1390
-// Production `crates/vb_core/src/budget.rs:1256-1390`
-//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:1396-1431
-//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:1433-1451
-// Production `crates/vb_core/src/budget.rs:1433-1451`
+//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:109-243
+// Production `crates/vb_core/src/budget/aggregate_validate.rs:109-243`
+//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:893-928
+//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:930-948
+// Production `crates/vb_core/src/budget.rs:930-948`
 //                                            (pure checked_add / checked_sub;
 //                                             these are the pure decision fns
 //                                             we exercise via `assume_specification`)
@@ -421,12 +421,12 @@ pub enum BudgetError {
 // Aggregate resource types — production mirror
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget.rs:882-1148`. These types are the
+// Mirror of `crates/vb_core/src/budget/aggregate.rs:9-282`. These types are the
 // runtime-admission surface that the boundedness policy validates
 // against.
 
 /// Mirror of production `AggregateResourceBudget` at
-/// `crates/vb_core/src/budget.rs:882-920`.
+/// `crates/vb_core/src/budget/aggregate.rs:9-49`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct AggregateResourceBudget {
     pub max_steps_executable: u32,
@@ -460,7 +460,7 @@ pub struct AggregateResourceBudget {
 }
 
 /// Mirror of production `AggregateResourceCapacity` at
-/// `crates/vb_core/src/budget.rs:924-965`.
+/// `crates/vb_core/src/budget/aggregate.rs:51-94`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct AggregateResourceCapacity {
     pub max_steps_executable: u64,
@@ -492,7 +492,7 @@ pub struct AggregateResourceCapacity {
 }
 
 /// Mirror of production `AggregateResourceUsage` at
-/// `crates/vb_core/src/budget.rs:969-1003`.
+/// `crates/vb_core/src/budget/aggregate.rs:96-132`.
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub struct AggregateResourceUsage {
     pub max_steps_executable: u64,
@@ -525,10 +525,10 @@ pub struct AggregateResourceUsage {
 // AggregateBudgetError — production mirror (restricted variants)
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget.rs:1082-1151`.
+// Mirror of `crates/vb_core/src/budget/aggregate.rs:205-277`.
 
 /// Mirror of production `AggregateBudgetError` at
-/// `crates/vb_core/src/budget.rs:1082-1151`. All 9 production variants
+/// `crates/vb_core/src/budget/aggregate.rs:205-277`. All 9 production variants
 /// are mirrored.
 #[derive(Clone, Copy)]
 pub enum AggregateBudgetError {
@@ -597,7 +597,7 @@ pub fn boundedness_policy_validate(
 }
 
 /// Production wrapper for `validate_aggregate_budget` at
-/// `crates/vb_core/src/budget.rs:1256-1390`. Body skipped by Verus.
+/// `crates/vb_core/src/budget/aggregate_validate.rs:109-243`. Body skipped by Verus.
 #[verifier::external]
 pub fn validate_aggregate_budget(
     budget: &AggregateResourceBudget,
@@ -610,7 +610,7 @@ pub fn validate_aggregate_budget(
 }
 
 /// Production wrapper for `validate_step_ceilings` at
-/// `crates/vb_core/src/budget.rs:1396-1431`. Body is a faithful copy
+/// `crates/vb_core/src/budget.rs:893-928`. Body is a faithful copy
 /// of the production body; the local hard-limit constants are part
 /// of that body. Body skipped by Verus.
 #[verifier::external]
@@ -650,7 +650,7 @@ pub fn validate_step_ceilings(
 }
 
 /// Production wrapper for `add_dim` at
-/// `crates/vb_core/src/budget.rs:1433-1441`. Pure checked_add — this
+/// `crates/vb_core/src/budget.rs:930-938`. Pure checked_add — this
 /// is a pure decision fn and the spec attaches an `assume_specification`
 /// contract in `budget_bounded.rs`.
 #[verifier::external]
@@ -665,7 +665,7 @@ pub fn add_dim(
 }
 
 /// Production wrapper for `sub_dim` at
-/// `crates/vb_core/src/budget.rs:1443-1451`. Pure checked_sub — pure
+/// `crates/vb_core/src/budget.rs:940-948`. Pure checked_sub — pure
 /// decision fn with `assume_specification` contract in the spec.
 #[verifier::external]
 pub fn sub_dim(
