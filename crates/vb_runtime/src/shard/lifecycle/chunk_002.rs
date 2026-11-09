@@ -142,17 +142,16 @@ impl Shard {
             return self.fail_command_run_on_journal_budget(run);
         }
         let mut state = self.take_run_state(run)?;
-        let timer = match self.pending_timer_remove(run) {
-            Some(timer) => timer,
-            None => {
-                self.run_state_insert(run, state)?;
-                return Err(RuntimeError::InvalidTimerFire);
-            }
+        let Some(timer) = self.pending_timer_remove(run) else {
+            self.run_state_insert(run, state)?;
+            return Err(RuntimeError::InvalidTimerFire);
         };
         crate::shard::helpers::advance_after_timer_fire(&mut state, timer)?;
         let rollback_state = state.clone();
         let mut evidence = EvidenceCollector::new();
-        let result = Self::drive_state(&mut state, self.step_budget_per_tick, &mut evidence);
+        let gates = self.open_gate_count_for(run);
+        let result =
+            Self::drive_state(&mut state, self.step_budget_per_tick, gates, &mut evidence);
         match self.apply_drive_result(run, state, result, &mut evidence) {
             Ok(()) => Ok(()),
             Err(DriveApplyFailure::BeforeCommit(error)) => {
@@ -251,7 +250,9 @@ impl Shard {
         let mut state = self.take_run_state(run)?;
         let rollback_state = state.clone();
         let mut evidence = EvidenceCollector::new();
-        let result = Self::drive_state(&mut state, self.step_budget_per_tick, &mut evidence);
+        let gates = self.open_gate_count_for(run);
+        let result =
+            Self::drive_state(&mut state, self.step_budget_per_tick, gates, &mut evidence);
         match self.apply_drive_result(run, state, result, &mut evidence) {
             Ok(()) => Ok(()),
             Err(DriveApplyFailure::BeforeCommit(error)) => {

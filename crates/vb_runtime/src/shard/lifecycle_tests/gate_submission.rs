@@ -520,6 +520,31 @@ fn submit_approve_resumes_run() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn open_gate_count_for_tracks_open_and_approved_gate() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(92008);
+    let (mut shard, _journal) = make_running_shard(run)?;
+
+    assert_eq!(
+        shard.open_gate_count_for(run),
+        0,
+        "no gate must be counted before opening"
+    );
+    open_test_gate(&mut shard, run, 7)?;
+    assert_eq!(
+        shard.open_gate_count_for(run),
+        1,
+        "one gate must be counted after opening"
+    );
+    let _record = shard.submit_gate_decision(test_input(7, GateDecision::Approve))?;
+    assert_eq!(
+        shard.open_gate_count_for(run),
+        0,
+        "no gate must be counted after approval"
+    );
+    Ok(())
+}
+
+#[test]
 fn submit_deny_fails_run() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(92007);
     let (mut shard, journal) = make_running_shard(run)?;

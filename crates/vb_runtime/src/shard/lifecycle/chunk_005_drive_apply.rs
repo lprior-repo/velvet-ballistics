@@ -1,7 +1,11 @@
 impl Shard {
+    /// Drives one run state forward by one tick. `manual_open_gates` is the
+    /// count of operator-opened manual gates for the run, supplied by the
+    /// caller from the shard registry because this function is static.
     fn drive_state(
         state: &mut RunState,
         step_budget_per_tick: u64,
+        manual_open_gates: u64,
         evidence: &mut EvidenceCollector,
     ) -> RuntimeEngineResult<RuntimeSignal> {
         let mut budget = Self::transition_tick_budget(state, step_budget_per_tick)?;
@@ -24,7 +28,7 @@ impl Shard {
             state.run_attempt.get(),
         )?;
         Self::check_run_time_budget(state)?;
-        Self::check_suspension_budgets(state)?;
+        Self::check_suspension_budgets(state, manual_open_gates)?;
         Self::check_value_store_budget(state)?;
         Self::check_cost_budget(state, &signal)?;
         Self::check_action_ticket_budget(state, &signal)?;
@@ -111,7 +115,10 @@ impl Shard {
         Ok(())
     }
 
-    fn check_suspension_budgets(state: &RunState) -> RuntimeEngineResult<()> {
+    fn check_suspension_budgets(
+        state: &RunState,
+        manual_open_gates: u64,
+    ) -> RuntimeEngineResult<()> {
         let Some(admission) = state.admission.as_ref() else {
             return Ok(());
         };
@@ -142,7 +149,7 @@ impl Shard {
                 signal_subscriptions = signal_subscriptions.saturating_add(1);
             }
         }
-        if open_gates > u64::from(budget.max_open_gates) {
+        if open_gates.saturating_add(manual_open_gates) > u64::from(budget.max_open_gates) {
             return Err(crate::engine::types::RuntimeEngineError::Core(
                 vb_core::engine::EngineError::BudgetExceeded {
                     budget: "open_gates",
