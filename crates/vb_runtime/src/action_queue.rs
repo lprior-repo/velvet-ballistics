@@ -915,3 +915,7 @@ mod unit_tests {
         assert_eq!(outcome, BackpressureWarningOutcome::NotSent);
     }
 }
+
+#[cfg(test)]
+#[path = "action_queue/tests/bounded_queue_tests.rs"]
+mod bounded_queue_tests;

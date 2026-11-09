@@ -3,13 +3,13 @@
 //! These tests verify the BoundedActionCompletionQueue behavior through
 //! its public API. They test all BDD scenarios from the LETHAL-5 test plan.
 //!
-//! # Test count: 45+ unit-style integration tests
+//! # Test count: 64 unit-style integration tests
 //! # Coverage: enqueue, dequeue, backpressure, capacity tracking, drain, boundaries
 
+use crate::action_queue::BoundedActionCompletionQueue;
+use crate::action_queue::{ActionQueueCapacity, ActionQueueError, InvalidActionQueueCapacity};
 use vb_core::action::ActionTicket;
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
-use vb_runtime::action_queue::ActionQueueError;
-use vb_runtime::action_queue::BoundedActionCompletionQueue;
 
 // =============================================================================
 // Test fixtures
@@ -19,11 +19,13 @@ fn make_ticket(seq: u32) -> ActionTicket {
     ActionTicket {
         run: RunId::new(1),
         step: StepIdx::new(0),
-        seq: SeqNo::new(seq),
+        seq: SeqNo::new(u64::from(seq)),
         action: ActionId::new(1),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: seq as u128,
         capacity: 1,
+        fencing_token: 0,
     }
 }
 
@@ -31,11 +33,13 @@ fn make_ticket_with_action(seq: u32, action: u16) -> ActionTicket {
     ActionTicket {
         run: RunId::new(1),
         step: StepIdx::new(0),
-        seq: SeqNo::new(seq),
+        seq: SeqNo::new(u64::from(seq)),
         action: ActionId::new(action),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: seq as u128,
         capacity: 1,
+        fencing_token: 0,
     }
 }
 
@@ -68,7 +72,13 @@ fn bounded_action_queue_new_with_zero_capacity_returns_invalid_capacity_error() 
     // When: BoundedActionCompletionQueue::new(0).unwrap() is called
     // Then: Returns Err(ActionQueueError::InvalidCapacity)
     let result = BoundedActionCompletionQueue::new(0);
-    assert_eq!(result, Err(ActionQueueError::InvalidCapacity));
+    assert_eq!(
+        result.unwrap_err(),
+        ActionQueueError::InvalidCapacity {
+            requested: 0,
+            reason: InvalidActionQueueCapacity::Zero
+        }
+    );
 }
 
 #[test]
@@ -144,7 +154,7 @@ fn bounded_action_queue_len_increments_per_enqueue() {
     let queue = BoundedActionCompletionQueue::new(10).unwrap();
     for i in 0..3 {
         assert_eq!(queue.len(), i);
-        queue.enqueue(make_ticket(i)).unwrap();
+        queue.enqueue(make_ticket(i as u32)).unwrap();
         assert_eq!(queue.len(), i + 1);
     }
 }
@@ -164,8 +174,13 @@ fn bounded_action_queue_returns_queue_full_error_when_enqueue_at_capacity() {
     assert_eq!(queue.len(), 3);
     // When: A 4th action completion is enqueued
     let result = queue.enqueue(make_ticket(100));
-    // Then: Returns Err(ActionQueueError::QueueFull { capacity: 3 })
-    assert_eq!(result, Err(ActionQueueError::QueueFull { capacity: 3 }));
+    // Then: Returns Err(ActionQueueError::QueueFull { capacity: ActionQueueCapacity::new_unchecked(3) })
+    assert_eq!(
+        result,
+        Err(ActionQueueError::QueueFull {
+            capacity: ActionQueueCapacity::new_unchecked(3)
+        })
+    );
     // And: Queue length remains 3
     assert_eq!(queue.len(), 3);
 }
@@ -179,8 +194,13 @@ fn bounded_action_queue_returns_queue_full_error_when_enqueue_single_element_at_
     assert_eq!(queue.len(), 1);
     // When: A 2nd action completion is enqueued
     let result = queue.enqueue(make_ticket(1));
-    // Then: Returns Err(ActionQueueError::QueueFull { capacity: 1 })
-    assert_eq!(result, Err(ActionQueueError::QueueFull { capacity: 1 }));
+    // Then: Returns Err(ActionQueueError::QueueFull { capacity: ActionQueueCapacity::new_unchecked(1) })
+    assert_eq!(
+        result,
+        Err(ActionQueueError::QueueFull {
+            capacity: ActionQueueCapacity::new_unchecked(1)
+        })
+    );
 }
 
 #[test]
@@ -189,7 +209,12 @@ fn bounded_action_queue_enqueue_past_capacity_returns_queue_full_error() {
     queue.enqueue(make_ticket(0)).unwrap();
     queue.enqueue(make_ticket(1)).unwrap();
     let result = queue.enqueue(make_ticket(2));
-    assert_eq!(result, Err(ActionQueueError::QueueFull { capacity: 2 }));
+    assert_eq!(
+        result,
+        Err(ActionQueueError::QueueFull {
+            capacity: ActionQueueCapacity::new_unchecked(2)
+        })
+    );
     assert_eq!(queue.len(), 2);
 }
 
@@ -202,7 +227,7 @@ fn bounded_action_queue_queue_full_error_contains_correct_capacity() {
     let result = queue.enqueue(make_ticket(99));
     match result {
         Err(ActionQueueError::QueueFull { capacity }) => {
-            assert_eq!(capacity, 7);
+            assert_eq!(capacity.get(), 7);
         }
         other => panic!("expected QueueFull {{ capacity: 7 }}, got {:?}", other),
     }
@@ -248,10 +273,10 @@ fn bounded_action_queue_dequeue_decrements_len() {
     queue.enqueue(make_ticket(1)).unwrap();
     assert_eq!(queue.len(), 2);
 
-    queue.dequeue();
+    assert!(queue.dequeue().is_some());
     assert_eq!(queue.len(), 1);
 
-    queue.dequeue();
+    assert!(queue.dequeue().is_some());
     assert_eq!(queue.len(), 0);
 }
 
@@ -311,8 +336,8 @@ fn bounded_action_queue_is_empty_true_after_drain() {
     let queue = BoundedActionCompletionQueue::new(3).unwrap();
     queue.enqueue(make_ticket(0)).unwrap();
     queue.enqueue(make_ticket(1)).unwrap();
-    queue.dequeue();
-    queue.dequeue();
+    assert!(queue.dequeue().is_some());
+    assert!(queue.dequeue().is_some());
     assert!(queue.is_empty());
 }
 
@@ -396,7 +421,7 @@ fn bounded_action_queue_remaining_capacity_increments_after_dequeue() {
     queue.enqueue(make_ticket(1)).unwrap();
     queue.enqueue(make_ticket(2)).unwrap();
     // When: 1 action completion is dequeued
-    queue.dequeue();
+    assert!(queue.dequeue().is_some());
     // Then: remaining_capacity() returns 6
     assert_eq!(queue.remaining_capacity(), 6);
 }
@@ -416,8 +441,8 @@ fn bounded_action_queue_remaining_capacity_after_drain_equals_capacity() {
     let queue = BoundedActionCompletionQueue::new(5).unwrap();
     queue.enqueue(make_ticket(0)).unwrap();
     queue.enqueue(make_ticket(1)).unwrap();
-    queue.dequeue();
-    queue.dequeue();
+    assert!(queue.dequeue().is_some());
+    assert!(queue.dequeue().is_some());
     assert_eq!(queue.remaining_capacity(), 5);
 }
 
@@ -548,11 +573,11 @@ fn bounded_action_queue_len_is_zero_after_draining_all_items() {
         queue.enqueue(make_ticket(i)).unwrap();
     }
     // When: All 5 action completions are dequeued in FIFO order
-    queue.dequeue();
-    queue.dequeue();
-    queue.dequeue();
-    queue.dequeue();
-    queue.dequeue();
+    assert!(queue.dequeue().is_some());
+    assert!(queue.dequeue().is_some());
+    assert!(queue.dequeue().is_some());
+    assert!(queue.dequeue().is_some());
+    assert!(queue.dequeue().is_some());
     // Then: Queue length is 0
     assert_eq!(queue.len(), 0);
     // And: is_empty() returns true
@@ -565,7 +590,7 @@ fn bounded_action_queue_len_is_zero_after_draining_all_items() {
 fn bounded_action_queue_dequeue_returns_none_after_empty() {
     let queue = BoundedActionCompletionQueue::new(3).unwrap();
     queue.enqueue(make_ticket(0)).unwrap();
-    queue.dequeue();
+    assert!(queue.dequeue().is_some());
     let result = queue.dequeue();
     assert_eq!(result, None);
 }
@@ -617,7 +642,12 @@ fn bounded_action_queue_capacity_one_enqueue_second_fails() {
     let queue = BoundedActionCompletionQueue::new(1).unwrap();
     queue.enqueue(make_ticket(0)).unwrap();
     let result = queue.enqueue(make_ticket(1));
-    assert_eq!(result, Err(ActionQueueError::QueueFull { capacity: 1 }));
+    assert_eq!(
+        result,
+        Err(ActionQueueError::QueueFull {
+            capacity: ActionQueueCapacity::new_unchecked(1)
+        })
+    );
 }
 
 #[test]
@@ -702,7 +732,7 @@ fn bounded_action_queue_invariant_len_plus_remaining_equals_capacity_after_deque
     let queue = BoundedActionCompletionQueue::new(7).unwrap();
     queue.enqueue(make_ticket(0)).unwrap();
     queue.enqueue(make_ticket(1)).unwrap();
-    queue.dequeue();
+    assert!(queue.dequeue().is_some());
     assert_eq!(queue.len() + queue.remaining_capacity(), 7);
 }
 
@@ -731,21 +761,31 @@ fn bounded_action_queue_invariant_len_plus_remaining_equals_capacity_after_drain
 
 #[test]
 fn action_queue_error_queue_full_eq_when_same_capacity() {
-    let e1 = ActionQueueError::QueueFull { capacity: 5 };
-    let e2 = ActionQueueError::QueueFull { capacity: 5 };
+    let e1 = ActionQueueError::QueueFull {
+        capacity: ActionQueueCapacity::new_unchecked(5),
+    };
+    let e2 = ActionQueueError::QueueFull {
+        capacity: ActionQueueCapacity::new_unchecked(5),
+    };
     assert_eq!(e1, e2);
 }
 
 #[test]
 fn action_queue_error_queue_full_neq_when_different_capacity() {
-    let e1 = ActionQueueError::QueueFull { capacity: 5 };
-    let e2 = ActionQueueError::QueueFull { capacity: 7 };
+    let e1 = ActionQueueError::QueueFull {
+        capacity: ActionQueueCapacity::new_unchecked(5),
+    };
+    let e2 = ActionQueueError::QueueFull {
+        capacity: ActionQueueCapacity::new_unchecked(7),
+    };
     assert_ne!(e1, e2);
 }
 
 #[test]
 fn action_queue_error_queue_full_debug_contains_capacity() {
-    let e = ActionQueueError::QueueFull { capacity: 3 };
+    let e = ActionQueueError::QueueFull {
+        capacity: ActionQueueCapacity::new_unchecked(3),
+    };
     let debug = format!("{:?}", e);
     assert!(debug.contains("3"));
     assert!(debug.contains("QueueFull"));
@@ -776,7 +816,7 @@ fn bounded_action_queue_enqueue_dequeue_roundtrip_multiple_items() {
     for i in 0..5 {
         let dequeued = queue.dequeue();
         assert!(dequeued.is_some());
-        assert_eq!(dequeued.unwrap().seq.get(), i as u32);
+        assert_eq!(dequeued.unwrap().seq.get(), i as u64);
     }
 
     assert!(queue.is_empty());
@@ -819,7 +859,12 @@ fn bounded_action_queue_many_items_at_capacity() {
 
     // Verify no more can be added
     let result = queue.enqueue(make_ticket(999));
-    assert_eq!(result, Err(ActionQueueError::QueueFull { capacity: 100 }));
+    assert_eq!(
+        result,
+        Err(ActionQueueError::QueueFull {
+            capacity: ActionQueueCapacity::new_unchecked(100)
+        })
+    );
 }
 
 #[test]
@@ -839,7 +884,10 @@ fn bounded_action_queue_interleaved_enqueue_dequeue() {
     queue.enqueue(make_ticket(5)).unwrap();
     assert_eq!(queue.dequeue().map(|t| t.seq.get()), Some(3));
 
-    // At capacity now
+    // Two items remain (seq 4, 5); fill the three free slots to reach capacity.
+    queue.enqueue(make_ticket(6)).unwrap();
+    queue.enqueue(make_ticket(7)).unwrap();
+    queue.enqueue(make_ticket(8)).unwrap();
     assert!(queue.is_full());
-    queue.enqueue(make_ticket(6)).unwrap_err(); // Should fail
+    queue.enqueue(make_ticket(9)).unwrap_err(); // Should fail
 }
