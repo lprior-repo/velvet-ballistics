@@ -2827,3 +2827,9 @@ impl RunState {
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod proptest_collect_budget;
+
+#[cfg(test)]
+mod proptest_collect_traversal;
