@@ -3,10 +3,11 @@ use proptest::prelude::{ProptestConfig, *};
 const BUDGET_RS: &str = include_str!("../src/budget.rs");
 // The aggregate budget implementation is split across `budget.rs` and
 // its `budget/` submodules; the checked add/subtract impls moved to
-// `budget/usage.rs` in the source-length split series, so the shell
+// `budget/usage_arith.rs` in the source-length split series, so the shell
 // alone no longer contains `try_add_budget`. Concatenate the submodule
 // so the proptest sees the same surface the production binary sees.
 const BUDGET_USAGE_RS: &str = include_str!("../src/budget/usage.rs");
+const BUDGET_USAGE_ARITH_RS: &str = include_str!("../src/budget/usage_arith.rs");
 // The aggregate budget types and validation moved to
 // `budget/aggregate.rs` and `budget/aggregate_validate.rs` in the
 // source-length split series, so the shell alone no longer contains
@@ -62,6 +63,8 @@ fn budget_production_surface() -> String {
     let mut s = String::from(BUDGET_RS);
     s.push('\n');
     s.push_str(BUDGET_USAGE_RS);
+    s.push('\n');
+    s.push_str(BUDGET_USAGE_ARITH_RS);
     s.push('\n');
     s.push_str(BUDGET_AGGREGATE_RS);
     s.push('\n');
