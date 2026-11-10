@@ -7,7 +7,7 @@
 //   - vb_runtime::admission::REQUIRED_GATE_COUNT (u8 = 15)
 //     at crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2
 //   - vb_storage::admission::submit_artifact_with_contracts strict-policy
-//     branch (crates/vb_storage/src/admission.rs:354-374)
+//     branch (crates/vb_storage/src/admission.rs:92-112)
 //
 // The `#[path]` import below binds this spec file to a thin in-tree
 // `production_inner/accepted_envelope_production.rs` mirror that exposes

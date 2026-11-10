@@ -14,7 +14,7 @@
 //
 // Production sources mirrored:
 //   - `vb_storage::admission::verification_proof_core`
-//                                                 (crates/vb_storage/src/admission.rs:113-128)
+//                                                 (crates/vb_storage/src/admission/proof.rs:103-118)
 //   - `vb_storage::admission::prepare_with_profile` proof construction
 //                                                 (crates/vb_storage/src/admission/verification.rs:35-38)
 //   - `vb_storage::admission::verify_accepted_artifact` enforcement
@@ -28,7 +28,7 @@
 //
 // There is no production `is_strict_accepted` decision fn and no
 // strict-policy gate validation in `submit_artifact_with_contracts`
-// (crates/vb_storage/src/admission.rs:354-374 performs no gate-count
+// (crates/vb_storage/src/admission.rs:92-112 performs no gate-count
 // or proof-flag check). The shape below is the decision production
 // actually enforces, by recompute-and-compare, with every deviation
 // rejected as `ArtifactEvidenceInvalid`.
@@ -84,7 +84,7 @@ pub enum ArtifactEnvelopeErrorKind {
 
 // Prepared gate count: the gate_count `verification_proof_core`
 // forces for every admitted artifact
-// (crates/vb_storage/src/admission.rs:113-128). `REQUIRED_GATE_COUNT`
+// (crates/vb_storage/src/admission/proof.rs:103-118). `REQUIRED_GATE_COUNT`
 // above mirrors the real `vb_runtime` constant (= 15) naming the
 // legacy fixture count; it is NOT the count admission requires.
 pub const PREPARED_GATE_COUNT: u8 = 0;
@@ -95,14 +95,14 @@ pub const PREPARED_GATE_COUNT: u8 = 0;
 //
 // Mirrors the prepared-proof shape production constructs for every
 // admitted artifact: `verification_proof_core` at
-// `crates/vb_storage/src/admission.rs:113-128` forces gate_count 0,
+// `crates/vb_storage/src/admission/proof.rs:103-118` forces gate_count 0,
 // durable false, and every proof flag false (supplied counts and
 // durability are intentionally ignored by `VerificationProof::new` at
-// admission.rs:135-151), and `prepare_with_profile` at
+// admission/proof.rs:125-141), and `prepare_with_profile` at
 // `crates/vb_storage/src/admission/verification.rs:35-38` then sets
 // exactly `bounded_claimed` and `idempotency_verified_claimed` true
 // and leaves the idempotency attestation empty.
-// `submit_artifact_with_contracts` (admission.rs:354-374) performs no
+// `submit_artifact_with_contracts` (admission.rs:92-112) performs no
 // gate-count or proof-flag validation of its own; the shape is
 // enforced by `verify_accepted_artifact` at
 // `crates/vb_storage/src/admission/verification.rs:56-86`, which

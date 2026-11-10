@@ -13,10 +13,10 @@
 //     (u8 = 15). The constant names the legacy fixture count; it is NOT an
 //     admission requirement.
 //   - VerificationProof::new mirrors `vb_storage::admission::VerificationProof::new`
-//     at crates/vb_storage/src/admission.rs:135-151: supplied counts and
+//     at crates/vb_storage/src/admission/proof.rs:125-141: supplied counts and
 //     durability are ignored, and `verification_proof_core` forces
 //     gate_count 0, durable false, every proof flag false
-//     (crates/vb_storage/src/admission.rs:113-128).
+//     (crates/vb_storage/src/admission/proof.rs:103-118).
 //   - prepare_with_profile mirrors
 //     `vb_storage::admission::prepare_with_profile` at
 //     crates/vb_storage/src/admission/verification.rs:35-38: sets exactly
@@ -24,7 +24,7 @@
 //     idempotency attestation empty.
 //   - submit_artifact_with_contracts mirrors
 //     `vb_storage::admission::submit_artifact_with_contracts` at
-//     crates/vb_storage/src/admission.rs:354-374: prepares, issues, and
+//     crates/vb_storage/src/admission.rs:92-112: prepares, issues, and
 //     readback-verifies. It performs no gate-count or proof-flag validation.
 //   - verify_accepted_artifact mirrors
 //     `vb_storage::admission::verify_accepted_artifact` at
@@ -56,7 +56,7 @@ mod production;
 
 // ============================================================
 // Spec mirror of the prepared gate count (mirrors the gate_count
-// `verification_proof_core` forces, crates/vb_storage/src/admission.rs:113-128)
+// `verification_proof_core` forces, crates/vb_storage/src/admission/proof.rs:103-118)
 // ============================================================
 // Prepared gate count for v1 accepted artifacts. Every artifact
 // `prepare_with_profile` constructs carries gate_count 0; the legacy
@@ -72,7 +72,7 @@ pub open spec fn PREPARED_GATE_COUNT() -> int {
 // Production decision fn: proof_matches_prepared_shape models the
 // prepared-proof shape production constructs for every admitted
 // artifact: `verification_proof_core`
-// (crates/vb_storage/src/admission.rs:113-128) forces gate_count 0,
+// (crates/vb_storage/src/admission/proof.rs:103-118) forces gate_count 0,
 // durable false, and every proof flag false, and
 // `prepare_with_profile`
 // (crates/vb_storage/src/admission/verification.rs:35-38) then sets
@@ -132,7 +132,7 @@ pub fn proof_matches_prepared_shape(
 // Bridge: production `proof_matches_prepared_shape` returns Ok(()) iff
 // all 9 inputs satisfy the spec-side predicate. Mirrors the
 // prepared-proof shape: `verification_proof_core` at
-// `crates/vb_storage/src/admission.rs:113-128` plus the flag
+// `crates/vb_storage/src/admission/proof.rs:103-118` plus the flag
 // assignments in `prepare_with_profile` at
 // `crates/vb_storage/src/admission/verification.rs:35-38`, enforced by
 // `verify_accepted_artifact` at

@@ -12,7 +12,7 @@
 //   - Required gate count mirrors `vb_runtime::admission::REQUIRED_GATE_COUNT` (= 15)
 //     at crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2.
 //     Production constructs gate_count 0, not 15: `verification_proof_core`
-//     (crates/vb_storage/src/admission.rs:113-128) forces gate_count 0,
+//     (crates/vb_storage/src/admission/proof.rs:103-118) forces gate_count 0,
 //     durable false, and all flags false; `prepare_with_profile`
 //     (crates/vb_storage/src/admission/verification.rs:26-52) sets only
 //     bounded_claimed and idempotency_verified_claimed true. The 15-gate
@@ -24,7 +24,7 @@
 //     `vb_runtime::admission::RunAdmission::new` at
 //     crates/vb_runtime/src/admission/parts/chunk_002_records.rs:49-66.
 //   - `vb_storage::admission::submit_artifact_with_contracts` at
-//     crates/vb_storage/src/admission.rs:354-374 performs no gate/flag
+//     crates/vb_storage/src/admission.rs:92-112 performs no gate/flag
 //     validation; `verify_accepted_artifact`
 //     (crates/vb_storage/src/admission/verification.rs:56-86) enforces the
 //     prepared shape by recompute-and-compare, any deviation returned as
@@ -262,7 +262,7 @@ pub enum SpecAdmissionOutcome {
 
 // `REQUIRED_GATE_COUNT` (= 15) names the legacy fixture count; it is NOT
 // the count admission requires. Production constructs gate_count 0
-// (`verification_proof_core`, crates/vb_storage/src/admission.rs:113-128).
+// (`verification_proof_core`, crates/vb_storage/src/admission/proof.rs:103-118).
 pub const PREPARED_GATE_COUNT: u8 = 0;
 
 // Prepared-proof gate-count decision. Production constructs gate_count 0;

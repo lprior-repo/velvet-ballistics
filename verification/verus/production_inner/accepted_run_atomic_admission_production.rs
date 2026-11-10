@@ -11,12 +11,12 @@
 //   - `vb_runtime::admission::REQUIRED_GATE_COUNT` (= 15)
 //     (crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2)
 //   - `vb_storage::admission::submit_artifact_with_contracts`
-//     (crates/vb_storage/src/admission.rs:354-374)
+//     (crates/vb_storage/src/admission.rs:92-112)
 //
 // The 15-gate shape is NOT what production constructs or validates:
 // `submit_artifact_with_contracts` performs no gate/flag validation.
 // The prepared proof is built by `verification_proof_core`
-// (crates/vb_storage/src/admission.rs:113-128), which forces
+// (crates/vb_storage/src/admission/proof.rs:103-118), which forces
 // gate_count 0, durable false, and all flags false, and by
 // `prepare_with_profile`
 // (crates/vb_storage/src/admission/verification.rs:26-52), which sets
@@ -32,12 +32,12 @@
 // which builds the legacy 15-gate/all-true shape with Unverified
 // evidence; real validation rejects it.
 //
-// DRIFT POLICY: `crates/vb_storage/src/admission.rs:354-374`
+// DRIFT POLICY: `crates/vb_storage/src/admission.rs:92-112`
 // Production source coverage:
 //   - `REQUIRED_GATE_COUNT` (= 15)
 //     <- crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2
 //   - `submit_artifact_with_contracts`
-//     <- crates/vb_storage/src/admission.rs:354-374
+//     <- crates/vb_storage/src/admission.rs:92-112
 // Regenerate this file whenever production changes. Any rename of
 // `PayloadTag::AcceptedArtifact` or body change in the submit path
 // breaks the `extern_run_atomic_admission` Verus build.
@@ -49,7 +49,7 @@
 // crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2
 // names the legacy fixture count; it is NOT the count production
 // constructs. The prepared gate count is 0, forced by
-// `verification_proof_core` at crates/vb_storage/src/admission.rs:113-128.
+// `verification_proof_core` at crates/vb_storage/src/admission/proof.rs:103-118.
 // The literal `0` is inlined in the function body below to avoid
 // Verus' `external_body` erasure issues with `pub const` items in
 // included modules; the named const lives spec-side only.
@@ -73,7 +73,7 @@ pub fn is_strict_accepted_artifact_tag(tag: PayloadTag) -> bool {
 
 // Prepared-proof gate-count decision. Production constructs
 // gate_count 0 (`verification_proof_core`,
-// crates/vb_storage/src/admission.rs:113-128); the bool is the
+// crates/vb_storage/src/admission/proof.rs:103-118); the bool is the
 // prepared profile's claimed flags (bounded_claimed and
 // idempotency_verified_claimed, set by `prepare_with_profile` at
 // crates/vb_storage/src/admission/verification.rs:26-52). The legacy
