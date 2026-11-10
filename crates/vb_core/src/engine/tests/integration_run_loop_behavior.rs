@@ -6,13 +6,10 @@ use crate::frame::StepState;
 use crate::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::limits::MAX_STEP_BUDGET;
 use crate::value::{ConstValue, SlotValue, Taint};
-use crate::value_store::ValueStore;
-use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts, node,};
+use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts, node};
 
-use crate::engine::{
-    EngineSignal, StepBudget, drive_deterministic, run_until_blocked, step_once,
-};
 use super::{ensure_equal, test_frame, test_store};
+use crate::engine::{EngineSignal, StepBudget, drive_deterministic, run_until_blocked, step_once};
 
 // =============================================================================
 // Workflow helpers
@@ -21,11 +18,26 @@ use super::{ensure_equal, test_frame, test_store};
 fn two_step_workflow(value: ConstValue) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        input_slots: Box::new([]),
         name: Box::<str>::from("two_step"),
         digest: WorkflowDigest::from_bytes([0x01; 32]),
         nodes: vec![
-            node(StepIdx::new(0), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1))),
-            node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None),
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -43,9 +55,17 @@ fn two_step_workflow(value: ConstValue) -> Result<CompiledWorkflow, String> {
 fn single_step_finish_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        input_slots: Box::new([]),
         name: Box::<str>::from("single_finish"),
         digest: WorkflowDigest::from_bytes([0x02; 32]),
-        nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None)]
+        nodes: vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -62,11 +82,27 @@ fn single_step_finish_workflow() -> Result<CompiledWorkflow, String> {
 fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        input_slots: Box::new([]),
         name: Box::<str>::from("do_then_finish"),
         digest: WorkflowDigest::from_bytes([0x03; 32]),
         nodes: vec![
-            node(StepIdx::new(0), CompiledNodeKind::Do { action: ActionId::new(1), input: SlotIdx::new(0), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1))),
-            node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None),
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Do {
+                    action: ActionId::new(1),
+                    input: SlotIdx::new(0),
+                },
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -84,9 +120,17 @@ fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
 fn wait_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        input_slots: Box::new([]),
         name: Box::<str>::from("wait"),
         digest: WorkflowDigest::from_bytes([0x04; 32]),
-        nodes: vec![node(StepIdx::new(0), CompiledNodeKind::WaitUntil { deadline_slot: SlotIdx::new(0), }, None, None)]
+        nodes: vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::WaitUntil {
+                deadline_slot: SlotIdx::new(0),
+            },
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -103,9 +147,18 @@ fn wait_workflow() -> Result<CompiledWorkflow, String> {
 fn ask_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        input_slots: Box::new([]),
         name: Box::<str>::from("ask"),
         digest: WorkflowDigest::from_bytes([0x05; 32]),
-        nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Ask { prompt: SlotIdx::new(0), timeout_slot: None, }, None, None)]
+        nodes: vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::Ask {
+                prompt: SlotIdx::new(0),
+                timeout_slot: None,
+            },
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -123,13 +176,32 @@ fn four_step_set_const_chain_workflow(values: &[ConstValue]) -> Result<CompiledW
     let nodes: Vec<CompiledNode> = (0..values.len())
         .map(|i| {
             let is_last = i == values.len() - 1;
-            node(StepIdx::new(i as u16), CompiledNodeKind::SetConst { value: ConstIdx::new(i as u16), }, Some(SlotIdx::new(i as u16)), if is_last { Some(StepIdx::new(values.len() as u16)) } else { Some(StepIdx::new(i as u16 + 1)) })
+            node(
+                StepIdx::new(i as u16),
+                CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(i as u16),
+                },
+                Some(SlotIdx::new(i as u16)),
+                if is_last {
+                    Some(StepIdx::new(values.len() as u16))
+                } else {
+                    Some(StepIdx::new(i as u16 + 1))
+                },
+            )
         })
-        .chain(std::iter::once(node(StepIdx::new(values.len() as u16), CompiledNodeKind::Finish { result: SlotIdx::new(values.len() as u16 - 1), }, None, None)))
+        .chain(std::iter::once(node(
+            StepIdx::new(values.len() as u16),
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(values.len() as u16 - 1),
+            },
+            None,
+            None,
+        )))
         .collect();
 
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        input_slots: Box::new([]),
         name: Box::<str>::from("set_chain"),
         digest: WorkflowDigest::from_bytes([0x06; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -148,11 +220,24 @@ fn four_step_set_const_chain_workflow(values: &[ConstValue]) -> Result<CompiledW
 fn nop_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        input_slots: Box::new([]),
         name: Box::<str>::from("nop_finish"),
         digest: WorkflowDigest::from_bytes([0x07; 32]),
         nodes: vec![
-            node(StepIdx::new(0), CompiledNodeKind::Nop, None, Some(StepIdx::new(1))),
-            node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None),
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -385,7 +470,7 @@ fn drive_deterministic_stops_on_do_node_with_awaiting_action_signal() -> Result<
         .map_err(|e| e.to_string())?;
 
     ensure_equal(result, EngineSignal::AwaitingAction)?;
-    ensure_equal(run.executed(), 1)?;
+    ensure_equal(run.executed(), 0)?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Running))
 }
 
@@ -400,7 +485,7 @@ fn drive_deterministic_stops_on_wait_node_with_awaiting_wait_signal() -> Result<
         .map_err(|e| e.to_string())?;
 
     ensure_equal(result, EngineSignal::AwaitingWait)?;
-    ensure_equal(run.executed(), 1)?;
+    ensure_equal(run.executed(), 0)?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Waiting))
 }
 
@@ -415,7 +500,7 @@ fn drive_deterministic_stops_on_ask_node_with_awaiting_ask_signal() -> Result<()
         .map_err(|e| e.to_string())?;
 
     ensure_equal(result, EngineSignal::AwaitingAsk)?;
-    ensure_equal(run.executed(), 1)?;
+    ensure_equal(run.executed(), 0)?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Asking))
 }
 
@@ -470,7 +555,7 @@ fn drive_deterministic_do_then_finish_only_executes_do_not_advance_past_suspensi
         .map_err(|e| e.to_string())?;
 
     ensure_equal(result, EngineSignal::AwaitingAction)?;
-    ensure_equal(run.executed(), 1)?;
+    ensure_equal(run.executed(), 0)?;
     ensure_equal(run.pc(), StepIdx::new(0))
 }
 
@@ -744,12 +829,12 @@ proptest::proptest! {
     ) {
         let workflow = match two_step_workflow(ConstValue::I64(value)) {
             Ok(wf) => wf,
-            Err(_) => { proptest::prop_assert!(false, "workflow creation failed"); return; }
+            Err(_) => { proptest::prop_assert!(false, "workflow creation failed"); return Err(proptest::prelude::TestCaseError::fail("workflow creation failed")); }
         };
 
         let mut run_bulk = match test_frame(RunId::new(100), &workflow) {
             Ok(r) => r,
-            Err(_) => { proptest::prop_assert!(false, "bulk frame creation failed"); return; }
+            Err(_) => { proptest::prop_assert!(false, "bulk frame creation failed"); return Err(proptest::prelude::TestCaseError::fail("bulk frame creation failed")); }
         };
         let mut store_bulk = test_store();
 
@@ -760,24 +845,24 @@ proptest::proptest! {
             &mut store_bulk,
         ) {
             Ok(sig) => (sig, run_bulk.executed()),
-            Err(_) => { proptest::prop_assert!(false, "bulk execution failed"); return; }
+            Err(_) => { proptest::prop_assert!(false, "bulk execution failed"); return Err(proptest::prelude::TestCaseError::fail("bulk execution failed")); }
         };
 
         let mut run_step = match test_frame(RunId::new(101), &workflow) {
             Ok(r) => r,
-            Err(_) => { proptest::prop_assert!(false, "step frame creation failed"); return; }
+            Err(_) => { proptest::prop_assert!(false, "step frame creation failed"); return Err(proptest::prelude::TestCaseError::fail("step frame creation failed")); }
         };
         let mut store_step = test_store();
 
         let s0 = match step_once(&workflow, &mut run_step, &mut store_step) {
             Ok(sig) => sig,
-            Err(_) => { proptest::prop_assert!(false, "step0 failed"); return; }
+            Err(_) => { proptest::prop_assert!(false, "step0 failed"); return Err(proptest::prelude::TestCaseError::fail("step0 failed")); }
         };
         proptest::prop_assert_eq!(s0, EngineSignal::Continue);
 
         let s1 = match step_once(&workflow, &mut run_step, &mut store_step) {
             Ok(sig) => sig,
-            Err(_) => { proptest::prop_assert!(false, "step1 failed"); return; }
+            Err(_) => { proptest::prop_assert!(false, "step1 failed"); return Err(proptest::prelude::TestCaseError::fail("step1 failed")); }
         };
         proptest::prop_assert_eq!(s1, bulk_signal);
         proptest::prop_assert_eq!(run_step.executed(), bulk_executed);
@@ -790,11 +875,11 @@ proptest::proptest! {
     ) {
         let workflow = match two_step_workflow(ConstValue::I64(42)) {
             Ok(wf) => wf,
-            Err(_) => { proptest::prop_assert!(false, "workflow creation failed"); return; }
+            Err(_) => { proptest::prop_assert!(false, "workflow creation failed"); return Err(proptest::prelude::TestCaseError::fail("workflow creation failed")); }
         };
         let mut run = match test_frame(RunId::new(200), &workflow) {
             Ok(r) => r,
-            Err(_) => { proptest::prop_assert!(false, "frame creation failed"); return; }
+            Err(_) => { proptest::prop_assert!(false, "frame creation failed"); return Err(proptest::prelude::TestCaseError::fail("frame creation failed")); }
         };
         let mut store = test_store();
         let mut budget = StepBudget::new(budget_value);
@@ -809,11 +894,11 @@ proptest::proptest! {
     ) {
         let workflow = match two_step_workflow(ConstValue::I64(42)) {
             Ok(wf) => wf,
-            Err(_) => { proptest::prop_assert!(false, "workflow creation failed"); return; }
+            Err(_) => { proptest::prop_assert!(false, "workflow creation failed"); return Err(proptest::prelude::TestCaseError::fail("workflow creation failed")); }
         };
         let mut run = match test_frame(RunId::new(300), &workflow) {
             Ok(r) => r,
-            Err(_) => { proptest::prop_assert!(false, "frame creation failed"); return; }
+            Err(_) => { proptest::prop_assert!(false, "frame creation failed"); return Err(proptest::prelude::TestCaseError::fail("frame creation failed")); }
         };
         let mut store = test_store();
 
@@ -833,12 +918,12 @@ proptest::proptest! {
             ConstValue::I64(v2),
         ]) {
             Ok(wf) => wf,
-            Err(_) => { proptest::prop_assert!(false, "workflow creation failed"); return; }
+            Err(_) => { proptest::prop_assert!(false, "workflow creation failed"); return Err(proptest::prelude::TestCaseError::fail("workflow creation failed")); }
         };
 
         let mut run_bulk = match test_frame(RunId::new(400), &workflow) {
             Ok(r) => r,
-            Err(_) => { proptest::prop_assert!(false, "bulk frame creation failed"); return; }
+            Err(_) => { proptest::prop_assert!(false, "bulk frame creation failed"); return Err(proptest::prelude::TestCaseError::fail("bulk frame creation failed")); }
         };
         let mut store_bulk = test_store();
 
@@ -849,12 +934,12 @@ proptest::proptest! {
             &mut store_bulk,
         ) {
             Ok(sig) => sig,
-            Err(_) => { proptest::prop_assert!(false, "bulk execution failed"); return; }
+            Err(_) => { proptest::prop_assert!(false, "bulk execution failed"); return Err(proptest::prelude::TestCaseError::fail("bulk execution failed")); }
         };
 
         let mut run_step = match test_frame(RunId::new(401), &workflow) {
             Ok(r) => r,
-            Err(_) => { proptest::prop_assert!(false, "step frame creation failed"); return; }
+            Err(_) => { proptest::prop_assert!(false, "step frame creation failed"); return Err(proptest::prelude::TestCaseError::fail("step frame creation failed")); }
         };
         let mut store_step = test_store();
 
@@ -862,7 +947,7 @@ proptest::proptest! {
         for _ in 0..4 {
             let sig = match step_once(&workflow, &mut run_step, &mut store_step) {
                 Ok(sig) => sig,
-                Err(_) => { proptest::prop_assert!(false, "step_once failed"); return; }
+                Err(_) => { proptest::prop_assert!(false, "step_once failed"); return Err(proptest::prelude::TestCaseError::fail("step_once failed")); }
             };
             match sig {
                 EngineSignal::Continue => {

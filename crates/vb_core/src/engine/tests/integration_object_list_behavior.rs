@@ -9,12 +9,12 @@ use crate::ids::{ConstIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId, 
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::ResourceContract;
-use crate::workflow::{ CompiledNodeKind, CompiledWorkflow, WorkflowParts};
+use crate::workflow::{CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 
 use crate::engine::{EngineSignal, StepBudget, run_until_blocked};
 
-use proptest::prelude::*;
 use super::{ensure_equal, test_frame, test_store};
+use proptest::prelude::*;
 
 // ===== 1. Object list creation =====
 
@@ -625,11 +625,26 @@ fn list_dedup_empty_does_not_panic() -> Result<(), String> {
 fn set_const_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        input_slots: Box::new([]),
         name: Box::<str>::from("set_const_test"),
         digest: WorkflowDigest::from_bytes([0xAA; 32]),
         nodes: vec![
-            crate::workflow::node(StepIdx::new(0), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1))),
-            crate::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None),
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -682,11 +697,26 @@ fn set_const_bool_writes_bool_and_finishes() -> Result<(), String> {
 fn copy_slot_taint_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        input_slots: Box::new([]),
         name: Box::<str>::from("copy_slot_test"),
         digest: WorkflowDigest::from_bytes([0xBB; 32]),
         nodes: vec![
-            crate::workflow::node(StepIdx::new(0), CompiledNodeKind::Copy { source: SlotIdx::new(0), }, Some(SlotIdx::new(1)), Some(StepIdx::new(1))),
-            crate::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(1), }, None, None),
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Copy {
+                    source: SlotIdx::new(0),
+                },
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(1),
+                },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -749,37 +779,77 @@ fn copy_slot_clean_taint_preserves_clean() -> Result<(), String> {
 
 #[test]
 fn node_kind_detects_set_const() {
-    let node = crate::workflow::node(StepIdx::new(0), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1)));
+    let node = crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
     assert!(matches!(node.kind, CompiledNodeKind::SetConst { .. }));
 }
 
 #[test]
 fn node_kind_detects_finish() {
-    let node = crate::workflow::node(StepIdx::new(0), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
+    let node = crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+        None,
+        None,
+    );
     assert!(matches!(node.kind, CompiledNodeKind::Finish { .. }));
 }
 
 #[test]
 fn node_kind_detects_copy() {
-    let node = crate::workflow::node(StepIdx::new(0), CompiledNodeKind::Copy { source: SlotIdx::new(0), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1)));
+    let node = crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Copy {
+            source: SlotIdx::new(0),
+        },
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
     assert!(matches!(node.kind, CompiledNodeKind::Copy { .. }));
 }
 
 #[test]
 fn node_kind_detects_build_list() {
-    let node = crate::workflow::node(StepIdx::new(0), CompiledNodeKind::BuildList { items: Box::new([]), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1)));
+    let node = crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::BuildList {
+            items: Box::new([]),
+        },
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
     assert!(matches!(node.kind, CompiledNodeKind::BuildList { .. }));
 }
 
 #[test]
 fn node_kind_detects_build_object() {
-    let node = crate::workflow::node(StepIdx::new(0), CompiledNodeKind::BuildObject { fields: Box::new([]), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1)));
+    let node = crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::BuildObject {
+            fields: Box::new([]),
+        },
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
     assert!(matches!(node.kind, CompiledNodeKind::BuildObject { .. }));
 }
 
 #[test]
 fn node_kind_detects_nop() {
-    let node = crate::workflow::node(StepIdx::new(0), CompiledNodeKind::Nop, None, Some(StepIdx::new(1)));
+    let node = crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        None,
+        Some(StepIdx::new(1)),
+    );
     assert!(matches!(node.kind, CompiledNodeKind::Nop));
 }
 
@@ -788,12 +858,34 @@ fn node_kind_detects_nop() {
 fn three_node_chain_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        input_slots: Box::new([]),
         name: Box::<str>::from("chain_test"),
         digest: WorkflowDigest::from_bytes([0xCC; 32]),
         nodes: vec![
-            crate::workflow::node(StepIdx::new(0), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1))),
-            crate::workflow::node(StepIdx::new(1), CompiledNodeKind::Copy { source: SlotIdx::new(0), }, Some(SlotIdx::new(1)), Some(StepIdx::new(2))),
-            crate::workflow::node(StepIdx::new(2), CompiledNodeKind::Finish { result: SlotIdx::new(1), }, None, None),
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Copy {
+                    source: SlotIdx::new(0),
+                },
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(1),
+                },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -859,9 +951,9 @@ fn workflow_depth_equals_node_count_for_linear_chain() -> Result<(), String> {
 fn workflow_children_reachable_via_next_pointers() -> Result<(), String> {
     let workflow = three_node_chain_workflow().map_err(|e| e.to_string())?;
     let parts = workflow.to_parts();
-    ensure_equal(parts.nodes[0].next, Some(StepIdx::new(1)))?;
-    ensure_equal(parts.nodes[1].next, Some(StepIdx::new(2)))?;
-    ensure_equal(parts.nodes[2].next, None)
+    ensure_equal(parts.nodes[0].routing.next.step(), Some(StepIdx::new(1)))?;
+    ensure_equal(parts.nodes[1].routing.next.step(), Some(StepIdx::new(2)))?;
+    ensure_equal(parts.nodes[2].routing.next.step(), None)
 }
 
 // ===== 13. Error paths =====
@@ -869,9 +961,27 @@ fn workflow_children_reachable_via_next_pointers() -> Result<(), String> {
 fn missing_output_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        input_slots: Box::new([]),
         name: Box::<str>::from("missing_output"),
         digest: WorkflowDigest::from_bytes([0xDD; 32]),
-        nodes: vec![crate::workflow::node(StepIdx::new(0), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, None, Some(StepIdx::new(1)))]
+        nodes: vec![
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+                None,
+                None,
+            ),
+        ]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -899,9 +1009,27 @@ fn error_on_missing_output_returns_missing_output_slot() -> Result<(), String> {
 fn const_oob_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        input_slots: Box::new([]),
         name: Box::<str>::from("const_oob"),
         digest: WorkflowDigest::from_bytes([0xEE; 32]),
-        nodes: vec![crate::workflow::node(StepIdx::new(0), CompiledNodeKind::SetConst { value: ConstIdx::new(5), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1)))]
+        nodes: vec![
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(5),
+                },
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+                None,
+                None,
+            ),
+        ]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -915,14 +1043,14 @@ fn const_oob_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
 }
 
 #[test]
-fn error_on_const_out_of_bounds_within_frame() -> Result<(), String> {
-    let workflow = const_oob_workflow().map_err(|e| e.to_string())?;
-    let mut run = test_frame(RunId::new(31), &workflow)?;
-    let mut store = test_store();
-    let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
-    match result {
-        Err(EngineError::ConstOutOfBounds { index }) if index == ConstIdx::new(5) => Ok(()),
-        other => Err(format!("expected ConstOutOfBounds, got {other:?}")),
+fn const_out_of_bounds_rejected_at_try_from_parts() -> Result<(), String> {
+    match const_oob_workflow() {
+        Err(crate::WorkflowError::ConstOutOfBounds { constant })
+            if constant == ConstIdx::new(5) =>
+        {
+            Ok(())
+        }
+        other => Err(format!("unexpected const validation result: {other:?}")),
     }
 }
 
