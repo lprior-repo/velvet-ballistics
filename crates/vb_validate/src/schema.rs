@@ -6,6 +6,12 @@
 
 use crate::{ValidationError, ValidationResult};
 
+mod trigger;
+mod types;
+
+pub use trigger::validate_trigger;
+pub use types::{FieldValue, StepDoc, WorkflowDoc};
+
 const CANONICAL_VERSION: &str = "velvet-ballistics/v1";
 
 const REQUIRED_TOP_LEVEL_FIELDS: &[&str] = &["version", "name", "when", "steps"];
@@ -119,72 +125,6 @@ pub fn validate_version(doc: &WorkflowDoc) -> ValidationResult<()> {
         None => Err(ValidationError::MissingRequiredField {
             field: "version".to_owned(),
         }),
-    }
-}
-
-/// Validates the trigger (when) block accepts canonical v1 triggers and rejects HTTP.
-pub fn validate_trigger(doc: &WorkflowDoc) -> ValidationResult<()> {
-    let trigger = doc
-        .get_mapping("when")
-        .ok_or_else(|| ValidationError::MissingRequiredField {
-            field: "when".to_owned(),
-        })?;
-    if trigger.is_empty() {
-        return Err(ValidationError::MissingRequiredField {
-            field: "when".to_owned(),
-        });
-    }
-    if trigger.len() > 1 {
-        return Err(ValidationError::UnsupportedTrigger {
-            trigger: "multiple triggers".to_owned(),
-        });
-    }
-    let (kind, body) = trigger
-        .first()
-        .ok_or_else(|| ValidationError::MissingRequiredField {
-            field: "when".to_owned(),
-        })?;
-    match kind.as_str() {
-        "manual" | "webhook" => validate_empty_trigger(kind, body),
-        "schedule" => validate_named_string_trigger(kind, body, "cron"),
-        "event" => validate_named_string_trigger(kind, body, "type"),
-        "http" => Err(ValidationError::HttpTriggerOutOfCore),
-        other => Err(ValidationError::UnsupportedTrigger {
-            trigger: other.to_owned(),
-        }),
-    }
-}
-
-fn validate_empty_trigger(kind: &str, body: &FieldValue) -> ValidationResult<()> {
-    match body {
-        FieldValue::Empty => Ok(()),
-        FieldValue::Mapping(entries) if entries.is_empty() => Ok(()),
-        _ => Err(ValidationError::UnsupportedTrigger {
-            trigger: kind.to_owned(),
-        }),
-    }
-}
-
-fn validate_named_string_trigger(
-    kind: &str,
-    body: &FieldValue,
-    required_field: &str,
-) -> ValidationResult<()> {
-    let FieldValue::Mapping(entries) = body else {
-        return Err(ValidationError::UnsupportedTrigger {
-            trigger: kind.to_owned(),
-        });
-    };
-    let valid = entries.iter().any(|(field, value)| match value {
-        FieldValue::String(text) => field == required_field && !text.is_empty(),
-        _ => false,
-    });
-    if valid {
-        Ok(())
-    } else {
-        Err(ValidationError::UnsupportedTrigger {
-            trigger: kind.to_owned(),
-        })
     }
 }
 
@@ -327,123 +267,6 @@ fn is_valid_id(id: &str) -> bool {
 
 fn is_reserved_id(id: &str) -> bool {
     RESERVED_IDS.contains(&id)
-}
-
-// ---------------------------------------------------------------------------
-// Lightweight document model for schema validation
-// ---------------------------------------------------------------------------
-
-/// Read-only view of a workflow document's top-level fields.
-#[derive(Clone, PartialEq, Debug)]
-pub struct WorkflowDoc {
-    fields: Vec<(String, FieldValue)>,
-}
-
-/// Value associated with a workflow field.
-#[derive(Clone, PartialEq, Debug)]
-#[non_exhaustive]
-pub enum FieldValue {
-    /// String scalar value.
-    String(String),
-    /// Ordered sequence of step documents.
-    Sequence(Vec<StepDoc>),
-    /// Key-value mapping (for triggers, etc).
-    Mapping(Vec<(String, FieldValue)>),
-    /// Field present but empty/null.
-    Empty,
-}
-
-/// Read-only view of a single step's fields.
-#[derive(Clone, PartialEq, Debug)]
-pub struct StepDoc {
-    fields: Vec<(String, FieldValue)>,
-}
-
-impl WorkflowDoc {
-    /// Creates a workflow document from key-value pairs.
-    #[must_use]
-    pub fn from_pairs(fields: Vec<(String, FieldValue)>) -> Self {
-        Self { fields }
-    }
-
-    /// Returns the string value of a field, if present and string-typed.
-    pub fn get_string(&self, field: &str) -> Option<&str> {
-        self.fields.iter().find_map(|(name, value)| {
-            if name == field {
-                match value {
-                    FieldValue::String(s) => Some(s.as_str()),
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        })
-    }
-
-    /// Returns the sequence value of a field, if present.
-    pub fn get_sequence(&self, field: &str) -> Option<&[StepDoc]> {
-        self.fields.iter().find_map(|(name, value)| {
-            if name == field {
-                match value {
-                    FieldValue::Sequence(steps) => Some(steps.as_slice()),
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        })
-    }
-
-    /// Returns the mapping value of a field, if present.
-    pub fn get_mapping(&self, field: &str) -> Option<&[(String, FieldValue)]> {
-        self.fields.iter().find_map(|(name, value)| {
-            if name == field {
-                match value {
-                    FieldValue::Mapping(entries) => Some(entries.as_slice()),
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        })
-    }
-
-    /// Returns whether a field is present.
-    pub fn has_field(&self, field: &str) -> bool {
-        self.fields.iter().any(|(name, _)| name == field)
-    }
-
-    /// Returns all field names.
-    pub fn field_names(&self) -> Vec<&str> {
-        self.fields.iter().map(|(name, _)| name.as_str()).collect()
-    }
-}
-
-impl StepDoc {
-    /// Creates a step document from key-value pairs.
-    #[must_use]
-    pub fn from_pairs(fields: Vec<(String, FieldValue)>) -> Self {
-        Self { fields }
-    }
-
-    /// Returns the string value of a field, if present and string-typed.
-    pub fn get_string(&self, field: &str) -> Option<&str> {
-        self.fields.iter().find_map(|(name, value)| {
-            if name == field {
-                match value {
-                    FieldValue::String(s) => Some(s.as_str()),
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        })
-    }
-
-    /// Returns all field names.
-    pub fn field_names(&self) -> Vec<&str> {
-        self.fields.iter().map(|(name, _)| name.as_str()).collect()
-    }
 }
 
 // ---------------------------------------------------------------------------
