@@ -95,17 +95,17 @@ impl StepDoc {
     }
 }
 
+pub(crate) fn make_workflow(fields: Vec<(&str, FieldValue)>) -> WorkflowDoc {
+    WorkflowDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
+}
+
+pub(crate) fn make_step(fields: Vec<(&str, FieldValue)>) -> StepDoc {
+    StepDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
+}
+
 #[cfg(test)]
 mod doc_tests {
     use super::*;
-
-    fn make_workflow(fields: Vec<(&str, FieldValue)>) -> WorkflowDoc {
-        WorkflowDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
-    }
-
-    fn make_step(fields: Vec<(&str, FieldValue)>) -> StepDoc {
-        StepDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
-    }
 
     // -- WorkflowDoc::from_pairs tests --
 

@@ -14,18 +14,8 @@ use crate::workflow::{
     WorkflowParts, node, node_with_handler,
 };
 
+use super::ensure_equal;
 use crate::engine::{ErrorHandlerOutcome, ErrorSlotData, new_run_frame, route_error_handler};
-
-fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
-where
-    T: core::fmt::Debug + PartialEq,
-{
-    if actual == expected {
-        Ok(())
-    } else {
-        Err(format!("expected {expected:?}, found {actual:?}"))
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Test fixture builders

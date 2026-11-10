@@ -16,6 +16,7 @@ use crate::workflow::{
     SlotBranch, WorkflowParts,
 };
 
+use super::ensure_equal;
 use crate::action::{
     ActionContract, ActionName, ActionOutputReady, ActionTicket, Idempotency, RetrySafety,
     SideEffect, compute_action_idempotency_key,
@@ -26,22 +27,6 @@ use crate::frame::RunFrame;
 // =============================================================================
 // Test Infrastructure
 // =============================================================================
-
-fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
-where
-    T: core::fmt::Debug + PartialEq,
-{
-    if actual == expected {
-        Ok(())
-    } else {
-        Err(format!("expected {expected:?}, found {actual:?}"))
-    }
-}
-
-#[allow(dead_code)]
-fn test_store() -> ValueStore {
-    ValueStore::new()
-}
 
 fn action_ticket(run: RunId, step: StepIdx, seq: SeqNo, action: ActionId) -> ActionTicket {
     ActionTicket {

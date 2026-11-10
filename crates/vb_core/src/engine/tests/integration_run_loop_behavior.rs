@@ -10,27 +10,9 @@ use crate::value_store::ValueStore;
 use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts, node,};
 
 use crate::engine::{
-    EngineSignal, StepBudget, drive_deterministic, new_run_frame, run_until_blocked, step_once,
+    EngineSignal, StepBudget, drive_deterministic, run_until_blocked, step_once,
 };
-
-fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
-where
-    T: core::fmt::Debug + PartialEq,
-{
-    if actual == expected {
-        Ok(())
-    } else {
-        Err(format!("expected {expected:?}, found {actual:?}"))
-    }
-}
-
-fn test_store() -> ValueStore {
-    ValueStore::new()
-}
-
-fn test_frame(run_id: RunId, workflow: &CompiledWorkflow) -> Result<crate::RunFrame, String> {
-    new_run_frame(run_id, workflow).map_err(|error| error.to_string())
-}
+use super::{ensure_equal, test_frame, test_store};
 
 // =============================================================================
 // Workflow helpers

@@ -11,28 +11,10 @@ use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::ResourceContract;
 use crate::workflow::{ CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 
-use crate::engine::{EngineSignal, StepBudget, new_run_frame, run_until_blocked};
+use crate::engine::{EngineSignal, StepBudget, run_until_blocked};
 
 use proptest::prelude::*;
-
-fn test_store() -> ValueStore {
-    ValueStore::new()
-}
-
-fn test_frame(run_id: RunId, workflow: &CompiledWorkflow) -> Result<crate::RunFrame, String> {
-    new_run_frame(run_id, workflow).map_err(|error| error.to_string())
-}
-
-fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
-where
-    T: core::fmt::Debug + PartialEq,
-{
-    if actual == expected {
-        Ok(())
-    } else {
-        Err(format!("expected {expected:?}, found {actual:?}"))
-    }
-}
+use super::{ensure_equal, test_frame, test_store};
 
 // ===== 1. Object list creation =====
 

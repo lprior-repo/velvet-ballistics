@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use crate::schema_support::schema_doc::{FieldValue, StepDoc, WorkflowDoc};
+use crate::schema_support::schema_doc::{FieldValue, WorkflowDoc, make_step, make_workflow};
 
 #[path = "core.rs"]
 mod core;
@@ -10,14 +10,6 @@ mod ids;
 mod step;
 #[path = "trigger.rs"]
 mod trigger;
-
-fn make_workflow(fields: Vec<(&str, FieldValue)>) -> WorkflowDoc {
-    WorkflowDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
-}
-
-fn make_step(fields: Vec<(&str, FieldValue)>) -> StepDoc {
-    StepDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
-}
 
 fn valid_workflow_doc() -> WorkflowDoc {
     make_workflow(vec![

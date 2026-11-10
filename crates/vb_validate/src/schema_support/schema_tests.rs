@@ -3,20 +3,14 @@
 
 #![allow(unreachable_pub)]
 use crate::ValidationError;
-use crate::schema_support::schema_doc::{FieldValue, StepDoc, WorkflowDoc};
+use crate::schema_support::schema_doc::{
+    FieldValue, StepDoc, WorkflowDoc, make_step, make_workflow,
+};
 use crate::schema_support::schema_fields::{
     validate_ids, validate_single_primitive, validate_step_fields, validate_trigger,
     validate_version, validate_workflow_schema,
 };
 use crate::schema_support::schema_id::{is_valid_id, validate_single_id};
-
-fn make_workflow(fields: Vec<(&str, FieldValue)>) -> WorkflowDoc {
-    WorkflowDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
-}
-
-fn make_step(fields: Vec<(&str, FieldValue)>) -> StepDoc {
-    StepDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
-}
 
 #[cfg(test)]
 fn workflow_with_finish_step_id(id: &str) -> WorkflowDoc {

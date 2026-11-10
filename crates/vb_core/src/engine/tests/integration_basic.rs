@@ -5,32 +5,13 @@ use crate::errors::EngineError;
 use crate::frame::StepState;
 use crate::ids::{ConstIdx, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
 use crate::value::{ConstValue, SlotValue, Taint};
-use crate::value_store::{ObjectField, ValueStore};
+use crate::value_store::ObjectField;
 use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts, node};
 
+use super::{ensure_equal, test_frame, test_store};
 use crate::engine::{
-    EngineSignal, StepBudget, build_list_impl, build_object_impl, new_run_frame, run_until_blocked,
-    step_once,
+    EngineSignal, StepBudget, build_list_impl, build_object_impl, run_until_blocked, step_once,
 };
-
-fn test_store() -> ValueStore {
-    ValueStore::new()
-}
-
-fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
-where
-    T: core::fmt::Debug + PartialEq,
-{
-    if actual == expected {
-        Ok(())
-    } else {
-        Err(format!("expected {expected:?}, found {actual:?}"))
-    }
-}
-
-fn test_frame(run_id: RunId, workflow: &CompiledWorkflow) -> Result<crate::RunFrame, String> {
-    new_run_frame(run_id, workflow).map_err(|error| error.to_string())
-}
 
 // ===== Basic workflow execution =====
 
