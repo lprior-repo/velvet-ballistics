@@ -120,11 +120,19 @@ impl Context<'_> {
     }
 
     fn output(&mut self, fact: Fact) -> FlowResult<()> {
+        self.output_with_partial(fact, true)
+    }
+
+    fn success_output(&mut self, fact: Fact) -> FlowResult<()> {
+        self.output_with_partial(fact, false)
+    }
+
+    fn output_with_partial(&mut self, fact: Fact, partial: bool) -> FlowResult<()> {
         let slot = self
             .node
             .output
             .slot()
             .ok_or_else(|| self.error(None, SlotFlowFailure::InvalidReference))?;
-        self.write(slot, fact, true)
+        self.write(slot, fact, partial)
     }
 }

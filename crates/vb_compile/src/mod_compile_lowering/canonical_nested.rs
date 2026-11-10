@@ -17,7 +17,7 @@ pub(super) fn lower_nested(
 ) -> Result<Option<SlotIdx>, CompileErrors> {
     let inputs = ForEachInputs::from_bindings(&bindings.outputs, builder);
     let mut names = names.to_vec();
-    lower_canonical_step(
+    let result = lower_canonical_step(
         step,
         id.as_usize(),
         id.as_usize(),
@@ -30,9 +30,7 @@ pub(super) fn lower_nested(
         &inputs,
         builder,
     )?;
-    let result = bindings.steps.get(&step.id).copied();
     if let Some(slot) = result {
-        bindings.steps.insert(step.id.clone(), slot);
         bindings.types.entry(slot).or_insert(ExprType::Unknown);
     }
     if builder.nodes.last().is_none() {

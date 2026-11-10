@@ -75,10 +75,10 @@ pub(crate) fn reject_directives(text: &str) -> YamlResult<()> {
 
 /// Validate the strict profile before allocating an AST, using caller limits.
 pub fn validate_yaml_profile_with_limits(text: &str, limits: &YamlLimits) -> YamlResult<()> {
+    check_source_size(text, limits.max_source_bytes)?;
     let text = strip_bom(text);
     check_encoding(text)?;
     reject_directives(text)?;
-    check_source_size(text, limits.max_source_bytes)?;
     check_null_bytes_in_source(text)?;
     let events = collect_and_validate_events(text, limits)?;
     reject_forbidden_features(&events)?;

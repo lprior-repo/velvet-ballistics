@@ -71,7 +71,7 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
                 .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
             next = Some(step_idx(end)?);
         }
-        lower_canonical_step(
+        let _output = lower_canonical_step(
             step,
             index,
             last,

@@ -1,8 +1,7 @@
 #![forbid(unsafe_code)]
 //! Cold-path YAML parsing boundary for Velvet Ballistics.
 //!
-//! YAML enters the system only through this crate. The hot engine consumes only
-//! native Rust `saphyr` parsing.
+//! YAML parsing stays on the cold path. The hot engine consumes compiled numeric IR.
 
 pub mod yaml_ast;
 pub mod yaml_error;
@@ -40,8 +39,8 @@ pub use yaml_ast::types::{
 
 /// Parse YAML text into a vector of YAML events.
 pub fn parse_yaml_events(text: &str) -> YamlResult<Vec<YamlEvent>> {
-    let text = yaml_profile::strip_bom(text);
     yaml_profile::validate_yaml_profile(text)?;
+    let text = yaml_profile::strip_bom(text);
     yaml_events::collect_events(text)
 }
 
@@ -55,8 +54,8 @@ pub fn parse_workflow_source_with_limits(
     text: &str,
     limits: &yaml_limits::YamlLimits,
 ) -> YamlResult<yaml_ast::WorkflowSource> {
-    let text = yaml_profile::strip_bom(text);
     yaml_profile::validate_yaml_profile_with_limits(text, limits)?;
+    let text = yaml_profile::strip_bom(text);
     yaml_ast::parse_workflow_ast(text)
 }
 

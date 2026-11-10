@@ -10,9 +10,10 @@ pub(super) fn apply(ctx: &mut Context<'_>, kind: &K, route: Route) -> FlowResult
         } => {
             ctx.typed_read(input, Fact::LIST)?;
             if route == Route::Body {
-                ctx.write(item_slot, Fact::assigned(Fact::DYNAMIC), true)?;
+                ctx.write(item_slot, Fact::assigned(Fact::DYNAMIC), false)?;
             }
-            ctx.output(Fact::assigned(Fact::LIST))
+            // Start preflights frame/PC/counter and allocates before any writes.
+            ctx.success_output(Fact::assigned(Fact::LIST))
         }
         K::ForEachNext { iterator_slot, .. } | K::ReduceNext { iterator_slot, .. } => {
             ctx.typed_read(iterator_slot, Fact::LIST)?;
@@ -59,10 +60,10 @@ pub(super) fn apply(ctx: &mut Context<'_>, kind: &K, route: Route) -> FlowResult
                 .constants
                 .get(initial.as_usize())
                 .ok_or_else(|| invalid(ctx.node.id))?;
-            ctx.write(accumulator, Fact::constant(init), true)?;
+            ctx.write(accumulator, Fact::constant(init), false)?;
             if route == Route::Body {
-                ctx.write(input, Fact::assigned(Fact::DYNAMIC), true)?;
-                ctx.output(Fact::assigned(Fact::LIST))?;
+                ctx.write(input, Fact::assigned(Fact::DYNAMIC), false)?;
+                ctx.success_output(Fact::assigned(Fact::LIST))?;
             }
             Ok(())
         }
@@ -100,7 +101,7 @@ pub(super) fn apply(ctx: &mut Context<'_>, kind: &K, route: Route) -> FlowResult
             if branches.is_empty() {
                 return Err(invalid(ctx.node.id));
             }
-            ctx.output(Fact::assigned(Fact::LIST))
+            ctx.success_output(Fact::assigned(Fact::LIST))
         }
         K::TogetherJoin { accumulator, .. } => {
             let fact = ctx.read(accumulator)?;

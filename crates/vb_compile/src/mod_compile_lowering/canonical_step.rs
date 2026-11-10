@@ -14,7 +14,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
     slot_types: &mut HashMap<SlotIdx, ExprType>,
     for_each_inputs: &ForEachInputs,
     builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
+) -> Result<Option<SlotIdx>, CompileErrors> {
     let control = canonical_controls::prepare(
         step,
         id,
@@ -55,7 +55,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
             step_outputs.insert(step.id.to_string(), slot);
             builder.record_slot(slot);
             slot_types.insert(slot, inferred);
-            Ok(())
+            Ok(Some(slot))
         }
         crate::StepPrimitive::Do { .. } => {
             let output_slot = lower_top_level_do(
@@ -74,10 +74,11 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                 step_outputs.insert(step.id.to_string(), slot);
                 // Do action outputs are dynamic; no static type inference
             }
-            Ok(())
+            Ok(output_slot)
         }
         crate::StepPrimitive::Finish { result } => {
             lower_canonical_finish(index, last, id, result, outputs, step_outputs, builder)
+                .map(|()| None)
         }
         crate::StepPrimitive::ForEach {
             input,
@@ -101,7 +102,8 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                 inputs: for_each_inputs,
             },
             builder,
-        ),
+        )
+        .map(|()| None),
         crate::StepPrimitive::Together { branches } => {
             lower_canonical_parallel(
                 index,
@@ -115,11 +117,12 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                 },
                 builder,
             )?;
-            if let Some(slot) = builder.nodes.last().and_then(|node| node.output.slot()) {
+            let output = builder.nodes.last().and_then(|node| node.output.slot());
+            if let Some(slot) = output {
                 step_outputs.insert(step.id.clone(), slot);
                 slot_types.insert(slot, ExprType::List);
             }
-            Ok(())
+            Ok(output)
         }
         crate::StepPrimitive::Collect {
             source,
@@ -149,7 +152,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
             )?;
             step_outputs.insert(step.id.to_string(), slot);
             slot_types.insert(slot, ExprType::List);
-            Ok(())
+            Ok(Some(slot))
         }
         crate::StepPrimitive::Aggregate {
             input,
@@ -176,7 +179,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
             )?;
             step_outputs.insert(step.id.to_string(), slot);
             slot_types.insert(slot, inferred);
-            Ok(())
+            Ok(Some(slot))
         }
         crate::StepPrimitive::Repeat { max_attempts, body } => {
             lower_canonical_repeat(
@@ -192,12 +195,14 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                 },
                 builder,
             )?;
-            if let Some(node) = builder.nodes.last()
-                && let CompiledNodeKind::RepeatFinish { result } = node.kind
-            {
+            let output = builder.nodes.last().and_then(|node| match node.kind {
+                CompiledNodeKind::RepeatFinish { result } => Some(result),
+                _ => None,
+            });
+            if let Some(result) = output {
                 step_outputs.insert(step.id.clone(), result);
             }
-            Ok(())
+            Ok(output)
         }
         crate::StepPrimitive::Wait { event, timeout } => lower_canonical_wait(
             index,
@@ -211,7 +216,8 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                 slot_types,
             },
             builder,
-        ),
+        )
+        .map(|()| None),
         crate::StepPrimitive::Ask { prompt, timeout } => {
             let answer = lower_canonical_ask(
                 index,
@@ -228,7 +234,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
             )?;
             step_outputs.insert(step.id.clone(), answer);
             slot_types.insert(answer, ExprType::Unknown);
-            Ok(())
+            Ok(Some(answer))
         }
         crate::StepPrimitive::Choose {
             branches,
@@ -248,7 +254,8 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                 },
             },
             builder,
-        ),
+        )
+        .map(|()| None),
         other => Err(CompileErrors(vec![
             CompileError::UnsupportedStepPrimitive {
                 step: index,
@@ -257,8 +264,8 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
         ])),
     };
 
-    result?;
+    let output = result?;
     canonical_controls::complete(&control, builder);
     extend_step_names_for_generated(step_names, step.id.as_str(), builder.nodes.len());
-    Ok(())
+    Ok(output)
 }

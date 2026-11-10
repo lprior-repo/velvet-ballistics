@@ -59,3 +59,7 @@ path = "../workspace_tests/tests/cli/qa_findings_regression.rs"
 [[test]]
 name = "qa_permutation_matrix"
 path = "../workspace_tests/tests/cli/qa_permutation_matrix.rs"
+
+[[test]]
+name = "f5_example_input_shape"
+path = "../workspace_tests/tests/cli/f5_example_input_shape.rs"
