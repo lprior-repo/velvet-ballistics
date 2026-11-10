@@ -9,6 +9,9 @@ use vb_core::{ConstIdx, ConstValue, CoreError, ExprOp, ExprProgram, SlotIdx};
 pub mod fold;
 pub mod tests;
 
+#[cfg(test)]
+mod bytecode_ast_equiv;
+
 /// Maximum bytecode operations per expression.
 const MAX_OPS: usize = 256;
 /// Maximum constant pool entries.
