@@ -232,6 +232,15 @@ pub enum RuntimeJournalEvent {
         /// Execution attempt number for this step.
         attempt: u16,
     },
+    /// A deterministic step failed before entering its handler.
+    StepFailed {
+        /// Run identifier.
+        run: RunId,
+        /// Failed step.
+        step: StepIdx,
+        /// Execution attempt.
+        attempt: u16,
+    },
     /// Run was resumed from a suspended state.
     Resumed {
         /// Run identifier.
@@ -281,6 +290,7 @@ impl RuntimeJournalEvent {
             | Self::SlotWritten { run, .. }
             | Self::StepStarted { run, .. }
             | Self::StepSucceeded { run, .. }
+            | Self::StepFailed { run, .. }
             | Self::Resumed { run, .. } => *run,
             Self::ActionScheduledTicket { ticket, .. }
             | Self::ActionCompletedEnvelope { ticket, .. }
@@ -329,6 +339,7 @@ impl RuntimeJournalEvent {
             Self::SlotWritten { .. } => "SlotWritten",
             Self::StepStarted { .. } => "StepStarted",
             Self::StepSucceeded { .. } => "StepSucceeded",
+            Self::StepFailed { .. } => "StepFailed",
             Self::Resumed { .. } => "Resumed",
             _ => "",
         }

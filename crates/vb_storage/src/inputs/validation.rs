@@ -1,5 +1,5 @@
 use crate::JournalError;
-use vb_core::{CompiledInputSlot, CompiledWorkflow, InputSlotKind, SlotIdx, SlotValue};
+use vb_core::{CompiledInputSlot, CompiledWorkflow, SlotIdx, SlotValue};
 
 /// Validates supplied inputs against retained schema constraints and fills
 /// scalar defaults for omitted slots.
@@ -36,6 +36,7 @@ pub(super) fn prepare_inputs(
                 return Err(JournalError::InputSchemaMismatch);
             }
             if let Some(default) = slot.constraint.default_value {
+                check_value(workflow, slot, default)?;
                 filled.push((slot.slot, default));
             }
         }
@@ -75,20 +76,8 @@ fn check_value(
     declared: &CompiledInputSlot,
     value: SlotValue,
 ) -> Result<(), JournalError> {
-    // A nullable slot accepts an explicit null without regard to kind.
-    if !matches!(value, SlotValue::Null) || !declared.constraint.nullable {
-        let kind = retained_value_kind(workflow, value)?;
-        if declared.kind != InputSlotKind::Any && declared.kind != kind {
-            return Err(JournalError::InputSchemaMismatch);
-        }
-    }
-    if let SlotValue::I64(number) = value
-        && (declared.constraint.min.is_some_and(|min| number < min)
-            || declared.constraint.max.is_some_and(|max| number > max))
-    {
-        return Err(JournalError::InputSchemaMismatch);
-    }
-    Ok(())
+    vb_core::input_validation::validate_input_value(declared, value, workflow.symbols_count(), None)
+        .map_err(|_| JournalError::InputSchemaMismatch)
 }
 
 fn declared_slots(
@@ -106,21 +95,4 @@ fn declared_slots(
         *slot = Some(*declaration);
     }
     Ok(remaining)
-}
-
-fn retained_value_kind(
-    workflow: &CompiledWorkflow,
-    value: SlotValue,
-) -> Result<InputSlotKind, JournalError> {
-    match value {
-        SlotValue::Null => Ok(InputSlotKind::Null),
-        SlotValue::Bool(_) => Ok(InputSlotKind::Bool),
-        SlotValue::I64(_) => Ok(InputSlotKind::I64),
-        SlotValue::F64(_) => Ok(InputSlotKind::F64),
-        SlotValue::Symbol(symbol) if symbol.get() < workflow.symbols_count() => {
-            Ok(InputSlotKind::Symbol)
-        }
-        // The positional CLI wire carries handles, not their arena payloads.
-        _ => Err(JournalError::InputSchemaMismatch),
-    }
 }

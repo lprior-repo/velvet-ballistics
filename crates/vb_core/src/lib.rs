@@ -26,6 +26,7 @@ pub mod error;
 pub mod errors;
 pub mod frame;
 pub mod ids;
+pub mod input_validation;
 pub mod limits;
 pub mod manual_gate;
 pub mod policy;

@@ -88,7 +88,17 @@ pub(crate) fn validate_phase_zero_step_metadata(
     match field {
         "id" => Ok(()),
         "name" => validate_step_display_name(body, step),
-        "if" | "with" | "try_again" | "on_error" | "then" => {
+        "if" | "then" => {
+            if body.as_str().is_some_and(|value| !value.is_empty()) { Ok(()) } else {
+                Err(CompileError::StepFieldShape { step, field: "step control", expected: "a non-empty string" })
+            }
+        }
+        "on_error" => {
+            if body.as_mapping().is_some() && body.as_mapping_get("handler").and_then(Yaml::as_str).is_some_and(|value| !value.is_empty()) { Ok(()) } else {
+                Err(CompileError::StepFieldShape { step, field: "on_error", expected: "a handler mapping" })
+            }
+        }
+        "with" | "try_again" => {
             Err(CompileError::UnsupportedStepControlField {
                 step,
                 field: Box::<str>::from(field),

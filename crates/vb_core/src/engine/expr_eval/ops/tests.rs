@@ -485,7 +485,7 @@ fn exists_non_empty_object_produces_true() -> Result<(), String> {
 }
 
 #[test]
-fn exists_empty_object_produces_false() -> Result<(), String> {
+fn exists_empty_object_produces_true() -> Result<(), String> {
     let mut store = ValueStore::new();
     let obj = store
         .insert_object(Vec::<crate::value_store::ObjectField>::new().into_boxed_slice())
@@ -496,7 +496,7 @@ fn exists_empty_object_produces_false() -> Result<(), String> {
         vec![],
         &mut store,
     )?;
-    ensure_equal(result, SlotValue::Bool(false))
+    ensure_equal(result, SlotValue::Bool(true))
 }
 
 // ===== Merge =====

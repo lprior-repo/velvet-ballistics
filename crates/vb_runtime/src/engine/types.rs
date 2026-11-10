@@ -37,6 +37,11 @@ pub enum EvidenceEvent {
         /// Output slot written, if any (Nop/Jump have no output).
         output: Option<SlotIdx>,
     },
+    /// Step failed and routed to its configured handler.
+    StepFailed {
+        /// Failed step index.
+        step: StepIdx,
+    },
     /// A slot was written during step execution.
     SlotWritten {
         /// Slot index.
@@ -125,6 +130,15 @@ impl EvidenceCollector {
         }
         self.events
             .push(EvidenceEvent::StepSucceeded { step, output });
+        Ok(())
+    }
+
+    /// Records a handled failure without reporting success or an unwritten output.
+    pub fn push_step_failed(&mut self, step: StepIdx) -> Result<(), EngineError> {
+        if self.events.len() >= self.capacity {
+            return Err(EngineError::EvidenceCapacityExceeded { step, slot: SlotIdx::ZERO, capacity: self.capacity, len: self.events.len(), required: "step_failed" });
+        }
+        self.events.push(EvidenceEvent::StepFailed { step });
         Ok(())
     }
 

@@ -262,11 +262,21 @@ fn validate_scoped_body_step(body_step: &Yaml<'_>, step: usize) -> Result<(), Co
         StepPrimitive::Run | StepPrimitive::Do => {
             validate_choose_body_do(body, step, primitive.as_str())
         }
-        _ => Err(CompileError::UnsupportedStepPrimitive {
-            step,
-            primitive: primitive.as_str(),
-        }),
+        _ => validate_nested_primitive(body_step, step, primitive),
     }
+}
+
+pub(super) fn validate_nested_primitive(
+    body_step: &Yaml<'_>,
+    step: usize,
+    primitive: StepPrimitive,
+) -> Result<(), CompileError> {
+    let last = if matches!(primitive, StepPrimitive::Finish) {
+        step
+    } else {
+        step.checked_add(1).ok_or(CompileError::StepIndexOutOfRange { value: step })?
+    };
+    super::part_03::validate_canonical_phase_zero_step_shape(body_step, step, last)
 }
 
 fn validate_text_or_integer_node(

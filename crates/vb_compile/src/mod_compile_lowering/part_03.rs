@@ -24,6 +24,7 @@ pub(super) fn lower_canonical_parallel(
     id: StepIdx,
     branches: &[crate::TogetherBranch],
     next: Option<StepIdx>,
+    scope: CanonicalScope<'_>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     let accumulator = builder
@@ -47,7 +48,7 @@ pub(super) fn lower_canonical_parallel(
                 .map_err(|e| CompileErrors(vec![e]))?,
         );
         let width =
-            u16::try_from(body_width(&branch.steps, 1).map_err(|e| CompileErrors(vec![e]))?)
+            u16::try_from(body_width(&branch.steps, 2).map_err(|e| CompileErrors(vec![e]))?)
                 .map_err(|_| {
                     CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
                         primitive: "parallel",
@@ -77,7 +78,7 @@ pub(super) fn lower_canonical_parallel(
         Some(accumulator),
         None,
     ));
-    emit_together_branches(id, branches, join, slots, index, builder)?;
+    emit_together_branches(id, branches, join, slots, index, scope, builder)?;
     builder.push_node(node(
         join,
         CompiledNodeKind::TogetherJoin {
@@ -106,6 +107,7 @@ pub(super) fn emit_together_branches(
     join: StepIdx,
     slots: TogetherSlots,
     diagnostic_step: usize,
+    scope: CanonicalScope<'_>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     let mut cursor = 1u16;
@@ -132,7 +134,7 @@ pub(super) fn emit_together_branches(
             }])
         })?;
         let width =
-            u16::try_from(body_width(&branch.steps, 1).map_err(|e| CompileErrors(vec![e]))?)
+            u16::try_from(body_width(&branch.steps, 2).map_err(|e| CompileErrors(vec![e]))?)
                 .map_err(|_| {
                     CompileErrors(vec![CompileError::StepIndexOutOfRange {
                         value: branch_index,
@@ -160,15 +162,18 @@ pub(super) fn emit_together_branches(
             },
             None,
         ));
-        emit_single_body_set(
-            &branch.steps,
-            entry,
-            diagnostic_step,
-            slots.result,
-            Some(following),
-            builder,
-            true,
-        )?;
+        let copy_offset = following_offset.checked_sub(1).ok_or_else(|| {
+            CompileErrors(vec![CompileError::StepIndexOutOfRange { value: diagnostic_step }])
+        })?;
+        let copy = checked_step_offset(base, copy_offset, "together", "result")
+            .map_err(|e| CompileErrors(vec![e]))?;
+        let result = super::part_14::emit_scoped_flat_body(
+            &branch.steps, entry, copy, scope, builder, "together",
+        )?.ok_or_else(|| CompileErrors(vec![CompileError::StepFieldShape {
+            step: diagnostic_step, field: "together.branches[].steps", expected: "a final value",
+        }]))?;
+        builder.push_node(node(copy, CompiledNodeKind::Copy { source: result },
+            Some(slots.result), Some(following)));
         cursor = following_offset;
     }
     Ok(())

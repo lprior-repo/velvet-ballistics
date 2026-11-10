@@ -47,8 +47,16 @@ pub fn parse_yaml_events(text: &str) -> YamlResult<Vec<YamlEvent>> {
 
 /// Parse YAML text into a WorkflowSource AST.
 pub fn parse_workflow_source(text: &str) -> YamlResult<yaml_ast::WorkflowSource> {
+    parse_workflow_source_with_limits(text, &yaml_limits::YamlLimits::default())
+}
+
+/// Parse a workflow with resource limits applied before AST allocation.
+pub fn parse_workflow_source_with_limits(
+    text: &str,
+    limits: &yaml_limits::YamlLimits,
+) -> YamlResult<yaml_ast::WorkflowSource> {
     let text = yaml_profile::strip_bom(text);
-    yaml_profile::validate_yaml_profile(text)?;
+    yaml_profile::validate_yaml_profile_with_limits(text, limits)?;
     yaml_ast::parse_workflow_ast(text)
 }
 

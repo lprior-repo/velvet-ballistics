@@ -73,8 +73,8 @@ pub(crate) fn reject_directives(text: &str) -> YamlResult<()> {
     Ok(())
 }
 
-/// Validate with explicit limits.
-pub(crate) fn validate_yaml_profile_with_limits(text: &str, limits: &YamlLimits) -> YamlResult<()> {
+/// Validate the strict profile before allocating an AST, using caller limits.
+pub fn validate_yaml_profile_with_limits(text: &str, limits: &YamlLimits) -> YamlResult<()> {
     let text = strip_bom(text);
     check_encoding(text)?;
     reject_directives(text)?;

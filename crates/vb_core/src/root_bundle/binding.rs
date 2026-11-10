@@ -79,7 +79,7 @@ impl Binding {
             return false;
         }
         for (mine, theirs) in self.input_slots.iter().zip(wf.input_slots().iter()) {
-            if mine.slot != theirs.slot || mine.kind != theirs.kind {
+            if mine != theirs {
                 return false;
             }
         }

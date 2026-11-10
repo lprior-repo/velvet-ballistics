@@ -6,13 +6,20 @@ use crate::value::SlotValue;
 use crate::value_store::ValueStore;
 
 use super::stack::{
-    ExprStack, expect_i64, expect_list, expect_symbol, pop_pair, pop_triple, push_value,
+    ExprStack, expect_i64, expect_list, expect_object, expect_symbol, pop_pair, pop_triple,
+    push_value,
 };
 
 // ===== Text operations =====
 
 pub(super) fn eval_contains(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
     let (haystack, needle) = pop_pair(stack)?;
+    if let SlotValue::List(id) = haystack {
+        let items = store
+            .list(id)
+            .map_err(|_| EngineError::ListOutOfBounds { list: id })?;
+        return push_value(stack, SlotValue::Bool(items.contains(&needle)));
+    }
     let haystack_id = expect_symbol(haystack)?;
     let needle_id = expect_symbol(needle)?;
     let haystack_str = store
@@ -58,18 +65,20 @@ pub(super) fn eval_ends_with(stack: &mut ExprStack, store: &ValueStore) -> Resul
 // ===== List operations =====
 
 pub(super) fn eval_has(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
-    let (list, item) = pop_pair(stack)?;
-    let list_id = expect_list(list)?;
-    let items = store
-        .list(list_id)
-        .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
-    let found = items.contains(&item);
+    let (object, key) = pop_pair(stack)?;
+    let object_id = expect_object(object)?;
+    let key = expect_symbol(key)?;
+    let fields = store
+        .object(object_id)
+        .map_err(|_| EngineError::ObjectOutOfBounds { object: object_id })?;
+    let found = fields.iter().any(|field| field.key == key);
     push_value(stack, SlotValue::Bool(found))
 }
 
 pub(super) fn eval_length(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
     let value = super::stack::pop_value(stack)?;
     let len = match value {
+        SlotValue::Null => 0,
         SlotValue::Symbol(id) => {
             let s = store
                 .symbol(id)
@@ -153,6 +162,9 @@ pub(super) fn eval_sum(stack: &mut ExprStack, store: &ValueStore) -> Result<(), 
 
 pub(super) fn eval_count(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
     let value = super::stack::pop_value(stack)?;
+    if value == SlotValue::Null {
+        return push_value(stack, SlotValue::I64(0));
+    }
     let list_id = expect_list(value)?;
     let items = store
         .list(list_id)

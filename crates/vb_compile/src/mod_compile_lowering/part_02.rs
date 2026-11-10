@@ -29,6 +29,9 @@ pub(super) use canonical_scalar::{
 #[path = "canonical_do.rs"]
 mod canonical_do;
 
+#[path = "canonical_controls.rs"]
+pub(super) mod canonical_controls;
+
 #[path = "canonical_guarded_do.rs"]
 mod canonical_guarded_do;
 use canonical_guarded_do::lower_top_level_do;
@@ -59,6 +62,10 @@ pub(super) fn lower_canonical_step(
     for_each_inputs: &ForEachInputs,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
+    let control = canonical_controls::prepare(step, id, next, step_names, CanonicalScope { outputs, step_outputs, slot_types }, builder)?;
+    let step = &control.step;
+    let id = control.body;
+    let next = control.next;
     let result = match &step.primitive {
         crate::StepPrimitive::Set { output, value } => {
             validate_output_alias(output).map_err(|e| CompileErrors(vec![e]))?;
@@ -132,7 +139,14 @@ pub(super) fn lower_canonical_step(
             builder,
         ),
         crate::StepPrimitive::Together { branches } => {
-            lower_canonical_parallel(index, id, branches, next, builder)
+            lower_canonical_parallel(index, id, branches, next, CanonicalScope {
+                outputs, step_outputs, slot_types,
+            }, builder)?;
+            if let Some(slot) = builder.nodes.last().and_then(|node| node.output.slot()) {
+                step_outputs.insert(step.id.clone(), slot);
+                slot_types.insert(slot, ExprType::List);
+            }
+            Ok(())
         }
         crate::StepPrimitive::Collect {
             source,
@@ -258,6 +272,7 @@ pub(super) fn lower_canonical_step(
     };
 
     result?;
+    canonical_controls::complete(&control, builder);
     extend_step_names_for_generated(step_names, step.id.as_str(), builder.nodes.len());
     Ok(())
 }

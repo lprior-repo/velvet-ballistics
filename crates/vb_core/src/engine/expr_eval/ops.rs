@@ -66,21 +66,9 @@ fn eval_i64_cmp(stack: &mut ExprStack, op: fn(&i64, &i64) -> bool) -> Result<(),
 
 // ===== Object operations =====
 
-fn eval_exists(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
+fn eval_exists(stack: &mut ExprStack, _store: &ValueStore) -> Result<(), EngineError> {
     let value = super::stack::pop_value(stack)?;
-    match value {
-        SlotValue::Null => push_value(stack, SlotValue::Bool(false)),
-        SlotValue::Object(object_id) => {
-            let fields = store
-                .object(object_id)
-                .map_err(|_| EngineError::ObjectOutOfBounds { object: object_id })?;
-            push_value(stack, SlotValue::Bool(!fields.is_empty()))
-        }
-        other => Err(EngineError::TypeMismatch {
-            expected: "object or null",
-            found: other.type_name(),
-        }),
-    }
+    push_value(stack, SlotValue::Bool(!matches!(value, SlotValue::Null)))
 }
 
 fn eval_merge_get_fields(

@@ -19,8 +19,8 @@ pub(crate) fn collect_and_validate_events(
             line: e.marker().line(),
             reason: e.info().into(),
         })?;
+        state.record_value_node(&event, limits)?;
         state.apply_event(&event, limits)?;
-        state.record_node(limits)?;
         state.events.push(convert_event(event, span));
     }
     state.finish()
@@ -39,6 +39,23 @@ struct EventCollectionState {
 }
 
 impl EventCollectionState {
+    fn record_value_node(
+        &mut self,
+        event: &saphyr_parser::Event<'_>,
+        limits: &YamlLimits,
+    ) -> YamlResult<()> {
+        let is_value = matches!(event,
+            saphyr_parser::Event::Scalar(..)
+                | saphyr_parser::Event::MappingStart(..)
+                | saphyr_parser::Event::SequenceStart(..));
+        let is_key = self.in_mapping.last() == Some(&true)
+            && self.expecting_key.last() == Some(&true);
+        if is_value && !is_key {
+            self.record_node(limits)?;
+        }
+        Ok(())
+    }
+
     fn new() -> Self {
         Self {
             events: Vec::new(),

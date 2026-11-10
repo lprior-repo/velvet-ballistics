@@ -9,6 +9,11 @@ pub fn find_error_handler_for_failure(
     workflow: &CompiledWorkflow,
     failed: StepIdx,
 ) -> Option<(StepIdx, Option<SlotIdx>)> {
+    if let Some(node) = workflow.node(failed)
+        && let vb_core::workflow::ErrorRouting::Handler { handler, error_slot } = node.routing.error
+    {
+        return Some((handler, error_slot));
+    }
     if let Some(result) = error_handler_on_node(workflow, failed, failed) {
         return Some(result);
     }

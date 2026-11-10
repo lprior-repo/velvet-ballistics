@@ -138,7 +138,7 @@ fn test_skipped_pending_nested_region_allows_outer_rearm() -> Result<(), String>
 }
 
 #[test]
-fn test_entered_nested_start_rejects_before_effects() -> Result<(), String> {
+fn test_entered_nested_start_allowed() -> Result<(), String> {
     let wf = checked(build_nested_loop_workflow())?;
     let source_before = wf.to_parts();
     let (mut run, mut store) = setup_run_and_store()?;
@@ -158,16 +158,21 @@ fn test_entered_nested_start_rejects_before_effects() -> Result<(), String> {
     assert_eq!(signal, RuntimeSignal::StepBudgetExhausted);
     assert_eq!(run.pc(), StepIdx::new(2));
 
-    let before = run.clone();
     assert!(!evidence.drain().is_empty());
 
-    let result = drive_phase(&wf, &mut run, &mut store, &mut evidence, &mut collect, 1);
-    expect_core_reason(result, "nested loop activation unsupported")?;
+    // Inner loop (RepeatStart at step 2) should now be allowed to execute
+    // because the outer ForEachStart (step 0) has Succeeded.
+    let signal = checked(drive_phase(
+        &wf,
+        &mut run,
+        &mut store,
+        &mut evidence,
+        &mut collect,
+        50,
+    ))?;
+    assert!(matches!(signal, RuntimeSignal::Finished(_)));
 
-    assert_eq!(run, before);
     assert_eq!(wf.to_parts(), source_before);
-    assert!(evidence.drain().is_empty());
-
     Ok(())
 }
 
@@ -205,7 +210,7 @@ fn test_restored_cached_inner_body_and_control_reject_before_effects() -> Result
             &mut collect,
             1,
         );
-        expect_core_reason(result, "nested loop activation unsupported")?;
+        expect_core_reason(result, "containing loop region start not succeeded")?;
         assert_eq!(test_run, before);
         assert_eq!(wf.to_parts(), source_before);
         assert!(evidence.drain().is_empty());
@@ -249,5 +254,124 @@ fn test_zero_budget_preserves_precedence_at_nested_start() -> Result<(), String>
     assert_eq!(wf.to_parts(), source_before);
     assert!(evidence.drain().is_empty());
 
+    Ok(())
+}
+
+#[test]
+fn test_nested_loop_outer_repeat_completes() -> Result<(), String> {
+    let wf = checked(build_nested_loop_workflow())?;
+    let (mut run, mut store) = setup_run_and_store()?;
+    write_source_list(&mut run, &mut store)?;
+    checked(run.write_slot_with_taint(SlotIdx::new(5), SlotValue::Bool(false), Taint::Clean))?;
+
+    let mut evidence = EvidenceCollector::new();
+    let mut collect = CollectStates::new();
+    let signal = checked(drive_phase(
+        &wf,
+        &mut run,
+        &mut store,
+        &mut evidence,
+        &mut collect,
+        100,
+    ))?;
+    assert!(matches!(signal, RuntimeSignal::Finished(_)));
+
+    let started = evidence
+        .drain()
+        .iter()
+        .filter(|e| matches!(e, crate::engine::types::EvidenceEvent::StepStarted { .. }))
+        .count();
+    assert_eq!(started, 20);
+
+    Ok(())
+}
+
+#[test]
+fn test_nested_loop_taint_preserved_across_iterations() -> Result<(), String> {
+    let wf = checked(build_nested_loop_workflow())?;
+    let (mut run, mut store) = setup_run_and_store()?;
+    write_source_list(&mut run, &mut store)?;
+    checked(run.write_slot_with_taint(SlotIdx::new(5), SlotValue::Bool(false), Taint::Clean))?;
+
+    let mut evidence = EvidenceCollector::new();
+    let mut collect = CollectStates::new();
+    checked(drive_phase(
+        &wf,
+        &mut run,
+        &mut store,
+        &mut evidence,
+        &mut collect,
+        100,
+    ))?;
+
+    // After execution, the iterator slot should still have the outer list's taint
+    let _iter = checked(run.read_slot(SlotIdx::new(2)))?;
+    assert_eq!(checked(run.read_taint(SlotIdx::new(2)))?, Taint::Secret);
+
+    // The input list should be unchanged
+    let source = checked(run.read_slot(SlotIdx::new(0)))?;
+    let source_id = match *source {
+        SlotValue::List(id) => id,
+        other => return Err(format!("expected List, got {:?}", other)),
+    };
+    let source_items = checked(store.list(source_id))?;
+    assert_eq!(source_items, &[SlotValue::I64(7), SlotValue::I64(9)]);
+    assert_eq!(checked(run.read_taint(SlotIdx::new(0)))?, Taint::Secret);
+
+    Ok(())
+}
+
+#[test]
+fn test_nested_loop_exact_step_count() -> Result<(), String> {
+    let wf = checked(build_nested_loop_workflow())?;
+    let (mut run, mut store) = setup_run_and_store()?;
+    write_source_list(&mut run, &mut store)?;
+    checked(run.write_slot_with_taint(SlotIdx::new(5), SlotValue::Bool(false), Taint::Clean))?;
+
+    let mut evidence = EvidenceCollector::new();
+    let mut collect = CollectStates::new();
+    checked(drive_phase(
+        &wf,
+        &mut run,
+        &mut store,
+        &mut evidence,
+        &mut collect,
+        100,
+    ))?;
+
+    let events = evidence.drain();
+    let step_started = events
+        .iter()
+        .filter(|e| matches!(e, crate::engine::types::EvidenceEvent::StepStarted { .. }))
+        .count();
+    let step_succeeded = events
+        .iter()
+        .filter(|e| matches!(e, crate::engine::types::EvidenceEvent::StepSucceeded { .. }))
+        .count();
+
+    assert_eq!(step_started, step_succeeded);
+    assert_eq!(step_started, 20);
+    Ok(())
+}
+
+#[test]
+fn completed_outer_control_cannot_authorize_an_unfinished_inner_repeat() -> Result<(), String> {
+    let wf = checked(build_nested_loop_workflow())?;
+    let (mut run, mut store) = setup_run_and_store()?;
+    write_source_list(&mut run, &mut store)?;
+    checked(run.write_slot_with_taint(SlotIdx::new(5), SlotValue::Bool(false), Taint::Clean))?;
+    let mut evidence = EvidenceCollector::new();
+    let mut collect = CollectStates::new();
+    checked(drive_phase(&wf, &mut run, &mut store, &mut evidence, &mut collect, 3))?;
+    checked(run.mark_succeeded(StepIdx::new(6)))?;
+    checked(run.set_pc(StepIdx::new(1)))?;
+    let before = run.clone();
+    let result = super::super::loop_rearm::loop_body_rearm(
+        &wf, &mut run, StepIdx::new(6), StepIdx::new(1),
+    );
+    assert!(matches!(result, Err(RuntimeEngineError::Core(
+        EngineError::InvalidCompiledWorkflow { reason: "nested loop region not consistently completed" }
+    ))));
+    assert_eq!(run, before);
     Ok(())
 }

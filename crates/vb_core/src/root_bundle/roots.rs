@@ -4,14 +4,14 @@ use crate::errors::CoreError;
 use crate::ids::SlotIdx;
 use crate::value::{SlotValue, Taint};
 use crate::value_store::{ValueStoreCheckpointV1, validate_value_reference};
-use crate::workflow::{CompiledWorkflow, InputSlotKind};
+use crate::workflow::{CompiledInputSlot, CompiledWorkflow, InputSlotKind};
 
 use super::errors::{OwnedRootBundleError as Error, ValueKind};
 
 /// Slot tracking state for root validation.
 struct Slots {
     seen: Vec<bool>,
-    kinds: Vec<Option<InputSlotKind>>,
+    kinds: Vec<Option<CompiledInputSlot>>,
 }
 
 impl Slots {
@@ -33,7 +33,7 @@ impl Slots {
                     reason: "owned_root_slots",
                 },
             ))?;
-            *entry = Some(input.kind);
+            *entry = Some(*input);
         }
         Ok(Slots { seen, kinds })
     }
@@ -94,7 +94,7 @@ fn validate_missing(wf: &CompiledWorkflow, slots: &Slots) -> Result<(), Error> {
                 reason: "owned_root_slots",
             },
         ))?;
-        if !*entry {
+        if !*entry && input.constraint.requires_value() {
             return Err(Error::RootSlotMissing { slot: input.slot });
         }
     }
@@ -128,10 +128,12 @@ fn validate_kinds(roots: &[(SlotIdx, SlotValue, Taint)], slots: &Slots) -> Resul
                 reason: "owned_root_slots",
             }))?;
         let actual = ValueKind::of(*value);
-        if !kind_matches(expected, actual) {
+        if !(*value == SlotValue::Null && expected.constraint.nullable)
+            && !kind_matches(expected.kind, actual)
+        {
             return Err(Error::RootKindMismatch {
                 slot: *slot,
-                expected,
+                expected: expected.kind,
                 actual,
             });
         }
@@ -161,5 +163,43 @@ pub(super) fn validate(
     validate_missing(wf, &slots)?;
     validate_kinds(roots, &slots)?;
     validate_references(roots, cp)?;
+    for (slot, value, _) in roots {
+        let declaration = slots
+            .kinds
+            .get(usize::from(slot.get()))
+            .and_then(Option::as_ref)
+            .ok_or(Error::RootSlotExtra { slot: *slot })?;
+        crate::input_validation::validate_input_value(
+            declaration,
+            *value,
+            wf.symbols_count(),
+            Some(cp),
+        )
+        .map_err(|issue| Error::RootConstraintMismatch { slot: *slot, issue })?;
+    }
     Ok(())
+}
+
+pub(super) fn fill_defaults(
+    roots: Box<[(SlotIdx, SlotValue, Taint)]>,
+    workflow: &CompiledWorkflow,
+) -> Result<Box<[(SlotIdx, SlotValue, Taint)]>, Error> {
+    let mut roots = roots.into_vec();
+    roots
+        .try_reserve_exact(workflow.input_slots().len())
+        .map_err(|_| Error::Checkpoint(CoreError::AllocationFailed))?;
+    for declaration in workflow.input_slots() {
+        if roots.iter().any(|(slot, _, _)| *slot == declaration.slot) {
+            continue;
+        }
+        if let Some(value) = declaration.constraint.default_value {
+            let taint = if declaration.constraint.secret {
+                Taint::Secret
+            } else {
+                Taint::Clean
+            };
+            roots.push((declaration.slot, value, taint));
+        }
+    }
+    Ok(roots.into_boxed_slice())
 }

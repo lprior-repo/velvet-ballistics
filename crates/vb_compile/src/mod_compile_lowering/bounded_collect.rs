@@ -1,5 +1,5 @@
 use super::super::part_14::emit_scoped_flat_body;
-use super::super::{SlotCompiler, checked_step_offset, slot_from_text};
+use super::super::{SlotCompiler, body_width, checked_step_offset, slot_from_text};
 use super::{CanonicalScope, resolve_slot_reference, validate_output_alias};
 use crate::mod_compile_validation::validate_public_name;
 use crate::{CompileError, CompileErrors};
@@ -161,7 +161,8 @@ fn plan_build(
 ) -> Result<CollectPlan, CompileErrors> {
     let source = resolve_source(index, config)?;
     builder.record_slot(source);
-    let (body, advance, done) = plan_compute_edges(id, config.body.len())?;
+    let width = body_width(config.body, 0).map_err(|e| CompileErrors(vec![e]))?;
+    let (body, advance, done) = plan_compute_edges(id, width)?;
     let limit = plan_validate_bounds(index, config)?;
     let (collector_slot, finish_slot) = allocate_collect_slots(builder)?;
     Ok(CollectPlan {

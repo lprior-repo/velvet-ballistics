@@ -40,9 +40,9 @@ impl YamlCompiler {
     pub fn compile(&self, source: &[u8]) -> Result<CompiledWorkflow, CompileErrors> {
         let text = checked_utf8(source, self.limits).map_err(|e| CompileErrors(vec![e]))?;
         reject_known_canonical_text_gaps(text).map_err(|e| CompileErrors(vec![e]))?;
-        let source = crate::parse_workflow_source(text)
+        let source = crate::parse_workflow_source_with_limits(text, &self.limits)
             .map_err(|e| CompileErrors(vec![canonical_yaml_error(e)]))?;
-        Self::enforce_canonical_document_validations(text)?;
+        self.enforce_canonical_document_validations(text)?;
         crate::mod_compile_lowering::compile_source(&source)
     }
 
@@ -62,11 +62,11 @@ impl YamlCompiler {
     /// would require the AST to encode identifiers as pre-lowering expressions,
     /// which the typed `WorkflowAst` already does. The semantic gates live in
     /// `compile_source` and run after lowering against the typed IR parts.
-    fn enforce_canonical_document_validations(text: &str) -> Result<(), CompileErrors> {
+    fn enforce_canonical_document_validations(&self, text: &str) -> Result<(), CompileErrors> {
         let docs = saphyr::Yaml::load_from_str(text)
             .map_err(|e| CompileErrors(vec![CompileError::Parse(e)]))?;
         let doc = single_document(&docs).map_err(|e| CompileErrors(vec![e]))?;
-        validate_strict_profile(doc, YamlLimits::default()).map_err(|e| CompileErrors(vec![e]))?;
+        validate_strict_profile(doc, self.limits).map_err(|e| CompileErrors(vec![e]))?;
         validate_canonical_workflow_document_shape(doc).map_err(|e| CompileErrors(vec![e]))?;
         schema::validate_input_schemas(doc)?;
         Ok(())
@@ -75,6 +75,14 @@ impl YamlCompiler {
     /// Parses strict YAML into the cold typed AST without emitting runtime IR.
     pub fn parse_ast(&self, source: &[u8]) -> Result<ast::WorkflowAst, CompileErrors> {
         let text = checked_utf8(source, self.limits).map_err(|e| CompileErrors(vec![e]))?;
+        if let Err(error) = crate::yaml_profile::validate_yaml_profile_with_limits(text, &self.limits) {
+            if crate::mod_compile_validation::yaml_error_category(&error) != "limit_exceeded" {
+                strict_yaml::reject_unsupported_profile_events(text)
+                    .map_err(|e| CompileErrors(vec![e]))?;
+                reject_duplicate_mapping_keys(text).map_err(|e| CompileErrors(vec![e]))?;
+            }
+            return Err(CompileErrors(vec![canonical_yaml_error(error)]));
+        }
         strict_yaml::reject_unsupported_profile_events(text).map_err(|e| CompileErrors(vec![e]))?;
         reject_duplicate_mapping_keys(text).map_err(|e| CompileErrors(vec![e]))?;
         let docs =

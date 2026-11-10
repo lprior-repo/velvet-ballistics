@@ -143,6 +143,15 @@ pub enum OwnedRootBundleError {
         actual: ValueKind,
     },
 
+    /// A root violates its retained schema beyond the top-level kind.
+    #[error("slot {slot:?} input constraint mismatch: {issue:?}")]
+    RootConstraintMismatch {
+        /// Input slot whose constraint was violated.
+        slot: SlotIdx,
+        /// Failed numeric or payload constraint.
+        issue: crate::input_validation::InputValueIssue,
+    },
+
     /// Arena graph contains a cycle.
     #[error("graph cycle detected at node {node:?}")]
     GraphCycle {

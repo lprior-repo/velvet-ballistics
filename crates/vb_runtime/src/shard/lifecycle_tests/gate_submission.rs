@@ -1214,7 +1214,7 @@ fn validate_open_gate_decision_accepts_open_gate() -> Result<(), Box<dyn std::er
 #[test]
 fn validate_open_gate_decision_rejects_closed_gate() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(92026);
-    let (mut shard, _journal) = make_running_shard(run)?;
+    let (shard, _journal) = make_running_shard(run)?;
 
     assert_eq!(
         shard.validate_open_gate_decision(run, &test_input(7, GateDecision::Approve)),

@@ -675,22 +675,6 @@ fn arb_capacity() -> impl Strategy<Value = QueueCapacity> {
         .prop_map(|n| QueueCapacity::new(NonZeroUsize::new(n).expect("strategy range starts at 1")))
 }
 
-/// Strategy: arbitrary `IngressFrame` within default payload limit.
-fn arb_ingress_frame() -> impl Strategy<Value = IngressFrame> {
-    // Generate payloads up to 1024 bytes for test speed.
-    (0..=1024usize).prop_flat_map(|payload_len| {
-        proptest::collection::vec(proptest::prelude::any::<u8>(), payload_len).prop_map(|bytes| {
-            IngressFrame::new(
-                RunId::new(1),
-                WorkflowDigest::from_bytes([0u8; 32]),
-                Bytes::from(bytes),
-                MaxPayloadBytes::DEFAULT,
-            )
-            .expect("generated frame must be valid within default limit")
-        })
-    })
-}
-
 proptest! {
     /// Invariant: `try_submit`/`try_recv` cycle preserves FIFO order.
     /// For any sequence of N successful `try_submit` calls followed by N successful

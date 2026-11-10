@@ -18,6 +18,7 @@ mod part_13;
 mod part_14;
 mod skipped_outputs;
 mod source_slot_reservation;
+mod numeric_source_inputs;
 
 // vb-tkcc7: dead always-false-gated kani/ and kani_proofs/ harness dirs deleted outright
 // (stale pre-refactor StepAst refs; no kani CI runner covers vb_compile).

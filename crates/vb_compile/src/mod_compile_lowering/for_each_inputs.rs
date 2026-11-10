@@ -14,6 +14,26 @@ pub(in crate::mod_compile_lowering) struct ForEachInputs {
 }
 
 impl ForEachInputs {
+    pub(in crate::mod_compile_lowering) fn from_bindings(
+        bindings: &HashMap<String, SlotIdx>,
+        builder: &super::SlotCompiler,
+    ) -> Self {
+        let mut inputs = Self::new();
+        for (name, slot) in bindings {
+            let Some(name) = name.strip_prefix("$input.") else { continue; };
+            let Some(declaration) = builder.input_slots.iter().find(|input| input.slot == *slot) else { continue; };
+            if declaration.kind != vb_core::InputSlotKind::List
+                || declaration.constraint.element != Some(vb_core::InputSlotKind::Any) { continue; }
+            let Some(max) = declaration.constraint.max else { continue; };
+            inputs.record(*slot, name, &AuthorValue::Mapping(vec![
+                AuthorEntry { key: "is".into(), value: AuthorValue::Text("list".into()) },
+                AuthorEntry { key: "of".into(), value: AuthorValue::Text("any".into()) },
+                AuthorEntry { key: "max".into(), value: AuthorValue::I64(max) },
+            ]));
+        }
+        inputs
+    }
+
     pub(in crate::mod_compile_lowering) fn new() -> Self {
         Self {
             inputs: HashMap::new(),

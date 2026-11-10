@@ -37,6 +37,8 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
         .ok_or(CompileErrors(vec![CompileError::EmptySteps]))?;
     let mut builder = SlotCompiler::new();
     reserve_source_slots(source, &mut builder).map_err(|e| CompileErrors(vec![e]))?;
+    super::numeric_source_inputs::record_numeric_inputs(source, &mut builder)
+        .map_err(|e| CompileErrors(vec![e]))?;
     let mut outputs: HashMap<String, SlotIdx> = HashMap::new();
     let mut step_outputs: HashMap<String, SlotIdx> = HashMap::new();
     let mut slot_types: HashMap<SlotIdx, ExprType> = HashMap::new();
@@ -137,27 +139,40 @@ pub(super) fn canonical_step_width(
         crate::StepPrimitive::Collect { body, .. } | crate::StepPrimitive::Repeat { body, .. } => {
             body_width(body, 3)
         }
-        crate::StepPrimitive::Aggregate { body, .. } => body_width(body, 4),
+        crate::StepPrimitive::Aggregate { body, .. } => {
+            if !reduce_direct_body(body) {
+                body_width(body, 5)
+            } else {
+                body_width(body, 4)
+            }
+        }
         crate::StepPrimitive::Together { branches } => together_width(branches),
         crate::StepPrimitive::Choose { branches, .. } => choose_width(branches),
         _ => Ok(1),
     }
 }
 
+pub(super) fn reduce_direct_body(body: &[crate::StepAst]) -> bool {
+    matches!(body, [step] if matches!(step.primitive, crate::StepPrimitive::Set { .. })
+        && step.condition.is_none() && step.then.is_none() && step.on_error.is_none()
+        && step.retry.is_none() && step.with.is_none())
+}
+
 pub(super) fn canonical_step_width_with_condition(
     step: &crate::StepAst,
 ) -> Result<usize, CompileError> {
-    if step.condition.is_some() && matches!(step.primitive, crate::StepPrimitive::Do { .. }) {
-        return Ok(2);
+    let width = canonical_step_width(&step.primitive)?;
+    if step.condition.is_some() {
+        return width.checked_add(1).ok_or(CompileError::StepIndexOutOfRange { value: width });
     }
-    canonical_step_width(&step.primitive)
+    Ok(width)
 }
 
 pub(super) fn body_width(body: &[crate::StepAst], overhead: usize) -> Result<usize, CompileError> {
     let mut width = overhead;
     for step in body {
         width = width
-            .checked_add(canonical_body_step_width(&step.primitive)?)
+            .checked_add(canonical_step_width_with_condition(step)?)
             .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
     }
     Ok(width)
@@ -177,22 +192,10 @@ pub(super) fn together_width(branches: &[crate::TogetherBranch]) -> Result<usize
     let mut width = 2usize;
     for branch in branches {
         width = width
-            .checked_add(body_width(&branch.steps, 1)?)
+            .checked_add(body_width(&branch.steps, 2)?)
             .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
     }
     Ok(width)
-}
-
-pub(super) fn canonical_body_step_width(
-    primitive: &crate::StepPrimitive,
-) -> Result<usize, CompileError> {
-    match primitive {
-        crate::StepPrimitive::Set { .. } | crate::StepPrimitive::Do { .. } => Ok(1),
-        other => Err(CompileError::UnsupportedStepPrimitive {
-            step: 0,
-            primitive: canonical_primitive_name(other),
-        }),
-    }
 }
 
 pub(super) fn canonical_step_names(

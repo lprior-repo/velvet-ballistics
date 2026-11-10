@@ -181,6 +181,7 @@ impl StorageRuntimeJournal {
                     attempt,
                 }))
             }
+            RuntimeJournalEvent::StepFailed { run, step, attempt } => Ok(Some(JournalEvent::StepFailed { run, seq, step, attempt })),
             RuntimeJournalEvent::StepSucceeded {
                 run, step, output, ..
             } => Ok(Some(JournalEvent::StepSucceeded {
@@ -293,6 +294,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::SlotWritten { .. }
             | RuntimeJournalEvent::StepStarted { .. }
             | RuntimeJournalEvent::StepSucceeded { .. }
+            | RuntimeJournalEvent::StepFailed { .. }
             | RuntimeJournalEvent::Resumed { .. } => None,
         }
     }
@@ -373,6 +375,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionAbandoned { .. }
             | RuntimeJournalEvent::StepStarted { .. }
             | RuntimeJournalEvent::StepSucceeded { .. }
+            | RuntimeJournalEvent::StepFailed { .. }
             | RuntimeJournalEvent::Resumed { .. } => Ok(None),
         }
     }
@@ -393,7 +396,8 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::RunKilled { .. }
             | RuntimeJournalEvent::Resumed { .. }
             | RuntimeJournalEvent::StepStarted { .. }
-            | RuntimeJournalEvent::StepSucceeded { .. } => {
+            | RuntimeJournalEvent::StepSucceeded { .. }
+            | RuntimeJournalEvent::StepFailed { .. } => {
                 Self::run_storage_event(clone_for_dispatch(&event), seq)
             }
             RuntimeJournalEvent::ActionScheduled { .. }

@@ -127,26 +127,13 @@ fn map_submit_inputs(
         let Some(value) = value else {
             continue;
         };
-        let kind = match value {
-            SlotValue::Null => vb_core::InputSlotKind::Null,
-            SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
-            SlotValue::I64(_) => vb_core::InputSlotKind::I64,
-            SlotValue::F64(_) => vb_core::InputSlotKind::F64,
-            SlotValue::Symbol(symbol) if symbol.get() < workflow.symbols_count() => {
-                vb_core::InputSlotKind::Symbol
-            }
-            // This wire carries handles without the arena payloads they require.
-            _ => return Err(invalid()),
-        };
-        if declaration.kind != vb_core::InputSlotKind::Any && declaration.kind != kind {
-            return Err(invalid());
-        }
-        if let SlotValue::I64(number) = value
-            && (declaration.constraint.min.is_some_and(|min| number < min)
-                || declaration.constraint.max.is_some_and(|max| number > max))
-        {
-            return Err(invalid());
-        }
+        vb_core::input_validation::validate_input_value(
+            declaration,
+            value,
+            workflow.symbols_count(),
+            None,
+        )
+        .map_err(|_| invalid())?;
         mapped.push((declaration.slot, value));
     }
     Ok(mapped.into_boxed_slice())

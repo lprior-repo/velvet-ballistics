@@ -9,6 +9,7 @@ use vb_core::{
 mod canonical_branch_body;
 use canonical_branch_body::emit_scoped_branch_body;
 pub(super) use canonical_branch_body::emit_scoped_flat_body;
+pub(super) use canonical_branch_body::emit_scoped_typed_body;
 #[path = "canonical_choose_conditions.rs"]
 mod canonical_choose_conditions;
 use canonical_choose_conditions::choose_node;
@@ -92,7 +93,8 @@ fn choose_targets(
             checked_step_offset(id, cursor, "choose", "body").map_err(|e| CompileErrors(vec![e]))?
         };
         targets.push(target);
-        cursor = add_body_offset(cursor, branch.steps.len(), id.as_usize())?;
+        let width = body_width(&branch.steps, 0).map_err(|e| CompileErrors(vec![e]))?;
+        cursor = add_body_offset(cursor, width, id.as_usize())?;
     }
     Ok(targets)
 }

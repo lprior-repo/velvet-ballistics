@@ -19,6 +19,27 @@ pub(crate) fn reject_known_canonical_text_gaps(text: &str) -> Result<(), Compile
 }
 
 pub(crate) fn canonical_yaml_error(error: crate::YamlError) -> CompileError {
+    match error {
+        crate::YamlError::SourceTooLarge { size, max } => {
+            return CompileError::SourceTooLarge { actual: size, limit: max };
+        }
+        crate::YamlError::NestingTooDeep { depth, max } => {
+            return CompileError::DepthLimit { depth, limit: max };
+        }
+        crate::YamlError::NodeLimitExceeded { max, .. } => {
+            return CompileError::NodeLimit { limit: max };
+        }
+        crate::YamlError::ScalarTooLong { len, max } => {
+            return CompileError::ScalarLimit { actual: len, limit: max };
+        }
+        crate::YamlError::SequenceTooLong { len, max } => {
+            return CompileError::SequenceLimit { actual: len, limit: max };
+        }
+        crate::YamlError::MappingTooLarge { count, max } => {
+            return CompileError::MappingLimit { actual: count, limit: max };
+        }
+        _ => {}
+    }
     CompileError::CanonicalYaml {
         category: yaml_error_category(&error),
         message: error.to_string().into_boxed_str(),
@@ -84,23 +105,6 @@ pub(crate) fn validate_canonical_compile_scope(
                 id: Box::from(step.id.as_str()),
             });
         }
-        if step.name.is_some() {
-            errors.push(CompileError::UnsupportedStepControlField {
-                step: index,
-                field: Box::from("name"),
-            });
-        }
-        if step.condition.is_some() {
-            match &step.primitive {
-                crate::StepPrimitive::Do { .. } => {}
-                _ => {
-                    errors.push(CompileError::UnsupportedStepControlField {
-                        step: index,
-                        field: Box::from("if"),
-                    });
-                }
-            }
-        }
         if step.with.is_some() {
             errors.push(CompileError::UnsupportedStepControlField {
                 step: index,
@@ -113,18 +117,7 @@ pub(crate) fn validate_canonical_compile_scope(
                 field: Box::from("try_again"),
             });
         }
-        if step.on_error.is_some() {
-            errors.push(CompileError::UnsupportedStepControlField {
-                step: index,
-                field: Box::from("on_error"),
-            });
-        }
-        if step.then.is_some() {
-            errors.push(CompileError::UnsupportedStepControlField {
-                step: index,
-                field: Box::from("then"),
-            });
-        }
+
     }
     let input_names: HashSet<&str> = source
         .inputs()

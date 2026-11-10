@@ -86,7 +86,7 @@ fn ends_with_matches_suffix() -> Result<(), EngineError> {
 }
 
 #[test]
-fn has_finds_element_in_list() -> Result<(), EngineError> {
+fn contains_finds_element_in_list() -> Result<(), EngineError> {
     let mut store = ValueStore::new();
     let list = store.insert_list(
         vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)].into_boxed_slice(),
@@ -95,7 +95,7 @@ fn has_finds_element_in_list() -> Result<(), EngineError> {
     let ops = vec![
         ExprOp::LoadSlot(SlotIdx::new(0)),
         ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::Has,
+        ExprOp::Contains,
     ];
     let result = eval_expr_ops_with_store(
         &ops,

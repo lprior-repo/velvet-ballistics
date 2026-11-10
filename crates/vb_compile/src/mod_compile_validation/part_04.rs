@@ -103,10 +103,7 @@ fn validate_choose_body_step(body_step: &Yaml<'_>, step: usize) -> Result<(), Co
         StepPrimitive::Run | StepPrimitive::Do => {
             validate_choose_body_do(body, step, primitive.as_str())
         }
-        _ => Err(CompileError::UnsupportedStepPrimitive {
-            step,
-            primitive: primitive.as_str(),
-        }),
+        _ => super::part_08::validate_nested_primitive(body_step, step, primitive),
     }
 }
 

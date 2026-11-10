@@ -38,7 +38,7 @@ fn sequence(fixture: &Fixture, events: &[EvidenceEvent], after: bool) -> TestRes
     } else {
         &[0, 1, 2, 3, 1, 2, 3, 1, 2, 3]
     };
-    let mut triples = events.chunks_exact(3);
+    let triples = events.chunks_exact(3);
     assert!(
         triples.remainder().is_empty(),
         "evidence events must form complete triples, got remainder: {:?}",

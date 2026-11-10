@@ -82,6 +82,18 @@ impl Shard {
             return Err(RuntimeError::ShutdownInProgress);
         }
         match &cmd {
+            ShardCommand::Submit { workflow, .. }
+            | ShardCommand::SubmitPrePersisted { workflow, .. }
+            | ShardCommand::SubmitWithContracts { workflow, .. } => {
+                crate::shard::helpers::prepare_input_slots(&[], workflow)?;
+            }
+            ShardCommand::SubmitWithInputs { workflow, inputs, .. }
+            | ShardCommand::SubmitWithInputsAndContracts { workflow, inputs, .. } => {
+                crate::shard::helpers::prepare_input_slots(inputs, workflow)?;
+            }
+            _ => {}
+        }
+        match &cmd {
             ShardCommand::Submit { .. }
             | ShardCommand::ActivateOwnedSubmission { .. }
             | ShardCommand::SubmitPrePersisted { .. }
@@ -1019,6 +1031,7 @@ impl Shard {
                 trace_events.push(TraceEvent::StepStarted { run, step });
                 Ok(())
             }
+            EvidenceEvent::StepFailed { step } => Self::push_drive_journal_event(journal_events, RuntimeJournalEvent::StepFailed { run, step, attempt }),
             EvidenceEvent::StepSucceeded { step, output } => Self::push_drive_journal_event(
                 journal_events,
                 RuntimeJournalEvent::StepSucceeded {

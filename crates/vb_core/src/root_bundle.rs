@@ -52,6 +52,7 @@ impl OwnedRootBundle {
         workflow: &CompiledWorkflow,
     ) -> Result<Self, OwnedRootBundleError> {
         validation::preflight(&checkpoint, workflow)?;
+        let roots = roots::fill_defaults(roots, workflow)?;
         roots::validate(&roots, workflow, &checkpoint)?;
         let graph = graph::validate(&checkpoint, &roots)?;
         taint::validate(&roots, &graph)?;

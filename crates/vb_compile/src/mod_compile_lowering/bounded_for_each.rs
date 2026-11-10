@@ -243,7 +243,9 @@ pub(super) fn lower_bounded_for_each(
 ) -> Result<(), CompileErrors> {
     validate_body_shape(index, &config)?;
 
-    let edges = body_edges(id, config.body.len(), config.next)?;
+    let width = super::super::body_width(config.body, 0)
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let edges = body_edges(id, width, config.next)?;
 
     let (input, limit) = resolve_input(index, &config)?;
 

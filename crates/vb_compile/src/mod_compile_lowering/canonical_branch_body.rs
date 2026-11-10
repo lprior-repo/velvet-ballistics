@@ -1,9 +1,12 @@
-//! Flat scoped lexical bodies. Bindings never escape their branch or loop body.
+//! Scoped lexical bodies. Bindings never escape their branch or loop body.
 
 use super::*;
 use std::collections::{HashMap, HashSet};
 use vb_core::{ActionId, SlotIdx};
 use vb_expr::expr_typecheck::ExprType;
+
+#[path = "canonical_nested.rs"]
+mod nested;
 
 pub(super) fn emit_scoped_branch_body(
     body: &[crate::StepAst],
@@ -13,7 +16,7 @@ pub(super) fn emit_scoped_branch_body(
     builder: &mut SlotCompiler,
 ) -> Result<usize, CompileErrors> {
     let _last_output = emit_scoped_flat_body(body, start, common_next, scope, builder, "choose")?;
-    Ok(body.len())
+    body_width(body, 0).map_err(|e| CompileErrors(vec![e]))
 }
 
 /// Emit one node per flat Set/Do step and return the final body's value slot.
@@ -25,21 +28,46 @@ pub(in crate::mod_compile_lowering) fn emit_scoped_flat_body(
     builder: &mut SlotCompiler,
     primitive: &'static str,
 ) -> Result<Option<SlotIdx>, CompileErrors> {
+    emit_scoped_typed_body(body, start, common_next, scope, builder, primitive)
+        .map(|result| result.map(|(slot, _)| slot))
+}
+
+/// Emit one node per flat Set/Do step and return (final slot, inferred type).
+pub(in crate::mod_compile_lowering) fn emit_scoped_typed_body(
+    body: &[crate::StepAst],
+    start: StepIdx,
+    common_next: StepIdx,
+    scope: CanonicalScope<'_>,
+    builder: &mut SlotCompiler,
+    primitive: &'static str,
+) -> Result<Option<(SlotIdx, ExprType)>, CompileErrors> {
     let mut local = BranchBindings::new(scope, primitive == "for_each");
+    let layout = canonical_layout(body, start.as_usize()).map_err(|e| CompileErrors(vec![e]))?;
+    let mut names = vec![Box::from(""); start.as_usize()];
+    names.extend(canonical_step_names(body, &layout).map_err(|e| CompileErrors(vec![e]))?);
     let mut result = None;
+    let mut offset = 0usize;
     for (index, step) in body.iter().enumerate() {
         reject_body_controls(step, index)?;
-        let id = body_id(start, index, primitive)?;
+        let id = body_id(start, offset, primitive)?;
+        offset = offset.checked_add(canonical_step_width_with_condition(step)
+            .map_err(|e| CompileErrors(vec![e]))?).ok_or_else(|| index_error(offset))?;
         let next_index = index.checked_add(1).ok_or_else(|| index_error(index))?;
         let next = if next_index == body.len() {
             common_next
         } else {
-            body_id(start, next_index, primitive)?
+            body_id(start, offset, primitive)?
         };
-        result = Some(local.lower(step, id, next, builder)?);
+        let control = super::part_02::canonical_controls::prepare(step, id, Some(next), &names, local.view(), builder)?;
+        let success = control.next.ok_or_else(|| index_error(id.as_usize()))?;
+        result = local.lower(&control.step, control.body, success, &names, builder)?
+            .map(|slot| (slot, local.type_of(slot).unwrap_or(ExprType::Unknown)));
+        super::part_02::canonical_controls::complete(&control, builder);
     }
     Ok(result)
 }
+
+
 
 fn body_id(
     start: StepIdx,
@@ -90,17 +118,26 @@ impl BranchBindings {
         }
     }
 
+    fn type_of(&self, slot: SlotIdx) -> Option<ExprType> {
+        self.types.get(&slot).copied()
+    }
+
     fn lower(
         &mut self,
         step: &crate::StepAst,
         id: StepIdx,
         next: StepIdx,
+        names: &[Box<str>],
         builder: &mut SlotCompiler,
-    ) -> Result<SlotIdx, CompileErrors> {
+    ) -> Result<Option<SlotIdx>, CompileErrors> {
         if !self.local_steps.insert(step.id.clone()) {
             return Err(CompileErrors(vec![CompileError::DuplicateStepId {
                 id: step.id.clone().into(),
             }]));
+        }
+        if !matches!(step.primitive, crate::StepPrimitive::Set { .. } | crate::StepPrimitive::Do { .. }) {
+            return nested::lower_nested(step, id, next, &mut self.outputs, &mut self.steps,
+                &mut self.types, names, builder);
         }
         let slot = builder
             .allocate_slot()
@@ -123,7 +160,7 @@ impl BranchBindings {
             }
         }
         self.steps.insert(step.id.clone(), slot);
-        Ok(slot)
+        Ok(Some(slot))
     }
 
     fn lower_set(
@@ -186,12 +223,8 @@ impl BranchBindings {
 
 fn reject_body_controls(step: &crate::StepAst, index: usize) -> Result<(), CompileErrors> {
     let fields = [
-        (step.name.is_some(), "name"),
-        (step.condition.is_some(), "if"),
         (step.with.is_some(), "with"),
         (step.retry.is_some(), "try_again"),
-        (step.on_error.is_some(), "on_error"),
-        (step.then.is_some(), "then"),
     ];
     if let Some((_, field)) = fields.iter().find(|(present, _)| *present) {
         return Err(CompileErrors(vec![

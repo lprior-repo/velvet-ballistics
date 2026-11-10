@@ -9,7 +9,7 @@ pub struct YamlLimits {
     pub max_source_bytes: usize,
     /// Maximum nesting depth.
     pub max_depth: u16,
-    /// Maximum total YAML nodes visited.
+    /// Maximum value nodes, including containers; mapping keys are excluded.
     pub max_nodes: u32,
     /// Maximum sequence length.
     pub max_sequence_len: usize,

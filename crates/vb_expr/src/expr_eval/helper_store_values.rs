@@ -126,11 +126,11 @@ pub(super) fn eval_helper_contains_with_store(
     needle: &SlotValue,
     store: &mut ValueStore,
 ) -> ExprResult<SlotValue> {
-    if matches!(*haystack, SlotValue::F64(_)) || matches!(*needle, SlotValue::F64(_)) {
-        return Err(ExprError::TypeMismatch {
-            expected: "list, text, or object".into(),
-            found: "number".into(),
-        });
+    if let SlotValue::List(id) = *haystack {
+        let items = store.list(id).map_err(|_| ExprError::InvalidReference {
+            reference: format!("list:{id:?}"),
+        })?;
+        return Ok(SlotValue::Bool(items.contains(needle)));
     }
     let haystack_id = expect_symbol(*haystack)?;
     let needle_id = expect_symbol(*needle)?;

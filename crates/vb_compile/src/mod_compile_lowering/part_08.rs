@@ -128,6 +128,7 @@ impl SlotCompiler {
             kind,
             constraint,
         });
+        self.input_slots.sort_unstable_by_key(|input| input.slot);
     }
 
     /// Pushes a compiled node into the node array.

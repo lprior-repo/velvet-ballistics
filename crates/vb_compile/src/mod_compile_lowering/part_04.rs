@@ -93,6 +93,7 @@ pub(super) fn lower_canonical_ask(
     Ok(())
 }
 
+#[cfg(test)]
 pub(super) fn emit_single_body_set(
     body: &[crate::StepAst],
     id: StepIdx,
@@ -179,6 +180,8 @@ pub(super) fn emit_single_body_set(
 }
 
 #[path = "body_constants.rs"]
+#[cfg(test)]
 mod body_constants;
+#[cfg(test)]
 pub(super) use body_constants::body_constant_index;
 use vb_core::workflow::node;

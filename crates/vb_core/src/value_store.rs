@@ -25,17 +25,17 @@ mod objects;
 mod resolve;
 mod symbols;
 pub(crate) use blobs::validate_blob_len;
-pub(crate) use checkpoint::{validate_checkpoint, validate_value_reference};
-pub(crate) use lists::validate_list_len;
-pub use objects::ObjectField;
-pub(crate) use objects::validate_object_len;
-pub(crate) use symbols::validate_symbol_len;
 #[cfg(test)]
 pub(crate) use blobs::{blob_index, next_blob_id};
+pub(crate) use checkpoint::{validate_checkpoint, validate_value_reference};
+pub(crate) use lists::validate_list_len;
 #[cfg(test)]
 pub(crate) use lists::{list_index, next_list_id};
+pub use objects::ObjectField;
+pub(crate) use objects::validate_object_len;
 #[cfg(test)]
 pub(crate) use objects::{next_object_id, object_index};
+pub(crate) use symbols::validate_symbol_len;
 #[cfg(test)]
 pub(crate) use symbols::{next_symbol_id, symbol_index};
 

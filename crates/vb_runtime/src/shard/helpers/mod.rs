@@ -19,67 +19,38 @@ pub fn seed_input_slots(
     inputs: &[(SlotIdx, SlotValue)],
     workflow: &CompiledWorkflow,
 ) -> RuntimeResult<()> {
+    let inputs = prepare_input_slots(inputs, workflow)?;
+    if inputs.iter().any(|(slot, _)| slot.get() >= frame.slot_count()) {
+        return Err(RuntimeError::InvalidRecoveryHydration);
+    }
     for (slot, value) in inputs {
-        let declared = workflow
-            .input_slots()
-            .iter()
-            .find(|cs| cs.slot == *slot)
-            .map(|cs| cs.kind);
-        if let Some(kind) = declared
-            && !slot_value_matches_kind(value, kind)
-        {
-            return Err(RuntimeError::RuntimeInputSlotKindMismatch {
-                slot: *slot,
-                expected: kind,
-                actual: slot_value_kind(value),
-            });
-        }
-        frame
-            .write_slot_with_taint(*slot, *value, Taint::Clean)
+        let secret = workflow.input_slots().iter()
+            .any(|input| input.slot == slot && input.constraint.secret);
+        let taint = if secret { Taint::Secret } else { Taint::Clean };
+        frame.write_slot_with_taint(slot, value, taint)
             .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
     }
     Ok(())
 }
 
-fn slot_value_matches_kind(value: &SlotValue, kind: vb_core::InputSlotKind) -> bool {
-    if kind == vb_core::InputSlotKind::Any {
-        return matches!(
-            value,
-            SlotValue::Null
-                | SlotValue::Bool(_)
-                | SlotValue::I64(_)
-                | SlotValue::F64(_)
-                | SlotValue::Symbol(_)
-                | SlotValue::List(_)
-                | SlotValue::Object(_)
-                | SlotValue::Blob(_)
-        );
+pub(crate) fn prepare_input_slots(
+    inputs: &[(SlotIdx, SlotValue)],
+    workflow: &CompiledWorkflow,
+) -> RuntimeResult<Vec<(SlotIdx, SlotValue)>> {
+    for (slot, value) in inputs {
+        if let Some(input) = workflow.input_slots().iter().find(|input| input.slot == *slot)
+            && vb_core::input_validation::validate_input_value(
+                input, *value, workflow.symbols_count(), None,
+            ) == Err(vb_core::input_validation::InputValueIssue::Kind)
+        {
+            return Err(RuntimeError::RuntimeInputSlotKindMismatch {
+                slot: *slot, expected: input.kind,
+                actual: vb_core::input_validation::input_value_kind(*value),
+            });
+        }
     }
-    matches!(
-        (value, kind),
-        (SlotValue::Null, vb_core::InputSlotKind::Null)
-            | (SlotValue::Bool(_), vb_core::InputSlotKind::Bool)
-            | (SlotValue::I64(_), vb_core::InputSlotKind::I64)
-            | (SlotValue::F64(_), vb_core::InputSlotKind::F64)
-            | (SlotValue::Symbol(_), vb_core::InputSlotKind::Symbol)
-            | (SlotValue::List(_), vb_core::InputSlotKind::List)
-            | (SlotValue::Object(_), vb_core::InputSlotKind::Object)
-            | (SlotValue::Blob(_), vb_core::InputSlotKind::Blob)
-    )
-}
-
-fn slot_value_kind(value: &SlotValue) -> vb_core::InputSlotKind {
-    match value {
-        SlotValue::Null => vb_core::InputSlotKind::Null,
-        SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
-        SlotValue::I64(_) => vb_core::InputSlotKind::I64,
-        SlotValue::F64(_) => vb_core::InputSlotKind::F64,
-        SlotValue::Symbol(_) => vb_core::InputSlotKind::Symbol,
-        SlotValue::List(_) => vb_core::InputSlotKind::List,
-        SlotValue::Object(_) => vb_core::InputSlotKind::Object,
-        SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
-        &_ => vb_core::InputSlotKind::Blob,
-    }
+    vb_storage::inputs::prepare_scalar_inputs(workflow, inputs)
+        .map_err(|_| RuntimeError::UnsupportedOperation { operation: "input_schema_mismatch" })
 }
 
 pub fn new_action_attempts(step_count: u16) -> Box<[u16]> {

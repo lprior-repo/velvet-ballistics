@@ -37,7 +37,7 @@ pub(super) fn begin_drive_step<'a>(
     let node = plan
         .node(pc)
         .ok_or(EngineError::InvalidProgramCounter { step: pc })?;
-    super::loop_rearm::validate_activation(plan, node)?;
+    super::loop_rearm::validate_activation(plan, node, run)?;
     evidence
         .push_step_started(pc)
         .map_err(RuntimeEngineError::Core)?;
@@ -89,6 +89,10 @@ pub(super) fn finish_drive_step(
     signal: &RuntimeSignal,
     drive_state: &mut DriveState,
 ) -> RuntimeEngineResult<()> {
+    if run.step_state(step.pc).map_err(RuntimeEngineError::Core)? == vb_core::StepState::Failed {
+        evidence.push_step_failed(step.pc).map_err(RuntimeEngineError::Core)?;
+        return Ok(());
+    }
     // RE-011: emit slot evidence BEFORE committing the step state. If
     // emit fails (e.g. CollectEvidenceCapacityExceeded), the step must
     // remain in its pre-success state so the caller sees a single
