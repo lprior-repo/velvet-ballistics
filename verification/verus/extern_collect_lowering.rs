@@ -368,7 +368,7 @@ pub struct SpecCollectOutcome {
     /// bounded_collect.rs:179-192, 219-230, 232-241 plus the nodes
     /// emitted by `emit_body` for the body sequence).
     pub emitted_node_count: u32,
-    /// Value of `id + 1` (the `body` offset, bounded_collect.rs:120).
+    /// Value of `id + 1` (the `body` offset, bounded_collect.rs:121).
     /// `0` when `ok == false`.
     pub body_offset: u16,
     /// Value of `id + body_len + 1` (the `advance` offset,
