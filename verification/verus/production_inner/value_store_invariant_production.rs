@@ -18,22 +18,22 @@
 //
 //   - `ObjectField::clean`              <- crates/vb_core/src/value_store/objects.rs:15-21
 //   - `ObjectField::with_taint`         <- crates/vb_core/src/value_store/objects.rs:24-26
-//   - `ValueStore::with_max_slots`      <- crates/vb_core/src/value_store.rs:66-77
-//   - `ValueStore::total_arena_count`   <- crates/vb_core/src/value_store.rs:289-296
-//   - `ValueStore::max_arena_entries`   <- crates/vb_core/src/value_store.rs:300-302
-//   - `ValueStore::check_arena_cap`     <- crates/vb_core/src/value_store.rs:367-379
+//   - `ValueStore::with_max_slots`      <- crates/vb_core/src/value_store.rs:77-88
+//   - `ValueStore::total_arena_count`   <- crates/vb_core/src/value_store.rs:116-123
+//   - `ValueStore::max_arena_entries`   <- crates/vb_core/src/value_store.rs:127-129
+//   - `ValueStore::check_arena_cap`     <- crates/vb_core/src/value_store.rs:132-144
 //
 // This stub mirrors the production `ValueStore::max_arena_entries`
 // field as the smallest drift-detection surface.
 //
-// DRIFT POLICY: `crates/vb_core/src/value_store.rs:33-379`
+// DRIFT POLICY: `crates/vb_core/src/value_store.rs:44-135`
 // Production source coverage:
 //   - `ObjectField::clean`              <- crates/vb_core/src/value_store/objects.rs:15-21
 //   - `ObjectField::with_taint`         <- crates/vb_core/src/value_store/objects.rs:24-26
-//   - `ValueStore::with_max_slots`      <- crates/vb_core/src/value_store.rs:66-77
-//   - `ValueStore::total_arena_count`   <- crates/vb_core/src/value_store.rs:289-296
-//   - `ValueStore::max_arena_entries`   <- crates/vb_core/src/value_store.rs:300-302
-//   - `ValueStore::check_arena_cap`     <- crates/vb_core/src/value_store.rs:367-379
+//   - `ValueStore::with_max_slots`      <- crates/vb_core/src/value_store.rs:77-88
+//   - `ValueStore::total_arena_count`   <- crates/vb_core/src/value_store.rs:116-123
+//   - `ValueStore::max_arena_entries`   <- crates/vb_core/src/value_store.rs:127-129
+//   - `ValueStore::check_arena_cap`     <- crates/vb_core/src/value_store.rs:132-144
 // Regenerate this file whenever production changes. Any rename of
 // `max_arena_entries` or change to `check_arena_cap` body breaks the
 // `extern_value_store_invariant` Verus build.
@@ -49,21 +49,21 @@ verus! {
 // Drift-detection stubs
 // ---------------------------------------------------------------------------
 /// Mirror of production `ValueStore::max_arena_entries` field at
-/// `crates/vb_core/src/value_store.rs:45`. The stub struct carries the
+/// `crates/vb_core/src/value_store.rs:56`. The stub struct carries the
 /// SAME field name (`max_arena_entries`) and type (`u64`) so any rename
 /// breaks the build.
 #[derive(Clone, Copy)]
 pub struct ValueStoreStub {
-    /// Mirror of production `pub max_arena_entries: u64` at value_store.rs:45.
+    /// Mirror of production `pub max_arena_entries: u64` at value_store.rs:56.
     pub max_arena_entries: u64,
     /// Mirror of production `total_arena_count` projection at
-    /// value_store.rs:289-296.
+    /// value_store.rs:116-123.
     pub total_arena_count_field: u64,
 }
 
 impl ValueStoreStub {
     /// Mirror of production `ValueStore::check_arena_cap` decision at
-    /// `crates/vb_core/src/value_store.rs:367-379`. Body is
+    /// `crates/vb_core/src/value_store.rs:132-144`. Body is
     /// `#[verifier::external]` (opaque).
     #[verifier::external]
     pub fn check_arena_cap_stub(self) -> bool {

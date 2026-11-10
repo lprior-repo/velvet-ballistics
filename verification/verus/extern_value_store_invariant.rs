@@ -66,16 +66,16 @@
 //   - `ObjectField`                          <- crates/vb_core/src/value_store/objects.rs:7-11
 //   - `ObjectField::clean`                   <- crates/vb_core/src/value_store/objects.rs:15-21
 //   - `ObjectField::with_taint`              <- crates/vb_core/src/value_store/objects.rs:24-26
-//   - `ValueStore`                           <- crates/vb_core/src/value_store.rs:33-46
-//   - `ValueStore::with_max_slots`           <- crates/vb_core/src/value_store.rs:66-77
-//   - `ValueStore::insert_symbol`            <- crates/vb_core/src/value_store.rs:80-87
-//   - `ValueStore::insert_list`              <- crates/vb_core/src/value_store.rs:91-100
-//   - `ValueStore::insert_list_with_taint`   <- crates/vb_core/src/value_store.rs:103-119
-//   - `ValueStore::insert_object`            <- crates/vb_core/src/value_store.rs:122-148
-//   - `ValueStore::insert_blob`              <- crates/vb_core/src/value_store.rs:151-158
-//   - `ValueStore::total_arena_count`        <- crates/vb_core/src/value_store.rs:289-296
-//   - `ValueStore::max_arena_entries`        <- crates/vb_core/src/value_store.rs:300-302
-//   - `ValueStore::check_arena_cap`          <- crates/vb_core/src/value_store.rs:367-379
+//   - `ValueStore`                           <- crates/vb_core/src/value_store.rs:44-57
+//   - `ValueStore::with_max_slots`           <- crates/vb_core/src/value_store.rs:77-88
+//   - `ValueStore::insert_symbol`            <- crates/vb_core/src/value_store/insert.rs:15-22
+//   - `ValueStore::insert_list`              <- crates/vb_core/src/value_store/insert.rs:26-35
+//   - `ValueStore::insert_list_with_taint`   <- crates/vb_core/src/value_store/insert.rs:38-54
+//   - `ValueStore::insert_object`            <- crates/vb_core/src/value_store/insert.rs:57-83
+//   - `ValueStore::insert_blob`              <- crates/vb_core/src/value_store/insert.rs:86-93
+//   - `ValueStore::total_arena_count`        <- crates/vb_core/src/value_store.rs:116-123
+//   - `ValueStore::max_arena_entries`        <- crates/vb_core/src/value_store.rs:127-129
+//   - `ValueStore::check_arena_cap`          <- crates/vb_core/src/value_store.rs:132-144
 //                                             (this is the production cap gate; the
 //                                              spec proves its semantics via
 //                                              `assume_specification` bridge)
@@ -127,11 +127,11 @@ pub mod prod_src;
 // stub (`ValueStoreStub` field shape + `check_arena_cap_stub`).
 #[verifier::external]
 fn prod_methods_drift_check() {
-    // Reference every field of ValueStoreStub (production crates/vb_core/src/value_store.rs:33-46).
+    // Reference every field of ValueStoreStub (production crates/vb_core/src/value_store.rs:44-57).
     let _stub = prod_src::ValueStoreStub { max_arena_entries: 0, total_arena_count_field: 0 };
 
     // Reference the production check_arena_cap decision fn
-    // (production crates/vb_core/src/value_store.rs:367-379).
+    // (production crates/vb_core/src/value_store.rs:132-144).
     let _ = _stub.check_arena_cap_stub();
 }
 
@@ -297,7 +297,7 @@ pub enum MirrorTaint {
 /// limit: u64 }` at `crates/vb_core/src/errors.rs:386-393`. This is the
 /// only `CoreError` variant the cap-enforcement spec references; the
 /// production source's `check_arena_cap` returns this variant verbatim
-/// (production lines 396-399).
+/// (production lines 138-141).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MirrorCoreError {
     BudgetExceeded { budget: &'static str, limit: u64 },
@@ -306,28 +306,28 @@ pub enum MirrorCoreError {
 pub type MirrorCoreResult<T> = Result<T, MirrorCoreError>;
 
 // ============================================================================
-// Mirror ValueStore — `crates/vb_core/src/value_store.rs:33-46`
+// Mirror ValueStore — `crates/vb_core/src/value_store.rs:44-57`
 // ============================================================================
 //
 // Mirror of production `ValueStore`. The production struct has PRIVATE
-// arena fields (production lines 46-56); the mirror declares only the
+// arena fields (production lines 45-54); the mirror declares only the
 // public `max_arena_entries` field plus a `total_arena_count_field`
 // that abstracts the production `total_arena_count()` method
-// (production line 300-308) for spec reasoning. Field names match
+// (production lines 116-123) for spec reasoning. Field names match
 // production exactly so drift in production's `max_arena_entries`
 // field name breaks this mirror.
 
 /// Mirror of production `ValueStore` at
-/// `crates/vb_core/src/value_store.rs:33-46`. Field `max_arena_entries`
-/// has the SAME name as production line 68.
+/// `crates/vb_core/src/value_store.rs:44-57`. Field `max_arena_entries`
+/// has the SAME name as production line 56.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct MirrorValueStore {
     /// Mirror of production `pub max_arena_entries: u64` at
-    /// `crates/vb_core/src/value_store.rs:45`. Hard cap on total arena
+    /// `crates/vb_core/src/value_store.rs:56`. Hard cap on total arena
     /// entries (sum of all arena lengths); 0 means uncapped.
     pub max_arena_entries: u64,
     /// Mirror of the production `total_arena_count(&self) -> u64`
-    /// computed value (production lines 300-308). Production computes
+    /// computed value (production lines 116-123). Production computes
     /// this on demand from the arena lengths; the mirror tracks it as
     /// a single field so contracts can reason about it directly
     /// without exposing the underlying `Vec` lengths.
@@ -336,7 +336,7 @@ pub struct MirrorValueStore {
 
 impl MirrorValueStore {
     /// Mirror of production `ValueStore::with_max_slots` at
-    /// `crates/vb_core/src/value_store.rs:66-77`. The body is
+    /// `crates/vb_core/src/value_store.rs:77-88`. The body is
     /// production-faithful: sets `max_arena_entries: u64::from(max_slots)`
     /// and leaves all arenas empty (which is also what production does
     /// — it constructs `Vec::new()` for every arena).
@@ -349,7 +349,7 @@ impl MirrorValueStore {
     }
 
     /// Mirror of production `ValueStore::max_arena_entries` at
-    /// `crates/vb_core/src/value_store.rs:300-302`. Body returns the
+    /// `crates/vb_core/src/value_store.rs:127-129`. Body returns the
     /// `max_arena_entries` field.
     #[allow(dead_code)]
     pub const fn max_arena_entries(&self) -> u64 {
@@ -357,7 +357,7 @@ impl MirrorValueStore {
     }
 
     /// Mirror of production `ValueStore::total_arena_count` at
-    /// `crates/vb_core/src/value_store.rs:289-296`. Body returns the
+    /// `crates/vb_core/src/value_store.rs:116-123`. Body returns the
     /// abstraction field.
     #[allow(dead_code)]
     pub fn total_arena_count(&self) -> u64 {
@@ -365,7 +365,7 @@ impl MirrorValueStore {
     }
 
     /// Mirror of production `ValueStore::check_arena_cap` at
-    /// `crates/vb_core/src/value_store.rs:367-379`. Body is
+    /// `crates/vb_core/src/value_store.rs:132-144`. Body is
     /// production-faithful: returns `Ok(())` if `max_arena_entries == 0`,
     /// else evaluates `total_arena_count() >= max_arena_entries` and
     /// returns `Err(CoreError::BudgetExceeded { budget: "max_slots",
@@ -447,10 +447,10 @@ pub const MAX_SYMBOL_BYTES_PER_VALUE: usize = 4_096;
 // The drift check references every `MirrorValueStore` method the spec
 // file attaches an `assume_specification` bridge to:
 //
-//   - MirrorValueStore::with_max_slots   (production crates/vb_core/src/value_store.rs:66-77)
-//   - MirrorValueStore::max_arena_entries (production crates/vb_core/src/value_store.rs:300-302)
-//   - MirrorValueStore::total_arena_count (production crates/vb_core/src/value_store.rs:289-296)
-//   - MirrorValueStore::check_arena_cap   (production crates/vb_core/src/value_store.rs:367-379)
+//   - MirrorValueStore::with_max_slots   (production crates/vb_core/src/value_store.rs:77-88)
+//   - MirrorValueStore::max_arena_entries (production crates/vb_core/src/value_store.rs:127-129)
+//   - MirrorValueStore::total_arena_count (production crates/vb_core/src/value_store.rs:116-123)
+//   - MirrorValueStore::check_arena_cap   (production crates/vb_core/src/value_store.rs:132-144)
 //
 // Plus the `max_arena_entries` and `total_arena_count_field` field
 // references on `MirrorValueStore` and the `MirrorCoreError::BudgetExceeded`
@@ -458,7 +458,7 @@ pub const MAX_SYMBOL_BYTES_PER_VALUE: usize = 4_096;
 #[allow(dead_code)]
 fn prod_methods_drift_check_mirror() -> MirrorCoreResult<()> {
     // Construct a MirrorValueStore referencing every field
-    // (production crates/vb_core/src/value_store.rs:33-46).
+    // (production crates/vb_core/src/value_store.rs:44-57).
     let store = MirrorValueStore {
         max_arena_entries: 0,
         total_arena_count_field: 0,

@@ -26,13 +26,13 @@
 //
 // BINDING LEDGER:
 //   - MirrorValueStore::with_max_slots    <- production_value_store::ValueStore::with_max_slots
-//                                            crates/vb_core/src/value_store.rs:66-77
+//                                            crates/vb_core/src/value_store.rs:77-88
 //   - MirrorValueStore::max_arena_entries <- production_value_store::ValueStore::max_arena_entries
-//                                            crates/vb_core/src/value_store.rs:300-302
+//                                            crates/vb_core/src/value_store.rs:127-129
 //   - MirrorValueStore::total_arena_count <- production_value_store::ValueStore::total_arena_count
-//                                            crates/vb_core/src/value_store.rs:289-296
+//                                            crates/vb_core/src/value_store.rs:116-123
 //   - MirrorValueStore::check_arena_cap   <- production_value_store::ValueStore::check_arena_cap
-//                                            crates/vb_core/src/value_store.rs:367-379
+//                                            crates/vb_core/src/value_store.rs:132-144
 //
 // Source: vb-qi37.2.5 proof-obligations.planned.jsonl VERUS-INV-002
 #[path = "extern_value_store_invariant.rs"]
@@ -47,7 +47,7 @@ verus! {
 // =============================================================================
 //
 // The production `ValueStore` struct has PRIVATE arena fields
-// (production at `crates/vb_core/src/value_store.rs:34-45`). The
+// (production at `crates/vb_core/src/value_store.rs:44-57`). The
 // mirror struct `MirrorValueStore` is declared here with the SAME
 // public field `max_arena_entries` matching the production field
 // name, plus a `total_arena_count_field` that abstracts the
@@ -58,7 +58,7 @@ verus! {
 // that mirror the production semantics directly. `assume_specification`
 // contracts attach the production behavior to these mirror methods.
 /// Mirror of production `ValueStore::max_arena_entries` (production at
-/// `crates/vb_core/src/value_store.rs:45`) — `u64` field with the
+/// `crates/vb_core/src/value_store.rs:56`) — `u64` field with the
 /// SAME name as production so spec contracts that read
 /// `store.max_arena_entries` resolve naturally.
 pub struct MirrorValueStore {
@@ -73,7 +73,7 @@ pub struct MirrorValueStore {
 
 /// Mirror of the `CoreError::BudgetExceeded` variant used by
 /// `check_arena_cap` (production at
-/// `crates/vb_core/src/value_store.rs:367-379`). Spec-mode visibility
+/// `crates/vb_core/src/value_store.rs:132-144`). Spec-mode visibility
 /// requires public discriminants.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MirrorCoreError {
@@ -88,7 +88,7 @@ pub enum MirrorCoreError {
 
 impl MirrorValueStore {
     /// Production wrapper for `ValueStore::with_max_slots` at
-    /// `crates/vb_core/src/value_store.rs:66-77`. Body skipped by
+    /// `crates/vb_core/src/value_store.rs:77-88`. Body skipped by
     /// Verus (`#[verifier::external]`); contract attached via
     /// `assume_specification` below.
     #[verifier::external]
@@ -97,7 +97,7 @@ impl MirrorValueStore {
     }
 
     /// Production wrapper for `ValueStore::max_arena_entries` at
-    /// `crates/vb_core/src/value_store.rs:300-302`. Body skipped by
+    /// `crates/vb_core/src/value_store.rs:127-129`. Body skipped by
     /// Verus; contract attached via `assume_specification` below.
     #[verifier::external]
     pub fn max_arena_entries(&self) -> u64 {
@@ -105,7 +105,7 @@ impl MirrorValueStore {
     }
 
     /// Production wrapper for `ValueStore::total_arena_count` at
-    /// `crates/vb_core/src/value_store.rs:289-296`. Body skipped by
+    /// `crates/vb_core/src/value_store.rs:116-123`. Body skipped by
     /// Verus; contract attached via `assume_specification` below.
     #[verifier::external]
     pub fn total_arena_count(&self) -> u64 {
@@ -113,7 +113,7 @@ impl MirrorValueStore {
     }
 
     /// Production wrapper for `ValueStore::check_arena_cap` at
-    /// `crates/vb_core/src/value_store.rs:367-379`. Body skipped by
+    /// `crates/vb_core/src/value_store.rs:132-144`. Body skipped by
     /// Verus; contract attached via `assume_specification` below.
     ///
     /// Production body: returns `Ok(())` if `max_arena_entries == 0`,
@@ -174,10 +174,10 @@ pub open spec fn spec_check_arena_cap(total: int, max_entries: int) -> bool {
 /// `u64::from(max_slots)` and whose `total_arena_count_field` is 0.
 ///
 /// Mirrors the production body at
-/// `crates/vb_core/src/value_store.rs:66-77` (`max_arena_entries:
+/// `crates/vb_core/src/value_store.rs:77-88` (`max_arena_entries:
 /// u64::from(max_slots)`) combined with the `total_arena_count()`
 /// semantics for an empty store (`crates/vb_core/src/value_store.rs:
-/// 289-296` summing zero-length vecs).
+/// 116-123` summing zero-length vecs).
 pub assume_specification[ MirrorValueStore::with_max_slots ](max_slots: u16) -> (store:
     MirrorValueStore)
     ensures
@@ -191,7 +191,7 @@ pub assume_specification[ MirrorValueStore::with_max_slots ](max_slots: u16) -> 
 /// the `max_arena_entries` field.
 ///
 /// Mirrors the production body at
-/// `crates/vb_core/src/value_store.rs:300-302`.
+/// `crates/vb_core/src/value_store.rs:127-129`.
 pub assume_specification[ MirrorValueStore::max_arena_entries ](store: &MirrorValueStore) -> (r:
     u64)
     ensures
@@ -203,7 +203,7 @@ pub assume_specification[ MirrorValueStore::max_arena_entries ](store: &MirrorVa
 /// sum-of-arena-lengths computation).
 ///
 /// Mirrors the production body at
-/// `crates/vb_core/src/value_store.rs:289-296`.
+/// `crates/vb_core/src/value_store.rs:116-123`.
 pub assume_specification[ MirrorValueStore::total_arena_count ](store: &MirrorValueStore) -> (r:
     u64)
     ensures
@@ -218,7 +218,7 @@ pub assume_specification[ MirrorValueStore::total_arena_count ](store: &MirrorVa
 /// max)`.
 ///
 /// Mirrors the production body at
-/// `crates/vb_core/src/value_store.rs:367-379`.
+/// `crates/vb_core/src/value_store.rs:132-144`.
 pub assume_specification[ MirrorValueStore::check_arena_cap ](store: &MirrorValueStore) -> (r:
     Result<(), MirrorCoreError>)
     ensures
@@ -455,16 +455,16 @@ pub fn exec_proof_check_arena_cap_ok_after_construction(max_slots: u16) -> (r: R
 // exposed by the `extern_value_store_invariant.rs` companion surface.
 // They are the non-vacuum closure witnesses for the production
 // `ValueStore` cap-enforcement contract (production at
-// `crates/vb_core/src/value_store.rs:367-379`): the production body of
+// `crates/vb_core/src/value_store.rs:132-144`): the production body of
 // `with_max_slots` and `check_arena_cap` is faithfully mirrored in the
 // extern file, so calling them through `production::*` from inside
 // the spec exec mode exercises the production code path.
 //
 // Mirrors production code at:
-//   - `crates/vb_core/src/value_store.rs:66-77`     (ValueStore::with_max_slots)
-//   - `crates/vb_core/src/value_store.rs:300-302`   (ValueStore::max_arena_entries)
-//   - `crates/vb_core/src/value_store.rs:289-296`   (ValueStore::total_arena_count)
-//   - `crates/vb_core/src/value_store.rs:367-379`   (ValueStore::check_arena_cap)
+//   - `crates/vb_core/src/value_store.rs:77-88`     (ValueStore::with_max_slots)
+//   - `crates/vb_core/src/value_store.rs:127-129`   (ValueStore::max_arena_entries)
+//   - `crates/vb_core/src/value_store.rs:116-123`   (ValueStore::total_arena_count)
+//   - `crates/vb_core/src/value_store.rs:132-144`   (ValueStore::check_arena_cap)
 //
 // The production types (`MirrorValueStore`, `MirrorCoreError`) are
 // declared outside `verus!` in the extern file, so Verus treats them
@@ -497,7 +497,7 @@ pub struct ExMirrorCoreError(pub production::MirrorCoreError);
 /// `u64::from(max_slots)` and whose `total_arena_count_field` is 0.
 ///
 /// Mirrors production body at
-/// `crates/vb_core/src/value_store.rs:66-77` (via the
+/// `crates/vb_core/src/value_store.rs:77-88` (via the
 /// `extern_value_store_invariant.rs` mirror).
 pub assume_specification[ production::MirrorValueStore::with_max_slots ](max_slots: u16) -> (store:
     production::MirrorValueStore)
@@ -509,7 +509,7 @@ pub assume_specification[ production::MirrorValueStore::with_max_slots ](max_slo
 /// Bridge: production `MirrorValueStore::max_arena_entries(&self)`
 /// returns the `max_arena_entries` field.
 ///
-/// Mirrors production body at `crates/vb_core/src/value_store.rs:300-302`.
+/// Mirrors production body at `crates/vb_core/src/value_store.rs:127-129`.
 pub assume_specification[ production::MirrorValueStore::max_arena_entries ](
     store: &production::MirrorValueStore,
 ) -> (r: u64)
@@ -520,7 +520,7 @@ pub assume_specification[ production::MirrorValueStore::max_arena_entries ](
 /// Bridge: production `MirrorValueStore::total_arena_count(&self)`
 /// returns the `total_arena_count_field`.
 ///
-/// Mirrors production body at `crates/vb_core/src/value_store.rs:289-296`.
+/// Mirrors production body at `crates/vb_core/src/value_store.rs:116-123`.
 pub assume_specification[ production::MirrorValueStore::total_arena_count ](
     store: &production::MirrorValueStore,
 ) -> (r: u64)
@@ -533,7 +533,7 @@ pub assume_specification[ production::MirrorValueStore::total_arena_count ](
 /// < max_arena_entries`. Otherwise returns
 /// `Err(BudgetExceeded { budget: "max_slots", limit: max_arena_entries })`.
 ///
-/// Mirrors production body at `crates/vb_core/src/value_store.rs:367-379`.
+/// Mirrors production body at `crates/vb_core/src/value_store.rs:132-144`.
 pub assume_specification[ production::MirrorValueStore::check_arena_cap ](
     store: &production::MirrorValueStore,
 ) -> (r: Result<(), production::MirrorCoreError>)
@@ -556,9 +556,9 @@ pub assume_specification[ production::MirrorValueStore::check_arena_cap ](
 
 /// Production-bound exec wrapper: invoke the production
 /// `MirrorValueStore::with_max_slots` constructor (production at
-/// `crates/vb_core/src/value_store.rs:66-77`), then call the production
+/// `crates/vb_core/src/value_store.rs:77-88`), then call the production
 /// `MirrorValueStore::max_arena_entries` accessor (production at
-/// `crates/vb_core/src/value_store.rs:300-302`) and return the result.
+/// `crates/vb_core/src/value_store.rs:127-129`) and return the result.
 /// This exercises the production-bound constructor and accessor in
 /// exec mode.
 pub fn exec_proof_production_max_arena_entries(max_slots: u16) -> (r: u64)
@@ -573,9 +573,9 @@ pub fn exec_proof_production_max_arena_entries(max_slots: u16) -> (r: u64)
 
 /// Production-bound exec wrapper: invoke the production
 /// `MirrorValueStore::with_max_slots` (production at
-/// `crates/vb_core/src/value_store.rs:66-77`), then call the production
+/// `crates/vb_core/src/value_store.rs:77-88`), then call the production
 /// `MirrorValueStore::total_arena_count` accessor (production at
-/// `crates/vb_core/src/value_store.rs:289-296`) and return the result.
+/// `crates/vb_core/src/value_store.rs:116-123`) and return the result.
 /// A freshly-constructed store has empty arenas, so the production
 /// accessor must return 0.
 pub fn exec_proof_production_total_arena_count(max_slots: u16) -> (r: u64)
@@ -588,7 +588,7 @@ pub fn exec_proof_production_total_arena_count(max_slots: u16) -> (r: u64)
 
 /// Production-bound exec wrapper: invoke the production
 /// `MirrorValueStore::check_arena_cap` cap gate (production at
-/// `crates/vb_core/src/value_store.rs:367-379`) on a production-built
+/// `crates/vb_core/src/value_store.rs:132-144`) on a production-built
 /// store. The cap gate is the production invariant under test: a
 /// freshly-constructed store must pass.
 pub fn exec_proof_production_check_arena_cap_ok(max_slots: u16) -> (r: bool)
