@@ -23,8 +23,8 @@
 // This rewrite grounds every lemma in production types:
 //   - The shadow `SpecErrorType` enum is gone. The production error
 //     variants `CompileError::StepFieldShape`
-//     (kind.rs:123-124) and `CompileError::UnsupportedStepPrimitive`
-//     (kind.rs:117-118) are what `emit_single_body_set` actually
+//     (crates/vb_compile/src/mod_compile_errors/kind.rs:123-124) and `CompileError::UnsupportedStepPrimitive`
+//     (crates/vb_compile/src/mod_compile_errors/kind.rs:117-118) are what `emit_single_body_set` actually
 //     constructs on the corresponding input shapes.
 //   - The shadow `int` and `&str` parameters are gone. The projection
 //     takes production-aligned `usize` (body_len, diagnostic_step)
@@ -52,12 +52,12 @@
 //   - `SpecCompileError::StepFieldShape`    <- extern_emit_single_body_set.rs
 //                                               (mirror of
 //                                                CompileError::StepFieldShape
-//                                                at kind.rs:123-124)
+//                                                at crates/vb_compile/src/mod_compile_errors/kind.rs:123-124)
 //   - `SpecCompileError::UnsupportedStepPrimitive`
 //                                           <- extern_emit_single_body_set.rs
 //                                               (mirror of
 //                                                CompileError::UnsupportedStepPrimitive
-//                                                at kind.rs:117-118)
+//                                                at crates/vb_compile/src/mod_compile_errors/kind.rs:117-118)
 //   - `emit_single_body_set_projection`     <- extern_emit_single_body_set.rs
 //                                               (mirror of
 //                                                emit_single_body_set decision shape

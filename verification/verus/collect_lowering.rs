@@ -33,7 +33,7 @@
 //   - The shadow error enum is gone. The production error variants
 //     `CompileError::PrimitiveLoweringLimitExceeded` from
 //     `crates/vb_compile/src/mod_compile_errors/kind.rs:141` and
-//     `CompileError::StepIndexOutOfRange` from kind.rs:126 are what
+//     `CompileError::StepIndexOutOfRange` from crates/vb_compile/src/mod_compile_errors/kind.rs:126 are what
 //     `checked_step_offset` (part_12.rs:199-212) and
 //     `checked_body_length_offset` (bounded_collect.rs:108-114)
 //     actually construct on overflow.

@@ -32,7 +32,7 @@
 // `crates/vb_compile/src/mod_compile_errors/kind.rs:141` (which is
 // what `checked_step_offset` actually constructs on overflow — see
 // part_12.rs:199-212), and `CompileError::StepIndexOutOfRange` is at
-// kind.rs:126 (what `checked_body_length_offset` constructs when
+// crates/vb_compile/src/mod_compile_errors/kind.rs:126 (what `checked_body_length_offset` constructs when
 // body_len+extra overflows u16 — see bounded_collect.rs:108-114).
 // The spec lemmas are grounded in the production `StepIdx` contract
 // via `assume_specification` bridges.
@@ -272,7 +272,7 @@ impl SlotIdx {
 //
 // Mirror of `CompileError::PrimitiveLoweringLimitExceeded` at
 // `crates/vb_compile/src/mod_compile_errors/kind.rs:141` and of
-// `CompileError::StepIndexOutOfRange` at kind.rs:126. The first is the
+// `CompileError::StepIndexOutOfRange` at crates/vb_compile/src/mod_compile_errors/kind.rs:126. The first is the
 // exact variant constructed by the production `checked_step_offset`
 // wrapper at part_12.rs:199-212 when `StepIdx::checked_add` returns
 // `None`, which is what the production `plan_compute_edges` surfaces
