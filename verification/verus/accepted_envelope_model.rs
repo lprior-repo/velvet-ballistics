@@ -19,7 +19,7 @@
 //     (crates/vb_storage/src/admission/proof.rs:103-118).
 //   - prepare_with_profile mirrors
 //     `vb_storage::admission::prepare_with_profile` at
-//     crates/vb_storage/src/admission/verification.rs:35-38: sets exactly
+//     crates/vb_storage/src/admission/verification.rs:39-42: sets exactly
 //     bounded_claimed and idempotency_verified_claimed true and leaves the
 //     idempotency attestation empty.
 //   - submit_artifact_with_contracts mirrors
@@ -28,9 +28,9 @@
 //     readback-verifies. It performs no gate-count or proof-flag validation.
 //   - verify_accepted_artifact mirrors
 //     `vb_storage::admission::verify_accepted_artifact` at
-//     crates/vb_storage/src/admission/verification.rs:56-86: recomputes the
+//     crates/vb_storage/src/admission/verification.rs:60-90: recomputes the
 //     expected artifact and rejects any deviation via verify_expected_bindings
-//     (crates/vb_storage/src/admission/verification.rs:141-156); the runtime
+//     (crates/vb_storage/src/admission/verification.rs:145-160); the runtime
 //     maps every such failure to ArtifactEvidenceInvalid
 //     (crates/vb_runtime/src/admission/registered_verification.rs:5-28).
 //   - The legacy 15-gate, all-flags-true shape exists only in the
@@ -75,11 +75,11 @@ pub open spec fn PREPARED_GATE_COUNT() -> int {
 // (crates/vb_storage/src/admission/proof.rs:103-118) forces gate_count 0,
 // durable false, and every proof flag false, and
 // `prepare_with_profile`
-// (crates/vb_storage/src/admission/verification.rs:35-38) then sets
+// (crates/vb_storage/src/admission/verification.rs:39-42) then sets
 // exactly `bounded_claimed` and `idempotency_verified_claimed` true
 // and leaves the idempotency attestation empty. The shape is enforced
 // by `verify_accepted_artifact`
-// (crates/vb_storage/src/admission/verification.rs:56-86), which
+// (crates/vb_storage/src/admission/verification.rs:60-90), which
 // recomputes the expected artifact and rejects any deviation with
 // `ArtifactEvidenceInvalid`.
 //
@@ -134,9 +134,9 @@ pub fn proof_matches_prepared_shape(
 // prepared-proof shape: `verification_proof_core` at
 // `crates/vb_storage/src/admission/proof.rs:103-118` plus the flag
 // assignments in `prepare_with_profile` at
-// `crates/vb_storage/src/admission/verification.rs:35-38`, enforced by
+// `crates/vb_storage/src/admission/verification.rs:39-42`, enforced by
 // `verify_accepted_artifact` at
-// `crates/vb_storage/src/admission/verification.rs:56-86`.
+// `crates/vb_storage/src/admission/verification.rs:60-90`.
 pub assume_specification[ production::proof_matches_prepared_shape ](
     gate_count: u8,
     bounded_claimed: bool,

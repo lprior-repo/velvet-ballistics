@@ -22,7 +22,7 @@
 //   - `vb_storage::admission::verification_proof_core`
 //                                                 (crates/vb_storage/src/admission/proof.rs:103-118)
 //   - `vb_storage::admission::prepare_with_profile` proof construction
-//                                                 (crates/vb_storage/src/admission/verification.rs:35-38)
+//                                                 (crates/vb_storage/src/admission/verification.rs:39-42)
 //   - `vb_core::artifact::ObligationKind`        (crates/vb_core/src/artifact.rs:9-30)
 //   - `vb_core::artifact::AssumptionId`          (crates/vb_core/src/artifact.rs:34-43)
 //   - `vb_core::artifact::ObligationClosure`     (crates/vb_core/src/artifact.rs:47-65)
@@ -243,7 +243,7 @@ pub struct ArtifactVerificationEvidence {
 // production order. Only the `Verified` variant can pass accepted-artifact
 // verification; `Unverified` and `Packed` are rejected by
 // `checked_evidence_schema` at
-// `crates/vb_storage/src/admission/verification.rs:102-113`.
+// `crates/vb_storage/src/admission/verification.rs:106-117`.
 #[derive(Clone)]
 pub enum ArtifactEvidence {
     Unverified,
@@ -337,18 +337,18 @@ pub struct AcceptedArtifact {
 // admission/proof.rs:125-141, which also leaves the idempotency slices and
 // warnings empty and the evidence `Unverified`), and
 // `prepare_with_profile` at
-// `crates/vb_storage/src/admission/verification.rs:35-38` then sets
+// `crates/vb_storage/src/admission/verification.rs:39-42` then sets
 // exactly `bounded_claimed` and `idempotency_verified_claimed` true
 // and wraps the rebuilt evidence as `Verified` (Legacy profile; the
 // Registered profile wraps as `Packed` instead).
 // `submit_artifact_with_contracts` (admission.rs:92-112) performs no
 // gate-count or proof-flag validation of its own; the shape is
 // enforced by `verify_accepted_artifact` at
-// `crates/vb_storage/src/admission/verification.rs:56-86`, which
+// `crates/vb_storage/src/admission/verification.rs:60-90`, which
 // recomputes the expected artifact and rejects any deviation with
 // `ArtifactEvidenceInvalid` (see the gate-count and proof-flag tests
 // at `crates/vb_runtime/src/admission/artifact_envelope_tests.rs:205-260`),
-// after `checked_evidence_schema` at verification.rs:100-113 has
+// after `checked_evidence_schema` at verification.rs:104-117 has
 // required `Verified` evidence at schema version `EVIDENCE_VERSION`.
 //
 // Returns `true` iff the proof carries exactly the prepared shape:
@@ -388,7 +388,7 @@ pub fn proof_matches_prepared_shape(proof: &VerificationProof) -> bool {
 // Helper for `proof_matches_prepared_shape`: true iff the evidence is
 // the `Verified` variant carrying schema version `EVIDENCE_VERSION`.
 // Production pins this in `checked_evidence_schema` at
-// `crates/vb_storage/src/admission/verification.rs:100-113`, which
+// `crates/vb_storage/src/admission/verification.rs:104-117`, which
 // rejects `Unverified`, `Packed`, and any `Verified` evidence at a
 // stale schema version before `verify_accepted_artifact` recomputes
 // the expected artifact. The `3` below is the `EVIDENCE_VERSION`
