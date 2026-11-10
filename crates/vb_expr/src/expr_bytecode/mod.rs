@@ -10,7 +10,7 @@ pub mod fold;
 pub mod tests;
 
 #[cfg(test)]
-mod bytecode_ast_equiv;
+mod bytecode_ast_equiv_tests;
 
 /// Maximum bytecode operations per expression.
 const MAX_OPS: usize = 256;
