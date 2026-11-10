@@ -14,6 +14,9 @@ mod integration_choose;
 mod integration_error_routing_behavior;
 mod integration_eval;
 mod integration_frame_behavior;
+mod integration_object_list_behavior;
+mod integration_run_loop_behavior;
+mod integration_step_behavior;
 mod integration_taint_propagation;
 mod integration_workflow;
 
