@@ -1567,7 +1567,7 @@ fn collect_invalid_start_plan(
 }
 
 #[test]
-fn replay_error_handler_node_reports_unsupported_replay_kind() -> Result<(), CoreError> {
+fn replay_error_handler_node_routes_to_body() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
             crate::workflow::node(
@@ -1623,14 +1623,14 @@ fn replay_error_handler_node_reports_unsupported_replay_kind() -> Result<(), Cor
         })?;
 
     match super::step::replay_step_with_collect(node, &mut run, &mut store, &plan, &mut states) {
-        Err(ReplayError::Internal { reason }) => {
-            assert_eq!(reason, "unsupported node kind for replay");
+        Ok(ReplayAction::Continue(next)) => {
+            assert_eq!(next, StepIdx::new(1));
             Ok(())
         }
-        Err(other) => Err(replay_err_to_core(other)),
         Ok(_) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected unsupported ErrorHandler replay error",
+            reason: "expected ErrorHandler replay to continue to body",
         }),
+        Err(other) => Err(replay_err_to_core(other)),
     }
 }
 
