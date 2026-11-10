@@ -56,7 +56,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_repeat(
         step_names: config.step_names,
         index,
     };
-    let result = emit_scoped_flat_body(
+    let (result, _) = emit_scoped_flat_body(
         config.body,
         layout.body,
         layout.check,
@@ -64,8 +64,9 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_repeat(
         ctx,
         builder,
         "repeat",
-    )?
-    .ok_or_else(|| field_error(index, "steps", "at least one set or do step"))?;
+        None,
+    )?;
+    let result = result.ok_or_else(|| field_error(index, "steps", "at least one set or do step"))?;
     push_repeat_continuations(layout, attempt_slot, result, config.next, builder);
     Ok(result)
 }
@@ -126,3 +127,11 @@ fn field_error(step: usize, field: &'static str, expected: &'static str) -> Comp
 #[cfg(test)]
 #[path = "canonical_repeat_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "canonical_repeat_edge_tests.rs"]
+mod edge_tests;
+
+#[cfg(test)]
+#[path = "canonical_repeat_lexical_tests.rs"]
+mod lexical_tests;

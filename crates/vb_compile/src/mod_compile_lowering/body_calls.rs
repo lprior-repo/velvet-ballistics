@@ -63,7 +63,7 @@ impl<'a> BranchBindings<'a> {
         value: &str,
         target: BodyTarget,
         builder: &mut SlotCompiler,
-    ) -> Result<(), CompileErrors> {
+    ) -> Result<ExprType, CompileErrors> {
         validate_output_alias(output).map_err(|e| CompileErrors(vec![e]))?;
         if !self.local_outputs.insert(output.to_owned()) {
             return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
@@ -83,7 +83,7 @@ impl<'a> BranchBindings<'a> {
         )?;
         self.outputs.insert(output.to_owned(), target.slot);
         self.types.insert(target.slot, inferred);
-        Ok(())
+        Ok(inferred)
     }
 
     pub(super) fn lower_do(

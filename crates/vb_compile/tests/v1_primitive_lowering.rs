@@ -309,9 +309,8 @@ fn compile_workflow_returns_step_field_shape_when_each_scoped_primitive_required
 
 #[test]
 fn compile_workflow_enforces_scoped_body_width_contracts() -> Result<(), String> {
-    // Repeat and ForEach now accept two Set steps in their bodies; Collect
-    // and Reduce retain their exact single-body restriction in this
-    // compiler increment.
+    // Repeat, ForEach, and Reduce now accept two Set steps in their bodies;
+    // Reduce lowers the final Set into the accumulator slot directly.
     let cases = [
         (
             "repeat with two steps in body",
@@ -331,8 +330,6 @@ fn compile_workflow_enforces_scoped_body_width_contracts() -> Result<(), String>
         ),
     ];
 
-    let mut neg_count: u32 = 0;
-
     for case in cases {
         let case_name = case.0;
         let yaml_steps = case.1;
@@ -348,30 +345,9 @@ fn compile_workflow_enforces_scoped_body_width_contracts() -> Result<(), String>
             let workflow = compile_yaml(&yaml)?;
             assert_two_set_collect_contract(&workflow)?;
         } else {
-            let errors = compile_yaml_error(&yaml)?;
-            let err = first_compile_error(&errors)?;
-            match err {
-                CompileError::StepFieldShape {
-                    step,
-                    field,
-                    expected,
-                    ..
-                } => {
-                    assert_eq!(
-                        (*step, *field, *expected),
-                        (0, "steps", "exactly one set step")
-                    );
-                }
-                other => {
-                    return Err(format!("unexpected error for {}: {:?}", case_name, other));
-                }
-            }
-            neg_count = neg_count.checked_add(1).ok_or("neg_count overflow")?;
+            let workflow = compile_yaml(&yaml)?;
+            assert_two_set_reduce_contract(&workflow)?;
         }
-    }
-
-    if neg_count != 1 {
-        return Err(format!("expected 1 negative case, got {}", neg_count));
     }
 
     Ok(())
@@ -2581,8 +2557,7 @@ fn compile_workflow_rejects_empty_body_in_scoped_primitives() -> Result<(), Stri
         let expected = match case_name {
             "for_each with empty body" => (0, "for_each.body", "non-empty body"),
             "collect with empty body" => (0, "collect.body", "non-empty body"),
-            "repeat with empty body" => (0, "steps", "at least one set or do step"),
-            _ => (0, "steps", "exactly one set step"),
+            _ => (0, "steps", "at least one set or do step"),
         };
         match first {
             CompileError::StepFieldShape {
@@ -2885,6 +2860,114 @@ fn assert_two_set_collect_contract(workflow: &CompiledWorkflow) -> Result<(), St
     }
     if node4.routing.next != NodeContinuation::Step(StepIdx::new(5)) {
         return Err("node4.next mismatch".to_string());
+    }
+
+    Ok(())
+}
+
+fn assert_two_set_reduce_contract(workflow: &CompiledWorkflow) -> Result<(), String> {
+    let parts = workflow.to_parts();
+    let nodes = &parts.nodes;
+    let constants = &parts.constants;
+
+    if parts.slot_count != 6 {
+        return Err(format!("expected slot_count 6, got {}", parts.slot_count));
+    }
+    if nodes.len() != 7 {
+        return Err(format!("expected 7 nodes, got {}", nodes.len()));
+    }
+    if constants.len() != 3 {
+        return Err(format!(
+            "expected 3 constants, got {}",
+            constants.len()
+        ));
+    }
+    if parts.entry != StepIdx::new(0) {
+        return Err(format!("expected entry_step 0, got {:?}", parts.entry));
+    }
+    assert_dense_node_ids(workflow, "two_set_reduce")?;
+    assert_all_targets_in_range(workflow, "two_set_reduce")?;
+
+    assert_eq!(
+        constants.get(0),
+        Some(&ConstValue::I64(10)),
+        "initial constant"
+    );
+    assert_set_const_node(&nodes, &constants, 2, Some(5), Some(3), 1, 1)?;
+    assert_set_const_node(&nodes, &constants, 3, Some(4), Some(4), 2, 2)?;
+    assert_finish_node(&nodes, 6, 0)?;
+
+    let node0 = node_at(&nodes, 0)?;
+    match &node0.kind {
+        CompiledNodeKind::Copy { source } => {
+            if source.get() != 0 {
+                return Err("Copy source mismatch".to_string());
+            }
+        }
+        other => return Err(format!("expected Copy, got {other:?}")),
+    }
+    if node0.output != NodeOutput::Slot(SlotIdx::new(1)) {
+        return Err("node0.output mismatch".to_string());
+    }
+    if node0.routing.next != NodeContinuation::Step(StepIdx::new(1)) {
+        return Err("node0.next mismatch".to_string());
+    }
+
+    let node1 = node_at(&nodes, 1)?;
+    match &node1.kind {
+        CompiledNodeKind::ReduceStart {
+            input,
+            accumulator,
+            initial,
+            body,
+            done,
+        } => {
+            if (input.get(), accumulator.get(), initial.get(), body.get(), done.get())
+                != (1, 4, 0, 2, 5)
+            {
+                return Err("ReduceStart fields mismatch".to_string());
+            }
+        }
+        other => return Err(format!("expected ReduceStart, got {other:?}")),
+    }
+    if node1.output != NodeOutput::Slot(SlotIdx::new(3)) {
+        return Err("node1.output mismatch".to_string());
+    }
+
+    let node4 = node_at(&nodes, 4)?;
+    match &node4.kind {
+        CompiledNodeKind::ReduceNext {
+            iterator_slot,
+            accumulator,
+            body,
+            done,
+        } => {
+            if (iterator_slot.get(), accumulator.get(), body.get(), done.get())
+                != (3, 4, 2, 5)
+            {
+                return Err("ReduceNext fields mismatch".to_string());
+            }
+        }
+        other => return Err(format!("expected ReduceNext, got {other:?}")),
+    }
+    if node4.output != NodeOutput::Slot(SlotIdx::new(2)) {
+        return Err("node4.output mismatch".to_string());
+    }
+
+    let node5 = node_at(&nodes, 5)?;
+    match &node5.kind {
+        CompiledNodeKind::ReduceFinish { accumulator } => {
+            if accumulator.get() != 4 {
+                return Err("ReduceFinish accumulator mismatch".to_string());
+            }
+        }
+        other => return Err(format!("expected ReduceFinish, got {other:?}")),
+    }
+    if node5.output != NodeOutput::Slot(SlotIdx::new(4)) {
+        return Err("node5.output mismatch".to_string());
+    }
+    if node5.routing.next != NodeContinuation::Step(StepIdx::new(6)) {
+        return Err("node5.next mismatch".to_string());
     }
 
     Ok(())

@@ -3,6 +3,7 @@
 use super::super::part_01::ForEachInputs;
 use super::*;
 use vb_core::SlotIdx;
+use vb_expr::expr_typecheck::ExprType;
 
 #[path = "branch_bindings.rs"]
 mod branch_bindings;
@@ -28,8 +29,8 @@ pub(in crate::mod_compile_lowering) fn emit_scoped_branch_body(
     ctx: BodyCtx<'_>,
     builder: &mut SlotCompiler,
 ) -> Result<usize, CompileErrors> {
-    let _last_output =
-        emit_scoped_flat_body(body, start, common_next, scope, ctx, builder, "choose")?;
+    let _ =
+        emit_scoped_flat_body(body, start, common_next, scope, ctx, builder, "choose", None)?;
     Ok(body.len())
 }
 
@@ -41,6 +42,7 @@ pub(in crate::mod_compile_lowering) fn emit_scoped_branch_body(
 /// evaluates to its inner body's result slot, except `choose`, which binds
 /// no value: its marker slot stays unwritten and downstream reads of it fail
 /// closed.
+#[allow(clippy::too_many_arguments)]
 pub(in crate::mod_compile_lowering) fn emit_scoped_flat_body(
     body: &[crate::StepAst],
     start: StepIdx,
@@ -49,9 +51,11 @@ pub(in crate::mod_compile_lowering) fn emit_scoped_flat_body(
     ctx: BodyCtx<'_>,
     builder: &mut SlotCompiler,
     primitive: &'static str,
-) -> Result<Option<SlotIdx>, CompileErrors> {
+    final_target: Option<SlotIdx>,
+) -> Result<(Option<SlotIdx>, ExprType), CompileErrors> {
     let mut local = BranchBindings::new(scope, primitive == "for_each", ctx);
     let mut result = None;
+    let mut result_type = ExprType::Unknown;
     let mut cursor = start;
     for (index, step) in body.iter().enumerate() {
         reject_body_controls(step, index)?;
@@ -63,10 +67,13 @@ pub(in crate::mod_compile_lowering) fn emit_scoped_flat_body(
         } else {
             advance_cursor(cursor, width, primitive)?
         };
-        result = Some(local.lower(step, cursor, next, builder)?);
+        let target = if last { final_target } else { None };
+        let (slot, ty) = local.lower(step, cursor, next, builder, target)?;
+        result = Some(slot);
+        result_type = ty;
         cursor = advance_cursor(cursor, width, primitive)?;
     }
-    Ok(result)
+    Ok((result, result_type))
 }
 
 fn advance_cursor(

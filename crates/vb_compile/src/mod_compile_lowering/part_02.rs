@@ -37,6 +37,9 @@ use canonical_guarded_do::lower_top_level_do;
 mod bounded_for_each;
 pub(super) use bounded_for_each::{ForEachLowering, lower_bounded_for_each};
 
+#[path = "for_each_capture.rs"]
+pub(super) mod for_each_capture;
+
 #[path = "bounded_collect.rs"]
 pub(super) mod bounded_collect;
 pub(super) use bounded_collect::{CollectLowering, CollectOutput, lower_bounded_collect};
@@ -194,6 +197,11 @@ pub(super) fn lower_canonical_step(
                         outputs,
                         step_outputs,
                         slot_types,
+                    },
+                    nested: BodyCtx {
+                        inputs: for_each_inputs,
+                        step_names: step_names.as_slice(),
+                        index,
                     },
                 },
                 builder,

@@ -207,7 +207,7 @@ fn emit_body(
         step_outputs: config.scope.step_outputs,
         slot_types: &local_types,
     };
-    let body_output = emit_scoped_flat_body(
+    let (body_output, _) = emit_scoped_flat_body(
         config.body,
         plan.body_step,
         plan.advance,
@@ -215,6 +215,7 @@ fn emit_body(
         config.nested,
         builder,
         "collect",
+        None,
     )?;
     Ok(body_output)
 }

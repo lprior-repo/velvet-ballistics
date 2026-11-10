@@ -1,6 +1,6 @@
 use super::super::part_01::ForEachInputs;
 use super::super::part_14::BodyCtx;
-use super::{CanonicalScope, resolve_slot_reference};
+use super::{CanonicalScope, resolve_slot_reference, validate_output_alias};
 use crate::{CompileError, CompileErrors};
 use vb_core::{SlotIdx, StepIdx};
 
@@ -58,6 +58,7 @@ fn validate_concurrency(index: usize, at_once: Option<u32>) -> Result<(), Compil
 fn validate_variable_name(variable: &str) -> Result<(), CompileErrors> {
     crate::mod_compile_validation::validate_public_name("for_each.variable", variable)
         .map_err(|e| CompileErrors(vec![e]))?;
+    validate_output_alias(variable).map_err(|e| CompileErrors(vec![e]))?;
     if variable == "step" {
         return Err(CompileErrors(vec![CompileError::InvalidName {
             field: "for_each.variable",
@@ -134,28 +135,19 @@ pub(super) fn body_edges(
     })
 }
 
+fn empty_error(index: usize) -> CompileErrors {
+    CompileErrors(vec![CompileError::StepFieldShape {
+        step: index,
+        field: "for_each.body",
+        expected: "non-empty body",
+    }])
+}
+
 fn validate_body(index: usize, config: &ForEachLowering<'_>) -> Result<(), CompileErrors> {
     if config.body.is_empty() {
-        return Err(CompileErrors(vec![CompileError::StepFieldShape {
-            step: index,
-            field: "for_each.body",
-            expected: "non-empty body",
-        }]));
+        return Err(empty_error(index));
     }
-    for step in config.body {
-        if step.id == config.variable {
-            return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-                name: config.variable.into(),
-            }]));
-        }
-        if matches!(&step.primitive, crate::StepPrimitive::Set { output, .. } if output == config.variable)
-        {
-            return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-                name: config.variable.into(),
-            }]));
-        }
-    }
-    Ok(())
+    super::for_each_capture::validate_for_each_capture(config.variable, config.body)
 }
 
 use super::super::SlotCompiler;
@@ -198,17 +190,6 @@ fn emit_next(iterator: SlotIdx, item: SlotIdx, edges: &ForEachEdges, builder: &m
     ));
 }
 
-fn validate_body_shape(index: usize, config: &ForEachLowering<'_>) -> Result<(), CompileErrors> {
-    if config.body.is_empty() {
-        return Err(CompileErrors(vec![CompileError::StepFieldShape {
-            step: index,
-            field: "for_each.body",
-            expected: "non-empty body",
-        }]));
-    }
-    Ok(())
-}
-
 fn emit_body(
     config: &ForEachLowering<'_>,
     edges: &ForEachEdges,
@@ -228,7 +209,7 @@ fn emit_body(
         slot_types: &local_types,
     };
 
-    let body_output = super::super::part_14::emit_scoped_flat_body(
+    let (body_output, _) = super::super::part_14::emit_scoped_flat_body(
         config.body,
         edges.body,
         edges.advance,
@@ -236,6 +217,7 @@ fn emit_body(
         config.nested,
         builder,
         "for_each",
+        None,
     )?;
 
     Ok(body_output)
@@ -247,8 +229,9 @@ pub(in crate::mod_compile_lowering) fn lower_bounded_for_each(
     config: ForEachLowering<'_>,
     builder: &mut SlotCompiler,
 ) -> Result<Option<SlotIdx>, CompileErrors> {
-    validate_body_shape(index, &config)?;
-
+    if config.body.is_empty() {
+        return Err(empty_error(index));
+    }
     let width = super::super::body_width(config.body, 0).map_err(|e| CompileErrors(vec![e]))?;
     let edges = body_edges(id, width, config.next)?;
 

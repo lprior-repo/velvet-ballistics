@@ -59,7 +59,8 @@ impl<'a> BranchBindings<'a> {
         id: StepIdx,
         next: StepIdx,
         builder: &mut SlotCompiler,
-    ) -> Result<SlotIdx, CompileErrors> {
+        target: Option<SlotIdx>,
+    ) -> Result<(SlotIdx, ExprType), CompileErrors> {
         if !self.local_steps.insert(step.id.clone()) {
             return Err(CompileErrors(vec![CompileError::DuplicateStepId {
                 id: step.id.clone().into(),
@@ -67,22 +68,35 @@ impl<'a> BranchBindings<'a> {
         }
         // Only leaves allocate a value slot up front; containers thread
         // their inner body's result slot instead, so no dead slots remain.
-        let value = match &step.primitive {
+        // Leaves report their inferred type; Do and container results stay
+        // Unknown, matching top-level action outputs.
+        // `target` points the final leaf step at a caller-owned slot (the
+        // reduce accumulator): its single write carries a self-edge, which
+        // the slot dependency gate accepts for loop-carried state.
+        let (value, value_type) = match &step.primitive {
             crate::StepPrimitive::Set { output, value } => {
-                let slot = alloc_body_slot(builder)?;
-                self.lower_set(output, value, BodyTarget { id, next, slot }, builder)?;
-                slot
+                let slot = match target {
+                    Some(slot) => slot,
+                    None => alloc_body_slot(builder)?,
+                };
+                let inferred =
+                    self.lower_set(output, value, BodyTarget { id, next, slot }, builder)?;
+                (slot, inferred)
             }
             crate::StepPrimitive::Do { action, input } => {
-                let slot = alloc_body_slot(builder)?;
+                let slot = match target {
+                    Some(slot) => slot,
+                    None => alloc_body_slot(builder)?,
+                };
                 self.lower_do(action, input, BodyTarget { id, next, slot }, builder)?;
-                slot
+                (slot, ExprType::Unknown)
             }
             crate::StepPrimitive::ForEach { .. }
             | crate::StepPrimitive::Collect { .. }
             | crate::StepPrimitive::Repeat { .. }
             | crate::StepPrimitive::Choose { .. } => {
-                self.lower_nested_container(&step.primitive, id, next, builder)?
+                let slot = self.lower_nested_container(&step.primitive, id, next, builder)?;
+                (slot, ExprType::Unknown)
             }
             other => {
                 return Err(CompileErrors(vec![
@@ -94,7 +108,7 @@ impl<'a> BranchBindings<'a> {
             }
         };
         self.steps.insert(step.id.clone(), value);
-        Ok(value)
+        Ok((value, value_type))
     }
 
     /// Lowers one nested container through the same entry point its

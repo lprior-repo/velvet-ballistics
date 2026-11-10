@@ -20,6 +20,10 @@ use vb_core::{
 mod canonical_reduce;
 pub(super) use canonical_reduce::{ReduceLowering, lower_canonical_aggregate};
 
+#[path = "canonical_reduce_initial.rs"]
+mod canonical_reduce_initial;
+pub(super) use canonical_reduce_initial::parse_typed_initial;
+
 #[path = "canonical_repeat.rs"]
 mod canonical_repeat;
 pub(super) use canonical_repeat::{RepeatLowering, lower_canonical_repeat};
