@@ -1057,9 +1057,9 @@ verus_registry:
 
   # --- Recovery kernels -------------------------------------------------
   - id: PO-VERUS-018
-    description: "Recovery boundary verification: reject_unsupported_live_frame_state, check_compiled_ir_digest, check_workflow_source_digest, hydration/refusal classification bound to production recovery decision surfaces (PO-003A, PO-011..017, PO-019..020, PO-027..029)."
+    description: "Recovery boundary verification: reject_unsupported_live_frame_state, check_compiled_ir_digest, check_workflow_source_digest, hydration/refusal classification bound to production recovery decision surfaces (PO-003A, PO-011..017, PO-019..020, PO-027..029); digest checks at crates/vb_storage/src/recovery/recover.rs:32-50 and :53-62, classification types in crates/vb_storage/src/recovery/types/ (mod.rs re-exports)."
     verus: verification/verus/recovery_verification.rs
-    production: crates/vb_storage/src/recovery/types.rs
+    production: crates/vb_storage/src/recovery/types/mod.rs
 
   # PO-VERUS-019 (Recovery hydration contracts) DELETED:
   #   The Verus spec `verification/verus/recovery_hydration_contracts.rs`
@@ -1082,9 +1082,9 @@ verus_registry:
   #   Per GOD RULE 2, the file was deleted (not bound).
 
   - id: PO-VERUS-020
-    description: "ActionReplayTracker monotonicity: tracker only records action attempts, never rewinds; matches production crates/vb_storage/src/recovery/types.rs:1446-1714 verbatim (VERUS-REPLAY-004)."
+    description: "ActionReplayTracker monotonicity: tracker only records action attempts, never rewinds; matches production crates/vb_storage/src/recovery/types/replay.rs:45-265 verbatim (VERUS-REPLAY-004)."
     verus: verification/verus/idempotency_replay_tracker.rs
-    production: crates/vb_storage/src/recovery/types.rs
+    production: crates/vb_storage/src/recovery/types/replay.rs
 
   # --- IPC kernels ------------------------------------------------------
   - id: PO-VERUS-021
