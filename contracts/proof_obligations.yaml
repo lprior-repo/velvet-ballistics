@@ -1069,10 +1069,11 @@ verus_registry:
   #   wrapper took a fabricated `SpecRecoveryInput` (16-field struct)
   #   with no single production counterpart. The actual production
   #   hydration decision is split across
-  #   `crates/vb_storage/src/recovery/hydrate.rs`
-  #   (hydrate_run_frame, hydrate_run_frame_from_events,
-  #   hydrate_snapshot_tail_preconditions, validate_*_metadata,
-  #   validate_recovery_data_present) and
+  #   `crates/vb_storage/src/recovery/hydrate/`
+  #   (hydrate_run_frame in mod.rs, hydrate_run_frame_from_events in
+  #   from_events.rs, hydrate_snapshot_tail_preconditions and
+  #   validate_*_metadata in preconditions.rs,
+  #   validate_recovery_data_present in preconditions.rs) and
   #   `crates/vb_storage/src/recovery/recover.rs`
   #   (recover_runtime_summary, recover_runtime_frame_seed,
   #   check_workflow_source_digest, check_compiled_ir_digest), each
