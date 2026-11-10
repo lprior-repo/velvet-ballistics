@@ -97,6 +97,7 @@ impl Graph {
 pub(super) fn validate(
     cp: &ValueStoreCheckpointV1,
     roots: &[(SlotIdx, SlotValue, Taint)],
+    source_symbols: u32,
 ) -> Result<Graph, OwnedRootBundleError> {
     precheck::validate(cp)?;
 
@@ -105,6 +106,14 @@ pub(super) fn validate(
     let states = reserve(total, State::white())?;
 
     let mut graph = Graph { layout, states };
+
+    for index in 0..source_symbols {
+        walk::visit(
+            cp,
+            &mut graph,
+            ArenaNode::Symbol(crate::SymbolId::new(index)),
+        )?;
+    }
 
     for (_, value, _) in roots {
         if let Some(node) = node_of(*value) {

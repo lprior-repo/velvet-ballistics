@@ -306,6 +306,7 @@ pub struct RecoverRunCommand {
     pub collect_states: CollectStates,
     /// Validated full state to restore for a durable retry, when present.
     pub retry_checkpoint: Option<crate::run_checkpoint::RunCheckpointV1>,
+    pub(crate) initial_store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
     /// Recovery boundary classification.
     pub boundary: crate::recovery::RecoveredRunBoundary,
     /// Open manual gates reconstructed from the durable journal by
@@ -346,6 +347,7 @@ impl RecoverRunCommand {
             next_seq,
             collect_states,
             retry_checkpoint: None,
+            initial_store: None,
             boundary,
             open_gates: Vec::new(),
             admission: RecoveredAdmissionKind::Unverified {
@@ -362,6 +364,14 @@ impl RecoverRunCommand {
     #[must_use]
     pub(crate) fn with_open_gates(mut self, open_gates: Vec<OpenGate>) -> Self {
         self.open_gates = open_gates;
+        self
+    }
+
+    pub(crate) fn with_initial_store(
+        mut self,
+        checkpoint: Option<vb_core::value_store::ValueStoreCheckpointV1>,
+    ) -> Self {
+        self.initial_store = checkpoint;
         self
     }
 
@@ -451,6 +461,7 @@ impl RecoverRunCommand {
             next_seq,
             collect_states,
             retry_checkpoint: Some(checkpoint),
+            initial_store: None,
             boundary: crate::recovery::RecoveredRunBoundary::none(),
             open_gates: Vec::new(),
             admission,
@@ -1435,6 +1446,7 @@ impl RunAggregate {
 
 /// Single-threaded shard owning all mutable run state.
 pub struct Shard {
+    pub(crate) secret_availability: std::sync::Arc<[Box<str>]>,
     pub(crate) command_queue: ShardCommandQueue,
     pub(super) runs: IndexMap<RunId, RunState>,
     pub(super) run_aggregate: RunAggregate,

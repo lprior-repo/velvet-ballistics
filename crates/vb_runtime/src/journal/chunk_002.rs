@@ -142,7 +142,11 @@ impl StorageRuntimeJournal {
                 attempt,
             })),
             RuntimeJournalEvent::CompatibilityDecision { run, decision } => {
-                Ok(Some(JournalEvent::CompatibilityDecisionEvent { run, seq, decision }))
+                Ok(Some(JournalEvent::CompatibilityDecisionEvent {
+                    run,
+                    seq,
+                    decision,
+                }))
             }
             RuntimeJournalEvent::TenantAdmission {
                 run,
@@ -181,7 +185,14 @@ impl StorageRuntimeJournal {
                     attempt,
                 }))
             }
-            RuntimeJournalEvent::StepFailed { run, step, attempt } => Ok(Some(JournalEvent::StepFailed { run, seq, step, attempt })),
+            RuntimeJournalEvent::StepFailed { run, step, attempt } => {
+                Ok(Some(JournalEvent::StepFailed {
+                    run,
+                    seq,
+                    step,
+                    attempt,
+                }))
+            }
             RuntimeJournalEvent::StepSucceeded {
                 run, step, output, ..
             } => Ok(Some(JournalEvent::StepSucceeded {
@@ -196,6 +207,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionCompletedEnvelope { .. }
             | RuntimeJournalEvent::ActionFailed { .. }
             | RuntimeJournalEvent::ActionAbandoned { .. }
+            | RuntimeJournalEvent::RetryTimerScheduled { .. }
             | RuntimeJournalEvent::WaitScheduled { .. }
             | RuntimeJournalEvent::WaitResolved { .. }
             | RuntimeJournalEvent::AskScheduled { .. }
@@ -286,6 +298,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::RunFailed { .. }
             | RuntimeJournalEvent::RunCancelled { .. }
             | RuntimeJournalEvent::RunKilled { .. }
+            | RuntimeJournalEvent::RetryTimerScheduled { .. }
             | RuntimeJournalEvent::WaitScheduled { .. }
             | RuntimeJournalEvent::WaitResolved { .. }
             | RuntimeJournalEvent::AskScheduled { .. }
@@ -304,6 +317,17 @@ impl StorageRuntimeJournal {
         seq: EventSeq,
     ) -> RuntimeResult<Option<JournalEvent>> {
         match event {
+            RuntimeJournalEvent::RetryTimerScheduled { run, step, timer } => {
+                timer.validate()?;
+                let attempt = timer.failed_ticket.run_attempt;
+                Ok(Some(JournalEvent::RetryTimerScheduled {
+                    run,
+                    seq,
+                    step,
+                    attempt,
+                    timer,
+                }))
+            }
             RuntimeJournalEvent::WaitScheduled { run, step } => {
                 Ok(Some(JournalEvent::WaitScheduledEvent {
                     run,
@@ -408,7 +432,8 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionAbandoned { .. } => {
                 Ok(Self::action_storage_event(clone_for_dispatch(&event), seq))
             }
-            RuntimeJournalEvent::WaitScheduled { .. }
+            RuntimeJournalEvent::RetryTimerScheduled { .. }
+            | RuntimeJournalEvent::WaitScheduled { .. }
             | RuntimeJournalEvent::WaitResolved { .. }
             | RuntimeJournalEvent::AskScheduled { .. }
             | RuntimeJournalEvent::AskAnswered { .. }

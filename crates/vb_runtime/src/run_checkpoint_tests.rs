@@ -25,6 +25,7 @@ fn workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         name: Box::from("retry-checkpoint"),
         digest: WorkflowDigest::from_bytes([3; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: Box::from([node]),
         expressions: Box::from([]),
         accessors: Box::from([]),
@@ -34,21 +35,29 @@ fn workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     })
     .ok()
 }
 
 fn failed_state(workflow: vb_core::workflow::CompiledWorkflow, run_id: RunId) -> Option<RunState> {
     let mut frame = RunFrame::new(run_id, StepIdx::ZERO, 1, 1).ok()?;
+    frame
+        .write_slot(SlotIdx::ZERO, vb_core::SlotValue::I64(7))
+        .ok()?;
     frame.mark_running(StepIdx::ZERO).ok()?;
     frame.mark_failed(StepIdx::ZERO).ok()?;
+    let store = ValueStore::with_max_slots(workflow.resource_contract().max_slots);
     Some(RunState {
         registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
         frame,
         run_attempt: NonZeroU16::MIN,
         workflow,
-        store: ValueStore::new(),
+        store,
         action_attempts: Box::from([0]),
         admission: Some(RunAdmission::new(
             WorkflowDigest::from_bytes([7; 32]),

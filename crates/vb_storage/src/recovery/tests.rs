@@ -31,6 +31,7 @@ fn deterministic_plan() -> Result<CompiledWorkflow, Box<dyn std::error::Error>> 
 fn deterministic_parts() -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: "recovery_replay".into(),
         input_slots: Box::new([]),
         digest: sample_digest(44),
@@ -681,8 +682,13 @@ fn frame_seed_with_workflow_preserves_action_completed_envelope_output_slot_valu
     let action = ActionId::new(4);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: "action_recovery".into(),
-        input_slots: Box::new([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: vb_core::InputSlotKind::I64,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
         digest,
         nodes: vec![node(
             StepIdx::ZERO,
@@ -1068,7 +1074,8 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
                 JournalEvent::ActionFailedEvent { .. } => {
                     summary.action_failed = summary.action_failed.saturating_add(1);
                 }
-                JournalEvent::WaitScheduledEvent { .. } => {
+                JournalEvent::RetryTimerScheduled { .. }
+                | JournalEvent::WaitScheduledEvent { .. } => {
                     summary.wait_scheduled = summary.wait_scheduled.saturating_add(1);
                 }
                 JournalEvent::AskScheduledEvent { .. } => {

@@ -10,6 +10,7 @@ fn workflow_parts_with_accessors(
 ) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),

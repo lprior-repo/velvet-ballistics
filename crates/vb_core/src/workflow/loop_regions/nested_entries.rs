@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! Cold entry flags for the bounded unsupported-nested-activation gate.
+//! Cold entry flags for bounded nested-activation preflight.
 //! Derive only after complete loop-region validation. Cached inner owners
 //! contribute their Start and exact inclusive body/control interval. Uncached
 //! loop Starts and TogetherStart contribute only their Start: their restored

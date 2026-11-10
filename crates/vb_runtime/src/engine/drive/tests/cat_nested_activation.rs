@@ -362,16 +362,27 @@ fn completed_outer_control_cannot_authorize_an_unfinished_inner_repeat() -> Resu
     checked(run.write_slot_with_taint(SlotIdx::new(5), SlotValue::Bool(false), Taint::Clean))?;
     let mut evidence = EvidenceCollector::new();
     let mut collect = CollectStates::new();
-    checked(drive_phase(&wf, &mut run, &mut store, &mut evidence, &mut collect, 3))?;
+    checked(drive_phase(
+        &wf,
+        &mut run,
+        &mut store,
+        &mut evidence,
+        &mut collect,
+        3,
+    ))?;
     checked(run.mark_succeeded(StepIdx::new(6)))?;
     checked(run.set_pc(StepIdx::new(1)))?;
     let before = run.clone();
-    let result = super::super::loop_rearm::loop_body_rearm(
-        &wf, &mut run, StepIdx::new(6), StepIdx::new(1),
-    );
-    assert!(matches!(result, Err(RuntimeEngineError::Core(
-        EngineError::InvalidCompiledWorkflow { reason: "nested loop region not consistently completed" }
-    ))));
+    let result =
+        super::super::loop_rearm::loop_body_rearm(&wf, &mut run, StepIdx::new(6), StepIdx::new(1));
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(
+            EngineError::InvalidCompiledWorkflow {
+                reason: "nested loop region not consistently completed"
+            }
+        ))
+    ));
     assert_eq!(run, before);
     Ok(())
 }

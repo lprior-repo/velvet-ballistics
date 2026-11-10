@@ -2,11 +2,20 @@
 fn ask_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let set_prompt = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::ZERO), Some(vb_core::ids::StepIdx::new(1)));
     let set_timeout = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), CompiledNodeKind::SetConst { value: ConstIdx::new(1), }, Some(SlotIdx::new(1)), Some(vb_core::ids::StepIdx::new(2)));
-    let ask = vb_core::workflow::node(vb_core::ids::StepIdx::new(2), CompiledNodeKind::Ask { prompt: SlotIdx::ZERO, timeout_slot: Some(SlotIdx::new(1)), }, None, Some(vb_core::ids::StepIdx::new(3)));
+    let ask = vb_core::workflow::node(
+        vb_core::ids::StepIdx::new(2),
+        CompiledNodeKind::Ask {
+            prompt: SlotIdx::ZERO,
+            timeout_slot: Some(SlotIdx::new(1)),
+        },
+        Some(vb_core::ids::SlotIdx::new(2)),
+        Some(vb_core::ids::StepIdx::new(3)),
+    );
     let resume = vb_core::workflow::node(vb_core::ids::StepIdx::new(3), CompiledNodeKind::AskResume { answer: SlotIdx::new(2), }, None, Some(vb_core::ids::StepIdx::new(4)));
     let finish = vb_core::workflow::node(vb_core::ids::StepIdx::new(4), CompiledNodeKind::Finish { result: SlotIdx::new(2), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("ask_then_finish"),
         digest: WorkflowDigest::from_bytes([7; 32]),
         nodes: Box::from([set_prompt, set_timeout, ask, resume, finish]),
@@ -44,7 +53,8 @@ fn retryable_failure() -> vb_core::action::ActionFailure {
 fn shard_submit_with_inputs_seeds_slots_and_drives() -> Result<(), &'static str> {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let workflow = finished_workflow().ok_or("finished workflow fixture construction failed")?;
+    let workflow =
+        input_result_workflow().ok_or("input-result workflow fixture construction failed")?;
     let run = super::RunId::new(700);
     let inputs = Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::Bool(true))]);
     assert_eq!(
@@ -231,7 +241,8 @@ fn shard_submit_run_submitted_append_failure_maps_to_admission_header_persistenc
     );
     let run = super::RunId::new(712);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
@@ -260,7 +271,8 @@ fn shard_submit_run_admission_append_failure_maps_to_admission_header_persistenc
     );
     let run = super::RunId::new(713);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),

@@ -41,15 +41,36 @@ pub(super) fn select_pristine_resume(
                 policy_pin: RunPolicyPin::Pinned(_),
                 ..
             },
+            tail @ ..,
         ] = events.as_slice()
         && *accepted == run
         && *admitted == run
         && first.get() == 0
         && second.get() == 1
+        && pristine_tail(run, tail)
     {
         return Ok(());
     }
     Err(original)
+}
+
+fn pristine_tail(run: vb_core::RunId, events: &[vb_storage::JournalEvent]) -> bool {
+    match events {
+        [] => true,
+        [
+            vb_storage::JournalEvent::CompatibilityDecisionEvent {
+                run: owner,
+                seq,
+                decision,
+            },
+        ] => {
+            *owner == run
+                && seq.get() == 2
+                && decision.boundary == vb_storage::compat::CompatBoundary::IrVersion
+                && decision.authorize_live_effect().is_ok()
+        }
+        _ => false,
+    }
 }
 
 fn recover_pristine_once(
@@ -155,6 +176,15 @@ pub(super) fn run_pristine_resume(
         vb_runtime::shard::ShardConfig::default(),
         vb_runtime::journal::StorageRuntimeJournal::shared_strict(Arc::clone(&journal)),
     );
+    if let Ok(events) = journal.events_for_run_full(run)
+        && let Some(admission) = vb_runtime::recovery::hydrate_run_admission_from_events(&events)
+    {
+        crate::run_compiled_runtime::secret_presence::install_stored(
+            &mut runtime,
+            Arc::clone(&journal),
+            admission.artifact_digest(),
+        );
+    }
     let (candidate, mut failure) = match recover_pristine_once(&mut runtime, run) {
         Ok(candidate) => (candidate, None),
         Err(error) => (None, Some(error)),
@@ -221,3 +251,7 @@ pub(super) fn run_pristine_resume(
 #[cfg(test)]
 #[path = "pristine_resume_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "pristine_resume_compat_tests.rs"]
+mod compatibility_tests;

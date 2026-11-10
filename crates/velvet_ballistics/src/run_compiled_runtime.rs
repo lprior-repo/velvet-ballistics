@@ -5,6 +5,7 @@ use crate::app_impl::prelude::*;
 pub(crate) mod completion_output;
 #[cfg(test)]
 mod completion_output_tests;
+pub(crate) mod secret_presence;
 
 pub(crate) fn open_storage_runtime_journal(
     db: Option<&std::path::Path>,
@@ -63,6 +64,7 @@ pub(crate) fn run_compiled_workflow(
         Err(code) => return code,
     };
     let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config, journal);
+    secret_presence::install(&mut runtime, compiled);
 
     if let Err(e) = runtime.submit_compiled_with_inputs(run_id, compiled.clone(), inputs) {
         report_runtime_error(format_args!("runtime submit error: {e}"), output);

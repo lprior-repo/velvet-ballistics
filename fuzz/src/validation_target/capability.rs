@@ -56,6 +56,7 @@ fn fuzz_parts_with_actions(actions: &[u16]) -> WorkflowParts {
     let mut index = 0u16;
     for action in actions {
         nodes.push(CompiledNode {
+            retry: None,
             id: StepIdx::new(index),
             output: vb_core::workflow::NodeOutput::Discard,
             routing: vb_core::workflow::NodeRouting {
@@ -70,6 +71,7 @@ fn fuzz_parts_with_actions(actions: &[u16]) -> WorkflowParts {
         index = index.saturating_add(1);
     }
     nodes.push(CompiledNode {
+        retry: None,
         id: StepIdx::new(index),
         output: vb_core::workflow::NodeOutput::Discard,
         routing: vb_core::workflow::NodeRouting {
@@ -84,6 +86,7 @@ fn fuzz_parts_with_actions(actions: &[u16]) -> WorkflowParts {
         name: Box::from("capability-schema-fuzz"),
         digest: vb_core::WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: nodes.into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),

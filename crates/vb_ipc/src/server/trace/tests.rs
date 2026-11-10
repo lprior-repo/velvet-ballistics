@@ -23,13 +23,20 @@ fn chain_workflow() -> vb_core::workflow::CompiledWorkflow {
     use vb_core::ids::{SlotIdx, StepIdx};
     use vb_core::workflow::{CompiledNodeKind, ResourceContract, WorkflowParts, node};
 
-    let mut nodes = Vec::new();
-    for i in 0..10 {
+    let mut nodes = vec![node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
+            value: vb_core::ConstIdx::new(0),
+        },
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    )];
+    for i in 1u16..10 {
         nodes.push(node(
             StepIdx::new(i),
             CompiledNodeKind::Nop,
             None,
-            Some(StepIdx::new(i + 1)),
+            Some(StepIdx::new(i.saturating_add(1))),
         ));
     }
     nodes.push(node(
@@ -42,12 +49,13 @@ fn chain_workflow() -> vb_core::workflow::CompiledWorkflow {
     ));
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("chain"),
         digest: WorkflowDigest::from_bytes([4; 32]),
         nodes: Box::from(nodes),
         expressions: Box::from([]),
         accessors: Box::from([]),
-        constants: Box::from([]),
+        constants: Box::from([vb_core::ConstValue::I64(0)]),
         slot_count: 1,
         symbols_count: 0,
         entry: StepIdx::ZERO,

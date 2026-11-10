@@ -1,11 +1,20 @@
 fn timed_ask_without_answer_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let set_prompt = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::ZERO), Some(vb_core::ids::StepIdx::new(1)));
     let set_timeout = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), CompiledNodeKind::SetConst { value: ConstIdx::new(1), }, Some(SlotIdx::new(1)), Some(vb_core::ids::StepIdx::new(2)));
-    let ask = vb_core::workflow::node(vb_core::ids::StepIdx::new(2), CompiledNodeKind::Ask { prompt: SlotIdx::ZERO, timeout_slot: Some(SlotIdx::new(1)), }, None, Some(vb_core::ids::StepIdx::new(3)));
+    let ask = vb_core::workflow::node(
+        vb_core::ids::StepIdx::new(2),
+        CompiledNodeKind::Ask {
+            prompt: SlotIdx::ZERO,
+            timeout_slot: Some(SlotIdx::new(1)),
+        },
+        Some(vb_core::ids::SlotIdx::new(2)),
+        Some(vb_core::ids::StepIdx::new(3)),
+    );
     let resume = vb_core::workflow::node(vb_core::ids::StepIdx::new(3), CompiledNodeKind::AskResume { answer: SlotIdx::new(2), }, None, Some(vb_core::ids::StepIdx::new(4)));
     let finish = vb_core::workflow::node(vb_core::ids::StepIdx::new(4), CompiledNodeKind::Finish { result: SlotIdx::new(2), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("timed_ask_without_answer"),
         digest: WorkflowDigest::from_bytes([5; 32]),
         nodes: Box::from([set_prompt, set_timeout, ask, resume, finish]),

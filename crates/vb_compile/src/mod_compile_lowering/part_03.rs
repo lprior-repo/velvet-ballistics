@@ -163,17 +163,21 @@ pub(super) fn emit_together_branches(
             None,
         ));
         let copy_offset = following_offset.checked_sub(1).ok_or_else(|| {
-            CompileErrors(vec![CompileError::StepIndexOutOfRange { value: diagnostic_step }])
+            CompileErrors(vec![CompileError::StepIndexOutOfRange {
+                value: diagnostic_step,
+            }])
         })?;
         let copy = checked_step_offset(base, copy_offset, "together", "result")
             .map_err(|e| CompileErrors(vec![e]))?;
         let result = super::part_14::emit_scoped_flat_body(
-            &branch.steps, entry, copy, scope, builder, "together",
-        )?.ok_or_else(|| CompileErrors(vec![CompileError::StepFieldShape {
-            step: diagnostic_step, field: "together.branches[].steps", expected: "a final value",
-        }]))?;
-        builder.push_node(node(copy, CompiledNodeKind::Copy { source: result },
-            Some(slots.result), Some(following)));
+            &branch.steps,
+            entry,
+            copy,
+            scope,
+            builder,
+            "together",
+        )?;
+        super::part_14::emit_body_result(copy, result, slots.result, following, builder)?;
         cursor = following_offset;
     }
     Ok(())

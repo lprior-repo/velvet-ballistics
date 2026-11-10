@@ -71,12 +71,12 @@
 //                                               crates/vb_core/src/budget/traversal_error.rs:13-37)
 //   - `WholeWorkflowBudget`                 <- extern_budget_monotonic.rs
 //                                               (mirror of
-//                                               crates/vb_core/src/budget/compute.rs:17-93)
-// Production `crates/vb_core/src/budget/compute.rs:17-93`
+//                                               crates/vb_core/src/budget/compute.rs:21-97)
+// Production `crates/vb_core/src/budget/compute.rs:21-97`
 //   - `WholeWorkflowBudget::compute`        <- extern_budget_monotonic.rs
 //                                               `whole_workflow_budget_compute`
 //                                               (mirror of
-//                                               crates/vb_core/src/budget/compute.rs:100-106)
+//                                               crates/vb_core/src/budget/compute.rs:104-110)
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -226,7 +226,14 @@ pub mod workflow {
     /// type, and visibility matches production exactly. Drift in any
     /// field breaks the mirror.
     #[derive(Clone, Copy)]
+    pub struct CompiledRetryPolicy {
+        pub max_attempts: u16,
+        pub delay_ms: u64,
+    }
+
+    #[derive(Clone, Copy)]
     pub struct CompiledNode {
+        pub retry: Option<CompiledRetryPolicy>,
         pub id: StepIdx,
         pub output: NodeOutput,
         pub routing: NodeRouting,
@@ -401,6 +408,7 @@ pub mod workflow {
             collector_slot: SlotIdx,
         },
         ReduceStart {
+            limit: u32,
             input: SlotIdx,
             accumulator: SlotIdx,
             initial: ConstIdx,
@@ -573,12 +581,12 @@ pub enum BudgetTraversalError {
 // WholeWorkflowBudget — production mirror
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget/compute.rs:17-93`. Every field name, type,
+// Mirror of `crates/vb_core/src/budget/compute.rs:21-97`. Every field name, type,
 // and visibility matches production exactly. Drift in any field breaks
 // the mirror.
 
 /// Mirror of production `WholeWorkflowBudget` at
-/// `crates/vb_core/src/budget/compute.rs:17-93`. Field-by-field copy of the
+/// `crates/vb_core/src/budget/compute.rs:21-97`. Field-by-field copy of the
 /// production struct. The exec fn `WholeWorkflowBudget::compute` below
 /// is `#[verifier::external]` and accepts the production signature.
 #[derive(Clone, Copy)]
@@ -617,7 +625,7 @@ pub struct WholeWorkflowBudget {
 
 impl WholeWorkflowBudget {
     /// Production wrapper for `WholeWorkflowBudget::compute` at
-    /// `crates/vb_core/src/budget/compute.rs:100-106`. Body skipped by Verus;
+    /// `crates/vb_core/src/budget/compute.rs:104-110`. Body skipped by Verus;
     /// contract attached via `assume_specification` in the spec file.
     #[verifier::external]
     pub fn compute(
@@ -641,7 +649,7 @@ impl WholeWorkflowBudget {
 // (`budget_monotonic.rs`).
 
 /// Production wrapper for `WholeWorkflowBudget::compute` at
-/// `crates/vb_core/src/budget/compute.rs:100-106`. Body skipped by Verus.
+/// `crates/vb_core/src/budget/compute.rs:104-110`. Body skipped by Verus.
 #[verifier::external]
 pub fn whole_workflow_budget_compute(
     nodes: &[super::workflow::CompiledNode],

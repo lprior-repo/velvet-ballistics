@@ -4,7 +4,7 @@ use vb_core::SlotValue;
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{ActionId, RunId, SlotIdx};
 
-use super::{Shard, ShardCommand, small_config, suspended_workflow};
+use super::{Shard, ShardCommand, finished_workflow, small_config, suspended_workflow};
 use crate::journal::{RuntimeJournalEvent, SharedRuntimeJournal, VolatileRuntimeJournal};
 use vb_core::workflow::node;
 
@@ -15,7 +15,7 @@ fn submit_empty_caps_no_fabrication() -> Result<(), Box<dyn Error>> {
     let mut shard = Shard::new_with_journal(small_config(), shared);
 
     let run = RunId::new(1);
-    let workflow = suspended_workflow().ok_or("missing fixture")?;
+    let workflow = finished_workflow().ok_or("missing fixture")?;
 
     shard.enqueue(ShardCommand::Submit {
         run,
@@ -130,6 +130,7 @@ fn nop_then_do() -> Result<vb_core::workflow::CompiledWorkflow, Box<dyn Error>> 
     );
     let parts = super::WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("nop_then_do"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([nop_node, do_node]),
@@ -141,7 +142,11 @@ fn nop_then_do() -> Result<vb_core::workflow::CompiledWorkflow, Box<dyn Error>> 
         entry: vb_core::ids::StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: super::ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::ZERO,
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).map_err(Into::into)
 }
@@ -161,34 +166,24 @@ fn bare_submit_no_input_fabrication() -> Result<(), Box<dyn Error>> {
 
     let caps = super::test_fixtures::contract_capability_for(ActionId::new(0));
 
-    shard.enqueue(ShardCommand::Submit {
-        run,
-        workflow,
-        caps: caps.clone(),
-    })?;
-
-    assert_eq!(shard.tick(), Ok(true));
-
-    let state = shard.run_state_get(run).ok_or("run state missing")?;
-
     assert_eq!(
-        state.frame.read_slot(SlotIdx::ZERO),
-        Err(vb_core::errors::CoreError::SlotUninitialized {
-            slot: SlotIdx::ZERO
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: caps.clone(),
+        }),
+        Err(crate::RuntimeError::UnsupportedOperation {
+            operation: "input_schema_mismatch"
         })
     );
 
-    assert!(state.action_contracts.is_empty());
-
     assert_eq!(
-        state
-            .admission
-            .as_ref()
-            .ok_or("missing admission")?
-            .granted_capabilities(),
-        &caps
+        shard.handle_resume(run),
+        Err(crate::shard::ResumeError::RunIdNotFound { run_id: run }),
     );
-
+    assert_eq!(journal.snapshot()?, Vec::<RuntimeJournalEvent>::new());
+    assert_eq!(shard.active_run_count(), 0);
+    assert_eq!(shard.counters().snapshot().runs_submitted, 0);
     Ok(())
 }
 

@@ -9,11 +9,18 @@ use std::collections::HashSet;
 use std::str;
 use vb_core::{ConstValue, SlotIdx, StepIdx};
 
-pub(super) fn validate_optional_top_level_shapes(doc: &Yaml<'_>) -> Result<(), CompileError> {
+pub(super) fn validate_optional_top_level_shapes(
+    doc: &Yaml<'_>,
+    scalar_vars: bool,
+) -> Result<(), CompileError> {
     optional_inputs_mapping(doc)?;
-    optional_vars_mapping(doc)?;
+    optional_vars_mapping(doc, scalar_vars)?;
     optional_secret_mapping(doc)?;
-    optional_examples_sequence(doc)
+    if scalar_vars {
+        optional_examples_sequence(doc)
+    } else {
+        Ok(())
+    }
 }
 
 pub(super) fn optional_inputs_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> {
@@ -33,7 +40,7 @@ pub(super) fn optional_inputs_mapping(doc: &Yaml<'_>) -> Result<(), CompileError
     Ok(())
 }
 
-pub(super) fn optional_vars_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> {
+pub(super) fn optional_vars_mapping(doc: &Yaml<'_>, scalar_only: bool) -> Result<(), CompileError> {
     let Some(node) = doc.as_mapping_get("vars") else {
         return Ok(());
     };
@@ -46,6 +53,9 @@ pub(super) fn optional_vars_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> 
             return Err(non_string_key_error());
         };
         validate_public_name("vars", name)?;
+        if !scalar_only {
+            continue;
+        }
         match value {
             Yaml::Sequence(_) | Yaml::Mapping(_) | Yaml::Tagged(..) => {
                 return Err(CompileError::ExpressionLoweringUnsupported {

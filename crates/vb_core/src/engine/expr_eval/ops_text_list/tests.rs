@@ -86,16 +86,11 @@ fn eval_ops_with_slots(
     };
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("text_list_test"),
         digest: WorkflowDigest::from_bytes([0xFB; 32]),
-        nodes: vec![node(
-            StepIdx::new(0),
-            CompiledNodeKind::Nop,
-            Some(SlotIdx::new(0)),
-            None,
-        )]
-        .into_boxed_slice(),
+        nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
         expressions: vec![expr].into_boxed_slice(),
         accessors: Box::new([]),
         constants: constants.into_boxed_slice(),

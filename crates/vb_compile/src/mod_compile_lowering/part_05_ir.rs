@@ -25,6 +25,7 @@ pub fn lower_steps_to_ir(
         name: Box::from(name),
         digest,
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: nodes.into_boxed_slice(),
         expressions: expressions.into_boxed_slice(),
         accessors: accessors.into_boxed_slice(),

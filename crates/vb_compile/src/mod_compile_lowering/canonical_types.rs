@@ -83,8 +83,12 @@ fn build_type_context(
 ) -> Result<TypeContext, CompileError> {
     let mut context = TypeContext::new();
     for (reference, _) in collect_references(expr) {
-        let slot = resolver.resolve_slot(&reference)?;
-        let ty = slot_types.get(&slot).copied().unwrap_or(ExprType::Unknown);
+        let (slot, path) = resolver.resolve_path(&reference)?;
+        let ty = if path.is_some() {
+            ExprType::Unknown
+        } else {
+            slot_types.get(&slot).copied().unwrap_or(ExprType::Unknown)
+        };
         context.add_variable(reference.clone().into(), ty);
     }
     Ok(context)

@@ -677,6 +677,7 @@ fn suspended_workflow() -> Option<CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -688,7 +689,11 @@ fn suspended_workflow() -> Option<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::new([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     CompiledWorkflow::try_from_parts(parts).ok()
 }

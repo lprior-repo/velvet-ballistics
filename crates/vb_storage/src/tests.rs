@@ -4171,7 +4171,8 @@ mod tests {
         let master = include_str!("../../../velvet-ballistics-MASTER.md");
 
         assert!(master.contains("| 29 | `AskTimedOut` |"));
-        assert!(master.contains("CURRENT_SCHEMA_VERSION`\nremains `1`"));
+        let words = master.split_whitespace().collect::<Vec<_>>().join(" ");
+        assert!(words.contains("`CURRENT_SCHEMA_VERSION` remains `1`"));
     }
 
     #[test]

@@ -8,13 +8,18 @@ use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, Wo
 pub(super) fn legacy_ask_action_workflow(action: ActionId) -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: vb_core::workflow::InputSlotKind::Any,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
         name: Box::from("vb_c4hzw_legacy_admission"),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([
             node(
                 0,
-                None,
+                Some(1),
                 Some(1),
                 CompiledNodeKind::Ask {
                     prompt: SlotIdx::ZERO,

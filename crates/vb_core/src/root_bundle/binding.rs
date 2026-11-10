@@ -19,6 +19,7 @@ pub(super) struct Binding {
     frame_slot_count: u16,
     input_slots: Vec<CompiledInputSlot>,
     resource_contract: ResourceContract,
+    source_metadata: Option<Box<crate::workflow::source_metadata::WorkflowSourceMetadata>>,
 }
 
 impl Binding {
@@ -41,6 +42,7 @@ impl Binding {
             frame_slot_count: wf.slot_count(),
             input_slots,
             resource_contract: wf.resource_contract(),
+            source_metadata: wf.source_metadata().cloned().map(Box::new),
         })
     }
 
@@ -69,6 +71,9 @@ impl Binding {
     /// Compares exact digest, frame slot count, input declaration order and
     /// kinds, and the entire resource contract. No digest-only shortcut.
     pub(super) fn matches(&self, wf: &CompiledWorkflow) -> bool {
+        if self.source_metadata.as_deref() != wf.source_metadata() {
+            return false;
+        }
         if self.digest != wf.digest() {
             return false;
         }

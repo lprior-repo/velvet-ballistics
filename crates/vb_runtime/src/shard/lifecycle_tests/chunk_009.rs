@@ -62,7 +62,12 @@ fn run_state_insert_rejects_untracked_active_owner() -> Result<(), String> {
     let mut target = Shard::new(small_config());
     let run = RunId::new(9_021);
     let workflow = require_workflow("suspended", suspended_workflow())?;
-    submit_run(&mut source, run, workflow);
+    submit_run(
+        &mut source,
+        run,
+        workflow,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     let state = source
         .run_state_get(run)
         .cloned()
@@ -83,7 +88,12 @@ fn pending_boundary_maps_allow_checked_out_active_run() -> Result<(), String> {
     let mut shard = Shard::new(small_config());
     let workflow = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(9_002);
-    submit_run(&mut shard, run, workflow);
+    submit_run(
+        &mut shard,
+        run,
+        workflow,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     let _removed_action = shard.pending_action_remove(run);
     let state = shard
         .take_run_state(run)
@@ -103,7 +113,12 @@ fn terminal_transition_clears_active_and_pending_boundaries() -> Result<(), Stri
     let mut shard = Shard::new(small_config());
     let workflow = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(9_003);
-    submit_run(&mut shard, run, workflow);
+    submit_run(
+        &mut shard,
+        run,
+        workflow,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     assert!(shard.pending_action_get(run).is_some());
     assert_eq!(
         shard.pending_timer_insert(run, guard_test_timer(PendingTimerKind::Wait)),
@@ -126,7 +141,12 @@ fn failed_terminal_parity_clears_boundaries_and_runtime_state() -> Result<(), St
     let mut shard = Shard::new(small_config());
     let workflow = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(9_016);
-    submit_run(&mut shard, run, workflow);
+    submit_run(
+        &mut shard,
+        run,
+        workflow,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     assert!(shard.pending_action_get(run).is_some());
     assert_eq!(
         shard.pending_timer_insert(run, guard_test_timer(PendingTimerKind::Wait)),
@@ -164,7 +184,12 @@ fn kill_terminal_path_clears_boundaries_and_runtime_state() -> Result<(), String
     let mut shard = Shard::new(small_config());
     let workflow = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(9_027);
-    submit_run(&mut shard, run, workflow);
+    submit_run(
+        &mut shard,
+        run,
+        workflow,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     assert!(shard.pending_action_get(run).is_some());
     assert_eq!(
         shard.pending_timer_insert(run, guard_test_timer(PendingTimerKind::Wait)),
@@ -190,7 +215,12 @@ fn terminal_membership_clears_runtime_state_immediately() -> Result<(), String> 
     let mut shard = Shard::new(small_config());
     let workflow = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(9_017);
-    submit_run(&mut shard, run, workflow);
+    submit_run(
+        &mut shard,
+        run,
+        workflow,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     assert!(shard.runtime_state_get(run).is_some());
     let state = shard
         .take_run_state(run)
@@ -214,7 +244,12 @@ fn assert_checked_out_terminal_apply_clears_runtime_state(
 ) -> Result<(), String> {
     let mut shard = Shard::new(small_config());
     let workflow = require_workflow("suspended", suspended_workflow())?;
-    submit_run(&mut shard, run, workflow);
+    submit_run(
+        &mut shard,
+        run,
+        workflow,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     assert_eq!(
         shard.pending_timer_insert(run, guard_test_timer(PendingTimerKind::Wait)),
         Ok(None)
@@ -265,7 +300,12 @@ fn checked_out_nonterminal_apply_preserves_runtime_state() -> Result<(), String>
     let mut shard = Shard::new(small_config());
     let workflow = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(9_025);
-    submit_run(&mut shard, run, workflow);
+    submit_run(
+        &mut shard,
+        run,
+        workflow,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     let state = shard
         .take_run_state(run)
         .map_err(|error| format!("take_run_state failed: {error:?}"))?;
@@ -285,7 +325,12 @@ fn failed_runtime_state_insert_is_rejected_without_split_membership() -> Result<
     let mut shard = Shard::new(small_config());
     let workflow = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(9_018);
-    submit_run(&mut shard, run, workflow);
+    submit_run(
+        &mut shard,
+        run,
+        workflow,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
 
     assert_eq!(
         shard.runtime_state_insert(run, RuntimeState::Failed),
@@ -306,6 +351,7 @@ fn terminal_failed_runtime_state_insert_is_rejected_and_cannot_coexist() -> Resu
         &mut shard,
         run,
         require_workflow("finished", finished_workflow())?,
+        &[],
     );
 
     assert!(shard.terminal_runs_contains(run));
@@ -326,7 +372,7 @@ fn terminal_retained_run_rejects_new_pending_boundaries() -> Result<(), String> 
     let mut shard = Shard::new(small_config());
     let workflow = require_workflow("finished", finished_workflow())?;
     let run = RunId::new(9_006);
-    submit_run(&mut shard, run, workflow);
+    submit_run(&mut shard, run, workflow, &[]);
     assert!(shard.terminal_runs_contains(run));
     assert_eq!(shard.active_run_count(), 0);
 
@@ -354,11 +400,13 @@ fn pending_timer_aggregate_only_tracks_active_owner() -> Result<(), String> {
         &mut shard,
         terminal_run,
         require_workflow("finished", finished_workflow())?,
+        &[],
     );
     submit_run(
         &mut shard,
         active_run,
         require_workflow("suspended", suspended_workflow())?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
     );
     let active_timer = guard_test_timer(PendingTimerKind::Wait);
     let terminal_timer = guard_test_timer(PendingTimerKind::Ask);
@@ -387,11 +435,13 @@ fn pending_action_aggregate_only_tracks_active_owner() -> Result<(), String> {
         &mut shard,
         terminal_run,
         require_workflow("finished", finished_workflow())?,
+        &[],
     );
     submit_run(
         &mut shard,
         active_run,
         require_workflow("suspended", suspended_workflow())?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
     );
     assert!(shard.terminal_runs_contains(terminal_run));
     assert_eq!(shard.pending_action_len(), 1);
@@ -415,6 +465,7 @@ fn terminal_membership_rejects_live_run_state_owner() -> Result<(), String> {
         &mut shard,
         run,
         require_workflow("suspended", suspended_workflow())?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
     );
 
     assert_eq!(shard.active_run_count(), 1);
@@ -437,6 +488,7 @@ fn terminal_membership_clears_checked_out_and_pending_boundaries() -> Result<(),
         &mut shard,
         run,
         require_workflow("suspended", suspended_workflow())?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
     );
     assert_eq!(
         shard.pending_timer_insert(run, guard_test_timer(PendingTimerKind::Wait)),
@@ -466,6 +518,7 @@ fn pending_boundary_snapshot_counts_checked_out_active_owner() -> Result<(), Str
         &mut shard,
         run,
         require_workflow("suspended", suspended_workflow())?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
     );
     let state = shard
         .take_run_state(run)
@@ -489,7 +542,7 @@ fn terminal_retention_does_not_consume_active_capacity() -> Result<(), String> {
     let terminal_workflow = require_workflow("finished", finished_workflow())?;
     let active_workflow = require_workflow("suspended", suspended_workflow())?;
 
-    submit_run(&mut shard, terminal_run, terminal_workflow);
+    submit_run(&mut shard, terminal_run, terminal_workflow, &[]);
     assert!(shard.terminal_runs_contains(terminal_run));
     assert_eq!(shard.active_run_count(), 0);
     assert_eq!(
@@ -525,11 +578,13 @@ fn terminal_retention_evicts_oldest_terminal_identity_at_capacity() -> Result<()
         &mut shard,
         oldest_terminal,
         require_workflow("oldest", finished_workflow())?,
+        &[],
     );
     submit_run(
         &mut shard,
         retained_terminal,
         require_workflow("retained", finished_workflow())?,
+        &[],
     );
 
     assert!(!shard.terminal_runs_contains(oldest_terminal));

@@ -118,7 +118,7 @@ fn small_linear_node_metrics(node: &crate::workflow::CompiledNode) -> SmallLinea
         CompiledNodeKind::Do { .. } => SmallLinearMetrics {
             steps: 1,
             actions: 1,
-            timers: 0,
+            timers: u32::from(node.retry.is_some_and(|policy| policy.delay_ms > 0)),
             gates: 0,
             signals: 0,
         },

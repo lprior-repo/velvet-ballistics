@@ -24,7 +24,11 @@ fn shard_step_budget_one_does_not_recount_completed_steps_on_later_ticks() -> Re
     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
     assert_eq!(shard.counters().snapshot().steps_executed, 1);
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.counters().snapshot().steps_executed, 1);
+    assert_eq!(shard.counters().snapshot().steps_executed, 2);
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().steps_executed, 2);
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
     Ok(())
 }
 
@@ -195,7 +199,8 @@ fn shard_cancel_then_resubmit_same_run_id_succeeds() -> Result<(), String> {
     let wf2 = workflow_fixture(finished_workflow(), "finished_workflow")?;
     let run = super::RunId::new(55);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputs {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run,
             workflow: wf1,
             caps: vb_core::capability::CapabilitySet::empty()

@@ -5,7 +5,7 @@ fn action_failure_without_handler_emits_action_failed_before_run_failed() -> Res
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(600);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
     let ticket = make_ticket(run, StepIdx::ZERO, 1);
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
@@ -70,7 +70,7 @@ fn action_failure_routed_to_handler_emits_action_failed_before_handler_step() ->
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("error_handler", error_handler_workflow())?;
     let run = RunId::new(610);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
     let ticket = pending_ticket(&shard, run, StepIdx::new(1), 1);
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
@@ -117,7 +117,12 @@ fn retry_exhaustion_emits_single_action_failed() -> Result<(), String> {
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(620);
-    submit_run(&mut shard, run, retry_workflow()?);
+    submit_run(
+        &mut shard,
+        run,
+        retry_workflow()?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     enqueue_action_failure(&mut shard, run, StepIdx::new(1), 1);
     enqueue_action_failure(&mut shard, run, StepIdx::new(1), 2);
     let events = require_snapshot(&journal)?;
@@ -167,7 +172,7 @@ fn stale_ask_ticket_is_rejected_after_same_step_is_scheduled_again() -> Result<(
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("ask", ask_workflow())?;
     let run = RunId::new(71);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[]);
     assert_eq!(shard.tick(), Ok(true));
 
     let first = shard
@@ -266,7 +271,8 @@ fn timer_fire_for_non_timer_run_returns_invalid_timer_fire() {
     };
     let run = RunId::new(81);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run,
             workflow: wf,
             caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
@@ -386,7 +392,12 @@ fn retry_remaining_advances_attempt_and_resumes_drive() -> Result<(), String> {
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(501);
-    submit_run(&mut shard, run, retry_workflow()?);
+    submit_run(
+        &mut shard,
+        run,
+        retry_workflow()?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     // After submission, the run should be suspended on action step 1
     // with attempt 1 and capacity 2 from the retry policy
     let state = shard.run_state_get(run).ok_or("run should exist")?;
@@ -414,7 +425,12 @@ fn retry_remaining_advances_attempt_and_resumes_drive() -> Result<(), String> {
 fn retry_exhausted_fails_run_when_no_more_attempts() -> Result<(), String> {
     let mut shard = Shard::new(small_config());
     let run = RunId::new(502);
-    submit_run(&mut shard, run, retry_workflow()?);
+    submit_run(
+        &mut shard,
+        run,
+        retry_workflow()?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     // retry_workflow has max_attempts=2 (from ConstValue::I64(2))
     // First failure at attempt 1 → retry to attempt 2
     assert_eq!(
@@ -444,7 +460,12 @@ fn retry_exhausted_fails_run_when_no_more_attempts() -> Result<(), String> {
 fn non_retryable_failure_fails_run_immediately() -> Result<(), String> {
     let mut shard = Shard::new(small_config());
     let run = RunId::new(503);
-    submit_run(&mut shard, run, retry_workflow()?);
+    submit_run(
+        &mut shard,
+        run,
+        retry_workflow()?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     // Send non-retryable failure
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
@@ -501,7 +522,7 @@ fn handle_action_failure_rejects_when_step_out_of_bounds() {
         return;
     };
     let run = RunId::new(505);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
     // Step 99 is out of bounds
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
@@ -573,6 +594,7 @@ fn two_slot_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("two_slot_budget"),
         digest: WorkflowDigest::from_bytes([11; 32]),
         nodes: Box::from([first, second, finish]),
@@ -610,6 +632,7 @@ fn rewrite_slot_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("rewrite_slot_budget"),
         digest: WorkflowDigest::from_bytes([12; 32]),
         nodes: Box::from([first, second, finish]),
@@ -860,7 +883,7 @@ fn parallel_together_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
             join: StepIdx::new(6),
             accumulator: SlotIdx::new(1),
         },
-        Some(SlotIdx::new(2)),
+        Some(SlotIdx::ZERO),
         None,
     );
     let wait = vb_core::workflow::node(
@@ -877,29 +900,32 @@ fn parallel_together_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
             join: StepIdx::new(6),
             accumulator: SlotIdx::new(1),
         },
-        Some(SlotIdx::new(2)),
+        Some(SlotIdx::ZERO),
         None,
     );
     let set_branch_result = vb_core::workflow::node(
         StepIdx::new(5),
         CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
-        Some(SlotIdx::new(2)),
+        Some(SlotIdx::ZERO),
         Some(StepIdx::new(6)),
     );
     let join = vb_core::workflow::node(
         StepIdx::new(6),
         CompiledNodeKind::TogetherJoin { branch_count: 2, accumulator: SlotIdx::new(1) },
-        Some(SlotIdx::new(2)),
+        Some(SlotIdx::ZERO),
         Some(StepIdx::new(7)),
     );
     let finish = vb_core::workflow::node(
         StepIdx::new(7),
-        CompiledNodeKind::Finish { result: SlotIdx::new(2) },
+        CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
         None,
         None,
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("parallel_in_flight_budget"),
         digest: WorkflowDigest::from_bytes([7; 32]),
         nodes: Box::from([
@@ -1033,6 +1059,7 @@ fn timer_wait_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("timer_wait_budget"),
         digest: WorkflowDigest::from_bytes([9; 32]),
         nodes: Box::from([set_deadline, wait, finish]),
@@ -1065,7 +1092,7 @@ fn timer_ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let ask = vb_core::workflow::node(
         StepIdx::new(2),
         CompiledNodeKind::Ask { prompt: SlotIdx::ZERO, timeout_slot: Some(SlotIdx::new(1)) },
-        None,
+        Some(vb_core::ids::SlotIdx::new(2)),
         Some(StepIdx::new(3)),
     );
     let resume = vb_core::workflow::node(
@@ -1082,6 +1109,7 @@ fn timer_ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("timer_ask_budget"),
         digest: WorkflowDigest::from_bytes([8; 32]),
         nodes: Box::from([set_prompt, set_timeout, ask, resume, finish]),
@@ -1823,6 +1851,7 @@ fn wait_event_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("wait_event_budget"),
         digest: WorkflowDigest::from_bytes([7; 32]),
         nodes: Box::from([set_event, set_timeout, wait, finish_node]),
@@ -2113,6 +2142,7 @@ fn value_store_budget_workflow() -> Option<vb_core::workflow::CompiledWorkflow> 
     ));
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("value_store_budget"),
         digest: WorkflowDigest::from_bytes([8; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -2372,6 +2402,7 @@ fn transition_budget_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     ));
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("transition_budget"),
         digest: WorkflowDigest::from_bytes([9; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -2442,7 +2473,12 @@ fn queued_retry_flushes_emitted_prefix_and_resumes_drive() -> Result<(), String>
         queued_journal_fixture("vb-runtime-retry-watermark-", 16, 4)?;
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(710);
-    submit_run(&mut shard, run, retry_workflow()?);
+    submit_run(
+        &mut shard,
+        run,
+        retry_workflow()?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     // Submission events sit in the queue: nothing durable yet.
     assert!(
         journal
@@ -2515,7 +2551,12 @@ fn blocked_retry_reports_typed_error_and_keeps_run() -> Result<(), String> {
     let shared: SharedRuntimeJournal = std::sync::Arc::new(NeverDurableJournal);
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(711);
-    submit_run(&mut shard, run, retry_workflow()?);
+    submit_run(
+        &mut shard,
+        run,
+        retry_workflow()?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
             ticket: pending_ticket(&shard, run, StepIdx::new(1), 1),
@@ -2610,6 +2651,7 @@ fn list_result_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("list_result_budget"),
         digest: WorkflowDigest::from_bytes([13; 32]),
         nodes: Box::from([first, second, build, finish]),
@@ -2963,6 +3005,7 @@ fn tiny_journal_finished_workflow() -> Option<vb_core::workflow::CompiledWorkflo
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("tiny_journal_finished"),
         digest: WorkflowDigest::from_bytes([21; 32]),
         nodes: Box::from([set_const, finish]),
@@ -3001,6 +3044,7 @@ fn tiny_journal_chain_workflow() -> Option<vb_core::workflow::CompiledWorkflow> 
     ));
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("tiny_journal_chain"),
         digest: WorkflowDigest::from_bytes([22; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -3040,7 +3084,7 @@ fn tiny_journal_ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
             prompt: SlotIdx::ZERO,
             timeout_slot: Some(SlotIdx::new(1)),
         },
-        None,
+        Some(vb_core::ids::SlotIdx::new(2)),
         Some(StepIdx::new(3)),
     );
     let resume = vb_core::workflow::node(
@@ -3061,6 +3105,7 @@ fn tiny_journal_ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("tiny_journal_ask"),
         digest: WorkflowDigest::from_bytes([23; 32]),
         nodes: Box::from([set_prompt, set_timeout, ask, resume, finish_node]),
@@ -3359,7 +3404,7 @@ fn empty_evidence_await_timer_charges_ask_scheduled_bytes() -> Result<(), String
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("ask", ask_workflow())?;
     let run = RunId::new(777);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[]);
     assert_eq!(shard.tick(), Ok(true));
     let before_counter = shard
         .run_state_get(run)
@@ -3416,7 +3461,12 @@ fn retry_await_charges_second_action_scheduled_ticket_bytes() -> Result<(), Stri
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(778);
-    submit_run(&mut shard, run, retry_workflow()?);
+    submit_run(
+        &mut shard,
+        run,
+        retry_workflow()?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     let first_counter = shard
         .run_state_get(run)
         .ok_or_else(|| "run should still be active awaiting action".to_string())?
@@ -3493,6 +3543,9 @@ fn empty_evidence_fail_charges_run_failed_bytes() -> Result<(), String> {
     let digest = wf.digest();
     let mut state = crate::shard::helpers::make_run_state(wf, run)
         .ok_or_else(|| "run state fixture must build".to_string())?;
+    state.store = vb_core::value_store::ValueStore::with_max_slots(
+        state.workflow.resource_contract().max_slots,
+    );
     state.admission = Some(RunAdmission::with_budget(
         digest,
         run,
@@ -3797,7 +3850,7 @@ fn two_ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
             prompt: SlotIdx::ZERO,
             timeout_slot: Some(SlotIdx::new(1)),
         },
-        None,
+        Some(vb_core::ids::SlotIdx::new(2)),
         Some(StepIdx::new(3)),
     );
     let resume_first = vb_core::workflow::node(
@@ -3814,7 +3867,7 @@ fn two_ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
             prompt: SlotIdx::ZERO,
             timeout_slot: Some(SlotIdx::new(1)),
         },
-        None,
+        Some(vb_core::ids::SlotIdx::new(2)),
         Some(StepIdx::new(5)),
     );
     let resume_second = vb_core::workflow::node(
@@ -3835,6 +3888,7 @@ fn two_ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("two_ask_then_finish"),
         digest: WorkflowDigest::from_bytes([41; 32]),
         nodes: Box::from([
@@ -3897,6 +3951,7 @@ fn two_wait_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("two_wait_then_finish"),
         digest: WorkflowDigest::from_bytes([42; 32]),
         nodes: Box::from([set_deadline, wait_first, wait_second, finish_node]),
@@ -3942,6 +3997,7 @@ fn two_action_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("two_action_then_finish"),
         digest: WorkflowDigest::from_bytes([43; 32]),
         nodes: Box::from([first, second, finish_node]),
@@ -3953,7 +4009,11 @@ fn two_action_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -4098,7 +4158,7 @@ fn command_completion_charges_journal_bytes() -> Result<(), String> {
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("two_action", two_action_workflow())?;
     let run = RunId::new(781);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
     let ticket = pending_ticket(&shard, run, StepIdx::ZERO, 1);
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompleted {
@@ -4122,7 +4182,7 @@ fn command_completion_falls_back_to_single_run_failed_when_journal_budget_exceed
     let wf = retry_workflow()?;
     let digest = wf.digest();
     let run = RunId::new(782);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
     let before = counter_before(&shard, run)?;
     cap_journal_budget(&mut shard, run, digest, before)?;
     let ticket = pending_ticket(&shard, run, StepIdx::new(1), 1);
@@ -4153,7 +4213,7 @@ fn command_legacy_completion_charges_journal_bytes() -> Result<(), String> {
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("two_action", two_action_workflow())?;
     let run = RunId::new(783);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompletedLegacy {
             run,
@@ -4182,7 +4242,7 @@ fn command_retryable_failure_charges_journal_bytes() -> Result<(), String> {
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = retry_workflow()?;
     let run = RunId::new(784);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
     enqueue_action_failure(&mut shard, run, StepIdx::new(1), 1);
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
     assert_eq!(
@@ -4200,7 +4260,7 @@ fn command_retryable_failure_falls_back_when_journal_budget_exceeded() -> Result
     let wf = retry_workflow()?;
     let digest = wf.digest();
     let run = RunId::new(785);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
     let before = counter_before(&shard, run)?;
     cap_journal_budget(&mut shard, run, digest, before)?;
     enqueue_action_failure(&mut shard, run, StepIdx::new(1), 1);
@@ -4225,7 +4285,7 @@ fn command_fail_run_failure_records_fallback_only_when_journal_budget_exceeded(
     let wf = retry_workflow()?;
     let digest = wf.digest();
     let run = RunId::new(786);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
     let before = counter_before(&shard, run)?;
     cap_journal_budget(&mut shard, run, digest, before)?;
     let ticket = pending_ticket(&shard, run, StepIdx::new(1), 1);
@@ -4256,7 +4316,7 @@ fn command_fail_run_failure_records_both_events_when_budget_allows() -> Result<(
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = retry_workflow()?;
     let run = RunId::new(787);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
     let ticket = pending_ticket(&shard, run, StepIdx::new(1), 1);
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
@@ -4397,7 +4457,7 @@ fn command_cancel_records_journal_bytes() -> Result<(), String> {
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(792);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
     let attempt = shard
         .run_state_get(run)
         .map(|state| state.run_attempt.get())
@@ -4416,7 +4476,7 @@ fn command_kill_records_journal_bytes() -> Result<(), String> {
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(793);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[(SlotIdx::ZERO, SlotValue::I64(0))]);
     let attempt = shard
         .run_state_get(run)
         .map(|state| state.run_attempt.get())
@@ -4457,6 +4517,9 @@ fn retry_checkpoint_counter_case(base: u64, run: RunId) -> Result<(), String> {
         .map_err(|error| format!("seed journal failed: {error:?}"))?;
     let mut state = crate::shard::helpers::make_run_state(workflow.clone(), run)
         .ok_or_else(|| "run state builds".to_string())?;
+    state.store = vb_core::value_store::ValueStore::with_max_slots(
+        state.workflow.resource_contract().max_slots,
+    );
     state.admission = Some(RunAdmission::new(
         digest,
         run,

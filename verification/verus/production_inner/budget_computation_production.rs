@@ -248,6 +248,7 @@ pub enum CompiledNodeKind {
         done: StepIdx,
     },
     ReduceStart {
+        limit: u32,
         input: SlotIdx,
         accumulator: SlotIdx,
         initial: ConstIdx,

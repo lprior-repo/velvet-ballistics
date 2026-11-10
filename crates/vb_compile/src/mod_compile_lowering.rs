@@ -1,5 +1,7 @@
 //! Private compile lowering module.
 
+mod canonical_values;
+mod numeric_source_inputs;
 mod part_01;
 mod part_02;
 mod part_03;
@@ -18,7 +20,6 @@ mod part_13;
 mod part_14;
 mod skipped_outputs;
 mod source_slot_reservation;
-mod numeric_source_inputs;
 
 // vb-tkcc7: dead always-false-gated kani/ and kani_proofs/ harness dirs deleted outright
 // (stale pre-refactor StepAst refs; no kani CI runner covers vb_compile).
@@ -51,7 +52,7 @@ mod vb_8mdp_7_collect;
 #[allow(unused_imports)]
 pub(crate) use part_01::*;
 // compile_source is needed by external integration tests.
-pub use part_01::compile_source;
+pub use part_01::{author_value_to_owned, compile_source};
 #[allow(unused_imports)]
 pub(crate) use part_02::*;
 #[allow(unused_imports)]

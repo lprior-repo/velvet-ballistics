@@ -64,6 +64,7 @@ fn single_action_workflow() -> Result<CompiledWorkflow, String> {
     );
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("policy-pin-recovery"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::from([do_node, finish]),
@@ -75,7 +76,11 @@ fn single_action_workflow() -> Result<CompiledWorkflow, String> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     parts.digest = canonical_workflow_digest(&parts)?;
     CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("workflow invalid: {e:?}"))

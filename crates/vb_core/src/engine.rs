@@ -15,7 +15,10 @@ pub use crate::errors::EngineError;
 pub use crate::frame::RunFrame;
 pub use crate::value_store::ValueStore;
 pub use crate::workflow::CompiledWorkflow;
-pub use error_routing::{ErrorHandlerOutcome, ErrorSlotData, route_error_handler};
+pub use error_routing::{
+    ErrorHandlerOutcome, ErrorSlotData, abandon_together_scopes, abandoned_together_count,
+    route_error_handler,
+};
 pub use expr_eval::eval_accessor;
 pub use expr_eval::eval_accessor_with_store;
 pub use expr_eval::eval_expr;

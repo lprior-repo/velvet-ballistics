@@ -46,6 +46,7 @@ fn gate_07_policy_rule_rejects_contract_exceeding_protocol_limit() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        &[],
     );
     parts.resource_contract = ResourceContract {
         max_expr_stack: 128, // Protocol limit is 64
@@ -78,6 +79,7 @@ fn gate_07_policy_rule_rejects_mismatched_declared_stack() {
         vec![expr],
         Vec::new(),
         Vec::new(),
+        &[],
     );
 
     // Mutate max_stack to be wrong
@@ -116,6 +118,7 @@ fn gate_07_policy_rule_rejects_expression_exceeding_contract() {
         vec![expr],
         Vec::new(),
         Vec::new(),
+        &[],
     );
     parts.resource_contract = ResourceContract {
         max_expr_stack: 1, // Contract is 1, but expression has depth 2
@@ -151,6 +154,7 @@ fn gate_08_policy_rule_rejects_accessor_root_out_of_range() {
         Vec::new(),
         vec![accessor],
         Vec::new(),
+        &[],
     );
 
     // When validation runs
@@ -182,6 +186,7 @@ fn gate_08_policy_rule_rejects_accessor_symbol_out_of_bounds() {
         Vec::new(),
         vec![accessor],
         Vec::new(),
+        &[],
     );
 
     // When validation runs
@@ -214,6 +219,7 @@ fn gate_08_policy_rule_rejects_sentinel_index_segment() {
         Vec::new(),
         vec![accessor],
         Vec::new(),
+        &[],
     );
 
     // When validation runs
@@ -247,6 +253,7 @@ fn gate_08_policy_rule_rejects_accessor_path_too_deep() {
         Vec::new(),
         vec![accessor],
         Vec::new(),
+        &[],
     );
 
     // When validation runs
@@ -277,7 +284,7 @@ fn gate_09_policy_rule_rejects_output_slot_out_of_range() {
         Some(SlotIdx::new(99)),
         None,
     );
-    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new(), &[]);
 
     // When validation runs
     let result = validate(&parts);
@@ -298,6 +305,7 @@ fn gate_09_policy_rule_rejects_output_slot_out_of_range() {
 fn gate_09_policy_rule_rejects_error_slot_out_of_range() {
     // Given a node with error_slot beyond slot_count
     let node = CompiledNode {
+        retry: None,
         id: StepIdx::ZERO,
         output: NodeOutput::Discard,
         routing: NodeRouting {
@@ -311,7 +319,7 @@ fn gate_09_policy_rule_rejects_error_slot_out_of_range() {
             result: SlotIdx::ZERO,
         },
     };
-    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new(), &[]);
 
     // When validation runs
     let result = validate(&parts);
@@ -340,6 +348,7 @@ fn gate_09_policy_rule_rejects_expr_load_slot_out_of_range() {
         vec![expr],
         Vec::new(),
         Vec::new(),
+        &[],
     );
 
     // When validation runs
@@ -365,7 +374,7 @@ fn gate_09_policy_rule_rejects_expr_load_slot_out_of_range() {
 fn gate_10_policy_rule_rejects_finish_result_out_of_range() {
     // Given a Finish node with result slot beyond slot_count
     let node = finish_node(0, 99); // slot_count = 1
-    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new(), &[]);
 
     // When validation runs
     let result = validate(&parts);
@@ -399,6 +408,7 @@ fn gate_10_policy_rule_rejects_setconst_const_out_of_range() {
         Vec::new(),
         Vec::new(),
         vec![ConstValue::I64(42)],
+        &[],
     );
 
     // When validation runs
@@ -434,6 +444,7 @@ fn gate_10_policy_rule_rejects_sentinel_action_id() {
         Vec::new(),
         Vec::new(),
         vec![ConstValue::Null],
+        &[],
     );
 
     // When validation runs
@@ -476,6 +487,7 @@ fn gate_10_policy_rule_rejects_choose_expr_out_of_range() {
         }],
         Vec::new(),
         Vec::new(),
+        &[],
     );
 
     // When validation runs
@@ -518,6 +530,7 @@ fn gate_11_policy_rule_rejects_for_each_body_out_of_range() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        &[],
     );
 
     // When validation runs
@@ -558,6 +571,7 @@ fn gate_11_policy_rule_rejects_for_each_done_out_of_range() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        &[],
     );
 
     // When validation runs
@@ -598,6 +612,7 @@ fn gate_11_policy_rule_rejects_loop_body_before_start() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        &[],
     );
 
     // When validation runs
@@ -638,6 +653,7 @@ fn gate_11_policy_rule_rejects_for_each_done_before_body() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        &[],
     );
 
     // When validation runs
@@ -675,6 +691,7 @@ fn gate_11_policy_rule_rejects_together_branch_out_of_range() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        &[],
     );
 
     // When validation runs
@@ -712,6 +729,7 @@ fn gate_11_policy_rule_rejects_together_join_out_of_range() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        &[],
     );
 
     // When validation runs
@@ -755,7 +773,7 @@ fn gate_13_policy_rule_rejects_direct_slot_cycle() {
             None,
         ),
     ];
-    let parts = make_parts(nodes, 2, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(nodes, 2, 0, Vec::new(), Vec::new(), Vec::new(), &[]);
 
     // When validation runs
     let result = validate(&parts);
@@ -800,7 +818,7 @@ fn gate_13_policy_rule_rejects_three_slot_cycle() {
             None,
         ),
     ];
-    let parts = make_parts(nodes, 3, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(nodes, 3, 0, Vec::new(), Vec::new(), Vec::new(), &[]);
 
     // When validation runs
     let result = validate(&parts);
@@ -836,6 +854,7 @@ fn gate_13_policy_rule_accepts_self_read_via_expression() {
         }],
         Vec::new(),
         Vec::new(),
+        &[0],
     );
 
     // When validation runs
@@ -882,6 +901,7 @@ fn gate_14_policy_rule_rejects_slot_type_inconsistency_i64_vs_bool() {
         Vec::new(),
         Vec::new(),
         vec![ConstValue::I64(42), ConstValue::Bool(true)],
+        &[],
     );
 
     // When validation runs
@@ -923,6 +943,7 @@ fn gate_14_policy_rule_accepts_slot_consistent_type() {
         Vec::new(),
         Vec::new(),
         vec![ConstValue::I64(1), ConstValue::I64(2)],
+        &[],
     );
 
     // When validation runs
@@ -971,6 +992,7 @@ fn gate_15_policy_rule_accepts_consecutive_do_nodes() {
         Vec::new(),
         Vec::new(),
         vec![ConstValue::Null, ConstValue::Null],
+        &[0],
     );
 
     // When validation runs
@@ -1001,7 +1023,7 @@ fn gate_15_policy_rule_accepts_consecutive_ask_nodes() {
             None,
         ),
     ];
-    let parts = make_parts(nodes, 1, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(nodes, 1, 0, Vec::new(), Vec::new(), Vec::new(), &[0]);
 
     // When validation runs
     assert_eq!(validate(&parts), Ok(()));
@@ -1037,6 +1059,7 @@ fn gate_15_policy_rule_accepts_do_followed_by_deterministic() {
         Vec::new(),
         Vec::new(),
         vec![ConstValue::I64(42)],
+        &[0],
     );
 
     // When validation runs
@@ -1059,12 +1082,23 @@ fn gate_15_policy_rule_accepts_do_followed_by_deterministic() {
 fn enforcement_action_allows_bypass_when_gate_disabled() {
     // Given parts that would fail gate 9 (slot OOB)
     let node = vb_core::workflow::node(
-        StepIdx::ZERO,
+        StepIdx::new(1),
         CompiledNodeKind::Nop,
         Some(SlotIdx::new(99)),
         None,
     );
-    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(
+        vec![
+            vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None),
+            node,
+        ],
+        1,
+        0,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        &[],
+    );
 
     // When validated with gate 9 disabled
     let pipeline = ValidationPipeline {
@@ -1091,7 +1125,7 @@ fn enforcement_action_enforces_only_enabled_gates() {
         Some(SlotIdx::new(99)),
         None,
     );
-    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new(), &[]);
 
     // When validated with ONLY gate 9 enabled
     let pipeline = ValidationPipeline {
@@ -1125,6 +1159,7 @@ fn enforcement_action_short_circuits_on_first_failure() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        &[],
     );
     parts.resource_contract = ResourceContract {
         max_expr_stack: 128, // Exceeds protocol limit of 64
@@ -1155,7 +1190,7 @@ fn bypass_attempt_rejects_sentinel_slot_index() {
         Some(SlotIdx::new(u16::MAX)),
         None,
     );
-    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new(), &[]);
 
     // When validation runs
     let result = validate(&parts);
@@ -1173,7 +1208,7 @@ fn bypass_attempt_rejects_unknown_node_kind() {
     // Given a node with an unknown variant (via non_exhaustive)
     // This is actually caught by the match in gate_09
     let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None);
-    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new(), &[]);
 
     // When validation runs with a node that would hit the wildcard
     let result = validate(&parts);
@@ -1204,6 +1239,7 @@ fn bypass_attempt_rejects_reserved_id() {
         Vec::new(),
         Vec::new(),
         vec![ConstValue::Null],
+        &[],
     );
 
     // When validation runs
@@ -1247,6 +1283,7 @@ fn bypass_attempt_rejects_cycle_through_expression() {
         }],
         Vec::new(),
         Vec::new(),
+        &[],
     );
 
     // When validation runs
@@ -1397,7 +1434,7 @@ fn gate_15_suspension_resume_targets_rejected() {
                 })
                 .collect();
 
-            let parts = make_parts(nodes, 1, 0, Vec::new(), Vec::new(), Vec::new());
+            let parts = make_parts(nodes, 1, 0, Vec::new(), Vec::new(), Vec::new(), &[0]);
 
             if target >= 2 {
                 // Gate 11 intercepts out-of-range targets before Gate 15

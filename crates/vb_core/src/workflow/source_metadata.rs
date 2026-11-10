@@ -1,30 +1,34 @@
 #![forbid(unsafe_code)]
-//! Immutable, validated source payloads awaiting the versioned workflow hook.
+//! Immutable, validated source payloads retained by the versioned workflow.
 //!
 //! This module neither loads secret values nor defines an artifact wire format.
 //! Validation is a cold boundary operation, not an engine-transition operation.
 
-use crate::ids::SymbolId;
+use crate::ids::{SlotIdx, SymbolId};
 use crate::limits::{MAX_SYMBOL_BYTES_PER_VALUE, MAX_VALUES_PER_RUN};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
+#[path = "source_metadata/prefix.rs"]
+mod prefix;
+pub(crate) mod resources;
+#[path = "source_metadata/wire.rs"]
+mod wire;
+pub use prefix::seed_source_symbols;
+pub mod secrets;
 
 /// A presence-only secret binding referring to its owning symbol table.
 ///
-/// This reference is validated by [`WorkflowSourceMetadata::try_new`]. It does
-/// not authorize access, carry a value, or identify an ordinary input slot.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// This reference is validated by [`WorkflowSourceMetadata::try_new`]. An
+/// executable binding identifies an immutable input root. Neither form grants
+/// host presence or carries a raw secret value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompiledSecretRequirement {
     alias: SymbolId,
     requirement: SymbolId,
+    slot: Option<SlotIdx>,
 }
 
 impl CompiledSecretRequirement {
-    /// Creates a table-relative requirement for later metadata validation.
-    #[must_use]
-    pub const fn new(alias: SymbolId, requirement: SymbolId) -> Self {
-        Self { alias, requirement }
-    }
-
     /// Returns the source mapping key, such as `token` in `token: TOKEN`.
     #[must_use]
     pub const fn alias(self) -> SymbolId {
@@ -45,7 +49,8 @@ impl CompiledSecretRequirement {
 /// Equal symbol bytes occur once. Requirement aliases are strictly increasing.
 /// The compiler assigns identifiers; construction never sorts or renumbers the
 /// payload table. Private derived measurements are not a wire representation.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "wire::MetadataWire", into = "wire::MetadataWire")]
 pub struct WorkflowSourceMetadata {
     symbols: Box<[Box<str>]>,
     secret_requirements: Box<[CompiledSecretRequirement]>,

@@ -66,36 +66,60 @@ fn validate_nested_completion(
 ) -> RuntimeEngineResult<()> {
     for raw in 0..plan.node_count() {
         let id = StepIdx::new(raw);
-        let Some(region) = plan.loop_region(id) else { continue; };
-        if region.start() < body || region.control() >= control { continue; }
-        let start = run.step_state(region.start()).map_err(RuntimeEngineError::Core)?;
-        let latch = run.step_state(region.control()).map_err(RuntimeEngineError::Core)?;
+        let Some(region) = plan.loop_region(id) else {
+            continue;
+        };
+        if region.start() < body || region.control() >= control {
+            continue;
+        }
+        let start = run
+            .step_state(region.start())
+            .map_err(RuntimeEngineError::Core)?;
+        let latch = run
+            .step_state(region.control())
+            .map_err(RuntimeEngineError::Core)?;
         let untouched = (region.body().get()..=region.control().get())
             .map(StepIdx::new)
             .try_fold(true, |pending, step| {
-                run.step_state(step).map(|state| pending && state == StepState::Pending)
+                run.step_state(step)
+                    .map(|state| pending && state == StepState::Pending)
                     .map_err(RuntimeEngineError::Core)
             })?;
         let valid = match start {
             StepState::Pending => untouched,
             StepState::Succeeded => {
-                let done = run.step_state(region.done()).map_err(RuntimeEngineError::Core)?;
-                let may_skip = plan.node(region.start()).is_some_and(|node| matches!(node.kind,
-                    CompiledNodeKind::ForEachStart { .. } | CompiledNodeKind::CollectStart { .. }
-                        | CompiledNodeKind::ReduceStart { .. }));
+                let done = run
+                    .step_state(region.done())
+                    .map_err(RuntimeEngineError::Core)?;
+                let may_skip = plan.node(region.start()).is_some_and(|node| {
+                    matches!(
+                        node.kind,
+                        CompiledNodeKind::ForEachStart { .. }
+                            | CompiledNodeKind::CollectStart { .. }
+                            | CompiledNodeKind::ReduceStart { .. }
+                    )
+                });
                 done == StepState::Succeeded
                     && (latch == StepState::Succeeded || (may_skip && untouched))
             }
             _ => false,
         };
-        if !valid { return Err(invalid("nested loop region not consistently completed")); }
+        if !valid {
+            return Err(invalid("nested loop region not consistently completed"));
+        }
     }
     for raw in body.get()..control.get() {
         let id = StepIdx::new(raw);
-        let node = plan.node(id).ok_or_else(|| invalid("nested node missing"))?;
+        let node = plan
+            .node(id)
+            .ok_or_else(|| invalid("nested node missing"))?;
         if let CompiledNodeKind::TogetherStart { ref branches, join } = node.kind {
             let start = run.step_state(id).map_err(RuntimeEngineError::Core)?;
-            let expected = if start == StepState::Succeeded { StepState::Succeeded } else { StepState::Pending };
+            let expected = if start == StepState::Succeeded {
+                StepState::Succeeded
+            } else {
+                StepState::Pending
+            };
             if run.step_state(join).map_err(RuntimeEngineError::Core)? != expected {
                 return Err(invalid("nested together join not consistently completed"));
             }
@@ -154,14 +178,15 @@ pub(super) fn validate_activation(
     // must have completed before that node can be entered.
     for raw in 0..plan.node_count() {
         let control = StepIdx::new(raw);
-        if let Some(region) = plan.loop_region(control) {
-            if region.body() <= node.id && node.id <= region.control() {
-                let start_state = run
-                    .step_state(region.start())
-                    .map_err(RuntimeEngineError::Core)?;
-                if start_state != StepState::Succeeded {
-                    return Err(invalid("containing loop region start not succeeded"));
-                }
+        if let Some(region) = plan.loop_region(control)
+            && region.body() <= node.id
+            && node.id <= region.control()
+        {
+            let start_state = run
+                .step_state(region.start())
+                .map_err(RuntimeEngineError::Core)?;
+            if start_state != StepState::Succeeded {
+                return Err(invalid("containing loop region start not succeeded"));
             }
         }
     }

@@ -82,18 +82,18 @@ pub(super) fn visit_body_region_node(
                 )?;
             }
         }
-        CompiledNodeKind::ReduceStart { body, done, .. } => {
-            let iter = match u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE) {
-                Ok(value) => value,
-                Err(_) => {
-                    return Err(BudgetError::TotalStepsExceeded {
-                        actual: u64::MAX,
-                        limit: u64::MAX,
-                    });
-                }
-            };
+        CompiledNodeKind::ReduceStart {
+            limit, body, done, ..
+        } => {
             if *body != current {
-                count = count_nested_for_region(*body, *done, iter, count, stack, cache)?;
+                count = count_nested_for_region(
+                    *body,
+                    *done,
+                    u64::from(*limit).max(1),
+                    count,
+                    stack,
+                    cache,
+                )?;
             }
         }
         CompiledNodeKind::RepeatStart {
@@ -119,6 +119,9 @@ pub(super) fn visit_body_region_node(
                 stack.push(next);
             }
         }
+    }
+    if let Some(handler) = node.routing.error.handler() {
+        stack.push(handler);
     }
     Ok(count)
 }

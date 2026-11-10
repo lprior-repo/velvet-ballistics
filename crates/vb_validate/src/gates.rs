@@ -148,8 +148,16 @@ const MAX_ACCESSOR_PATH_DEPTH: usize = 16;
 /// Gate 8 (budgets): Field segments must use valid symbol IDs (within the
 /// interned symbol table range), and index segments must be finite.
 pub fn validate_gate_08_accessor_path_segments(parts: &WorkflowParts) -> ValidationResult<()> {
-    for (acc_index, accessor) in parts.accessors.iter().enumerate() {
-        validate_accessor_root(acc_index, accessor, parts.slot_count)?;
+    validate_accessor_paths(&parts.accessors, parts.slot_count, parts.symbols_count)
+}
+
+fn validate_accessor_paths(
+    accessors: &[AccessorProgram],
+    slot_count: u16,
+    symbols_count: u32,
+) -> ValidationResult<()> {
+    for (acc_index, accessor) in accessors.iter().enumerate() {
+        validate_accessor_root(acc_index, accessor, slot_count)?;
         if accessor.path.len() > MAX_ACCESSOR_PATH_DEPTH {
             return Err(ValidationError::AccessorPathTooDeep {
                 accessor_index: acc_index,
@@ -160,7 +168,7 @@ pub fn validate_gate_08_accessor_path_segments(parts: &WorkflowParts) -> Validat
         for (seg_index, segment) in accessor.path.iter().enumerate() {
             match segment {
                 PathSegment::Field(sym_id) => {
-                    validate_field_symbol(acc_index, seg_index, *sym_id, parts.symbols_count)?;
+                    validate_field_symbol(acc_index, seg_index, *sym_id, symbols_count)?;
                 }
                 PathSegment::Index(idx) => validate_index_segment(acc_index, seg_index, *idx)?,
                 // `PathSegment` is `#[non_exhaustive]`; unknown variants
@@ -857,251 +865,9 @@ fn check_together_span(
 // Gate 13: No circular references in slot dependency graph
 // ---------------------------------------------------------------------------
 
-/// Validates that the slot dependency graph has no cycles.
-///
-/// Gate 13 (capabilities): a slot that is written from another slot must not
-/// form a cycle.  This catches cases where slot A depends on slot B which
-/// depends on slot A (directly or transitively).
-///
-/// The analysis is per-node: we extract which slots each node reads and which
-/// it writes, then build a dependency graph.  A cycle means a slot can never
-/// receive a value because it depends on itself.
+/// Rejects dependency cycles unless executable flow proves their reads initialized.
 pub fn validate_gate_13_no_slot_cycles(parts: &WorkflowParts) -> ValidationResult<()> {
-    let slot_count = usize::from(parts.slot_count);
-    if slot_count == 0 {
-        return Ok(());
-    }
-
-    let adjacency = build_slot_adjacency(parts, slot_count);
-    let mut visited: Vec<u8> = vec![0; slot_count]; // 0 = white, 1 = gray, 2 = black
-    for slot in 0..slot_count {
-        if visited.get(slot) == Some(&0) {
-            detect_cycle_dfs(slot, &adjacency, &mut visited)?;
-        }
-    }
-    Ok(())
-}
-
-/// Builds adjacency: for each output slot, which slots does it depend on?
-fn build_slot_adjacency(parts: &WorkflowParts, slot_count: usize) -> Vec<Vec<usize>> {
-    let mut adjacency = vec![Vec::new(); slot_count];
-    parts.nodes.iter().for_each(|node| {
-        append_node_edges(&mut adjacency, node, &parts.expressions, slot_count);
-    });
-    adjacency
-}
-
-fn append_node_edges(
-    adjacency: &mut [Vec<usize>],
-    node: &CompiledNode,
-    expressions: &[ExprProgram],
-    slot_count: usize,
-) {
-    if let Some(output) = node
-        .output
-        .slot()
-        .filter(|output| output.as_usize() < slot_count)
-    {
-        node_reads(node, expressions)
-            .into_iter()
-            .for_each(|read_slot| {
-                add_unique_edge(
-                    adjacency,
-                    output.as_usize(),
-                    read_slot.as_usize(),
-                    slot_count,
-                );
-            });
-    }
-}
-
-fn add_unique_edge(
-    adjacency: &mut [Vec<usize>],
-    output: usize,
-    read_slot: usize,
-    slot_count: usize,
-) {
-    match adjacency.get_mut(output) {
-        Some(list)
-            if read_slot < slot_count && read_slot != output && !list.contains(&read_slot) =>
-        {
-            list.push(read_slot);
-        }
-        _ => {}
-    }
-}
-
-fn detect_cycle_dfs(
-    slot: usize,
-    adjacency: &[Vec<usize>],
-    visited: &mut [u8],
-) -> ValidationResult<()> {
-    if let Some(state) = visited.get_mut(slot) {
-        *state = 1; // gray
-    }
-
-    let neighbors = adjacency.get(slot).map_or(&[][..], |v| v.as_slice());
-    for &neighbor in neighbors {
-        let color = visited
-            .get(neighbor)
-            .copied()
-            .ok_or(ValidationError::SlotDependencyCycle {
-                slot,
-                chain: format!("slot {slot} -> slot {neighbor}"),
-            })?;
-        if color == 1 {
-            // Gray = cycle found.
-            return Err(ValidationError::SlotDependencyCycle {
-                slot,
-                chain: format!("slot {slot} -> slot {neighbor}"),
-            });
-        }
-        if color == 0 {
-            detect_cycle_dfs(neighbor, adjacency, visited)?;
-        }
-    }
-
-    if let Some(state) = visited.get_mut(slot) {
-        *state = 2; // black
-    }
-    Ok(())
-}
-
-/// Extracts all slot indices read by a node.
-fn node_reads(node: &CompiledNode, expressions: &[ExprProgram]) -> Vec<SlotIdx> {
-    let mut reads = Vec::new();
-    match &node.kind {
-        CompiledNodeKind::Nop | CompiledNodeKind::SetConst { .. } => {}
-        CompiledNodeKind::Copy { source } => {
-            reads.push(*source);
-        }
-        CompiledNodeKind::EvalExpr { expr } => {
-            if let Some(expr_program) = expressions.get(expr.as_usize()) {
-                for op in expr_program.ops.iter() {
-                    if let ExprOp::LoadSlot(slot) = op {
-                        reads.push(*slot);
-                    }
-                }
-            }
-        }
-        CompiledNodeKind::BuildObject { fields } => {
-            for (_, slot) in fields.iter() {
-                reads.push(*slot);
-            }
-        }
-        CompiledNodeKind::BuildList { items } => {
-            for slot in items.iter() {
-                reads.push(*slot);
-            }
-        }
-        CompiledNodeKind::Do { .. } => {}
-        CompiledNodeKind::Choose { branches, .. } => {
-            for branch in branches.iter() {
-                if let Some(expr_program) = expressions.get(branch.condition.as_usize()) {
-                    for op in expr_program.ops.iter() {
-                        if let ExprOp::LoadSlot(slot) = op {
-                            reads.push(*slot);
-                        }
-                    }
-                }
-            }
-        }
-        CompiledNodeKind::ChooseSlot { branches, .. } => {
-            for branch in branches.iter() {
-                reads.push(branch.condition);
-            }
-        }
-        CompiledNodeKind::ForEachStart { input, .. } => {
-            reads.push(*input);
-            // item_slot is written, not read
-        }
-        CompiledNodeKind::ForEachNext { iterator_slot, .. } => {
-            reads.push(*iterator_slot);
-        }
-        CompiledNodeKind::ForEachJoin { .. } => {}
-        CompiledNodeKind::TogetherStart { .. } => {}
-        CompiledNodeKind::TogetherBranch { accumulator, .. } => {
-            reads.push(*accumulator);
-        }
-        CompiledNodeKind::TogetherJoin { accumulator, .. } => {
-            reads.push(*accumulator);
-        }
-        CompiledNodeKind::CollectStart { source, .. } => {
-            reads.push(*source);
-        }
-        CompiledNodeKind::CollectPage { collector_slot, .. } => {
-            reads.push(*collector_slot);
-        }
-        CompiledNodeKind::CollectNext { collector_slot, .. } => {
-            reads.push(*collector_slot);
-        }
-        CompiledNodeKind::CollectFinish { collector_slot } => {
-            reads.push(*collector_slot);
-        }
-        CompiledNodeKind::ReduceStart {
-            input, accumulator, ..
-        } => {
-            reads.push(*input);
-            reads.push(*accumulator);
-        }
-        CompiledNodeKind::ReduceNext {
-            iterator_slot,
-            accumulator,
-            ..
-        } => {
-            reads.push(*iterator_slot);
-            reads.push(*accumulator);
-        }
-        CompiledNodeKind::ReduceFinish { accumulator } => {
-            reads.push(*accumulator);
-        }
-        CompiledNodeKind::RepeatStart { .. } => {}
-        CompiledNodeKind::RepeatAttempt { .. } => {
-            // attempt_slot is written
-        }
-        CompiledNodeKind::RepeatCheck { attempt_slot, .. } => {
-            reads.push(*attempt_slot);
-        }
-        CompiledNodeKind::RepeatFinish { result } => {
-            reads.push(*result);
-        }
-        CompiledNodeKind::WaitUntil { deadline_slot } => {
-            reads.push(*deadline_slot);
-        }
-        CompiledNodeKind::WaitEvent {
-            event,
-            timeout_slot,
-        } => {
-            reads.push(*event);
-            if let Some(timeout) = timeout_slot {
-                reads.push(*timeout);
-            }
-        }
-        CompiledNodeKind::Ask {
-            prompt,
-            timeout_slot,
-        } => {
-            reads.push(*prompt);
-            if let Some(timeout) = timeout_slot {
-                reads.push(*timeout);
-            }
-        }
-        CompiledNodeKind::AskResume { answer } => {
-            reads.push(*answer);
-        }
-        CompiledNodeKind::RetryCheck { policy_slot, .. } => {
-            reads.push(*policy_slot);
-        }
-        CompiledNodeKind::ErrorHandler { .. } => {}
-        CompiledNodeKind::Jump { .. } => {}
-        CompiledNodeKind::Finish { result } => {
-            reads.push(*result);
-        }
-        // `CompiledNodeKind` is `#[non_exhaustive]`; unknown variants
-        // contribute no reads (fail-soft: new variants start with no reads).
-        _ => {}
-    }
-    reads
+    crate::gate_13_cycles::validate_gate_13_no_slot_cycles(parts)
 }
 
 // ---------------------------------------------------------------------------
@@ -1580,69 +1346,21 @@ fn validate_no_duplicate_capability_requirements(
 // Gate 14: Slot type consistency
 // ---------------------------------------------------------------------------
 
-/// Validates that slots written by multiple nodes have compatible types.
-///
-/// Gate 14 (types): when multiple `SetConst` nodes write to the same slot, they
-/// must write compatible `ConstValue` types. Two `ConstValue` variants are
-/// compatible if they share the same discriminant (e.g., both I64, or both
-/// Bool). This catches cases where the same slot would receive an I64 from one
-/// writer and a Bool from another.
+/// Validates executable assignment and known operand kinds through the core analysis.
 pub fn validate_gate_14_slot_type_consistency(parts: &WorkflowParts) -> ValidationResult<()> {
-    let slot_count = usize::from(parts.slot_count);
-    if slot_count == 0 {
-        return Ok(());
-    }
-
-    // For each slot, track the ConstValue discriminant written by SetConst nodes.
-    // 0 = unset, 1 = Null, 2 = Bool, 3 = I64, 4 = F64, 5 = Symbol
-    let mut slot_const_kind: Vec<u8> = vec![0; slot_count];
-
-    for node in parts.nodes.iter() {
-        if let CompiledNodeKind::SetConst { value } = &node.kind {
-            let const_idx = value.as_usize();
-            if const_idx >= parts.constants.len() {
-                // Out-of-range const index; that is caught by gate 10.
-                continue;
-            }
-            if let Some(constant) = parts.constants.get(const_idx) {
-                let kind = const_value_discriminant(constant);
-                if let Some(slot) = node.output.slot() {
-                    let slot_usize = slot.as_usize();
-                    if slot_usize < slot_count {
-                        let existing = slot_const_kind
-                            .get(slot_usize)
-                            .copied()
-                            .ok_or(ValidationError::SlotTypeInconsistency { slot: slot_usize })?;
-                        if existing == 0 {
-                            if let Some(entry) = slot_const_kind.get_mut(slot_usize) {
-                                *entry = kind;
-                            }
-                        } else if existing != kind {
-                            return Err(ValidationError::SlotTypeInconsistency {
-                                slot: slot_usize,
-                            });
-                        }
-                    }
-                }
-            }
+    vb_core::workflow::validate_slot_flow(parts).map_err(|error| {
+        if error.reason == vb_core::workflow::SlotFlowFailure::ConflictingConstantWrites
+            && let Some(slot) = error.slot
+        {
+            return ValidationError::SlotTypeInconsistency {
+                slot: slot.as_usize(),
+            };
         }
-    }
-
-    Ok(())
-}
-
-/// Returns a discriminant tag for a ConstValue variant.
-fn const_value_discriminant(value: &vb_core::value::ConstValue) -> u8 {
-    match value {
-        vb_core::value::ConstValue::Null => 1,
-        vb_core::value::ConstValue::Bool(_) => 2,
-        vb_core::value::ConstValue::I64(_) => 3,
-        vb_core::value::ConstValue::F64(_) => 4,
-        vb_core::value::ConstValue::Symbol(_) => 5,
-        // `ConstValue` is `#[non_exhaustive]`; return 0 for unknown
-        // variants (does not conflict with known discriminant values).
-        _ => 0,
-    }
+        ValidationError::TypeMismatch {
+            expected: "valid compiled slot flow".to_owned(),
+            found: error.to_string(),
+        }
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -1672,3 +1390,11 @@ pub fn validate_gate_15_determinism_proof(parts: &WorkflowParts) -> ValidationRe
 #[cfg(test)]
 #[path = "gates/tests.rs"]
 mod tests;
+
+#[cfg(kani)]
+#[path = "verification/kani_gate_08_projection.rs"]
+mod gate_08_projection;
+
+#[cfg(test)]
+#[path = "gate_08_projection_tests.rs"]
+mod gate_08_projection_tests;

@@ -23,6 +23,7 @@ pub struct CompiledWorkflow {
     name: Box<str>,
     digest: WorkflowDigest,
     semantic_source_identity: Option<WorkflowDigest>,
+    source_metadata: Option<Box<source_metadata::WorkflowSourceMetadata>>,
     nodes: Box<[CompiledNode]>,
     expressions: Box<[ExprProgram]>,
     accessors: Box<[AccessorProgram]>,
@@ -41,14 +42,27 @@ impl CompiledWorkflow {
     /// Creates a compiled workflow after validating all numeric references.
     pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
         validate_parts(&parts)?;
+        if let Some(metadata) = &parts.source_metadata {
+            metadata
+                .validate_symbols_count(parts.symbols_count)
+                .map_err(|error| WorkflowError::SourceMetadata {
+                    detail: error.to_string().into(),
+                })?;
+        }
         let loop_regions = loop_regions::validate(&parts)?;
+        cursor_ownership::validate(&parts, &loop_regions)?;
         let nested_activation_entries = loop_regions::nested_activation_map(&parts, &loop_regions)?;
         validate_budget(&parts)?;
+        source_metadata::resources::validate(&parts)?;
         validate_input_slots(&parts)?;
+        source_metadata::secrets::validate(&parts)?;
+        retry_policy::validate(&parts)?;
+        slot_flow::validate_slot_flow(&parts)?;
         Ok(Self {
             name: parts.name,
             digest: parts.digest,
             semantic_source_identity: parts.semantic_source_identity,
+            source_metadata: parts.source_metadata,
             nodes: parts.nodes,
             expressions: parts.expressions,
             accessors: parts.accessors,
@@ -74,6 +88,7 @@ impl CompiledWorkflow {
             name: parts.name,
             digest: parts.digest,
             semantic_source_identity: parts.semantic_source_identity,
+            source_metadata: parts.source_metadata,
             nodes: parts.nodes,
             expressions: parts.expressions,
             accessors: parts.accessors,
@@ -97,6 +112,7 @@ impl CompiledWorkflow {
             name: parts.name,
             digest: parts.digest,
             semantic_source_identity: parts.semantic_source_identity,
+            source_metadata: parts.source_metadata,
             nodes: parts.nodes,
             expressions: parts.expressions,
             accessors: parts.accessors,
@@ -110,6 +126,12 @@ impl CompiledWorkflow {
             loop_regions: Vec::new().into_boxed_slice(),
             nested_activation_entries: Box::new([]),
         }
+    }
+
+    /// Immutable compiled source symbol payloads.
+    #[must_use]
+    pub fn source_metadata(&self) -> Option<&source_metadata::WorkflowSourceMetadata> {
+        self.source_metadata.as_deref()
     }
 
     /// Workflow name retained for cold diagnostics.
@@ -214,7 +236,7 @@ impl CompiledWorkflow {
     /// Returns whether a step is a nested activation entry point.
     ///
     /// Returns `None` for out-of-range indices or when the cache was not
-    /// populated (unchecked constructors). `true` marks an unsupported nested Start or a step in its
+    /// populated (unchecked constructors). `true` marks a nested Start or a step in its
     /// validated inclusive body/control interval.
     #[must_use]
     pub fn nested_activation_blocked(&self, step: StepIdx) -> Option<bool> {
@@ -228,6 +250,7 @@ impl CompiledWorkflow {
             name: self.name.clone(),
             digest: self.digest,
             semantic_source_identity: self.semantic_source_identity,
+            source_metadata: self.source_metadata.clone(),
             nodes: self.nodes.clone(),
             expressions: self.expressions.clone(),
             accessors: self.accessors.clone(),
@@ -492,7 +515,7 @@ pub enum InputSlotKind {
 /// Source names are intentionally excluded; the compiler emits only numeric
 /// references so the runtime never pays for string lookups on hot paths.
 /// The `kind` field describes the runtime value shape held at that slot index.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompiledInputSlot {
     /// Numeric slot index.
     pub slot: SlotIdx,
@@ -506,16 +529,15 @@ pub struct CompiledInputSlot {
     pub constraint: CompiledInputConstraint,
 }
 
-/// Retained per-slot input schema constraints as bounded numerics.
+pub use crate::input_schema::{CompiledInputField, InputDefaultValue};
+
+/// Retained per-slot input schema constraints.
 ///
-/// Every field is `Copy` with no heap allocation so input-slot tables stay
-/// numeric end to end. `unconstrained()` reproduces exact legacy behavior
-/// (kind-only check, no presence requirement) for hand-built or
-/// pre-constraint artifacts; only compiler-emitted slots carry strict
-/// constraints. Nested object `fields` sub-schemas and non-scalar defaults
-/// are not representable here; their full-fidelity identity is carried by
-/// `WorkflowParts::semantic_source_identity` instead.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// Scalar fields remain numeric for the hot path. Object `fields` sub-schemas
+/// and non-scalar defaults are represented as owned heap data. `unconstrained()`
+/// reproduces exact legacy behavior for hand-built or pre-constraint artifacts;
+/// only compiler-emitted slots carry strict constraints.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CompiledInputConstraint {
     /// The slot may be omitted at submission.
     pub optional: bool,
@@ -540,6 +562,12 @@ pub struct CompiledInputConstraint {
     pub allow_extra: Option<bool>,
     /// Author-declared secrecy marker (matches compile-time taint facts).
     pub secret: bool,
+    /// Nested object field schemas (`fields`). `None` for non-object kinds.
+    #[serde(default)]
+    pub fields: Option<Box<[CompiledInputField]>>,
+    /// Non-scalar default representation for text/list/object kinds.
+    #[serde(default)]
+    pub default_cold: Option<InputDefaultValue>,
 }
 
 impl CompiledInputConstraint {
@@ -549,10 +577,9 @@ impl CompiledInputConstraint {
     /// `count: number`: the value must be supplied, with kind-only checking.
     #[must_use]
     pub const fn required() -> Self {
-        Self {
-            optional: false,
-            ..Self::unconstrained()
-        }
+        let mut constraint = Self::unconstrained();
+        constraint.optional = false;
+        constraint
     }
 
     /// Legacy-compatible constraint: kind-only check, nothing required.
@@ -569,16 +596,18 @@ impl CompiledInputConstraint {
             element: None,
             allow_extra: None,
             secret: false,
+            fields: None,
+            default_cold: None,
         }
     }
 
     /// Whether submission must supply a value for this slot.
     ///
-    /// A declared scalar default satisfies a missing input, so only slots
-    /// that are neither optional nor defaulted require a value.
+    /// A declared scalar or composite default satisfies a missing input,
+    /// so only slots that are neither optional nor defaulted require a value.
     #[must_use]
     pub const fn requires_value(&self) -> bool {
-        !self.optional && self.default_value.is_none()
+        !self.optional && self.default_value.is_none() && self.default_cold.is_none()
     }
 }
 
@@ -602,6 +631,16 @@ pub enum InputConstraintIssue {
     MinLengthExceedsMaxLength,
     /// A length bound is negative.
     NegativeLengthBound,
+    /// Cold schema or default traversal exceeded its bounded capacity.
+    SchemaCapacity,
+    /// Object field declarations are duplicate, empty, or attached to another kind.
+    InvalidFieldSchema,
+    /// Scalar and owned defaults cannot both be declared.
+    ConflictingDefaults,
+    /// A retained default fails its declared schema.
+    InvalidDefault,
+    /// A retained schema keyword is incompatible with its declared kind.
+    KeywordKindMismatch,
 }
 
 /// Untrusted compiled workflow parts emitted by a compiler boundary.
@@ -616,6 +655,8 @@ pub struct WorkflowParts {
     /// This is distinct from a digest of raw source bytes. `None` denotes a
     /// compiled-IR-only or explicitly legacy artifact.
     pub semantic_source_identity: Option<WorkflowDigest>,
+    /// Validated immutable source payloads in identifier order.
+    pub source_metadata: Option<Box<source_metadata::WorkflowSourceMetadata>>,
     /// Numeric nodes.
     pub nodes: Box<[CompiledNode]>,
     /// Expression bytecode table.
@@ -664,6 +705,28 @@ pub enum PathSegment {
 #[derive(Debug, Clone, Error, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum WorkflowError {
+    /// A foreign step writes an active ForEach or Reduce cursor.
+    #[error("step {writer:?} writes loop cursor slot {slot:?} owned by step {owner:?}")]
+    LoopCursorForeignWrite {
+        /// Owning ForEachStart or ReduceStart.
+        owner: StepIdx,
+        /// Node with a foreign write inside the active loop body.
+        writer: StepIdx,
+        /// Reserved iterator slot.
+        slot: SlotIdx,
+    },
+    /// A retry policy is unbounded or attached to a non-action node.
+    #[error("invalid compiled retry policy at {step:?}")]
+    RetryPolicy {
+        /// Node carrying the invalid policy.
+        step: StepIdx,
+    },
+    /// Invalid immutable source payloads.
+    #[error("source metadata: {detail}")]
+    SourceMetadata { detail: Box<str> },
+    /// Compiled execution can read an absent slot or an incompatible operand.
+    #[error(transparent)]
+    SlotFlow(#[from] SlotFlowError),
     /// A step wrote to a repeat counter owned by a different step.
     #[error("step {writer:?} wrote to repeat counter slot {slot:?} owned by step {owner:?}")]
     RepeatCounterForeignWrite {
@@ -1001,7 +1064,12 @@ pub struct CompiledNode {
     pub routing: NodeRouting,
     /// Node behavior.
     pub kind: CompiledNodeKind,
+    /// Fixed, inclusive action attempt limit and delay; never source text.
+    pub retry: Option<CompiledRetryPolicy>,
 }
+
+mod retry_policy;
+pub use retry_policy::CompiledRetryPolicy;
 
 /// Where a node writes its result, when it writes one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1284,6 +1352,7 @@ pub enum CompiledNodeKind {
     CollectFinish { collector_slot: SlotIdx },
     /// Start bounded reduction.
     ReduceStart {
+        limit: u32,
         input: SlotIdx,
         accumulator: SlotIdx,
         initial: ConstIdx,
@@ -1356,7 +1425,12 @@ pub enum CompiledNodeKind {
     },
 }
 
+mod cursor_ownership;
+mod input_constraints;
 mod repeat_counter_ownership;
+mod slot_flow;
+pub mod source_metadata;
+pub use slot_flow::{SlotFlowError, SlotFlowFailure, validate_slot_flow};
 
 mod loop_regions;
 pub use loop_regions::CompiledLoopRegion;
@@ -1418,7 +1492,11 @@ fn validate_input_slots(parts: &WorkflowParts) -> Result<(), WorkflowError> {
                 });
             }
         }
-        validate_input_constraint(current, &input_slot.constraint)?;
+        input_constraints::validate(parts, current, input_slot.kind, &input_slot.constraint)
+            .map_err(|issue| WorkflowError::InconsistentInputConstraint {
+                slot: current,
+                issue,
+            })?;
         prev_slot = Some(current);
     }
     Ok(())
@@ -1785,12 +1863,13 @@ fn validate_node_kind(kind: &CompiledNodeKind, parts: &WorkflowParts) -> Result<
             validate_slot(*collector_slot, parts.slot_count)
         }
         CompiledNodeKind::ReduceStart {
+            limit,
             input,
             accumulator,
             initial,
             body,
             done,
-        } => validate_reduce_start(*input, *accumulator, *initial, *body, *done, parts),
+        } => validate_reduce_start(*limit, *input, *accumulator, *initial, *body, *done, parts),
         CompiledNodeKind::ReduceNext {
             iterator_slot,
             accumulator,
@@ -1933,6 +2012,7 @@ fn validate_nonzero_u16(value: u16, resource: ContractResource) -> Result<(), Wo
 }
 
 fn validate_reduce_start(
+    limit: u32,
     input: SlotIdx,
     accumulator: SlotIdx,
     initial: ConstIdx,
@@ -1940,6 +2020,14 @@ fn validate_reduce_start(
     done: StepIdx,
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
+    let limit = usize::try_from(limit).map_err(|_| WorkflowError::ResourceContractExceeded {
+        resource: ContractResource::ListItems,
+    })?;
+    if limit > MAX_LIST_ITEMS_PER_VALUE {
+        return Err(WorkflowError::ResourceContractExceeded {
+            resource: ContractResource::ListItems,
+        });
+    }
     validate_slot(input, parts.slot_count)?;
     validate_slot(accumulator, parts.slot_count)?;
     validate_const(initial, parts.constants.len())?;

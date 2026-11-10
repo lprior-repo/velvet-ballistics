@@ -12,6 +12,7 @@ use crate::workflow::{CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 fn test_parts_with_error_handler() -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: "error_handler_test".into(),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
@@ -66,6 +67,7 @@ fn test_parts_with_error_handler() -> WorkflowParts {
 fn test_parts_without_error_handler() -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: "no_handler_test".into(),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
@@ -170,7 +172,12 @@ fn route_error_handler_writes_error_slot_with_failed_step_index() {
 fn route_error_handler_no_error_slot_still_routes() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([crate::workflow::CompiledInputSlot {
+            slot: SlotIdx::new(0),
+            kind: crate::workflow::InputSlotKind::Any,
+            constraint: crate::workflow::CompiledInputConstraint::required(),
+        }]),
         name: "no_error_slot_test".into(),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: vec![

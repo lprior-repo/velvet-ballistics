@@ -32,6 +32,7 @@ fn accessor_workflow_with_symbols(
     };
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("accessor_test"),
         digest: WorkflowDigest::from_bytes([0xFE; 32]),

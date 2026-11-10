@@ -169,6 +169,7 @@ fn kani_gate_10_reduce_start_matches() {
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::ReduceStart {
+                limit: 65_535,
                 input: SlotIdx::new(0),
                 accumulator: SlotIdx::new(1),
                 body: StepIdx::new(body_idx),

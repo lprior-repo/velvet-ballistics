@@ -76,13 +76,18 @@ pub(super) fn visit_node_for_total_steps(
             )
             .map_err(map_loop_body_budget_error)?;
         }
-        CompiledNodeKind::ReduceStart { body, done, .. } => {
-            let iter_count = match u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE) {
-                Ok(value) => value,
-                Err(_) => return Err(BudgetTraversalError::StepCountOverflow { actual: u64::MAX }),
-            };
+        CompiledNodeKind::ReduceStart {
+            limit, body, done, ..
+        } => {
             total = count_and_push_loop_body(
-                nodes, *body, *done, iter_count, visited, node_count, total, stack,
+                nodes,
+                *body,
+                *done,
+                u64::from(*limit),
+                visited,
+                node_count,
+                total,
+                stack,
             )
             .map_err(map_loop_body_budget_error)?;
         }
@@ -139,6 +144,9 @@ pub(super) fn visit_node_for_total_steps(
                 stack.push(next);
             }
         }
+    }
+    if let Some(handler) = node.routing.error.handler() {
+        stack.push(handler);
     }
     Ok(total)
 }

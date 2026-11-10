@@ -75,7 +75,9 @@ impl YamlCompiler {
     /// Parses strict YAML into the cold typed AST without emitting runtime IR.
     pub fn parse_ast(&self, source: &[u8]) -> Result<ast::WorkflowAst, CompileErrors> {
         let text = checked_utf8(source, self.limits).map_err(|e| CompileErrors(vec![e]))?;
-        if let Err(error) = crate::yaml_profile::validate_yaml_profile_with_limits(text, &self.limits) {
+        if let Err(error) =
+            crate::yaml_profile::validate_yaml_profile_with_limits(text, &self.limits)
+        {
             if crate::mod_compile_validation::yaml_error_category(&error) != "limit_exceeded" {
                 strict_yaml::reject_unsupported_profile_events(text)
                     .map_err(|e| CompileErrors(vec![e]))?;

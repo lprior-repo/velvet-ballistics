@@ -42,7 +42,7 @@ mapfile -t violations < <(
     if [[ "$file" == *"_tests.rs" ]] || [[ "$file" == *"tests.rs" ]] || [[ "$file" == *"test/"* ]]; then
       continue
     fi
-    before_count=$(sed -n "1,${linenum}p" "$file" | grep -cE '^\s*#\[(cfg\(test\)|test)\]' || true)
+    before_count=$(sed -n "1,${linenum}p" "$file" | grep -cE '^\s*#(!?\[cfg\(test\)\]|\[test\])' || true)
     after_count=$(sed -n "1,${linenum}p" "$file" | grep -cE '^\s*#\[kani::proof\]' || true)
     if [[ "$before_count" -gt 0 ]] || [[ "$after_count" -gt 0 ]]; then
       continue

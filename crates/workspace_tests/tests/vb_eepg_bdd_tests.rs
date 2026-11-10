@@ -476,13 +476,13 @@ mod unknown_record_kind_rejection {
 
     #[test]
     fn is_known_record_kind_returns_true_for_valid_kinds() {
-        // Given: kind values that are in the known set {1, 2, 3, 10-29, 30, 31-32, 33-37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 50}
+        // Given: persisted kinds include gate, tenant, and retry-timer authority.
         // We test through decode_record_header which calls is_known_record_kind internally.
         // Note: Some kinds will fail with RecordKindFamilyMismatch because they don't
         // match MAGIC_JOURNAL_EVENT, but they should NOT fail with UnknownRecordKind.
         let valid_kinds: Vec<u16> = vec![
             1, 2, 3, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
-            29, 30, 31, 32, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 50,
+            29, 30, 31, 32, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51,
         ];
         for &kind in &valid_kinds {
             let mut header = make_header_with_kind(kind);
@@ -509,7 +509,7 @@ mod unknown_record_kind_rejection {
     #[test]
     fn is_known_record_kind_returns_false_for_invalid_kinds() {
         // Given: kind values that are truly unknown (not in from_id).
-        // Known kinds: 1,2,3,4,10-29,30,31-37,38,39,40,41,42,43,44,45,46,47,50
+        // GateOpened (48), TenantAdmission (49), IndexUpdate (50), and RetryTimerScheduled (51) are known.
         // 36 (RunAdmissionBound), 37 (RetryCheckpoint), 38 (PolicyDecision),
         // 39 (RunAdmissionPinned), and 41 (RunAdmissionBoundPinned) are journal-event kinds.
         // 44 (GateDecision) is a journal-event kind since §77.15.
@@ -517,7 +517,7 @@ mod unknown_record_kind_rejection {
         // 46 (CapabilityGrant) stays a reserved known id since §77.10; its
         //   event variant is retired and payload decode fails loudly.
         // 47 (RunAdmissionBudget) is a journal-event kind since §77.18.
-        let truly_unknown_kinds: Vec<u16> = vec![0, 5, 6, 7, 8, 9, 48, 49, 51, 52, 100, 255, 65535];
+        let truly_unknown_kinds: Vec<u16> = vec![0, 5, 6, 7, 8, 9, 52, 53, 100, 255, 65535];
         for &kind in &truly_unknown_kinds {
             let mut header = make_header_with_kind(kind);
             corrupt_kind_in_header(&mut header, kind);

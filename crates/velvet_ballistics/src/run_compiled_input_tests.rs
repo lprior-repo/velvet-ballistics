@@ -10,16 +10,11 @@ use vb_core::{SlotIdx, SlotValue};
 type TestResult<T> = Result<T, Box<dyn Error>>;
 
 fn fixture(input_slots: Box<[CompiledInputSlot]>) -> TestResult<CompiledWorkflow> {
-    let node = vb_core::workflow::node(
-        StepIdx::ZERO,
-        CompiledNodeKind::Finish {
-            result: SlotIdx::new(2),
-        },
-        None,
-        None,
-    );
+    // Mapping optional inputs must not require the graph to consume them.
+    let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("input-mapping"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),

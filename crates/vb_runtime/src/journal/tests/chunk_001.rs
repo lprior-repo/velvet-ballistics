@@ -18,6 +18,7 @@ fn single_finish_workflow(workflow: WorkflowDigest) -> Result<CompiledWorkflow, 
     let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("single_finish"),
         digest: workflow,
         nodes: Box::from([node]),
@@ -29,7 +30,11 @@ fn single_finish_workflow(workflow: WorkflowDigest) -> Result<CompiledWorkflow, 
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::ZERO,
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())
 }

@@ -255,6 +255,7 @@ fn prod_methods_drift_check(
     let node_step = production_inner::StepIdx::new(0);
     let node_slot = production_inner::SlotIdx::new(0);
     let _node = production_inner::workflow::CompiledNode {
+        retry: None,
         id: node_step,
         output: production_inner::workflow::NodeOutput::Slot(node_slot),
         routing: production_inner::workflow::NodeRouting {
@@ -267,6 +268,7 @@ fn prod_methods_drift_check(
         kind: production_inner::CompiledNodeKind::Nop,
     };
     let _node = production_inner::workflow::CompiledNode {
+        retry: None,
         id: node_step,
         output: production_inner::workflow::NodeOutput::Discard,
         routing: production_inner::workflow::NodeRouting {

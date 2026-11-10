@@ -6,6 +6,19 @@ impl Shard {
         step_budget_per_tick: u64,
         evidence: &mut EvidenceCollector,
     ) -> RuntimeEngineResult<RuntimeSignal> {
+        if let Some(ticket) = self.pending_action_get(run)
+            && evidence.is_empty()
+            && state.frame.pc() == ticket.step
+            && ticket.run == state.frame.run_id()
+            && crate::shard::helpers::validate_action_completion(state, ticket).is_ok()
+            && self.require_current_fencing_token(ticket).is_ok()
+        {
+            // A live Do remains Running until its issued ticket is answered.
+            let _budget = Self::transition_tick_budget(state, step_budget_per_tick)?;
+            let signal = RuntimeSignal::AwaitingAction(ticket);
+            Self::check_drive_signal_budgets(state, self.open_gate_count(run), &signal)?;
+            return Ok(signal);
+        }
         Self::drive_state_with_manual_gates(
             state,
             step_budget_per_tick,
@@ -39,21 +52,30 @@ impl Shard {
             granted,
             state.run_attempt.get(),
         )?;
+        Self::check_drive_signal_budgets(state, manual_open_gates, &signal)?;
+        Ok(signal)
+    }
+
+    fn check_drive_signal_budgets(
+        state: &mut RunState,
+        manual_open_gates: u64,
+        signal: &RuntimeSignal,
+    ) -> RuntimeEngineResult<()> {
         Self::check_run_time_budget(state)?;
         Self::check_suspension_budgets(state, manual_open_gates)?;
         Self::check_value_store_budget(state)?;
-        Self::check_cost_budget(state, &signal)?;
-        Self::check_action_ticket_budget(state, &signal)?;
-        Self::check_retry_budget(state, &signal)?;
+        Self::check_cost_budget(state, signal)?;
+        Self::check_action_ticket_budget(state, signal)?;
+        Self::check_retry_budget(state, signal)?;
         Self::check_incident_budget(state)?;
         Self::check_timer_entry_budget(state)?;
         Self::check_parallel_in_flight_budget(state)?;
         Self::check_total_slots_written_budget(state)?;
         Self::check_steps_executable_budget(state)?;
-        Self::check_result_bytes_budget(state, &signal)?;
+        Self::check_result_bytes_budget(state, signal)?;
         Self::check_gather_pages_budget(state)?;
         Self::check_gather_items_budget(state)?;
-        Ok(signal)
+        Ok(())
     }
 
     fn check_result_bytes_budget(
@@ -631,6 +653,13 @@ impl Shard {
             }
             Ok(RuntimeSignal::Finished(_)) => self.apply_terminal_finished(run, state, evidence),
             Ok(RuntimeSignal::AwaitingAction(ticket)) => {
+                if evidence.is_empty() && self.pending_action_get(run) == Some(ticket) {
+                    self.keep_run(run, state)
+                        .map_err(DriveApplyFailure::AfterCommit)?;
+                    return self
+                        .apply(run, RuntimeEvent::AwaitAction)
+                        .map_err(DriveApplyFailure::AfterCommit);
+                }
                 self.apply_awaiting_action(run, state, ticket, evidence)
             }
             Ok(RuntimeSignal::AwaitingWait) => {

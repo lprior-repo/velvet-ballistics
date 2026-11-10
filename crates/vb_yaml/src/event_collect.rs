@@ -44,12 +44,14 @@ impl EventCollectionState {
         event: &saphyr_parser::Event<'_>,
         limits: &YamlLimits,
     ) -> YamlResult<()> {
-        let is_value = matches!(event,
+        let is_value = matches!(
+            event,
             saphyr_parser::Event::Scalar(..)
                 | saphyr_parser::Event::MappingStart(..)
-                | saphyr_parser::Event::SequenceStart(..));
-        let is_key = self.in_mapping.last() == Some(&true)
-            && self.expecting_key.last() == Some(&true);
+                | saphyr_parser::Event::SequenceStart(..)
+        );
+        let is_key =
+            self.in_mapping.last() == Some(&true) && self.expecting_key.last() == Some(&true);
         if is_value && !is_key {
             self.record_node(limits)?;
         }

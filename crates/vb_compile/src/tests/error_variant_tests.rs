@@ -1425,6 +1425,28 @@ steps:
     parts_ida.digest = vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]);
     parts_idb.digest = vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]);
     assert_eq!(
+        parts_ida
+            .step_names
+            .iter()
+            .map(AsRef::as_ref)
+            .collect::<Vec<&str>>(),
+        [
+            "fanout", "fanout", "sub-a", "fanout", "fanout", "sub-b", "fanout", "fanout", "done"
+        ]
+    );
+    assert_eq!(
+        parts_idb
+            .step_names
+            .iter()
+            .map(AsRef::as_ref)
+            .collect::<Vec<&str>>(),
+        [
+            "fanout", "fanout", "sub-c", "fanout", "fanout", "sub-d", "fanout", "fanout", "done"
+        ]
+    );
+    parts_ida.step_names = Box::new([]);
+    parts_idb.step_names = Box::new([]);
+    assert_eq!(
         parts_ida, parts_idb,
         "consistent sub-step ID renames preserve exact numeric compiled IR"
     );

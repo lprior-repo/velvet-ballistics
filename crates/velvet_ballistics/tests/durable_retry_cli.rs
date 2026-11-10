@@ -59,6 +59,7 @@ fn action_workflow() -> Result<CompiledWorkflow, String> {
     );
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("cli-retry-action"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::from([do_node, finish]),
@@ -70,7 +71,11 @@ fn action_workflow() -> Result<CompiledWorkflow, String> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: vb_core::InputSlotKind::I64,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     parts.digest = canonical_workflow_digest(&parts)?;
     CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("workflow invalid: {e:?}"))
@@ -95,6 +100,7 @@ fn completed_workflow() -> Result<CompiledWorkflow, String> {
     );
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("cli-retry-completed"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::from([set, finish]),

@@ -109,11 +109,15 @@ pub use vb_validate::{ValidationError, ValidationResult};
 // Re-export the YAML entry points directly from the dedicated `vb_yaml` crate,
 // which owns these functions. Names and signatures are unchanged.
 pub use vb_yaml::{
-    load_fixture_source, parse_workflow_source, parse_workflow_source_with_limits, parse_yaml_events,
-    reject_forbidden_yaml_features,
+    load_fixture_source, parse_workflow_source, parse_workflow_source_with_limits,
+    parse_yaml_events, reject_forbidden_yaml_features,
 };
 
 // Test-only module: it exercises test-gated `vb_yaml` internals and holds
 // no production items, so normal builds exclude it entirely.
 #[cfg(test)]
 mod tests_target_identity;
+
+mod source_symbols;
+
+pub use mod_compile_lowering::author_value_to_owned;

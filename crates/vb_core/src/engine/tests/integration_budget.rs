@@ -12,6 +12,7 @@ use crate::engine::{EngineSignal, StepBudget, run_until_blocked};
 fn tiny_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("tiny"),
         digest: WorkflowDigest::from_bytes([1; 32]),

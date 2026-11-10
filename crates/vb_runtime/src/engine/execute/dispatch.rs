@@ -102,15 +102,15 @@ pub(crate) fn execute_node_deferred(
 }
 
 fn execute_node_with_policy<P: BodyEntryPolicy>(
-    ctx: NodeDispatchContext<'_>,
+    mut ctx: NodeDispatchContext<'_>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
-    match &ctx.node.kind {
+    let result = match &ctx.node.kind {
         CompiledNodeKind::ForEachStart { .. }
         | CompiledNodeKind::ForEachNext { .. }
-        | CompiledNodeKind::ForEachJoin { .. } => dispatch_for_each::<P>(ctx),
+        | CompiledNodeKind::ForEachJoin { .. } => dispatch_for_each::<P>(&mut ctx),
         CompiledNodeKind::TogetherStart { .. }
         | CompiledNodeKind::TogetherBranch { .. }
-        | CompiledNodeKind::TogetherJoin { .. } => dispatch_together(ctx),
+        | CompiledNodeKind::TogetherJoin { .. } => dispatch_together(&mut ctx),
         CompiledNodeKind::CollectStart { .. }
         | CompiledNodeKind::CollectPage { .. }
         | CompiledNodeKind::CollectNext { .. }
@@ -137,13 +137,34 @@ fn execute_node_with_policy<P: BodyEntryPolicy>(
                 granted: ctx.granted,
                 state_run_attempt: ctx.state_run_attempt,
             };
-            dispatch_action_and_signal(&mut actx)
+            let result = dispatch_action_and_signal(&mut actx);
+            if !matches!(
+                ctx.node.kind,
+                CompiledNodeKind::WaitUntil { .. }
+                    | CompiledNodeKind::WaitEvent { .. }
+                    | CompiledNodeKind::Ask { .. }
+                    | CompiledNodeKind::AskResume { .. }
+            ) {
+                return result;
+            }
+            result
         }
+    };
+    match result {
+        Err(RuntimeEngineError::Core(error)) => {
+            ctx.run.mark_failed(ctx.node.id)?;
+            match vb_core::engine::route_error_handler(ctx.plan, ctx.run, ctx.node.id, &error)? {
+                vb_core::engine::ErrorHandlerOutcome::Routed => Ok(RuntimeSignal::Continue),
+                vb_core::engine::ErrorHandlerOutcome::NoHandler => Err(error.into()),
+                _ => Err(family_invariant()),
+            }
+        }
+        other => other,
     }
 }
 
 fn dispatch_for_each<P: BodyEntryPolicy>(
-    ctx: NodeDispatchContext<'_>,
+    ctx: &mut NodeDispatchContext<'_>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     match &ctx.node.kind {
         CompiledNodeKind::ForEachStart {
@@ -185,7 +206,7 @@ fn dispatch_for_each<P: BodyEntryPolicy>(
     }
 }
 
-fn dispatch_together(ctx: NodeDispatchContext<'_>) -> RuntimeEngineResult<RuntimeSignal> {
+fn dispatch_together(ctx: &mut NodeDispatchContext<'_>) -> RuntimeEngineResult<RuntimeSignal> {
     match &ctx.node.kind {
         CompiledNodeKind::TogetherStart { branches, join } => {
             handle_together_start(ctx.run, ctx.store, branches, *join, ctx.node.output.slot())

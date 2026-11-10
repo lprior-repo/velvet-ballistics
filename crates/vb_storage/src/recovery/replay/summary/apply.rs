@@ -55,7 +55,8 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         JournalEvent::SlotWrittenEvent { .. } => {
             summary.slots_written = summary.slots_written.saturating_add(1);
         }
-        JournalEvent::WaitScheduledEvent { .. }
+        JournalEvent::RetryTimerScheduled { .. }
+        | JournalEvent::WaitScheduledEvent { .. }
         | JournalEvent::AskScheduledEvent { .. }
         | JournalEvent::RetryScheduledEvent { .. } => {
             summary.suspensions = summary.suspensions.saturating_add(1);
@@ -145,6 +146,11 @@ fn apply_summary_event_checked(
     tracker: &mut ActionReplayTracker,
 ) -> RecoveryResult<()> {
     match event {
+        JournalEvent::RetryTimerScheduled { timer, .. } => {
+            tracker.authorize_retry(timer)?;
+            apply_summary_event(summary, event);
+            Ok(())
+        }
         JournalEvent::ActionScheduled { action, step, .. } => {
             reject_resolved_summary_action(tracker, *action, *step)?;
             apply_summary_event(summary, event);

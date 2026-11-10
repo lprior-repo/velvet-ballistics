@@ -1,7 +1,7 @@
 //! Canonical guarded shape validation.
 //!
-//! Permits top-level `if` on `do` steps in the canonical shape path only.
-//! Legacy `step_spec` continues to reject `if` for all primitives.
+//! Canonical controls are parsed by the typed source parser.
+//! The legacy AST path retains its narrower metadata contract.
 
 use crate::mod_compile_errors::CompileError;
 use crate::mod_compile_validation::{StepPrimitive, StepSpec, validate_phase_zero_step_metadata};
@@ -39,7 +39,9 @@ pub(crate) fn canonical_step_spec<'a>(
         if StepPrimitive::from_field(field).is_some() {
             continue;
         }
-        if field == "if" && spec.primitive == StepPrimitive::Do {
+        if matches!(field, "if" | "then" | "on_error" | "with")
+            || (field == "try_again" && matches!(spec.primitive, StepPrimitive::Do))
+        {
             continue;
         }
         validate_phase_zero_step_metadata(field, body, index)?;

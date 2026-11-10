@@ -82,15 +82,8 @@ fn for_each_input_shape_validation() -> Result<(), String> {
         },
     )?;
 
-    let input_not_any = SOURCE.replace("of: any", "of: number");
-    rejects(
-        &input_not_any,
-        CompileError::StepFieldShape {
-            step: 1,
-            field: "for_each.input",
-            expected: "direct declared list<any> input with finite schema max",
-        },
-    )?;
+    let typed_source = SOURCE.replace("of: any", "of: number");
+    execute_typed_list(&typed_source)?;
 
     let input_no_max = SOURCE.replace(", max: 3", "");
     rejects(
@@ -98,7 +91,7 @@ fn for_each_input_shape_validation() -> Result<(), String> {
         CompileError::StepFieldShape {
             step: 1,
             field: "for_each.input",
-            expected: "direct declared list<any> input with finite schema max",
+            expected: "direct declared list input with finite schema max",
         },
     )?;
 
@@ -169,3 +162,54 @@ fn rejects_unknown_reference_in_finish() -> Result<(), String> {
 
 #[path = "vb_f1_foreach_negative/extras.rs"]
 mod extras;
+
+fn execute_typed_list(source: &str) -> Result<(), String> {
+    use vb_core::{CapabilitySet, RunId, SlotValue, StepBudget, Taint, ValueStore, new_run_frame};
+    use vb_runtime::engine::{
+        EvidenceCollector, RetryPolicy, RuntimeSignal, drive_deterministic_full,
+    };
+    use vb_runtime::primitives::collect::CollectStates;
+    let workflow = compile_workflow(source.as_bytes()).map_err(|error| error.to_string())?;
+    let original = workflow.to_parts();
+    let input = workflow
+        .input_slots()
+        .first()
+        .ok_or("missing typed list input")?;
+    assert_eq!(input.kind, vb_core::InputSlotKind::List);
+    assert_eq!(input.constraint.element, Some(vb_core::InputSlotKind::I64));
+    let values = [SlotValue::I64(7), SlotValue::I64(9)];
+    let mut store = ValueStore::new();
+    let list = store
+        .insert_list(values.to_vec().into_boxed_slice())
+        .map_err(|error| error.to_string())?;
+    let mut frame = new_run_frame(RunId::new(1), &workflow).map_err(|error| error.to_string())?;
+    frame
+        .write_slot_with_taint(input.slot, SlotValue::List(list), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+    let signal = drive_deterministic_full(
+        &workflow,
+        &mut frame,
+        &mut StepBudget::new(128),
+        &mut store,
+        &[],
+        RetryPolicy::NEVER,
+        &mut EvidenceCollector::new(),
+        &mut CollectStates::new(),
+        &CapabilitySet::empty(),
+        1,
+    )
+    .map_err(|error| error.to_string())?;
+    assert_eq!(signal, RuntimeSignal::Finished(SlotValue::I64(42)));
+    assert_eq!(
+        frame
+            .read_slot(input.slot)
+            .map_err(|error| error.to_string())?,
+        &SlotValue::List(list)
+    );
+    assert_eq!(
+        store.list(list).map_err(|error| error.to_string())?,
+        values.as_slice()
+    );
+    assert_eq!(workflow.to_parts(), original);
+    Ok(())
+}

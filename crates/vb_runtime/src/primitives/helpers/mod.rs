@@ -81,6 +81,23 @@ pub(crate) fn decode_iterator_state(items: &[SlotValue]) -> Result<(ListId, usiz
     Ok((ListId::new(source_id_value), cursor_value))
 }
 
+pub(crate) fn preflight_slot_writes(
+    run: &RunFrame,
+    slots: &[SlotIdx],
+    target: StepIdx,
+) -> Result<(), EngineError> {
+    for &slot in slots {
+        if slot.get() >= run.slot_count() {
+            return Err(EngineError::SlotOutOfBounds { slot });
+        }
+    }
+    require_next_step(run, Some(target), run.pc())?;
+    if run.executed() == u64::MAX {
+        return Err(EngineError::StepCounterOverflow);
+    }
+    Ok(())
+}
+
 pub(crate) fn jump_to(
     run: &mut RunFrame,
     target: StepIdx,

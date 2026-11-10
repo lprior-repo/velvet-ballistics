@@ -3,7 +3,7 @@
 
 use crate::CompileError;
 use std::collections::HashMap;
-use vb_core::{ExprOp, SlotIdx};
+use vb_core::{AccessorIdx, AccessorProgram, ExprOp, PathSegment, SlotIdx};
 
 /// Resolves expression references to prior step outputs.
 ///
@@ -18,6 +18,8 @@ use vb_core::{ExprOp, SlotIdx};
 pub(super) struct StepReferenceResolver<'a> {
     outputs: &'a HashMap<String, SlotIdx>,
     step_outputs: &'a HashMap<String, SlotIdx>,
+    symbols: Option<&'a mut crate::source_symbols::SourceSymbolTable>,
+    accessors: Option<&'a mut Vec<AccessorProgram>>,
     local_binding: Option<(&'a str, SlotIdx)>,
 }
 
@@ -30,6 +32,8 @@ impl<'a> StepReferenceResolver<'a> {
             outputs,
             step_outputs,
             local_binding: None,
+            symbols: None,
+            accessors: None,
         }
     }
 
@@ -38,7 +42,43 @@ impl<'a> StepReferenceResolver<'a> {
         self
     }
 
+    pub(super) fn with_payloads(
+        mut self,
+        symbols: &'a mut crate::source_symbols::SourceSymbolTable,
+        accessors: &'a mut Vec<AccessorProgram>,
+    ) -> Self {
+        self.symbols = Some(symbols);
+        self.accessors = Some(accessors);
+        self
+    }
+
+    pub(super) fn resolve_path<'r>(
+        &self,
+        reference: &'r str,
+    ) -> Result<(SlotIdx, Option<&'r str>), CompileError> {
+        let original = self.resolve_direct(reference);
+        if let Ok(slot) = original {
+            return Ok((slot, None));
+        }
+        for (index, _) in reference.rmatch_indices('.') {
+            let Some(prefix) = reference.get(..index) else {
+                continue;
+            };
+            if let Ok(slot) = self.resolve_direct(prefix) {
+                let start = index
+                    .checked_add(1)
+                    .ok_or(CompileError::StepIndexOutOfRange { value: index })?;
+                return Ok((slot, reference.get(start..)));
+            }
+        }
+        original.map(|slot| (slot, None))
+    }
+
     pub(super) fn resolve_slot(&self, reference: &str) -> Result<SlotIdx, CompileError> {
+        self.resolve_path(reference).map(|(slot, _)| slot)
+    }
+
+    fn resolve_direct(&self, reference: &str) -> Result<SlotIdx, CompileError> {
         if let Some((name, slot)) = self.local_binding
             && reference.strip_prefix('$') == Some(name)
         {
@@ -78,6 +118,15 @@ fn resolve_dollar_reference(
         match root {
             "step" | "steps" => return resolve_explicit_step_id(tail, reference, step_outputs),
             "input" | "vars" => return resolve_declared_name(reference, reference, outputs),
+            "secrets" => {
+                return outputs.get(reference).copied().ok_or_else(|| {
+                    CompileError::UnknownReferenceName {
+                        kind: "secrets",
+                        reference: reference.into(),
+                        name: tail.into(),
+                    }
+                });
+            }
             _ => {}
         }
     }
@@ -161,8 +210,44 @@ fn resolve_numeric_slot(text: &str) -> Result<SlotIdx, CompileError> {
 
 /// Implementation of the expression bytecode reference resolver.
 impl crate::expression_bytecode::ExpressionReferenceResolver for StepReferenceResolver<'_> {
+    fn resolve_text(&mut self, text: &str) -> Result<vb_core::SymbolId, CompileError> {
+        self.symbols
+            .as_mut()
+            .ok_or_else(|| CompileError::ExpressionLoweringUnsupported {
+                feature: "symbol context".into(),
+            })?
+            .intern(text)
+            .map_err(|error| CompileError::ExpressionLoweringUnsupported {
+                feature: error.to_string().into(),
+            })
+    }
     fn resolve_reference(&mut self, reference: &str) -> Result<ExprOp, CompileError> {
-        let slot = self.resolve_slot(reference)?;
-        Ok(ExprOp::LoadSlot(slot))
+        let (slot, path) = self.resolve_path(reference)?;
+        let Some(path) = path else {
+            return Ok(ExprOp::LoadSlot(slot));
+        };
+        let mut segments = Vec::new();
+        for part in path.split('.') {
+            segments.push(match part.parse::<u32>() {
+                Ok(index) => PathSegment::Index(index),
+                Err(_) => PathSegment::Field(self.resolve_text(part)?),
+            });
+        }
+        let accessors =
+            self.accessors
+                .as_mut()
+                .ok_or_else(|| CompileError::ExpressionLoweringUnsupported {
+                    feature: "accessor context".into(),
+                })?;
+        let index = u16::try_from(accessors.len()).map_err(|_| {
+            CompileError::ExpressionLoweringUnsupported {
+                feature: "accessor table overflow".into(),
+            }
+        })?;
+        accessors.push(AccessorProgram {
+            root: slot,
+            path: segments.into_boxed_slice(),
+        });
+        Ok(ExprOp::LoadAccessor(AccessorIdx::new(index)))
     }
 }

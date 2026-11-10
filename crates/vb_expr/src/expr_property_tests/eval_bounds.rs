@@ -95,27 +95,25 @@ fn be_division_depth_is_two() {
 
 proptest! {
     #[test]
-    fn be_eval_add_i64_plus_f64_returns_type_mismatch(i in any::<i64>()) {
+    fn be_eval_add_i64_plus_f64_promotes(i in any::<i64>()) {
         let f64_val = FiniteF64::new(1.5).expect("valid finite f64");
         let result = eval_binary_op(
             BinaryOp::Add,
             SlotValue::I64(i),
             SlotValue::F64(f64_val),
         );
-        let is_type_mismatch = matches!(result, Err(crate::ExprError::TypeMismatch { .. }));
-        prop_assert!(is_type_mismatch);
+        prop_assert_eq!(result, FiniteF64::new(FiniteF64::from_i64(i).get() + 1.5).map(SlotValue::F64).map_err(crate::ExprError::from));
     }
 
     #[test]
-    fn be_eval_sub_f64_minus_i64_returns_type_mismatch(i in any::<i64>()) {
+    fn be_eval_sub_f64_minus_i64_promotes(i in any::<i64>()) {
         let f64_val = FiniteF64::new(1.5).expect("valid finite f64");
         let result = eval_binary_op(
             BinaryOp::Sub,
             SlotValue::F64(f64_val),
             SlotValue::I64(i),
         );
-        let is_type_mismatch = matches!(result, Err(crate::ExprError::TypeMismatch { .. }));
-        prop_assert!(is_type_mismatch);
+        prop_assert_eq!(result, FiniteF64::new(1.5 - FiniteF64::from_i64(i).get()).map(SlotValue::F64).map_err(crate::ExprError::from));
     }
 }
 

@@ -8,11 +8,11 @@ use vb_storage::{JournalError, OwnedInputError, RecordKind};
 fn owned_version_kind_and_exact_consumption_fail_closed() -> TestResult {
     let f = fixture(7, Taint::DerivedFromSecret, Taint::Secret)?;
     let mut wire = fixture_wire(&f)?;
-    wire.body.version = 2;
+    wire.body.version = 3;
     assert!(matches!(
         decode(&f, &encode(&wire, RecordKind::RunOwnedInputs)?),
         Err(JournalError::OwnedInputs(
-            OwnedInputError::UnsupportedVersion { version: 2 }
+            OwnedInputError::UnsupportedVersion { version: 3 }
         ))
     ));
     let wire = fixture_wire(&f)?;
@@ -29,7 +29,7 @@ fn owned_version_kind_and_exact_consumption_fail_closed() -> TestResult {
         decode(&f, &wrap(&payload, RecordKind::RunOwnedInputs, f.run)?),
         Err(JournalError::PostcardDecodeFailed(_))
     ));
-    let malformed = wrap(&[1], RecordKind::RunOwnedInputs, f.run)?;
+    let malformed = wrap(&[2], RecordKind::RunOwnedInputs, f.run)?;
     assert!(matches!(
         decode(&f, &malformed),
         Err(JournalError::PostcardDecodeFailed(_))

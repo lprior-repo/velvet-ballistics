@@ -291,7 +291,8 @@ fn shard_action_completed_for_wrong_run_returns_run_not_found() {
         return;
     };
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputs {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: super::RunId::new(1),
             workflow: workflow,
             caps: vb_core::capability::CapabilitySet::empty()

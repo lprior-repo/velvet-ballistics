@@ -72,28 +72,40 @@ fn submit_suspended(shard: &Shard, run: RunId, workflow: CompiledWorkflow) {
 }
 
 // ---------------------------------------------------------------------------
-// FailingJournal: injects errors after N appends
+// FailingJournal: rejects a semantic event boundary before any batch writes
 // ---------------------------------------------------------------------------
+
+#[derive(Clone, Copy)]
+enum FailAt {
+    AnyAppend,
+    Drive,
+    Resumed,
+}
+
+impl FailAt {
+    fn matches(self, event: &RuntimeJournalEvent) -> bool {
+        match self {
+            Self::AnyAppend => true,
+            Self::Drive => matches!(event, RuntimeJournalEvent::StepStarted { .. }),
+            Self::Resumed => matches!(event, RuntimeJournalEvent::Resumed { .. }),
+        }
+    }
+}
 
 struct FailingRuntimeJournal {
     inner: VolatileRuntimeJournal,
-    fail_after: usize,
-    append_count: std::sync::atomic::AtomicUsize,
+    fail_at: FailAt,
 }
 
 struct SourceFailingRuntimeJournal {
     inner: VolatileRuntimeJournal,
-    fail_after: usize,
-    append_count: std::sync::atomic::AtomicUsize,
     source: RuntimeError,
 }
 
 impl SourceFailingRuntimeJournal {
-    fn shared(fail_after: usize, source: RuntimeError) -> Arc<dyn RuntimeJournal> {
+    fn shared(source: RuntimeError) -> Arc<Self> {
         Arc::new(Self {
             inner: VolatileRuntimeJournal::new(),
-            fail_after,
-            append_count: std::sync::atomic::AtomicUsize::new(0),
             source,
         })
     }
@@ -101,10 +113,7 @@ impl SourceFailingRuntimeJournal {
 
 impl RuntimeJournal for SourceFailingRuntimeJournal {
     fn append(&self, event: RuntimeJournalEvent) -> vb_runtime::RuntimeResult<()> {
-        let count = self
-            .append_count
-            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        if count >= self.fail_after {
+        if FailAt::Resumed.matches(&event) {
             return Err(self.source.clone());
         }
         self.inner.append(event)
@@ -117,12 +126,12 @@ impl RuntimeJournal for SourceFailingRuntimeJournal {
     fn append_sequenced_batch(
         &self,
         events: &[RuntimeJournalEvent],
-        _start_seq: vb_storage::EventSeq,
+        start_seq: vb_storage::EventSeq,
     ) -> vb_runtime::RuntimeResult<()> {
-        for event in events {
-            self.append(event.clone())?;
+        if events.iter().any(|event| FailAt::Resumed.matches(event)) {
+            return Err(self.source.clone());
         }
-        Ok(())
+        self.inner.append_sequenced_batch(events, start_seq)
     }
 
     fn drain_for_shutdown(
@@ -133,28 +142,28 @@ impl RuntimeJournal for SourceFailingRuntimeJournal {
 }
 
 impl FailingRuntimeJournal {
-    fn new(fail_after: usize) -> Self {
-        Self {
+    fn shared(fail_at: FailAt) -> Arc<Self> {
+        Arc::new(Self {
             inner: VolatileRuntimeJournal::new(),
-            fail_after,
-            append_count: std::sync::atomic::AtomicUsize::new(0),
-        }
+            fail_at,
+        })
     }
 
-    fn shared(fail_after: usize) -> Arc<dyn RuntimeJournal> {
-        Arc::new(Self::new(fail_after))
+    fn shared_for_resume_drive_failure() -> Arc<Self> {
+        Self::shared(FailAt::Drive)
+    }
+
+    fn failure(&self) -> RuntimeError {
+        RuntimeError::StorageJournalAppend {
+            source: Arc::new(vb_storage::JournalError::WriteLockPoisoned),
+        }
     }
 }
 
 impl RuntimeJournal for FailingRuntimeJournal {
     fn append(&self, event: RuntimeJournalEvent) -> vb_runtime::RuntimeResult<()> {
-        let count = self
-            .append_count
-            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        if count >= self.fail_after {
-            return Err(vb_runtime::RuntimeError::StorageJournalAppend {
-                source: Arc::new(vb_storage::JournalError::WriteLockPoisoned),
-            });
+        if self.fail_at.matches(&event) {
+            return Err(self.failure());
         }
         self.inner.append(event)
     }
@@ -166,12 +175,12 @@ impl RuntimeJournal for FailingRuntimeJournal {
     fn append_sequenced_batch(
         &self,
         events: &[RuntimeJournalEvent],
-        _start_seq: vb_storage::EventSeq,
+        start_seq: vb_storage::EventSeq,
     ) -> vb_runtime::RuntimeResult<()> {
-        for event in events {
-            self.append(event.clone())?;
+        if events.iter().any(|event| self.fail_at.matches(event)) {
+            return Err(self.failure());
         }
-        Ok(())
+        self.inner.append_sequenced_batch(events, start_seq)
     }
 
     fn drain_for_shutdown(
@@ -185,77 +194,68 @@ impl RuntimeJournal for FailingRuntimeJournal {
 // Bug 1: observe_resume_drive_result silently drops drive_run errors
 // ---------------------------------------------------------------------------
 
-/// BUG-TEST-01: handle_resume must return an error when drive_run fails.
-///
-/// The current `observe_resume_drive_result` implementation:
-///   fn observe_resume_drive_result(result: RuntimeResult<()>) {
-///       match result {
-///           Ok(()) | Err(_) => {}
-///       }
-///   }
-/// This silently discards the error from drive_run. handle_resume then returns
-/// Ok(ResumeResult { status: ResumeStatus::Resumed }) even though drive_run failed.
-///
-/// With fail_after=6:
-/// - RunSubmitted (count=0): succeeds
-/// - RunAdmission (count=1): succeeds
-/// - submit StepStarted/SlotWritten/ActionScheduledTicket (counts=2..4): succeed
-/// - Resumed event in handle_resume (count=5): succeeds
-/// - resume drive_run evidence append (count=6): FAILS
-/// drive_run returns Err(...), observe_resume_drive_result discards it,
-/// handle_resume returns Ok(ResumeResult { status: Resumed }).
-///
-/// Expected: handle_resume returns Err(ResumeError) when drive_run fails.
-/// Actual:   handle_resume returns Ok(ResumeResult { status: Resumed }) — BUG!
+/// Resume must preserve a drive journal failure after Resumed is durable.
 #[test]
 fn handle_resume_returns_error_when_drive_run_fails() {
-    // fail_after=6: submit succeeds, the Resumed append succeeds, and resume's
-    // drive_run fails on its next journal write.
-    let journal: Arc<dyn RuntimeJournal> = FailingRuntimeJournal::shared(6);
+    // Reject the initial drive once, allow Resumed, then reject its drive evidence.
+    let journal = FailingRuntimeJournal::shared_for_resume_drive_failure();
     let mut shard = Shard::new_with_journal(small_config(), journal.clone());
-
+    let source = RuntimeError::StorageJournalAppend {
+        source: Arc::new(vb_storage::JournalError::WriteLockPoisoned),
+    };
     let run_id = RunId::new(1);
     let wf = suspended_workflow().expect("workflow must compile");
     submit_suspended(&shard, run_id, wf);
-    shard.tick().expect("tick must succeed");
+    assert_eq!(shard.tick(), Err(source.clone()));
+    assert_eq!(
+        shard.runtime_state_get(run_id),
+        Some(vb_runtime::shard::RuntimeState::Resumable)
+    );
 
-    // Now run_id is in Resumable state (suspended on action).
-    // Resume it — append_resumed_event succeeds (count=3), drive_run's flush_evidence fails (count=4).
-    // drive_run returns Err(...), observe_resume_drive_result discards it,
-    // and handle_resume returns Ok(ResumeResult { status: Resumed }).
-    //
-    // BUG: handle_resume should return Err(...) when drive_run fails!
-    let result = shard.handle_resume(run_id);
-
-    // The bug manifests as: result is Ok even though drive_run failed.
-    // After the fix, result should be Err because drive_run failed.
+    let before = journal
+        .inner
+        .snapshot()
+        .expect("rejected initial drive journal");
     assert!(
-        matches!(
-            &result,
-            Err(ResumeError::JournalAppendFailedWithSource { .. })
-        ) && matches!(
-            result
-                .as_ref()
-                .err()
-                .and_then(ResumeError::source_runtime_error),
-            Some(RuntimeError::StorageJournalAppend { .. })
-        ),
-        "BUG: handle_resume returned {result:?} but drive_run failed. \
-         Expected preserved StorageJournalAppend source."
+        !before
+            .iter()
+            .any(|event| matches!(event, RuntimeJournalEvent::StepStarted { .. }))
+    );
+    assert_eq!(
+        shard.handle_resume(run_id),
+        Err(ResumeError::JournalAppendFailedWithSource {
+            source: Box::new(source),
+        })
+    );
+    assert_eq!(
+        shard.runtime_state_get(run_id),
+        Some(vb_runtime::shard::RuntimeState::Resumable)
+    );
+    let after = journal
+        .inner
+        .snapshot()
+        .expect("rejected resumed drive journal");
+    assert!(
+        matches!(after.strip_prefix(before.as_slice()), Some([RuntimeJournalEvent::Resumed { run, .. }]) if *run == run_id)
     );
 }
 
 #[test]
 fn failed_resumed_append_restores_resumable_for_retry() {
-    let journal: Arc<dyn RuntimeJournal> = FailingRuntimeJournal::shared(5);
-    let mut shard = Shard::new_with_journal(small_config(), journal);
+    let journal = FailingRuntimeJournal::shared(FailAt::Resumed);
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
 
     let run_id = RunId::new(6);
     let wf = suspended_workflow().expect("workflow must compile");
     submit_suspended(&shard, run_id, wf);
     shard.tick().expect("tick must succeed");
 
+    let before = journal.inner.snapshot().expect("pre-resume journal");
     let result = shard.handle_resume(run_id);
+    assert_eq!(
+        journal.inner.snapshot().expect("failed resume journal"),
+        before
+    );
     assert!(
         matches!(
             &result,
@@ -271,6 +271,10 @@ fn failed_resumed_append_restores_resumable_for_retry() {
     );
 
     let retry_result = shard.handle_resume(run_id);
+    assert_eq!(
+        journal.inner.snapshot().expect("failed retry journal"),
+        before
+    );
     assert!(
         matches!(
             &retry_result,
@@ -286,69 +290,36 @@ fn failed_resumed_append_restores_resumable_for_retry() {
     );
 }
 
-/// BUG-TEST-02: observe_resume_drive_result must NOT silently drop errors.
-///
-/// This test directly verifies that if drive_run returns an error,
-/// handle_resume propagates that error to the caller.
-///
-/// Current (buggy) behavior: observe_resume_drive_result matches Ok(()) | Err(_)
-/// and does nothing in both cases. The error is discarded.
-///
-/// With fail_after=4, the resume's drive_run fails and the error is dropped.
+/// Successful action waits and failed resumed drives retain distinct outcomes.
 #[test]
 fn observe_resume_drive_result_does_not_drop_drive_run_error() {
-    // First, verify the happy path works with a working journal.
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut shard = Shard::new_with_journal(small_config(), journal.clone());
-
     let run_id = RunId::new(4);
     let wf = suspended_workflow().expect("workflow must compile");
     submit_suspended(&shard, run_id, wf);
-    shard.tick().expect("tick must succeed");
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(
+        shard
+            .handle_resume(run_id)
+            .map(|result| (result.run_id, result.status)),
+        Ok((run_id, ResumeStatus::Resumed)),
+    );
 
-    let result = shard.handle_resume(run_id);
-    match result {
-        Ok(result) => {
-            assert_eq!(result.status, ResumeStatus::Resumed);
-        }
-        Err(err) => {
-            assert_eq!(
-                err,
-                ResumeError::RunIdNotFound { run_id },
-                "resume of suspended workflow should succeed, got: {err:?}"
-            );
-        }
-    }
-
-    // Now test the error path: use a journal that fails during resume's drive_run.
-    // fail_after=6: submit succeeds, then resume's drive evidence append fails.
-    let failing_journal: Arc<dyn RuntimeJournal> = FailingRuntimeJournal::shared(6);
-    let mut shard2 = Shard::new_with_journal(small_config(), failing_journal.clone());
-
+    let failing_journal = FailingRuntimeJournal::shared_for_resume_drive_failure();
+    let mut shard2 = Shard::new_with_journal(small_config(), failing_journal);
+    let source = RuntimeError::StorageJournalAppend {
+        source: Arc::new(vb_storage::JournalError::WriteLockPoisoned),
+    };
     let run_id2 = RunId::new(5);
     let wf2 = suspended_workflow().expect("workflow must compile");
     submit_suspended(&shard2, run_id2, wf2);
-    shard2.tick().expect("tick must succeed");
-
-    let result2 = shard2.handle_resume(run_id2);
-    // BUG: result2 is Ok because observe_resume_drive_result discards the error.
-    // After fix: result2 should be Err(ResumeError::...).
-    assert!(
-        matches!(
-            &result2,
-            Err(ResumeError::JournalAppendFailedWithSource { .. })
-        ) && matches!(
-            result2
-                .as_ref()
-                .err()
-                .and_then(ResumeError::source_runtime_error),
-            Some(RuntimeError::StorageJournalAppend { .. })
-        ),
-        "BUG CONFIRMED: handle_resume returned {:?} but drive_run failed \
-         (journal append failed during resume flush_evidence). \
-         observe_resume_drive_result silently dropped the error. \
-         Expected: handle_resume returns Err(ResumeError) when drive_run fails.",
-        result2
+    assert_eq!(shard2.tick(), Err(source.clone()));
+    assert_eq!(
+        shard2.handle_resume(run_id2),
+        Err(ResumeError::JournalAppendFailedWithSource {
+            source: Box::new(source),
+        })
     );
 }
 
@@ -556,7 +527,7 @@ fn handle_submit_journal_before_state_insert_noorphan_journal_record() {
 fn handle_submit_propagates_journal_failure_before_drive_run() {
     // Use a journal that fails on the first append (RunSubmitted).
     // handle_submit should return an error before calling drive_run.
-    let failing_journal: Arc<dyn RuntimeJournal> = FailingRuntimeJournal::shared(0);
+    let failing_journal: Arc<dyn RuntimeJournal> = FailingRuntimeJournal::shared(FailAt::AnyAppend);
     let mut shard = Shard::new_with_journal(small_config(), failing_journal.clone());
 
     let run_id = RunId::new(200);
@@ -599,7 +570,14 @@ fn handle_submit_journal_event_ordering_run_submitted_before_admission() {
     let run_id = RunId::new(300);
     let wf = finished_workflow().expect("workflow must compile");
 
-    submit_suspended(&shard, run_id, wf);
+    shard
+        .enqueue(ShardCommand::SubmitWithContracts {
+            run: run_id,
+            workflow: wf,
+            caps: CapabilitySet::empty(),
+            action_contracts: Box::new([]),
+        })
+        .expect("closed workflow submit enqueues");
     shard.tick().expect("tick must succeed");
 
     let events = journal.snapshot().expect("journal snapshot must succeed");
@@ -650,29 +628,11 @@ fn handle_submit_journal_event_ordering_run_submitted_before_admission() {
 /// The current observe_resume_drive_result silently drops this error.
 /// After the fix, handle_resume should return Err(ResumeError::...).
 ///
-/// With fail_after=2:
-/// - RunSubmitted append (count=0): succeeds
-/// - RunAdmission append (count=1): succeeds
-/// - flush_evidence in drive_run (count=2): FAILS
-/// This causes the submit's drive_run to fail, so the run never reaches Resumable.
-/// We can't test resume error propagation without a run in Resumable state.
-///
-/// This test documents the bug: even when drive_run fails, handle_resume returns Ok.
-/// The test will initially fail (BUG CONFIRMED) because the journal failure
-/// causes submit to fail (no run to resume). But after fixing the bug,
-/// the error from drive_run would propagate — even though in this case it
-/// means the submit fails, not the resume.
+/// The admission header is accepted; the first drive batch containing
+/// StepStarted is rejected atomically.
 #[test]
 fn handle_resume_propagates_flush_evidence_failure() {
-    // fail_after=2: RunSubmitted (count=0), RunAdmission (count=1) succeed,
-    // flush_evidence inside first drive_run (count=2) fails.
-    // This causes handle_submit's drive_run to fail.
-    // The run is NOT created in Resumable state because submit fails.
-    //
-    // After the fix for observe_resume_drive_result:
-    // - If drive_run fails during submit, the error should propagate
-    // - Currently, the error is silently dropped by observe_resume_drive_result
-    let failing_journal: Arc<dyn RuntimeJournal> = FailingRuntimeJournal::shared(2);
+    let failing_journal: Arc<dyn RuntimeJournal> = FailingRuntimeJournal::shared(FailAt::Drive);
     let config = small_config();
     let mut shard = Shard::new_with_journal(config, failing_journal);
 
@@ -715,13 +675,19 @@ fn small_config() -> ShardConfig {
 }
 
 fn resume_error_from_resumed_append_failure(run_id: RunId, source: RuntimeError) -> ResumeError {
-    let journal = SourceFailingRuntimeJournal::shared(5, source);
-    let mut shard = Shard::new_with_journal(small_config(), journal);
+    let journal = SourceFailingRuntimeJournal::shared(source);
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
     let wf = suspended_workflow().expect("workflow must compile");
     submit_suspended(&shard, run_id, wf);
     shard.tick().expect("tick must make run resumable");
 
-    match shard.handle_resume(run_id) {
+    let before = journal.inner.snapshot().expect("pre-resume journal");
+    let result = shard.handle_resume(run_id);
+    assert_eq!(
+        journal.inner.snapshot().expect("failed resume journal"),
+        before
+    );
+    match result {
         Err(error @ ResumeError::JournalAppendFailedWithSource { .. }) => error,
         other => panic!(
             "resume append failure must return JournalAppendFailed with preserved source, got {other:?}"
@@ -741,6 +707,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -752,7 +719,11 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::new([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -776,6 +747,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("finished"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([set_const, finish]),

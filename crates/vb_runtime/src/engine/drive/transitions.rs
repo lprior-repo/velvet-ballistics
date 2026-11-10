@@ -90,7 +90,9 @@ pub(super) fn finish_drive_step(
     drive_state: &mut DriveState,
 ) -> RuntimeEngineResult<()> {
     if run.step_state(step.pc).map_err(RuntimeEngineError::Core)? == vb_core::StepState::Failed {
-        evidence.push_step_failed(step.pc).map_err(RuntimeEngineError::Core)?;
+        evidence
+            .push_step_failed(step.pc)
+            .map_err(RuntimeEngineError::Core)?;
         return Ok(());
     }
     // RE-011: emit slot evidence BEFORE committing the step state. If

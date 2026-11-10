@@ -657,6 +657,7 @@ fn test_implicit_counter_writers() -> Result<(), Box<dyn std::error::Error + Sen
         ),
         (
             CompiledNodeKind::ReduceStart {
+                limit: 65_535,
                 input: counter,
                 accumulator: private,
                 initial,
@@ -667,6 +668,7 @@ fn test_implicit_counter_writers() -> Result<(), Box<dyn std::error::Error + Sen
         ),
         (
             CompiledNodeKind::ReduceStart {
+                limit: 65_535,
                 input: private,
                 accumulator: counter,
                 initial,
@@ -819,6 +821,16 @@ fn malformed_ir_loop_rearm_region_crossing_edge()
     let trailing = find_trailing_set_77(&workflow).ok_or("trailing set not found")?;
 
     let mut parts = workflow.to_parts();
+    let escape = parts
+        .nodes
+        .iter()
+        .find_map(|node| {
+            (node.id > body
+                && matches!(node.kind, CompiledNodeKind::Copy { .. })
+                && node.routing.next.step() == Some(check))
+            .then_some(node.id)
+        })
+        .ok_or("missing body result exit")?;
 
     let target_finish = parts
         .nodes
@@ -828,7 +840,7 @@ fn malformed_ir_loop_rearm_region_crossing_edge()
         .ok_or("missing trailing continuation")?;
 
     for node in &mut parts.nodes {
-        if node.id == body {
+        if node.id == escape {
             node.kind = CompiledNodeKind::Jump { target: trailing };
             node.routing.next = NodeContinuation::End;
             node.output = NodeOutput::Discard;

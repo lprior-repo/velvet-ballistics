@@ -19,6 +19,7 @@ pub(crate) use admission::{
     RecoveredAdmissionContext, RecoveredAdmissionEvidence, action_abi_digests_from_contracts,
     action_contract_abi_digest, validate_recovered_admission_evidence,
 };
+pub(crate) use boundary::RecoveredRetryTimer;
 pub use boundary::{RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind};
 pub(crate) use pending::pending_action_ticket_from_events;
 pub(crate) use product::ResumableRecoveryParts;
@@ -81,7 +82,7 @@ impl RecoveredPendingActionTicket {
 pub(crate) fn hydrate_frame_for_full_recovery_with_inputs(
     seed: &RecoveryFrameSeed,
     boundary: RecoveredRunBoundary,
-    initial_inputs: Option<Vec<(vb_core::SlotIdx, vb_core::SlotValue)>>,
+    initial_inputs: Option<Vec<(vb_core::SlotIdx, vb_core::SlotValue, vb_core::Taint)>>,
 ) -> RuntimeResult<RunFrame> {
     super::frame::validate_recovery_seed_shape(seed)?;
     reject_unrecoverable_full_recovery_state(seed, boundary)?;

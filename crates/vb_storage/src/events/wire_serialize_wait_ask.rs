@@ -13,6 +13,21 @@ where
     S: Serializer,
 {
     match event {
+        JournalEvent::RetryTimerScheduled {
+            run,
+            seq,
+            step,
+            attempt,
+            timer,
+        } => {
+            timer.validate().map_err(serde::ser::Error::custom)?;
+            serialize_record_kind_variant(
+                serializer,
+                crate::RecordKind::RetryTimerScheduled.id(),
+                "RetryTimerScheduled",
+                &(run, seq, step, attempt, timer),
+            )
+        }
         JournalEvent::WaitScheduledEvent { .. } => serialize_wait_scheduled(event, serializer),
         JournalEvent::AskScheduledEvent { .. } => serialize_ask_scheduled(event, serializer),
         JournalEvent::AskAnsweredEvent { .. } => serialize_ask_answered(event, serializer),

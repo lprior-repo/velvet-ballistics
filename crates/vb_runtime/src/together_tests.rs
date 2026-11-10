@@ -134,7 +134,8 @@ fn together_start_returns_error_when_output_missing() {
             assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
         }
     }
-    assert_eq!(run.parallel_in_flight(), 1);
+    assert_eq!(run.parallel_in_flight(), 0);
+    assert_eq!(store.total_arena_count(), 0);
 }
 
 #[test]
@@ -525,7 +526,7 @@ fn together_branch_nonzero_returns_error_when_accumulator_is_not_list() {
 }
 
 #[test]
-fn together_join_with_null_last_result_preserves_accumulator() {
+fn together_join_with_distinct_null_result_appends_null() {
     // Given a frame with accumulator list and Null in output
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
@@ -547,7 +548,7 @@ fn together_join_with_null_last_result_preserves_accumulator() {
         Some(next_step),
         StepIdx::ZERO,
     );
-    // Then output has the accumulator list (Null last result is not appended)
+    // The distinct result slot contains a legitimate Null branch value.
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
     match *run
         .read_slot(output)
@@ -556,7 +557,8 @@ fn together_join_with_null_last_result_preserves_accumulator() {
     {
         SlotValue::List(id) => {
             let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
-            assert_eq!(items.len(), 1);
+            assert_eq!(items.len(), 2);
+            assert_eq!(items.get(1), Some(&SlotValue::Null));
             assert_eq!(items.get(0), Some(&SlotValue::I64(10)));
         }
         other => {
@@ -608,8 +610,8 @@ fn together_join_appends_non_null_non_list_last_result() {
 }
 
 #[test]
-fn together_join_with_list_in_output_does_not_double_append() {
-    // Given a frame where output already contains a list (from a prior branch)
+fn together_join_with_distinct_list_result_appends_nested_list() {
+    // A distinct result slot holds the final branch list.
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
     let accumulator = SlotIdx::new(0);
@@ -634,7 +636,7 @@ fn together_join_with_list_in_output_does_not_double_append() {
         Some(next_step),
         StepIdx::ZERO,
     );
-    // Then output has the accumulator list (list in output is not appended)
+    // The final branch list is appended as a nested value.
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
     match *run
         .read_slot(output)
@@ -643,8 +645,7 @@ fn together_join_with_list_in_output_does_not_double_append() {
     {
         SlotValue::List(id) => {
             let items = store.list(id).ok().unwrap_or_else(|| panic!("must read"));
-            // Should have 1 item from the accumulator, not the output list appended
-            assert_eq!(items.len(), 1);
+            assert_eq!(items, &[SlotValue::I64(10), SlotValue::List(list_id)]);
         }
         other => {
             assert_eq!(other, SlotValue::I64(0));
@@ -1575,4 +1576,85 @@ fn phase23_join_preserves_order_of_branch_results() {
             assert_eq!(other, SlotValue::I64(0));
         }
     }
+}
+
+#[test]
+fn together_join_legacy_aliased_accumulator_does_not_append_itself() -> Result<(), EngineError> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let slot = SlotIdx::new(0);
+    let value = SlotValue::F64(vb_core::FiniteF64::new(2.5)?);
+    let id = store.insert_list_with_taint(
+        Box::from([SlotValue::I64(7), value]),
+        Box::from([Taint::Secret, Taint::DerivedFromSecret]),
+    )?;
+    run.write_slot_with_taint(slot, SlotValue::List(id), Taint::Secret)?;
+    run.add_parallel_in_flight(1)?;
+    together_join(
+        &mut run,
+        &mut store,
+        1,
+        slot,
+        Some(slot),
+        Some(StepIdx::new(5)),
+        StepIdx::ZERO,
+    )?;
+    assert_eq!(*run.read_slot(slot)?, SlotValue::List(id));
+    assert_eq!(store.list(id)?, &[SlotValue::I64(7), value]);
+    assert_eq!(
+        store.list_item_with_taint(id, 0)?,
+        (SlotValue::I64(7), Taint::Secret)
+    );
+    assert_eq!(
+        store.list_item_with_taint(id, 1)?,
+        (value, Taint::DerivedFromSecret)
+    );
+    assert_eq!(run.read_taint(slot)?, Taint::Secret);
+    assert_eq!(run.parallel_in_flight(), 0);
+    Ok(())
+}
+
+#[test]
+fn together_join_distinct_slots_with_same_list_handle_still_append() -> Result<(), EngineError> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let accumulator = SlotIdx::new(0);
+    let output = SlotIdx::new(1);
+    let id = store.insert_list_with_taint(
+        Box::from([SlotValue::I64(7)]),
+        Box::from([Taint::DerivedFromSecret]),
+    )?;
+    run.write_slot_with_taint(accumulator, SlotValue::List(id), Taint::DerivedFromSecret)?;
+    run.write_slot_with_taint(output, SlotValue::List(id), Taint::Secret)?;
+    run.add_parallel_in_flight(1)?;
+    together_join(
+        &mut run,
+        &mut store,
+        1,
+        accumulator,
+        Some(output),
+        Some(StepIdx::new(5)),
+        StepIdx::ZERO,
+    )?;
+    let SlotValue::List(result) = *run.read_slot(output)? else {
+        return Err(EngineError::TypeMismatch {
+            expected: "list",
+            found: "other",
+        });
+    };
+    assert_eq!(
+        store.list(result)?,
+        &[SlotValue::I64(7), SlotValue::List(id)]
+    );
+    assert_eq!(
+        store.list_item_with_taint(result, 0)?,
+        (SlotValue::I64(7), Taint::DerivedFromSecret)
+    );
+    assert_eq!(
+        store.list_item_with_taint(result, 1)?,
+        (SlotValue::List(id), Taint::Secret)
+    );
+    assert_eq!(run.read_taint(output)?, Taint::Secret);
+    assert_eq!(run.parallel_in_flight(), 0);
+    Ok(())
 }

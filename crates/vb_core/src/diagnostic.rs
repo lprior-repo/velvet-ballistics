@@ -312,6 +312,7 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
     active_code_entry("SHARD_NOT_FOUND", 0x201C, CodeCategory::Storage),
     active_code_entry("MIGRATE_SELF", 0x201D, CodeCategory::Storage),
     active_code_entry("JOURNAL_FULL", 0x201E, CodeCategory::Storage),
+    active_code_entry("SECRET_UNAVAILABLE", 0x2026, CodeCategory::Storage),
     // ---- Legacy storage infrastructure codes (relocated) ----
     active_code_entry("STORAGE_UNAVAILABLE", 0x2070, CodeCategory::Storage),
     active_code_entry("STORAGE_CORRUPTION", 0x2071, CodeCategory::Storage),

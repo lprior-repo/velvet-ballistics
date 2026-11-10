@@ -29,6 +29,7 @@ use crate::value_store::ValueStoreCheckpointV1;
 use crate::workflow::{CompiledInputSlot, CompiledWorkflow, ResourceContract};
 
 use binding::Binding;
+mod source_prefix;
 
 /// Immutable owned root bundle.
 ///
@@ -47,14 +48,30 @@ impl OwnedRootBundle {
     /// On success returns the immutable bundle. On failure returns a typed
     /// error; no partial state is exposed.
     pub fn new(
-        roots: Box<[(SlotIdx, SlotValue, Taint)]>,
-        checkpoint: ValueStoreCheckpointV1,
+        mut roots: Box<[(SlotIdx, SlotValue, Taint)]>,
+        mut checkpoint: ValueStoreCheckpointV1,
         workflow: &CompiledWorkflow,
     ) -> Result<Self, OwnedRootBundleError> {
         validation::preflight(&checkpoint, workflow)?;
-        let roots = roots::fill_defaults(roots, workflow)?;
+        if let Some(metadata) = workflow.source_metadata() {
+            source_prefix::relocate(&mut roots, &mut checkpoint, metadata)
+                .map_err(OwnedRootBundleError::Checkpoint)?;
+            validation::preflight(&checkpoint, workflow)?;
+        }
+        crate::workflow::source_metadata::secrets::validate_roots(workflow, &roots)
+            .map_err(OwnedRootBundleError::Checkpoint)?;
+        let roots = roots::fill_defaults(roots, workflow, &mut checkpoint)?;
+        crate::workflow::source_metadata::secrets::validate_runtime_roots(workflow, &roots)
+            .map_err(OwnedRootBundleError::Checkpoint)?;
+        validation::preflight(&checkpoint, workflow)?;
         roots::validate(&roots, workflow, &checkpoint)?;
-        let graph = graph::validate(&checkpoint, &roots)?;
+        let graph = graph::validate(
+            &checkpoint,
+            &roots,
+            workflow
+                .source_metadata()
+                .map_or(0, |metadata| metadata.symbols_count()),
+        )?;
         taint::validate(&roots, &graph)?;
         drop(graph);
 

@@ -55,10 +55,15 @@ fn make_run_state(wf: CompiledWorkflow) -> RunState {
     }
 }
 
-fn make_wf_with_kind(kind: CompiledNodeKind, slot_count: u16) -> Option<CompiledWorkflow> {
+fn make_wf_with_kind(
+    kind: CompiledNodeKind,
+    slot_count: u16,
+    inputs: &[u16],
+) -> Option<CompiledWorkflow> {
     let node = vb_core::workflow::node(StepIdx::ZERO, kind, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("test_wf"),
         digest: WorkflowDigest::from_bytes([0xAA; 32]),
         nodes: Box::from([node]),
@@ -70,7 +75,14 @@ fn make_wf_with_kind(kind: CompiledNodeKind, slot_count: u16) -> Option<Compiled
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::new([]),
+        input_slots: inputs
+            .iter()
+            .map(|slot| vb_core::CompiledInputSlot {
+                slot: SlotIdx::new(*slot),
+                kind: vb_core::InputSlotKind::Any,
+                constraint: vb_core::CompiledInputConstraint::required(),
+            })
+            .collect(),
     };
     CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -84,6 +96,7 @@ fn wait_until_node_requires_timer_registration() {
             deadline_slot: SlotIdx::ZERO,
         },
         1,
+        &[0],
     )
     .expect("WaitUntil workflow");
     let state = make_run_state(wf);
@@ -100,6 +113,7 @@ fn wait_event_with_timeout_requires_timer_registration() {
             timeout_slot: Some(SlotIdx::new(1)),
         },
         2,
+        &[0, 1],
     )
     .expect("WaitEvent+timeout workflow");
     let state = make_run_state(wf);
@@ -114,6 +128,7 @@ fn wait_event_without_timeout_does_not_require_timer_registration() {
             timeout_slot: None,
         },
         1,
+        &[0],
     )
     .expect("WaitEvent no-timeout workflow");
     let state = make_run_state(wf);
@@ -130,6 +145,7 @@ fn ask_with_timeout_requires_timer_registration() {
             timeout_slot: Some(SlotIdx::new(1)),
         },
         2,
+        &[0, 1],
     )
     .expect("Ask+timeout workflow");
     let state = make_run_state(wf);
@@ -144,6 +160,7 @@ fn ask_without_timeout_does_not_require_timer_registration() {
             timeout_slot: None,
         },
         1,
+        &[0],
     )
     .expect("Ask no-timeout workflow");
     let state = make_run_state(wf);
@@ -160,6 +177,7 @@ fn do_node_does_not_require_timer_registration() {
             input: SlotIdx::ZERO,
         },
         1,
+        &[0],
     )
     .expect("Do workflow");
     let state = make_run_state(wf);
@@ -173,6 +191,7 @@ fn finish_node_does_not_require_timer_registration() {
             result: SlotIdx::ZERO,
         },
         1,
+        &[0],
     )
     .expect("Finish workflow");
     let state = make_run_state(wf);
@@ -188,6 +207,7 @@ fn timer_registration_required_returns_false_for_out_of_bounds_step() {
             deadline_slot: SlotIdx::ZERO,
         },
         1,
+        &[0],
     )
     .expect("WaitUntil workflow");
     let state = make_run_state(wf);

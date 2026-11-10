@@ -409,7 +409,7 @@ fn collect_two_step_body_scales_edges() {
 #[test]
 fn collect_with_moderate_preamble_has_correct_offsets() {
     let mut yaml = String::from(
-        "version: velvet-ballistics/v1\nname: collect_mod\nwhen:\n  manual: {}\nsteps:\n",
+        "version: velvet-ballistics/v1\nname: collect_mod\nwhen:\n  manual: {}\ninputs:\n  pages: {is: list, of: number, max: 1}\nsteps:\n",
     );
     // 100 preamble set steps consume IDs 0..99
     for i in 0u16..100u16 {
@@ -420,7 +420,7 @@ fn collect_with_moderate_preamble_has_correct_offsets() {
     // Collect step at ID 100
     yaml.push_str("  - id: collect_pages\n    collect:\n");
     yaml.push_str("      variable: batch\n");
-    yaml.push_str("      source: \"0\"\n");
+    yaml.push_str("      source: \"$input.pages\"\n");
     yaml.push_str("      pages: 1\n");
     yaml.push_str("      items: 1\n");
     yaml.push_str("      steps:\n");

@@ -8,7 +8,7 @@
 //
 // This file binds the collect_ir_structure.rs Verus spec to the
 // production exec fn `lower_bounded_collect` at
-// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-260`.
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:244-261`.
 //
 // The production fn was split out of `mod_compile_lowering/part_03.rs`
 // (the pre-split `lower_canonical_collect` at part_03.rs no
@@ -94,7 +94,7 @@
 //   - `StepIdx` (u16 newtype)                   <- crates/vb_core/src/ids/mod.rs:70-70
 //   - `StepIdx::new(value: u16) -> Self`        <- crates/vb_core/src/ids/mod.rs:36-36
 //   - `StepIdx::get(self) -> u16`               <- crates/vb_core/src/ids/mod.rs:70-70
-//   - `StepIdx::checked_add`                    <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206
+//   - `StepIdx::checked_add`                    <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:183-188
 //                                                  (used at bounded_collect.rs:116-126
 //                                                   via the `checked_step_offset`
 //                                                   wrapper at part_12.rs:199-212)
@@ -109,7 +109,7 @@
 //                                                  (the exact variant produced by
 //                                                  `checked_body_length_offset` when
 //                                                  body_len+extra overflows u16)
-//   - `lower_bounded_collect`                   <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-260
+//   - `lower_bounded_collect`                   <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:244-261
 //                                                  (plan build + start/body/next/finish emission;
 //                                                  edges computed by plan_compute_edges,
 //                                                  bounded_collect.rs:116-126)
@@ -118,7 +118,7 @@
 //                                                  body=id+1, advance=id+body_len+1,
 //                                                  done=id+body_len+2)
 //   - `CollectStart` / `CollectNext` /
-//     `CollectFinish`                           <- crates/vb_core/src/workflow/mod.rs:1264-1284
+//     `CollectFinish`                           <- crates/vb_core/src/workflow/mod.rs:1320-1342
 //                                                  (CollectStart { source, limit, page_size,
 //                                                  body, done }; CollectNext
 //                                                  { collector_slot, body, done };
@@ -126,14 +126,14 @@
 //                                                  CollectPage still exists as a
 //                                                  variant but is no longer emitted
 //                                                  by collect lowering)
-//   - `SlotCompiler::record_slot`               <- crates/vb_compile/src/mod_compile_lowering/part_08.rs:111-117
+//   - `SlotCompiler::record_slot`               <- crates/vb_compile/src/mod_compile_lowering/part_08.rs:123-129
 //                                                  (raises max_slot to at least the
 //                                                  given slot; +1 under the
 //                                                  fresh-source assumption)
-//   - `SlotCompiler::allocate_slot`             <- crates/vb_compile/src/mod_compile_lowering/part_08.rs:29-38
+//   - `SlotCompiler::allocate_slot`             <- crates/vb_compile/src/mod_compile_lowering/part_08.rs:41-50
 //                                                  (returns SlotIdx::new(slot_count),
 //                                                  reserves one more slot)
-//   - `emit_scoped_flat_body`                   <- crates/vb_compile/src/mod_compile_lowering/canonical_branch_body.rs:20-42
+//   - `emit_scoped_flat_body`                   <- crates/vb_compile/src/mod_compile_lowering/canonical_branch_body.rs:23-33
 //                                                  (one node per body step at
 //                                                  start+index, one slot allocated
 //                                                  per step)
@@ -215,7 +215,7 @@ use vstd::prelude::*;
 // so the projection is nameable in spec mode.
 //
 // DRIFT POLICY: This mirror MUST be regenerated from
-// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-260`
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:244-261`
 // whenever production changes. Section headers cite the originating
 // production line range so regeneration is mechanical.
 
@@ -406,7 +406,7 @@ fn failure_outcome(error_kind: u8, pre_slot_count: u16) -> SpecCollectIROutcome 
 /// Mirror of `lower_bounded_collect(index: usize, id: StepIdx,
 /// config: CollectLowering<'_>, builder: &mut SlotCompiler) ->
 /// Result<SlotIdx, CompileErrors>` at
-/// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-260`.
+/// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:244-261`.
 ///
 /// The projection returns `SpecCollectIROutcome` (a `Copy` struct) so
 /// the spec proofs can reason about its fields directly. The body

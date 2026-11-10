@@ -12,7 +12,7 @@ impl RunFrame {
             .ok_or(CoreError::SlotUninitialized { slot })
     }
 
-    /// Writes a slot value without changing taint.
+    /// Writes a slot value with Clean taint.
     pub fn write_slot(&mut self, slot: SlotIdx, value: SlotValue) -> CoreResult<()> {
         self.write_slot_with_taint(slot, value, Taint::Clean)
     }

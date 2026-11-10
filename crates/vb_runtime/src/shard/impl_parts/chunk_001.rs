@@ -17,6 +17,7 @@ impl Shard {
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
     ) -> Self {
         Self {
+            secret_availability: std::sync::Arc::from([]),
             command_queue: ShardCommandQueue::from_config(config),
             runs: IndexMap::new(),
             run_aggregate: RunAggregate::new(),
@@ -55,7 +56,10 @@ impl Shard {
                 // Storage-backed journal: use StorageArtifactStore for strict/journaled
                 // artifact validation. This ensures the shard can load and validate
                 // accepted artifacts from durable storage before admission.
-                std::sync::Arc::new(crate::admission::StorageArtifactStore::with_catalog(fjall_journal, journal.executor_catalog()))
+                std::sync::Arc::new(crate::admission::StorageArtifactStore::with_catalog(
+                    fjall_journal,
+                    journal.executor_catalog(),
+                ))
             } else {
                 match config.policy {
                     vb_core::policy::RuntimePolicy::Relaxed => {
@@ -81,15 +85,22 @@ impl Shard {
         if self.shutting_down {
             return Err(RuntimeError::ShutdownInProgress);
         }
+        self.validate_secret_submission(&cmd)?;
         match &cmd {
             ShardCommand::Submit { workflow, .. }
             | ShardCommand::SubmitPrePersisted { workflow, .. }
             | ShardCommand::SubmitWithContracts { workflow, .. } => {
-                crate::shard::helpers::prepare_input_slots(&[], workflow)?;
+                let inputs = self.prepare_secret_inputs(workflow, &[])?;
+                crate::shard::helpers::prepare_input_slots(&inputs, workflow)?;
             }
-            ShardCommand::SubmitWithInputs { workflow, inputs, .. }
-            | ShardCommand::SubmitWithInputsAndContracts { workflow, inputs, .. } => {
-                crate::shard::helpers::prepare_input_slots(inputs, workflow)?;
+            ShardCommand::SubmitWithInputs {
+                workflow, inputs, ..
+            }
+            | ShardCommand::SubmitWithInputsAndContracts {
+                workflow, inputs, ..
+            } => {
+                let inputs = self.prepare_secret_inputs(workflow, inputs)?;
+                crate::shard::helpers::prepare_input_slots(&inputs, workflow)?;
             }
             _ => {}
         }
@@ -761,7 +772,7 @@ impl Shard {
         guard.tick()
     }
 
-    fn drive_one_due_timer(&mut self) -> RuntimeResult<()> {
+    fn drive_one_ready_run(&mut self) -> RuntimeResult<()> {
         let now = std::time::Instant::now();
         let due = self
             .pending_timer_iter()
@@ -769,7 +780,7 @@ impl Shard {
             .min_by_key(|(run, timer)| (timer.deadline, run.get()))
             .map(|(run, timer)| (*run, *timer));
         let Some((run, timer)) = due else {
-            return Ok(());
+            return self.drive_one_pending_run();
         };
         self.handle_timer(run, timer.generation, timer.deadline, timer.kind)
     }
@@ -780,12 +791,15 @@ impl Shard {
         }
 
         let Some(cmd) = self.command_queue.pop() else {
-            self.drive_one_due_timer()?;
+            self.drive_one_ready_run()?;
             return Ok(true);
         };
 
         match cmd {
-            ShardCommand::ActivateOwnedSubmission { run, expected_source_digest } => {
+            ShardCommand::ActivateOwnedSubmission {
+                run,
+                expected_source_digest,
+            } => {
                 self.handle_owned_activation(run, expected_source_digest)?;
             }
             ShardCommand::Submit {
@@ -824,7 +838,10 @@ impl Shard {
                 &action_contracts,
             )?,
             ShardCommand::Resume { run } => {
-                self.handle_resume(run).map_err(RuntimeError::from)?;
+                let resumed = self.handle_resume(run).map_err(RuntimeError::from)?;
+                if resumed.status == crate::shard::ResumeStatus::AlreadyRunning {
+                    self.drive_one_pending_run()?;
+                }
             }
             ShardCommand::OpenGate {
                 gate,
@@ -839,7 +856,11 @@ impl Shard {
             ShardCommand::EscalateGate { run, gate, now_ms } => {
                 self.escalate_timed_out_gate(run, gate, now_ms)?;
             }
-            ShardCommand::RegisteredActionCompleted { ticket, receipt, output } => {
+            ShardCommand::RegisteredActionCompleted {
+                ticket,
+                receipt,
+                output,
+            } => {
                 self.handle_registered_action_completion(ticket, receipt, output)?;
             }
             ShardCommand::ActionCompleted { ticket, output } => {
@@ -1026,12 +1047,15 @@ impl Shard {
             EvidenceEvent::StepStarted { step } => {
                 Self::push_drive_journal_event(
                     journal_events,
-                    RuntimeJournalEvent::StepStarted { run, step, attempt},
+                    RuntimeJournalEvent::StepStarted { run, step, attempt },
                 )?;
                 trace_events.push(TraceEvent::StepStarted { run, step });
                 Ok(())
             }
-            EvidenceEvent::StepFailed { step } => Self::push_drive_journal_event(journal_events, RuntimeJournalEvent::StepFailed { run, step, attempt }),
+            EvidenceEvent::StepFailed { step } => Self::push_drive_journal_event(
+                journal_events,
+                RuntimeJournalEvent::StepFailed { run, step, attempt },
+            ),
             EvidenceEvent::StepSucceeded { step, output } => Self::push_drive_journal_event(
                 journal_events,
                 RuntimeJournalEvent::StepSucceeded {

@@ -46,6 +46,7 @@ fn gate_7_rejects_expression_stack_mismatch_at_boundary() {
         vec![expr],
         Vec::new(),
         Vec::new(),
+        &[],
     );
 
     // Mutate max_stack to be wrong
@@ -71,6 +72,7 @@ fn gate_7_accepts_empty_expressions() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        &[0],
     );
     let result = validate(&parts);
     assert!(
@@ -92,6 +94,7 @@ fn gate_7_accepts_single_slot_load() {
         vec![expr],
         Vec::new(),
         Vec::new(),
+        &[0],
     );
     let result = validate(&parts);
     assert!(result.is_ok(), "single slot load should pass: {:?}", result);
@@ -121,6 +124,7 @@ fn gate_8_accepts_accessor_path_at_max_depth() {
         Vec::new(),
         vec![accessor],
         Vec::new(),
+        &[0],
     );
 
     let result = validate(&parts);
@@ -146,6 +150,7 @@ fn gate_8_rejects_accessor_root_out_of_bounds() {
         Vec::new(),
         vec![accessor],
         Vec::new(),
+        &[],
     );
 
     let result = validate(&parts);
@@ -170,6 +175,7 @@ fn gate_8_rejects_accessor_symbol_out_of_bounds() {
         Vec::new(),
         vec![accessor],
         Vec::new(),
+        &[],
     );
 
     let result = validate(&parts);
@@ -194,7 +200,7 @@ fn gate_9_accepts_slot_reference_at_upper_bound() {
         None,
     );
 
-    let parts = make_parts(vec![node], 3, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(vec![node], 3, 0, Vec::new(), Vec::new(), Vec::new(), &[2]);
     let result = validate(&parts);
     assert!(
         result.is_ok(),
@@ -214,7 +220,7 @@ fn gate_9_rejects_slot_reference_out_of_bounds() {
         None,
     );
 
-    let parts = make_parts(vec![node], 2, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(vec![node], 2, 0, Vec::new(), Vec::new(), Vec::new(), &[]);
     let result = validate(&parts);
     assert!(matches!(
         result,
@@ -237,7 +243,7 @@ fn gate_9_rejects_error_slot_reference_out_of_bounds() {
         Some(SlotIdx::new(5)),
     );
 
-    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new(), &[]);
     let result = validate(&parts);
     assert!(matches!(
         result,
@@ -259,6 +265,7 @@ fn gate_10_accepts_finish_node_with_valid_result() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        &[0],
     );
     let result = validate(&parts);
     assert!(
@@ -276,7 +283,7 @@ fn gate_10_accepts_finish_node_with_valid_result() {
 #[test]
 fn gate_13_accepts_linear_workflow_with_no_cycles() {
     let nodes = vec![nop_node(0), nop_node(1), finish_node(2, 0)];
-    let parts = make_parts(nodes, 1, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(nodes, 1, 0, Vec::new(), Vec::new(), Vec::new(), &[0]);
     let result = validate(&parts);
     assert!(result.is_ok(), "linear workflow should pass: {:?}", result);
 }
@@ -304,6 +311,7 @@ fn gate_14_accepts_single_slot_consistent_type() {
         Vec::new(),
         Vec::new(),
         vec![ConstValue::I64(42)],
+        &[],
     );
     let result = validate(&parts);
     assert!(
@@ -341,6 +349,7 @@ fn gate_14_rejects_slot_written_with_mixed_types() {
         Vec::new(),
         Vec::new(),
         vec![ConstValue::I64(1), ConstValue::Bool(true)],
+        &[],
     );
 
     let result = validate(&parts);
@@ -359,12 +368,23 @@ fn gate_14_rejects_slot_written_with_mixed_types() {
 fn validation_pipeline_selective_gate_disable() {
     // Build parts that would fail gate 9 (slot OOB)
     let node = vb_core::workflow::node(
-        StepIdx::ZERO,
+        StepIdx::new(1),
         CompiledNodeKind::Nop,
         Some(SlotIdx::new(99)),
         None,
     );
-    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(
+        vec![
+            vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None),
+            node,
+        ],
+        1,
+        0,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        &[],
+    );
 
     // With gate 9 disabled, validation should pass
     let pipeline = ValidationPipeline {

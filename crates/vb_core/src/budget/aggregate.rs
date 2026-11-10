@@ -3,6 +3,7 @@
 //! usage, per-tenant usage snapshot, reservations, and the aggregate error.
 
 use crate::ids::{RunId, TenantId};
+#[cfg(not(kani))]
 use crate::workflow::WorkflowError;
 use thiserror::Error;
 

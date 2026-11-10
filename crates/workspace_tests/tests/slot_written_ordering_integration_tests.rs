@@ -48,13 +48,22 @@ fn make_workflow(
     nodes: Vec<CompiledNode>,
     slot_count: u16,
     constants: Vec<ConstValue>,
+    root_slots: &[u16],
 ) -> Result<CompiledWorkflow, String> {
     let names: Box<[Box<str>]> = (0..nodes.len())
         .map(|i| format!("s{i}").into_boxed_str())
         .collect();
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: root_slots
+            .iter()
+            .map(|slot| vb_core::workflow::CompiledInputSlot {
+                slot: vb_core::SlotIdx::new(*slot),
+                kind: vb_core::workflow::InputSlotKind::Any,
+                constraint: vb_core::workflow::CompiledInputConstraint::required(),
+            })
+            .collect(),
         name: "test".into(),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -165,6 +174,7 @@ fn slot_written_appears_before_next_step_started_in_evidence_stream() {
         ],
         2,
         constants,
+        &[],
     )
     .expect("workflow construction should succeed");
 
@@ -253,6 +263,7 @@ fn evidence_collector_emits_slot_before_next_step_begins() {
         vec![set_const_node(0, 0, 0, Some(1)), finish_node(1, 0)],
         1,
         constants,
+        &[],
     )
     .expect("workflow construction should succeed");
 
@@ -329,6 +340,7 @@ fn multi_slot_node_emit_order_preserved() {
         ],
         2,
         vec![],
+        &[0],
     )
     .expect("workflow construction should succeed");
 
@@ -434,8 +446,13 @@ fn multi_slot_node_emit_order_preserved() {
 #[test]
 fn copy_node_emits_slot_written_with_correct_value() {
     // Given: Copy node followed by finish
-    let wf = make_workflow(vec![copy_node(0, 1, 0, 1), finish_node(1, 0)], 2, vec![])
-        .expect("workflow construction should succeed");
+    let wf = make_workflow(
+        vec![copy_node(0, 1, 0, 1), finish_node(1, 0)],
+        2,
+        vec![],
+        &[1],
+    )
+    .expect("workflow construction should succeed");
 
     let mut run = vb_core::frame::RunFrame::new(RunId::new(5), StepIdx::new(0), 2, 2)
         .expect("run frame creation should succeed");

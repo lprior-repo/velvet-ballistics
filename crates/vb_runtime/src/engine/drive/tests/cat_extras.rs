@@ -18,7 +18,7 @@ mod tests {
 
     #[test]
     fn cat1_copy_propagates_bool() -> Result<(), String> {
-        let wf = mkwf(vec![cpy(0, 1, 0, 1), fin(1, 0)], 2)?;
+        let wf = mkwf(vec![cpy(0, 1, 0, 1), fin(1, 0)], 2, &[0, 1])?;
         let mut r = mkr(2, 2)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         ws(&mut r, 1, SlotValue::Bool(true))?;
@@ -47,6 +47,7 @@ mod tests {
         let wf = mkwf(
             vec![cslot(0, branches, Some(3)), fin(1, 3), fin(2, 3), fin(3, 3)],
             4,
+            &[0, 1, 2, 3],
         )?;
         let mut r = mkr(4, 4)?;
         ws(&mut r, 0, SlotValue::Bool(false))?;
@@ -65,7 +66,7 @@ mod tests {
     /// StepStarted appears before StepSucceeded in evidence ordering.
     #[test]
     fn cat6_evidence_started_before_succeeded() -> Result<(), String> {
-        let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1)?;
+        let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1, &[0])?;
         let mut r = mkr(2, 1)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         let mut b = StepBudget::new(10);
@@ -90,7 +91,7 @@ mod tests {
     /// Ask node emits StepStarted but not StepSucceeded (suspends).
     #[test]
     fn cat3_ask_evidence_has_started_no_succeeded() -> Result<(), String> {
-        let wf = mkwf(vec![askn(0, 0)], 1)?;
+        let wf = mkwf(vec![askn(0, 0)], 1, &[0])?;
         let mut r = mkr(1, 1)?;
         ws(&mut r, 0, SlotValue::Symbol(SymbolId::new(1)))?;
         let mut b = StepBudget::new(10);
@@ -119,7 +120,7 @@ mod tests {
     /// WaitUntil node emits StepStarted but not StepSucceeded (suspends).
     #[test]
     fn cat3_wait_evidence_has_started_no_succeeded() -> Result<(), String> {
-        let wf = mkwf(vec![wuntil(0, 0)], 1)?;
+        let wf = mkwf(vec![wuntil(0, 0)], 1, &[0])?;
         let mut r = mkr(1, 1)?;
         ws(&mut r, 0, SlotValue::I64(9999))?;
         let mut b = StepBudget::new(10);
@@ -148,7 +149,7 @@ mod tests {
     /// Single Finish node completes with budget=1.
     #[test]
     fn cat1_single_finish_budget_one() -> Result<(), String> {
-        let wf = mkwf(vec![fin(0, 0)], 1)?;
+        let wf = mkwf(vec![fin(0, 0)], 1, &[0])?;
         let mut r = mkr(1, 1)?;
         ws(&mut r, 0, SlotValue::I64(77))?;
         let mut b = StepBudget::new(1);
@@ -163,7 +164,7 @@ mod tests {
     /// 3-step chain produces >= 3 StepStarted and >= 3 StepSucceeded.
     #[test]
     fn cat6_evidence_three_step_chain() -> Result<(), String> {
-        let wf = mkwf(vec![nop(0, 1), nop(1, 2), fin(2, 0)], 1)?;
+        let wf = mkwf(vec![nop(0, 1), nop(1, 2), fin(2, 0)], 1, &[0])?;
         let mut r = mkr(3, 1)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         let mut b = StepBudget::new(10);
@@ -186,7 +187,7 @@ mod tests {
     /// drive_with_actions with 4 Nop steps and adequate budget completes.
     #[test]
     fn dwa_multi_nop_completes() -> Result<(), String> {
-        let wf = mkwf(vec![nop(0, 1), nop(1, 2), nop(2, 3), fin(3, 0)], 1)?;
+        let wf = mkwf(vec![nop(0, 1), nop(1, 2), nop(2, 3), fin(3, 0)], 1, &[0])?;
         let mut r = mkr(4, 1)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         let mut b = StepBudget::new(10);
@@ -202,7 +203,12 @@ mod tests {
     /// compute_max_parallel_in_flight returns 0 when no TogetherStart exists.
     #[test]
     fn compute_max_parallel_returns_zero_without_together_start() -> Result<(), String> {
-        let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1)?;
+        let wf = mkwfc(
+            vec![setc(0, 0, 0, 1), fin(1, 0)],
+            1,
+            vec![ConstValue::I64(0)],
+            &[],
+        )?;
         let result = compute_max_parallel_in_flight(&wf).map_err(|e| format!("{e}"))?;
         assert_eq!(result, 0, "should return 0 when no TogetherStart exists");
         Ok(())
@@ -215,6 +221,7 @@ mod tests {
             vec![setc(0, 0, 0, 1), fin(1, 0)],
             1,
             vec![ConstValue::Bool(true)],
+            &[],
         )?;
         let mut r = mkr(2, 1)?;
         let mut b = StepBudget::new(10);

@@ -9,6 +9,8 @@ use crate::shard::types::RuntimeState;
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum RuntimeError {
+    /// A declared opaque secret requirement is unavailable on this runtime.
+    SecretUnavailable,
     /// Bounded queue is full.
     QueueFull,
     /// A run already has its admitted number of commands pending on the

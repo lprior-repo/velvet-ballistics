@@ -229,7 +229,7 @@ fn test_repeat_multi_step_body_compiles_and_changes_digest()
     let steps_multi = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: a\n          set:\n            output: out1\n            value: \"10\"\n        - id: b\n          set:\n            output: out2\n            value: \"20\"\n        - id: c\n          set:\n            output: out3\n            value: \"30\"\n  - id: done\n    finish:\n      result: 0\n";
 
     let workflow = compile_workflow_from_steps(steps_multi)?;
-    assert_eq!(workflow.node_count(), 7);
+    assert_eq!(workflow.node_count(), 8);
 
     let source_workflow = compile_source_from_steps(steps_multi)?;
     assert_eq!(workflow.to_parts(), source_workflow.to_parts());
@@ -267,7 +267,7 @@ fn check_repeat_start(
         } => {
             assert_eq!(*max_attempts, 3);
             assert_eq!(*body, StepIdx::new(1));
-            assert_eq!(*done, StepIdx::new(5));
+            assert_eq!(*done, StepIdx::new(6));
         }
         other => return Err(format!("expected RepeatStart at 0, got {:?}", other).into()),
     }
@@ -366,8 +366,8 @@ fn check_repeat_check(
         .node(StepIdx::new(0))
         .ok_or("missing RepeatStart at 0")?;
     let check = workflow
-        .node(StepIdx::new(4))
-        .ok_or("missing RepeatCheck at 4")?;
+        .node(StepIdx::new(5))
+        .ok_or("missing RepeatCheck at 5")?;
     assert_eq!(
         check.routing.next,
         vb_core::workflow::NodeContinuation::Step(StepIdx::new(1))
@@ -379,9 +379,9 @@ fn check_repeat_check(
                 *attempt_slot,
                 start.output.slot().ok_or("missing start output")?
             );
-            assert_eq!(*done, StepIdx::new(5));
+            assert_eq!(*done, StepIdx::new(6));
         }
-        other => return Err(format!("expected RepeatCheck at 4, got {:?}", other).into()),
+        other => return Err(format!("expected RepeatCheck at 5, got {:?}", other).into()),
     }
     Ok(())
 }
@@ -392,28 +392,42 @@ fn check_repeat_finish_and_terminal(
     use vb_core::{CompiledNodeKind, SlotIdx, StepIdx};
     let set_c = workflow.node(StepIdx::new(3)).ok_or("missing Set at 3")?;
     let repeat_finish = workflow
-        .node(StepIdx::new(5))
-        .ok_or("missing RepeatFinish at 5")?;
+        .node(StepIdx::new(6))
+        .ok_or("missing RepeatFinish at 6")?;
+    let copy = workflow
+        .node(StepIdx::new(4))
+        .ok_or("missing result Copy")?;
+    assert_eq!(
+        copy.kind,
+        CompiledNodeKind::Copy {
+            source: set_c.output.slot().ok_or("missing set_c output")?
+        }
+    );
+    assert_ne!(copy.output, set_c.output);
+    assert_eq!(
+        copy.routing.next,
+        vb_core::workflow::NodeContinuation::Step(StepIdx::new(5))
+    );
     match &repeat_finish.kind {
         CompiledNodeKind::RepeatFinish { result } => {
-            assert_eq!(*result, set_c.output.slot().ok_or("missing set_c output")?);
-            assert_eq!(repeat_finish.output, set_c.output);
+            assert_eq!(*result, copy.output.slot().ok_or("missing result output")?);
+            assert_eq!(repeat_finish.output, copy.output);
         }
-        other => return Err(format!("expected RepeatFinish at 5, got {:?}", other).into()),
+        other => return Err(format!("expected RepeatFinish at 6, got {:?}", other).into()),
     }
     assert_eq!(
         repeat_finish.routing.next,
-        vb_core::workflow::NodeContinuation::Step(StepIdx::new(6))
+        vb_core::workflow::NodeContinuation::Step(StepIdx::new(7))
     );
 
     let terminal = workflow
-        .node(StepIdx::new(6))
-        .ok_or("missing Finish at 6")?;
+        .node(StepIdx::new(7))
+        .ok_or("missing Finish at 7")?;
     match &terminal.kind {
         CompiledNodeKind::Finish { result } => {
             assert_eq!(*result, SlotIdx::new(0));
         }
-        other => return Err(format!("expected Finish at 6, got {:?}", other).into()),
+        other => return Err(format!("expected Finish at 7, got {:?}", other).into()),
     }
     assert_eq!(
         terminal.routing.next,
@@ -507,10 +521,7 @@ fn test_repeat_empty_body_rejected_with_step_field_shape() {
             step,
             field,
             expected,
-        } => assert_eq!(
-            (*step, *field, *expected),
-            (0, "steps", "at least one set or do step")
-        ),
+        } => assert_eq!((*step, *field, *expected), (0, "steps", "non-empty body")),
         other => panic!("expected StepFieldShape for empty repeat body, got {other:?}"),
     }
 }

@@ -17,6 +17,7 @@ pub(super) fn build_reduce_workflow() -> Result<vb_core::workflow::CompiledWorkf
         Some(2),
         None,
         CompiledNodeKind::ReduceStart {
+            limit: 65_535,
             input: SlotIdx::new(0),
             accumulator: SlotIdx::new(1),
             initial: ConstIdx::new(0),
@@ -41,6 +42,7 @@ pub(super) fn build_reduce_workflow() -> Result<vb_core::workflow::CompiledWorkf
         vec![reduce, body, next, finish],
         3,
         vec![ConstValue::I64(42)],
+        &[0],
     )
 }
 

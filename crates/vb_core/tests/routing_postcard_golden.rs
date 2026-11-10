@@ -1,9 +1,7 @@
 //! Postcard golden bytes for `CompiledNode` routing planes.
 //!
-//! The routing codemod replaced `Option`-shaped fields with exhaustive enums.
-//! These tests pin the discriminant-aligned wire encoding: the new enums must
-//! serialize to byte sequences identical to the legacy `Option` layout, so
-//! existing canonical digests and artifacts keep verifying.
+//! Routing retains its legacy prefix. The numeric retry policy appends one
+//! Option discriminant; old complete node encodings require artifact migration.
 
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::workflow::{
@@ -96,8 +94,9 @@ fn error_handler_encodes_handler_then_error_slot() {
 }
 
 #[test]
-fn empty_routing_node_matches_legacy_layout() {
+fn empty_routing_node_appends_absent_retry_to_legacy_prefix() {
     let node = CompiledNode {
+        retry: None,
         id: StepIdx::new(0),
         output: NodeOutput::Discard,
         routing: NodeRouting {
@@ -106,12 +105,16 @@ fn empty_routing_node_matches_legacy_layout() {
         },
         kind: CompiledNodeKind::Nop,
     };
-    assert_eq!(encode(&node), vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+    assert_eq!(
+        encode(&node),
+        vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+    );
 }
 
 #[test]
-fn routed_node_matches_legacy_option_layout_bytes() {
+fn routed_node_appends_absent_retry_to_legacy_option_prefix() {
     let node = CompiledNode {
+        retry: None,
         id: StepIdx::new(0),
         output: NodeOutput::Slot(SlotIdx::new(1)),
         routing: NodeRouting {
@@ -132,6 +135,7 @@ fn routed_node_matches_legacy_option_layout_bytes() {
             0x01, 0x03, // on_error: Some(3)
             0x01, 0x04, // error_slot: Some(4)
             0x00, // kind: Nop
+            0x00, // retry: None
         ]
     );
 }

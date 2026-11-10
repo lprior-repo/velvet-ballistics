@@ -8,7 +8,8 @@ fn shard_timer_rejects_run_without_pending_timer() {
     };
     let run = super::RunId::new(60);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
@@ -103,7 +104,8 @@ fn shard_cancel_removes_run_from_runs_map() {
     };
     let run = super::RunId::new(70);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
@@ -225,7 +227,8 @@ fn shard_cancel_increments_failed_counter() {
     };
     let run = super::RunId::new(72);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),

@@ -9,6 +9,7 @@ pub(super) fn runtime_error_unit_eq(left: &RuntimeError, right: &RuntimeError) -
 
 fn runtime_error_unit_tag(error: &RuntimeError) -> Option<u8> {
     match error {
+        RuntimeError::SecretUnavailable => Some(18),
         RuntimeError::QueueFull => Some(0),
         RuntimeError::RunNotFound => Some(1),
         RuntimeError::RunAlreadyExists => Some(2),

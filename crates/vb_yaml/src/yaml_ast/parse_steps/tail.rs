@@ -2,7 +2,7 @@
 //! Tail-field and suspension primitive parsing for workflow steps.
 
 use super::{lookup, reject_unknown_fields, require_scalar_in, require_str_in, require_u16};
-use crate::yaml_ast::types::{ErrorHandlerAst, RetryPolicy, StepPrimitive};
+use crate::yaml_ast::types::{ErrorHandlerAst, RetryPolicy, StepAst, StepPrimitive};
 use crate::yaml_error::{YamlError, YamlResult};
 
 pub(super) fn parse_retry(node: &saphyr::Yaml<'_>) -> YamlResult<Option<RetryPolicy>> {
@@ -69,4 +69,15 @@ fn optional_string(
         )),
         None => Ok(None),
     }
+}
+
+pub(super) fn parse_body_steps(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<StepAst>> {
+    let Some(seq) = super::lookup(node, "steps") else {
+        return Ok(Vec::new());
+    };
+    let mut steps = Vec::new();
+    for item in super::sequence(seq, "steps")? {
+        steps.push(super::parse_step(item)?);
+    }
+    Ok(steps)
 }

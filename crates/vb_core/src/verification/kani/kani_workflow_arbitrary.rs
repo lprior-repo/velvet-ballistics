@@ -21,6 +21,9 @@ use crate::workflow::{
     WorkflowParts,
 };
 
+#[path = "kani_input_schema_arbitrary.rs"]
+mod input_schema;
+
 /// Ordered optional i64 bounds with `min <= max` whenever both are present.
 fn ordered_optional_bounds() -> (Option<i64>, Option<i64>) {
     let (first, second): (i64, i64) = (kani::any(), kani::any());
@@ -243,6 +246,7 @@ impl kani::Arbitrary for CompiledNodeKind {
                 collector_slot: SlotIdx::new(kani::any()),
             },
             19 => Self::ReduceStart {
+                limit: kani::any(),
                 input: SlotIdx::new(kani::any()),
                 accumulator: SlotIdx::new(kani::any()),
                 initial: ConstIdx::new(kani::any()),
@@ -324,6 +328,14 @@ impl kani::Arbitrary for CompiledNodeKind {
 impl kani::Arbitrary for CompiledNode {
     fn any() -> Self {
         Self {
+            retry: if kani::any() {
+                Some(crate::workflow::CompiledRetryPolicy {
+                    max_attempts: kani::any(),
+                    delay_ms: kani::any(),
+                })
+            } else {
+                None
+            },
             id: StepIdx::new(kani::any()),
             output: kani::any(),
             routing: kani::any(),
@@ -379,40 +391,16 @@ impl kani::Arbitrary for WorkflowParts {
         kani::assume(input_slot_count <= 4);
         let mut input_slots: Vec<CompiledInputSlot> =
             Vec::with_capacity(usize::from(input_slot_count));
-        input_slots.extend((0..input_slot_count).map(|index| {
-            let (min, max) = ordered_optional_bounds();
-            let (min_length, max_length) = ordered_optional_length_bounds();
-            CompiledInputSlot {
-                slot: SlotIdx::new(u16::from(index)),
-                kind: match kani::any::<u8>() {
-                    0 => InputSlotKind::Null,
-                    1 => InputSlotKind::Bool,
-                    2 => InputSlotKind::I64,
-                    3 => InputSlotKind::F64,
-                    4 => InputSlotKind::Symbol,
-                    5 => InputSlotKind::List,
-                    6 => InputSlotKind::Object,
-                    7 => InputSlotKind::Blob,
-                    _ => InputSlotKind::Any,
-                },
-                constraint: CompiledInputConstraint {
-                    optional: kani::any(),
-                    nullable: kani::any(),
-                    default_value: None,
-                    min,
-                    max,
-                    min_length,
-                    max_length,
-                    element: None,
-                    allow_extra: None,
-                    secret: kani::any(),
-                },
-            }
+        input_slots.extend((0..input_slot_count).map(|index| CompiledInputSlot {
+            slot: SlotIdx::new(u16::from(index)),
+            kind: input_schema::kind(),
+            constraint: input_schema::constraint(2),
         }));
         Self {
             name: Box::from("kani_workflow"),
             digest: WorkflowDigest::from_bytes(kani::any::<[u8; 32]>()),
             semantic_source_identity: kani::any(),
+            source_metadata: input_schema::metadata(),
             nodes: nodes.into_boxed_slice(),
             expressions: expressions.into_boxed_slice(),
             accessors: bounded_accessors(),

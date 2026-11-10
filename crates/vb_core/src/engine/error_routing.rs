@@ -143,8 +143,58 @@ pub fn route_error_handler(
         write_error_slot(run, error_slot, error, failed_step)?;
     }
 
+    abandon_together_scopes(plan, run, failed_step, handler_step)?;
     advance_to_handler(run, handler_step)?;
     Ok(ErrorHandlerOutcome::Routed)
+}
+
+/// Retires reservations belonging to Together scopes exited by an error route.
+pub fn abandon_together_scopes(
+    plan: &CompiledWorkflow,
+    run: &mut RunFrame,
+    failed: StepIdx,
+    handler: StepIdx,
+) -> Result<(), EngineError> {
+    let count = abandoned_together_count(plan, run, failed, handler)?;
+    run.sub_parallel_in_flight(count)
+}
+
+/// Read-only preflight for the durable action-failure path.
+pub fn abandoned_together_count(
+    plan: &CompiledWorkflow,
+    run: &RunFrame,
+    failed: StepIdx,
+    handler: StepIdx,
+) -> Result<u16, EngineError> {
+    let mut count = 0u16;
+    for raw in 0..plan.node_count() {
+        let node = plan
+            .node(StepIdx::new(raw))
+            .ok_or(EngineError::InvalidProgramCounter {
+                step: StepIdx::new(raw),
+            })?;
+        if let crate::workflow::CompiledNodeKind::TogetherStart { ref branches, join } = node.kind
+            && node.id < failed
+            && failed <= join
+            && !(node.id < handler && handler <= join)
+            && run.step_state(node.id)? == crate::frame::StepState::Succeeded
+            && run.step_state(join)? != crate::frame::StepState::Succeeded
+        {
+            let branches = u16::try_from(branches.len())
+                .map_err(|_| EngineError::TogetherBranchLimitExceeded { max: u16::MAX })?;
+            count = count
+                .checked_add(branches)
+                .ok_or(EngineError::InternalInvariantViolation {
+                    reason: "parallel_in_flight overflow",
+                })?;
+        }
+    }
+    if count > run.parallel_in_flight() {
+        return Err(EngineError::InternalInvariantViolation {
+            reason: "parallel_in_flight underflow",
+        });
+    }
+    Ok(count)
 }
 
 #[inline]

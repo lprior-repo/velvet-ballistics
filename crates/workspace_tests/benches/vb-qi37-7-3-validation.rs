@@ -18,6 +18,7 @@ fn make_parts(
 ) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("bench"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([node(StepIdx::new(0), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None)]),

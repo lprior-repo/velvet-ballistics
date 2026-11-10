@@ -9,16 +9,10 @@ use vb_core::{SlotIdx, SlotValue};
 type TestResult<T> = Result<T, Box<dyn Error>>;
 
 fn fixture(input_slots: Box<[CompiledInputSlot]>) -> TestResult<CompiledWorkflow> {
-    let node = vb_core::workflow::node(
-        StepIdx::ZERO,
-        CompiledNodeKind::Finish {
-            result: SlotIdx::new(2),
-        },
-        None,
-        None,
-    );
+    let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("input-mapping"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -60,6 +54,49 @@ fn test_any_slot_accepts_all_values() -> Result<(), Box<dyn std::error::Error>> 
         vb_core::SlotValue::Blob(vb_core::BlobId::new(0)),
     ];
     for value in values {
+        if matches!(
+            value,
+            SlotValue::Symbol(_) | SlotValue::List(_) | SlotValue::Object(_) | SlotValue::Blob(_)
+        ) {
+            let checkpoint = vb_core::value_store::ValueStoreCheckpointV1 {
+                symbols: if matches!(value, SlotValue::Symbol(_)) {
+                    vec![Box::from("input-symbol")]
+                } else {
+                    vec![]
+                },
+                lists: if matches!(value, SlotValue::List(_)) {
+                    vec![Box::new([])]
+                } else {
+                    vec![]
+                },
+                list_taints: if matches!(value, SlotValue::List(_)) {
+                    vec![Box::new([])]
+                } else {
+                    vec![]
+                },
+                objects: if matches!(value, SlotValue::Object(_)) {
+                    vec![Box::new([])]
+                } else {
+                    vec![]
+                },
+                blobs: if matches!(value, SlotValue::Blob(_)) {
+                    vec![bytes::Bytes::new()]
+                } else {
+                    vec![]
+                },
+                max_arena_entries: u64::from(wf.resource_contract().max_slots),
+            };
+            let bundle = vb_core::root_bundle::OwnedRootBundle::new(
+                Box::new([(SlotIdx::new(2), value, vb_core::Taint::Clean)]),
+                checkpoint,
+                &wf,
+            )?;
+            assert_eq!(
+                bundle.root(SlotIdx::new(2)),
+                Some((value, vb_core::Taint::Clean))
+            );
+            continue;
+        }
         let mut frame = RunFrame::new(RunId::new(1), wf.entry(), wf.node_count(), wf.slot_count())?;
         seed_input_slots(&mut frame, &[(SlotIdx::new(2), value)], &wf)?;
         let read = frame.read_slot(SlotIdx::new(2))?;

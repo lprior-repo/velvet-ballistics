@@ -31,6 +31,7 @@ mod tests {
         ApproverId, ApproverRole, GateDecision, GateDecisionInput, GateDigest, GateId, GateOutcome,
         GateOutcomeRecord, ManualGate, RiskClass, SeparationOfDuties,
     };
+    use vb_core::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
 
     #[derive(Debug)]
     struct RejectCompletionJournal {
@@ -99,6 +100,7 @@ mod tests {
         );
         let parts = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             name: Box::from("suspended"),
             digest: WorkflowDigest::from_bytes([1; 32]),
             nodes: Box::from([node]),
@@ -110,7 +112,11 @@ mod tests {
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
-            input_slots: Box::from([]),
+            input_slots: Box::from([CompiledInputSlot {
+                slot: SlotIdx::new(0),
+                kind: InputSlotKind::Any,
+                constraint: CompiledInputConstraint::required(),
+            }]),
         };
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
     }
@@ -135,6 +141,7 @@ mod tests {
         );
         let parts = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             name: Box::from("action_then_finish"),
             digest: WorkflowDigest::from_bytes([3; 32]),
             nodes: Box::from([do_node, finish]),
@@ -146,7 +153,11 @@ mod tests {
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
-            input_slots: Box::from([]),
+            input_slots: Box::from([CompiledInputSlot {
+                slot: SlotIdx::new(0),
+                kind: InputSlotKind::Any,
+                constraint: CompiledInputConstraint::required(),
+            }]),
         };
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
     }
@@ -305,7 +316,7 @@ mod tests {
                 prompt: SlotIdx::ZERO,
                 timeout_slot: Some(SlotIdx::new(1)),
             },
-            None,
+            Some(vb_core::ids::SlotIdx::new(2)),
             Some(StepIdx::new(3)),
         );
         let resume = vb_core::workflow::node(
@@ -326,6 +337,7 @@ mod tests {
         );
         let parts = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             name: Box::from("ask_waiting_test"),
             digest: WorkflowDigest::from_bytes([42; 32]),
             nodes: Box::from([set_prompt, set_timeout, ask, resume, finish]),
@@ -357,7 +369,7 @@ mod tests {
                 prompt: SlotIdx::ZERO,
                 timeout_slot: None,
             },
-            None,
+            Some(vb_core::ids::SlotIdx::new(1)),
             Some(StepIdx::new(2)),
         );
         let resume = vb_core::workflow::node(
@@ -378,6 +390,7 @@ mod tests {
         );
         let parts = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             name: Box::from("ask_without_timeout_test"),
             digest: WorkflowDigest::from_bytes([43; 32]),
             nodes: Box::from([set_prompt, ask, resume, finish]),
@@ -694,17 +707,11 @@ mod tests {
     }
 
     #[test]
-    fn drain_trace_aggregates_across_shards() {
-        let Some(shard_count) = NonZeroUsize::new(2) else {
-            return;
-        };
+    fn drain_trace_aggregates_across_shards() -> Result<(), String> {
+        let shard_count = NonZeroUsize::new(2).ok_or("shard count")?;
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
-        let Some(wf1) = suspended_workflow() else {
-            return;
-        };
-        let Some(wf2) = suspended_workflow() else {
-            return;
-        };
+        let wf1 = suspended_workflow().ok_or("first workflow")?;
+        let wf2 = suspended_workflow().ok_or("second workflow")?;
         assert_eq!(
             submit_suspended(&runtime, vb_core::ids::RunId::new(1), wf1),
             Ok(())
@@ -715,9 +722,30 @@ mod tests {
         );
         assert_eq!(runtime.tick_all(), Ok(true));
         let events = runtime.drain_trace();
-        // Each submit produces: RunSubmitted + initial SlotWritten + StepStarted
-        // + ActionScheduled = 4 events per run.
-        assert_eq!(events.len(), 8);
+        for run in [RunId::new(1), RunId::new(2)] {
+            let actual = events
+                .iter()
+                .filter(|event| event.run_id() == run)
+                .cloned()
+                .collect::<Vec<_>>();
+            assert_eq!(
+                actual,
+                vec![
+                    TraceEvent::RunSubmitted { run },
+                    TraceEvent::StepStarted {
+                        run,
+                        step: StepIdx::ZERO
+                    },
+                    TraceEvent::ActionScheduled {
+                        run,
+                        step: StepIdx::ZERO
+                    },
+                ]
+            );
+        }
+        assert_eq!(events.len(), 6);
+        assert_eq!(runtime.drain_trace(), Vec::new());
+        Ok(())
     }
 
     // Helper: workflow that finishes immediately (SetConst -> Finish).
@@ -740,6 +768,7 @@ mod tests {
         );
         let parts = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             name: Box::from("finished"),
             digest: WorkflowDigest::from_bytes([2; 32]),
             nodes: Box::from([set_const, finish]),
@@ -1344,6 +1373,7 @@ mod tests {
         ));
         let parts = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             name: Box::from("chain_then_finish"),
             digest: WorkflowDigest::from_bytes([2; 32]),
             nodes: nodes.into_boxed_slice(),
@@ -1957,7 +1987,7 @@ mod tests {
         };
         let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
         // When filling the queue
-        let Some(wf) = suspended_workflow() else {
+        let Some(wf) = finished_workflow() else {
             return;
         };
         assert_eq!(
@@ -2026,7 +2056,7 @@ mod tests {
         };
         // When submitting a run
         assert_eq!(
-            submit_suspended(&runtime, vb_core::ids::RunId::new(1), wf),
+            runtime.submit_direct(vb_core::ids::RunId::new(1), wf),
             Ok(())
         );
         assert_eq!(runtime.tick_all(), Ok(true));
@@ -2207,7 +2237,7 @@ mod tests {
             return;
         };
         let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
-        let Some(wf) = suspended_workflow() else {
+        let Some(wf) = finished_workflow() else {
             return;
         };
         // When filling the queue to capacity
@@ -2272,7 +2302,7 @@ mod tests {
         );
         assert_eq!(runtime.tick_all(), Ok(true));
         assert_eq!(
-            runtime.submit_direct(vb_core::ids::RunId::new(2), wf2),
+            submit_suspended(&runtime, vb_core::ids::RunId::new(2), wf2),
             Ok(())
         );
         // Then second tick returns ActiveRunCapacityExceeded
@@ -2474,7 +2504,7 @@ mod tests {
         };
         let run = vb_core::ids::RunId::new(403);
         // When submitting and ticking
-        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
+        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // Then journal contains RunSubmitted and RunFinished
         let events = journal.snapshot();
@@ -2523,7 +2553,7 @@ mod tests {
         // When submitting run1 (succeeds) then run2 (capacity exceeded)
         assert_eq!(submit_suspended(&runtime, run1, wf1), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
-        assert_eq!(runtime.submit_direct(run2, wf2), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run2, wf2), Ok(()));
         assert_eq!(
             runtime.tick_all(),
             Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 1 })
@@ -2566,7 +2596,7 @@ mod tests {
             return;
         };
         let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
-        let Some(wf) = suspended_workflow() else {
+        let Some(wf) = finished_workflow() else {
             return;
         };
         // When filling the queue
@@ -2674,7 +2704,7 @@ mod tests {
         let run = vb_core::ids::RunId::new(604);
 
         // When submitting a wait workflow and ticking (run enters Wait state)
-        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
+        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
 
         // Then the run is in the runs map (snapshot returns Found)
@@ -2764,7 +2794,7 @@ mod tests {
         let run = vb_core::ids::RunId::new(606);
 
         // When submitting a finished workflow and initiating shutdown
-        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
+        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
         assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
 
@@ -2971,7 +3001,7 @@ mod tests {
         let run = vb_core::ids::RunId::new(620);
 
         // When submitting the workflow
-        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
+        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
         // A single tick processes the submit command and drives to completion
         // The scheduler does NOT spawn a task per step; it drives all steps
         // within the budget of one tick synchronously.
@@ -3373,6 +3403,7 @@ mod tests {
         );
         let parts = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             name: Box::from("wait_then_finish"),
             digest: WorkflowDigest::from_bytes([6; 32]),
             nodes: Box::from([set_deadline, wait, finish]),

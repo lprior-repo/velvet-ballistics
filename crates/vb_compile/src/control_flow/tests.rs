@@ -38,8 +38,8 @@ fn ensure_duplicate_step_id(error: CompileError) -> Result<(), String> {
 
 fn ensure_unsupported_then(error: CompileError) -> Result<(), String> {
     ensure(
-        matches!(error, CompileError::UnsupportedStepControlField { .. }),
-        "unsupported then did not preempt control-flow validation",
+        matches!(error, CompileError::UnsupportedStepControlField { step: 0, field } if field.as_ref() == "then"),
+        "legacy parse_ast did not reject then before control-flow validation",
     )
 }
 
@@ -161,7 +161,7 @@ steps:
 }
 
 #[test]
-fn unsupported_then_preempts_control_flow_errors() -> Result<(), String> {
+fn legacy_parse_ast_rejects_then_before_control_flow_errors() -> Result<(), String> {
     let source = br#"version: velvet-ballistics/v1
 name: control_flow_case
 when:

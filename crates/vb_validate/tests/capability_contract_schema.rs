@@ -12,8 +12,15 @@ use vb_validate::shared::{self, ValidationPipeline};
 const MAX_CAPABILITY_NAME_BYTES: usize = 128;
 
 fn workflow_with_do_actions(actions: &[u16]) -> WorkflowParts {
-    let mut nodes = Vec::new();
-    let mut index = 0u16;
+    let mut nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::SetConst {
+            value: vb_core::ConstIdx::new(0),
+        },
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    )];
+    let mut index = 1u16;
     for action in actions {
         nodes.push(node(
             StepIdx::new(index),
@@ -36,13 +43,14 @@ fn workflow_with_do_actions(actions: &[u16]) -> WorkflowParts {
     ));
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("capability-schema-red"),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: nodes.into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
-        constants: Box::new([]),
+        constants: Box::new([vb_core::ConstValue::Null]),
         slot_count: 1,
         symbols_count: 0,
         entry: StepIdx::new(0),

@@ -106,7 +106,8 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
     };
     let run1 = super::RunId::new(1000);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: run1,
             workflow: wf1,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),

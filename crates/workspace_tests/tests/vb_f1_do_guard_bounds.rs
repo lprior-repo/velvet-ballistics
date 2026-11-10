@@ -193,12 +193,12 @@ steps:
     let wf = compile(source)?;
     let parts = wf.to_parts();
 
-    if parts.nodes.len() != 11 {
-        return Err(format!("expected 11 nodes, got {}", parts.nodes.len()));
+    if parts.nodes.len() != 12 {
+        return Err(format!("expected 12 nodes, got {}", parts.nodes.len()));
     }
 
     check_guard(&parts, 1, 2, 2, 3, 1)?;
-    check_guard(&parts, 8, 9, 9, 10, 3)?;
+    check_guard(&parts, 9, 10, 10, 11, 3)?;
 
     let repeat_start = parts.nodes.get(3).ok_or("missing repeat start")?;
     match &repeat_start.kind {
@@ -210,8 +210,8 @@ steps:
             if *body != StepIdx::new(4) {
                 return Err(format!("repeat body {:?} != expected 4", body));
             }
-            if *done != StepIdx::new(7) {
-                return Err(format!("repeat done {:?} != expected 7", done));
+            if *done != StepIdx::new(8) {
+                return Err(format!("repeat done {:?} != expected 8", done));
             }
             if *max_attempts != 2 {
                 return Err(format!(
@@ -223,20 +223,30 @@ steps:
         other => return Err(format!("node 3 is not RepeatStart: {:?}", other)),
     }
 
-    let repeat_check = parts.nodes.get(6).ok_or("missing repeat check")?;
+    let body_result = parts.nodes.get(5).ok_or("missing body result")?;
+    let copy = parts.nodes.get(6).ok_or("missing result Copy")?;
+    assert_eq!(
+        copy.kind,
+        CompiledNodeKind::Copy {
+            source: body_result.output.slot().ok_or("body output")?
+        }
+    );
+    assert_ne!(copy.output, body_result.output);
+    assert_eq!(copy.routing.next, NodeContinuation::Step(StepIdx::new(7)));
+    let repeat_check = parts.nodes.get(7).ok_or("missing repeat check")?;
     match &repeat_check.kind {
         CompiledNodeKind::RepeatCheck { done, .. } => {
-            if *done != StepIdx::new(7) {
-                return Err(format!("repeat check done {:?} != expected 7", done));
+            if *done != StepIdx::new(8) {
+                return Err(format!("repeat check done {:?} != expected 8", done));
             }
         }
-        other => return Err(format!("node 6 is not RepeatCheck: {:?}", other)),
+        other => return Err(format!("node 7 is not RepeatCheck: {:?}", other)),
     }
 
-    let repeat_finish = parts.nodes.get(7).ok_or("missing repeat finish")?;
-    if repeat_finish.routing.next != NodeContinuation::Step(StepIdx::new(8)) {
+    let repeat_finish = parts.nodes.get(8).ok_or("missing repeat finish")?;
+    if repeat_finish.routing.next != NodeContinuation::Step(StepIdx::new(9)) {
         return Err(format!(
-            "repeat finish next {:?} != expected Step(8)",
+            "repeat finish next {:?} != expected Step(9)",
             repeat_finish.routing.next
         ));
     }
@@ -249,11 +259,11 @@ steps:
     if name2.as_ref() != "g1" {
         return Err(format!("step name 2 is {}, expected g1", name2));
     }
-    let name8 = parts.step_names.get(8).ok_or("missing step name 8")?;
+    let name8 = parts.step_names.get(9).ok_or("missing step name 8")?;
     if name8.as_ref() != "g2" {
         return Err(format!("step name 8 is {}, expected g2", name8));
     }
-    let name9 = parts.step_names.get(9).ok_or("missing step name 9")?;
+    let name9 = parts.step_names.get(10).ok_or("missing step name 9")?;
     if name9.as_ref() != "g2" {
         return Err(format!("step name 9 is {}, expected g2", name9));
     }

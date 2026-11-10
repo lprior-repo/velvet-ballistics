@@ -17,68 +17,66 @@ fn nested_do_in_repeat_body_lowers_to_final_ir() -> Result<(), String> {
     );
     let workflow = compile_yaml(&yaml)?;
     let parts = workflow.to_parts();
-    assert_eq!(parts.entry, vb_core::StepIdx::new(0));
-    assert_eq!(parts.slot_count, 3);
-    assert_eq!(parts.nodes.len(), 5);
-    assert_node(
-        &parts.nodes,
-        0,
-        vb_core::CompiledNodeKind::RepeatStart {
-            max_attempts: 3,
-            body: vb_core::StepIdx::new(1),
-            done: vb_core::StepIdx::new(3),
-        },
-        Some(vb_core::SlotIdx::new(1)),
-        None,
-        None,
-        None,
-    )?;
-    assert_node(
-        &parts.nodes,
-        1,
-        vb_core::CompiledNodeKind::Do {
-            action: vb_core::ActionId::new(0),
-            input: vb_core::SlotIdx::new(0),
-        },
-        Some(vb_core::SlotIdx::new(2)),
-        Some(vb_core::StepIdx::new(2)),
-        None,
-        None,
-    )?;
-    assert_node(
-        &parts.nodes,
-        2,
-        vb_core::CompiledNodeKind::RepeatCheck {
-            attempt_slot: vb_core::SlotIdx::new(1),
-            done: vb_core::StepIdx::new(3),
-        },
-        Some(vb_core::SlotIdx::new(1)),
-        Some(vb_core::StepIdx::new(1)),
-        None,
-        None,
-    )?;
-    assert_node(
-        &parts.nodes,
-        3,
-        vb_core::CompiledNodeKind::RepeatFinish {
-            result: vb_core::SlotIdx::new(2),
-        },
-        Some(vb_core::SlotIdx::new(2)),
-        Some(vb_core::StepIdx::new(4)),
-        None,
-        None,
-    )?;
-    assert_node(
-        &parts.nodes,
-        4,
-        vb_core::CompiledNodeKind::Finish {
-            result: vb_core::SlotIdx::new(0),
-        },
-        None,
-        None,
-        None,
-        None,
-    )?;
+    use vb_core::{ActionId, CompiledNodeKind as K, SlotIdx, StepIdx};
+    assert_eq!(parts.entry, StepIdx::ZERO);
+    assert_eq!(parts.slot_count, 4);
+    assert_eq!(parts.nodes.len(), 6);
+    for (index, kind, output, next) in [
+        (
+            0,
+            K::RepeatStart {
+                max_attempts: 3,
+                body: StepIdx::new(1),
+                done: StepIdx::new(4),
+            },
+            Some(SlotIdx::new(1)),
+            None,
+        ),
+        (
+            1,
+            K::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::new(0),
+            },
+            Some(SlotIdx::new(2)),
+            Some(StepIdx::new(2)),
+        ),
+        (
+            2,
+            K::Copy {
+                source: SlotIdx::new(2),
+            },
+            Some(SlotIdx::new(3)),
+            Some(StepIdx::new(3)),
+        ),
+        (
+            3,
+            K::RepeatCheck {
+                attempt_slot: SlotIdx::new(1),
+                done: StepIdx::new(4),
+            },
+            Some(SlotIdx::new(1)),
+            Some(StepIdx::new(1)),
+        ),
+        (
+            4,
+            K::RepeatFinish {
+                result: SlotIdx::new(3),
+            },
+            Some(SlotIdx::new(3)),
+            Some(StepIdx::new(5)),
+        ),
+        (
+            5,
+            K::Finish {
+                result: SlotIdx::new(0),
+            },
+            None,
+            None,
+        ),
+    ] {
+        assert_node(&parts.nodes, index, kind, output, next, None, None)?;
+    }
 
     Ok(())
 }
@@ -235,8 +233,8 @@ fn nested_do_in_reduce_body_lowers_to_final_ir() -> Result<(), String> {
     let workflow = compile_yaml(&yaml)?;
     let parts = workflow.to_parts();
     assert_eq!(parts.entry, vb_core::StepIdx::new(0));
-    assert_eq!(parts.slot_count, 6);
-    assert_eq!(parts.nodes.len(), 6);
+    assert_eq!(parts.slot_count, 7);
+    assert_eq!(parts.nodes.len(), 7);
     assert_eq!(parts.constants.get(0), Some(&vb_core::ConstValue::I64(10)));
     assert_node(
         &parts.nodes,
@@ -253,11 +251,12 @@ fn nested_do_in_reduce_body_lowers_to_final_ir() -> Result<(), String> {
         &parts.nodes,
         1,
         vb_core::CompiledNodeKind::ReduceStart {
+            limit: 65_535,
             input: vb_core::SlotIdx::new(2),
             accumulator: vb_core::SlotIdx::new(5),
             initial: vb_core::ConstIdx::new(0),
             body: vb_core::StepIdx::new(2),
-            done: vb_core::StepIdx::new(4),
+            done: vb_core::StepIdx::new(5),
         },
         Some(vb_core::SlotIdx::new(4)),
         None,
@@ -271,7 +270,7 @@ fn nested_do_in_reduce_body_lowers_to_final_ir() -> Result<(), String> {
             action: vb_core::ActionId::new(0),
             input: vb_core::SlotIdx::new(1),
         },
-        Some(vb_core::SlotIdx::new(5)),
+        Some(vb_core::SlotIdx::new(6)),
         Some(vb_core::StepIdx::new(3)),
         None,
         None,
@@ -279,11 +278,22 @@ fn nested_do_in_reduce_body_lowers_to_final_ir() -> Result<(), String> {
     assert_node(
         &parts.nodes,
         3,
+        vb_core::CompiledNodeKind::Copy {
+            source: vb_core::SlotIdx::new(6),
+        },
+        Some(vb_core::SlotIdx::new(5)),
+        Some(vb_core::StepIdx::new(4)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        4,
         vb_core::CompiledNodeKind::ReduceNext {
             iterator_slot: vb_core::SlotIdx::new(4),
             accumulator: vb_core::SlotIdx::new(5),
             body: vb_core::StepIdx::new(2),
-            done: vb_core::StepIdx::new(4),
+            done: vb_core::StepIdx::new(5),
         },
         Some(vb_core::SlotIdx::new(3)),
         None,
@@ -292,18 +302,18 @@ fn nested_do_in_reduce_body_lowers_to_final_ir() -> Result<(), String> {
     )?;
     assert_node(
         &parts.nodes,
-        4,
+        5,
         vb_core::CompiledNodeKind::ReduceFinish {
             accumulator: vb_core::SlotIdx::new(5),
         },
         Some(vb_core::SlotIdx::new(5)),
-        Some(vb_core::StepIdx::new(5)),
+        Some(vb_core::StepIdx::new(6)),
         None,
         None,
     )?;
     assert_node(
         &parts.nodes,
-        5,
+        6,
         vb_core::CompiledNodeKind::Finish {
             result: vb_core::SlotIdx::new(0),
         },
@@ -354,14 +364,14 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
     let workflow = compile_yaml(&yaml)?;
     let parts = workflow.to_parts();
     assert_eq!(parts.entry, vb_core::StepIdx::new(0));
-    assert_eq!(parts.slot_count, 4);
-    assert_eq!(parts.nodes.len(), 7);
+    assert_eq!(parts.slot_count, 6);
+    assert_eq!(parts.nodes.len(), 9);
     assert_node(
         &parts.nodes,
         0,
         vb_core::CompiledNodeKind::TogetherStart {
-            branches: vec![vb_core::StepIdx::new(1), vb_core::StepIdx::new(3)].into_boxed_slice(),
-            join: vb_core::StepIdx::new(5),
+            branches: vec![vb_core::StepIdx::new(1), vb_core::StepIdx::new(4)].into_boxed_slice(),
+            join: vb_core::StepIdx::new(7),
         },
         Some(vb_core::SlotIdx::new(2)),
         None,
@@ -375,7 +385,7 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
             branch: 0,
             accumulator: vb_core::SlotIdx::new(2),
             entry: vb_core::StepIdx::new(2),
-            join: vb_core::StepIdx::new(5),
+            join: vb_core::StepIdx::new(7),
         },
         None,
         None,
@@ -389,7 +399,7 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
             action: vb_core::ActionId::new(0),
             input: vb_core::SlotIdx::new(0),
         },
-        Some(vb_core::SlotIdx::new(3)),
+        Some(vb_core::SlotIdx::new(4)),
         Some(vb_core::StepIdx::new(3)),
         None,
         None,
@@ -397,37 +407,36 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
     assert_node(
         &parts.nodes,
         3,
-        vb_core::CompiledNodeKind::TogetherBranch {
-            branch: 1,
-            accumulator: vb_core::SlotIdx::new(2),
-            entry: vb_core::StepIdx::new(4),
-            join: vb_core::StepIdx::new(5),
+        vb_core::CompiledNodeKind::Copy {
+            source: vb_core::SlotIdx::new(4),
         },
         Some(vb_core::SlotIdx::new(3)),
-        None,
+        Some(vb_core::StepIdx::new(4)),
         None,
         None,
     )?;
     assert_node(
         &parts.nodes,
         4,
-        vb_core::CompiledNodeKind::Do {
-            action: vb_core::ActionId::new(1),
-            input: vb_core::SlotIdx::new(1),
+        vb_core::CompiledNodeKind::TogetherBranch {
+            branch: 1,
+            accumulator: vb_core::SlotIdx::new(2),
+            entry: vb_core::StepIdx::new(5),
+            join: vb_core::StepIdx::new(7),
         },
         Some(vb_core::SlotIdx::new(3)),
-        Some(vb_core::StepIdx::new(5)),
+        None,
         None,
         None,
     )?;
     assert_node(
         &parts.nodes,
         5,
-        vb_core::CompiledNodeKind::TogetherJoin {
-            branch_count: 2,
-            accumulator: vb_core::SlotIdx::new(2),
+        vb_core::CompiledNodeKind::Do {
+            action: vb_core::ActionId::new(1),
+            input: vb_core::SlotIdx::new(1),
         },
-        Some(vb_core::SlotIdx::new(3)),
+        Some(vb_core::SlotIdx::new(5)),
         Some(vb_core::StepIdx::new(6)),
         None,
         None,
@@ -435,6 +444,29 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
     assert_node(
         &parts.nodes,
         6,
+        vb_core::CompiledNodeKind::Copy {
+            source: vb_core::SlotIdx::new(5),
+        },
+        Some(vb_core::SlotIdx::new(3)),
+        Some(vb_core::StepIdx::new(7)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        7,
+        vb_core::CompiledNodeKind::TogetherJoin {
+            branch_count: 2,
+            accumulator: vb_core::SlotIdx::new(2),
+        },
+        Some(vb_core::SlotIdx::new(3)),
+        Some(vb_core::StepIdx::new(8)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        8,
         vb_core::CompiledNodeKind::Finish {
             result: vb_core::SlotIdx::new(0),
         },
@@ -503,6 +535,7 @@ fn assert_node(
         (None, Some(_)) => panic!("error_slot without handler is unrepresentable"),
     };
     let expected = vb_core::CompiledNode {
+        retry: None,
         id: vb_core::StepIdx::new(id),
         kind,
         output: output.into(),

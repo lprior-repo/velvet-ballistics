@@ -248,6 +248,15 @@ pub enum RuntimeJournalEvent {
         /// Monotonic timestamp in seconds since epoch.
         timestamp: u64,
     },
+    /// Complete failed-action state and exact durable retry timer authority.
+    RetryTimerScheduled {
+        /// Owning run.
+        run: RunId,
+        /// Failed action step.
+        step: StepIdx,
+        /// Exact versioned deadline and checkpoint payload.
+        timer: vb_storage::retry_timer::RetryTimerV1,
+    },
 }
 
 /// Builds the tenant admission receipt for a tenant-scoped admission.
@@ -296,9 +305,8 @@ impl RuntimeJournalEvent {
             | Self::ActionCompletedEnvelope { ticket, .. }
             | Self::ActionAbandoned { ticket } => ticket.run,
             Self::RunAdmission { admission } => admission.run_id(),
-            Self::CompatibilityDecision { run, .. }
-            | Self::TenantAdmission { run, .. } => *run,
-            Self::RetryCheckpoint { run, .. } => *run,
+            Self::CompatibilityDecision { run, .. } | Self::TenantAdmission { run, .. } => *run,
+            Self::RetryCheckpoint { run, .. } | Self::RetryTimerScheduled { run, .. } => *run,
         }
     }
 
@@ -311,6 +319,7 @@ impl RuntimeJournalEvent {
             Self::CompatibilityDecision { .. } => "CompatibilityDecision",
             Self::TenantAdmission { .. } => "TenantAdmission",
             Self::RetryCheckpoint { .. } => "RetryCheckpoint",
+            Self::RetryTimerScheduled { .. } => "RetryTimerScheduled",
             Self::RunFinished { .. } => "RunFinished",
             Self::RunFailed { .. } => "RunFailed",
             Self::RunCancelled { .. } => "RunCancelled",

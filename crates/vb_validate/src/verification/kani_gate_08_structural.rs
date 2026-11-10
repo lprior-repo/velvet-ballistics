@@ -1,9 +1,10 @@
 #![cfg(kani)]
 #![forbid(unsafe_code)]
 
-//! Structural Kani harnesses for Gate 8 accessor validation over full WorkflowParts.
+//! Additional Gate 8 harnesses retaining full WorkflowParts generation.
 //!
-//! These harnesses exercise the full WorkflowParts structurally via kani::Arbitrary:
+//! Canonical projection proofs live beneath the production gates module.
+//! These additional harnesses exercise the full WorkflowParts structurally via kani::Arbitrary:
 //! nodes (all CompiledNodeKind variants), expressions, constants, step_names,
 //! and resource_contract. Gate 8 only reads accessor paths against slot_count
 //! and symbols_count, but the harnesses prove that arbitrary WorkflowParts shapes
@@ -16,117 +17,6 @@
 use crate::{ValidationError, gates::validate_gate_08_accessor_path_segments};
 use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
 use vb_core::workflow::{AccessorProgram, CompiledNodeKind, PathSegment, WorkflowParts, node};
-
-/// Harness 1: Arbitrary WorkflowParts with bounded valid accessors always passes Gate 8.
-///
-/// Proves support totality over the full structural space.
-#[kani::proof]
-#[kani::unwind(5)]
-fn kani_gate_08_arbitrary_parts_valid_accessors_pass() {
-    let parts = arbitrary_parts_with_valid_accessors();
-
-    let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(result.is_ok(), "arbitrary valid accessors pass Gate 8");
-    std::mem::forget(parts);
-}
-
-fn arbitrary_parts_with_valid_accessors() -> WorkflowParts {
-    let mut parts: WorkflowParts = kani::any();
-    let slot_count: u16 = kani::any();
-    let symbols_count: u32 = kani::any();
-    let root: u16 = kani::any();
-    let symbol: u32 = kani::any();
-    let index: u32 = kani::any();
-
-    kani::assume(slot_count > 0);
-    kani::assume(slot_count <= 16);
-    kani::assume(symbols_count > 0);
-    kani::assume(symbols_count <= 64);
-    kani::assume(root < slot_count);
-    kani::assume(symbol < symbols_count);
-    kani::assume(index != u32::MAX);
-
-    parts.slot_count = slot_count;
-    parts.symbols_count = symbols_count;
-    parts.accessors = match kani::any::<u8>() {
-        0 => Box::new([]),
-        1 => Box::new([AccessorProgram {
-            root: SlotIdx::new(root),
-            path: Box::new([PathSegment::Field(SymbolId::new(symbol))]),
-        }]),
-        2 => Box::new([AccessorProgram {
-            root: SlotIdx::new(root),
-            path: Box::new([PathSegment::Index(index)]),
-        }]),
-        _ => Box::new([AccessorProgram {
-            root: SlotIdx::new(root),
-            path: Box::new([
-                PathSegment::Field(SymbolId::new(symbol)),
-                PathSegment::Index(index),
-            ]),
-        }]),
-    };
-
-    parts
-}
-
-/// Harness 2: Arbitrary WorkflowParts with root out of range is rejected.
-///
-/// Proves rejection totality over structural variants.
-#[kani::proof]
-#[kani::unwind(5)]
-fn kani_gate_08_arbitrary_parts_root_oob_rejected() {
-    let mut parts: WorkflowParts = kani::any();
-    kani::assume(parts.slot_count > 0);
-    kani::assume(parts.slot_count <= 8);
-
-    let root = SlotIdx::new(parts.slot_count); // exactly slot_count = OOB
-    parts.accessors = Box::new([AccessorProgram {
-        root,
-        path: Box::new([]),
-    }]);
-
-    let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(
-        matches!(result, Err(ValidationError::AccessorSlotOutOfRange { .. })),
-        "arbitrary parts with out-of-range root is rejected",
-    );
-    std::mem::forget(parts);
-}
-
-/// Harness 3: Arbitrary WorkflowParts with field symbol out of range is rejected.
-#[kani::proof]
-#[kani::unwind(5)]
-fn kani_gate_08_arbitrary_parts_symbol_oob_rejected() {
-    let mut parts: WorkflowParts = kani::any();
-    let root: u16 = kani::any();
-    let index: u32 = kani::any();
-
-    kani::assume(parts.slot_count > 0);
-    kani::assume(parts.slot_count <= 16);
-    kani::assume(parts.symbols_count > 0);
-    kani::assume(parts.symbols_count <= 64);
-    kani::assume(root < parts.slot_count);
-    kani::assume(index != u32::MAX);
-
-    parts.accessors = Box::new([AccessorProgram {
-        root: SlotIdx::new(root),
-        path: Box::new([
-            PathSegment::Index(index),
-            PathSegment::Field(SymbolId::new(parts.symbols_count)),
-        ]),
-    }]);
-
-    let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(
-        matches!(
-            result,
-            Err(ValidationError::AccessorSymbolOutOfBounds { .. })
-        ),
-        "arbitrary parts with OOB field symbol is rejected",
-    );
-    std::mem::forget(parts);
-}
 
 /// Harness 4: Arbitrary WorkflowParts with u32::MAX index sentinel is rejected.
 #[kani::proof]

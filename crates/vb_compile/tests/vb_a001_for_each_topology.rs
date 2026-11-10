@@ -160,40 +160,48 @@ fn vb_a001_body_setconst_next_points_to_foreachnext() -> Result<(), Box<dyn std:
 /// that a properly connected for_each passes validation.
 #[test]
 fn vb_a001_lower_steps_to_ir_accepts_connected_foreach() -> Result<(), Box<dyn std::error::Error>> {
+    let input = node(
+        StepIdx::ZERO,
+        CompiledNodeKind::BuildList {
+            items: Box::new([]),
+        },
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    );
     let foreach_start = node(
-        StepIdx::new(0),
+        StepIdx::new(1),
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
             limit: 2,
-            body: StepIdx::new(1),
-            done: StepIdx::new(3),
+            body: StepIdx::new(2),
+            done: StepIdx::new(4),
         },
         Some(SlotIdx::new(2)),
         None,
     );
 
-    // THE FIX: body SetConst next → ForEachNext (index 2)
+    // The body continues to ForEachNext after the explicit input seed.
     let body_set = lower_set(
-        StepIdx::new(1),
+        StepIdx::new(2),
         SlotIdx::new(1),
         ConstIdx::new(0),
-        Some(StepIdx::new(2)), // ← this is the vb-a001 fix
+        Some(StepIdx::new(3)),
     );
 
     let foreach_next = node(
-        StepIdx::new(2),
+        StepIdx::new(3),
         CompiledNodeKind::ForEachNext {
             iterator_slot: SlotIdx::new(2),
-            body: StepIdx::new(1),
-            done: StepIdx::new(3),
+            body: StepIdx::new(2),
+            done: StepIdx::new(4),
         },
         Some(SlotIdx::new(1)),
         None,
     );
 
     let finish = node(
-        StepIdx::new(3),
+        StepIdx::new(4),
         CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -201,8 +209,9 @@ fn vb_a001_lower_steps_to_ir_accepts_connected_foreach() -> Result<(), Box<dyn s
         None,
     );
 
+    let nodes = vec![input, foreach_start, body_set, foreach_next, finish];
     let result = lower_steps_to_ir(
-        vec![foreach_start, body_set, foreach_next, finish],
+        nodes.clone(),
         vec![],
         vec![],
         vec![vb_core::value::ConstValue::I64(1)],
@@ -212,11 +221,7 @@ fn vb_a001_lower_steps_to_ir_accepts_connected_foreach() -> Result<(), Box<dyn s
         WorkflowDigest::from_bytes([1; 32]),
     );
 
-    assert!(
-        result.is_ok(),
-        "for_each with body→ForEachNext chain must pass validation, got: {:?}",
-        result
-    );
+    assert_eq!(result?.to_parts().nodes.as_ref(), nodes.as_slice());
     Ok(())
 }
 
@@ -224,41 +229,48 @@ fn vb_a001_lower_steps_to_ir_accepts_connected_foreach() -> Result<(), Box<dyn s
 /// next edge (the vb-a001 bug condition).
 #[test]
 fn vb_a001_lower_steps_to_ir_rejects_disconnected_body() -> Result<(), Box<dyn std::error::Error>> {
-    // Node 0: ForEachStart with body→1, done→3
+    let input = node(
+        StepIdx::ZERO,
+        CompiledNodeKind::BuildList {
+            items: Box::new([]),
+        },
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    );
     let foreach_start = node(
-        StepIdx::new(0),
+        StepIdx::new(1),
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
             limit: 2,
-            body: StepIdx::new(1),
-            done: StepIdx::new(3),
+            body: StepIdx::new(2),
+            done: StepIdx::new(4),
         },
-        None,
+        Some(SlotIdx::new(2)),
         None,
     );
 
     // BUG: body SetConst next = None → unreachable nodes
     let body_set = lower_set(
-        StepIdx::new(1),
+        StepIdx::new(2),
         SlotIdx::new(1),
         ConstIdx::new(0),
         None, // ← missing next edge
     );
 
     let foreach_next = node(
-        StepIdx::new(2),
+        StepIdx::new(3),
         CompiledNodeKind::ForEachNext {
-            iterator_slot: SlotIdx::new(1),
-            body: StepIdx::new(1),
-            done: StepIdx::new(3),
+            iterator_slot: SlotIdx::new(2),
+            body: StepIdx::new(2),
+            done: StepIdx::new(4),
         },
-        None,
+        Some(SlotIdx::new(1)),
         None,
     );
 
     let finish = node(
-        StepIdx::new(3),
+        StepIdx::new(4),
         CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -267,19 +279,24 @@ fn vb_a001_lower_steps_to_ir_rejects_disconnected_body() -> Result<(), Box<dyn s
     );
 
     let result = lower_steps_to_ir(
-        vec![foreach_start, body_set, foreach_next, finish],
+        vec![input, foreach_start, body_set, foreach_next, finish],
         vec![],
         vec![],
         vec![vb_core::value::ConstValue::I64(1)],
-        2,
+        3,
         0,
         "vb-a001-disconnected",
         WorkflowDigest::from_bytes([2; 32]),
     );
 
-    assert!(
-        result.is_err(),
-        "for_each with disconnected body must be rejected by validation"
+    let errors = result.err().ok_or("disconnected body was accepted")?;
+    assert_eq!(
+        errors.0,
+        [vb_compile::CompileError::Workflow(
+            vb_core::WorkflowError::UnreachableNode {
+                step: StepIdx::new(3),
+            }
+        )]
     );
     Ok(())
 }

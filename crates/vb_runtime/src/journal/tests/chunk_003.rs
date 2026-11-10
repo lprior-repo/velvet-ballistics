@@ -77,7 +77,16 @@ fn runtime_shutdown_graceful_drains_owned_queued_journal() -> Result<(), String>
     let runtime = Runtime::new(shard_count, config, runtime_journal);
 
     let compiled = single_finish_workflow(workflow)?;
-    assert_eq!(runtime.submit_direct(run, compiled), Ok(()));
+    assert_eq!(
+        runtime.submit_direct_with_inputs_grants_and_contracts(
+            run,
+            compiled,
+            Box::from([(SlotIdx::ZERO, vb_core::SlotValue::I64(7))]),
+            vb_core::capability::CapabilitySet::empty(),
+            Box::from([])
+        ),
+        Ok(())
+    );
     assert!(matches!(
         queue.pending_profile_counts(),
         Ok(counts) if counts.journaled == 0 && counts.strict == 0
@@ -86,8 +95,7 @@ fn runtime_shutdown_graceful_drains_owned_queued_journal() -> Result<(), String>
     let mut runtime = runtime;
     assert_eq!(runtime.tick_all(), Ok(true));
     // The run header is already drained before acknowledgement; shutdown drains
-    // the post-admission execution evidence (including the retry checkpoint
-    // captured at the failure boundary of this uninitialized-result Finish step).
+    // the post-admission execution evidence from the initialized-result Finish step.
     assert!(matches!(
         queue.pending_profile_counts(),
         Ok(c) if c.journaled >= 2 && c.strict == 0
@@ -97,9 +105,12 @@ fn runtime_shutdown_graceful_drains_owned_queued_journal() -> Result<(), String>
         queue.pending_profile_counts(),
         Ok(counts) if counts.journaled == 0 && counts.strict == 0
     ));
-    // At minimum RunSubmitted + RunAdmission + failure evidence + RunFailed and a
-    // durable retry checkpoint are stored.
+    // RunSubmitted, RunAdmission, step evidence and terminal evidence are durable.
     assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() >= 5));
+    let events = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?;
+    assert!(events.iter().any(|event| matches!(event, JournalEvent::RunFinished { run: finished_run, result: SlotIdx::ZERO, attempt: 1, .. } if *finished_run == run)));
     Ok(())
 }
 

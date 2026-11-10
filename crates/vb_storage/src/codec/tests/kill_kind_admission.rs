@@ -426,8 +426,13 @@ fn is_known_record_kind_50_returns_true() {
 }
 
 #[test]
-fn is_known_record_kind_51_returns_false() {
-    assert!(!is_known_record_kind(51));
+fn is_known_record_kind_51_returns_true() {
+    assert!(is_known_record_kind(51));
+}
+
+#[test]
+fn is_known_record_kind_52_returns_false() {
+    assert!(!is_known_record_kind(52));
 }
 
 // =============================================================================
@@ -487,7 +492,8 @@ fn kind_28_does_not_affect_known_kinds_elsewhere() {
     // kinds 39 (RunAdmissionPinned) and 41 (RunAdmissionBoundPinned) are now admitted
     assert!(is_known_record_kind(39));
     assert!(is_known_record_kind(41));
-    // kind 49 is now TenantAdmission (§77.18); 51 stays the un-admitted sentinel.
+    // Kinds 49 and 51 are admitted; 52 is the first un-admitted kind.
     assert!(is_known_record_kind(49));
-    assert!(!is_known_record_kind(51));
+    assert!(is_known_record_kind(51));
+    assert!(!is_known_record_kind(52));
 }

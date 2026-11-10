@@ -18,7 +18,7 @@ mod tests {
 
     #[test]
     fn cat6_evidence_step_events() -> Result<(), String> {
-        let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1)?;
+        let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 1, &[0])?;
         let mut r = mkr(2, 1)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         let mut b = StepBudget::new(10);
@@ -41,6 +41,7 @@ mod tests {
             vec![setc(0, 0, 0, 1), fin(1, 0)],
             1,
             vec![ConstValue::I64(7)],
+            &[],
         )?;
         let mut r = mkr(2, 1)?;
         let mut b = StepBudget::new(10);
@@ -59,7 +60,11 @@ mod tests {
 
     #[test]
     fn collect_pagination_extra_single_authoritative_evidence_write() -> Result<(), String> {
-        let wf = mkwf(vec![collect_start(0, 0, 1, 1, 2), fin(1, 1), fin(2, 1)], 2)?;
+        let wf = mkwf(
+            vec![collect_start(0, 0, 1, 1, 2), fin(1, 1), fin(2, 1)],
+            2,
+            &[0],
+        )?;
         let mut run = mkr(3, 2)?;
         let mut store = ValueStore::new();
         let page = Box::from([SlotValue::I64(10), SlotValue::I64(20)]);
@@ -117,7 +122,7 @@ mod tests {
 
     #[test]
     fn cat7_multi_step_chain() -> Result<(), String> {
-        let wf = mkwf(vec![nop(0, 1), nop(1, 2), nop(2, 3), fin(3, 0)], 1)?;
+        let wf = mkwf(vec![nop(0, 1), nop(1, 2), nop(2, 3), fin(3, 0)], 1, &[0])?;
         let mut r = mkr(4, 1)?;
         ws(&mut r, 0, SlotValue::Bool(false))?;
         let mut b = StepBudget::new(10);

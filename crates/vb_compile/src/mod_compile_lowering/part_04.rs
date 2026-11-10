@@ -65,7 +65,7 @@ pub(super) fn lower_canonical_ask(
     next: Option<StepIdx>,
     scope: CanonicalScope<'_>,
     builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
+) -> Result<SlotIdx, CompileErrors> {
     let prompt = resolve_suspension_slot(prompt, index, "ask.prompt", scope)?;
     let timeout = resolve_optional_suspension_slot(timeout, index, "ask.timeout", scope)?;
     builder.record_slot(prompt);
@@ -90,7 +90,7 @@ pub(super) fn lower_canonical_ask(
     for node in nodes {
         builder.push_node(node);
     }
-    Ok(())
+    Ok(answer)
 }
 
 #[cfg(test)]

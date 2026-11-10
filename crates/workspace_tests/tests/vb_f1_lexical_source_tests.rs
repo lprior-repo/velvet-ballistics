@@ -203,9 +203,43 @@ fn unknown_var_is_not_a_numeric_slot_error() -> Result<(), String> {
 
 #[test]
 fn non_scalar_vars_are_not_faked_as_counts() -> Result<(), String> {
-    rejects(&scalar_source("vars: {text: hello}\n", "1"), |e| {
-        matches!(e, CompileError::UnsupportedConstantValue { step: 0 })
-    })
+    execute(
+        &scalar_source("vars: {text: hello}\n", "1"),
+        None,
+        SlotValue::I64(1),
+    )?;
+    let source = scalar_source("vars: {text: hello}\n", "$vars.text");
+    let workflow = compile(&source)?;
+    let mut frame = new_run_frame(RunId::new(1), &workflow).map_err(|error| error.to_string())?;
+    let mut store = ValueStore::new();
+    vb_core::workflow::source_metadata::seed_source_symbols(
+        workflow
+            .source_metadata()
+            .ok_or("source metadata missing")?,
+        &mut store,
+    )
+    .map_err(|error| error.to_string())?;
+    let signal = drive_deterministic_full(
+        &workflow,
+        &mut frame,
+        &mut StepBudget::new(128),
+        &mut store,
+        &[],
+        RetryPolicy::NEVER,
+        &mut EvidenceCollector::new(),
+        &mut CollectStates::new(),
+        &CapabilitySet::empty(),
+        1,
+    )
+    .map_err(|error| error.to_string())?;
+    let RuntimeSignal::Finished(SlotValue::Symbol(symbol)) = signal else {
+        return Err(format!("expected text, got {signal:?}"));
+    };
+    assert_eq!(
+        store.symbol(symbol).map_err(|error| error.to_string())?,
+        "hello"
+    );
+    Ok(())
 }
 
 fn choose_source(condition: &str, body: &str, finish: &str) -> String {
@@ -311,13 +345,32 @@ fn branch_bool_arithmetic_is_type_checked() -> Result<(), String> {
 }
 
 #[test]
-fn ignored_body_controls_remain_rejected() -> Result<(), String> {
+fn guarded_body_control_executes_without_writing_skipped_output() -> Result<(), String> {
     let body = "            - id: local\n              if: 'false'\n              set: {output: value, value: '1'}\n";
-    rejects(&choose_source("true", body, "$n"), |e| {
-        matches!(e,
-            CompileError::UnsupportedStepControlField { field, .. } if field.as_ref() == "if"
-        )
-    })
+    let (workflow, frame) = execute(
+        &choose_source("true", body, "$n"),
+        Some(SlotValue::I64(40)),
+        SlotValue::I64(40),
+    )?;
+    let local = workflow
+        .to_parts()
+        .nodes
+        .iter()
+        .find_map(|node| match node.kind {
+            CompiledNodeKind::SetConst { value }
+                if workflow.to_parts().constants.get(value.as_usize())
+                    == Some(&vb_core::ConstValue::I64(1)) =>
+            {
+                node.output.slot()
+            }
+            _ => None,
+        })
+        .ok_or("missing guarded output")?;
+    assert_eq!(
+        frame.read_slot(local),
+        Err(vb_core::CoreError::SlotUninitialized { slot: local })
+    );
+    Ok(())
 }
 
 fn action_contract(id: vb_core::ActionId) -> Result<vb_core::action::ActionContract, String> {

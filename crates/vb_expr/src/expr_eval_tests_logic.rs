@@ -1,46 +1,22 @@
     // ===== Edge-case tests added for comprehensive coverage =====
 
-    /// Edge case: F64 values are rejected by integer arithmetic (type mismatch).
-    ///
-    /// The expression evaluator only supports I64 arithmetic. Supplying an F64
-    /// value to an Add operation must produce TypeMismatch, not a panic or
-    /// silent coercion.
     #[test]
-    fn edge_f64_rejected_by_integer_addition() -> ExprResult<()> {
-        let f64_val = vb_core::value::FiniteF64::new(3.14).map_err(|_| ExprError::UnexpectedEof)?;
-        let result = eval_binary_op(BinaryOp::Add, SlotValue::F64(f64_val), SlotValue::I64(1));
-        let Err(ExprError::TypeMismatch { expected, found }) = result else {
-            return Err(ExprError::UnexpectedToken {
-                token: "expected TypeMismatch for F64 + I64".into(),
-            });
-        };
-        assert_eq!(expected, "number");
-        assert_eq!(found, "number");
+    fn edge_f64_addition_promotes_integer() -> ExprResult<()> {
+        let float = vb_core::value::FiniteF64::new(3.14)?;
+        let result = eval_binary_op(BinaryOp::Add, SlotValue::F64(float), SlotValue::I64(1))?;
+        assert_eq!(result, SlotValue::F64(vb_core::value::FiniteF64::new(4.140000000000001)?));
+        assert_eq!(eval_binary_op(BinaryOp::Add, SlotValue::I64(1), SlotValue::F64(float))?, result);
         Ok(())
     }
 
-    /// Edge case: F64 values rejected by comparison operators (type mismatch).
-    ///
-    /// Comparison operators expect I64 operands. Supplying F64 must fail.
     #[test]
-    fn edge_f64_rejected_by_comparison() -> ExprResult<()> {
-        let f64_val = vb_core::value::FiniteF64::new(1.0).map_err(|_| ExprError::UnexpectedEof)?;
-        let result = eval_binary_op(BinaryOp::Lt, SlotValue::F64(f64_val), SlotValue::I64(2));
-        let Err(ExprError::TypeMismatch { expected, found }) = result else {
-            return Err(ExprError::UnexpectedToken {
-                token: "expected TypeMismatch for F64 < I64".into(),
-            });
-        };
-        assert_eq!(expected, "number");
-        assert_eq!(found, "number");
+    fn edge_f64_comparison_promotes_integer() -> ExprResult<()> {
+        let float = vb_core::value::FiniteF64::new(1.0)?;
+        assert_eq!(eval_binary_op(BinaryOp::Lt, SlotValue::F64(float), SlotValue::I64(2))?, SlotValue::Bool(true));
+        assert_eq!(eval_binary_op(BinaryOp::Gt, SlotValue::I64(2), SlotValue::F64(float))?, SlotValue::Bool(true));
         Ok(())
     }
 
-    /// Edge case: Parenthesized groups override operator precedence.
-    ///
-    /// `(1 + 2) * (3 + 4)` should evaluate to `3 * 7 = 21`, not `1 + (2 * 3) + 4`.
-    /// This tests that parentheses correctly override the default precedence
-    /// where multiplication binds tighter than addition.
     #[test]
     fn edge_parenthesized_groups_override_precedence() -> ExprResult<()> {
         let tokens = crate::lexer::lex_expr("(1 + 2) * (3 + 4)")?;
@@ -502,19 +478,9 @@
     }
 
     #[test]
-    fn eval_binary_op_f64_rejects_type_mismatch_with_i64_in_add() -> ExprResult<()> {
-        let result = eval_binary_op(
-            BinaryOp::Add,
-            SlotValue::F64(make_f64(1.0)),
-            SlotValue::I64(2),
-        );
-        let Err(ExprError::TypeMismatch { expected, found }) = result else {
-            return Err(ExprError::UnexpectedToken {
-                token: "expected TypeMismatch for F64 + I64".into(),
-            });
-        };
-        assert_eq!(expected, "number");
-        assert_eq!(found, "number");
+    fn eval_binary_op_f64_promotes_i64_in_add() -> ExprResult<()> {
+        assert_eq!(eval_binary_op(BinaryOp::Add, SlotValue::F64(make_f64(1.0)), SlotValue::I64(2))?, SlotValue::F64(make_f64(3.0)));
+        assert_eq!(eval_binary_op(BinaryOp::Add, SlotValue::I64(2), SlotValue::F64(make_f64(1.0)))?, SlotValue::F64(make_f64(3.0)));
         Ok(())
     }
 
@@ -531,7 +497,7 @@
             });
         };
         assert_eq!(expected, "number");
-        assert_eq!(found, "number");
+        assert_eq!(found, "boolean");
         Ok(())
     }
 
@@ -548,7 +514,7 @@
             });
         };
         assert_eq!(expected, "number");
-        assert_eq!(found, "number");
+        assert_eq!(found, "null");
         Ok(())
     }
 

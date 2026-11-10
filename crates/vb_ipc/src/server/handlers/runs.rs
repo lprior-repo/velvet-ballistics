@@ -74,6 +74,7 @@ pub fn submit_resolved_workflow(
     };
     let result = match command {
         IpcCommand::SubmitRun | IpcCommand::SubmitRunInline => {
+            resolver.prepare_runtime(runtime, &workflow);
             runtime.submit_compiled_with_inputs(submit.run_id, workflow, inputs)
         }
         _ => return IpcResponse::CommandPayloadMismatch,
@@ -117,9 +118,22 @@ fn map_submit_inputs(
         .try_reserve_exact(declarations.len())
         .map_err(|_| invalid())?;
     for (position, declaration) in declarations.iter().enumerate() {
+        // Synthetic secret roots belong to the host and are seeded by Runtime.
+        if values.get(position).is_none()
+            && workflow.source_metadata().is_some_and(|metadata| {
+                metadata
+                    .secret_requirements()
+                    .iter()
+                    .any(|binding| binding.slot() == Some(declaration.slot))
+            })
+        {
+            continue;
+        }
         let value = if let Some(value) = values.get(position) {
             Some(*value)
-        } else if declaration.constraint.requires_value() {
+        } else if declaration.constraint.requires_value()
+            || declaration.constraint.default_cold.is_some()
+        {
             return Err(invalid());
         } else {
             declaration.constraint.default_value
@@ -127,13 +141,8 @@ fn map_submit_inputs(
         let Some(value) = value else {
             continue;
         };
-        vb_core::input_validation::validate_input_value(
-            declaration,
-            value,
-            workflow.symbols_count(),
-            None,
-        )
-        .map_err(|_| invalid())?;
+        vb_core::input_validation::validate_scalar_input_value(declaration, value, workflow)
+            .map_err(|_| invalid())?;
         mapped.push((declaration.slot, value));
     }
     Ok(mapped.into_boxed_slice())

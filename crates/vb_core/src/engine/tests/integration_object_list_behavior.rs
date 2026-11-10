@@ -625,6 +625,7 @@ fn list_dedup_empty_does_not_panic() -> Result<(), String> {
 fn set_const_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::<str>::from("set_const_test"),
         digest: WorkflowDigest::from_bytes([0xAA; 32]),
         nodes: vec![
@@ -682,6 +683,7 @@ fn set_const_bool_writes_bool_and_finishes() -> Result<(), String> {
 fn copy_slot_taint_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::<str>::from("copy_slot_test"),
         digest: WorkflowDigest::from_bytes([0xBB; 32]),
         nodes: vec![
@@ -788,6 +790,7 @@ fn node_kind_detects_nop() {
 fn three_node_chain_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::<str>::from("chain_test"),
         digest: WorkflowDigest::from_bytes([0xCC; 32]),
         nodes: vec![
@@ -869,6 +872,7 @@ fn workflow_children_reachable_via_next_pointers() -> Result<(), String> {
 fn missing_output_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::<str>::from("missing_output"),
         digest: WorkflowDigest::from_bytes([0xDD; 32]),
         nodes: vec![crate::workflow::node(StepIdx::new(0), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, None, Some(StepIdx::new(1)))]
@@ -899,6 +903,7 @@ fn error_on_missing_output_returns_missing_output_slot() -> Result<(), String> {
 fn const_oob_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::<str>::from("const_oob"),
         digest: WorkflowDigest::from_bytes([0xEE; 32]),
         nodes: vec![crate::workflow::node(StepIdx::new(0), CompiledNodeKind::SetConst { value: ConstIdx::new(5), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1)))]

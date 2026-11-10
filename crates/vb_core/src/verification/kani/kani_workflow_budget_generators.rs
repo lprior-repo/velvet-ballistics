@@ -193,6 +193,7 @@ fn entry_for_nodes(nodes: &BudgetNodes) -> StepIdx {
 
 fn budget_node(position: u16, node_count: usize) -> CompiledNode {
     CompiledNode {
+        retry: None,
         id: StepIdx::new(position),
         output: NodeOutput::from(maybe_slot()),
         routing: NodeRouting {

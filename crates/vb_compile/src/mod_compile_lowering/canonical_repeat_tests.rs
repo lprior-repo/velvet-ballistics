@@ -49,7 +49,7 @@ fn flat_repeat_layout_uses_actual_width_and_private_outputs() -> Result<(), Stri
     for attempts in [1, 3] {
         let workflow = compile(&source("", TWO_SETS, "answer", attempts))?;
         let parts = workflow.to_parts();
-        assert_eq!(parts.nodes.len(), 7);
+        assert_eq!(parts.nodes.len(), 8);
         for (index, node) in parts.nodes.iter().enumerate() {
             assert_eq!(node.id.as_usize(), index);
         }
@@ -57,16 +57,17 @@ fn flat_repeat_layout_uses_actual_width_and_private_outputs() -> Result<(), Stri
         let first = output(&workflow, 2)?;
         let last = output(&workflow, 3)?;
         let parent = output(&workflow, 0)?;
+        let result = output(&workflow, 4)?;
         assert_eq!(
-            std::collections::HashSet::from([parent, counter, first, last]).len(),
-            4
+            std::collections::HashSet::from([parent, counter, first, last, result]).len(),
+            5
         );
         assert_eq!(
             node(&workflow, 1)?.kind,
             CompiledNodeKind::RepeatStart {
                 max_attempts: attempts,
                 body: StepIdx::new(2),
-                done: StepIdx::new(5),
+                done: StepIdx::new(6),
             }
         );
         assert_eq!(
@@ -77,29 +78,37 @@ fn flat_repeat_layout_uses_actual_width_and_private_outputs() -> Result<(), Stri
             node(&workflow, 3)?.routing.next,
             NodeContinuation::Step(StepIdx::new(4))
         );
-        assert_eq!(node(&workflow, 4)?.output, NodeOutput::Slot(counter));
+        assert_eq!(
+            node(&workflow, 4)?.kind,
+            CompiledNodeKind::Copy { source: last }
+        );
         assert_eq!(
             node(&workflow, 4)?.routing.next,
+            NodeContinuation::Step(StepIdx::new(5))
+        );
+        assert_eq!(node(&workflow, 5)?.output, NodeOutput::Slot(counter));
+        assert_eq!(
+            node(&workflow, 5)?.routing.next,
             NodeContinuation::Step(StepIdx::new(2))
         );
         assert_eq!(
-            node(&workflow, 4)?.kind,
+            node(&workflow, 5)?.kind,
             CompiledNodeKind::RepeatCheck {
                 attempt_slot: counter,
-                done: StepIdx::new(5),
+                done: StepIdx::new(6),
             }
         );
         assert_eq!(
-            node(&workflow, 5)?.kind,
-            CompiledNodeKind::RepeatFinish { result: last }
-        );
-        assert_eq!(node(&workflow, 5)?.output, NodeOutput::Slot(last));
-        assert_eq!(
-            node(&workflow, 5)?.routing.next,
-            NodeContinuation::Step(StepIdx::new(6))
-        );
-        assert_eq!(
             node(&workflow, 6)?.kind,
+            CompiledNodeKind::RepeatFinish { result }
+        );
+        assert_eq!(node(&workflow, 6)?.output, NodeOutput::Slot(result));
+        assert_eq!(
+            node(&workflow, 6)?.routing.next,
+            NodeContinuation::Step(StepIdx::new(7))
+        );
+        assert_eq!(
+            node(&workflow, 7)?.kind,
             CompiledNodeKind::Finish { result: parent }
         );
     }
@@ -115,7 +124,7 @@ fn repeat_expressions_bind_input_vars_and_prior_local_step() -> Result<(), Strin
         "answer",
         3,
     ))?;
-    assert_eq!(workflow.to_parts().nodes.len(), 8);
+    assert_eq!(workflow.to_parts().nodes.len(), 9);
     assert_eq!(workflow.input_slots().len(), 1);
     let input = workflow
         .input_slots()
@@ -166,7 +175,7 @@ fn assert_add_one(workflow: &CompiledWorkflow, id: u16, slot: SlotIdx) -> Result
 fn repeat_do_reads_prior_local_and_feeds_following_expression() -> Result<(), String> {
     let body = "        - id: body_first\n          set: {output: inside, value: '7'}\n        - id: invoke\n          do: {action: '7', input: '$step.body_first'}\n        - id: body_second\n          set: {output: final_value, value: '$step.invoke + 1'}\n";
     let workflow = compile(&source("", body, "answer", 3))?;
-    assert_eq!(workflow.to_parts().nodes.len(), 8);
+    assert_eq!(workflow.to_parts().nodes.len(), 9);
     let first = output(&workflow, 2)?;
     let action_output = output(&workflow, 3)?;
     assert_eq!(
@@ -218,24 +227,65 @@ fn repeat_known_boolean_arithmetic_is_rejected() -> Result<(), String> {
 }
 
 #[test]
-fn repeat_body_controls_remain_unsupported() -> Result<(), String> {
-    let body = "        - id: body_first\n          if: 'false'\n          set: {output: inside, value: '7'}\n";
-    rejects(&source("", body, "answer", 3), |e| {
-        matches!(e,
-        CompileError::UnsupportedStepControlField { field, .. } if field.as_ref() == "if")
-    })
+fn repeat_body_guard_lowers_to_boolean_branch() -> Result<(), String> {
+    let body = "        - id: body_first\n          if: 'false'\n          set: {output: inside, value: '7'}\n        - id: body_final\n          set: {output: final_value, value: '9'}\n";
+    let workflow = compile(&source("", body, "answer", 3))?;
+    let CompiledNodeKind::Choose {
+        branches,
+        otherwise,
+    } = &node(&workflow, 2)?.kind
+    else {
+        return Err("guard did not lower to Choose".to_owned());
+    };
+    assert_eq!(branches.len(), 1);
+    assert_eq!(
+        branches.first().ok_or("guard branch")?.target,
+        StepIdx::new(3)
+    );
+    assert_eq!(*otherwise, Some(StepIdx::new(4)));
+    assert!(matches!(
+        node(&workflow, 3)?.kind,
+        CompiledNodeKind::SetConst { .. }
+    ));
+    assert_eq!(
+        node(&workflow, 3)?.routing.next,
+        NodeContinuation::Step(StepIdx::new(4))
+    );
+    let final_value = output(&workflow, 4)?;
+    assert!(
+        matches!(node(&workflow, 4)?.kind, CompiledNodeKind::SetConst { value } if workflow.constant(value) == Some(&ConstValue::I64(9)))
+    );
+    assert_eq!(
+        node(&workflow, 5)?.kind,
+        CompiledNodeKind::Copy {
+            source: final_value
+        }
+    );
+    assert_eq!(
+        node(&workflow, 7)?.kind,
+        CompiledNodeKind::RepeatFinish {
+            result: output(&workflow, 5)?
+        }
+    );
+    Ok(())
 }
 
 #[test]
-fn nested_repeat_activation_remains_unsupported() -> Result<(), String> {
+fn nested_repeat_has_separate_validated_regions() -> Result<(), String> {
     let body = "        - id: inner\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: inner_value\n                set: {output: inside, value: '7'}\n";
-    rejects(&source("", body, "answer", 3), |e| {
-        matches!(
-            e,
-            CompileError::UnsupportedStepPrimitive {
-                primitive: "repeat",
-                ..
-            }
-        )
-    })
+    let workflow = compile(&source("", body, "answer", 3))?;
+    let parts = workflow.to_parts();
+    let controls: Vec<_> = parts
+        .nodes
+        .iter()
+        .filter(|node| matches!(node.kind, CompiledNodeKind::RepeatCheck { .. }))
+        .collect();
+    assert_eq!(controls.len(), 2);
+    for control in controls {
+        let region = workflow
+            .loop_region(control.id)
+            .ok_or("missing loop region")?;
+        assert_eq!(region.control(), control.id);
+    }
+    Ok(())
 }

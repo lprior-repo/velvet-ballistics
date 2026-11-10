@@ -132,6 +132,7 @@ fn compile_canonical_expression_with_binding(
         .map_err(|e| CompileErrors(vec![e]))?;
     let inferred = infer_canonical_expr_type(&parsed, scope.slot_types, &resolver)
         .map_err(|e| CompileErrors(vec![e]))?;
+    let mut resolver = resolver.with_payloads(&mut builder.symbols, &mut builder.accessors);
     let program =
         compile_expr_to_bytecode_with_resolver(&parsed, &mut builder.constants, &mut resolver)
             .map_err(|e| CompileErrors(vec![e]))?;

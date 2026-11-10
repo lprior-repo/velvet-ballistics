@@ -9,6 +9,12 @@ use vb_core::{ActionId, HasSymbolicCode, SideEffect, SymbolicCode, WorkflowError
 #[derive(Debug, PartialEq, Eq)]
 pub struct CompileErrors(pub Vec<CompileError>);
 
+impl From<CompileError> for CompileErrors {
+    fn from(error: CompileError) -> Self {
+        Self(vec![error])
+    }
+}
+
 impl CompileErrors {
     /// Returns the first error, or None if empty (should not happen by construction).
     #[must_use]

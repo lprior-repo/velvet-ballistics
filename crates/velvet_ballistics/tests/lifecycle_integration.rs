@@ -51,6 +51,7 @@ fn finished_workflow() -> CompiledWorkflow {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("finished"),
         digest: WorkflowDigest::from_bytes([2u8; 32]),
         nodes: Box::from([set_const, finish]),

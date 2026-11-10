@@ -155,6 +155,7 @@ fn prod_methods_drift_check() {
     let constant = production_inner::ConstIdx::new(0);
     let reduce_slot = production_inner::SlotIdx::new(0);
     let _kind = production_inner::CompiledNodeKind::ReduceStart {
+        limit: 65_535,
         input: reduce_slot,
         accumulator: reduce_slot,
         initial: constant,
@@ -174,6 +175,7 @@ fn prod_methods_drift_check() {
     // NodeOutput / NodeContinuation / ErrorRouting mirrors.
     let node_slot = production_inner::SlotIdx::new(0);
     let _node = production_inner::CompiledNode {
+        retry: None,
         id: entry,
         output: production_inner::NodeOutput::Slot(node_slot),
         routing: production_inner::NodeRouting {
@@ -186,6 +188,7 @@ fn prod_methods_drift_check() {
         kind: production_inner::CompiledNodeKind::Nop,
     };
     let _node = production_inner::CompiledNode {
+        retry: None,
         id: entry,
         output: production_inner::NodeOutput::Discard,
         routing: production_inner::NodeRouting {

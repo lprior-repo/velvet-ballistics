@@ -24,17 +24,24 @@ use crate::limits::{
     MAX_STEPS_PER_WORKFLOW,
 };
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ContractResource, ErrorRouting,
-    NodeContinuation, NodeOutput, NodeRouting, ResourceContract, WorkflowError, WorkflowParts,
+    CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+    ContractResource, ErrorRouting, InputSlotKind, NodeContinuation, NodeOutput, NodeRouting,
+    ResourceContract, WorkflowError, WorkflowParts,
 };
 
 fn valid_parts() -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([CompiledInputSlot {
+            slot: SlotIdx::new(0),
+            kind: InputSlotKind::Any,
+            constraint: CompiledInputConstraint::required(),
+        }]),
         name: Box::<str>::from("test"),
         digest: WorkflowDigest::from_bytes([0x00; 32]),
         nodes: vec![CompiledNode {
+            retry: None,
             id: StepIdx::new(0),
             output: NodeOutput::Discard,
             routing: NodeRouting {
