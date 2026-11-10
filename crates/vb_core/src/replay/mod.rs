@@ -14,6 +14,7 @@ use crate::workflow::CompiledWorkflow;
 
 pub mod choose;
 pub mod expr_stack;
+pub mod helpers;
 pub mod ops;
 pub mod step;
 

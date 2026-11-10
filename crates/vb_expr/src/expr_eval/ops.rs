@@ -1,10 +1,13 @@
 #![forbid(unsafe_code)]
 //! Scalar expression operator evaluation.
 
-use super::environment::{expect_bool, expect_i64};
+use core::cmp::Ordering;
+
+use super::environment::expect_bool;
 use crate::lexer::{BinaryOp, UnaryOp};
 use crate::{ExprError, ExprResult};
 use vb_core::SlotValue;
+use vb_core::numeric::{self, NumericError};
 
 /// Evaluates one binary operation over two already-popped values.
 pub fn eval_binary_op(op: BinaryOp, left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
@@ -13,14 +16,26 @@ pub fn eval_binary_op(op: BinaryOp, left: SlotValue, right: SlotValue) -> ExprRe
         BinaryOp::Or => eval_or_op(left, right),
         BinaryOp::Eq => Ok(SlotValue::Bool(left == right)),
         BinaryOp::NotEq => Ok(SlotValue::Bool(left != right)),
-        BinaryOp::Add => eval_add_op(left, right),
-        BinaryOp::Sub => eval_sub_op(left, right),
-        BinaryOp::Mul => eval_mul_op(left, right),
-        BinaryOp::Div => eval_div_op(left, right),
-        BinaryOp::Gt => eval_gt_op(left, right),
-        BinaryOp::Gte => eval_gte_op(left, right),
-        BinaryOp::Lt => eval_lt_op(left, right),
-        BinaryOp::Lte => eval_lte_op(left, right),
+        BinaryOp::Add => numeric::add(left, right).map_err(map_numeric),
+        BinaryOp::Sub => numeric::sub(left, right).map_err(map_numeric),
+        BinaryOp::Mul => numeric::mul(left, right).map_err(map_numeric),
+        BinaryOp::Div => numeric::div(left, right).map_err(map_numeric),
+        BinaryOp::Gt => eval_cmp_op(left, right, is_greater),
+        BinaryOp::Gte => eval_cmp_op(left, right, is_greater_or_equal),
+        BinaryOp::Lt => eval_cmp_op(left, right, is_less),
+        BinaryOp::Lte => eval_cmp_op(left, right, is_less_or_equal),
+    }
+}
+
+fn map_numeric(error: NumericError) -> ExprError {
+    match error {
+        NumericError::NotNumeric { found } => ExprError::TypeMismatch {
+            expected: "number".into(),
+            found: found.into(),
+        },
+        NumericError::Overflow => ExprError::IntegerOverflow,
+        NumericError::DivisionByZero => ExprError::DivisionByZero,
+        NumericError::NonFinite => ExprError::NonFiniteFloat,
     }
 }
 
@@ -36,128 +51,29 @@ fn eval_or_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
     Ok(SlotValue::Bool(left_bool || right_bool))
 }
 
-fn eval_add_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
-    match (left, right) {
-        (SlotValue::F64(l), SlotValue::F64(r)) => {
-            let finite = vb_core::value::FiniteF64::new(l.get() + r.get())?;
-            Ok(SlotValue::F64(finite))
-        }
-        (SlotValue::I64(l), SlotValue::I64(r)) => eval_i64_values_(l, r, i64::checked_add),
-        (other_left, other_right) => eval_i64_values_(
-            expect_i64(other_left)?,
-            expect_i64(other_right)?,
-            i64::checked_add,
-        ),
-    }
-}
-
-fn eval_sub_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
-    match (left, right) {
-        (SlotValue::F64(l), SlotValue::F64(r)) => {
-            let finite = vb_core::value::FiniteF64::new(l.get() - r.get())?;
-            Ok(SlotValue::F64(finite))
-        }
-        (SlotValue::I64(l), SlotValue::I64(r)) => eval_i64_values_(l, r, i64::checked_sub),
-        (other_left, other_right) => eval_i64_values_(
-            expect_i64(other_left)?,
-            expect_i64(other_right)?,
-            i64::checked_sub,
-        ),
-    }
-}
-
-fn eval_mul_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
-    match (left, right) {
-        (SlotValue::F64(l), SlotValue::F64(r)) => {
-            let finite = vb_core::value::FiniteF64::new(l.get() * r.get())?;
-            Ok(SlotValue::F64(finite))
-        }
-        (SlotValue::I64(l), SlotValue::I64(r)) => eval_i64_values_(l, r, i64::checked_mul),
-        (other_left, other_right) => eval_i64_values_(
-            expect_i64(other_left)?,
-            expect_i64(other_right)?,
-            i64::checked_mul,
-        ),
-    }
-}
-
-fn eval_div_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
-    match (left, right) {
-        (SlotValue::F64(l), SlotValue::F64(r)) => {
-            let finite = vb_core::value::FiniteF64::new(l.get() / r.get())
-                .map_err(|_| ExprError::NonFiniteFloat)?;
-            Ok(SlotValue::F64(finite))
-        }
-        (SlotValue::I64(l), SlotValue::I64(r)) => eval_div_values_(l, r),
-        (other_left, other_right) => {
-            eval_div_values_(expect_i64(other_left)?, expect_i64(other_right)?)
-        }
-    }
-}
-
-fn eval_gt_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
-    match (left, right) {
-        (SlotValue::F64(l), SlotValue::F64(r)) => Ok(SlotValue::Bool(l.get() > r.get())),
-        (SlotValue::I64(l), SlotValue::I64(r)) => eval_i64_cmp_values_(l, r, i64::gt),
-        (other_left, other_right) => {
-            eval_i64_cmp_values_(expect_i64(other_left)?, expect_i64(other_right)?, i64::gt)
-        }
-    }
-}
-
-fn eval_gte_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
-    match (left, right) {
-        (SlotValue::F64(l), SlotValue::F64(r)) => Ok(SlotValue::Bool(l.get() >= r.get())),
-        (SlotValue::I64(l), SlotValue::I64(r)) => eval_i64_cmp_values_(l, r, i64::ge),
-        (other_left, other_right) => {
-            eval_i64_cmp_values_(expect_i64(other_left)?, expect_i64(other_right)?, i64::ge)
-        }
-    }
-}
-
-fn eval_lt_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
-    match (left, right) {
-        (SlotValue::F64(l), SlotValue::F64(r)) => Ok(SlotValue::Bool(l.get() < r.get())),
-        (SlotValue::I64(l), SlotValue::I64(r)) => eval_i64_cmp_values_(l, r, i64::lt),
-        (other_left, other_right) => {
-            eval_i64_cmp_values_(expect_i64(other_left)?, expect_i64(other_right)?, i64::lt)
-        }
-    }
-}
-
-fn eval_lte_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
-    match (left, right) {
-        (SlotValue::F64(l), SlotValue::F64(r)) => Ok(SlotValue::Bool(l.get() <= r.get())),
-        (SlotValue::I64(l), SlotValue::I64(r)) => eval_i64_cmp_values_(l, r, i64::le),
-        (other_left, other_right) => {
-            eval_i64_cmp_values_(expect_i64(other_left)?, expect_i64(other_right)?, i64::le)
-        }
-    }
-}
-
-fn eval_i64_values_(
-    left: i64,
-    right: i64,
-    op: fn(i64, i64) -> Option<i64>,
+fn eval_cmp_op(
+    left: SlotValue,
+    right: SlotValue,
+    accept: fn(Ordering) -> bool,
 ) -> ExprResult<SlotValue> {
-    let value = op(left, right).ok_or(ExprError::IntegerOverflow)?;
-    Ok(SlotValue::I64(value))
+    let ordering = numeric::compare(left, right).map_err(map_numeric)?;
+    Ok(SlotValue::Bool(accept(ordering)))
 }
 
-fn eval_div_values_(left: i64, right: i64) -> ExprResult<SlotValue> {
-    if right == 0 {
-        return Err(ExprError::DivisionByZero);
-    }
-    let value = left.checked_div(right).ok_or(ExprError::IntegerOverflow)?;
-    Ok(SlotValue::I64(value))
+fn is_greater(ordering: Ordering) -> bool {
+    ordering == Ordering::Greater
 }
 
-fn eval_i64_cmp_values_(
-    left: i64,
-    right: i64,
-    op: fn(&i64, &i64) -> bool,
-) -> ExprResult<SlotValue> {
-    Ok(SlotValue::Bool(op(&left, &right)))
+fn is_greater_or_equal(ordering: Ordering) -> bool {
+    matches!(ordering, Ordering::Greater | Ordering::Equal)
+}
+
+fn is_less(ordering: Ordering) -> bool {
+    ordering == Ordering::Less
+}
+
+fn is_less_or_equal(ordering: Ordering) -> bool {
+    matches!(ordering, Ordering::Less | Ordering::Equal)
 }
 
 /// Evaluates one unary operation over an already-popped value.
