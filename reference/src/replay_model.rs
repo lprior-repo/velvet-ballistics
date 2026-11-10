@@ -3,10 +3,10 @@
 //! This is the canonical reference implementation for journal replay.
 //! Use this to verify replay correctness.
 
-use vb_core::journal::JournalEvent;
-use vb_core::run::RunId;
+use vb_core::{RunId, StepIdx};
+use vb_storage::JournalEvent;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReplayPhase {
     Replay,
     Live,
@@ -47,6 +47,7 @@ impl ReplayState {
     }
 }
 
+#[derive(Default)]
 pub struct ReplayModel;
 
 impl ReplayModel {
@@ -61,27 +62,28 @@ impl ReplayModel {
         let mut errors = Vec::new();
 
         for event in events {
-            if let JournalEvent::ActionScheduled { run, .. } = event {
-                if run != &run_id {
-                    errors.push(ReplayError::WrongRun {
-                        expected: run_id,
-                        got: *run,
-                    });
-                }
+            if let JournalEvent::ActionScheduled { run, .. } = event
+                && run != &run_id
+            {
+                errors.push(ReplayError::WrongRun {
+                    expected: run_id,
+                    got: *run,
+                });
             }
         }
 
         errors
     }
 
-    pub fn check_no_duplicate_non_idempotent(
-        events: &[JournalEvent],
-    ) -> Vec<ReplayError> {
+    pub fn check_no_duplicate_non_idempotent(events: &[JournalEvent]) -> Vec<ReplayError> {
         let mut errors = Vec::new();
-        let mut seen_actions: Vec<(RunId, usize, u32)> = Vec::new();
+        let mut seen_actions: Vec<(RunId, StepIdx, u16)> = Vec::new();
 
         for event in events {
-            if let JournalEvent::ActionCompleted { run, step, attempt, .. } = event {
+            if let JournalEvent::ActionCompletedEvent {
+                run, step, attempt, ..
+            } = event
+            {
                 let key = (*run, *step, *attempt);
                 if seen_actions.contains(&key) {
                     errors.push(ReplayError::DuplicateNonIdempotentEffect {
@@ -102,20 +104,23 @@ impl ReplayModel {
         run_id: RunId,
     ) -> Vec<ReplayError> {
         let mut errors = Vec::new();
-        let mut latest_step_completion: Option<(usize, u32)> = None;
+        let mut latest_step_completion: Option<(usize, u16)> = None;
 
         for (i, event) in events.iter().enumerate() {
-            if let JournalEvent::ActionCompleted { run, step, attempt, .. } = event {
-                if run == &run_id {
-                    if let Some((prev_idx, _)) = latest_step_completion {
-                        if i < prev_idx {
-                            errors.push(ReplayError::StaleCompletion {
-                                event_index: i,
-                            });
-                        }
-                    }
-                    latest_step_completion = Some((i, *attempt));
+            if let JournalEvent::ActionCompletedEvent {
+                run,
+                step: _,
+                attempt,
+                ..
+            } = event
+                && run == &run_id
+            {
+                if let Some((prev_idx, _)) = latest_step_completion
+                    && i < prev_idx
+                {
+                    errors.push(ReplayError::StaleCompletion { event_index: i });
                 }
+                latest_step_completion = Some((i, *attempt));
             }
         }
 
@@ -150,21 +155,36 @@ impl ReplayModel {
 
 #[derive(Debug, Clone)]
 pub enum ReplayError {
-    WrongRun { expected: RunId, got: RunId },
-    DuplicateNonIdempotentEffect { run: RunId, step: usize, attempt: u32 },
-    StaleCompletion { event_index: usize },
-    JournalBeforeDispatchViolation { event_index: usize },
+    WrongRun {
+        expected: RunId,
+        got: RunId,
+    },
+    DuplicateNonIdempotentEffect {
+        run: RunId,
+        step: StepIdx,
+        attempt: u16,
+    },
+    StaleCompletion {
+        event_index: usize,
+    },
+    JournalBeforeDispatchViolation {
+        event_index: usize,
+    },
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vb_core::WorkflowDigest;
+    use vb_storage::EventSeq;
 
     #[test]
     fn test_replay_state_transitions() {
-        let events = vec![
-            JournalEvent::RunSubmitted { run: RunId::new() },
-        ];
+        let events = vec![JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([0; 32]),
+        }];
 
         let mut state = ReplayState::new(events);
         assert_eq!(state.phase, ReplayPhase::Replay);

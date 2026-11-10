@@ -21,6 +21,7 @@ publish = false
 [dependencies]
 vb_core = { path = "../crates/vb_core" }
 vb_expr = { path = "../crates/vb_expr" }
+vb_storage = { path = "../crates/vb_storage" }
 proptest = "1"
 
 [package.metadata.cargo-machete]
