@@ -113,7 +113,7 @@
 //   - `hydrate_run_frame_preconditions_pure`
 //                                       <- extern_recovery_verification.rs
 //                                            (mirror of
-//                                            crates/vb_storage/src/recovery/hydrate.rs:206-225
+//                                            crates/vb_storage/src/recovery/hydrate/mod.rs:72-91
 //                                            `hydrate_run_frame`
 //                                            AND
 //                                            crates/vb_runtime/src/recovery.rs:99-105
@@ -607,7 +607,7 @@ pub fn recover_runtime_summary(has_events: bool, summary_ok: bool) -> bool {
 
 /// Production-bound exec fn: `hydrate_run_frame` precondition
 /// projection. Mirrors
-/// `crates/vb_storage/src/recovery/hydrate.rs:206-225` AND
+/// `crates/vb_storage/src/recovery/hydrate/mod.rs:72-91` AND
 /// `crates/vb_runtime/src/recovery.rs:187-189`.
 pub fn hydrate_run_frame_preconditions(
     snapshot_run_matches: bool,
@@ -672,10 +672,10 @@ pub fn unsupported_reason(state: RecoveryCannotResumeState) -> &'static str {
 // ============================================================================
 // Production-bound exec fns (pure projections of the production
 // "production proof surface" predicates at
-// crates/vb_storage/src/recovery/hydrate.rs:22-70)
+// crates/vb_storage/src/recovery/hydrate/preconditions.rs:9-57)
 // ============================================================================
 /// Production-bound exec fn: `hydrate_snapshot_tail_run_matches`
-/// decision projection. Mirrors `crates/vb_storage/src/recovery/hydrate.rs:22-28`.
+/// decision projection. Mirrors `crates/vb_storage/src/recovery/hydrate/preconditions.rs:9-15`.
 pub fn hydrate_snapshot_tail_run_matches(
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
@@ -684,13 +684,13 @@ pub fn hydrate_snapshot_tail_run_matches(
 }
 
 /// Production-bound exec fn: `hydrate_snapshot_tail_seq_after_snapshot`
-/// decision projection. Mirrors `crates/vb_storage/src/recovery/hydrate.rs:32-37`.
+/// decision projection. Mirrors `crates/vb_storage/src/recovery/hydrate/preconditions.rs:19-24`.
 pub fn hydrate_snapshot_tail_seq_after_snapshot(tail_seq_after_snapshot: bool) -> bool {
     production::hydrate_snapshot_tail_seq_after_snapshot_pure(tail_seq_after_snapshot)
 }
 
 /// Production-bound exec fn: `hydrate_snapshot_tail_has_evidence`
-/// decision projection. Mirrors `crates/vb_storage/src/recovery/hydrate.rs:41-46`.
+/// decision projection. Mirrors `crates/vb_storage/src/recovery/hydrate/preconditions.rs:28-33`.
 pub fn hydrate_snapshot_tail_has_evidence(
     tail_events_empty: bool,
     snapshot_slots_empty: bool,
@@ -704,7 +704,7 @@ pub fn hydrate_snapshot_tail_has_evidence(
 }
 
 /// Production-bound exec fn: `hydrate_dimensions_positive` decision
-/// projection. Mirrors `crates/vb_storage/src/recovery/hydrate.rs:68-70`.
+/// projection. Mirrors `crates/vb_storage/src/recovery/hydrate/preconditions.rs:55-57`.
 pub fn hydrate_dimensions_positive(step_count_positive: bool, slot_count_positive: bool) -> bool {
     production::hydrate_dimensions_positive_pure(step_count_positive, slot_count_positive)
 }
@@ -798,7 +798,7 @@ pub assume_specification[ production::recover_runtime_summary_pure ](
 
 /// Bridge contract: `hydrate_run_frame` precondition decision.
 /// Mirrors production body at
-/// `crates/vb_storage/src/recovery/hydrate.rs:206-225` AND
+/// `crates/vb_storage/src/recovery/hydrate/mod.rs:72-91` AND
 /// `crates/vb_runtime/src/recovery.rs:187-189`.
 pub assume_specification[ production::hydrate_run_frame_preconditions_pure ](
     snapshot_run_matches: bool,
@@ -838,7 +838,7 @@ pub assume_specification[ production::summary_recovery_boundary_hydrate_pure ]()
 
 /// Bridge contract: `hydrate_snapshot_tail_run_matches` returns true
 /// iff snapshot.run matches AND all tail events match the run id.
-/// Mirrors production body at `crates/vb_storage/src/recovery/hydrate.rs:22-28`.
+/// Mirrors production body at `crates/vb_storage/src/recovery/hydrate/preconditions.rs:9-15`.
 pub assume_specification[ production::hydrate_snapshot_tail_run_matches_pure ](
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
@@ -849,7 +849,7 @@ pub assume_specification[ production::hydrate_snapshot_tail_run_matches_pure ](
 
 /// Bridge contract: `hydrate_snapshot_tail_seq_after_snapshot`
 /// returns true iff every tail event has seq strictly after snapshot
-/// seq. Mirrors production body at `crates/vb_storage/src/recovery/hydrate.rs:32-37`.
+/// seq. Mirrors production body at `crates/vb_storage/src/recovery/hydrate/preconditions.rs:19-24`.
 pub assume_specification[ production::hydrate_snapshot_tail_seq_after_snapshot_pure ](
     tail_seq_after_snapshot: bool,
 ) -> (result: bool)
@@ -860,7 +860,7 @@ pub assume_specification[ production::hydrate_snapshot_tail_seq_after_snapshot_p
 /// Bridge contract: `hydrate_snapshot_tail_has_evidence` returns true
 /// iff at least one of: tail events non-empty, snapshot slots
 /// non-empty, snapshot taint non-empty. Mirrors production body at
-/// `crates/vb_storage/src/recovery/hydrate.rs:41-46`.
+/// `crates/vb_storage/src/recovery/hydrate/preconditions.rs:28-33`.
 pub assume_specification[ production::hydrate_snapshot_tail_has_evidence_pure ](
     tail_events_empty: bool,
     snapshot_slots_empty: bool,
@@ -872,7 +872,7 @@ pub assume_specification[ production::hydrate_snapshot_tail_has_evidence_pure ](
 
 /// Bridge contract: `hydrate_dimensions_positive` returns true iff
 /// both step_count and slot_count are positive. Mirrors production
-/// body at `crates/vb_storage/src/recovery/hydrate.rs:68-70`.
+/// body at `crates/vb_storage/src/recovery/hydrate/preconditions.rs:55-57`.
 pub assume_specification[ production::hydrate_dimensions_positive_pure ](
     step_count_positive: bool,
     slot_count_positive: bool,
@@ -1467,7 +1467,7 @@ pub proof fn proof_parametrized_mask_none_yields_resumable()
 
 /// Proof: `hydrate_run_frame` precondition fails when snapshot.run
 /// does not match the requested run id (production line
-/// `crates/vb_storage/src/recovery/hydrate.rs:116-123`).
+/// `crates/vb_storage/src/recovery/hydrate/preconditions.rs:103-110`).
 pub proof fn proof_hydrate_run_frame_snapshot_run_mismatch_detected(
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
@@ -1500,8 +1500,8 @@ pub proof fn proof_hydrate_run_frame_snapshot_run_mismatch_detected(
 
 /// Proof: `hydrate_run_frame` precondition fails when step_count is
 /// zero (production
-/// `crates/vb_storage/src/recovery/hydrate.rs:232` +
-/// `crates/vb_storage/src/recovery/hydrate.rs:499-507`).
+/// `crates/vb_storage/src/recovery/hydrate/mod.rs:98` +
+/// `crates/vb_storage/src/recovery/hydrate/mod.rs:110-118`).
 pub proof fn proof_hydrate_run_frame_zero_step_count_detected(
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
