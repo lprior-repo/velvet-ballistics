@@ -38,3 +38,5 @@ include!("tests/count_push_c2.rs");
 include!("tests/mutation_killing.rs");
 
 include!("tests/budget_dims.rs");
+
+include!("tests/whole_workflow.rs");
