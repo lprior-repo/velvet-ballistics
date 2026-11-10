@@ -24,7 +24,7 @@ commit `d8221505b`, merged into `main` by commit `5f101f82b`).
 4. Removed `dropped` counter from `EvidenceCollector`; capacity
    overflow is now surfaced as a typed error.
 5. Wired drive-step call sites
-   (`engine/drive.rs:107,127-129,160-162`) to propagate the error via
+   (`engine/drive/transitions.rs:42-43, engine/drive/transitions.rs:105-107, engine/drive/actions.rs:64-66`) to propagate the error via
    `RuntimeEngineError::Core`.
 6. Updated 18 test sites across `engine/types.rs`,
    `engine/property_tests.rs`, and `engine/tests.rs` to assert the
@@ -74,12 +74,12 @@ pub fn push_slot_written_with_taint(&mut self, slot: SlotIdx, value: SlotValue, 
 All four return `EngineError::EvidenceCapacityExceeded` when the
 collector is at capacity; the event is **not** pushed in that case.
 
-`crates/vb_runtime/src/engine/drive.rs` call sites propagate via
+`crates/vb_runtime/src/engine/drive/` call sites propagate via
 `.map_err(RuntimeEngineError::Core)?`:
 
-- line 107: `evidence.push_step_started(pc).map_err(RuntimeEngineError::Core)?;`
-- lines 127-129: `evidence.push_step_succeeded(...).map_err(...)?;`
-- lines 160-162: `evidence.push_slot_written_with_taint(...).map_err(...)?;`
+- `engine/drive/transitions.rs:42-43`: `evidence.push_step_started(pc).map_err(RuntimeEngineError::Core)?;`
+- `engine/drive/transitions.rs:105-107`: `evidence.push_step_succeeded(...).map_err(...)?;`
+- `engine/drive/actions.rs:64-66`: `evidence.push_slot_written_with_taint(...).map_err(...)?;`
 
 ## Verification Evidence
 

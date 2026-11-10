@@ -3,7 +3,7 @@
 **Bead:** vb-vbdco (duplicate of closed `vb-y71ef`)
 **Finding:** `bug-hunt-2026-06-21/findings/runtime-engine/RE-010-evidence-collector-silent-drop.md`
 **Source:** `crates/vb_runtime/src/engine/types.rs` (EvidenceCollector),
-`crates/vb_runtime/src/engine/drive.rs` (drive-step call sites),
+`crates/vb_runtime/src/engine/drive/` (drive-step call sites),
 `crates/vb_core/src/errors.rs` (EngineError::EvidenceCapacityExceeded).
 **Closure status:** work already merged via `vb-y71ef` (commit
 `d8221505b`, merged `5f101f82b`); this contract documents the
@@ -130,8 +130,8 @@ the run, or rebuild the collector with a larger capacity.
 | Hazard | Where | Mitigation |
 |--------|-------|------------|
 | Capacity overflow silent drop | `EvidenceCollector::push_*` | All four `push_*` methods return `Result<(), EngineError>`; the only `dropped` field was removed. |
-| Drive loop ignoring overflow | `engine/drive.rs` (drive-step helpers) | Every `push_*` call site is followed by `.map_err(RuntimeEngineError::Core)?` so the typed error reaches `drive_deterministic_full`'s caller. |
-| Capacity overflow races with step state commit | `engine/drive.rs::finish_drive_step` | RE-011 ordering keeps the `RunFrame` in a recoverable state; the partial `evidence` buffer can be drained on retry. |
+| Drive loop ignoring overflow | `engine/drive/` (drive-step helpers) | Every `push_*` call site is followed by `.map_err(RuntimeEngineError::Core)?` so the typed error reaches `drive_deterministic_full`'s caller. |
+| Capacity overflow races with step state commit | `engine/drive/transitions.rs::finish_drive_step` | RE-011 ordering keeps the `RunFrame` in a recoverable state; the partial `evidence` buffer can be drained on retry. |
 | Misclassifying collect vs non-collect overflow | `push_slot_written_with_extra` | Distinct `CollectEvidenceCapacityExceeded` (with `run_id`) and `EvidenceCapacityExceeded` variants; the `extra: Option<CollectPaginationState>` discriminator drives the choice. |
 | Sentinel confusion in the error payload | new variant fields | Documented sentinel discipline: `ZERO` means "does not apply". |
 
@@ -140,9 +140,9 @@ the run, or rebuild the collector with a larger capacity.
 | Seed ID | Lane | Property | Source binding |
 |---------|------|----------|----------------|
 | `seed.re010.capacity_overflow_returns_err` | Kani | For all `c in 0..=8`, pushing `c+1` events of each flavor into a collector of capacity `c` returns `EvidenceCapacityExceeded` on the last push and the buffer remains at length `c`. | `types.rs::push_*` |
-| `seed.re010.drive_loop_propagates_overflow` | Proptest | A drive loop with a collector at capacity ends with `Err(EvidenceCapacityExceeded)` and the `RunFrame` is in the pre-success state. | `drive.rs::begin_drive_step`, `drive.rs::finish_drive_step` |
+| `seed.re010.drive_loop_propagates_overflow` | Proptest | A drive loop with a collector at capacity ends with `Err(EvidenceCapacityExceeded)` and the `RunFrame` is in the pre-success state. | `drive/transitions.rs::begin_drive_step`, `drive/transitions.rs::finish_drive_step` |
 | `seed.re010.zero_capacity_always_errs` | Kani | With capacity 0, every push of every flavor returns `Err(EvidenceCapacityExceeded)` and the buffer stays at length 0. | `types.rs::push_*` |
-| `seed.re010.success_path_no_overflow` | Proptest | A drive loop with a collector of capacity >= 3 * step_budget completes without overflow. | `drive.rs::drive_deterministic_full` |
+| `seed.re010.success_path_no_overflow` | Proptest | A drive loop with a collector of capacity >= 3 * step_budget completes without overflow. | `drive/loop_step.rs::drive_deterministic_full` |
 | `seed.re010.error_variant_carries_capacity_and_len` | Kani | `EngineError::EvidenceCapacityExceeded { capacity, len, .. }` matches the collector's `capacity()` and `len()` at the moment of failure. | `types.rs::push_*` |
 
 ## Bead Closure Note
