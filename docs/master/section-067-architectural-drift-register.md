@@ -12,10 +12,10 @@ This section tracks known architectural defects discovered through adversarial r
 ### DRIFT-1: Runtime Taint Tracking — RESOLVED
 
 **Resolution evidence:**
-- `EvalExpr` reads taint from all `LoadSlot` operands and joins into output taint (`crates/vb_expr/src/eval.rs`).
+- `EvalExpr` reads taint from all `LoadSlot` operands and joins into output taint (`crates/vb_core/src/engine/expr_eval/core.rs`).
 - `BuildObject` joins taint from all field slots into output taint.
 - `BuildList` joins taint from all item slots into output taint.
-- `Finish` node reads slot taint and emits `EngineSignal::Finished(SlotValue, Taint)` (`crates/vb_core/src/nodes.rs`, `node_helpers.rs`).
+- `Finish` node reads slot taint and emits `EngineSignal::Finished(SlotValue, Taint)` (`crates/vb_core/src/engine/node_helpers.rs`).
 - `EngineSignal::Finished` carries taint alongside value in the result signal.
 - Compile-time taint validation remains as defense-in-depth.
 

@@ -246,13 +246,13 @@ invariants:
 
   - id: expression_stack_bounded
     applies_to:
-      - crates/vb_expr/src/stack.rs
-    description: "Expression stack depth is bounded to MAX_EXPR_STACK (64)"
+      - crates/vb_expr/src/expr_stack_ops.rs
+    description: "Expression stack depth is bounded to MAX_EXPRESSION_STACK (64)"
 
   - id: expression_ops_bounded
     applies_to:
-      - crates/vb_expr/src/bytecode.rs
-    description: "Expression op count is bounded to MAX_EXPR_OPS (256)"
+      - crates/vb_expr/src/expr_bytecode/mod.rs
+    description: "Expression op count is bounded to MAX_OPS (256)"
 
   # ============================================================
   # IPC: REJECT BEFORE ALLOCATION
@@ -274,12 +274,12 @@ invariants:
   # ============================================================
   - id: record_magic_before_alloc
     applies_to:
-      - crates/vb_storage/src/record.rs
+      - crates/vb_storage/src/codec/header.rs
     description: "Record decoder validates magic before payload allocation"
 
   - id: record_crc_before_trust
     applies_to:
-      - crates/vb_storage/src/record.rs
+      - crates/vb_storage/src/codec/header.rs
     description: "Record decoder validates CRC before trusting Postcard decode"
 
   # ============================================================
@@ -352,12 +352,6 @@ invariants:
     applies_to:
       - crates/vb_compile/src/mod_compile_lowering/part_05.rs
     description: "digest_step_primitive must consume all semantic fields of each StepPrimitive variant (not just the variant name). Currently fixed for Repeat; ForEach, Together, Collect, Aggregate, Wait, Ask deferred."
-    tracking_bead: vb-xi2f.31
-
-  - id: digest_no_dead_code_regression
-    applies_to:
-      - crates/vb_compile/src/compile/mod.rs
-    description: "compile/mod.rs is dead code (no module declaration in lib.rs). If reconnected, both duplicate implementations must stay synchronized per TBL-004."
     tracking_bead: vb-xi2f.31
 
   # ============================================================

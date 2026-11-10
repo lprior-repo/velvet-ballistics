@@ -3304,10 +3304,10 @@ This section tracks known architectural defects discovered through adversarial r
 ### DRIFT-1: Runtime Taint Tracking — RESOLVED
 
 **Resolution evidence:**
-- `EvalExpr` reads taint from all `LoadSlot` operands and joins into output taint (`crates/vb_expr/src/eval.rs`).
+- `EvalExpr` reads taint from all `LoadSlot` operands and joins into output taint (`crates/vb_core/src/engine/expr_eval/core.rs`).
 - `BuildObject` joins taint from all field slots into output taint.
 - `BuildList` joins taint from all item slots into output taint.
-- `Finish` node reads slot taint and emits `EngineSignal::Finished(SlotValue, Taint)` (`crates/vb_core/src/nodes.rs`, `node_helpers.rs`).
+- `Finish` node reads slot taint and emits `EngineSignal::Finished(SlotValue, Taint)` (`crates/vb_core/src/engine/node_helpers.rs`).
 - `EngineSignal::Finished` carries taint alongside value in the result signal.
 - Compile-time taint validation remains as defense-in-depth.
 
@@ -4472,7 +4472,7 @@ model_notes:
   summary: "Implemented SetConst typed error behavior."
 files_changed:
   - crates/vb_core/src/engine.rs
-  - crates/vb_core/tests/engine.rs
+  - crates/vb_core/src/engine/tests/mod.rs
 public_api_changed: false
 hot_path_changed: true
 commands:
@@ -4557,7 +4557,7 @@ topic: engine
 relevant_files:
   - crates/vb_core/src/engine.rs
   - crates/vb_core/src/frame.rs
-  - crates/vb_core/src/compiled.rs
+  - crates/vb_core/src/workflow/mod.rs
   - crates/vb_core/src/errors.rs
 contracts:
   - "No unsupported primitive may silently continue."
@@ -4809,7 +4809,7 @@ areas:
   - durability
   - public_api
 files_changed:
-  - crates/vb_runtime/src/shard.rs
+  - crates/vb_runtime/src/shard/mod.rs
 required_checks:
   - ai-fast
   - loom:shutdown_drain
