@@ -2148,6 +2148,51 @@ fn multiple_persist_strict_calls_succeed() {
     assert_eq!(replayed.len(), 1);
 }
 
+/// Pins the strict-fsync boundary (VB-STORAGE-FJALL-001): unfsynced appends
+/// are visible to same-handle readers, and after the explicit persist_strict
+/// barrier they survive a drop without close() plus a reopen, in order.
+/// Fjall's own fsync correctness stays an externally assumed dependency.
+#[test]
+fn fjall_fsync_boundary() {
+    let temp = tempfile::tempdir().expect("tempdir creation should succeed");
+    let path = temp.path().to_path_buf();
+    let run = RunId::new(4242);
+    {
+        let journal = FjallJournal::open(&path, None).expect("journal open should succeed");
+        let first = make_event(run, 0);
+        let second = make_event(run, 1);
+        journal
+            .append_journaled(&first)
+            .expect("unfsynced append should succeed");
+        journal
+            .append_journaled(&second)
+            .expect("unfsynced append should succeed");
+        let visible = journal.events_for_run(run).expect("replay should succeed");
+        assert_eq!(
+            visible.len(),
+            2,
+            "unfsynced appends must be visible pre-barrier"
+        );
+        let strict = make_event(run, 2);
+        journal
+            .append_strict(&strict)
+            .expect("strict append should succeed");
+        journal
+            .persist_strict()
+            .expect("explicit barrier should succeed");
+    }
+    let reopened = FjallJournal::open(&path, None).expect("journal should reopen after drop");
+    let replayed = reopened.events_for_run(run).expect("replay should succeed");
+    assert_eq!(
+        replayed.len(),
+        3,
+        "all three events must survive the barrier plus reopen"
+    );
+    assert_eq!(replayed[0].seq(), EventSeq::new(0));
+    assert_eq!(replayed[1].seq(), EventSeq::new(1));
+    assert_eq!(replayed[2].seq(), EventSeq::new(2));
+}
+
 // =========================================================================
 // Edge case: interleaved writes to different runs
 // =========================================================================
