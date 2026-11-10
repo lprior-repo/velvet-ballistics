@@ -26,14 +26,14 @@ by raw verifier output captured under `.evidence/vb-vbdco/`.
 The proof-reviewer dispositions below reflect the **already-shipped**
 artifacts on `main`. Each is independently accepted because the
 production-code binding sites (`types.rs::push_*`,
-`drive.rs::begin_drive_step`, `drive.rs::finish_drive_step`) are
+`drive/transitions.rs::begin_drive_step`, `drive/transitions.rs::finish_drive_step`) are
 unmodified between `vb-y71ef` and the current `main`.
 
 ```jsonl
 {"seed":"seed.re010.capacity_overflow_returns_err","disposition":"accepted","binding":"types/evidence.rs:72-182","evidence":"07-cargo-test-vb_runtime-evidence.log :: evidence_collector_returns_typed_error_at_capacity, evidence_collector_slot_written_typed_error_at_capacity, evidence_collector_step_succeeded_typed_error_at_capacity"}
-{"seed":"seed.re010.drive_loop_propagates_overflow","disposition":"accepted","binding":"drive.rs:90-170","evidence":"11-cargo-test-vb_runtime-re_011.log :: re_011_evidence_capacity_overflow_does_not_mark_step_succeeded"}
+{"seed":"seed.re010.drive_loop_propagates_overflow","disposition":"accepted","binding":"engine/drive/transitions.rs:27-48 + engine/drive/transitions.rs:83-123 + engine/drive/actions.rs:25-75","evidence":"11-cargo-test-vb_runtime-re_011.log :: re_011_evidence_capacity_overflow_does_not_mark_step_succeeded"}
 {"seed":"seed.re010.zero_capacity_always_errs","disposition":"accepted","binding":"types/evidence.rs:72-182","evidence":"07-cargo-test-vb_runtime-evidence.log :: evidence_collector_zero_capacity_returns_typed_error_for_every_push"}
-{"seed":"seed.re010.success_path_no_overflow","disposition":"accepted","binding":"drive.rs:180-210","evidence":"08-cargo-test-vb_runtime-blackhat.log :: bh_eng_01_evidence_collector_enforces_capacity_bound"}
+{"seed":"seed.re010.success_path_no_overflow","disposition":"accepted","binding":"engine/drive/loop_step.rs:137-159","evidence":"08-cargo-test-vb_runtime-blackhat.log :: bh_eng_01_evidence_collector_enforces_capacity_bound"}
 {"seed":"seed.re010.error_variant_carries_capacity_and_len","disposition":"accepted","binding":"errors.rs:420-433 + types/evidence.rs:72-182","evidence":"07-cargo-test-vb_runtime-evidence.log :: field-by-field assertions in evidence_collector_*_typed_error_at_capacity tests"}
 ```
 
@@ -60,7 +60,7 @@ piggyback on `vb-vbdco`.
 
 ```jsonl
 {"marker":"production_source","path":"crates/vb_runtime/src/engine/types.rs","sha":"current main","trust":"production"}
-{"marker":"production_source","path":"crates/vb_runtime/src/engine/drive.rs","sha":"current main","trust":"production"}
+{"marker":"production_source","path":"crates/vb_runtime/src/engine/drive/","sha":"current main","trust":"production"}
 {"marker":"production_source","path":"crates/vb_core/src/errors.rs","sha":"current main","trust":"production"}
 {"marker":"test_source","path":"crates/vb_runtime/src/engine/tests.rs","sha":"current main","trust":"test"}
 {"marker":"test_source","path":"crates/vb_runtime/src/engine/property_tests.rs","sha":"current main","trust":"test"}
