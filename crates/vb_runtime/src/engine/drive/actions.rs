@@ -18,6 +18,22 @@ mod reduce_evidence;
 #[path = "loop_control_evidence.rs"]
 mod loop_control_evidence;
 
+pub(super) fn emit_error_slot_evidence(
+    plan: &CompiledWorkflow,
+    run: &RunFrame,
+    evidence: &mut EvidenceCollector,
+    node: &CompiledNode,
+) -> RuntimeEngineResult<()> {
+    if let Some(slot) = plan.resolved_error_slot(node) {
+        let value = *run.read_slot(slot).map_err(RuntimeEngineError::Core)?;
+        let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
+        evidence
+            .push_slot_written_with_taint(slot, value, taint)
+            .map_err(RuntimeEngineError::Core)?;
+    }
+    Ok(())
+}
+
 /// Emits a `SlotWritten` evidence event for the just-finished step when
 /// the node has a collect-style output slot or a plain `output` slot.
 /// `read_slot` errors are recorded on the drive state (RE-004) and the

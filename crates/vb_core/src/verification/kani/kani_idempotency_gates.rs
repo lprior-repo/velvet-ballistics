@@ -6,14 +6,18 @@
 
 #![forbid(unsafe_code)]
 
+use crate as frame_seed_core;
 use crate::action::{
     ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutcome, ActionOutputReady,
     ActionTicket, Idempotency, IdempotencyViolation, RetryPolicy, RetrySafety, SideEffect,
     validate_action_outcome, verify_idempotency,
 };
-use crate::frame::RunFrame;
+use crate::frame::{RunFrame, RunFrameCheckpointV1Error};
 use crate::ids::{ActionId, BlobId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{SlotValue, Taint};
+
+#[path = "idempotency_frame_seed.rs"]
+mod frame_seed;
 
 const MAX_SYMBOLIC_SLOTS: u16 = 4;
 const KANI_TEST_ACTION_NAME: &str = "test-action";
@@ -71,22 +75,14 @@ fn symbolic_idempotency() -> Idempotency {
     }
 }
 
-fn symbolic_frame() -> RunFrame {
+fn symbolic_frame() -> Result<RunFrame, RunFrameCheckpointV1Error> {
     let run = RunId::new(kani::any::<u64>());
     let step_count = bounded_nonzero_u16(MAX_SYMBOLIC_SLOTS);
     let slot_count = bounded_nonzero_u16(MAX_SYMBOLIC_SLOTS);
     let step_raw: u16 = kani::any();
     kani::assume(step_raw < step_count);
-    let frame = RunFrame::new(run, StepIdx::new(step_raw), step_count, slot_count);
-    let mut frame = match frame {
-        Ok(value) => value,
-        Err(_) => unreachable_for_kani_frame_bounds(),
-    };
-    write_symbolic_slot(&mut frame, 0, slot_count);
-    write_symbolic_slot(&mut frame, 1, slot_count);
-    write_symbolic_slot(&mut frame, 2, slot_count);
-    write_symbolic_slot(&mut frame, 3, slot_count);
-    frame
+    let entries = (0..slot_count).map(|_| (kani::any::<SlotValue>(), kani::any::<Taint>()));
+    frame_seed::checked_frame_from_seed(run, StepIdx::new(step_raw), step_count, entries)
 }
 
 fn one_slot_frame_with_taint(taint: Taint) -> RunFrame {
@@ -130,17 +126,6 @@ fn bounded_key_slot() -> SlotIdx {
     let raw: u16 = kani::any();
     kani::assume(raw < MAX_SYMBOLIC_SLOTS);
     SlotIdx::new(raw)
-}
-
-fn write_symbolic_slot(frame: &mut RunFrame, raw: u16, slot_count: u16) {
-    if raw < slot_count {
-        let result = frame.write_slot_with_taint(
-            SlotIdx::new(raw),
-            kani::any::<SlotValue>(),
-            kani::any::<Taint>(),
-        );
-        kani::assume(result.is_ok());
-    }
 }
 
 fn write_slot_with_taint(frame: &mut RunFrame, raw: u16, slot_count: u16, taint: Taint) {
@@ -220,6 +205,13 @@ fn verify_idempotency_missing_key_symbolic_contract_no_frame_write() {
 fn verify_idempotency_symbolic_key_taints_are_classified() {
     let contract = bounded_contract_for_retry(RetrySafety::KeyRequired);
     let frame = symbolic_frame();
+    kani::assert(
+        frame.is_ok(),
+        "bounded symbolic checkpoint construction succeeds",
+    );
+    let Ok(frame) = frame else {
+        return;
+    };
     let key_len: u8 = kani::any();
     kani::assume(key_len <= 4);
 
@@ -330,6 +322,13 @@ fn verify_idempotency_required_taint_variants_have_witnesses() {
 fn verify_idempotency_retry_policy_matrix_is_total() {
     let contract = symbolic_contract_no_caps();
     let frame = symbolic_frame();
+    kani::assert(
+        frame.is_ok(),
+        "bounded symbolic checkpoint construction succeeds",
+    );
+    let Ok(frame) = frame else {
+        return;
+    };
     let key_slots = [bounded_key_slot()];
     let result = verify_idempotency(&contract, &key_slots, &frame);
     kani::cover!(

@@ -35,6 +35,12 @@ pub(super) fn parse_error_handler(node: &saphyr::Yaml<'_>) -> YamlResult<Option<
 pub(super) fn parse_wait(sub: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     reject_unknown_fields(sub, &["event", "timeout"])?;
     let event = optional_string(sub, "event", "wait.event")?;
+    if event.as_ref().is_some_and(String::is_empty) {
+        return Err(YamlError::FieldShape {
+            field: "wait.event",
+            expected: "non-empty string",
+        });
+    }
     let timeout = optional_string(sub, "timeout", "wait.timeout")?;
     Ok(StepPrimitive::Wait { event, timeout })
 }

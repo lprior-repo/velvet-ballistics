@@ -29,11 +29,11 @@
 //        -> extern `body_region_step_increment`
 //
 //   3. `count_and_push_loop_body` body * iter_count
-//        -> crates/vb_core/src/budget/loop_body.rs:228-233
+//        -> crates/vb_core/src/budget/loop_body.rs:236-241
 //        -> extern `count_and_push_loop_body` (multiplication arm)
 //
 //   4. `count_and_push_loop_body` total + product
-//        -> crates/vb_core/src/budget/loop_body.rs:234-239
+//        -> crates/vb_core/src/budget/loop_body.rs:242-247
 //        -> extern `count_and_push_loop_body` (addition arm)
 //
 //   5. `update_workflow_metrics` CollectStart pages
@@ -45,9 +45,10 @@
 //        -> extern `collect_start_update_metrics` (items arm)
 //
 //   7. `count_and_push_loop_body` done-continuation push
-//        -> crates/vb_core/src/budget/loop_body.rs:240, 244-261
+//        -> crates/vb_core/src/budget/loop_body.rs:248, 253-269
 //        -> extern `count_and_push_loop_body` (stack arm: successor id
-//           when the done node ends the workflow, then `done`;
+//           when the done node ends the workflow, then `done`, then
+//           declared body error handlers in slice order;
 //           the standalone `push_done_continuation` bridge covers
 //           the push on its own for the push lemmas)
 //
@@ -86,11 +87,13 @@
 //     defaults implicit in the empty nodes / 1-node linear path)
 //     produce a valid product.
 //   - The done-continuation push in `count_and_push_loop_body`
-//     (budget/loop_body.rs:240, 244-261) always pushes `done` on the stack
+//     (budget/loop_body.rs:248, 253-269) always pushes `done` on the stack
 //     on success, pushes the successor id exactly when the done node
 //     ends the workflow and a successor exists, and fails with
 //     `TotalStepsExceeded { actual: u64::MAX, limit: u64::MAX }`
-//     exactly when the done step cannot be located.
+//     exactly when the done step cannot be located. The full call then
+//     appends each handler >= done from nodes with body <= id < done,
+//     preserving declared-node order and duplicate edges.
 use vstd::prelude::*;
 
 verus! {
@@ -163,7 +166,7 @@ pub open spec fn spec_collect_limit_max() -> int {
 }
 
 /// Spec helper: the effective iteration count after the production
-/// `iter_count.max(1)` adjustment at `crates/vb_core/src/budget/loop_body.rs:227`.
+/// `iter_count.max(1)` adjustment at `crates/vb_core/src/budget/loop_body.rs:235`.
 /// For u64 inputs this is `iter_count` if `iter_count >= 1`, else 1.
 pub open spec fn spec_effective_iter_count(iter_count: u64) -> int {
     if iter_count == 0u64 {
@@ -210,7 +213,7 @@ pub open spec fn spec_collect_pages(limit: u32, page_size: u32) -> int {
 }
 
 /// Spec mirror of the linear id scan in production
-/// `find_node_position` at `crates/vb_core/src/budget.rs:156-160`:
+/// `find_node_position` at `crates/vb_core/src/budget.rs:167-171`:
 /// the first position at or after `start` whose node id equals `step`,
 /// or `None` when no such position exists.
 pub open spec fn spec_find_scan(nodes: Seq<CompiledNode>, step: StepIdx, start: int) -> Option<int>
@@ -226,7 +229,7 @@ pub open spec fn spec_find_scan(nodes: Seq<CompiledNode>, step: StepIdx, start: 
 }
 
 /// Spec mirror of production `find_node_position` at
-/// `crates/vb_core/src/budget.rs:143-167`: the direct-index fast
+/// `crates/vb_core/src/budget.rs:154-178`: the direct-index fast
 /// path, then the linear id scan, then the direct fallback. Returns
 /// `None` exactly when the step id is absent from the node list and
 /// `step.as_usize() >= node_count`.
@@ -253,7 +256,7 @@ pub open spec fn spec_find_position(
 }
 
 /// Spec mirror of the successor push in production
-/// `push_done_continuation` at `crates/vb_core/src/budget/loop_body.rs:247-257`:
+/// `push_done_continuation` at `crates/vb_core/src/budget/loop_body.rs:260-267`:
 /// the successor node's id when the done node at `done_pos` ends the
 /// workflow (`NodeContinuation::End`) and a successor node exists,
 /// or `None` otherwise.
@@ -275,7 +278,7 @@ pub open spec fn spec_push_next_id(nodes: Seq<CompiledNode>, done_pos: int) -> O
 }
 
 /// Spec mirror of production `push_done_continuation` at
-/// `crates/vb_core/src/budget/loop_body.rs:244-261`: the stack after the push,
+/// `crates/vb_core/src/budget/loop_body.rs:253-269`: the stack after the push,
 /// or `None` when the done step cannot be located. On success the
 /// successor id (when `spec_push_next_id` yields one) is pushed
 /// first, then `done` is always pushed last.
@@ -296,6 +299,51 @@ pub open spec fn spec_push_done_stack(
     }
 }
 
+/// Declared body error exits in slice order, including duplicates and `done`.
+/// This is the filter in budget/loop_region.rs::push_body_error_exits.
+pub open spec fn spec_body_error_exits(
+    nodes: Seq<CompiledNode>,
+    body: StepIdx,
+    done: StepIdx,
+    start: int,
+) -> Seq<StepIdx>
+    decreases nodes.len() - start,
+{
+    if start < 0 || start >= nodes.len() {
+        Seq::empty()
+    } else {
+        let tail = spec_body_error_exits(nodes, body, done, start + 1);
+        if body.0 <= nodes[start].id.0 && nodes[start].id.0 < done.0 {
+            match nodes[start].routing.error {
+                production::production_inner::ErrorRouting::Handler { handler, .. } => {
+                    if handler.0 >= done.0 {
+                        seq![handler] + tail
+                    } else {
+                        tail
+                    }
+                },
+                production::production_inner::ErrorRouting::None => tail,
+            }
+        } else {
+            tail
+        }
+    }
+}
+
+/// Full successful stack effect: the done component followed by error exits.
+pub open spec fn spec_push_loop_body_stack(
+    nodes: Seq<CompiledNode>,
+    body: StepIdx,
+    done: StepIdx,
+    node_count: int,
+    stack: Seq<StepIdx>,
+) -> Option<Seq<StepIdx>> {
+    match spec_push_done_stack(nodes, done, node_count, stack) {
+        Some(done_stack) => Some(done_stack + spec_body_error_exits(nodes, body, done, 0)),
+        None => None,
+    }
+}
+
 // ============================================================================
 // assume_specification bridges — production contract surface
 // ============================================================================
@@ -309,15 +357,17 @@ pub open spec fn spec_push_done_stack(
 /// iff the multiplication `body_count * iter_count` and the addition
 /// `total + product` succeed as checked u64 operations and the trailing
 /// done-continuation push succeeds. On success the stack is the
-/// `spec_push_done_stack` result; on failure the stack is unchanged,
+/// `spec_push_loop_body_stack` result, including ordered error exits;
+/// on failure the stack is unchanged,
 /// and the failure is a multiplication overflow, an addition overflow,
 /// or an unlocatable done step. Mirrors
-/// `crates/vb_core/src/budget/loop_body.rs:216-242`.
+/// `crates/vb_core/src/budget/loop_body.rs:224-251`.
 pub assume_specification[ production::count_and_push_loop_body ](
     _body_count: u64,
     _iter_count: u64,
     _total: u64,
     nodes: &Vec<CompiledNode>,
+    body: StepIdx,
     done: StepIdx,
     node_count: usize,
     stack: &mut Vec<StepIdx>,
@@ -326,9 +376,8 @@ pub assume_specification[ production::count_and_push_loop_body ](
         match result {
             Ok(new_total) => new_total == _total + _body_count * spec_effective_iter_count(
                 _iter_count,
-            ) && spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@) == Some(
-                (*final(stack))@,
-            ),
+            ) && spec_push_loop_body_stack(nodes@, body, done, node_count as int, (*old(stack))@)
+                == Some((*final(stack))@),
             Err(BudgetError::TotalStepsExceeded { actual, limit }) => actual == u64::MAX && limit
                 == u64::MAX && (*final(stack))@ == (*old(stack))@ && (!spec_checked_mul_u64_ok(
                 _body_count as int,
@@ -336,7 +385,8 @@ pub assume_specification[ production::count_and_push_loop_body ](
             ) || !spec_checked_add_u64_ok(
                 _total as int,
                 _body_count as int * spec_effective_iter_count(_iter_count),
-            ) || spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@) == None),
+            ) || spec_push_loop_body_stack(nodes@, body, done, node_count as int, (*old(stack))@)
+                == None::<Seq<StepIdx>>),
         },
 ;
 
@@ -347,7 +397,7 @@ pub assume_specification[ production::count_and_push_loop_body ](
 /// production `From<BudgetTraversalError>` mapping at
 /// `crates/vb_core/src/budget/traversal_error.rs:54-61`, which collapses every
 /// traversal failure to that sentinel.
-/// Mirrors `crates/vb_core/src/budget/loop_body.rs:244-261`.
+/// Mirrors `crates/vb_core/src/budget/loop_body.rs:253-269`.
 pub assume_specification[ production::push_done_continuation ](
     nodes: &Vec<CompiledNode>,
     done: StepIdx,
@@ -361,12 +411,12 @@ pub assume_specification[ production::push_done_continuation ](
             ),
             Err(BudgetError::TotalStepsExceeded { actual, limit }) => actual == u64::MAX && limit
                 == u64::MAX && spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@)
-                == None,
+                == None::<Seq<StepIdx>>,
         },
 ;
 
 /// Bridge contract: `checked_step_add` returns `Ok(sum)` iff
-/// `left + right <= u64::MAX`. Mirrors `crates/vb_core/src/budget/loop_body.rs:206-211`.
+/// `left + right <= u64::MAX`. Mirrors `crates/vb_core/src/budget/loop_body.rs:214-219`.
 pub assume_specification[ production::checked_step_add ](left: u64, right: u64) -> (result: Result<
     u64,
     BudgetTraversalError,
@@ -386,7 +436,7 @@ pub assume_specification[ production::checked_step_add ](left: u64, right: u64) 
 /// the `max_gather_pages + pages` and `max_gather_items + limit`
 /// checked u32 additions succeed. Any of the three failures reports
 /// `StepCountOverflow { actual: u64::MAX }`.
-/// Mirrors `crates/vb_core/src/budget/reachable.rs:166-179`.
+/// Mirrors `crates/vb_core/src/budget/reachable.rs:169-181`.
 pub assume_specification[ production::collect_start_update_metrics ](
     max_gather_pages: u32,
     max_gather_items: u32,
@@ -485,16 +535,17 @@ pub fn exec_body_region_step_increment(count: u64) -> (result: Result<u64, Budge
 }
 
 /// Exec fn: production-bound body * iter_count + total arithmetic
-/// with the trailing done-continuation push. Mirrors
-/// `crates/vb_core/src/budget/loop_body.rs:216-242` (the
+/// with the done continuation followed by declared body error exits. Mirrors
+/// `crates/vb_core/src/budget/loop_body.rs:224-251` (the
 /// CollectStart / ForEachStart / RepeatStart / ReduceStart loop body
-/// accumulation plus the `push_done_continuation` call at `crates/vb_core/src/budget/loop_body.rs:240`).
+/// accumulation plus the `push_done_continuation` call at `crates/vb_core/src/budget/loop_body.rs:248`).
 #[allow(dead_code)]
 pub fn exec_count_and_push_loop_body(
     body_count: u64,
     iter_count: u64,
     total: u64,
     nodes: &Vec<CompiledNode>,
+    body: StepIdx,
     done: StepIdx,
     node_count: usize,
     stack: &mut Vec<StepIdx>,
@@ -502,9 +553,8 @@ pub fn exec_count_and_push_loop_body(
     ensures
         match result {
             Ok(new_total) => new_total == total + body_count * spec_effective_iter_count(iter_count)
-                && spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@) == Some(
-                (*final(stack))@,
-            ),
+                && spec_push_loop_body_stack(nodes@, body, done, node_count as int, (*old(stack))@)
+                == Some((*final(stack))@),
             Err(BudgetError::TotalStepsExceeded { actual, limit }) => actual == u64::MAX && limit
                 == u64::MAX && (*final(stack))@ == (*old(stack))@ && (!spec_checked_mul_u64_ok(
                 body_count as int,
@@ -512,17 +562,18 @@ pub fn exec_count_and_push_loop_body(
             ) || !spec_checked_add_u64_ok(
                 total as int,
                 body_count as int * spec_effective_iter_count(iter_count),
-            ) || spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@) == None),
+            ) || spec_push_loop_body_stack(nodes@, body, done, node_count as int, (*old(stack))@)
+                == None::<Seq<StepIdx>>),
         },
 {
-    count_and_push_loop_body(body_count, iter_count, total, nodes, done, node_count, stack)
+    count_and_push_loop_body(body_count, iter_count, total, nodes, body, done, node_count, stack)
 }
 
 /// Exec fn: production-bound done-continuation push for
 /// `count_and_push_loop_body`. Mirrors the trailing
 /// `push_done_continuation(nodes, done, node_count, stack)?` at
-/// `crates/vb_core/src/budget/loop_body.rs:240` and the callee at
-/// `crates/vb_core/src/budget/loop_body.rs:244-261`.
+/// `crates/vb_core/src/budget/loop_body.rs:248` and the callee at
+/// `crates/vb_core/src/budget/loop_body.rs:253-269`.
 #[allow(dead_code)]
 pub fn exec_push_done_continuation(
     nodes: &Vec<CompiledNode>,
@@ -537,7 +588,7 @@ pub fn exec_push_done_continuation(
             ),
             Err(BudgetError::TotalStepsExceeded { actual, limit }) => actual == u64::MAX && limit
                 == u64::MAX && spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@)
-                == None,
+                == None::<Seq<StepIdx>>,
         },
 {
     push_done_continuation(nodes, done, node_count, stack)
@@ -545,7 +596,7 @@ pub fn exec_push_done_continuation(
 
 /// Exec fn: production-bound CollectStart pages + items increment.
 /// Mirrors the `CompiledNodeKind::CollectStart` arm of
-/// `update_workflow_metrics` at `crates/vb_core/src/budget/reachable.rs:166-179`.
+/// `update_workflow_metrics` at `crates/vb_core/src/budget/reachable.rs:169-181`.
 #[allow(dead_code)]
 pub fn exec_collect_start_update_metrics(
     max_gather_pages: u32,
@@ -594,13 +645,13 @@ pub fn exec_collect_start_update_metrics(
 //   5. The per-step `total + 1` increment is bounded by `u64::MAX`
 //      while `total < u64::MAX` (production at budget/loop_body.rs:43-46).
 //
-//   6. The done-continuation push (production at budget/loop_body.rs:244-261)
+//   6. The done-continuation push (production at budget/loop_body.rs:253-269)
 //      always pushes `done` on success, pushes the successor id
 //      exactly when the done node ends the workflow and a successor
 //      exists, and fails exactly when the done step cannot be
 //      located.
 //
-//   7. The node lookup (production at crates/vb_core/src/budget.rs:143-167) fails
+//   7. The node lookup (production at crates/vb_core/src/budget.rs:154-178) fails
 //      exactly when the step id is absent from the node list and the
 //      direct index is out of range.
 //
@@ -745,13 +796,13 @@ pub proof fn lemma_per_step_increment_overflow_at_u64_max() {
 /// the workflow and a successor node exists.
 ///
 /// Mirrors the push guard in production `push_done_continuation` at
-/// `crates/vb_core/src/budget/loop_body.rs:247-257`.
+/// `crates/vb_core/src/budget/loop_body.rs:260-267`.
 pub proof fn lemma_push_done_next_iff_end(nodes: Seq<CompiledNode>, pos: int)
     requires
         0 <= pos,
         pos < nodes.len(),
     ensures
-        spec_push_next_id(nodes, pos) != None == (match nodes[pos].routing.next {
+        spec_push_next_id(nodes, pos) != None::<StepIdx> == (match nodes[pos].routing.next {
             NodeContinuation::End => pos + 1 < nodes.len(),
             NodeContinuation::Step(_) => false,
         }),
@@ -770,11 +821,8 @@ pub proof fn lemma_push_done_error_iff_unfindable(
     stack: Seq<StepIdx>,
 )
     ensures
-        (spec_push_done_stack(nodes, done, node_count, stack) == None) == (spec_find_position(
-            nodes,
-            done,
-            node_count,
-        ) == None),
+        (spec_push_done_stack(nodes, done, node_count, stack) == None::<Seq<StepIdx>>) == (
+        spec_find_position(nodes, done, node_count) == None::<int>),
 {
 }
 
@@ -783,7 +831,7 @@ pub proof fn lemma_push_done_error_iff_unfindable(
 /// is the last element pushed.
 ///
 /// Mirrors production `push_done_continuation` at
-/// `crates/vb_core/src/budget/loop_body.rs:244-261`: `stack.push(done)` is
+/// `crates/vb_core/src/budget/loop_body.rs:253-269`: `stack.push(done)` is
 /// unconditional, and the successor push happens first when the done
 /// node ends the workflow and a successor exists.
 pub proof fn lemma_push_done_stack_ends_with_done(
@@ -821,12 +869,10 @@ pub proof fn lemma_push_done_stack_ends_with_done(
     }
 }
 
-/// Lemma: a successful combined loop-body step leaves `done` on top
-/// of the stack.
+/// Lemma for the done-continuation component before error exits are appended.
 ///
-/// The combined `exec_count_and_push_loop_body` Ok arm requires the
-/// final stack to equal `spec_push_done_stack`; this lemma discharges
-/// the consequence that the pushed `done` is the last element, via
+/// This component is `spec_push_done_stack`, not the complete call.
+/// The component ends with `done`, via
 /// `lemma_push_done_stack_ends_with_done`.
 pub proof fn lemma_loop_body_ok_stack_ends_with_done(
     nodes: Seq<CompiledNode>,
@@ -845,23 +891,130 @@ pub proof fn lemma_loop_body_ok_stack_ends_with_done(
     lemma_push_done_stack_ends_with_done(nodes, done, node_count, stack, pos);
 }
 
+/// The full call preserves the done component and appends every declared exit.
+pub proof fn lemma_loop_body_stack_exact_suffix(
+    nodes: Seq<CompiledNode>,
+    body: StepIdx,
+    done: StepIdx,
+    node_count: int,
+    stack: Seq<StepIdx>,
+    done_stack: Seq<StepIdx>,
+)
+    requires
+        spec_push_done_stack(nodes, done, node_count, stack) == Some(done_stack),
+    ensures
+        spec_push_loop_body_stack(nodes, body, done, node_count, stack) == Some(
+            done_stack + spec_body_error_exits(nodes, body, done, 0),
+        ),
+        (done_stack + spec_body_error_exits(nodes, body, done, 0)).len() == done_stack.len()
+            + spec_body_error_exits(nodes, body, done, 0).len(),
+        spec_body_error_exits(nodes, body, done, 0).len() > 0 ==> (done_stack
+            + spec_body_error_exits(nodes, body, done, 0)).last() == spec_body_error_exits(
+            nodes,
+            body,
+            done,
+            0,
+        ).last(),
+{
+}
+
+/// Done remains on top when the full call appends no error exits.
+pub proof fn lemma_loop_body_without_error_exits_ends_with_done(
+    nodes: Seq<CompiledNode>,
+    body: StepIdx,
+    done: StepIdx,
+    node_count: int,
+    stack: Seq<StepIdx>,
+    new_stack: Seq<StepIdx>,
+    pos: int,
+)
+    requires
+        spec_find_position(nodes, done, node_count) == Some(pos),
+        spec_body_error_exits(nodes, body, done, 0) == Seq::<StepIdx>::empty(),
+        spec_push_loop_body_stack(nodes, body, done, node_count, stack) == Some(new_stack),
+    ensures
+        new_stack.last() == done,
+{
+    lemma_push_done_stack_ends_with_done(nodes, done, node_count, stack, pos);
+    match spec_push_done_stack(nodes, done, node_count, stack) {
+        Some(done_stack) => {
+            assert(done_stack + Seq::<StepIdx>::empty() =~= done_stack);
+            assert(new_stack == done_stack);
+        },
+        None => {},
+    }
+}
+
+/// Concrete exit case refuting the former full-call "done is last" assertion.
+/// Node order differs from id order; internal/outside edges are excluded.
+pub proof fn lemma_declared_exit_order_witness() {
+    let body = StepIdx(1);
+    let done = StepIdx(3);
+    let later = StepIdx(5);
+    let inside = StepIdx(2);
+    let node = CompiledNode {
+        retry: None,
+        id: inside,
+        output: production::production_inner::NodeOutput::Discard,
+        routing: production::production_inner::NodeRouting {
+            next: NodeContinuation::Step(done),
+            error: production::production_inner::ErrorRouting::Handler {
+                handler: later,
+                error_slot: None,
+            },
+        },
+        kind: CompiledNodeKind::Nop,
+    };
+    let at_body = CompiledNode {
+        id: body,
+        routing: production::production_inner::NodeRouting {
+            error: production::production_inner::ErrorRouting::Handler {
+                handler: done,
+                error_slot: None,
+            },
+            ..node.routing
+        },
+        ..node
+    };
+    let internal = CompiledNode {
+        routing: production::production_inner::NodeRouting {
+            error: production::production_inner::ErrorRouting::Handler {
+                handler: inside,
+                error_slot: None,
+            },
+            ..node.routing
+        },
+        ..node
+    };
+    let at_done = CompiledNode { id: done, ..node };
+    let before = CompiledNode { id: StepIdx(0), ..node };
+    let nodes = seq![node, internal, at_body, node, at_done, before];
+    reveal_with_fuel(spec_body_error_exits, 7);
+    assert(spec_body_error_exits(nodes, body, done, 0) == seq![later, done, later]);
+    assert(spec_push_done_stack(nodes, done, 6, Seq::empty()) == Some(seq![done]));
+    assert(spec_push_loop_body_stack(nodes, body, done, 6, Seq::empty()) == Some(
+        seq![done, later, done, later],
+    ));
+    assert(seq![done, later, done, later].last() != done);
+}
+
 /// Lemma: the linear id scan finds nothing exactly when no node in
 /// the scanned range carries the step id.
 ///
 /// Mirrors the scan loop in production `find_node_position` at
-/// `crates/vb_core/src/budget.rs:156-160`.
+/// `crates/vb_core/src/budget.rs:167-171`.
 pub proof fn lemma_find_scan_none_iff(nodes: Seq<CompiledNode>, step: StepIdx, start: int)
     requires
         0 <= start,
         start <= nodes.len(),
     ensures
-        (spec_find_scan(nodes, step, start) == None) == (forall|i: int|
+        (spec_find_scan(nodes, step, start) == None::<int>) == (forall|i: int|
             #![auto]
             start <= i < nodes.len() ==> nodes[i].id != step),
     decreases nodes.len() - start,
 {
     if start >= nodes.len() {
-        assert(spec_find_scan(nodes, step, start) == None);
+        assert(spec_find_scan(nodes, step, start) == None::<int>);
         assert(forall|i: int| #![auto] start <= i < nodes.len() ==> nodes[i].id != step);
     } else if nodes[start].id == step {
         assert(spec_find_scan(nodes, step, start) == Some(start));
@@ -878,35 +1031,37 @@ pub proof fn lemma_find_scan_none_iff(nodes: Seq<CompiledNode>, step: StepIdx, s
 /// from the node list and the direct index is out of range.
 ///
 /// Mirrors production `find_node_position` at
-/// `crates/vb_core/src/budget.rs:143-167`: the direct fast path and
+/// `crates/vb_core/src/budget.rs:154-178`: the direct fast path and
 /// the direct fallback both return `Some` whenever
 /// `step.as_usize() < node_count`, so failure requires the direct
 /// index out of range and no matching id.
 pub proof fn lemma_find_position_none_iff(nodes: Seq<CompiledNode>, step: StepIdx, node_count: int)
     ensures
-        (spec_find_position(nodes, step, node_count) == None) == ((step.0 as int) >= node_count && (
-        forall|i: int| #![auto] 0 <= i < nodes.len() ==> nodes[i].id != step)),
+        (spec_find_position(nodes, step, node_count) == None::<int>) == ((step.0 as int)
+            >= node_count && (forall|i: int|
+            #![auto]
+            0 <= i < nodes.len() ==> nodes[i].id != step)),
 {
     let direct = step.0 as int;
     lemma_find_scan_none_iff(nodes, step, 0);
     if direct < node_count {
         if direct < nodes.len() && nodes[direct].id == step {
             assert(spec_find_position(nodes, step, node_count) == Some(direct));
-        } else if spec_find_scan(nodes, step, 0) != None {
-            assert(spec_find_position(nodes, step, node_count) != None);
+        } else if spec_find_scan(nodes, step, 0) != None::<int> {
+            assert(spec_find_position(nodes, step, node_count) != None::<int>);
         } else {
             assert(spec_find_position(nodes, step, node_count) == Some(direct));
         }
-        assert(spec_find_position(nodes, step, node_count) != None);
+        assert(spec_find_position(nodes, step, node_count) != None::<int>);
         assert(!(direct >= node_count && (forall|i: int|
             #![auto]
             0 <= i < nodes.len() ==> nodes[i].id != step)));
     } else {
-        assert((spec_find_position(nodes, step, node_count) == None) == (spec_find_scan(
+        assert((spec_find_position(nodes, step, node_count) == None::<int>) == (spec_find_scan(
             nodes,
             step,
             0,
-        ) == None));
+        ) == None::<int>));
     }
 }
 

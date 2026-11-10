@@ -140,7 +140,7 @@ fn handler_sees_possible_partial_overwrite_types() -> TestResult {
     rejected(p, SlotFlowFailure::IncompatibleType)
 }
 
-fn action_with_legacy_wrapper(result: u16) -> vb_core::workflow::WorkflowParts {
+pub(super) fn action_with_legacy_wrapper(result: u16) -> vb_core::workflow::WorkflowParts {
     let mut p = action(result);
     let mut wrapper = node(
         4,

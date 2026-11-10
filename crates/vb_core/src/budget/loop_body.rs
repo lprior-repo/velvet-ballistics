@@ -2,7 +2,7 @@ use crate::ids::StepIdx;
 use crate::workflow::{CompiledNodeKind, NodeContinuation};
 
 use super::conditional_counter;
-use super::loop_region::count_body_region_nodes;
+use super::loop_region::{count_body_region_nodes, push_body_error_exits};
 use super::successors::{
     insert_tracked_jump_edge, insert_tracked_step, push_successor_targets, tracked_steps_contain,
 };
@@ -246,6 +246,7 @@ fn count_and_push_loop_body(
             limit: u64::MAX,
         })?;
     push_done_continuation(nodes, done, node_count, stack)?;
+    push_body_error_exits(nodes, body, done, stack);
     Ok(total)
 }
 

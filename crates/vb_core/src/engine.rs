@@ -6,6 +6,7 @@ pub(crate) mod error_routing;
 pub(crate) mod expr_eval;
 pub(crate) mod node_helpers;
 pub(crate) mod object_list;
+pub mod repeat;
 pub(crate) mod run_loop;
 pub(crate) mod signals;
 pub(crate) mod step;

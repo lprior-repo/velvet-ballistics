@@ -125,3 +125,6 @@ fn finish_input_execution() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[path = "input_boundary_regressions.rs"]
+mod input_boundary_regressions;

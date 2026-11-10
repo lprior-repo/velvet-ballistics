@@ -7,19 +7,17 @@ use std::str;
 
 pub(crate) const WORKFLOW_VERSION: &str = "velvet-ballistics/v1";
 
-pub(crate) fn reject_known_canonical_text_gaps(text: &str) -> Result<(), CompileError> {
-    if text.contains("event: \"\"") {
-        Err(CompileError::CanonicalYaml {
-            category: "field_shape",
-            message: Box::from("wait.event must be non-empty"),
-        })
-    } else {
-        Ok(())
-    }
-}
-
 pub(crate) fn canonical_yaml_error(error: crate::YamlError) -> CompileError {
     match error {
+        crate::YamlError::FieldShape {
+            field: "wait.event",
+            expected: "non-empty string",
+        } => {
+            return CompileError::CanonicalYaml {
+                category: "field_shape",
+                message: Box::from("wait.event must be non-empty"),
+            };
+        }
         crate::YamlError::SourceTooLarge { size, max } => {
             return CompileError::SourceTooLarge {
                 actual: size,

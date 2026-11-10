@@ -26,11 +26,12 @@
 //
 // BINDING LEDGER (mirrors production_inner/budget_computation_production.rs)
 // ============================================================================
-//   - `count_and_push_loop_body`            <- crates/vb_core/src/budget/loop_body.rs:216-242
-//   - `find_node_position`                  <- crates/vb_core/src/budget.rs:143-167
-//   - `push_done_continuation`              <- crates/vb_core/src/budget/loop_body.rs:244-261
-//   - `checked_step_add`                    <- crates/vb_core/src/budget/loop_body.rs:206-211
-//   - `max_gather_pages`                    <- crates/vb_core/src/budget/reachable.rs:166-179
+//   - `count_and_push_loop_body`            <- crates/vb_core/src/budget/loop_body.rs:224-251
+//     declared error-exit filter             <- crates/vb_core/src/budget/loop_region.rs:174-189
+//   - `find_node_position`                  <- crates/vb_core/src/budget.rs:154-178
+//   - `push_done_continuation`              <- crates/vb_core/src/budget/loop_body.rs:253-269
+//   - `checked_step_add`                    <- crates/vb_core/src/budget/loop_body.rs:214-219
+//   - `max_gather_pages`                    <- crates/vb_core/src/budget/reachable.rs:169-181
 //   - `total`                               <- crates/vb_core/src/budget/loop_body.rs:43-47
 //   - `count`                               <- crates/vb_core/src/budget/loop_region.rs:47-52
 //
@@ -60,8 +61,8 @@ verus! {
 // `production_inner/budget_computation_production.rs` (NOT the actual
 // production source). The mirror is a hand-written structural copy of
 // `crates/vb_core/src/budget.rs` with documented substitutions
-// (thiserror/serde stripped, method bodies replaced by no-op
-// `#[verifier::external]` wrappers). Any drift in field NAME,
+// (thiserror/serde stripped; ordinary Rust bodies kept behind the existing
+// `#[verifier::external]` boundary). Any drift in field NAME,
 // discriminant shape, or method signature breaks the verification build.
 #[path = "production_inner/budget_computation_production.rs"]
 pub mod production_inner;
@@ -79,11 +80,11 @@ pub mod production_inner;
 // The drift check references every production method that the spec
 // file attaches an `assume_specification` bridge to:
 //
-//   - count_and_push_loop_body      (budget/loop_body.rs:216-242)
-//   - find_node_position            (crates/vb_core/src/budget.rs:143-167)
-//   - push_done_continuation        (budget/loop_body.rs:244-261)
-//   - checked_step_add              (budget/loop_body.rs:206-211)
-//   - collect_start_update_metrics  (budget/reachable.rs:166-179)
+//   - count_and_push_loop_body      (budget/loop_body.rs:224-251)
+//   - find_node_position            (crates/vb_core/src/budget.rs:154-178)
+//   - push_done_continuation        (budget/loop_body.rs:253-269)
+//   - checked_step_add              (budget/loop_body.rs:214-219)
+//   - collect_start_update_metrics  (budget/reachable.rs:169-181)
 //   - count_total_steps_step_increment (budget/loop_body.rs:43-47)
 //   - body_region_step_increment    (budget/loop_region.rs:47-52)
 //
@@ -209,6 +210,7 @@ fn prod_methods_drift_check() {
         0u64,
         0u64,
         &nodes,
+        production_inner::StepIdx::new(0),
         production_inner::StepIdx::new(0),
         0,
         &mut stack,

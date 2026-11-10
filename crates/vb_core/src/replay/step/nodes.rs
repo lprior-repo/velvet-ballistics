@@ -5,7 +5,7 @@ use crate::value::{SlotValue, Taint, join_taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{CompiledNode, CompiledWorkflow};
 
-use super::super::{ReplayError, engine_to_replay_err, eval_expr_for_replay};
+use super::super::{ReplayError, engine_to_replay_err};
 use super::types::{ReplayAction, SuspensionKind};
 
 pub(super) fn replay_nop(
@@ -96,6 +96,20 @@ pub(super) fn replay_copy(
     Ok(ReplayAction::Continue(next))
 }
 
+pub(super) fn replay_ask_resume(
+    run: &mut RunFrame,
+    node: &CompiledNode,
+    answer: SlotIdx,
+) -> Result<ReplayAction, ReplayError> {
+    let value = *run.read_slot(answer).map_err(engine_to_replay_err)?;
+    let taint = run.read_taint(answer).map_err(engine_to_replay_err)?;
+    if let Some(output) = node.output.slot() {
+        run.write_slot_with_taint(output, value, taint)
+            .map_err(engine_to_replay_err)?;
+    }
+    Ok(ReplayAction::Continue(advance_to_next(run, node)?))
+}
+
 pub(super) fn replay_eval_expr(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,
@@ -103,8 +117,16 @@ pub(super) fn replay_eval_expr(
     node: &CompiledNode,
     expr: ExprIdx,
 ) -> Result<ReplayAction, ReplayError> {
-    let (value, taint) = eval_expr_for_replay(plan, run, store, expr)
-        .map_err(|_| ReplayError::ExpressionEvalFailed { step: node.id })?;
+    let (value, taint) = match crate::engine::eval_expr_with_store(plan, run, store, expr) {
+        Ok(result) => result,
+        Err(error) if node.routing.error.handler().is_some() => {
+            run.mark_failed(node.id).map_err(engine_to_replay_err)?;
+            crate::engine::route_error_handler(plan, run, node.id, &error)
+                .map_err(engine_to_replay_err)?;
+            return Ok(ReplayAction::Continue(run.pc()));
+        }
+        Err(_) => return Err(ReplayError::ExpressionEvalFailed { step: node.id }),
+    };
     let output = node.output.slot().ok_or(ReplayError::Internal {
         reason: "EvalExpr node missing output slot",
     })?;

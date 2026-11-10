@@ -90,6 +90,7 @@ pub(super) fn finish_drive_step(
     drive_state: &mut DriveState,
 ) -> RuntimeEngineResult<()> {
     if run.step_state(step.pc).map_err(RuntimeEngineError::Core)? == vb_core::StepState::Failed {
+        super::actions::emit_error_slot_evidence(plan, run, evidence, step.node)?;
         evidence
             .push_step_failed(step.pc)
             .map_err(RuntimeEngineError::Core)?;

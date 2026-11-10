@@ -50,6 +50,10 @@ fn preflight(
         match state {
             StepState::Pending => {}
             StepState::Succeeded => {}
+            StepState::Failed
+                if run
+                    .validate_handled_failure_rearm(plan, control, step)
+                    .is_ok() => {}
             _ => {
                 return Err(invalid("loop body step not in rearmable state"));
             }
@@ -75,6 +79,11 @@ fn validate_nested_completion(
         let start = run
             .step_state(region.start())
             .map_err(RuntimeEngineError::Core)?;
+        if matches!(start, StepState::Succeeded | StepState::Failed)
+            && recovered_exit(plan, run, control, region.start(), region.control())?
+        {
+            continue;
+        }
         let latch = run
             .step_state(region.control())
             .map_err(RuntimeEngineError::Core)?;
@@ -115,6 +124,11 @@ fn validate_nested_completion(
             .ok_or_else(|| invalid("nested node missing"))?;
         if let CompiledNodeKind::TogetherStart { ref branches, join } = node.kind {
             let start = run.step_state(id).map_err(RuntimeEngineError::Core)?;
+            if matches!(start, StepState::Succeeded | StepState::Failed)
+                && recovered_exit(plan, run, control, id, join)?
+            {
+                continue;
+            }
             let expected = if start == StepState::Succeeded {
                 StepState::Succeeded
             } else {
@@ -133,7 +147,45 @@ fn validate_nested_completion(
     Ok(())
 }
 
-fn reset_succeeded(run: &mut RunFrame, body: StepIdx, control: StepIdx) -> RuntimeEngineResult<()> {
+fn recovered_exit(
+    plan: &CompiledWorkflow,
+    run: &RunFrame,
+    control: StepIdx,
+    start: StepIdx,
+    end: StepIdx,
+) -> RuntimeEngineResult<bool> {
+    for raw in start.get()..=end.get() {
+        let failed = StepIdx::new(raw);
+        if run.step_state(failed).map_err(RuntimeEngineError::Core)? == StepState::Failed
+            && plan
+                .node(failed)
+                .and_then(|node| node.routing.error.handler())
+                .is_some_and(|handler| handler > end)
+            && run
+                .validate_handled_failure_rearm(plan, control, failed)
+                .is_ok()
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn reset_completed(
+    plan: &CompiledWorkflow,
+    run: &mut RunFrame,
+    body: StepIdx,
+    control: StepIdx,
+) -> RuntimeEngineResult<()> {
+    // Discharge failures before resetting their successful handler witnesses.
+    // Forward order preserves any later failed-handler witnesses as well.
+    for raw in body.get()..control.get() {
+        let step = StepIdx::new(raw);
+        if run.step_state(step).map_err(RuntimeEngineError::Core)? == StepState::Failed {
+            run.rearm_handled_failure(plan, control, step)
+                .map_err(RuntimeEngineError::Core)?;
+        }
+    }
     for raw in body.get()..=control.get() {
         let step = StepIdx::new(raw);
         let state = run.step_state(step).map_err(RuntimeEngineError::Core)?;
@@ -159,7 +211,7 @@ pub(super) fn loop_body_rearm(
     }
 
     preflight(plan, run, body, control)?;
-    reset_succeeded(run, body, control)
+    reset_completed(plan, run, body, control)
 }
 
 pub(super) fn validate_activation(

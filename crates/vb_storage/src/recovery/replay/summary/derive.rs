@@ -80,6 +80,12 @@ pub fn recover_runtime_frame_seed_from_events_with_workflow(
     events: &[JournalEvent],
     workflow: &CompiledWorkflow,
 ) -> RecoveryResult<RecoveryFrameSeedProduct> {
+    reject_workflow_digest_mismatch(events, workflow.digest())?;
+    if let Some(replayed) =
+        crate::recovery::complete_scalar::replay_complete_scalar(events, workflow)?
+    {
+        return Ok(replayed.seed().clone());
+    }
     recover_raw_runtime_frame_seed_from_events_with_workflow(events, workflow)
         .map(RecoveryFrameSeedProduct::from_seed)
 }

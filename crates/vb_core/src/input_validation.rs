@@ -5,6 +5,8 @@ use crate::limits::MAX_VALUES_PER_RUN;
 use crate::value::SlotValue;
 use crate::value_store::ValueStoreCheckpointV1;
 use crate::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
+use std::collections::HashSet;
+mod memo;
 
 /// A supplied value does not satisfy its retained input declaration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,6 +52,11 @@ struct Check<'a> {
     depth: usize,
 }
 
+enum Work<'a> {
+    Enter(Check<'a>),
+    Leave(memo::Key<'a>),
+}
+
 /// Validates complete values, including every nested payload reference.
 ///
 /// Text lengths are UTF-8 bytes. Symbol references require backing payloads.
@@ -73,7 +80,15 @@ pub fn validate_input_value(
         },
     )?;
     let mut visited = 0usize;
-    while let Some(check) = pending.pop() {
+    let mut completed = HashSet::new();
+    while let Some(work) = pending.pop() {
+        let check = match work {
+            Work::Enter(check) => check,
+            Work::Leave(key) => {
+                memo::complete(&mut completed, key)?;
+                continue;
+            }
+        };
         visited = visited.checked_add(1).ok_or(InputValueIssue::Capacity)?;
         if visited > MAX_VALUES_PER_RUN {
             return Err(InputValueIssue::Capacity);
@@ -81,11 +96,18 @@ pub fn validate_input_value(
         if check.depth > MAX_INPUT_SCHEMA_DEPTH {
             return Err(InputValueIssue::DepthExceeded);
         }
+        let key = memo::Key::of(&check);
+        if key.is_some_and(|key| completed.contains(&key)) {
+            continue;
+        }
         if check.value == SlotValue::Null && check.constraint.nullable {
             continue;
         }
         if check.kind != InputSlotKind::Any && check.kind != input_value_kind(check.value) {
             return Err(InputValueIssue::Kind);
+        }
+        if let Some(key) = key {
+            push_work(&mut pending, Work::Leave(key))?;
         }
         match check.value {
             SlotValue::I64(number) => {
@@ -215,14 +237,18 @@ fn next_depth(depth: usize) -> Result<usize, InputValueIssue> {
     depth.checked_add(1).ok_or(InputValueIssue::DepthExceeded)
 }
 
-fn push<'a>(pending: &mut Vec<Check<'a>>, check: Check<'a>) -> Result<(), InputValueIssue> {
+fn push<'a>(pending: &mut Vec<Work<'a>>, check: Check<'a>) -> Result<(), InputValueIssue> {
+    push_work(pending, Work::Enter(check))
+}
+
+fn push_work<'a>(pending: &mut Vec<Work<'a>>, work: Work<'a>) -> Result<(), InputValueIssue> {
     if pending.len() >= MAX_VALUES_PER_RUN {
         return Err(InputValueIssue::Capacity);
     }
     pending
         .try_reserve(1)
         .map_err(|_| InputValueIssue::Capacity)?;
-    pending.push(check);
+    pending.push(work);
     Ok(())
 }
 

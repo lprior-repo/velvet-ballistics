@@ -87,10 +87,10 @@ impl RunFrame {
 
     /// Increments the executed transition counter.
     pub fn increment_executed(&mut self) -> CoreResult<()> {
-        self.executed = self
-            .executed
-            .checked_add(1)
-            .ok_or(CoreError::StepCounterOverflow)?;
+        let Some(executed) = self.executed.checked_add(1) else {
+            return Err(CoreError::StepCounterOverflow);
+        };
+        self.executed = executed;
         Ok(())
     }
 }

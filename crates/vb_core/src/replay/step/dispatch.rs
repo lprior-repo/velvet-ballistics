@@ -40,12 +40,19 @@ pub fn replay_step_with_collect(
         CompiledNodeKind::SetConst { value } => replay_set_const(plan, run, node, *value),
         CompiledNodeKind::Copy { source } => replay_copy(run, node, *source),
         CompiledNodeKind::EvalExpr { expr } => replay_eval_expr(plan, run, store, node, *expr),
+        CompiledNodeKind::RepeatStart { .. }
+        | CompiledNodeKind::RepeatAttempt { .. }
+        | CompiledNodeKind::RepeatCheck { .. }
+        | CompiledNodeKind::RepeatFinish { .. } => super::repeat::replay_repeat(node, run),
         CompiledNodeKind::BuildObject { fields } => replay_build_object(run, store, node, fields),
         CompiledNodeKind::BuildList { items } => replay_build_list(run, store, node, items),
         CompiledNodeKind::Finish { result } => replay_finish(run, *result),
         CompiledNodeKind::Jump { target } => replay_jump(run, *target),
         CompiledNodeKind::Do { .. } => Ok(replay_suspend(node, SuspensionKind::ActionPending)),
         CompiledNodeKind::Ask { .. } => Ok(replay_suspend(node, SuspensionKind::AskPending)),
+        CompiledNodeKind::AskResume { answer } => {
+            super::nodes::replay_ask_resume(run, node, *answer)
+        }
         CompiledNodeKind::WaitUntil { .. } => Ok(replay_suspend(node, SuspensionKind::WaitUntil)),
         CompiledNodeKind::WaitEvent { .. } => Ok(replay_suspend(node, SuspensionKind::WaitEvent)),
         CompiledNodeKind::ChooseSlot {

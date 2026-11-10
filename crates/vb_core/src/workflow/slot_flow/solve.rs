@@ -2,7 +2,7 @@ use super::facts::{self, invalid};
 use super::graph::{self, Route};
 use super::{Context, Fact, Facts, FlowResult, capacity};
 use crate::ids::StepIdx;
-use crate::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
+use crate::workflow::{CompiledNode, WorkflowParts};
 use std::collections::VecDeque;
 
 pub(super) fn validate(parts: &WorkflowParts) -> FlowResult<()> {
@@ -175,15 +175,7 @@ fn evaluate(
         result.push((edge.target, ctx.state));
     }
     if let Some(handler) = node.routing.error.handler() {
-        let error_slot = node.routing.error.error_slot().or_else(|| {
-            parts
-                .nodes
-                .iter()
-                .find(|candidate| {
-                    matches!(candidate.kind, CompiledNodeKind::ErrorHandler { body, .. } if body == node.id)
-                })
-                .and_then(|wrapper| wrapper.routing.error.error_slot())
-        });
+        let error_slot = crate::workflow::resolved_error_slot(&parts.nodes, node);
         if let Some(slot) = error_slot {
             *partial
                 .get_mut(slot.as_usize())
@@ -214,7 +206,7 @@ mod tests {
     use super::*;
     use crate::ids::{ConstIdx, SlotIdx, WorkflowDigest};
     use crate::value::ConstValue;
-    use crate::workflow::{ResourceContract, SlotFlowFailure, node};
+    use crate::workflow::{CompiledNodeKind, ResourceContract, SlotFlowFailure, node};
 
     #[test]
     fn default_contract_dense_chain_checks_the_last_read() -> FlowResult<()> {

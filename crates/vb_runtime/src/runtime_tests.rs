@@ -488,6 +488,7 @@ mod tests {
             seed,
             boundary,
             None,
+            None,
         )
         .map_err(|error| error.to_string())
     }

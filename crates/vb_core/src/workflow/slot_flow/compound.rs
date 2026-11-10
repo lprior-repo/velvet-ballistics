@@ -53,13 +53,13 @@ pub(super) fn apply(ctx: &mut Context<'_>, kind: &K, route: Route) -> FlowResult
             initial,
             ..
         } => {
+            ctx.typed_read(input, Fact::LIST)?;
             let init = ctx
                 .parts
                 .constants
                 .get(initial.as_usize())
                 .ok_or_else(|| invalid(ctx.node.id))?;
             ctx.write(accumulator, Fact::constant(init), true)?;
-            ctx.typed_read(input, Fact::LIST)?;
             if route == Route::Body {
                 ctx.write(input, Fact::assigned(Fact::DYNAMIC), true)?;
                 ctx.output(Fact::assigned(Fact::LIST))?;

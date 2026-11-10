@@ -4,13 +4,41 @@ use vb_core::action::{
     Idempotency, RetryPolicy, RetrySafety, SideEffect, compute_action_idempotency_key,
 };
 use vb_core::engine::{resume_action_completion, resume_action_failure};
-use vb_core::ids::{ActionId, RunId, SeqNo};
+use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::{EngineSignal, RunFrame, StepBudget, ValueStore, drive_deterministic};
 
 #[test]
 fn accepted_action_success_and_error_follow_distinct_runtime_edges() -> TestResult {
-    let plan = CompiledWorkflow::try_from_parts(super::errors::action(2))?;
+    execute_action_edges(super::errors::action(2), slot(2), None)
+}
+
+#[test]
+fn legacy_wrapper_action_failure_preserves_direct_error_slot_precedence() -> TestResult {
+    execute_action_edges(
+        super::errors::action_with_legacy_wrapper(2),
+        slot(2),
+        Some(slot(4)),
+    )
+}
+
+#[test]
+fn legacy_wrapper_action_failure_falls_back_only_without_direct_slot() -> TestResult {
+    let mut parts = super::errors::action_with_legacy_wrapper(4);
+    parts.nodes.get_mut(1).ok_or("action")?.routing.error =
+        vb_core::workflow::ErrorRouting::Handler {
+            handler: step(3),
+            error_slot: None,
+        };
+    execute_action_edges(parts, slot(4), Some(slot(2)))
+}
+
+fn execute_action_edges(
+    parts: WorkflowParts,
+    error_slot: SlotIdx,
+    untouched_slot: Option<SlotIdx>,
+) -> TestResult {
+    let plan = CompiledWorkflow::try_from_parts(parts)?;
     let contract = ActionContract {
         id: ActionId::new(0),
         name: ActionName::new("slot-flow")?,
@@ -100,9 +128,17 @@ fn accepted_action_success_and_error_follow_distinct_runtime_edges() -> TestResu
                 error,
                 vb_core::CoreError::SlotUninitialized { slot: slot(1) }
             );
-            assert_eq!(run.read_slot(slot(2))?, &SlotValue::I64(1));
+            assert_eq!(run.read_slot(error_slot)?, &SlotValue::I64(1));
+            assert_eq!(run.read_taint(error_slot)?, Taint::Clean);
+            assert_eq!(run.step_state(step(1))?, vb_core::StepState::Failed);
             SlotValue::I64(1)
         };
+        if let Some(slot) = untouched_slot {
+            assert_eq!(
+                run.read_slot(slot),
+                Err(vb_core::CoreError::SlotUninitialized { slot })
+            );
+        }
         let EngineSignal::Finished(value, taint) =
             drive_deterministic(&plan, &mut run, &mut StepBudget::new(8), &mut store)?
         else {

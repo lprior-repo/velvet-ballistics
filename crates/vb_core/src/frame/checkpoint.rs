@@ -116,24 +116,21 @@ impl RunFrame {
             return Err(RunFrameCheckpointV1Error::ParallelCountOutOfBounds);
         }
 
-        let mut frame = RunFrame::new(checkpoint.run_id, checkpoint.pc, step_count, slot_count)
-            .map_err(|_| RunFrameCheckpointV1Error::InvalidFrame)?;
-        frame.executed = checkpoint.executed;
-        frame.max_parallel_in_flight = checkpoint.max_parallel_in_flight;
-        frame.parallel_in_flight = checkpoint.parallel_in_flight;
-        for (target, state) in frame.states.iter_mut().zip(checkpoint.states) {
-            *target = StepState::from(state);
+        if checkpoint.pc.as_usize() >= usize::from(step_count) {
+            return Err(RunFrameCheckpointV1Error::InvalidFrame);
         }
-        for ((slot, value), (taint_slot, taint)) in frame
-            .slots
-            .iter_mut()
-            .zip(checkpoint.slots)
-            .zip(frame.taint.iter_mut().zip(checkpoint.taint))
-        {
-            *slot = value;
-            *taint_slot = taint;
-        }
-        Ok(frame)
+        Ok(Self {
+            run_id: checkpoint.run_id,
+            pc: checkpoint.pc,
+            executed: checkpoint.executed,
+            step_count,
+            slot_count,
+            max_parallel_in_flight: checkpoint.max_parallel_in_flight,
+            parallel_in_flight: checkpoint.parallel_in_flight,
+            states: checkpoint.states.into_iter().map(StepState::from).collect(),
+            slots: checkpoint.slots.into_boxed_slice(),
+            taint: checkpoint.taint.into_boxed_slice(),
+        })
     }
 }
 
@@ -229,3 +226,10 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "checkpoint/equivalence_tests.rs"]
+mod equivalence_tests;
+#[cfg(test)]
+#[path = "checkpoint/reference.rs"]
+mod reference;

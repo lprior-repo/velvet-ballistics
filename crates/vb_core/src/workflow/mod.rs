@@ -263,11 +263,23 @@ impl CompiledWorkflow {
             input_slots: self.input_slots.clone(),
         }
     }
-    pub(crate) fn error_handler_for_body(&self, body_step: StepIdx) -> Option<&CompiledNode> {
-        self.nodes.iter().find(|node| {
-            matches!(node.kind, CompiledNodeKind::ErrorHandler { body, .. } if body == body_step)
-        })
+    /// Resolves a node's direct error slot before considering a legacy wrapper fallback.
+    #[must_use]
+    pub fn resolved_error_slot(&self, node: &CompiledNode) -> Option<SlotIdx> {
+        resolved_error_slot(&self.nodes, node)
     }
+}
+
+// A direct error slot takes precedence; legacy wrappers provide only a fallback.
+pub(crate) fn resolved_error_slot(nodes: &[CompiledNode], node: &CompiledNode) -> Option<SlotIdx> {
+    node.routing.error.error_slot().or_else(|| {
+        nodes
+            .iter()
+            .find(|candidate| {
+                matches!(candidate.kind, CompiledNodeKind::ErrorHandler { body, .. } if body == node.id)
+            })
+            .and_then(|wrapper| wrapper.routing.error.error_slot())
+    })
 }
 
 /// Explicit compiled resource bounds accepted at run admission.

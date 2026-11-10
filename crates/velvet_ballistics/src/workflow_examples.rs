@@ -25,14 +25,18 @@ fn run(
 ) -> Result<(), String> {
     let mut checkpoint =
         ValueStore::with_max_slots(workflow.resource_contract().max_slots).checkpoint_v1();
-    let offset = workflow
+    // Canonical lowering puts numeric ports before named inputs and secret ports after them.
+    let end = workflow
         .input_slots()
         .len()
+        .checked_sub(source.secrets().len())
+        .ok_or("input declaration mismatch")?;
+    let offset = end
         .checked_sub(source.inputs().len())
         .ok_or("input declaration mismatch")?;
     let declarations = workflow
         .input_slots()
-        .get(offset..)
+        .get(offset..end)
         .ok_or("input declaration mismatch")?;
     let mut roots = Vec::new();
     if let Some(AuthorValue::Mapping(fields)) = &example.input {

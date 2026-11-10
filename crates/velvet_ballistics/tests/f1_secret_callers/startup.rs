@@ -26,7 +26,27 @@ fn pending(db: &Path, workflow: &CompiledWorkflow, run: RunId) -> TestResult {
         .find(|node| matches!(node.kind, CompiledNodeKind::Ask { .. }))
         .ok_or("ask")?
         .id;
-    assert!(runtime.lookup_pending_ask_ticket(run, step).is_some());
+    let ticket = runtime
+        .lookup_pending_ask_ticket(run, step)
+        .ok_or("pending Ask ticket")?;
+    let (resume_step, answer_slot) = workflow
+        .to_parts()
+        .nodes
+        .iter()
+        .find_map(|node| match node.kind {
+            CompiledNodeKind::AskResume { answer } => Some((node.id, answer)),
+            _ => None,
+        })
+        .ok_or("AskResume")?;
+    assert_eq!(
+        (
+            ticket.run(),
+            ticket.ask_step(),
+            ticket.resume_step(),
+            ticket.answer_slot()
+        ),
+        (run, step, resume_step, answer_slot)
+    );
     journal.put_run_header(&vb_storage::RunHeaderRecord {
         run,
         workflow_id: vb_core::WorkflowId::new(0),

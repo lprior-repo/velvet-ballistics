@@ -134,10 +134,7 @@ pub fn route_error_handler(
         return Ok(ErrorHandlerOutcome::NoHandler);
     };
 
-    let error_slot = plan
-        .error_handler_for_body(failed_step)
-        .and_then(|eh| eh.routing.error.error_slot())
-        .or(node.routing.error.error_slot());
+    let error_slot = plan.resolved_error_slot(node);
 
     if let Some(error_slot) = error_slot {
         write_error_slot(run, error_slot, error, failed_step)?;

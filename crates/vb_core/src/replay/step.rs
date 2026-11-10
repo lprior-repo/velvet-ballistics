@@ -4,6 +4,7 @@
 mod collect;
 mod dispatch;
 mod nodes;
+mod repeat;
 mod types;
 
 pub use dispatch::{replay_step, replay_step_with_collect};
