@@ -4,7 +4,9 @@
 use crate::engine::new_run_frame;
 use crate::ids::RunId;
 use crate::value_store::ValueStore;
-use crate::workflow::CompiledWorkflow;
+use crate::workflow::{
+    CompiledInputConstraint, CompiledInputSlot, CompiledWorkflow, InputSlotKind,
+};
 
 mod integration_accessor;
 mod integration_basic;
@@ -16,6 +18,14 @@ mod integration_eval;
 mod integration_frame_behavior;
 mod integration_taint_propagation;
 mod integration_workflow;
+
+pub(super) fn external_input() -> Box<[CompiledInputSlot]> {
+    Box::new([CompiledInputSlot {
+        slot: crate::ids::SlotIdx::new(0),
+        kind: InputSlotKind::Any,
+        constraint: CompiledInputConstraint::required(),
+    }])
+}
 
 pub(super) fn test_store() -> ValueStore {
     ValueStore::new()

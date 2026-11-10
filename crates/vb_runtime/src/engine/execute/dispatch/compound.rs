@@ -79,6 +79,7 @@ pub(super) fn dispatch_reduce<P: BodyEntryPolicy>(
             input,
             accumulator,
             initial,
+            limit,
             body,
             done,
         } => handle_reduce_start(
@@ -88,6 +89,7 @@ pub(super) fn dispatch_reduce<P: BodyEntryPolicy>(
             *input,
             *accumulator,
             *initial,
+            *limit,
             *body,
             *done,
             node.output.slot(),

@@ -52,6 +52,7 @@ fn make_run_state(step_count: u16, action_attempts: &[u16]) -> Result<RunState, 
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("prop_test"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -63,7 +64,11 @@ fn make_run_state(step_count: u16, action_attempts: &[u16]) -> Result<RunState, 
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::new([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
         .map_err(|e| format!("workflow construction failed: {}", e))?;

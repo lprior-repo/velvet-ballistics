@@ -18,6 +18,22 @@ mod reduce_evidence;
 #[path = "loop_control_evidence.rs"]
 mod loop_control_evidence;
 
+pub(super) fn emit_error_slot_evidence(
+    plan: &CompiledWorkflow,
+    run: &RunFrame,
+    evidence: &mut EvidenceCollector,
+    node: &CompiledNode,
+) -> RuntimeEngineResult<()> {
+    if let Some(slot) = plan.resolved_error_slot(node) {
+        let value = *run.read_slot(slot).map_err(RuntimeEngineError::Core)?;
+        let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
+        evidence
+            .push_slot_written_with_taint(slot, value, taint)
+            .map_err(RuntimeEngineError::Core)?;
+    }
+    Ok(())
+}
+
 /// Emits a `SlotWritten` evidence event for the just-finished step when
 /// the node has a collect-style output slot or a plain `output` slot.
 /// `read_slot` errors are recorded on the drive state (RE-004) and the
@@ -29,6 +45,14 @@ pub(crate) fn emit_slot_evidence(
     node: &CompiledNode,
     drive_state: &mut DriveState,
 ) -> RuntimeEngineResult<()> {
+    // Host completions own these writes. A later suspension can still see
+    // an initialized output from the preceding loop iteration.
+    if matches!(
+        node.kind,
+        CompiledNodeKind::Do { .. } | CompiledNodeKind::Ask { .. }
+    ) {
+        return Ok(());
+    }
     // vb-8eocj.3: branch-specific evidence for Reduce nodes. Empty
     // ReduceStart initializes the accumulator then jumps to done without
     // writing the iterator slot. Exhausted ReduceNext jumps to done
@@ -89,28 +113,21 @@ fn collect_written_slot(node: &CompiledNode) -> Option<SlotIdx> {
     }
 }
 
-/// Walks every node in the workflow and returns the largest
-/// `TogetherStart` branch count, or 0 when no fan-out nodes exist.
-/// `BranchLimitExceeded` is a defense-in-depth guard for `> u16::MAX`
-/// branches; workflow validation rejects fanout > 64 at construction
-/// time so the limit cannot be reached through the public API.
+/// Uses the constructor's shared active-branch bound. Representation overflow
+/// retains the runtime BranchLimitExceeded defense for unchecked artifacts.
 pub(crate) fn compute_max_parallel_in_flight(plan: &CompiledWorkflow) -> RuntimeEngineResult<u16> {
-    let mut max_branches: u16 = 0;
-    for i in 0..plan.node_count() {
-        let step = StepIdx::new(i);
-        if let Some(node) = plan.node(step)
-            && let CompiledNodeKind::TogetherStart { branches, .. } = &node.kind
-        {
-            let branch_count = u16::try_from(branches.len()).map_err(|_| {
-                RuntimeEngineError::BranchLimitExceeded {
-                    max: u16::MAX.into(),
-                    requested: branches.len(),
-                }
-            })?;
-            if branch_count > max_branches {
-                max_branches = branch_count;
+    vb_core::budget::compute_max_parallel_in_flight(
+        (0..plan.node_count()).filter_map(|index| plan.node(StepIdx::new(index))),
+    )
+    .map_err(|error| match error {
+        vb_core::WorkflowError::StepCountOverflow { actual } => {
+            RuntimeEngineError::BranchLimitExceeded {
+                max: usize::from(u16::MAX),
+                requested: usize::try_from(actual).map_or(usize::MAX, core::convert::identity),
             }
         }
-    }
-    Ok(max_branches)
+        _ => RuntimeEngineError::Core(vb_core::EngineError::InvalidCompiledWorkflow {
+            reason: "invalid parallel branch budget",
+        }),
+    })
 }

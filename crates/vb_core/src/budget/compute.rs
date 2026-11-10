@@ -107,7 +107,6 @@ impl WholeWorkflowBudget {
 
     /// Internal budget traversal path with a narrow error type. This keeps Kani
     /// from exploring unrelated `WorkflowError::Expression(CoreError)` drops.
-    #[cfg_attr(kani, allow(unreachable_code))]
     pub(crate) fn compute_budget_local(
         nodes: &[crate::workflow::CompiledNode],
         entry: StepIdx,
@@ -122,10 +121,6 @@ impl WholeWorkflowBudget {
             return Ok(budget);
         }
 
-        #[cfg(kani)]
-        return Err(BudgetTraversalError::StepOutOfBounds { step: entry });
-
-        #[cfg(not(kani))]
         {
             let mut visited: Vec<bool> = vec![false; node_count];
             let mut in_path: Vec<u16> = bounded_tracking_vec(node_count);
@@ -134,7 +129,6 @@ impl WholeWorkflowBudget {
 
             let mut max_fanout: u16 = 0;
             let mut max_action_tickets: u32 = 0;
-            let mut max_parallel_in_flight: u16 = 0;
             let mut max_gather_pages: u32 = 0;
             let mut max_gather_items: u32 = 0;
             let mut max_for_each_iterations: u32 = 0;
@@ -151,7 +145,6 @@ impl WholeWorkflowBudget {
                 node_count,
                 &mut max_fanout,
                 &mut max_action_tickets,
-                &mut max_parallel_in_flight,
                 &mut max_gather_pages,
                 &mut max_gather_items,
                 &mut max_for_each_iterations,
@@ -162,6 +155,11 @@ impl WholeWorkflowBudget {
                 &mut max_signal_subscriptions,
             )?;
 
+            let peak = super::parallel::compute_peak(nodes.iter().enumerate().filter_map(
+                |(index, node)| (visited.get(index).copied() == Some(true)).then_some(node),
+            ))?;
+            let max_parallel_in_flight = u16::try_from(peak)
+                .map_err(|_| BudgetTraversalError::StepCountOverflow { actual: peak })?;
             let max_nesting_depth = compute_structural_depth(nodes, &visited)?;
             let max_total_slots = u64::from(contract.max_slots);
 

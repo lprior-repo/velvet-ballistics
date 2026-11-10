@@ -50,7 +50,12 @@ fn make_compiled_workflow(name: &str, node_count: u16, slot_count: u16) -> Compi
 
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::workflow::InputSlotKind::Any,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
         name: Box::from(name),
         digest: WorkflowDigest::from_bytes([42; 32]),
         nodes: nodes.into_boxed_slice(),

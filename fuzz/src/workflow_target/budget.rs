@@ -49,8 +49,10 @@ fn two_node_parts(constant: vb_core::ConstValue) -> vb_core::WorkflowParts {
         name: Box::<str>::from("fuzz_budget"),
         digest: vb_core::WorkflowDigest::from_bytes([0xC0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![
             vb_core::CompiledNode {
+                retry: None,
                 id: vb_core::StepIdx::new(0),
                 output: vb_core::workflow::NodeOutput::Slot(vb_core::SlotIdx::new(0)),
                 routing: vb_core::workflow::NodeRouting {
@@ -62,6 +64,7 @@ fn two_node_parts(constant: vb_core::ConstValue) -> vb_core::WorkflowParts {
                 },
             },
             vb_core::CompiledNode {
+                retry: None,
                 id: vb_core::StepIdx::new(1),
                 output: vb_core::workflow::NodeOutput::Discard,
                 routing: vb_core::workflow::NodeRouting {
@@ -173,6 +176,7 @@ fn build_fuzz_budget_node(
         _ => together_start(index, node_count),
     };
     vb_core::CompiledNode {
+        retry: None,
         id: step_idx,
         output: vb_core::workflow::NodeOutput::Slot(safe_slot),
         routing: vb_core::workflow::NodeRouting {

@@ -37,6 +37,7 @@ fn action_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> 
     let finish = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(1), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("action_then_finish"),
         digest: WorkflowDigest::from_bytes([3; 32]),
         nodes: Box::from([do_node, finish]),
@@ -48,7 +49,11 @@ fn action_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> 
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }

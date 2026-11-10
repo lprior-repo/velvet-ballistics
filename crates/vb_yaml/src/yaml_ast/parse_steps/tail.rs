@@ -2,7 +2,7 @@
 //! Tail-field and suspension primitive parsing for workflow steps.
 
 use super::{lookup, reject_unknown_fields, require_scalar_in, require_str_in, require_u16};
-use crate::yaml_ast::types::{ErrorHandlerAst, RetryPolicy, StepPrimitive};
+use crate::yaml_ast::types::{ErrorHandlerAst, RetryPolicy, StepAst, StepPrimitive};
 use crate::yaml_error::{YamlError, YamlResult};
 
 pub(super) fn parse_retry(node: &saphyr::Yaml<'_>) -> YamlResult<Option<RetryPolicy>> {
@@ -35,6 +35,12 @@ pub(super) fn parse_error_handler(node: &saphyr::Yaml<'_>) -> YamlResult<Option<
 pub(super) fn parse_wait(sub: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     reject_unknown_fields(sub, &["event", "timeout"])?;
     let event = optional_string(sub, "event", "wait.event")?;
+    if event.as_ref().is_some_and(String::is_empty) {
+        return Err(YamlError::FieldShape {
+            field: "wait.event",
+            expected: "non-empty string",
+        });
+    }
     let timeout = optional_string(sub, "timeout", "wait.timeout")?;
     Ok(StepPrimitive::Wait { event, timeout })
 }
@@ -69,4 +75,15 @@ fn optional_string(
         )),
         None => Ok(None),
     }
+}
+
+pub(super) fn parse_body_steps(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<StepAst>> {
+    let Some(seq) = super::lookup(node, "steps") else {
+        return Ok(Vec::new());
+    };
+    let mut steps = Vec::new();
+    for item in super::sequence(seq, "steps")? {
+        steps.push(super::parse_step(item)?);
+    }
+    Ok(steps)
 }

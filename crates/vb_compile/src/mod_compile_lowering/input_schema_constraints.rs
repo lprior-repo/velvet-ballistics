@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 use crate::{AuthorEntry, AuthorValue, CompileError};
-use vb_core::{CompiledInputConstraint, InputSlotKind, SlotValue};
+use vb_core::{CompiledInputConstraint, InputSlotKind};
 
 pub(super) fn constraint_from_entries(
     entries: &[AuthorEntry<AuthorValue>],
@@ -10,13 +10,12 @@ pub(super) fn constraint_from_entries(
     let optional = schema_flag(entries, "optional")?;
     let nullable = schema_flag(entries, "nullable")?;
     let secret = schema_flag(entries, "secret")?;
-    let default_value = schema_default(entries)?;
+    let (default_value, default_cold) = super::defaults::schema_default(entries)?;
     let (min, max) = schema_range_bounds(entries, kind)?;
     let (min_length, max_length) = schema_length_bounds(entries, kind)?;
     let element = schema_element(entries, kind)?;
     let allow_extra = schema_extra(entries, kind)?;
     reject_misplaced_fields(entries, kind)?;
-    reject_out_of_range_default(default_value, min, max)?;
     Ok(CompiledInputConstraint {
         optional,
         nullable,
@@ -28,6 +27,8 @@ pub(super) fn constraint_from_entries(
         element,
         allow_extra,
         secret,
+        fields: None,
+        default_cold,
     })
 }
 
@@ -48,26 +49,6 @@ fn schema_flag(entries: &[AuthorEntry<AuthorValue>], key: &str) -> Result<bool, 
         Some(_) => Err(CompileError::InvalidInputSchema {
             field: "inputs boolean flag",
             expected: "a boolean",
-        }),
-    }
-}
-
-fn schema_default(entries: &[AuthorEntry<AuthorValue>]) -> Result<Option<SlotValue>, CompileError> {
-    match find_entry(entries, "default") {
-        None => Ok(None),
-        Some(AuthorValue::Null) => Ok(Some(SlotValue::Null)),
-        Some(AuthorValue::Bool(value)) => Ok(Some(SlotValue::Bool(*value))),
-        Some(AuthorValue::I64(value)) => Ok(Some(SlotValue::I64(*value))),
-        // Text, sequence and mapping defaults have no bounded numeric
-        // representation at the submission boundary; they are not
-        // materializable and therefore do not satisfy a missing value.
-        Some(AuthorValue::Text(_))
-        | Some(AuthorValue::Sequence(_))
-        | Some(AuthorValue::Mapping(_)) => Ok(None),
-        // `AuthorValue` is non-exhaustive; unknown future shapes fail closed.
-        _ => Err(CompileError::InvalidInputSchema {
-            field: "inputs.default",
-            expected: "a value matching the declared schema type",
         }),
     }
 }
@@ -201,23 +182,6 @@ fn schema_extra(
             expected: "allow or reject",
         }),
     }
-}
-
-/// Rejects an integer default that can never satisfy the declared range.
-fn reject_out_of_range_default(
-    default_value: Option<SlotValue>,
-    min: Option<i64>,
-    max: Option<i64>,
-) -> Result<(), CompileError> {
-    if let Some(SlotValue::I64(value)) = default_value
-        && (min.is_some_and(|low| value < low) || max.is_some_and(|high| value > high))
-    {
-        return Err(CompileError::InvalidInputSchema {
-            field: "inputs.default",
-            expected: "a default within min/max",
-        });
-    }
-    Ok(())
 }
 
 fn reject_misplaced_fields(

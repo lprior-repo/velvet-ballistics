@@ -9,14 +9,11 @@
 //
 //   1. A direct `#[path]` inclusion of the production-source mirror at
 //      `verification/verus/production_inner/action_replay_tracker_production.rs`.
-//      That mirror is a VERBATIM copy of
-//      `crates/vb_storage/src/recovery/types.rs:1429-1634` (the
-//      `ActionReplayTracker` impl block) with only the
-//      `vb_core::ids::*` newtypes and the `RecoveryError`/`RecoveryResult`
-//      aliases substituted for in-tree stub versions that compile under
-//      `verus --crate-type=lib` without `serde`/`thiserror` proc-macro
-//      crates. The substitution is documented in the mirror file's
-//      drift-policy header.
+//      Its tracker implementation is copied from current production. The
+//      existing local identifier/error projections remain; every ticket field
+//      is retained, with transparent RunId/SeqNo payloads represented by u64.
+//      Retry authorization calls the actual linked RetryTimerV1 validator and
+//      canonical key checker; neither dependency is replaced with a stub.
 //
 //   2. A module-level `#[verifier::external]` directive so every body
 //      in the included production module is opaque to Verus. The
@@ -26,57 +23,32 @@
 //      production exec fns to discharge the contracts.
 //
 // ============================================================================
-// WHY THE PRODUCTION MIRROR (NOT DIRECT #[path] TO types.rs)
+// WHY THIS REMAINS A WEAK STRUCTURAL MIRROR
 // ============================================================================
-// Direct `#[path = "../../crates/vb_storage/src/recovery/types.rs"]`
-// inclusion is blocked by:
-//   - `crates/vb_storage/src/recovery/types.rs:1429`
-//     `#[derive(..., serde::Serialize, serde::Deserialize)]` on
-//     `RunSnapshot` (fully-qualified paths; no `use serde` import)
-//     requires the `serde` extern crate, which is not registered under
-//     `verus --crate-type=lib` (no installs allowed by task brief).
-//   - `crates/vb_storage/src/recovery/types.rs:10-13`
-//     `use vb_core::{ActionId, ActionTicket, ...};` requires
-//     the `vb_core` extern crate alias, which is wired through the
-//     workspace `Cargo.toml` and is unavailable in a standalone
-//     `verus --crate-type=lib` invocation.
-//   - `crates/vb_storage/src/recovery/types.rs:15-33`
-//     `#[cfg(kani)] struct ReplayResolutionSet(...)`
-//     forces kani cfg to be active or the file fails to compile.
-//
-// Note: production previously carried a `#[derive(Debug,
-// thiserror::Error)]` on `RecoveryError`; that derive has been removed
-// (now a plain `#[derive(Debug)]` at
-// `crates/vb_storage/src/recovery/types.rs:36-37`), so thiserror is no
-// longer a blocker. The mirror is still required by the `serde` and
-// `vb_core` blockers above.
-//
-// The in-tree mirror file at
-// `verification/verus/production_inner/action_replay_tracker_production.rs`
-// sidesteps every blocker by:
-//   - replacing `serde::{Deserialize, Serialize}` and
-//     `vb_core::{ActionId, StepIdx, SlotIdx, ActionTicket, Taint}` with
-//     local stub structs that preserve field names, `Copy + PartialEq
-//     + Eq + Hash` bounds, and the `new`/`get` accessor surface;
-//   - replacing the `RecoveryError` derive with a manual mirror
-//     containing only the two variants ActionReplayTracker constructs
-//     (`NonIdempotentActionBlocked`, `ReplayDivergence`);
-//   - omitting the `#[cfg(kani)]` block and the rest of types.rs.
-// The verbatim ActionReplayTracker impl block (lines 1400-1604 of
-// production) is included unchanged, so any drift in the production
-// impl surface breaks this Verus build.
+// The proof retains its existing readable identifier/error projections and
+// relaxed private-field visibility; it does not verify the native tracker body.
+// The current tracker struct and implementation are copied from
+// `crates/vb_storage/src/recovery/types.rs:1446-1669`, with retry-authority
+// methods from `crates/vb_storage/src/recovery/retry_authority.rs:5-69`.
+// RunId/SeqNo use their transparent u64 payloads; ticket conversion preserves
+// every field. Native vb_core/vb_storage dependencies are now linked explicitly,
+// so their unavailability is not a reason for this boundary. RetryTimerV1
+// validation and canonical action-key validation execute those real crates.
+// The module remains external to Verus and its existing assumed contracts are
+// unchanged. Neither a mirror pass nor native dependency linkage proves the
+// tracker implementation correct or turns these projections into native types.
 //
 // ============================================================================
 // BINDING LEDGER
 // ============================================================================
-//   - `ActionReplayTracker`                          <- crates/vb_storage/src/recovery/types.rs:1446-1451
-//   - `ActionReplayTracker::new`                     <- crates/vb_storage/src/recovery/types.rs:1479-1486
-//   - `ActionReplayTracker::mark_completed`          <- crates/vb_storage/src/recovery/types.rs:1549-1551
-//   - `ActionReplayTracker::mark_failed`             <- crates/vb_storage/src/recovery/types.rs:1638-1640
-//   - `ActionReplayTracker::has_completed`           <- crates/vb_storage/src/recovery/types.rs:1644-1646
-//   - `ActionReplayTracker::has_failed`              <- crates/vb_storage/src/recovery/types.rs:1650-1652
-//   - `ActionReplayTracker::is_resolved`             <- crates/vb_storage/src/recovery/types.rs:1657-1659
-//   - `ActionReplayTracker::default`                 <- crates/vb_storage/src/recovery/types.rs:1663-1665
+//   - `ActionReplayTracker`                          <- crates/vb_storage/src/recovery/types.rs:1446-1452
+//   - `ActionReplayTracker::new`                     <- crates/vb_storage/src/recovery/types.rs:1480-1488
+//   - `ActionReplayTracker::mark_completed`          <- crates/vb_storage/src/recovery/types.rs:1552-1554
+//   - `ActionReplayTracker::mark_failed`             <- crates/vb_storage/src/recovery/types.rs:1641-1643
+//   - `ActionReplayTracker::has_completed`           <- crates/vb_storage/src/recovery/types.rs:1647-1649
+//   - `ActionReplayTracker::has_failed`              <- crates/vb_storage/src/recovery/types.rs:1653-1655
+//   - `ActionReplayTracker::is_resolved`             <- crates/vb_storage/src/recovery/types.rs:1660-1662
+//   - `ActionReplayTracker::default`                 <- crates/vb_storage/src/recovery/types.rs:1666-1668
 //   - Private `mark_scheduled_ticket_effect`, `require_scheduled_ticket`,
 //     `mark_completed_envelope_effect`, `mark_completed_envelope` are
 //     present in the included module but not bound by the spec; they

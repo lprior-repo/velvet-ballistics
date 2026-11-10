@@ -4,7 +4,7 @@
 //! Every workflow comes from compile_workflow and is executed unchanged.
 //! Entry-only checks isolate clobbering from other incomplete body wiring;
 //! terminal checks separately require the emitted workflow to finish.
-//! Named/nested source coverage blocked by F1 is not replaced with manual IR.
+//! Named and nested source coverage lives in the lexical and nested preservation targets.
 
 use vb_compile::compile_workflow;
 use vb_core::{
@@ -201,8 +201,8 @@ fn sequential_repeat_together_preserve_prior_source_values() -> Result<(), Strin
     )
 }
 
-// Numeric source operands are the existing authoring subset, not F1 named
-// input binding or full admission coverage. Their values are initialized only
+// These fixtures isolate numeric source operands from named input admission.
+// Their values are initialized only
 // after checking that emitted state cannot own the authored operand slot.
 fn assert_role_isolation(run: &SourceRun, numeric_input: Option<SlotIdx>) -> Result<(), String> {
     let mut protected = vec![run.constant_output(42)?, run.constant_output(99)?];

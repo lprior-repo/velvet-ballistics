@@ -22,6 +22,7 @@ mod tests {
             Some(2),
             None,
             CompiledNodeKind::ReduceStart {
+                limit: 65_535,
                 input: SlotIdx::new(0),
                 accumulator: SlotIdx::new(1),
                 initial: ConstIdx::new(0),
@@ -34,6 +35,7 @@ mod tests {
             vec![reduce, nop(1, 2), finish],
             3,
             vec![ConstValue::I64(42)],
+            &[0],
         )?;
 
         let mut run = mkr(3, 3)?;
@@ -163,6 +165,7 @@ mod tests {
             Some(2),
             None,
             CompiledNodeKind::ReduceStart {
+                limit: 65_535,
                 input: SlotIdx::new(0),
                 accumulator: SlotIdx::new(1),
                 initial: ConstIdx::new(0),
@@ -174,6 +177,7 @@ mod tests {
             vec![reduce, nop(1, 2), fin(2, 1)],
             3,
             vec![ConstValue::I64(42)],
+            &[0],
         )
         .map_err(|e| format!("{e}"))?;
 
@@ -200,6 +204,7 @@ mod tests {
     #[test]
     fn reduce_start_body_equals_done_rejected() -> Result<(), String> {
         assert_reduce_alias(CompiledNodeKind::ReduceStart {
+            limit: 65_535,
             input: SlotIdx::new(0),
             accumulator: SlotIdx::new(1),
             initial: ConstIdx::new(0),

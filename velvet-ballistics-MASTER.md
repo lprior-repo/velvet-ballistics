@@ -463,6 +463,7 @@ pub struct ResourceContract {
     pub max_expressions: u16,
     pub max_expr_stack: u8,
     pub max_step_budget_per_tick: u64,
+    pub max_transitions_per_tick: u64,
     pub max_input_bytes: u32,
     pub max_output_bytes: u32,
     pub max_blob_bytes: u64,
@@ -472,6 +473,7 @@ pub struct ResourceContract {
     pub max_collect_items: u32,
     pub max_queue_depth: u32,
     pub max_journal_batch_bytes: u32,
+    pub allows_secret_results: SecretResultPolicy,
 }
 ```
 
@@ -583,7 +585,7 @@ Required types (authoritative layout in code):
 | `ExprOp` | 30 opcodes: `LoadSlot`, `LoadConst`, `LoadAccessor`, comparison, logical, arithmetic, and helper ops (Section 46). |
 | `AccessorProgram` | Path traversal: `root: SlotIdx`, `path: Box<[PathSegment]>` where `PathSegment = Field(SymbolId) \| Index(u32)`. |
 | `ConstValue` | See `value.rs` above. |
-| `ResourceContract` | 16 fields controlling hard limits (Section 13). |
+| `ResourceContract` | Explicit resource bounds and secret-result policy (Section 13). |
 
 Compiler rule: high-level YAML primitives may lower to multiple IR nodes. Runtime executes IR only in the current milestone. Final choose IR has exactly two checked forms: `Choose` evaluates expression-branch conditions from `ExprIdx`, and `ChooseSlot` reads pre-materialized boolean conditions from `SlotIdx` values produced by earlier IR. Raw YAML condition strings and untyped choose nodes are forbidden in final IR.
 
@@ -843,6 +845,7 @@ Required `record_kind_u16` IDs:
 | 1 | `WorkflowSource` |
 | 2 | `CompiledIr` |
 | 3 | `RunHeader` |
+| 4 | `RunInputs` |
 | 10 | `RunAccepted` |
 | 11 | `StepStarted` |
 | 12 | `SlotWritten` |
@@ -869,27 +872,26 @@ Required `record_kind_u16` IDs:
 | 33 | `StepSucceeded` |
 | 34 | `ActionScheduledTicket` |
 | 35 | `ActionCompletedEnvelope` |
+| 36 | `RunAdmissionBound` |
+| 37 | `RetryCheckpoint` |
+| 38 | `PolicyDecision` |
+| 39 | `RunAdmissionPinned` |
 | 40 | `Blob` |
+| 41 | `RunAdmissionBoundPinned` |
+| 42 | `RunOwnedInputs` |
+| 43 | `RunContinuation` |
+| 44 | `GateDecision` |
+| 45 | `CompatibilityDecision` |
+| 46 | `CapabilityGrant` |
+| 47 | `RunAdmissionBudget` |
+| 48 | `GateOpened` |
+| 49 | `TenantAdmission` |
 | 50 | `IndexUpdate` |
+| 51 | `RetryTimerScheduled` |
 
-The current v1 storage contract includes `AskTimedOut = 29`,
-`WaitResolved = 31`, `ActionAbandoned = 32`, `StepSucceeded = 33`,
-`ActionScheduledTicket = 34`, and `ActionCompletedEnvelope = 35` so timeout,
-wait-resolution, abandonment, step-success, and durable action-envelope replay
-states are not collapsed onto older shared envelope kinds. This repository is
-still at workspace crate version `0.1.0`; the table above is the authoritative
-v1 wire contract before a stable compatibility release, so `CURRENT_SCHEMA_VERSION`
-remains `1`. Implementations using an older in-repo
-draft table that rejected kind `29` or kinds `31..=35` are not considered
-compatible v1 decoders. Schema-1 compatibility for records written before the
-split is explicit and named only: a persisted `StepSucceeded` payload may decode
-from old envelope kind `SlotWritten = 12`, a persisted `ActionScheduledTicket`
-payload may decode from old envelope kind `ActionScheduled = 13`, and a
-persisted `ActionCompletedEnvelope` payload may decode from old envelope kind
-`ActionCompleted = 14`. New writes must use their stable kind IDs `33`, `34`,
-and `35`. After a stable v1 storage compatibility release, adding or
-repurposing any `record_kind_u16` requires a schema-version bump or an explicit
-named migration with evidence.
+The table includes retained input, admission, continuation, policy, capability, tenant, and retry timer records used by the current implementation. Workspace crate version remains `0.1.0`; this table defines the pre-stable v1 wire contract and `CURRENT_SCHEMA_VERSION` remains `1`. Existing record identifiers and Serde discriminants remain unchanged. Compatibility aliases are narrow and named only: an old `StepSucceeded` payload may decode from `SlotWritten = 12`, an old `ActionScheduledTicket` payload from `ActionScheduled = 13`, and an old `ActionCompletedEnvelope` payload from `ActionCompleted = 14`. New writes use kinds `33`, `34`, and `35`. After a stable v1 storage compatibility release, adding or repurposing any `record_kind_u16` requires a schema-version bump or an explicit named migration with evidence.
+
+`RetryTimerScheduled = 51` carries `RetryTimerV1` version `1`, the exact failed action ticket, next attempt, generation, UTC scheduling time and deadline, and a digest-bound complete run checkpoint. Recovery validates the admitted workflow, action ABI, policy delay, failed-ticket adjacency, and retained checkpoint before restoring the timer. An old `WaitScheduled` payload cannot authorize delayed retry recovery because it has no durable deadline or ticket authority. `RunOwnedInputs` payload version `2` retains recursive input constraints and defaults; unsupported payload versions fail explicitly.
 
 Decode order is mandatory: read 60-byte header, validate `magic_u32`, validate supported `schema_version_u16`, validate `record_kind_u16` is allowed for that family, validate `header_len_u32 == 60`, validate `payload_len_u32 <= ResourceContract.max_journal_batch_bytes` for journal batches or the configured family-specific maximum for compiled artifacts, snapshots, and blobs, verify `header_crc32c` over bytes `0..56`, then read exactly `payload_len_u32` bytes, verify `payload_digest_blake3_256`, then Postcard-decode into the typed payload for the record kind. Payload allocation before length validation is forbidden.
 
@@ -2158,8 +2160,8 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 | Aspect | Behavior |
 |--------|----------|
 | Inputs read | `input` slot (must be List) |
-| Slots written | `item_slot` with first item; `output` with tail list. If empty: `output` with empty list. |
-| Taint | Clean |
+| Slots written | `item_slot` with first item; `output` with an opaque cursor referencing the source list. If empty: `output` with an empty list. |
+| Taint | Input taint propagates to the item and cursor. |
 | StepState | Pending → Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2172,8 +2174,8 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 | Aspect | Behavior |
 |--------|----------|
 | Inputs read | `iterator_slot` (must be List) |
-| Slots written | `output` with first item; `iterator_slot` with tail list |
-| Taint | Clean |
+| Slots written | `output` with the next item; `iterator_slot` with the advanced opaque cursor |
+| Taint | Iterator taint propagates to the item and advanced cursor. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2186,7 +2188,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `materialized` slot (must be List) |
 | Slots written | `output` with list value |
-| Taint | Clean |
+| Taint | Propagated from the materialized result slot. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2213,7 +2215,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `accumulator` slot (must be List); `output` for previous result |
 | Slots written | `accumulator` with appended result |
-| Taint | Clean |
+| Taint | Accumulator taint joins the previous branch result taint; each appended item retains its branch result taint. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2226,7 +2228,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `accumulator` slot (List), `output` for last result |
 | Slots written | `output` with final merged list |
-| Taint | Clean |
+| Taint | Joins accumulator and final branch result taints; preserves ordered per-item taints, including Null and nested lists. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2239,7 +2241,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `source` slot (must be List) |
 | Slots written | `collector_slot` with first page; pagination state in global table |
-| Taint | Clean |
+| Taint | Source taint propagates to the collector, including an empty result. |
 | StepState | Pending → Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2264,7 +2266,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `collector_slot` (List), pagination state |
 | Slots written | `collector_slot` with next page |
-| Taint | Clean |
+| Taint | Preserves the collector taint across pages. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2277,33 +2279,34 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `collector_slot` (List) |
 | Slots written | `output` with collector value; pagination state removed |
-| Taint | Clean |
+| Taint | Propagated from the collector slot. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
 | Next pc | `node.next` |
 | Errors | `MissingOutputSlot`, `MissingNextStep` |
 
-#### ReduceStart { input, accumulator, initial, body, done }
+#### ReduceStart { input, accumulator, initial, limit, body, done }
 
 | Aspect | Behavior |
 |--------|----------|
 | Inputs read | Constant pool at `initial`; `input` slot (must be List) |
-| Slots written | `accumulator` with initial value; `output` with first item; `input` with tail list |
-| Taint | Clean |
+| Slots written | `accumulator` with initial value; for a non-empty list, `input` with first item and `output` with an opaque source-list cursor |
+| Taint | Initial constant is Clean; source input taint propagates to the first item and cursor. |
 | StepState | Pending → Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
 | Next pc | Empty → `done`. Non-empty → `body`. |
-| Errors | `ConstOutOfBounds`, `TypeMismatch`, `MissingOutputSlot` |
+| Resource checks | Input item count must not exceed `limit`; cursor allocation succeeds before slot writes. |
+| Errors | `ConstOutOfBounds`, `TypeMismatch`, `MissingOutputSlot`, `IterationLimitExceeded`, allocation refusal |
 
 #### ReduceNext { iterator_slot, accumulator, body, done }
 
 | Aspect | Behavior |
 |--------|----------|
 | Inputs read | `iterator_slot` (must be List) |
-| Slots written | `output` with next item; `iterator_slot` with tail |
-| Taint | Clean |
+| Slots written | `output` with next item; `iterator_slot` with the advanced opaque source-list cursor |
+| Taint | Iterator taint propagates to the item and advanced cursor. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2316,7 +2319,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `accumulator` slot |
 | Slots written | `output` with accumulator value |
-| Taint | Clean |
+| Taint | Propagated from the accumulator slot. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2367,7 +2370,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `result` slot |
 | Slots written | `output` with result value |
-| Taint | Clean |
+| Taint | Propagated from the result slot. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2421,12 +2424,12 @@ Parenthesized groups reset to minimum binding power. Max nesting depth: 64. Max 
 
 | Operator | Accepted types | Return type | Error on mismatch |
 |----------|---------------|-------------|-------------------|
-| `+`, `-`, `*`, `/` | I64, I64 | I64 | `TypeMismatch { expected: "number" }`. Overflow → `IntegerOverflow`. Div-by-zero → `DivisionByZero`. |
-| `>`, `>=`, `<`, `<=` | I64, I64 | Bool | `TypeMismatch { expected: "number" }` |
+| `+`, `-`, `*`, `/` | I64 or finite F64 operands | I64 for two integers; finite F64 otherwise | Non-numeric operands, checked integer overflow, zero division, and non-finite float results fail explicitly. |
+| `>`, `>=`, `<`, `<=` | I64 or finite F64 operands | Bool | Non-numeric operands fail; mixed numeric operands promote I64 to finite F64. |
 | `==`, `!=` | Any, Any | Bool | Never (accepts any `SlotValue` pair via `PartialEq`) |
 | `and`, `or` | Bool, Bool | Bool | `TypeMismatch { expected: "boolean" }`. **No short-circuit** — both operands evaluated before operator applies. |
 | `not` | Bool | Bool | `TypeMismatch { expected: "boolean" }` |
-| `-` (unary) | I64 | I64 | `TypeMismatch { expected: "number" }`. `i64::MIN` → `IntegerOverflow`. |
+| `-` (unary) | I64 or finite F64 | Same numeric type | Non-numeric operands fail. Negating `i64::MIN` fails checked arithmetic. |
 
 ### Null Comparison Rules
 
@@ -2434,21 +2437,21 @@ Parenthesized groups reset to minimum binding power. Max nesting depth: 64. Max 
 
 ### F64 Status
 
-`ExprType::F64`, `SlotValue::F64(FiniteF64)`, `ConstValue::F64`, `ExprLiteral::F64`, expression float lexing/parsing, bytecode constant lowering, and F64/F64 evaluator arithmetic/comparison arms exist. Strict YAML scalar floats remain forbidden by the YAML profile; float values enter authored workflows through expression strings, runtime slot initialization, or action outputs. Remaining gap: the typechecker still accepts broader numeric coercion than the evaluator. Mixed I64/F64 arithmetic and evaluator/typechecker parity remain current-scope expression evidence gaps. Generated F64 arithmetic semantics and codegen lint parity are removed with `vb_codegen`.
+`ExprType::F64`, `SlotValue::F64(FiniteF64)`, `ConstValue::F64`, `ExprLiteral::F64`, expression float lexing/parsing, bytecode constant lowering, and F64/F64 evaluator arithmetic/comparison arms exist. Strict YAML scalar floats remain forbidden by the YAML profile; float values enter authored workflows through expression strings, runtime slot initialization, or action outputs. Mixed I64/F64 arithmetic and ordered comparisons promote integers to finite F64; integer/integer arithmetic retains checked integer semantics. Overflow to a non-finite float is rejected. Deterministic replay uses the same production expression evaluator as execution. Generated F64 arithmetic semantics and codegen lint parity are removed with `vb_codegen`.
 
 ### Helper Signatures
 
 | Helper | Arity | Input types | Return | Implementation status |
 |--------|-------|-------------|--------|-----------------------|
 | `exists` | 1 | Any | Bool | Implemented: `!matches!(value, Null)` |
-| `length` | 1 | List or Null | I64 | Implemented store-aware for symbols/lists/objects/null; no-store helper reports context-required for handles. |
+| `length` | 1 | Text, List, Object, or Null | I64 | Implemented store-aware for symbols/lists/objects/null; no-store helper reports context-required for handles. |
 | `count` | 1 | List or Null | I64 | Implemented as count/length over store-aware list values. |
-| `empty` | 1 | List or Null | Bool | Implemented store-aware for symbol/list/object/null emptiness. |
+| `empty` | 1 | Text, List, Object, or Null | Bool | Implemented store-aware for symbol/list/object/null emptiness. |
 | `unique` | 1 | List | List | Implemented store-aware list deduplication preserving first occurrence order. |
-| `contains` | 2 | List, T | Bool | Implemented in current evaluators as store-aware Symbol substring search; list-membership/spec parity evidence remains open. |
+| `contains` | 2 | Text, Text or List, Any | Bool | Store-aware text substring search and list membership. Known invalid argument kinds are rejected during type checking; dynamic kinds retain runtime checks. |
 | `starts_with` | 2 | Symbol, Symbol | Bool | Implemented store-aware text helper; generated-mode behavior is removed with `vb_codegen`. |
 | `ends_with` | 2 | Symbol, Symbol | Bool | Implemented store-aware text helper; generated-mode behavior is removed with `vb_codegen`. |
-| `has` | 2 | Object, Symbol | Bool | Partially converged: `vb_expr` implements object-field lookup, while the core hot evaluator currently uses list membership semantics; helper parity evidence remains open. |
+| `has` | 2 | Object, Symbol | Bool | Store-aware object-field lookup in expression evaluation and deterministic replay. |
 | `append` | 2 | List, T | List | Implemented store-aware list append. |
 | `append_if` | 3 | List, T, Bool | List | Implemented store-aware conditional append. |
 | `merge` | 2 | Object, Object | Object | Implemented store-aware object merge; typechecker returns `Object`; interpreter/runtime parity evidence remains open. |
@@ -2468,7 +2471,7 @@ Parenthesized groups reset to minimum binding power. Max nesting depth: 64. Max 
 Clean < DerivedFromSecret < Secret
 ```
 
-`join_taint` returns the input unchanged. The lattice ordering is enforced by the propagation rules below: Secret never downgrades to Clean, and Clean never upgrades without explicit action.
+`join_taint(a, b)` returns the more restrictive input. Joining Clean with Secret preserves Secret; expression evaluation does not downgrade it to DerivedFromSecret. The propagation rules below apply this ordering to each operation.
 
 ### Propagation by Operation
 
@@ -2487,20 +2490,20 @@ Clean < DerivedFromSecret < Secret
 
 ### Control-Flow Taint
 
-v1 does **not** track control-flow taint. A secret value can choose which public value is returned without triggering a taint violation. Example:
+v1 does **not** track control-flow taint. An admitted Boolean input named `secret_flag`, declared with `secret: true`, can choose which public value is returned without triggering a taint violation. Example:
 
 ```yaml
 choose:
-  - if: "$secrets.token == 'x'"
+  - if: "$input.secret_flag"
     then: return_a
   - otherwise: return_b
 ```
 
-Both `return_a` and `return_b` are Clean regardless of `$secrets.token` taint. This is an explicit v1 design decision. If control-flow taint is needed, it must be added as a v2 feature with a dedicated bead and evidence.
+Both `return_a` and `return_b` are Clean regardless of the condition's taint. This is an explicit v1 design decision. If control-flow taint is needed, it must be added as a v2 feature with dedicated evidence.
 
 ### Secret Storage
 
-Secrets are referenced by `SymbolId` at runtime. The runtime never holds raw secret values — only taint markers. Secret values are resolved at compile time and stored as taint flags on the corresponding input slots.
+Entries in the YAML `secrets` mapping bind source aliases to host requirement names. Compilation retains those names and immutable Secret-tainted input roots carrying opaque `SymbolId` references. Admission checks every declared requirement against host-confirmed availability before accepting a run. Raw credential values remain outside the runtime core and compiled artifact; expressions over these references operate on opaque identities, not credential contents. Ordinary user inputs declared with `secret: true` retain their admitted payload and taint under the separate input-schema contract.
 
 ---
 
@@ -2755,22 +2758,24 @@ max_active_runs: 1024
 ### ResourceContract::DEFAULT
 
 ```text
-max_steps: 1_000
-max_slots: 65_535 (u16::MAX)
+max_steps: 10_000
+max_slots: 1_024
 max_constants: 65_535
 max_accessors: 8_192
 max_expressions: 4_096
 max_expr_stack: 64
-max_step_budget_per_tick: u64::MAX
+max_step_budget_per_tick: 10_000
+max_transitions_per_tick: 10_000
 max_input_bytes: 1 MiB
-max_output_bytes: 1 MiB
+max_output_bytes: 256 KiB
 max_blob_bytes: 16 MiB
 max_ipc_payload_bytes: 1 MiB
-max_retry_attempts: 65_535
-max_fanout: 65_535
-max_collect_items: 4_294_967_295 (u32::MAX)
+max_retry_attempts: 3
+max_fanout: 64
+max_collect_items: 1_024
 max_queue_depth: 1_024
 max_journal_batch_bytes: 1 MiB
+allows_secret_results: Deny
 ```
 
 ### Named Profiles
@@ -3317,11 +3322,11 @@ This section tracks known architectural defects discovered through adversarial r
 
 **Original defect:** Earlier builds recorded no slot values, no slot taint, and no step lifecycle events (`StepStarted`/`StepSucceeded`) for deterministic steps. After a crash, `UnsupportedRecoveryState` could report `slot_values: true`, `slot_taint: true`, while hydration still proceeded with empty frames. The system was not crash-recoverable for workflows that performed deterministic computation between suspension points.
 
-**Current evidence:** `SlotWrittenEvent` can carry encoded `SlotValue` and taint evidence; `RecoveryFrameSeed` reconstruction applies recovered slots and step states; `DurableFrameRecoveryBoundary::hydrate_run_frame` rejects unsupported live-frame state instead of silently producing a broken frame. Closed beads `vb-x0mt`, `vb-9fy4`, and `vb-vs7k` record Phase 44/recovery hydration work.
+**Current evidence:** `SlotWrittenEvent` carries value and taint evidence, and recovery reconstructs typed frame-seed products. `Runtime::recover_and_resume` restores validated durable pending-action authority when present. Retained scalar and owned inputs bind to the admission receipt; delayed retries restore digest-bound full checkpoints. Bounded scalar Repeat traces can replay across untimed Ask boundaries under the eligibility and capture checks documented in `docs/compiled-ir.md`. These paths do not establish unrestricted live-state recovery.
 
-**Remaining gap:** Pending action hydration remains gated as unsupported when unresolved actions are present, summary-only hydration still returns `UnsupportedFullRecoveryHydration`, and `UnsupportedAsyncStrictAck` still marks strict async acknowledgement limitations. Release acceptance still requires end-to-end crash recovery evidence for all live recovery paths.
+**Remaining gap:** Journal-only recovery rejects missing runtime arena state; initial owned inputs cannot reconstruct later allocations. Summary-only products cannot resume and may return `UnsupportedFullRecoveryHydration`. `UnsupportedAsyncStrictAck` still marks strict async acknowledgement limitations. Release acceptance still requires end-to-end crash recovery evidence for every admitted recovery path.
 
-**Root cause:** Journal events are only emitted at suspension points (action dispatch, wait, ask). Deterministic steps between suspensions are treated as atomic but the journal cannot reconstruct them.
+**Original root cause:** Earlier journals captured suspension points without enough deterministic-step value, taint, and lifecycle evidence to reconstruct intervening execution.
 
 **Resolution contract:**
 1. Every deterministic step must emit `SlotWritten` events (value + taint) to the journal before advancing PC.
@@ -3334,7 +3339,7 @@ This section tracks known architectural defects discovered through adversarial r
 
 **Coding style:** No async. No channels. Synchronous journal append within the shard's single-threaded drive loop. Bounded writer queue absorbs burst. If queue is full, the step blocks (backpressure), not silently drops.
 
-**Resolves in:** Phase 44 (Recovery Evidence Chain); remaining live pending-action recovery evidence is still a release gate.
+**Resolves in:** Phase 44 (Recovery Evidence Chain); recovery paths outside the documented validated products remain a release gate.
 
 ### DRIFT-3: No Aggregate Resource Budget Across Primitive Composition — RESOLVED
 
@@ -3397,7 +3402,7 @@ This section tracks known architectural defects discovered through adversarial r
 
 ## 68. Durable Execution Architecture Contract
 
-> **Target contract.** The invariants in this section describe the intended architecture. Current implementation has frame-seed hydration for recovered slot values, taint, and step states, but live pending-action hydration and strict async acknowledgement paths remain gated. Summary-only recovery still returns `UnsupportedFullRecoveryHydration`, and `UnsupportedAsyncStrictAck` remains in the code until strict durability acknowledgement evidence is complete.
+> **Target contract.** The invariants in this section describe the intended architecture. Current recovery uses validated frame-seed products, retained input receipts, durable pending-action tickets, and full retry checkpoints. Chronological scalar Repeat/Ask replay has the explicit eligibility boundary in `docs/compiled-ir.md`; missing runtime arena state and summary-only products cannot authorize resumption. `UnsupportedFullRecoveryHydration` and `UnsupportedAsyncStrictAck` remain typed boundaries, and these supported paths do not establish general recovery or strict async acknowledgement acceptance.
 
 `velvet-ballistics` is a log-first durable execution engine. The architecture follows the same core model as production-grade orchestrators (AWS Step Functions): journal events are the ground truth, state is deterministically derived from the journal, and side effects are never re-executed without explicit idempotency proof.
 

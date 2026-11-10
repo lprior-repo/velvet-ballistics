@@ -20,14 +20,20 @@ pub fn seed_input_slots(
     workflow: &CompiledWorkflow,
 ) -> RuntimeResult<()> {
     let inputs = prepare_input_slots(inputs, workflow)?;
-    if inputs.iter().any(|(slot, _)| slot.get() >= frame.slot_count()) {
+    if inputs
+        .iter()
+        .any(|(slot, _)| slot.get() >= frame.slot_count())
+    {
         return Err(RuntimeError::InvalidRecoveryHydration);
     }
     for (slot, value) in inputs {
-        let secret = workflow.input_slots().iter()
+        let secret = workflow
+            .input_slots()
+            .iter()
             .any(|input| input.slot == slot && input.constraint.secret);
         let taint = if secret { Taint::Secret } else { Taint::Clean };
-        frame.write_slot_with_taint(slot, value, taint)
+        frame
+            .write_slot_with_taint(slot, value, taint)
             .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
     }
     Ok(())
@@ -38,19 +44,29 @@ pub(crate) fn prepare_input_slots(
     workflow: &CompiledWorkflow,
 ) -> RuntimeResult<Vec<(SlotIdx, SlotValue)>> {
     for (slot, value) in inputs {
-        if let Some(input) = workflow.input_slots().iter().find(|input| input.slot == *slot)
+        if let Some(input) = workflow
+            .input_slots()
+            .iter()
+            .find(|input| input.slot == *slot)
             && vb_core::input_validation::validate_input_value(
-                input, *value, workflow.symbols_count(), None,
+                input,
+                *value,
+                workflow.symbols_count(),
+                None,
             ) == Err(vb_core::input_validation::InputValueIssue::Kind)
         {
             return Err(RuntimeError::RuntimeInputSlotKindMismatch {
-                slot: *slot, expected: input.kind,
+                slot: *slot,
+                expected: input.kind,
                 actual: vb_core::input_validation::input_value_kind(*value),
             });
         }
     }
-    vb_storage::inputs::prepare_scalar_inputs(workflow, inputs)
-        .map_err(|_| RuntimeError::UnsupportedOperation { operation: "input_schema_mismatch" })
+    vb_storage::inputs::prepare_scalar_inputs(workflow, inputs).map_err(|_| {
+        RuntimeError::UnsupportedOperation {
+            operation: "input_schema_mismatch",
+        }
+    })
 }
 
 pub fn new_action_attempts(step_count: u16) -> Box<[u16]> {

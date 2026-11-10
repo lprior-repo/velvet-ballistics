@@ -50,6 +50,10 @@ fn preflight(
         match state {
             StepState::Pending => {}
             StepState::Succeeded => {}
+            StepState::Failed
+                if run
+                    .validate_handled_failure_rearm(plan, control, step)
+                    .is_ok() => {}
             _ => {
                 return Err(invalid("loop body step not in rearmable state"));
             }
@@ -66,36 +70,70 @@ fn validate_nested_completion(
 ) -> RuntimeEngineResult<()> {
     for raw in 0..plan.node_count() {
         let id = StepIdx::new(raw);
-        let Some(region) = plan.loop_region(id) else { continue; };
-        if region.start() < body || region.control() >= control { continue; }
-        let start = run.step_state(region.start()).map_err(RuntimeEngineError::Core)?;
-        let latch = run.step_state(region.control()).map_err(RuntimeEngineError::Core)?;
+        let Some(region) = plan.loop_region(id) else {
+            continue;
+        };
+        if region.start() < body || region.control() >= control {
+            continue;
+        }
+        let start = run
+            .step_state(region.start())
+            .map_err(RuntimeEngineError::Core)?;
+        if matches!(start, StepState::Succeeded | StepState::Failed)
+            && recovered_exit(plan, run, control, region.start(), region.control())?
+        {
+            continue;
+        }
+        let latch = run
+            .step_state(region.control())
+            .map_err(RuntimeEngineError::Core)?;
         let untouched = (region.body().get()..=region.control().get())
             .map(StepIdx::new)
             .try_fold(true, |pending, step| {
-                run.step_state(step).map(|state| pending && state == StepState::Pending)
+                run.step_state(step)
+                    .map(|state| pending && state == StepState::Pending)
                     .map_err(RuntimeEngineError::Core)
             })?;
         let valid = match start {
             StepState::Pending => untouched,
             StepState::Succeeded => {
-                let done = run.step_state(region.done()).map_err(RuntimeEngineError::Core)?;
-                let may_skip = plan.node(region.start()).is_some_and(|node| matches!(node.kind,
-                    CompiledNodeKind::ForEachStart { .. } | CompiledNodeKind::CollectStart { .. }
-                        | CompiledNodeKind::ReduceStart { .. }));
+                let done = run
+                    .step_state(region.done())
+                    .map_err(RuntimeEngineError::Core)?;
+                let may_skip = plan.node(region.start()).is_some_and(|node| {
+                    matches!(
+                        node.kind,
+                        CompiledNodeKind::ForEachStart { .. }
+                            | CompiledNodeKind::CollectStart { .. }
+                            | CompiledNodeKind::ReduceStart { .. }
+                    )
+                });
                 done == StepState::Succeeded
                     && (latch == StepState::Succeeded || (may_skip && untouched))
             }
             _ => false,
         };
-        if !valid { return Err(invalid("nested loop region not consistently completed")); }
+        if !valid {
+            return Err(invalid("nested loop region not consistently completed"));
+        }
     }
     for raw in body.get()..control.get() {
         let id = StepIdx::new(raw);
-        let node = plan.node(id).ok_or_else(|| invalid("nested node missing"))?;
+        let node = plan
+            .node(id)
+            .ok_or_else(|| invalid("nested node missing"))?;
         if let CompiledNodeKind::TogetherStart { ref branches, join } = node.kind {
             let start = run.step_state(id).map_err(RuntimeEngineError::Core)?;
-            let expected = if start == StepState::Succeeded { StepState::Succeeded } else { StepState::Pending };
+            if matches!(start, StepState::Succeeded | StepState::Failed)
+                && recovered_exit(plan, run, control, id, join)?
+            {
+                continue;
+            }
+            let expected = if start == StepState::Succeeded {
+                StepState::Succeeded
+            } else {
+                StepState::Pending
+            };
             if run.step_state(join).map_err(RuntimeEngineError::Core)? != expected {
                 return Err(invalid("nested together join not consistently completed"));
             }
@@ -109,7 +147,45 @@ fn validate_nested_completion(
     Ok(())
 }
 
-fn reset_succeeded(run: &mut RunFrame, body: StepIdx, control: StepIdx) -> RuntimeEngineResult<()> {
+fn recovered_exit(
+    plan: &CompiledWorkflow,
+    run: &RunFrame,
+    control: StepIdx,
+    start: StepIdx,
+    end: StepIdx,
+) -> RuntimeEngineResult<bool> {
+    for raw in start.get()..=end.get() {
+        let failed = StepIdx::new(raw);
+        if run.step_state(failed).map_err(RuntimeEngineError::Core)? == StepState::Failed
+            && plan
+                .node(failed)
+                .and_then(|node| node.routing.error.handler())
+                .is_some_and(|handler| handler > end)
+            && run
+                .validate_handled_failure_rearm(plan, control, failed)
+                .is_ok()
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn reset_completed(
+    plan: &CompiledWorkflow,
+    run: &mut RunFrame,
+    body: StepIdx,
+    control: StepIdx,
+) -> RuntimeEngineResult<()> {
+    // Discharge failures before resetting their successful handler witnesses.
+    // Forward order preserves any later failed-handler witnesses as well.
+    for raw in body.get()..control.get() {
+        let step = StepIdx::new(raw);
+        if run.step_state(step).map_err(RuntimeEngineError::Core)? == StepState::Failed {
+            run.rearm_handled_failure(plan, control, step)
+                .map_err(RuntimeEngineError::Core)?;
+        }
+    }
     for raw in body.get()..=control.get() {
         let step = StepIdx::new(raw);
         let state = run.step_state(step).map_err(RuntimeEngineError::Core)?;
@@ -135,7 +211,7 @@ pub(super) fn loop_body_rearm(
     }
 
     preflight(plan, run, body, control)?;
-    reset_succeeded(run, body, control)
+    reset_completed(plan, run, body, control)
 }
 
 pub(super) fn validate_activation(
@@ -154,14 +230,15 @@ pub(super) fn validate_activation(
     // must have completed before that node can be entered.
     for raw in 0..plan.node_count() {
         let control = StepIdx::new(raw);
-        if let Some(region) = plan.loop_region(control) {
-            if region.body() <= node.id && node.id <= region.control() {
-                let start_state = run
-                    .step_state(region.start())
-                    .map_err(RuntimeEngineError::Core)?;
-                if start_state != StepState::Succeeded {
-                    return Err(invalid("containing loop region start not succeeded"));
-                }
+        if let Some(region) = plan.loop_region(control)
+            && region.body() <= node.id
+            && node.id <= region.control()
+        {
+            let start_state = run
+                .step_state(region.start())
+                .map_err(RuntimeEngineError::Core)?;
+            if start_state != StepState::Succeeded {
+                return Err(invalid("containing loop region start not succeeded"));
             }
         }
     }

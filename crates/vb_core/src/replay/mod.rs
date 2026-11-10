@@ -254,30 +254,17 @@ pub(crate) fn eval_expr_for_replay(
     store: &mut ValueStore,
     expr: ExprIdx,
 ) -> Result<(SlotValue, Taint), ReplayError> {
-    let program = plan.expression(expr).ok_or(ReplayError::Internal {
-        reason: "expression out of bounds",
-    })?;
-    let mut stack = ReplayExprStack::new(program.max_stack)?;
-    let mut taint_accum = Taint::Clean;
-    let mut index = 0usize;
-    while index < program.ops.len() {
-        let op = program
-            .ops
-            .get(index)
-            .copied()
-            .ok_or(ReplayError::Internal {
-                reason: "expression op index checked by loop bound",
-            })?;
-        ops::eval_replay_op(plan, run, store, op, &mut stack, &mut taint_accum)?;
-        index = index.checked_add(1).ok_or(ReplayError::Internal {
-            reason: "expression op index overflow",
-        })?;
+    if plan.expression(expr).is_none() {
+        return Err(ReplayError::Internal {
+            reason: "expression out of bounds",
+        });
     }
-    if stack.len != 1 {
-        return Err(ReplayError::ExpressionEvalFailed { step: run.pc() });
-    }
-    let value = stack.pop()?;
-    Ok((value, taint_accum))
+    crate::engine::eval_expr_with_store(plan, run, store, expr).map_err(|error| match error {
+        EngineError::SlotOutOfBounds { slot } | EngineError::SlotUninitialized { slot } => {
+            ReplayError::SlotNotAvailable { slot }
+        }
+        _ => ReplayError::ExpressionEvalFailed { step: run.pc() },
+    })
 }
 
 // Re-export for tests and re-exports from submodules
@@ -289,6 +276,6 @@ pub use step::replay_step;
 #[path = "tests.rs"]
 mod tests;
 
-#[cfg(kani)]
+#[cfg(any(kani, test))]
 #[path = "../verification/kani/replay_kani_harnesses.rs"]
 mod kani_harnesses;

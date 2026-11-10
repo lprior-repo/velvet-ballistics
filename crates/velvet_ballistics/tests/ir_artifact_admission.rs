@@ -34,6 +34,7 @@ fn nop_node(step: u16, next: Option<u16>) -> CompiledNode {
 fn base_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("handcrafted-admission"),
         digest: WorkflowDigest::from_bytes([0xA7; 32]),
         nodes,
@@ -48,7 +49,7 @@ fn base_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
         input_slots: Box::from([vb_core::workflow::CompiledInputSlot {
             slot: SlotIdx::ZERO,
             kind: vb_core::workflow::InputSlotKind::I64,
-            constraint: vb_core::workflow::CompiledInputConstraint::unconstrained(),
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
         }]),
     }
 }

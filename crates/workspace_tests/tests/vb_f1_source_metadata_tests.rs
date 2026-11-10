@@ -1,8 +1,10 @@
 #![forbid(unsafe_code)]
-//! Compile the actual unregistered metadata module for native boundary checks.
-//! This target does not enable workflow, artifact, or runtime metadata wiring.
+//! Reuse metadata invariant cases against the compiled production type.
 
+use vb_core::workflow::source_metadata::{
+    CompiledSecretRequirement, SecretNameRole, SourceMetadataError, WorkflowSourceMetadata,
+};
 use vb_core::{ids, limits};
 
-#[path = "../../vb_core/src/workflow/source_metadata.rs"]
-pub mod source_metadata;
+#[path = "../../vb_core/src/workflow/source_metadata/tests.rs"]
+mod source_metadata_tests;

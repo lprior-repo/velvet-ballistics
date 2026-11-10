@@ -92,6 +92,12 @@ pub(crate) fn compile_expr_to_bytecode_with_resolver(
 
 /// Compiler reference resolver used by expression bytecode lowering.
 pub(crate) trait ExpressionReferenceResolver {
+    fn resolve_text(&mut self, _text: &str) -> Result<vb_core::SymbolId, CompileError> {
+        Err(CompileError::ExpressionLoweringUnsupported {
+            feature: "text constants".into(),
+        })
+    }
+
     /// Returns the bytecode operation for a source reference.
     fn resolve_reference(&mut self, reference: &str) -> Result<ExprOp, CompileError>;
 }

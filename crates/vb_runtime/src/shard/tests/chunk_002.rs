@@ -130,7 +130,8 @@ fn counters_reflect_submitted_after_submit_tick() {
     };
     let run = super::RunId::new(1);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
@@ -175,6 +176,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let finish = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("finished"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([set_const, finish]),
@@ -191,12 +193,31 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }
 
+fn input_result_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let mut parts = finished_workflow()?.to_parts();
+    parts.nodes = Box::from([vb_core::workflow::node(
+        vb_core::StepIdx::ZERO,
+        CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
+        None,
+        None,
+    )]);
+    parts.input_slots = Box::from([vb_core::CompiledInputSlot {
+        slot: vb_core::SlotIdx::ZERO,
+        kind: vb_core::InputSlotKind::Any,
+        constraint: vb_core::CompiledInputConstraint::required(),
+    }]);
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
 fn timed_wait_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let set_deadline = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::ZERO), Some(vb_core::ids::StepIdx::new(1)));
     let wait = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), CompiledNodeKind::WaitUntil { deadline_slot: SlotIdx::ZERO, }, None, Some(vb_core::ids::StepIdx::new(2)));
     let finish = vb_core::workflow::node(vb_core::ids::StepIdx::new(2), CompiledNodeKind::Finish { result: SlotIdx::ZERO, }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("timed_wait_then_finish"),
         digest: WorkflowDigest::from_bytes([4; 32]),
         nodes: Box::from([set_deadline, wait, finish]),

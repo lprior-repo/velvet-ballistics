@@ -10,7 +10,7 @@ use vb_validate::gates;
 
 fn finish_node() -> CompiledNode {
     node(
-        StepIdx::new(0),
+        StepIdx::new(1),
         CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -33,13 +33,24 @@ fn workflow_parts_with_accessors(
 ) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("gate_08_accessor_parity"),
         digest: WorkflowDigest::from_bytes([8u8; 32]),
-        nodes: Box::new([finish_node()]),
+        nodes: Box::new([
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
+                    value: vb_core::ConstIdx::new(0),
+                },
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            finish_node(),
+        ]),
         expressions: Box::new([]),
         accessors,
-        constants: Box::new([]),
+        constants: Box::new([vb_core::ConstValue::Null]),
         slot_count,
         symbols_count,
         entry: StepIdx::new(0),

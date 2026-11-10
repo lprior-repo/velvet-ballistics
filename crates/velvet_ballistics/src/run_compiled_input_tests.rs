@@ -10,16 +10,11 @@ use vb_core::{SlotIdx, SlotValue};
 type TestResult<T> = Result<T, Box<dyn Error>>;
 
 fn fixture(input_slots: Box<[CompiledInputSlot]>) -> TestResult<CompiledWorkflow> {
-    let node = vb_core::workflow::node(
-        StepIdx::ZERO,
-        CompiledNodeKind::Finish {
-            result: SlotIdx::new(2),
-        },
-        None,
-        None,
-    );
+    // Mapping optional inputs must not require the graph to consume them.
+    let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("input-mapping"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -350,6 +345,78 @@ fn any_port_maps_primitives() -> TestResult<()> {
             map_runtime_inputs(&wf, &bytes),
             Ok(Box::from([(SlotIdx::new(2), value)]))
         );
+    }
+    Ok(())
+}
+
+#[test]
+fn nullable_null_mapping_matches_the_scalar_root_validator() -> TestResult<()> {
+    for kind in [
+        InputSlotKind::Any,
+        InputSlotKind::Null,
+        InputSlotKind::Bool,
+        InputSlotKind::I64,
+        InputSlotKind::F64,
+        InputSlotKind::Symbol,
+        InputSlotKind::List,
+        InputSlotKind::Object,
+        InputSlotKind::Blob,
+    ] {
+        for nullable in [false, true] {
+            let wf = fixture(Box::from([CompiledInputSlot {
+                slot: SlotIdx::new(2),
+                kind,
+                constraint: vb_core::CompiledInputConstraint {
+                    nullable,
+                    ..vb_core::CompiledInputConstraint::unconstrained()
+                },
+            }]))?;
+            let declaration = wf.input_slots().first().ok_or("input declaration")?;
+            let root = vb_core::input_validation::validate_scalar_input_value(
+                declaration,
+                SlotValue::Null,
+                &wf,
+            );
+            let bytes = postcard::to_allocvec(&vec![SlotValue::Null])?;
+            let expected = if nullable || matches!(kind, InputSlotKind::Any | InputSlotKind::Null) {
+                assert_eq!(root, Ok(()));
+                Ok(Box::from([(SlotIdx::new(2), SlotValue::Null)]))
+            } else {
+                assert_eq!(root, Err(vb_core::input_validation::InputValueIssue::Kind));
+                Err(InputMappingError::KindMismatch {
+                    slot: SlotIdx::new(2),
+                    expected_kind: kind,
+                })
+            };
+            assert_eq!(
+                map_runtime_inputs(&wf, &bytes),
+                expected,
+                "{kind:?}, nullable={nullable}"
+            );
+            for value in [
+                SlotValue::Bool(true),
+                SlotValue::I64(7),
+                SlotValue::F64(vb_core::value::FiniteF64::new(1.25)?),
+            ] {
+                let root =
+                    vb_core::input_validation::validate_scalar_input_value(declaration, value, &wf);
+                let expected = match root {
+                    Ok(()) => Ok(Box::from([(SlotIdx::new(2), value)])),
+                    Err(vb_core::input_validation::InputValueIssue::Kind) => {
+                        Err(InputMappingError::KindMismatch {
+                            slot: SlotIdx::new(2),
+                            expected_kind: kind,
+                        })
+                    }
+                    Err(other) => return Err(format!("unexpected scalar issue: {other:?}").into()),
+                };
+                assert_eq!(
+                    map_runtime_inputs(&wf, &postcard::to_allocvec(&vec![value])?),
+                    expected,
+                    "{kind:?}, nullable={nullable}, value={value:?}"
+                );
+            }
+        }
     }
     Ok(())
 }

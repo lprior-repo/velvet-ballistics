@@ -33,7 +33,7 @@ pub(super) fn validate_region_edges(
         for target in targets.iter().copied() {
             validate_edge(parts, region, regions, node, target, EdgeOrigin::Kind)?;
         }
-        validate_recovery_support(parts, region, node)?;
+        validate_recovery_support(region, node)?;
     }
     Ok(())
 }
@@ -70,7 +70,17 @@ fn validate_edge(
     let from = node.id;
     let invalid = match (region.contains(from), region.contains(to)) {
         (false, true) => origin != EdgeOrigin::Kind || from != region.start || to != region.body,
-        (true, false) => to != region.done && !is_finish(parts, to),
+        (true, false) => {
+            to != region.done
+                && !is_finish(parts, to)
+                && !(origin == EdgeOrigin::Error
+                    && to > region.control
+                    && regions.iter().flatten().any(|outer| {
+                        outer.body <= region.start
+                            && region.control < outer.control
+                            && outer.contains(to)
+                    }))
+        }
         (true, true) => to <= from && !owned_backedge(region, regions, node, to, origin),
         (false, false) => false,
     };
@@ -106,19 +116,13 @@ fn owned_backedge(
 }
 
 fn validate_recovery_support(
-    parts: &WorkflowParts,
     region: CompiledLoopRegion,
     node: &CompiledNode,
 ) -> Result<(), WorkflowError> {
     if !region.contains(node.id) {
         return Ok(());
     }
-    let internal_handler = node
-        .routing
-        .error
-        .handler()
-        .is_some_and(|target| region.contains(target) && !is_finish(parts, target));
-    if internal_handler || matches!(node.kind, CompiledNodeKind::ErrorHandler { .. }) {
+    if matches!(node.kind, CompiledNodeKind::ErrorHandler { .. }) {
         return Err(WorkflowError::LoopRegionUnsupported {
             control: region.control,
             step: node.id,

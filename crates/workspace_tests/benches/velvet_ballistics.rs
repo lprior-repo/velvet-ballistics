@@ -24,7 +24,7 @@ fn any_workflow_cap() -> Capability {
     Capability::new("".into(), ActionId::new(0))
 }
 
-const SMALL_WORKFLOW: &[u8] = b"version: velvet-ballistics/v1\nname: bench_minimal\nwhen:\n  manual: {}\nsteps:\n  - id: save_value\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+const SMALL_WORKFLOW: &[u8] = b"version: velvet-ballistics/v1\nname: bench_minimal\nwhen:\n  manual: {}\nsteps:\n  - id: save_value\n    save:\n      output: saved\n      value: '1'\n  - id: done\n    finish:\n      result: saved\n";
 #[allow(dead_code)]
 const CHOOSE_WORKFLOW: &[u8] = b"version: velvet-ballistics/v1\nname: bench_choose\nwhen:\n  manual: {}\nsteps:\n  - id: route\n    choose:\n      condition: true\n      on_true: 1\n      on_false: 1\n  - id: done\n    finish:\n      result: true\n";
 const EXPR_EQ_SYMBOL: &str = "$input.value == 7";
@@ -120,6 +120,20 @@ where
         );
         report_latency_budget_success(benchmark, max_elapsed, budget_us);
         total
+    });
+}
+
+fn checked_success_iter<F>(bencher: &mut WallBencher<'_>, benchmark: &str, mut work: F)
+where
+    F: FnMut() -> bool,
+{
+    checked_iter(bencher, benchmark, || {
+        let success = work();
+        if !success {
+            eprintln!("benchmark operation failed: benchmark={benchmark}");
+            std::process::exit(1);
+        }
+        success
     });
 }
 
@@ -327,7 +341,7 @@ fn slot_and_transition_benches(c: &mut Criterion) {
             "fixture=small_workflow;surface=engine_step",
         ),
         |b| {
-            checked_iter(
+            checked_success_iter(
                 b,
                 "bench_engine_step_once_save_const_single_transition",
                 || {
@@ -336,7 +350,15 @@ fn slot_and_transition_benches(c: &mut Criterion) {
                         let mut store = vb_core::ValueStore::new();
                         if let Ok(run) = frame.as_mut() {
                             let signal = vb_core::step_once(black_box(plan), run, &mut store);
-                            black_box(signal.is_ok())
+                            black_box(
+                                signal == Ok(vb_core::EngineSignal::Continue)
+                                    && run.pc() == StepIdx::new(1)
+                                    && plan.node(StepIdx::new(0)).is_some_and(|node| {
+                                        node.output.slot().is_some_and(|slot| {
+                                            run.read_slot(slot) == Ok(&SlotValue::I64(1))
+                                        })
+                                    }),
+                            )
                         } else {
                             black_box(false)
                         }
@@ -354,7 +376,7 @@ fn slot_and_transition_benches(c: &mut Criterion) {
             "fixture=small_workflow;surface=engine_run",
         ),
         |b| {
-            checked_iter(
+            checked_success_iter(
                 b,
                 "engine_run_until_blocked_budget_10_small_workflow",
                 || {
@@ -368,7 +390,13 @@ fn slot_and_transition_benches(c: &mut Criterion) {
                                 StepBudget::new(10),
                                 &mut store,
                             );
-                            black_box(signal.is_ok())
+                            black_box(matches!(
+                                signal,
+                                Ok(vb_core::EngineSignal::Finished(
+                                    SlotValue::I64(1),
+                                    Taint::Clean
+                                ))
+                            ))
                         } else {
                             black_box(false)
                         }
@@ -592,15 +620,19 @@ fn storage_and_ipc_benches(c: &mut Criterion) {
     group.bench_function(
         metadata(
             "ipc_frame_decode",
-            SMALL_WORKFLOW,
+            match frame_bytes.as_ref() {
+                Some(frame) => frame.as_slice(),
+                None => b"",
+            },
             "fixture=submit_run_payload;surface=ipc_decode",
         ),
         |b| {
-            checked_iter(b, "ipc_frame_decode", || {
+            checked_success_iter(b, "ipc_frame_decode", || {
                 if let Some(frame) = frame_bytes.as_ref() {
                     decode_ipc_frame(black_box(frame.as_slice()))
+                        .is_ok_and(|decoded| decoded == payload)
                 } else {
-                    Err(vb_ipc::IpcError::HeaderDecodeFailed)
+                    false
                 }
             })
         },
@@ -917,6 +949,7 @@ fn for_each_workflow() -> Option<CompiledWorkflow> {
     ];
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("bench_for_each"),
         digest: WorkflowDigest::from_bytes([0x44; 32]),
@@ -940,6 +973,7 @@ fn compiled_from_nodes(
 ) -> Option<CompiledWorkflow> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from(name),
         digest: WorkflowDigest::from_bytes([0x33; 32]),
@@ -1212,6 +1246,7 @@ fn taint_expr_workflow(
     )];
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from(name),
         digest: WorkflowDigest::from_bytes([0x55; 32]),
@@ -1428,6 +1463,7 @@ fn taint_build_object_workflow(field_count: u16) -> Option<CompiledWorkflow> {
 
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("bench_taint_build_object"),
         digest: WorkflowDigest::from_bytes([0x57; 32]),
@@ -1537,6 +1573,7 @@ fn taint_build_list_workflow(item_count: u16) -> Option<CompiledWorkflow> {
 
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("bench_taint_build_list"),
         digest: WorkflowDigest::from_bytes([0x58; 32]),
@@ -1670,6 +1707,7 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
 
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("bench_taint_full"),
         digest: WorkflowDigest::from_bytes([0x59; 32]),

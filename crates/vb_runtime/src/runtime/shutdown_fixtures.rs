@@ -4,7 +4,10 @@ use std::{num::NonZeroUsize, sync::Arc};
 use vb_core::{
     ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest},
     value::ConstValue,
-    workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts},
+    workflow::{
+        CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind,
+        CompiledWorkflow, InputSlotKind, ResourceContract, WorkflowParts,
+    },
 };
 use vb_storage::{FjallJournal, JournalWriterQueue, StorageLimits};
 
@@ -15,6 +18,7 @@ pub(super) fn waiting_workflow() -> TestResult<CompiledWorkflow> {
         name: Box::from("shutdown_wait"),
         digest: WorkflowDigest::from_bytes([33; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: Box::from([
             node(
                 0,
@@ -115,6 +119,7 @@ fn workflow(nodes: Vec<CompiledNode>, constants: Vec<ConstValue>) -> TestResult<
         name: Box::from("shutdown_fixture"),
         digest: WorkflowDigest::from_bytes([34; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: nodes.into_boxed_slice(),
         constants: constants.into_boxed_slice(),
         expressions: Box::from([]),
@@ -148,20 +153,37 @@ pub(super) fn submit_action(runtime: &Runtime, run: vb_core::RunId) -> TestResul
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::from([capability.clone()]),
     };
+    let wf = CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::from("shutdown_action"),
+        digest: WorkflowDigest::from_bytes([34; 32]),
+        semantic_source_identity: None,
+        source_metadata: None,
+        nodes: Box::from([node(
+            0,
+            CompiledNodeKind::Do {
+                action,
+                input: SlotIdx::ZERO,
+            },
+            Some(SlotIdx::ZERO),
+            None,
+        )]),
+        constants: Box::from([]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: InputSlotKind::Any,
+            constraint: CompiledInputConstraint::required(),
+        }]),
+    })?;
     runtime.submit_direct_with_inputs_grants_and_contracts(
         run,
-        workflow(
-            vec![node(
-                0,
-                CompiledNodeKind::Do {
-                    action,
-                    input: SlotIdx::ZERO,
-                },
-                Some(SlotIdx::ZERO),
-                None,
-            )],
-            vec![],
-        )?,
+        wf,
         Box::from([(SlotIdx::ZERO, SlotValue::I64(9))]),
         CapabilitySet::from_grants(Box::from([capability])),
         Box::from([contract]),

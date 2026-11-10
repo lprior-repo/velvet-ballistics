@@ -34,6 +34,7 @@ fn make_workflow(
         .map_err(|e| e.to_string())?;
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("core_test"),
         digest: WorkflowDigest::from_bytes([0xFC; 32]),
@@ -188,6 +189,7 @@ fn eval_load_accessor_with_empty_path_reads_root() -> Result<(), String> {
 
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("accessor_expr_test"),
         digest: WorkflowDigest::from_bytes([0xFD; 32]),

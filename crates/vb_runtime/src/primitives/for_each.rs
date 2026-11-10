@@ -9,7 +9,7 @@ use vb_core::value_store::ValueStore;
 
 use super::helpers::{
     build_iterator_state, decode_iterator_state, empty_list, expect_list, jump_to, jump_to_next,
-    require_output,
+    preflight_slot_writes, require_output,
 };
 
 /// Executes ForEachStart: validates input list, binds first item, and writes
@@ -38,6 +38,7 @@ pub fn for_each_start(
     }
     let iter_output = require_output(output, run.pc())?;
     if item_count == 0 {
+        preflight_slot_writes(run, &[iter_output], done)?;
         run.write_slot_with_taint(
             iter_output,
             SlotValue::List(store.insert_list(empty_list())?),
@@ -51,9 +52,10 @@ pub fn for_each_start(
         .ok_or(EngineError::InternalInvariantViolation {
             reason: "for_each item_count checked nonzero",
         })?;
-    run.write_slot_with_taint(item_slot, first, input_taint)?;
+    preflight_slot_writes(run, &[item_slot, iter_output], body)?;
     let state = build_iterator_state(list_id, 1)?;
     let state_id = store.insert_list(state)?;
+    run.write_slot_with_taint(item_slot, first, input_taint)?;
     run.write_slot_with_taint(iter_output, SlotValue::List(state_id), input_taint)?;
     jump_to(run, body)
 }
@@ -85,7 +87,7 @@ pub(crate) fn for_each_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
         .ok_or(EngineError::InternalInvariantViolation {
             reason: "for_each cursor bounds-checked above",
         })?;
-    run.write_slot_with_taint(item_output, item, iter_taint)?;
+    preflight_slot_writes(run, &[item_output, iterator_slot], body)?;
     let next_cursor = cursor
         .checked_add(1)
         .ok_or(EngineError::InternalInvariantViolation {
@@ -93,6 +95,7 @@ pub(crate) fn for_each_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
         })?;
     let next_state = build_iterator_state(source_id, next_cursor)?;
     let next_state_id = store.insert_list(next_state)?;
+    run.write_slot_with_taint(item_output, item, iter_taint)?;
     run.write_slot_with_taint(iterator_slot, SlotValue::List(next_state_id), iter_taint)?;
     P::jump(run, body)
 }

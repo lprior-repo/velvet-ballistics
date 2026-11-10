@@ -15,11 +15,20 @@ fn workspace_root() -> Result<PathBuf, String> {
 fn state8_kani_exact_grant_setup_detects_module_before_state11_execution() -> Result<(), String> {
     // Given: State 8 owns Kani setup and State 11 owns Kani execution.
     let root = workspace_root()?;
-    let flat_module = root.join("crates/vb_core/src/kani.rs");
-    let nested_module = root.join("crates/vb_core/src/kani/mod.rs");
+    let library = std::fs::read_to_string(root.join("crates/vb_core/src/lib.rs"))
+        .map_err(|error| error.to_string())?;
+    let harness = std::fs::read_to_string(
+        root.join("crates/vb_core/src/verification/kani/kani_capability_harnesses.rs"),
+    )
+    .map_err(|error| error.to_string())?;
 
     // When: the approved setup predicate is evaluated.
-    let setup_status = if flat_module.is_file() || nested_module.is_file() {
+    let setup_status = if library
+        .contains("#[path = \"verification/kani/kani_capability_harnesses.rs\"]")
+        && library.contains("pub mod kani_capability_harnesses;")
+        && harness.contains("#[kani::proof]")
+        && harness.contains("fn capability_name_grants_harness()")
+    {
         "KANI_SETUP_PRESENT"
     } else {
         "KANI_SETUP_MISSING"

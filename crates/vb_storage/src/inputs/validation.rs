@@ -32,7 +32,7 @@ pub(super) fn prepare_inputs(
             .get(usize::from(slot.slot.get()))
             .is_some_and(Option::is_some)
         {
-            if slot.constraint.requires_value() {
+            if slot.constraint.requires_value() || slot.constraint.default_cold.is_some() {
                 return Err(JournalError::InputSchemaMismatch);
             }
             if let Some(default) = slot.constraint.default_value {
@@ -63,7 +63,9 @@ pub(super) fn validate_inputs(
         if remaining
             .get(usize::from(slot.slot.get()))
             .is_some_and(Option::is_some)
-            && slot.constraint.requires_value()
+            && (slot.constraint.requires_value()
+                || slot.constraint.default_value.is_some()
+                || slot.constraint.default_cold.is_some())
         {
             return Err(JournalError::InputSchemaMismatch);
         }
@@ -76,7 +78,7 @@ fn check_value(
     declared: &CompiledInputSlot,
     value: SlotValue,
 ) -> Result<(), JournalError> {
-    vb_core::input_validation::validate_input_value(declared, value, workflow.symbols_count(), None)
+    vb_core::input_validation::validate_scalar_input_value(declared, value, workflow)
         .map_err(|_| JournalError::InputSchemaMismatch)
 }
 
@@ -92,7 +94,7 @@ fn declared_slots(
         let slot = remaining
             .get_mut(usize::from(declaration.slot.get()))
             .ok_or(JournalError::InputSchemaMismatch)?;
-        *slot = Some(*declaration);
+        *slot = Some(declaration.clone());
     }
     Ok(remaining)
 }

@@ -49,14 +49,28 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
         &mut slot_types,
         &mut builder,
         &mut for_each_inputs,
-    )
-    .map_err(|e| CompileErrors(vec![e]))?;
+    )?;
     let layout =
         canonical_layout(steps, builder.nodes.len()).map_err(|e| CompileErrors(vec![e]))?;
     step_names.extend(canonical_step_names(steps, &layout).map_err(|e| CompileErrors(vec![e]))?);
     for (index, step) in steps.iter().enumerate() {
         let id = layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
-        let next = next_layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
+        let mut next = next_layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
+        if index == last && source.result().is_some() {
+            if matches!(step.primitive, crate::StepPrimitive::Finish { .. }) {
+                return Err(CompileErrors(vec![CompileError::StepFieldShape {
+                    step: index,
+                    field: "finish",
+                    expected: "either finish or a top-level result mapping",
+                }]));
+            }
+            let width = canonical_step_width_with_condition(step)?;
+            let end = id
+                .as_usize()
+                .checked_add(width)
+                .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
+            next = Some(step_idx(end)?);
+        }
         lower_canonical_step(
             step,
             index,
@@ -71,15 +85,81 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
             &mut builder,
         )?;
     }
+    if let Some(result) = source.result() {
+        let first = builder.nodes.len();
+        let scope = CanonicalScope {
+            outputs: &outputs,
+            step_outputs: &step_outputs,
+            slot_types: &slot_types,
+        };
+        let (slot, _) = super::canonical_values::emit(
+            &AuthorValue::Mapping(result.fields.clone()),
+            true,
+            scope,
+            &mut builder,
+        )?;
+        let id = step_idx(builder.nodes.len())?;
+        builder.push_node(vb_core::workflow::node(
+            id,
+            CompiledNodeKind::Finish { result: slot },
+            None,
+            None,
+        ));
+        step_names.extend(
+            builder
+                .nodes
+                .iter()
+                .skip(first)
+                .map(|_| Box::from("$result")),
+        );
+    }
     super::skipped_outputs::PossiblySkippedOutputs::from_source(source)
         .and_then(|outputs| outputs.validate(&builder))
         .map_err(|error| CompileErrors(vec![error]))?;
+    for (id, display) in &builder.display_names {
+        if let Some(name) = step_names.get_mut(id.as_usize()) {
+            *name = display.clone();
+        }
+    }
+    let symbols = std::mem::take(&mut builder.symbols);
+    builder
+        .secret_requirements
+        .sort_unstable_by_key(|binding| binding.alias());
+    let metadata = if symbols.is_empty() {
+        None
+    } else {
+        let count = symbols.len();
+        let bytes = symbols.symbol_bytes();
+        let symbols =
+            symbols
+                .finish()
+                .map_err(|error| CompileError::ExpressionLoweringUnsupported {
+                    feature: error.to_string().into(),
+                })?;
+        let metadata = vb_core::workflow::source_metadata::WorkflowSourceMetadata::try_new(
+            symbols,
+            std::mem::take(&mut builder.secret_requirements).into_boxed_slice(),
+        )
+        .map_err(|error| CompileError::ExpressionLoweringUnsupported {
+            feature: error.to_string().into(),
+        })?;
+        if usize::try_from(metadata.symbols_count()).ok() != Some(count)
+            || metadata.symbol_bytes() != bytes
+        {
+            return Err(CompileError::ExpressionLoweringUnsupported {
+                feature: "symbol measurements".into(),
+            }
+            .into());
+        }
+        Some(Box::new(metadata))
+    };
     let mut parts = WorkflowParts {
         name: Box::from(source.name()),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         semantic_source_identity: Some(semantic_source_identity),
         slot_count: builder.slot_count().map_err(|e| CompileErrors(vec![e]))?,
-        symbols_count: 0,
+        symbols_count: metadata.as_ref().map_or(0, |value| value.symbols_count()),
+        source_metadata: metadata,
         nodes: builder.nodes.into_boxed_slice(),
         expressions: builder.expressions.into_boxed_slice(),
         accessors: builder.accessors.into_boxed_slice(),
@@ -102,188 +182,13 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
 mod input_schema;
 use input_schema::{constraint_from_input_schema, kind_from_input_schema};
 
-#[derive(Clone, Copy)]
-pub(super) struct CanonicalStepLayout {
-    start: StepIdx,
-    width: usize,
-}
+#[path = "canonical_layout.rs"]
+mod layout;
+pub(super) use layout::*;
 
-pub(super) fn canonical_layout(
-    steps: &[crate::StepAst],
-    prefix: usize,
-) -> Result<Vec<CanonicalStepLayout>, CompileError> {
-    let mut layout = Vec::with_capacity(steps.len());
-    let mut cursor = prefix;
-    for step in steps {
-        let width = canonical_step_width_with_condition(step)?;
-        layout.push(CanonicalStepLayout {
-            start: step_idx(cursor)?,
-            width,
-        });
-        cursor = cursor
-            .checked_add(width)
-            .ok_or(CompileError::StepIndexOutOfRange { value: cursor })?;
-    }
-    Ok(layout)
-}
-
-pub(super) fn canonical_step_width(
-    primitive: &crate::StepPrimitive,
-) -> Result<usize, CompileError> {
-    match primitive {
-        crate::StepPrimitive::Set { .. }
-        | crate::StepPrimitive::Finish { .. }
-        | crate::StepPrimitive::Wait { .. } => Ok(1),
-        crate::StepPrimitive::Ask { .. } => Ok(2),
-        crate::StepPrimitive::ForEach { body, .. } => body_width(body, 2),
-        crate::StepPrimitive::Collect { body, .. } | crate::StepPrimitive::Repeat { body, .. } => {
-            body_width(body, 3)
-        }
-        crate::StepPrimitive::Aggregate { body, .. } => {
-            if !reduce_direct_body(body) {
-                body_width(body, 5)
-            } else {
-                body_width(body, 4)
-            }
-        }
-        crate::StepPrimitive::Together { branches } => together_width(branches),
-        crate::StepPrimitive::Choose { branches, .. } => choose_width(branches),
-        _ => Ok(1),
-    }
-}
-
-pub(super) fn reduce_direct_body(body: &[crate::StepAst]) -> bool {
-    matches!(body, [step] if matches!(step.primitive, crate::StepPrimitive::Set { .. })
-        && step.condition.is_none() && step.then.is_none() && step.on_error.is_none()
-        && step.retry.is_none() && step.with.is_none())
-}
-
-pub(super) fn canonical_step_width_with_condition(
-    step: &crate::StepAst,
-) -> Result<usize, CompileError> {
-    let width = canonical_step_width(&step.primitive)?;
-    if step.condition.is_some() {
-        return width.checked_add(1).ok_or(CompileError::StepIndexOutOfRange { value: width });
-    }
-    Ok(width)
-}
-
-pub(super) fn body_width(body: &[crate::StepAst], overhead: usize) -> Result<usize, CompileError> {
-    let mut width = overhead;
-    for step in body {
-        width = width
-            .checked_add(canonical_step_width_with_condition(step)?)
-            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
-    }
-    Ok(width)
-}
-
-pub(super) fn choose_width(branches: &[crate::ChooseBranch]) -> Result<usize, CompileError> {
-    let mut width = 1usize;
-    for branch in branches {
-        width = width
-            .checked_add(body_width(&branch.steps, 0)?)
-            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
-    }
-    Ok(width)
-}
-
-pub(super) fn together_width(branches: &[crate::TogetherBranch]) -> Result<usize, CompileError> {
-    let mut width = 2usize;
-    for branch in branches {
-        width = width
-            .checked_add(body_width(&branch.steps, 2)?)
-            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
-    }
-    Ok(width)
-}
-
-pub(super) fn canonical_step_names(
-    steps: &[crate::StepAst],
-    layout: &[CanonicalStepLayout],
-) -> Result<Vec<Box<str>>, CompileError> {
-    let total = layout
-        .last()
-        .map(|entry| {
-            entry.start.as_usize().checked_add(entry.width).ok_or(
-                CompileError::StepIndexOutOfRange {
-                    value: entry.start.as_usize(),
-                },
-            )
-        })
-        .transpose()?
-        .unwrap_or(0);
-    let mut names = Vec::with_capacity(total);
-    for (index, step) in steps.iter().enumerate() {
-        let width = layout_width(layout, index)?;
-        for _ in 0..width {
-            names.push(Box::from(step.id.as_str()));
-        }
-    }
-    Ok(names)
-}
-
-pub(super) fn layout_start(
-    layout: &[CanonicalStepLayout],
-    index: usize,
-) -> Result<StepIdx, CompileError> {
-    layout
-        .get(index)
-        .map(|entry| entry.start)
-        .ok_or(CompileError::StepIndexOutOfRange { value: index })
-}
-
-pub(super) fn layout_width(
-    layout: &[CanonicalStepLayout],
-    index: usize,
-) -> Result<usize, CompileError> {
-    layout
-        .get(index)
-        .map(|entry| entry.width)
-        .ok_or(CompileError::StepIndexOutOfRange { value: index })
-}
-
-/// Name steps in backward-edge errors by walking the source layout; no
-/// compiled parts are cloned to build the diagnostic.
-pub(super) fn named_workflow_error(
-    error: CompileError,
-    steps: &[crate::StepAst],
-    layout: &[CanonicalStepLayout],
-) -> CompileError {
-    let CompileError::Workflow(vb_core::WorkflowError::BackwardEdge { from, to }) = &error else {
-        return error;
-    };
-    CompileError::BackwardEdgeNamed {
-        from: from.as_usize(),
-        to: to.as_usize(),
-        from_name: Box::from(step_id_at(steps, layout, from.as_usize())),
-        to_name: Box::from(step_id_at(steps, layout, to.as_usize())),
-    }
-}
-
-fn step_id_at<'a>(
-    steps: &'a [crate::StepAst],
-    layout: &[CanonicalStepLayout],
-    index: usize,
-) -> &'a str {
-    let mut cursor = 0_usize;
-    for (position, step) in steps.iter().enumerate() {
-        let width = layout.get(position).map_or(1, |entry| entry.width);
-        let end = cursor.saturating_add(width);
-        if index >= cursor && index < end {
-            return step.id.as_str();
-        }
-        cursor = end;
-    }
-    "?"
-}
-
-pub(super) fn next_layout_start(
-    layout: &[CanonicalStepLayout],
-    index: usize,
-) -> Result<Option<StepIdx>, CompileError> {
-    let next = index
-        .checked_add(1)
-        .ok_or(CompileError::StepIndexOutOfRange { value: index })?;
-    Ok(layout.get(next).map(|entry| entry.start))
+/// Converts a bounded cold author literal into an arena-independent payload.
+pub fn author_value_to_owned(
+    value: &AuthorValue,
+) -> Result<vb_core::InputDefaultValue, CompileError> {
+    input_schema::defaults::owned(value)
 }

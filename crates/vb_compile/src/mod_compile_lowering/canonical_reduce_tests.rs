@@ -4,8 +4,7 @@
 use crate::{CompileError, compile_workflow};
 use vb_core::{CompiledNodeKind, StepIdx};
 
-const HEADER: &str =
-    "version: velvet-ballistics/v1\nname: reduce_test\nwhen: {manual: {}}\n";
+const HEADER: &str = "version: velvet-ballistics/v1\nname: reduce_test\nwhen: {manual: {}}\n";
 
 fn compile(text: &str) -> Result<vb_core::CompiledWorkflow, String> {
     compile_workflow(text.as_bytes()).map_err(|e| format!("compile: {e:?}"))
@@ -32,7 +31,7 @@ fn rejects(text: &str, predicate: impl Fn(&CompileError) -> bool) -> Result<(), 
 #[test]
 fn reduce_numeric8_two_set_steps() -> Result<(), String> {
     let text = format!(
-        "{HEADER}steps:\n  - id: before\n    set: {{output: answer, value: '42'}}\n  - id: sum\n    reduce:\n      input: \"0\"\n      variable: acc\n      initial: '10'\n      steps:\n        - id: inc\n          set: {{output: step1, value: '$acc + 1'}}\n        - id: dbl\n          set: {{output: step2, value: '$step1 * 2'}}\n  - id: done\n    finish: {{result: 'answer'}}\n"
+        "{HEADER}steps:\n  - id: before\n    set: {{output: answer, value: '42'}}\n  - id: sum\n    reduce:\n      input: \"8\"\n      variable: acc\n      initial: '10'\n      steps:\n        - id: inc\n          set: {{output: step1, value: '$acc + 1'}}\n        - id: dbl\n          set: {{output: step2, value: '$step1 * 2'}}\n  - id: done\n    finish: {{result: 'answer'}}\n"
     );
     let workflow = compile(&text)?;
     let parts = workflow.to_parts();
@@ -45,8 +44,6 @@ fn reduce_numeric8_two_set_steps() -> Result<(), String> {
     // node 6: reduce next
     // node 7: reduce done
     // node 8: finish
-    // Debug: print node kinds
-    // println!("node count: {}", parts.nodes.len());
     assert_eq!(parts.nodes.len(), 9);
     for (index, node) in parts.nodes.iter().enumerate() {
         assert_eq!(node.id.as_usize(), index);
@@ -77,7 +74,7 @@ fn reduce_numeric8_two_set_steps() -> Result<(), String> {
 #[test]
 fn reduce_single_set_step_parity() -> Result<(), String> {
     let text = format!(
-        "{HEADER}steps:\n  - id: before\n    set: {{output: answer, value: '42'}}\n  - id: sum\n    reduce:\n      input: \"0\"\n      variable: acc\n      initial: '10'\n      steps:\n        - id: inc\n          set: {{output: acc, value: '$acc + 1'}}\n  - id: done\n    finish: {{result: 'answer'}}\n"
+        "{HEADER}steps:\n  - id: before\n    set: {{output: answer, value: '42'}}\n  - id: sum\n    reduce:\n      input: \"8\"\n      variable: acc\n      initial: '10'\n      steps:\n        - id: inc\n          set: {{output: acc, value: '$acc + 1'}}\n  - id: done\n    finish: {{result: 'answer'}}\n"
     );
     let workflow = compile(&text)?;
     let parts = workflow.to_parts();
@@ -103,7 +100,7 @@ fn reduce_single_set_step_parity() -> Result<(), String> {
 #[test]
 fn reduce_lexical_scope() -> Result<(), String> {
     let text = format!(
-        "{HEADER}steps:\n  - id: before\n    set: {{output: outside, value: '7'}}\n  - id: reduce_step\n    reduce:\n      input: \"0\"\n      variable: acc\n      initial: '1'\n      steps:\n        - id: use_outside\n          set: {{output: acc, value: '$acc + $outside'}}\n  - id: done\n    finish: {{result: 'outside'}}\n"
+        "{HEADER}steps:\n  - id: before\n    set: {{output: outside, value: '7'}}\n  - id: reduce_step\n    reduce:\n      input: \"8\"\n      variable: acc\n      initial: '1'\n      steps:\n        - id: use_outside\n          set: {{output: acc, value: '$acc + $outside'}}\n  - id: done\n    finish: {{result: 'outside'}}\n"
     );
     let _workflow = compile(&text)?;
     Ok(())
@@ -112,29 +109,52 @@ fn reduce_lexical_scope() -> Result<(), String> {
 #[test]
 fn reduce_empty_body_rejected() -> Result<(), String> {
     let text = format!(
-        "{HEADER}steps:\n  - id: sum\n    reduce:\n      input: \"0\"\n      variable: acc\n      initial: '0'\n      steps: []\n  - id: done\n    finish: {{result: 'answer'}}\n"
+        "{HEADER}steps:\n  - id: sum\n    reduce:\n      input: \"8\"\n      variable: acc\n      initial: '0'\n      steps: []\n  - id: done\n    finish: {{result: 'answer'}}\n"
     );
     rejects(&text, |e| {
-        matches!(e, CompileError::StepFieldShape { field: "reduce.steps", .. })
+        matches!(
+            e,
+            CompileError::StepFieldShape {
+                field: "reduce.steps",
+                ..
+            }
+        )
     })
 }
 
 #[test]
 fn reduce_non_i64_final_rejected() -> Result<(), String> {
     let text = format!(
-        "{HEADER}steps:\n  - id: sum\n    reduce:\n      input: \"0\"\n      variable: acc\n      initial: '10'\n      steps:\n        - id: first\n          set: {{output: step1, value: '$acc + 1'}}\n        - id: last\n          set: {{output: acc, value: 'true'}}\n  - id: done\n    finish: {{result: 'acc'}}\n"
+        "{HEADER}steps:\n  - id: sum\n    reduce:\n      input: \"8\"\n      variable: acc\n      initial: '10'\n      steps:\n        - id: first\n          set: {{output: step1, value: '$acc + 1'}}\n        - id: last\n          set: {{output: acc, value: 'true'}}\n  - id: done\n    finish: {{result: 'acc'}}\n"
     );
     rejects(&text, |e| {
-        matches!(e, CompileError::StepFieldShape { field: "reduce.steps", .. })
+        matches!(
+            e,
+            CompileError::StepFieldShape {
+                field: "reduce.steps",
+                ..
+            }
+        )
     })
 }
 
 #[test]
 fn reduce_unsupported_primitive_rejected() -> Result<(), String> {
     let text = format!(
-        "{HEADER}steps:\n  - id: sum\n    reduce:\n      input: \"0\"\n      variable: acc\n      initial: '0'\n      steps:\n        - id: step_wait\n          wait:\n            timeout: '10s'\n  - id: done\n    finish: {{result: 'answer'}}\n"
+        "{HEADER}steps:\n  - id: sum\n    reduce:\n      input: \"8\"\n      variable: acc\n      initial: '0'\n      steps:\n        - id: step_wait\n          wait:\n            timeout: '10'\n  - id: done\n    finish: {{result: 'answer'}}\n"
     );
-    rejects(&text, |e| {
-        matches!(e, CompileError::UnsupportedStepPrimitive { .. })
-    })
+    // A wait-only body cannot supply the next accumulator value.
+    crate::parse_workflow_source(&text).map_err(|e| format!("parse: {e:?}"))?;
+    let errors = compile_workflow(text.as_bytes())
+        .err()
+        .ok_or("wait-only reduce body was accepted")?;
+    assert_eq!(
+        errors.0,
+        [CompileError::StepFieldShape {
+            step: 0,
+            field: "reduce.steps",
+            expected: "at least one set or do step",
+        }]
+    );
+    Ok(())
 }

@@ -55,6 +55,7 @@ fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
     let digest = vb_core::ids::WorkflowDigest::from_bytes([action_byte; 32]);
 
     let do_node = CompiledNode {
+        retry: None,
         id: StepIdx::ZERO,
         output: vb_core::workflow::NodeOutput::Discard,
         routing: vb_core::workflow::NodeRouting {
@@ -70,6 +71,7 @@ fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
     let parts = WorkflowParts {
         name: Box::from("fuzz_validate_completion"),
         semantic_source_identity: None,
+        source_metadata: None,
         digest,
         nodes: Box::from([do_node]),
         expressions: Box::from([]),

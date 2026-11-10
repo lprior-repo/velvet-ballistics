@@ -15,8 +15,28 @@ pub fn validate_runtime_store(
     workflow: &CompiledWorkflow,
 ) -> Result<(), OwnedRootBundleError> {
     validation::preflight(checkpoint, workflow)?;
+    if let Some(metadata) = workflow.source_metadata() {
+        for (expected, actual) in metadata.symbols().iter().zip(&checkpoint.symbols) {
+            if expected != actual {
+                return Err(OwnedRootBundleError::Checkpoint(
+                    crate::CoreError::InternalInvariantViolation {
+                        reason: "compiled_source_symbol_prefix",
+                    },
+                ));
+            }
+        }
+        if checkpoint.symbols.len() < metadata.symbols().len() {
+            return Err(OwnedRootBundleError::Checkpoint(
+                crate::CoreError::InternalInvariantViolation {
+                    reason: "compiled_source_symbol_prefix",
+                },
+            ));
+        }
+    }
     let roots = frame
         .initialized_slots()
+        .map_err(OwnedRootBundleError::Checkpoint)?;
+    crate::workflow::source_metadata::secrets::validate_runtime_roots(workflow, &roots)
         .map_err(OwnedRootBundleError::Checkpoint)?;
     for (_, value, _) in &roots {
         validate_value_reference(*value, checkpoint).map_err(OwnedRootBundleError::Checkpoint)?;

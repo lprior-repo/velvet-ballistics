@@ -1,12 +1,9 @@
 //! Allocate declarations before lowering any source expression or scratch state.
 
-use super::{
-    ForEachInputs, SlotCompiler, constraint_from_input_schema, kind_from_input_schema, step_idx,
-};
-use crate::{AuthorValue, CompileError, WorkflowSource};
+use super::{ForEachInputs, SlotCompiler, constraint_from_input_schema, kind_from_input_schema};
+use crate::{AuthorValue, CompileError, CompileErrors, WorkflowSource};
 use std::collections::HashMap;
-use vb_core::workflow::node;
-use vb_core::{CompiledNodeKind, ConstValue, InputSlotKind, SlotIdx};
+use vb_core::{InputSlotKind, SlotIdx};
 use vb_expr::expr_typecheck::ExprType;
 
 pub(super) fn prepare_source_declarations(
@@ -15,7 +12,7 @@ pub(super) fn prepare_source_declarations(
     types: &mut HashMap<SlotIdx, ExprType>,
     builder: &mut SlotCompiler,
     for_each_inputs: &mut ForEachInputs,
-) -> Result<Vec<Box<str>>, CompileError> {
+) -> Result<Vec<Box<str>>, CompileErrors> {
     for input in source.inputs() {
         let kind = kind_from_input_schema(&input.value)?;
         let constraint = constraint_from_input_schema(&input.value)?;
@@ -26,14 +23,50 @@ pub(super) fn prepare_source_declarations(
         types.insert(slot, input_type(kind));
         for_each_inputs.record(slot, &input.key, &input.value);
     }
+    for secret in source.secrets() {
+        let alias = builder.intern(&secret.key)?;
+        let requirement = builder.intern(&secret.value)?;
+        let slot = builder.allocate_slot()?;
+        builder.record_input_slot(
+            slot,
+            InputSlotKind::Symbol,
+            vb_core::CompiledInputConstraint {
+                secret: true,
+                default_cold: Some(vb_core::InputDefaultValue::Text(
+                    secret.value.clone().into(),
+                )),
+                ..vb_core::CompiledInputConstraint::required()
+            },
+        );
+        builder.secret_requirements.push(
+            vb_core::workflow::source_metadata::CompiledSecretRequirement::with_slot(
+                alias,
+                requirement,
+                slot,
+            ),
+        );
+        bind_declaration(outputs, format!("$secrets.{}", secret.key), slot)?;
+        types.insert(slot, ExprType::Text);
+    }
     let mut names = Vec::with_capacity(source.vars().len());
     for variable in source.vars() {
-        let (value, ty) = scalar_variable(&variable.key, &variable.value)?;
-        let slot = builder.allocate_slot()?;
-        emit_variable(value, slot, builder)?;
+        let first = builder.nodes.len();
+        let steps = HashMap::new();
+        let scope = super::CanonicalScope {
+            outputs,
+            step_outputs: &steps,
+            slot_types: types,
+        };
+        let (slot, ty) = super::canonical_values::emit(&variable.value, false, scope, builder)?;
         bind_declaration(outputs, format!("$vars.{}", variable.key), slot)?;
         types.insert(slot, ty);
-        names.push(format!("$vars.{}", variable.key).into_boxed_str());
+        names.extend(
+            builder
+                .nodes
+                .iter()
+                .skip(first)
+                .map(|_| format!("$vars.{}", variable.key).into_boxed_str()),
+        );
     }
     Ok(names)
 }
@@ -89,39 +122,6 @@ fn bind_declaration(
     }
     outputs.insert(name, slot);
     Ok(())
-}
-
-fn emit_variable(
-    value: ConstValue,
-    slot: SlotIdx,
-    builder: &mut SlotCompiler,
-) -> Result<(), CompileError> {
-    let index = builder.nodes.len();
-    let next = index
-        .checked_add(1)
-        .ok_or(CompileError::StepIndexOutOfRange { value: index })?;
-    let constant = builder.push_constant(value)?;
-    builder.push_node(node(
-        step_idx(index)?,
-        CompiledNodeKind::SetConst { value: constant },
-        Some(slot),
-        Some(step_idx(next)?),
-    ));
-    Ok(())
-}
-
-fn scalar_variable(key: &str, value: &AuthorValue) -> Result<(ConstValue, ExprType), CompileError> {
-    match value {
-        AuthorValue::Null => Ok((ConstValue::Null, ExprType::Null)),
-        AuthorValue::Bool(value) => Ok((ConstValue::Bool(*value), ExprType::Bool)),
-        AuthorValue::I64(value) => Ok((ConstValue::I64(*value), ExprType::I64)),
-        _ => Err(CompileError::ExpressionLoweringUnsupported {
-            feature: format!(
-                "vars.{key} currently requires a null, boolean, or integer static literal"
-            )
-            .into_boxed_str(),
-        }),
-    }
 }
 
 fn input_type(kind: InputSlotKind) -> ExprType {

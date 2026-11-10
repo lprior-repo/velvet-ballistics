@@ -44,13 +44,18 @@ proptest! {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn add_i64_to_f64_returns_type_mismatch() {
+fn add_i64_to_f64_promotes_to_finite_float() {
     let result = eval_binary_op(
         BinaryOp::Add,
         SlotValue::I64(10),
         SlotValue::F64(FiniteF64::new(5.0).unwrap()),
     );
-    assert!(result.is_err(), "I64 + F64 should be a type mismatch");
+    assert_eq!(
+        result,
+        FiniteF64::new(15.0)
+            .map(SlotValue::F64)
+            .map_err(crate::ExprError::from)
+    );
 }
 
 #[test]

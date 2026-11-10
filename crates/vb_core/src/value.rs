@@ -89,6 +89,15 @@ impl FiniteF64 {
         }
     }
 
+    /// Promotes an integer with IEEE 754 rounding and no unchecked cast.
+    #[must_use]
+    pub fn from_i64(value: i64) -> Self {
+        let [a, b, c, d, e, f, g, h] = value.to_be_bytes();
+        let high = i32::from_be_bytes([a, b, c, d]);
+        let low = u32::from_be_bytes([e, f, g, h]);
+        Self(f64::from(high) * 4_294_967_296.0 + f64::from(low))
+    }
+
     /// Returns the raw finite floating-point value.
     #[must_use]
     pub const fn get(self) -> f64 {

@@ -136,7 +136,13 @@ impl EvidenceCollector {
     /// Records a handled failure without reporting success or an unwritten output.
     pub fn push_step_failed(&mut self, step: StepIdx) -> Result<(), EngineError> {
         if self.events.len() >= self.capacity {
-            return Err(EngineError::EvidenceCapacityExceeded { step, slot: SlotIdx::ZERO, capacity: self.capacity, len: self.events.len(), required: "step_failed" });
+            return Err(EngineError::EvidenceCapacityExceeded {
+                step,
+                slot: SlotIdx::ZERO,
+                capacity: self.capacity,
+                len: self.events.len(),
+                required: "step_failed",
+            });
         }
         self.events.push(EvidenceEvent::StepFailed { step });
         Ok(())

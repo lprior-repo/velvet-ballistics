@@ -131,18 +131,11 @@ pub(crate) fn map_runtime_inputs(
     }
     let mut mapped = Vec::with_capacity(values.len());
     for (slot, value) in input_slots.iter().zip(values.iter()) {
-        let value_kind = match value {
-            vb_core::SlotValue::Null => vb_core::InputSlotKind::Null,
-            vb_core::SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
-            vb_core::SlotValue::I64(_) => vb_core::InputSlotKind::I64,
-            vb_core::SlotValue::F64(_) => vb_core::InputSlotKind::F64,
-            vb_core::SlotValue::Symbol(_) => vb_core::InputSlotKind::Symbol,
-            vb_core::SlotValue::List(_) => vb_core::InputSlotKind::List,
-            vb_core::SlotValue::Object(_) => vb_core::InputSlotKind::Object,
-            vb_core::SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
-            _ => return Err(InputMappingError::DecodeFailed),
-        };
-        if slot.kind != vb_core::InputSlotKind::Any && value_kind != slot.kind {
+        let value_kind = vb_core::input_validation::input_value_kind(*value);
+        if !(*value == vb_core::SlotValue::Null && slot.constraint.nullable)
+            && slot.kind != vb_core::InputSlotKind::Any
+            && value_kind != slot.kind
+        {
             return Err(InputMappingError::KindMismatch {
                 slot: slot.slot,
                 expected_kind: slot.kind,

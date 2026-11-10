@@ -197,7 +197,9 @@ impl RunCheckpointV1 {
         if self.action_contracts.as_ref() != accepted_action_contracts {
             return Err(RunCheckpointV1Error::ActionContractsMismatch);
         }
-        RunFrame::from_checkpoint_v1(self.frame.clone())
+        let frame = RunFrame::from_checkpoint_v1(self.frame.clone())
+            .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
+        vb_core::root_bundle::validate_runtime_store(&frame, &self.value_store, workflow)
             .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
         ValueStore::from_checkpoint_v1(self.value_store.clone())
             .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;

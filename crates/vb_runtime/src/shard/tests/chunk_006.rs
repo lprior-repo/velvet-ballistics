@@ -43,7 +43,8 @@ fn shard_tick_processes_commands_in_fifo_order() {
         Ok(())
     );
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: super::RunId::new(101),
             workflow: wf2,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
@@ -107,7 +108,8 @@ fn shard_take_inspect_response_clears_after_take() {
     };
     let run = super::RunId::new(95);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),

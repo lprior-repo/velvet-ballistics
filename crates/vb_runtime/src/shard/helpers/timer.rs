@@ -26,6 +26,13 @@ pub fn advance_after_timer_fire(
     timer: PendingTimer,
 ) -> RuntimeResult<()> {
     validate_timer_fire(state, timer)?;
+    if state
+        .workflow
+        .node(timer.step)
+        .is_some_and(|node| matches!(node.kind, CompiledNodeKind::Do { .. }))
+    {
+        return Ok(());
+    }
     let next = state
         .workflow
         .node(timer.step)
@@ -60,6 +67,14 @@ pub fn validate_timer_fire(
             CompiledNodeKind::WaitUntil { .. } | CompiledNodeKind::WaitEvent { .. },
         )
         | (PendingTimerKind::Ask, CompiledNodeKind::Ask { .. }) => {}
+        (PendingTimerKind::Wait, CompiledNodeKind::Do { .. })
+            if node.retry.is_some_and(|policy| policy.delay_ms > 0)
+                && state.frame.pc() == timer.step
+                && state.frame.step_state(timer.step).ok()
+                    == Some(vb_core::frame::StepState::Waiting) =>
+        {
+            return Ok(());
+        }
         _ => return Err(RuntimeError::InvalidTimerFire),
     }
     if matches!(node.routing.next, NodeContinuation::End) {

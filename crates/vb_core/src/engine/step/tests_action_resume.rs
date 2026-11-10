@@ -1,6 +1,6 @@
 use super::test_support::{
     action_contract, action_ticket, do_then_finish_workflow, do_with_error_handler_workflow,
-    ensure_equal, failure_payload, ready_output, test_frame,
+    ensure_equal, external_input, failure_payload, ready_output, test_frame,
 };
 use super::{resume_action_completion, resume_action_failure, step_once};
 use crate::EngineSignal;
@@ -280,7 +280,8 @@ fn suspended_run(workflow: &crate::workflow::CompiledWorkflow) -> Result<crate::
 fn do_then_finish_output_slot_one() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(),
         name: Box::<str>::from("do_output_slot_one"),
         digest: WorkflowDigest::from_bytes([0xBC; 32]),
         nodes: vec![

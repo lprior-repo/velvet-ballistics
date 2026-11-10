@@ -1163,6 +1163,7 @@ fn blackhat_reduce_start_uses_max_list_items_as_iteration_count() {
         node(
             StepIdx::new(0),
             CompiledNodeKind::ReduceStart {
+                limit: 65_535,
                 input: SlotIdx::new(0),
                 accumulator: SlotIdx::new(1),
                 initial: ConstIdx::new(0),
@@ -1420,6 +1421,7 @@ fn sequential_collect_reduce_repeat_wait_nodes() -> Vec<CompiledNode> {
             3,
             None,
             CompiledNodeKind::ReduceStart {
+                limit: 65_535,
                 input: SlotIdx::new(2),
                 accumulator: SlotIdx::new(3),
                 initial: ConstIdx::new(0),
@@ -1696,6 +1698,7 @@ fn reduce_start_body_accounting() -> Result<(), String> {
         node(
             StepIdx::new(0),
             CompiledNodeKind::ReduceStart {
+                limit: 65_535,
                 input: SlotIdx::new(0),
                 accumulator: SlotIdx::new(1),
                 initial: ConstIdx::new(0),
@@ -3458,6 +3461,7 @@ fn test_step_count_overflow() -> Result<(), String> {
 
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("step_count_overflow_test"),
         digest: crate::ids::WorkflowDigest::from_bytes([0x41; 32]),

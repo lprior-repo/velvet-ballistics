@@ -66,6 +66,7 @@ fn nop_node(index: u16) -> CompiledNode {
 fn workflow(nodes: Box<[CompiledNode]>) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("idempotency-contract-red"),
         digest: WorkflowDigest::from_bytes([0x51; 32]),

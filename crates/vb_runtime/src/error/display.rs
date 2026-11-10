@@ -12,6 +12,9 @@ impl std::fmt::Display for RuntimeError {
 
 fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
     match error {
+        RuntimeError::SecretUnavailable => {
+            Some("SECRET_UNAVAILABLE: secret requirement unavailable")
+        }
         RuntimeError::QueueFull => Some("queue full"),
         RuntimeError::RuntimeInputSlotKindMismatch { .. } => {
             Some("runtime input slot kind mismatch")

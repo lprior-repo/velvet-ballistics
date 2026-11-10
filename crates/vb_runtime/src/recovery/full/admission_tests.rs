@@ -132,6 +132,7 @@ fn every_recorded_budget_dimension_is_enforced_without_mutation() -> TestResult 
 fn workflow() -> TestResult<CompiledWorkflow> {
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("recovered-budget-limits"),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([
@@ -161,7 +162,11 @@ fn workflow() -> TestResult<CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     parts.digest =
         WorkflowDigest::from_bytes(*blake3::hash(&postcard::to_allocvec(&parts)?).as_bytes());

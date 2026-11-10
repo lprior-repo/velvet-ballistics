@@ -9,6 +9,7 @@ mod fencing;
 pub mod helpers;
 pub mod impl_;
 pub mod lifecycle;
+mod secrets;
 pub mod snapshot;
 pub mod tests;
 pub mod timer_wheel;

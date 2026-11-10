@@ -164,6 +164,7 @@ fn prod_methods_drift_check(
         collector_slot: slot,
     };
     let _kind = production_inner::workflow::CompiledNodeKind::ReduceStart {
+        limit: 65_535,
         input: slot,
         accumulator: slot,
         initial: constant,
@@ -222,6 +223,7 @@ fn prod_methods_drift_check(
     // NodeOutput / NodeContinuation / ErrorRouting mirrors.
     let node_slot = production_inner::SlotIdx::new(0);
     let _node = production_inner::workflow::CompiledNode {
+        retry: None,
         id: step,
         output: production_inner::workflow::NodeOutput::Slot(node_slot),
         routing: production_inner::workflow::NodeRouting {
@@ -234,6 +236,7 @@ fn prod_methods_drift_check(
         kind: production_inner::workflow::CompiledNodeKind::Nop,
     };
     let _node = production_inner::workflow::CompiledNode {
+        retry: None,
         id: step,
         output: production_inner::workflow::NodeOutput::Discard,
         routing: production_inner::workflow::NodeRouting {

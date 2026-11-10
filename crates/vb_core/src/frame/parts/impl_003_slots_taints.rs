@@ -5,14 +5,18 @@ impl RunFrame {
     /// or `SlotUninitialized` when the index is valid but no value has been
     /// written to that slot yet.
     pub fn read_slot(&self, slot: SlotIdx) -> CoreResult<&SlotValue> {
-        self.slots
-            .get(slot.as_usize())
-            .ok_or(CoreError::SlotOutOfBounds { slot })?
-            .as_ref()
-            .ok_or(CoreError::SlotUninitialized { slot })
+        match self.slot_cell(slot) {
+            None => Err(CoreError::SlotOutOfBounds { slot }),
+            Some(None) => Err(CoreError::SlotUninitialized { slot }),
+            Some(Some(value)) => Ok(value),
+        }
     }
 
-    /// Writes a slot value without changing taint.
+    pub(crate) fn slot_cell(&self, slot: SlotIdx) -> Option<&Option<SlotValue>> {
+        self.slots.get(slot.as_usize())
+    }
+
+    /// Writes a slot value with Clean taint.
     pub fn write_slot(&mut self, slot: SlotIdx, value: SlotValue) -> CoreResult<()> {
         self.write_slot_with_taint(slot, value, Taint::Clean)
     }
@@ -25,14 +29,14 @@ impl RunFrame {
         taint: Taint,
     ) -> CoreResult<()> {
         let index = slot.as_usize();
-        *self
-            .slots
-            .get_mut(index)
-            .ok_or(CoreError::SlotOutOfBounds { slot })? = Some(value);
-        *self
-            .taint
-            .get_mut(index)
-            .ok_or(CoreError::SlotOutOfBounds { slot })? = taint;
+        let Some(target) = self.slots.get_mut(index) else {
+            return Err(CoreError::SlotOutOfBounds { slot });
+        };
+        *target = Some(value);
+        let Some(marker) = self.taint.get_mut(index) else {
+            return Err(CoreError::SlotOutOfBounds { slot });
+        };
+        *marker = taint;
         Ok(())
     }
 
@@ -79,17 +83,17 @@ impl RunFrame {
     /// or `SlotUninitialized` when the slot index is valid but has no value.
     pub fn read_taint(&self, slot: SlotIdx) -> CoreResult<Taint> {
         let index = slot.as_usize();
-        let slot_value = self
-            .slots
-            .get(index)
-            .ok_or(CoreError::SlotOutOfBounds { slot })?;
-        if slot_value.is_none() {
-            return Err(CoreError::SlotUninitialized { slot });
-        }
-        self.taint
-            .get(index)
-            .copied()
-            .ok_or(CoreError::SlotOutOfBounds { slot })
+        read_taint_cell(
+            slot,
+            self.slots.get(index).map(Option::is_some),
+            self.taint.get(index).copied(),
+        )
+    }
+
+    pub(crate) fn initialized_taint(&self, slot: SlotIdx) -> Option<Taint> {
+        let index = slot.as_usize();
+        self.slot_cell(slot)?.as_ref()?;
+        self.taint.get(index).copied()
     }
 
     #[allow(dead_code)]
@@ -137,17 +141,89 @@ impl RunFrame {
     /// desync where a slot carries a non-Clean taint but has no value.
     pub fn write_taint(&mut self, slot: SlotIdx, taint: Taint) -> CoreResult<()> {
         let index = slot.as_usize();
-        let slot_value = self
-            .slots
-            .get(index)
-            .ok_or(CoreError::SlotOutOfBounds { slot })?;
-        if slot_value.is_none() {
-            return Err(CoreError::SlotUninitialized { slot });
+        write_taint_cell(
+            slot,
+            self.slots.get(index).map(Option::is_some),
+            self.taint.get_mut(index),
+            taint,
+        )
+    }
+}
+
+// The projection preserves missing slots separately from uninitialized slots.
+pub(crate) fn read_taint_cell(
+    slot: SlotIdx,
+    initialized: Option<bool>,
+    marker: Option<Taint>,
+) -> CoreResult<Taint> {
+    match initialized {
+        None => Err(CoreError::SlotOutOfBounds { slot }),
+        Some(false) => Err(CoreError::SlotUninitialized { slot }),
+        Some(true) => {
+            let Some(marker) = marker else {
+                return Err(CoreError::SlotOutOfBounds { slot });
+            };
+            Ok(marker)
         }
-        *self
-            .taint
-            .get_mut(index)
-            .ok_or(CoreError::SlotOutOfBounds { slot })? = taint;
+    }
+}
+
+pub(crate) fn write_taint_cell(
+    slot: SlotIdx,
+    initialized: Option<bool>,
+    marker: Option<&mut Taint>,
+    requested: Taint,
+) -> CoreResult<()> {
+    match initialized {
+        None => Err(CoreError::SlotOutOfBounds { slot }),
+        Some(false) => Err(CoreError::SlotUninitialized { slot }),
+        Some(true) => {
+            let Some(marker) = marker else {
+                return Err(CoreError::SlotOutOfBounds { slot });
+            };
+            *marker = requested;
+            Ok(())
+        }
+    }
+}
+
+#[cfg(test)]
+mod slot_read_backing_characterization {
+    use super::*;
+
+    #[test]
+    fn public_slot_read_preserves_backing_bounds_over_nominal_count() -> CoreResult<()> {
+        let mut run = RunFrame::new(RunId::new(93), StepIdx::ZERO, 1, 1)?;
+        run.write_slot(SlotIdx::new(0), SlotValue::Bool(false))?;
+        run.slot_count = 0;
+        let before = run.clone();
+        assert_eq!(run.read_slot(SlotIdx::new(0)), Ok(&SlotValue::Bool(false)));
+        assert_eq!(run, before);
+        run.slots = Box::new([None]);
+        run.slot_count = u16::MAX;
+        let before = run.clone();
+        assert_eq!(
+            run.read_slot(SlotIdx::new(0)),
+            Err(CoreError::SlotUninitialized {
+                slot: SlotIdx::new(0)
+            })
+        );
+        assert_eq!(
+            run.read_slot(SlotIdx::new(1)),
+            Err(CoreError::SlotOutOfBounds {
+                slot: SlotIdx::new(1)
+            })
+        );
+        assert_eq!(run, before);
+        run.slots = Box::new([]);
+        let before = run.clone();
+        assert_eq!(
+            run.read_slot(SlotIdx::new(0)),
+            Err(CoreError::SlotOutOfBounds {
+                slot: SlotIdx::new(0)
+            })
+        );
+        assert_eq!(run, before);
         Ok(())
     }
 }

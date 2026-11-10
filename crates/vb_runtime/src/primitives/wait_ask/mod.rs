@@ -1,10 +1,10 @@
 #![forbid(unsafe_code)]
 //! Wait and Ask suspension primitive handlers.
 
+use vb_core::engine::suspension::{validate_ask_inputs, validate_numeric};
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_core::value::SlotValue;
 
 /// Executes WaitUntil: reads the deadline slot, validates it is numeric,
 /// and suspends.
@@ -52,12 +52,7 @@ pub fn ask(
     prompt: SlotIdx,
     timeout_slot: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let prompt_value = *run.read_slot(prompt)?;
-    validate_prompt(prompt_value)?;
-    if let Some(timeout) = timeout_slot {
-        let timeout_value = *run.read_slot(timeout)?;
-        validate_numeric(timeout_value, "timeout")?;
-    }
+    validate_ask_inputs(run, prompt, timeout_slot)?;
     run.increment_executed()?;
     Ok(vb_core::EngineSignal::AwaitingAsk)
 }
@@ -83,26 +78,6 @@ pub fn ask_resume(
     run.set_pc(target)?;
     run.increment_executed()?;
     Ok(vb_core::EngineSignal::Continue)
-}
-
-fn validate_numeric(value: SlotValue, expected: &'static str) -> Result<(), EngineError> {
-    match value {
-        SlotValue::I64(_) | SlotValue::F64(_) => Ok(()),
-        other => Err(EngineError::TypeMismatch {
-            expected,
-            found: other.type_name(),
-        }),
-    }
-}
-
-fn validate_prompt(value: SlotValue) -> Result<(), EngineError> {
-    match value {
-        SlotValue::Bool(_) => Err(EngineError::TypeMismatch {
-            expected: "prompt",
-            found: value.type_name(),
-        }),
-        _ => Ok(()),
-    }
 }
 
 #[cfg(test)]

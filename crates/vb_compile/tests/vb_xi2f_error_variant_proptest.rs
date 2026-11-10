@@ -33,6 +33,7 @@ fn minimal_valid_parts() -> WorkflowParts {
 
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -138,6 +139,7 @@ fn unreachable_node_returns_error() {
 
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("unreachable"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -182,6 +184,7 @@ fn backward_edge_returns_error() {
 
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("backward"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: nodes.into_boxed_slice(),

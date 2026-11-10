@@ -34,7 +34,12 @@ use common::workflow_fixture::node;
 fn two_action_workflow() -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: vb_core::workflow::InputSlotKind::Any,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
         name: Box::from("vb_hk1j8_scoped_grant_lifecycle"),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([

@@ -71,7 +71,7 @@ fn ask_then_finish_workflow() -> Result<CompiledWorkflow, String> {
             ),
             node(
                 2,
-                None,
+                Some(2),
                 Some(3),
                 CompiledNodeKind::Ask {
                     prompt: SlotIdx::ZERO,
@@ -97,6 +97,7 @@ fn ask_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         ]),
         Box::from([ConstValue::I64(11), ConstValue::I64(30)]),
         3,
+        Box::new([]),
     )
 }
 

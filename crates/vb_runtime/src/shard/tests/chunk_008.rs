@@ -8,7 +8,8 @@ fn shard_duplicate_submit_after_cancel_succeeds() {
     };
     let run = super::RunId::new(201);
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputs {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run,
             workflow: workflow.clone(),
             caps: vb_core::capability::CapabilitySet::empty()
@@ -23,7 +24,8 @@ fn shard_duplicate_submit_after_cancel_succeeds() {
     assert_eq!(shard.tick(), Ok(true));
     // When re-submitting the same run ID
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
@@ -45,7 +47,8 @@ fn shard_snapshot_run_for_active_run_returns_found() {
     };
     let run = super::RunId::new(202);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
@@ -193,7 +196,8 @@ fn shard_step_budget_zero_still_submits_but_does_not_drive() {
     let run = super::RunId::new(204);
     // When submitting a run with zero budget
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
@@ -233,7 +237,8 @@ fn shard_multiple_cancels_idempotent_for_same_run() {
     };
     let run = super::RunId::new(205);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run: run,
             workflow: workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
@@ -302,7 +307,8 @@ fn shard_enqueue_enforces_admitted_per_run_queue_depth() {
     let limit = budget.max_queue_depth;
     let run = super::RunId::new(302);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run,
             workflow,
             caps: test_fixtures::contract_capability_for(ActionId::new(0)),

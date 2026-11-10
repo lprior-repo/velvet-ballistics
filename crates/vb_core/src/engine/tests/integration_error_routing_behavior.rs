@@ -31,7 +31,8 @@ where
     let slot_count = nodes.len().max(4) as u16;
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from(name),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -1262,6 +1263,7 @@ fn double_fault_when_handler_step_not_in_workflow() -> Result<(), String> {
 fn invalid_handler_step_workflow_result() -> Result<CompiledWorkflow, WorkflowError> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("doublefault"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
@@ -1348,6 +1350,7 @@ mod proptest_properties {
     fn prop_workflow() -> CompiledWorkflow {
         let parts = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("proptest"),
             digest: WorkflowDigest::from_bytes([0u8; 32]),

@@ -1,11 +1,20 @@
 fn ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let set_prompt = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::ZERO), Some(StepIdx::new(1)));
     let set_timeout = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::SetConst { value: ConstIdx::new(1), }, Some(SlotIdx::new(1)), Some(StepIdx::new(2)));
-    let ask = vb_core::workflow::node(StepIdx::new(2), CompiledNodeKind::Ask { prompt: SlotIdx::ZERO, timeout_slot: Some(SlotIdx::new(1)), }, None, Some(StepIdx::new(3)));
+    let ask = vb_core::workflow::node(
+        StepIdx::new(2),
+        CompiledNodeKind::Ask {
+            prompt: SlotIdx::ZERO,
+            timeout_slot: Some(SlotIdx::new(1)),
+        },
+        Some(vb_core::ids::SlotIdx::new(2)),
+        Some(StepIdx::new(3)),
+    );
     let resume = vb_core::workflow::node(StepIdx::new(3), CompiledNodeKind::AskResume { answer: SlotIdx::new(2), }, None, Some(StepIdx::new(4)));
     let finish_node = vb_core::workflow::node(StepIdx::new(4), CompiledNodeKind::Finish { result: SlotIdx::new(2), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("ask_then_finish"),
         digest: WorkflowDigest::from_bytes([5; 32]),
         nodes: Box::from([set_prompt, set_timeout, ask, resume, finish_node]),
@@ -114,6 +123,7 @@ fn retry_workflow() -> Result<vb_core::workflow::CompiledWorkflow, String> {
     let finish = vb_core::workflow::node(StepIdx::new(3), CompiledNodeKind::Finish { result: SlotIdx::ZERO, }, None, None);
     let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("retry"),
         digest: WorkflowDigest::from_bytes([8; 32]),
         nodes: Box::from([set_policy, action, retry, finish]),
@@ -125,15 +135,24 @@ fn retry_workflow() -> Result<vb_core::workflow::CompiledWorkflow, String> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     });
     workflow.map_err(|error| format!("retry fixture workflow must compile: {error:?}"))
 }
 
-fn submit_run(shard: &mut Shard, run: RunId, workflow: CompiledWorkflow) {
+fn submit_run(
+    shard: &mut Shard,
+    run: RunId,
+    workflow: CompiledWorkflow,
+    inputs: &[(SlotIdx, SlotValue)],
+) {
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
-            inputs: Box::from([(SlotIdx::new(0), SlotValue::I64(0))]),
+            inputs: inputs.into(),
             run,
             workflow,
             caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),

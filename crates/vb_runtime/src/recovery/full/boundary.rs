@@ -14,6 +14,8 @@ pub enum RecoveredRunBoundaryKind {
     PendingAction,
     /// An ask with no timeout was recovered from the frame state.
     OpenAsk,
+    /// A versioned durable action retry timer.
+    RetryTimer,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -21,6 +23,7 @@ enum RecoveredRunBoundaryInner {
     None,
     PendingAction(RecoveredPendingActionTicket),
     OpenAsk(RecoveredOpenAsk),
+    RetryTimer(RecoveredRetryTimer),
 }
 
 /// Typed recovered external-boundary authority.
@@ -52,8 +55,24 @@ impl RecoveredRunBoundary {
     }
 
     #[must_use]
+    pub(crate) const fn from_retry_timer(timer: RecoveredRetryTimer) -> Self {
+        Self {
+            inner: RecoveredRunBoundaryInner::RetryTimer(timer),
+        }
+    }
+
+    #[must_use]
+    pub(crate) const fn retry_timer(self) -> Option<RecoveredRetryTimer> {
+        match self.inner {
+            RecoveredRunBoundaryInner::RetryTimer(timer) => Some(timer),
+            _ => None,
+        }
+    }
+
+    #[must_use]
     pub const fn kind(self) -> RecoveredRunBoundaryKind {
         match self.inner {
+            RecoveredRunBoundaryInner::RetryTimer(_) => RecoveredRunBoundaryKind::RetryTimer,
             RecoveredRunBoundaryInner::None => RecoveredRunBoundaryKind::None,
             RecoveredRunBoundaryInner::PendingAction(_) => RecoveredRunBoundaryKind::PendingAction,
             RecoveredRunBoundaryInner::OpenAsk(_) => RecoveredRunBoundaryKind::OpenAsk,
@@ -64,7 +83,9 @@ impl RecoveredRunBoundary {
     pub(crate) const fn pending_action_ticket(self) -> Option<RecoveredPendingActionTicket> {
         match self.inner {
             RecoveredRunBoundaryInner::PendingAction(ticket) => Some(ticket),
-            RecoveredRunBoundaryInner::None | RecoveredRunBoundaryInner::OpenAsk(_) => None,
+            RecoveredRunBoundaryInner::None
+            | RecoveredRunBoundaryInner::OpenAsk(_)
+            | RecoveredRunBoundaryInner::RetryTimer(_) => None,
         }
     }
 
@@ -72,7 +93,9 @@ impl RecoveredRunBoundary {
     pub const fn open_ask(self) -> Option<RecoveredOpenAsk> {
         match self.inner {
             RecoveredRunBoundaryInner::OpenAsk(ask) => Some(ask),
-            RecoveredRunBoundaryInner::None | RecoveredRunBoundaryInner::PendingAction(_) => None,
+            RecoveredRunBoundaryInner::None
+            | RecoveredRunBoundaryInner::PendingAction(_)
+            | RecoveredRunBoundaryInner::RetryTimer(_) => None,
         }
     }
 
@@ -80,7 +103,9 @@ impl RecoveredRunBoundary {
     pub(crate) fn is_open_ask_step(self, step: StepIdx) -> bool {
         match self.inner {
             RecoveredRunBoundaryInner::OpenAsk(ask) => ask.step == step,
-            RecoveredRunBoundaryInner::None | RecoveredRunBoundaryInner::PendingAction(_) => false,
+            RecoveredRunBoundaryInner::None
+            | RecoveredRunBoundaryInner::PendingAction(_)
+            | RecoveredRunBoundaryInner::RetryTimer(_) => false,
         }
     }
 }
@@ -107,4 +132,12 @@ impl RecoveredOpenAsk {
     pub(crate) const fn boundary_seq(self) -> vb_storage::EventSeq {
         self.boundary_seq
     }
+}
+
+/// Numeric authority accepted only with its failure-bound complete checkpoint.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct RecoveredRetryTimer {
+    pub(crate) step: StepIdx,
+    pub(crate) generation: u64,
+    pub(crate) deadline_unix_ms: u64,
 }

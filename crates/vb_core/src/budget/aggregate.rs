@@ -3,6 +3,7 @@
 //! usage, per-tenant usage snapshot, reservations, and the aggregate error.
 
 use crate::ids::{RunId, TenantId};
+#[cfg(not(kani))]
 use crate::workflow::WorkflowError;
 use thiserror::Error;
 
@@ -85,7 +86,7 @@ pub struct AggregateResourceCapacity {
     /// Maximum cost units capacity.
     pub max_cost_units: u64,
     /// Maximum aggregate cost units attributable to a single tenant.
-    /// Enforced by [`check_tenant_quota`] at tenant-scoped admission;
+    /// Enforced by [`crate::budget::check_tenant_quota`] at tenant-scoped admission;
     /// per-tenant usage is recorded in [`ShardUsageSnapshot`].
     pub tenant_quota_cost_units: u64,
     /// Maximum aggregate cost units shard-wide. Distinct from

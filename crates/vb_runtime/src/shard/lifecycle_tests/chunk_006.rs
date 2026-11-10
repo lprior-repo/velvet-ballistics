@@ -97,7 +97,8 @@ fn submit_produces_run_submitted_trace() {
     };
     let run = RunId::new(110);
     assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithContracts {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
             run,
             workflow: wf,
             caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
@@ -215,7 +216,7 @@ fn finished_workflow_emits_one_slot_written_for_one_output_write() -> Result<(),
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let wf = require_workflow("finished", finished_workflow())?;
     let run = RunId::new(1130);
-    submit_run(&mut shard, run, wf);
+    submit_run(&mut shard, run, wf, &[]);
 
     let events = require_snapshot(&journal)?;
     let slot_written_count = events

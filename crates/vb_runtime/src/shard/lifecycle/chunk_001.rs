@@ -112,6 +112,13 @@ impl Shard {
                 capacity: self.max_active_runs,
             });
         }
+        let mut store = ValueStore::with_max_slots(workflow.resource_contract().max_slots);
+        self.validate_secret_presence(&workflow)?;
+        let filled_inputs = self.prepare_secret_inputs(&workflow, inputs)?;
+        let inputs = filled_inputs.as_slice();
+        if let Some(metadata) = workflow.source_metadata() {
+            vb_core::workflow::source_metadata::seed_source_symbols(metadata, &mut store)?;
+        }
         let digest = workflow.digest();
         let admission = self.build_admission_with_budget(run, &workflow, caps)?;
         execution_binding::validate(
@@ -189,13 +196,12 @@ impl Shard {
         }
         self.counters.inc_submitted();
         let frame_step_count = frame.step_count();
-        let max_slots = workflow.resource_contract().max_slots;
         let state = RunState {
             registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
             frame,
             run_attempt: core::num::NonZeroU16::MIN,
             workflow,
-            store: ValueStore::with_max_slots(max_slots),
+            store,
             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
             admission,
             run_started_millis: crate::shard::helpers::wall_clock_millis_since_epoch(),
@@ -317,14 +323,13 @@ impl Shard {
         caps: CapabilitySet,
     ) -> RuntimeResult<Option<crate::admission::RunAdmission>> {
         let admission = self.build_admission(run, workflow.digest(), caps)?;
+        self.validate_secret_presence(workflow)?;
         match admission {
             Some(adm) => {
-                let budget =
-                    vb_core::budget::AggregateResourceBudget::from_workflow(workflow).map_err(
-                        |_| RuntimeError::AdmissionArtifactInvalid {
-                            digest: workflow.digest(),
-                        },
-                    )?;
+                let budget = vb_core::budget::AggregateResourceBudget::from_workflow(workflow)
+                    .map_err(|_| RuntimeError::AdmissionArtifactInvalid {
+                        digest: workflow.digest(),
+                    })?;
                 Ok(Some(adm.with_attached_budget(budget)))
             }
             None => Ok(None),
@@ -339,6 +344,7 @@ impl Shard {
     ) -> RuntimeResult<()> {
         self.build_admission(run, workflow.digest(), caps)?;
         execution_binding::validate(self.artifact_store.as_ref(), self.policy, workflow, &[])?;
+        self.validate_secret_presence(workflow)?;
         Ok(())
     }
 
@@ -366,6 +372,7 @@ impl Shard {
             workflow,
             action_contracts,
         )?;
+        self.validate_secret_presence(workflow)?;
         Ok(())
     }
     pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {
@@ -526,6 +533,21 @@ impl Shard {
             None
         };
 
+        self.validate_secret_presence(&workflow)?;
+        if retry_checkpoint.is_none() {
+            vb_core::workflow::source_metadata::secrets::validate_runtime_roots(
+                &workflow,
+                &frame.initialized_slots()?,
+            )?;
+        }
+        let recovered_timer = self.recovered_retry_timer(boundary, retry_checkpoint.as_ref())?;
+        let initial_store = recovery_store::restore(
+            command.initial_store,
+            &frame,
+            &workflow,
+            retry_checkpoint.is_some(),
+        )?;
+
         // Step 5: Seed journal sequence from recovered next_seq
         self.seed_journal_sequence(run, next_seq)?;
 
@@ -539,7 +561,7 @@ impl Shard {
                 crate::shard::types::RegisteredExecutionMode::Live
             };
         let state = if let Some(checkpoint) = retry_checkpoint {
-            let (state, _attempt, _retry_step, _prior_seq) = checkpoint
+            let (mut state, _attempt, _retry_step, _prior_seq) = checkpoint
                 .restore(workflow, artifact_digest, &artifact.action_contracts)
                 .map_err(|error| RuntimeError::Recovery {
                     error: format!("retry checkpoint validation failed: {error}"),
@@ -549,6 +571,8 @@ impl Shard {
                     error: "retry checkpoint run identity mismatch".to_string(),
                 });
             }
+            state.registered_execution = registered_execution;
+            self.restore_retry_boundary_frame(&mut state, boundary)?;
             self.prepare_run_slots(run)?;
             state
         } else {
@@ -559,6 +583,18 @@ impl Shard {
             // effects the original run never had authority for.
             let frame_step_count = frame.step_count();
             let max_slots = workflow.resource_contract().max_slots;
+            let store = match initial_store {
+                Some(store) => store,
+                None => {
+                    let mut store = vb_core::value_store::ValueStore::with_max_slots(max_slots);
+                    if let Some(metadata) = workflow.source_metadata() {
+                        vb_core::workflow::source_metadata::seed_source_symbols(
+                            metadata, &mut store,
+                        )?;
+                    }
+                    store
+                }
+            };
             self.prepare_run_slots(run)?;
             let state_admission = match admission {
                 crate::shard::types::RecoveredAdmissionKind::Historical(h) => Some(*h),
@@ -571,7 +607,7 @@ impl Shard {
                 frame,
                 run_attempt: core::num::NonZeroU16::MIN,
                 workflow,
-                store: vb_core::value_store::ValueStore::with_max_slots(max_slots),
+                store,
                 action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
                 admission: state_admission,
                 run_started_millis: None,
@@ -605,6 +641,12 @@ impl Shard {
 
         // Step 7: Handle boundary for suspended operations
         match boundary.kind() {
+            crate::recovery::RecoveredRunBoundaryKind::RetryTimer => {
+                let timer = recovered_timer.ok_or(RuntimeError::InvalidTimerFire)?;
+                self.pending_timer_insert(run, timer)?;
+                self.apply(run, RuntimeEvent::AwaitTimer)?;
+                return Ok(());
+            }
             crate::recovery::RecoveredRunBoundaryKind::None => {}
             crate::recovery::RecoveredRunBoundaryKind::PendingAction => {
                 // Re-inject the durable pending-action ticket and leave the run
@@ -725,15 +767,18 @@ impl Shard {
             let abi = schedule_action_abi_digest(state, ticket.action)?;
             (pf, abi)
         };
-        if self.append_command_journal_events(run, [RuntimeJournalEvent::ActionCompletedEnvelope {
-            ticket: preflight.ticket,
-            output: preflight.output_slot,
-            value: preflight.encoded_value.clone(),
-            encoded_len: preflight.encoded_len,
-            taint: preflight.taint,
-            value_digest: preflight.value_digest,
-            action_abi_digest,
-        }])? {
+        if self.append_command_journal_events(
+            run,
+            [RuntimeJournalEvent::ActionCompletedEnvelope {
+                ticket: preflight.ticket,
+                output: preflight.output_slot,
+                value: preflight.encoded_value.clone(),
+                encoded_len: preflight.encoded_len,
+                taint: preflight.taint,
+                value_digest: preflight.value_digest,
+                action_abi_digest,
+            }],
+        )? {
             let _removed_ticket = self.pending_action_remove(run);
             return self.fail_command_run_on_journal_budget(run);
         }
@@ -781,12 +826,15 @@ impl Shard {
         // Evidence chain: emit StepSucceeded for legacy action completion.
         // Legacy path has no output slot information.
         // Journal append FIRST so a journal failure does not diverge frame and journal.
-        if self.append_command_journal_events(run, [RuntimeJournalEvent::StepSucceeded {
+        if self.append_command_journal_events(
             run,
-            step: ticket.step,
-            output: SlotIdx::ZERO,
-            attempt: ticket.attempt,
-        }])? {
+            [RuntimeJournalEvent::StepSucceeded {
+                run,
+                step: ticket.step,
+                output: SlotIdx::ZERO,
+                attempt: ticket.attempt,
+            }],
+        )? {
             let _removed_ticket = self.pending_action_remove(run);
             return self.fail_command_run_on_journal_budget(run);
         }
@@ -835,6 +883,7 @@ impl Shard {
         if preflight.outcome == ActionFailureOutcome::RetryNow {
             self.can_retry(run)?;
         }
+        let retry_timer = self.prepare_retry_timer(run, &preflight)?;
         // 2. Journal append FIRST. FailRun needs both ActionFailed and
         //    RunFailed to append as one same-run batch before any pending
         //    action, trace, frame, counter, or terminal-state mutation. If
@@ -851,16 +900,21 @@ impl Shard {
                 .run_state_get(run)
                 .map(|state| state.run_attempt.get())
                 .ok_or(RuntimeError::RunNotFound)?;
-            if self.append_command_journal_events(run, [
-                action_failed_event,
-                RuntimeJournalEvent::RunFailed { run, attempt },
-            ])? {
-                self.record_command_journal_events(run, [RuntimeJournalEvent::RunFailed {
+            if self.append_command_journal_events(
+                run,
+                [
+                    action_failed_event,
+                    RuntimeJournalEvent::RunFailed { run, attempt },
+                ],
+            )? {
+                self.record_command_journal_events(
                     run,
-                    attempt,
-                }])?;
+                    [RuntimeJournalEvent::RunFailed { run, attempt }],
+                )?;
             }
             false
+        } else if let Some(plan) = retry_timer.as_ref() {
+            self.append_command_journal_events(run, [action_failed_event, plan.event.clone()])?
         } else {
             self.append_command_journal_events(run, [action_failed_event])?
         };
@@ -880,6 +934,22 @@ impl Shard {
             step: preflight.ticket.step,
             code,
         });
+        if let Some(plan) = retry_timer {
+            let timer = plan.timer;
+            if budget_exceeded {
+                return self.fail_command_run_on_journal_budget(run);
+            }
+            let state = self
+                .run_state_get_mut(run)
+                .ok_or(RuntimeError::RunNotFound)?;
+            state
+                .frame
+                .mark_waiting(timer.step)
+                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+            self.pending_timer_insert(run, timer)?;
+            self.apply(run, RuntimeEvent::AwaitTimer)?;
+            return Ok(());
+        }
         // 4. Drive the run state machine forward using the preflighted outcome.
         match preflight.outcome {
             ActionFailureOutcome::RetryNow | ActionFailureOutcome::DriveHandler => {

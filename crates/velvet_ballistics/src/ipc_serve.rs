@@ -1,6 +1,9 @@
 //! Module: ipc_serve
 
 use crate::app_impl::prelude::*;
+#[path = "ipc_serve/startup.rs"]
+mod startup;
+use startup::recover_startup;
 
 pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> ExitCode {
     // Open the storage journal to validate the path
@@ -12,9 +15,6 @@ pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> E
         }
     };
     let journal = Arc::new(journal);
-    let mut resolver = StorageWorkflowResolver {
-        journal: Arc::clone(&journal),
-    };
     let queue =
         match vb_storage::JournalWriterQueue::new(1024, 64, vb_storage::StorageLimits::DEFAULT) {
             Ok(q) => Arc::new(q),
@@ -44,10 +44,18 @@ pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> E
     let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config, runtime_journal);
 
     let persistence = IpcJournalService { journal, queue };
-    if let Err(error) = recover_startup(&persistence, &mut runtime, STARTUP_HEADER_SCAN_LIMIT) {
-        errln!("error recovering startup runs: {error}");
-        return CliExitCode::IpcError.into();
-    }
+    let available_names =
+        match recover_startup(&persistence, &mut runtime, STARTUP_HEADER_SCAN_LIMIT) {
+            Ok(names) => names,
+            Err(error) => {
+                errln!("error recovering startup runs: {error}");
+                return CliExitCode::IpcError.into();
+            }
+        };
+    let mut resolver = StorageWorkflowResolver {
+        journal: Arc::clone(&persistence.journal),
+        available_names,
+    };
 
     // Bind the IPC server
     let mut server = match vb_ipc::server::IpcServer::bind(socket) {
@@ -153,9 +161,18 @@ mod tests;
 
 struct StorageWorkflowResolver {
     journal: Arc<vb_storage::FjallJournal>,
+    available_names: crate::run_compiled_runtime::secret_presence::AvailableNames,
 }
 
 impl vb_ipc::server::WorkflowResolver for StorageWorkflowResolver {
+    fn prepare_runtime(
+        &mut self,
+        runtime: &mut vb_runtime::runtime::Runtime,
+        workflow: &vb_core::CompiledWorkflow,
+    ) {
+        self.available_names.install(runtime, workflow);
+    }
+
     fn resolve_workflow(
         &mut self,
         digest: vb_core::WorkflowDigest,
@@ -217,38 +234,6 @@ fn decode_workflow_parts(
 
 // Proposed startup work ceilings cover retained headers and journal rows.
 const STARTUP_HEADER_SCAN_LIMIT: usize = 65_536;
-const STARTUP_ENCODED_BYTE_SCAN_LIMIT: usize = 67_108_864;
-
-fn recover_startup(
-    service: &IpcJournalService,
-    runtime: &mut vb_runtime::runtime::Runtime,
-    max_rows: usize,
-) -> Result<
-    (),
-    vb_storage::journal::startup_discovery::StartupDiscoveryError<vb_runtime::RuntimeError>,
-> {
-    use vb_storage::journal::startup_discovery::StartupDiscoveryError;
-    let limit = NonZeroUsize::new(max_rows).ok_or(StartupDiscoveryError::InvalidLimit)?;
-    service.journal.try_for_each_startup_run_bounded(
-        limit,
-        NonZeroUsize::new(STARTUP_ENCODED_BYTE_SCAN_LIMIT)
-            .ok_or(StartupDiscoveryError::InvalidLimit)?,
-        |run| {
-            match runtime.recover_and_resume(run) {
-                Err(vb_runtime::RuntimeError::RecoveryCannotResume { reason })
-                    if reason == "terminal_state" =>
-                {
-                    return Ok(());
-                }
-                result => result?,
-            }
-            if !runtime.tick_all()? {
-                return Err(vb_runtime::RuntimeError::ShutdownInProgress);
-            }
-            service.flush_startup_journal()
-        },
-    )
-}
 
 impl IpcJournalService {
     fn flush_startup_journal(&self) -> Result<(), vb_runtime::RuntimeError> {

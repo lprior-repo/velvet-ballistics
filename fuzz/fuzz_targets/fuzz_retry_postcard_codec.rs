@@ -116,6 +116,7 @@ fn workflow_parts_from_bytes(data: &[u8]) -> Option<WorkflowParts> {
         let action_offset = offset.checked_add(1)?;
         let action_byte = data.get(action_offset).copied().unwrap_or(0);
         nodes.push(CompiledNode {
+            retry: None,
             id: StepIdx::new(u16::from(step_byte)),
             output: vb_core::workflow::NodeOutput::Discard,
             routing: vb_core::workflow::NodeRouting {
@@ -132,6 +133,7 @@ fn workflow_parts_from_bytes(data: &[u8]) -> Option<WorkflowParts> {
     Some(WorkflowParts {
         name: Box::from("fuzz_wf"),
         semantic_source_identity: None,
+        source_metadata: None,
         digest,
         nodes: nodes.into_boxed_slice(),
         expressions: Box::new([]),

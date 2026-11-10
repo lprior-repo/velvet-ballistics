@@ -4,13 +4,13 @@
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ConstIdx, ListId, SlotIdx, StepIdx};
-use vb_core::value::SlotValue;
-use vb_core::value::Taint;
+use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
 
 use super::helpers::{
-    build_iterator_state, decode_iterator_state, expect_list, jump_to, jump_to_next, require_output,
+    build_iterator_state, decode_iterator_state, expect_list, jump_to, jump_to_next,
+    preflight_slot_writes, require_output,
 };
 
 fn get_initial_value(plan: &CompiledWorkflow, initial: ConstIdx) -> Result<SlotValue, EngineError> {
@@ -29,17 +29,13 @@ fn get_first_item(items: &[SlotValue]) -> Result<SlotValue, EngineError> {
         })
 }
 
-fn write_iterator_state(
-    run: &mut RunFrame,
+fn allocate_iterator_state(
     store: &mut ValueStore,
-    slot: SlotIdx,
     list_id: ListId,
     cursor: usize,
-    taint: Taint,
-) -> Result<(), EngineError> {
+) -> Result<ListId, EngineError> {
     let state = build_iterator_state(list_id, cursor)?;
-    let state_id = store.insert_list(state)?;
-    run.write_slot_with_taint(slot, SlotValue::List(state_id), taint)
+    store.insert_list(state)
 }
 
 fn get_item_at(source: &[SlotValue], cursor: usize) -> Result<SlotValue, EngineError> {
@@ -59,6 +55,26 @@ fn advance_cursor(cursor: usize) -> Result<usize, EngineError> {
         })
 }
 
+fn bounded_input(
+    run: &RunFrame,
+    store: &ValueStore,
+    input: SlotIdx,
+    limit: u32,
+) -> Result<(ListId, Taint), EngineError> {
+    let list_id = expect_list(*run.read_slot(input)?)?;
+    let input_taint = run.read_taint(input)?;
+    let items = store.list(list_id)?;
+    let limit = usize::try_from(limit).map_err(|_| EngineError::IterationLimitExceeded {
+        resource: "reduce_limit",
+    })?;
+    if items.len() > limit {
+        return Err(EngineError::IterationLimitExceeded {
+            resource: "reduce_limit",
+        });
+    }
+    Ok((list_id, input_taint))
+}
+
 /// Executes ReduceStart: initializes accumulator from constant pool,
 /// reads input list, binds first item, writes remaining tail to
 /// iterator slot.
@@ -70,22 +86,26 @@ pub fn reduce_start(
     input: SlotIdx,
     accumulator: SlotIdx,
     initial: ConstIdx,
+    limit: u32,
     body: StepIdx,
     done: StepIdx,
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
+    let (list_id, input_taint) = bounded_input(run, store, input, limit)?;
     let init_value = get_initial_value(plan, initial)?;
-    run.write_slot(accumulator, init_value)?;
-    let list_id = expect_list(*run.read_slot(input)?)?;
-    let input_taint = run.read_taint(input)?;
     let items = store.list(list_id)?;
     if items.is_empty() {
+        preflight_slot_writes(run, &[accumulator], done)?;
+        run.write_slot(accumulator, init_value)?;
         return jump_to(run, done);
     }
     let iter_output = require_output(output, run.pc())?;
     let first = get_first_item(items)?;
+    preflight_slot_writes(run, &[accumulator, input, iter_output], body)?;
+    let state_id = allocate_iterator_state(store, list_id, 1)?;
+    run.write_slot(accumulator, init_value)?;
     run.write_slot_with_taint(input, first, input_taint)?;
-    write_iterator_state(run, store, iter_output, list_id, 1, input_taint)?;
+    run.write_slot_with_taint(iter_output, SlotValue::List(state_id), input_taint)?;
     jump_to(run, body)
 }
 
@@ -113,16 +133,11 @@ pub(crate) fn reduce_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
     }
     let item_output = require_output(output, run.pc())?;
     let item = get_item_at(source, cursor)?;
-    run.write_slot_with_taint(item_output, item, iter_taint)?;
+    preflight_slot_writes(run, &[item_output, iterator_slot], body)?;
     let next_cursor = advance_cursor(cursor)?;
-    write_iterator_state(
-        run,
-        store,
-        iterator_slot,
-        source_id,
-        next_cursor,
-        iter_taint,
-    )?;
+    let state_id = allocate_iterator_state(store, source_id, next_cursor)?;
+    run.write_slot_with_taint(item_output, item, iter_taint)?;
+    run.write_slot_with_taint(iterator_slot, SlotValue::List(state_id), iter_taint)?;
     P::jump(run, body)
 }
 

@@ -19,6 +19,16 @@ pub use validate_error::{BudgetDimension, BudgetError};
 pub use remaining::{BudgetExhaustionOutcome, RemainingBudget, RemainingBudgetError};
 pub(crate) use traversal_error::BudgetTraversalError;
 
+/// Peak branch reservations across Together scopes. Joins release reservations
+/// before subsequent scopes; nested forks add to active outer reservations.
+/// As with structural depth, alternate-entry IR is conservative.
+pub fn compute_max_parallel_in_flight<'a>(
+    nodes: impl IntoIterator<Item = &'a crate::workflow::CompiledNode>,
+) -> Result<u16, WorkflowError> {
+    let peak = parallel::compute_peak(nodes).map_err(WorkflowError::from)?;
+    u16::try_from(peak).map_err(|_| WorkflowError::StepCountOverflow { actual: peak })
+}
+
 /// Validates step ceiling dimensions (max_step_budget_per_tick and
 /// max_transitions_per_tick) against hard limits.
 pub fn validate_step_ceilings(
@@ -135,6 +145,7 @@ mod aggregate;
 mod aggregate_validate;
 mod compute;
 mod conditional_counter;
+mod parallel;
 mod small_linear;
 mod traversal_error;
 mod validate;

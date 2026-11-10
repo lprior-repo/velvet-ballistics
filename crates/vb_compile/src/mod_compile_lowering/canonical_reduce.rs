@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 
 use super::{
-    emit_scoped_typed_body, lower_canonical_set_expression_with_binding,
-    parse_i64_field, resolve_slot_reference,
+    emit_scoped_typed_body, lower_canonical_set_expression_with_binding, parse_i64_field,
+    resolve_slot_reference,
 };
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use crate::mod_compile_lowering::{
@@ -30,13 +30,22 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_aggregate(
     builder: &mut SlotCompiler,
 ) -> Result<(SlotIdx, ExprType), CompileErrors> {
     if config.body.is_empty() {
-        return Err(CompileErrors(vec![CompileError::StepFieldShape { step: index, field: "reduce.steps", expected: "at least one body step" }]));
+        return Err(CompileErrors(vec![CompileError::StepFieldShape {
+            step: index,
+            field: "reduce.steps",
+            expected: "at least one body step",
+        }]));
     }
     crate::mod_compile_validation::validate_public_name("reduce.variable", config.variable)
         .map_err(|e| CompileErrors(vec![e]))?;
-    let input = resolve_slot_reference(config.input, config.scope.outputs, config.scope.step_outputs)
-        .map_err(|e| CompileErrors(vec![e]))?;
+    let input = resolve_slot_reference(
+        config.input,
+        config.scope.outputs,
+        config.scope.step_outputs,
+    )
+    .map_err(|e| CompileErrors(vec![e]))?;
     builder.record_slot(input);
+    let limit = input_limit(input, builder)?;
     let initial_input = builder
         .allocate_slot()
         .map_err(|e| CompileErrors(vec![e]))?;
@@ -55,17 +64,14 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_aggregate(
         .map_err(|e| CompileErrors(vec![e]))?;
     let start =
         checked_step_offset(id, 1, "aggregate", "start").map_err(|e| CompileErrors(vec![e]))?;
-    let body_width = body_width(config.body, 0)
-        .map_err(|e| CompileErrors(vec![e]))?;
-    let body_width: u16 = body_width
-        .try_into()
-        .map_err(|_| {
-            CompileErrors(vec![CompileError::StepIndexOutOfRange {
-                value: body_width,
-            }])
-        })?;
-    let body_step = checked_step_offset(id, 2, "aggregate", "body")
-        .map_err(|e| CompileErrors(vec![e]))?;
+    let body_width = body_width(config.body, 0).map_err(|e| CompileErrors(vec![e]))?;
+    let body_width: u16 = body_width.try_into().map_err(|_| {
+        CompileErrors(vec![CompileError::StepIndexOutOfRange {
+            value: body_width,
+        }])
+    })?;
+    let body_step =
+        checked_step_offset(id, 2, "aggregate", "body").map_err(|e| CompileErrors(vec![e]))?;
     let copy_step = checked_step_offset(body_step, body_width, "aggregate", "copy")
         .map_err(|e| CompileErrors(vec![e]))?;
     let next_step = if !reduce_direct_body(config.body) {
@@ -85,6 +91,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_aggregate(
     builder.push_node(node(
         start,
         CompiledNodeKind::ReduceStart {
+            limit,
             input: initial_input,
             accumulator,
             initial,
@@ -113,6 +120,31 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_aggregate(
         config.next,
     ));
     Ok((accumulator, inferred))
+}
+
+fn input_limit(mut source: SlotIdx, builder: &SlotCompiler) -> Result<u32, CompileErrors> {
+    let hard_max = u32::try_from(vb_core::limits::MAX_LIST_ITEMS_PER_VALUE).map_err(|_| {
+        CompileErrors(vec![CompileError::InvalidInputSchema {
+            field: "inputs.max",
+            expected: "list maximum representable as u32",
+        }])
+    })?;
+    for node in builder.nodes.iter().rev() {
+        if node.output.slot() == Some(source) {
+            if let CompiledNodeKind::Copy { source: input } = node.kind {
+                source = input;
+            } else {
+                return Ok(hard_max);
+            }
+        }
+    }
+    Ok(builder
+        .input_slots
+        .iter()
+        .find(|input| input.slot == source && input.kind == vb_core::InputSlotKind::List)
+        .and_then(|input| input.constraint.max)
+        .and_then(|max| u32::try_from(max).ok())
+        .map_or(hard_max, |max| max.min(hard_max)))
 }
 
 fn lower_body(
@@ -145,17 +177,22 @@ fn lower_single_step_body(
             expected: "at least one body step",
         }]));
     }
-    let step = config.body.first().ok_or_else(|| CompileErrors(vec![CompileError::StepFieldShape {
-        step: index, field: "reduce.steps", expected: "at least one body step",
-    }]))?;
+    let step = config.body.first().ok_or_else(|| {
+        CompileErrors(vec![CompileError::StepFieldShape {
+            step: index,
+            field: "reduce.steps",
+            expected: "at least one body step",
+        }])
+    })?;
     match &step.primitive {
-        crate::StepPrimitive::Do { action: _, input: _ } => {
-            return Err(CompileErrors(vec![CompileError::StepFieldShape {
-                step: index,
-                field: "reduce.steps",
-                expected: "a set value preserving the i64 accumulator type",
-            }]));
-        }
+        crate::StepPrimitive::Do {
+            action: _,
+            input: _,
+        } => Err(CompileErrors(vec![CompileError::StepFieldShape {
+            step: index,
+            field: "reduce.steps",
+            expected: "a set value preserving the i64 accumulator type",
+        }])),
         crate::StepPrimitive::Set { value, .. } => {
             let mut types = config.scope.slot_types.clone();
             types.insert(accumulator, ExprType::I64);
@@ -181,10 +218,12 @@ fn lower_single_step_body(
             }
             Ok(inferred)
         }
-        other => Err(CompileErrors(vec![CompileError::UnsupportedStepPrimitive {
-            step: index,
-            primitive: canonical_primitive_name(other),
-        }])),
+        other => Err(CompileErrors(vec![
+            CompileError::UnsupportedStepPrimitive {
+                step: index,
+                primitive: canonical_primitive_name(other),
+            },
+        ])),
     }
 }
 
@@ -206,19 +245,17 @@ fn lower_multi_step_body(
         slot_types: &types,
     };
     let width = body_width(config.body, 0).map_err(|e| CompileErrors(vec![e]))?;
-    let width = u16::try_from(width).map_err(|_| CompileErrors(vec![
-        CompileError::StepIndexOutOfRange { value: width },
-    ]))?;
-    let final_step = checked_step_offset(id, width, "reduce", "copy")
-        .map_err(|e| CompileErrors(vec![e]))?;
+    let width = u16::try_from(width)
+        .map_err(|_| CompileErrors(vec![CompileError::StepIndexOutOfRange { value: width }]))?;
+    let final_step =
+        checked_step_offset(id, width, "reduce", "copy").map_err(|e| CompileErrors(vec![e]))?;
     let last = emit_scoped_typed_body(config.body, id, final_step, scope, builder, "reduce")?;
-    let (result_slot, inferred) = last.ok_or(CompileErrors(vec![
-        CompileError::StepFieldShape {
+    let (result_slot, inferred) =
+        last.ok_or(CompileErrors(vec![CompileError::StepFieldShape {
             step: index,
             field: "reduce.steps",
             expected: "at least one set or do step",
-        },
-    ]))?;
+        }]))?;
     if !matches!(inferred, ExprType::I64 | ExprType::Unknown) {
         return Err(CompileErrors(vec![CompileError::StepFieldShape {
             step: index,
@@ -237,6 +274,9 @@ fn lower_multi_step_body(
     Ok(inferred)
 }
 
+#[cfg(test)]
+#[path = "reduce_limit_tests.rs"]
+mod limit_tests;
 #[cfg(test)]
 #[path = "canonical_reduce_tests.rs"]
 mod tests;

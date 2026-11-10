@@ -25,6 +25,7 @@ pub(super) fn count_body_region_nodes(
 pub(super) fn visit_body_region_node(
     nodes: &[crate::workflow::CompiledNode],
     current: StepIdx,
+    body: StepIdx,
     done: StepIdx,
     node_count: usize,
     region_visited: &mut [bool],
@@ -32,7 +33,9 @@ pub(super) fn visit_body_region_node(
     mut count: u64,
     cache: &std::collections::HashMap<(StepIdx, StepIdx), u64>,
 ) -> Result<u64, BudgetError> {
-    if current == done {
+    // Generic budget callers also support legacy bodies laid out after done;
+    // constructor-validated owned regions have an ordered lexical interval.
+    if current == done || (body < done && current > done) {
         return Ok(count);
     }
     let idx = find_node_position(nodes, current, node_count)?;
@@ -59,6 +62,7 @@ pub(super) fn visit_body_region_node(
         } => {
             if *body != current {
                 count = count_nested_for_region(
+                    nodes,
                     *body,
                     *done,
                     u64::from(*limit).max(1),
@@ -73,6 +77,7 @@ pub(super) fn visit_body_region_node(
         } => {
             if *body != current {
                 count = count_nested_for_region(
+                    nodes,
                     *body,
                     *done,
                     u64::from(*limit).max(1),
@@ -82,18 +87,19 @@ pub(super) fn visit_body_region_node(
                 )?;
             }
         }
-        CompiledNodeKind::ReduceStart { body, done, .. } => {
-            let iter = match u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE) {
-                Ok(value) => value,
-                Err(_) => {
-                    return Err(BudgetError::TotalStepsExceeded {
-                        actual: u64::MAX,
-                        limit: u64::MAX,
-                    });
-                }
-            };
+        CompiledNodeKind::ReduceStart {
+            limit, body, done, ..
+        } => {
             if *body != current {
-                count = count_nested_for_region(*body, *done, iter, count, stack, cache)?;
+                count = count_nested_for_region(
+                    nodes,
+                    *body,
+                    *done,
+                    u64::from(*limit).max(1),
+                    count,
+                    stack,
+                    cache,
+                )?;
             }
         }
         CompiledNodeKind::RepeatStart {
@@ -104,6 +110,7 @@ pub(super) fn visit_body_region_node(
         } => {
             if *body != current {
                 count = count_nested_for_region(
+                    nodes,
                     *body,
                     *done,
                     u64::from(*max_attempts).max(1),
@@ -120,6 +127,9 @@ pub(super) fn visit_body_region_node(
             }
         }
     }
+    if let Some(handler) = node.routing.error.handler() {
+        stack.push(handler);
+    }
     Ok(count)
 }
 
@@ -127,6 +137,7 @@ pub(super) fn visit_body_region_node(
 #[inline]
 #[allow(clippy::too_many_arguments)]
 fn count_nested_for_region(
+    nodes: &[crate::workflow::CompiledNode],
     body: StepIdx,
     done: StepIdx,
     iter_count: u64,
@@ -142,6 +153,7 @@ fn count_nested_for_region(
             limit: u64::MAX,
         })?;
     stack.push(done);
+    push_body_error_exits(nodes, body, done, stack);
     let product = body_count
         .checked_mul(iter_count)
         .ok_or(BudgetError::TotalStepsExceeded {
@@ -154,4 +166,24 @@ fn count_nested_for_region(
             actual: u64::MAX,
             limit: u64::MAX,
         })
+}
+
+/// Recovery continuations execute in the enclosing scope, outside the child's
+/// iteration multiplier. Scan declared edges so an exit skipped by the normal
+/// done continuation is still counted, including exits from deeper children.
+pub(super) fn push_body_error_exits(
+    nodes: &[crate::workflow::CompiledNode],
+    body: StepIdx,
+    done: StepIdx,
+    stack: &mut Vec<StepIdx>,
+) {
+    for node in nodes {
+        if body <= node.id
+            && node.id < done
+            && let Some(handler) = node.routing.error.handler()
+            && handler >= done
+        {
+            stack.push(handler);
+        }
+    }
 }

@@ -1,51 +1,14 @@
 // SPDX-License-Identifier: MIT
-//
-// ============================================================================
-// IN-TREE PRODUCTION-SOURCE MIRROR for ActionReplayTracker
-// ============================================================================
-//
-// This file is a VERBATIM copy of the production `ActionReplayTracker`
-// implementation block from
-//   crates/vb_storage/src/recovery/types.rs:1437-1641
-// with two minimal substitutions:
-//
-//   1. The crate-internal `RecoveryError` and `RecoveryResult` aliases are
-//      declared locally (the production versions are `#[derive(...,
-//      thiserror::Error)]` and `#[derive(Debug)]`-derived, neither of
-//      which can be reproduced under `verus --crate-type=lib` without
-//      proc-macro crate registration). The variants and field shapes
-//      used by `ActionReplayTracker` are preserved exactly:
-//
-//        - RecoveryError::NonIdempotentActionBlocked { action, step }
-//        - RecoveryError::ReplayDivergence { step, detail }
-//
-//   2. The `vb_core` newtypes `ActionId`, `StepIdx`, `SlotIdx`, `Taint`,
-//      `WorkflowDigest`, and the struct `ActionTicket` are declared
-//      locally with the same field names, same `#[repr(transparent)]`
-//      shape, and same method surface (`new`, `get`). These are
-//      `Copy + PartialEq + Eq +
-//      Hash` so the `HashSet<(ActionId, StepIdx)>` operations in the
-//      production block at `types.rs:1437-1641` resolve
-//      identically.
-//
-// This file exists so that the companion `extern_idempotency_replay_tracker.rs`
-// can use `#[path = "production_inner/action_replay_tracker_production.rs"]`
-// to bind the production `ActionReplayTracker` block by direct source
-// inclusion (per the task brief "with `#[path]` bindings to production
-// source"). Any drift between this mirror and the production source
-// breaks the `extern_idempotency_replay_tracker` Verus build, which is
-// the explicit drift-detection mechanism the user requires.
-//
-// DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_storage/src/recovery/types.rs:1437-1641` whenever production
-// changes. The mirror is annotated at the top of every section with the
-// originating production line range so regeneration is mechanical.
-//
-// This file is included by the companion extern file under module-level
-// `#[verifier::external]` so every body is opaque to Verus. It compiles
-// as plain Rust (no `verus!` block, no `vstd` import) and is checked by
-// the Verus invocation purely for structural resolution and type
-// well-formedness — Verus never reasons about the bodies.
+// Structural copy of the real ActionReplayTracker with native dependencies.
+// Source: crates/vb_storage/src/recovery/types.rs:1446-1669
+// Source: crates/vb_storage/src/recovery/retry_authority.rs:5-69
+// Derive attributes and private field visibility retain the existing mirror
+// substitutions. RunId and SeqNo are represented by their transparent u64
+// payloads. Conversion retains every ticket field without inferred values.
+// RetryTimerV1 validation and canonical key validation execute the actual
+// vb_storage/vb_core implementations linked with --extern.
+// Existing proof assumptions and the external module boundary are unchanged;
+// the production bodies are not proved by the weak bridge.
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -104,6 +67,13 @@ impl SlotIdx {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ActionTicket {
+    pub run: u64,
+    pub seq: u64,
+    pub run_attempt: u16,
+    pub attempt: u16,
+    pub capacity: u16,
+    pub fencing_token: u64,
+    pub idempotency_key: u128,
     pub action: ActionId,
     pub step: StepIdx,
 }
@@ -149,7 +119,7 @@ pub type RecoveryResult<T> = Result<T, RecoveryError>;
 // VERBATIM PRODUCTION: ActionReplayTracker block
 // ---------------------------------------------------------------------------
 //
-// Source: crates/vb_storage/src/recovery/types.rs:1437-1641
+// Source: crates/vb_storage/src/recovery/types.rs:1446-1669
 // Drift policy: any change to the production block between these line
 // numbers MUST be mirrored here.
 
@@ -157,8 +127,8 @@ pub type RecoveryResult<T> = Result<T, RecoveryError>;
 /// re-execution of non-idempotent actions.
 ///
 /// Note on field visibility: the production struct at
-/// `crates/vb_storage/src/recovery/types.rs:1440-1445` has PRIVATE fields
-/// `scheduled_tickets`, `completed`, `failed`, and
+/// `crates/vb_storage/src/recovery/types.rs:1446-1453` has PRIVATE fields
+/// `retry_attempts`, `scheduled_tickets`, `completed`, `failed`, and
 /// `completed_envelopes`. This in-tree mirror declares them as `pub`
 /// so the companion Verus spec can reason about the HashSet view
 /// (`@`) of `completed` and `failed` directly. Drift in field NAME
@@ -166,6 +136,7 @@ pub type RecoveryResult<T> = Result<T, RecoveryError>;
 /// DEBT D3 in `extern_idempotency_replay_tracker.rs`.
 #[derive(Debug, Clone)]
 pub struct ActionReplayTracker {
+    pub retry_attempts: std::collections::HashMap<(ActionId, StepIdx), u16>,
     pub scheduled_tickets: std::collections::HashMap<(ActionId, StepIdx), ActionScheduleEvidence>,
     pub completed: std::collections::HashSet<(ActionId, StepIdx)>,
     pub failed: std::collections::HashSet<(ActionId, StepIdx)>,
@@ -208,6 +179,7 @@ impl ActionReplayTracker {
     #[must_use]
     pub fn new() -> Self {
         Self {
+            retry_attempts: std::collections::HashMap::new(),
             scheduled_tickets: std::collections::HashMap::new(),
             completed: std::collections::HashSet::new(),
             failed: std::collections::HashSet::new(),
@@ -222,6 +194,7 @@ impl ActionReplayTracker {
         output: SlotIdx,
         action_abi_digest: WorkflowDigest,
     ) -> RecoveryResult<ActionReplayEffect> {
+        self.consume_retry(ticket, input, output, action_abi_digest)?;
         let key = (ticket.action, ticket.step);
         if self.is_resolved(ticket.action, ticket.step) {
             return Err(RecoveryError::NonIdempotentActionBlocked {
@@ -279,7 +252,6 @@ impl ActionReplayTracker {
     pub fn mark_completed(&mut self, action: ActionId, step: StepIdx) {
         self.completed.insert((action, step));
     }
-
     pub(crate) fn mark_completed_envelope_effect(
         &mut self,
         ticket: ActionTicket,
@@ -298,22 +270,13 @@ impl ActionReplayTracker {
             value_digest,
             action_abi_digest,
         };
-        // Note: production uses a let-chain here
-        //   (if let Some(schedule) = ... && (schedule.ticket != ticket || schedule.output != output))
-        // The let-chain form requires Rust 2024 edition, which Verus 0.2026.05.05
-        // (Rust 1.95.0) does not accept. The body is opaque to Verus under the
-        // module-level `#[verifier::external]` directive in the companion extern
-        // file, so the refactor below is purely a syntactic adaptation to keep
-        // the production semantics identical while being parseable.
-        if let Some(schedule) = self.scheduled_tickets.get(&key).copied() {
-            if schedule.ticket != ticket || schedule.output != output {
-                return Err(RecoveryError::ReplayDivergence {
-                    step: ticket.step,
-                    detail: String::from(
-                        "action completion envelope does not match schedule ticket",
-                    ),
-                });
-            }
+        if let Some(schedule) = self.scheduled_tickets.get(&key).copied()
+            && (schedule.ticket != ticket || schedule.output != output)
+        {
+            return Err(RecoveryError::ReplayDivergence {
+                step: ticket.step,
+                detail: String::from("action completion envelope does not match schedule ticket"),
+            });
         }
         match self.completed_envelopes.get(&key).copied() {
             Some(existing) if existing == evidence => Ok(ActionReplayEffect::Duplicate),
@@ -335,8 +298,6 @@ impl ActionReplayTracker {
         }
     }
 
-    /// Records a full durable completion envelope and rejects duplicates whose
-    /// ticket or output evidence diverges from the first completed envelope.
     pub fn mark_completed_envelope(
         &mut self,
         ticket: ActionTicket,
@@ -355,6 +316,25 @@ impl ActionReplayTracker {
             action_abi_digest,
         )
         .map(|_| ())
+    }
+
+    /// Checks per-action attempt identity when a full schedule is retained.
+    /// Pair-only legacy histories retain their existing resolution behavior.
+    pub(crate) fn require_failed_attempt_matches_schedule(
+        &self,
+        action: ActionId,
+        step: StepIdx,
+        attempt: u16,
+    ) -> RecoveryResult<()> {
+        if let Some(schedule) = self.scheduled_tickets.get(&(action, step))
+            && schedule.ticket.attempt != attempt
+        {
+            return Err(RecoveryError::ReplayDivergence {
+                step,
+                detail: String::from("action failure attempt does not match schedule ticket"),
+            });
+        }
+        Ok(())
     }
 
     /// Records that an action failed during normal execution.
@@ -382,8 +362,91 @@ impl ActionReplayTracker {
     }
 }
 
+
 impl Default for ActionReplayTracker {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl ActionReplayTracker {
+    pub(crate) fn authorize_retry(&mut self, timer: &vb_storage::retry_timer::RetryTimerV1) -> RecoveryResult<()> {
+        timer.validate().map_err(|_| invalid(ActionTicket::from_actual(timer.failed_ticket)))?;
+        let ticket = ActionTicket::from_actual(timer.failed_ticket);
+        let key = (ticket.action, ticket.step);
+        if !self.failed.contains(&key)
+            || self.completed.contains(&key)
+            || self
+                .scheduled_tickets
+                .get(&key)
+                .is_none_or(|old| old.ticket != ticket)
+            || self
+                .retry_attempts
+                .insert(key, timer.next_attempt)
+                .is_some()
+        {
+            return Err(invalid(ticket));
+        }
+        Ok(())
+    }
+
+    pub(crate) fn consume_retry(
+        &mut self,
+        ticket: ActionTicket,
+        input: SlotIdx,
+        output: SlotIdx,
+        abi: WorkflowDigest,
+    ) -> RecoveryResult<()> {
+        let key = (ticket.action, ticket.step);
+        let Some(next) = self.retry_attempts.get(&key).copied() else {
+            return Ok(());
+        };
+        let old = self
+            .scheduled_tickets
+            .get(&key)
+            .ok_or_else(|| invalid(ticket))?;
+        let previous = old.ticket;
+        if !self.failed.contains(&key)
+            || self.completed.contains(&key)
+            || ticket.attempt != next
+            || ticket.run != previous.run
+            || ticket.run_attempt != previous.run_attempt
+            || ticket.capacity != previous.capacity
+            || ticket.idempotency_key != previous.idempotency_key
+            || ticket.seq != previous.seq
+            || old.input != input
+            || old.output != output
+            || old.action_abi_digest != abi
+            || !vb_core::action::action_ticket_has_valid_key(ticket.into_actual())
+        {
+            return Err(invalid(ticket));
+        }
+        self.retry_attempts.remove(&key);
+        self.failed.remove(&key);
+        self.scheduled_tickets.remove(&key);
+        Ok(())
+    }
+}
+
+fn invalid(ticket: ActionTicket) -> RecoveryError {
+    RecoveryError::ReplayDivergence {
+        step: ticket.step,
+        detail: "invalid durable retry authority".into(),
+    }
+}
+
+// RunId/SeqNo are transparent u64 payload projections; every ticket field is retained.
+impl ActionTicket {
+    fn from_actual(ticket: vb_core::ActionTicket) -> Self {
+        Self { run: ticket.run.get(), seq: ticket.seq.get(),
+            action: ActionId::new(ticket.action.get()), step: StepIdx::new(ticket.step.get()),
+            run_attempt: ticket.run_attempt, attempt: ticket.attempt, capacity: ticket.capacity,
+            fencing_token: ticket.fencing_token, idempotency_key: ticket.idempotency_key }
+    }
+    fn into_actual(self) -> vb_core::ActionTicket {
+        vb_core::ActionTicket { run: vb_core::RunId::new(self.run), seq: vb_core::SeqNo::new(self.seq),
+            action: vb_core::ActionId::new(self.action.get()), step: vb_core::StepIdx::new(self.step.get()),
+            run_attempt: self.run_attempt, attempt: self.attempt, capacity: self.capacity,
+            fencing_token: self.fencing_token, idempotency_key: self.idempotency_key }
     }
 }

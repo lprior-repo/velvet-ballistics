@@ -52,7 +52,11 @@ fn expect_unknown(yaml: &str, reference: &str) -> Result<(), String> {
 
 #[test]
 fn guard_nonbool_types() -> Result<(), String> {
-    let cases = [("0", "integer"), ("42", "integer"), ("null", "null")];
+    let cases = [
+        ("0", "non-boolean"),
+        ("42", "non-boolean"),
+        ("null", "non-boolean"),
+    ];
     for (value, found) in cases.iter() {
         let y = yaml(&format!(
             "  - id: seed\n    set: {{ output: x, value: \"42\" }}\n  - id: g\n    do: {{ action: \"1\", input: \"$seed\" }}\n    if: {:?}\n  - id: end\n    finish: {{ result: \"$seed\" }}",
@@ -80,7 +84,7 @@ fn guard_unknown_prior_do() -> Result<(), String> {
         CompileError::TypeMismatch {
             field: "if",
             expected: "boolean",
-            found: "unknown",
+            found: "non-boolean",
         },
     )
 }
@@ -225,8 +229,10 @@ fn guard_text_expression() -> Result<(), String> {
     );
     expect_err(
         &y,
-        CompileError::ExpressionLoweringUnsupported {
-            feature: Box::from("text constants"),
+        CompileError::TypeMismatch {
+            field: "if",
+            expected: "boolean",
+            found: "non-boolean",
         },
     )
 }

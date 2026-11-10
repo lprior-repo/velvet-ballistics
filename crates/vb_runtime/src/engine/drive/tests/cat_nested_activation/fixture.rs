@@ -62,5 +62,5 @@ pub(super) fn build_nested_loop_workflow() -> Result<CompiledWorkflow, String> {
         ),
         fin(7, 0),
     ];
-    mkwfc(nodes, 6, vec![])
+    mkwfc(nodes, 6, vec![], &[0, 5])
 }

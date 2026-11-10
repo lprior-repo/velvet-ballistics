@@ -93,10 +93,53 @@ fn qa_repeat_zero_attempts_value_message() {
 }
 
 #[test]
-fn qa_vars_non_scalar_names_field() {
-    let body = "vars:\n  items: [1, 2]\nsteps:\n  - id: done\n    finish: {result: 0}\n";
-    let err = compile(body).expect_err("vars list must fail");
-    assert!(err.contains("vars.items"), "got {err}");
+fn qa_vars_non_scalar_names_field() -> Result<(), Box<dyn std::error::Error>> {
+    use vb_core::{CompiledNodeKind as K, ConstIdx, ConstValue, SlotIdx};
+
+    let body =
+        "vars:\n  items: [1, 2]\nsteps:\n  - id: done\n    finish: {result: '$vars.items'}\n";
+    let parts = compile(body)?.to_parts();
+    assert_eq!(
+        parts.constants.as_ref(),
+        [ConstValue::I64(1), ConstValue::I64(2)]
+    );
+    assert_eq!(
+        parts
+            .nodes
+            .iter()
+            .map(|node| node.kind.clone())
+            .collect::<Vec<_>>(),
+        [
+            K::SetConst {
+                value: ConstIdx::new(0)
+            },
+            K::SetConst {
+                value: ConstIdx::new(1)
+            },
+            K::BuildList {
+                items: Box::from([SlotIdx::ZERO, SlotIdx::new(1)])
+            },
+            K::Finish {
+                result: SlotIdx::new(2)
+            },
+        ]
+    );
+    for vars in ["vars: [1, 2]", "vars: 7"] {
+        let yaml = workflow(&format!(
+            "{vars}\nsteps:\n  - id: done\n    finish: {{result: 0}}\n"
+        ));
+        let errors = compile_workflow(yaml.as_bytes())
+            .err()
+            .ok_or("non-mapping vars accepted")?;
+        assert_eq!(
+            errors.0,
+            [CompileError::CanonicalYaml {
+                category: "field_shape",
+                message: "field shape error: vars expected mapping".into(),
+            }]
+        );
+    }
+    Ok(())
 }
 
 #[test]

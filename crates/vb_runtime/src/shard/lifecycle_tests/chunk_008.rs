@@ -9,6 +9,7 @@ fn single_do_workflow() -> Result<CompiledWorkflow, String> {
     let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::ZERO, }, Some(SlotIdx::ZERO), None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("action_output_policy"),
         digest: WorkflowDigest::from_bytes([0xA0; 32]),
         nodes: Box::from([node]),
@@ -20,7 +21,11 @@ fn single_do_workflow() -> Result<CompiledWorkflow, String> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     CompiledWorkflow::try_from_parts(parts)
         .map_err(|error| format!("action output policy fixture must compile: {error:?}"))
@@ -35,6 +40,7 @@ fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     let finish_node = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::ZERO, }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("do_then_finish"),
         digest: WorkflowDigest::from_bytes([0xA1; 32]),
         nodes: Box::from([do_node, finish_node]),
@@ -46,7 +52,11 @@ fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     CompiledWorkflow::try_from_parts(parts)
         .map_err(|error| format!("do_then_finish fixture must compile: {error:?}"))

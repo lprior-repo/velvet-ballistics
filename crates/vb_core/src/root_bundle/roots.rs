@@ -8,14 +8,16 @@ use crate::workflow::{CompiledInputSlot, CompiledWorkflow, InputSlotKind};
 
 use super::errors::{OwnedRootBundleError as Error, ValueKind};
 
+type Roots = Box<[(SlotIdx, SlotValue, Taint)]>;
+
 /// Slot tracking state for root validation.
-struct Slots {
+struct Slots<'a> {
     seen: Vec<bool>,
-    kinds: Vec<Option<CompiledInputSlot>>,
+    kinds: Vec<Option<&'a CompiledInputSlot>>,
 }
 
-impl Slots {
-    fn new(wf: &CompiledWorkflow) -> Result<Self, Error> {
+impl<'a> Slots<'a> {
+    fn new(wf: &'a CompiledWorkflow) -> Result<Self, Error> {
         let count = usize::from(wf.slot_count());
         let mut seen = Vec::new();
         seen.try_reserve_exact(count)
@@ -33,7 +35,7 @@ impl Slots {
                     reason: "owned_root_slots",
                 },
             ))?;
-            *entry = Some(*input);
+            *entry = Some(input);
         }
         Ok(Slots { seen, kinds })
     }
@@ -54,7 +56,7 @@ fn validate_range(
 
 fn validate_duplicates(
     roots: &[(SlotIdx, SlotValue, Taint)],
-    slots: &mut Slots,
+    slots: &mut Slots<'_>,
 ) -> Result<(), Error> {
     for (slot, _, _) in roots {
         let idx = usize::from(slot.get());
@@ -71,7 +73,7 @@ fn validate_duplicates(
     Ok(())
 }
 
-fn validate_extras(roots: &[(SlotIdx, SlotValue, Taint)], slots: &Slots) -> Result<(), Error> {
+fn validate_extras(roots: &[(SlotIdx, SlotValue, Taint)], slots: &Slots<'_>) -> Result<(), Error> {
     for (slot, _, _) in roots {
         let idx = usize::from(slot.get());
         let entry = slots.kinds.get(idx).ok_or(Error::Checkpoint(
@@ -86,7 +88,7 @@ fn validate_extras(roots: &[(SlotIdx, SlotValue, Taint)], slots: &Slots) -> Resu
     Ok(())
 }
 
-fn validate_missing(wf: &CompiledWorkflow, slots: &Slots) -> Result<(), Error> {
+fn validate_missing(wf: &CompiledWorkflow, slots: &Slots<'_>) -> Result<(), Error> {
     for input in wf.input_slots() {
         let idx = usize::from(input.slot.get());
         let entry = slots.seen.get(idx).ok_or(Error::Checkpoint(
@@ -115,7 +117,7 @@ fn kind_matches(expected: InputSlotKind, actual: ValueKind) -> bool {
     }
 }
 
-fn validate_kinds(roots: &[(SlotIdx, SlotValue, Taint)], slots: &Slots) -> Result<(), Error> {
+fn validate_kinds(roots: &[(SlotIdx, SlotValue, Taint)], slots: &Slots<'_>) -> Result<(), Error> {
     for (slot, value, _) in roots {
         let idx = usize::from(slot.get());
         let entry = slots.kinds.get(idx).ok_or(Error::Checkpoint(
@@ -181,25 +183,52 @@ pub(super) fn validate(
 }
 
 pub(super) fn fill_defaults(
-    roots: Box<[(SlotIdx, SlotValue, Taint)]>,
+    roots: Roots,
     workflow: &CompiledWorkflow,
-) -> Result<Box<[(SlotIdx, SlotValue, Taint)]>, Error> {
+    checkpoint: &mut ValueStoreCheckpointV1,
+) -> Result<Roots, Error> {
+    validate_range(&roots, workflow)?;
+    let mut slots = Slots::new(workflow)?;
+    validate_duplicates(&roots, &mut slots)?;
+    validate_extras(&roots, &slots)?;
+    validate_kinds(&roots, &slots)?;
+    validate_references(&roots, checkpoint)?;
+    let graph = super::graph::validate(
+        checkpoint,
+        &roots,
+        workflow
+            .source_metadata()
+            .map_or(0, |metadata| metadata.symbols_count()),
+    )?;
+    super::taint::validate(&roots, &graph)?;
+    drop(graph);
     let mut roots = roots.into_vec();
     roots
         .try_reserve_exact(workflow.input_slots().len())
         .map_err(|_| Error::Checkpoint(CoreError::AllocationFailed))?;
     for declaration in workflow.input_slots() {
-        if roots.iter().any(|(slot, _, _)| *slot == declaration.slot) {
-            continue;
-        }
-        if let Some(value) = declaration.constraint.default_value {
-            let taint = if declaration.constraint.secret {
-                Taint::Secret
-            } else {
-                Taint::Clean
-            };
-            roots.push((declaration.slot, value, taint));
+        let taint = if declaration.constraint.secret {
+            Taint::Secret
+        } else {
+            Taint::Clean
+        };
+        let existing = roots
+            .iter()
+            .position(|(slot, _, _)| *slot == declaration.slot);
+        match existing {
+            Some(_) => continue,
+            None => {
+                let Some(value) =
+                    crate::input_schema::default_value(&declaration.constraint, checkpoint, taint)
+                        .map_err(Error::Checkpoint)?
+                else {
+                    continue;
+                };
+                roots.push((declaration.slot, value, taint));
+            }
         }
     }
+    crate::input_schema::apply_root_schema_defaults(&mut roots, workflow.input_slots(), checkpoint)
+        .map_err(Error::Checkpoint)?;
     Ok(roots.into_boxed_slice())
 }

@@ -18,6 +18,7 @@ fn classify_reduce_node(run: &RunFrame, node: &CompiledNode) -> Option<[Option<S
             initial: _,
             body,
             done,
+            ..
         } => classify_reduce_start(run, node, *input, *accumulator, *body, *done),
         CompiledNodeKind::ReduceNext {
             iterator_slot,

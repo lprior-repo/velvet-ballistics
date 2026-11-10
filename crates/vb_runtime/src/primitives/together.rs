@@ -29,15 +29,19 @@ pub fn together_start(
             reason: "together_start requires at least one branch",
         });
     }
-    let current = run.parallel_in_flight();
+    let requested = run.parallel_in_flight().checked_add(count).ok_or(
+        EngineError::InternalInvariantViolation {
+            reason: "parallel_in_flight overflow",
+        },
+    )?;
     let max = run.max_parallel_in_flight();
-    if current.saturating_add(count) > max {
+    if requested > max {
         return Err(EngineError::ParallelLimitExceeded { limit: max });
     }
-    run.add_parallel_in_flight(count)?;
     let iter_output = require_output(output, run.pc())?;
-    let state = store.insert_list(Vec::<SlotValue>::new().into_boxed_slice())?;
-    run.write_slot(iter_output, SlotValue::List(state))?;
+    if iter_output.get() >= run.slot_count() {
+        return Err(EngineError::SlotOutOfBounds { slot: iter_output });
+    }
     let first_branch =
         branches
             .first()
@@ -45,13 +49,22 @@ pub fn together_start(
             .ok_or(EngineError::InternalInvariantViolation {
                 reason: "together branches checked nonzero",
             })?;
+    if first_branch.get() >= run.step_count() {
+        return Err(EngineError::InvalidProgramCounter { step: first_branch });
+    }
+    if run.executed() == u64::MAX {
+        return Err(EngineError::StepCounterOverflow);
+    }
+    let state = store.insert_list(Vec::<SlotValue>::new().into_boxed_slice())?;
+    run.write_slot(iter_output, SlotValue::List(state))?;
+    run.add_parallel_in_flight(count)?;
     jump_to(run, first_branch)
 }
 
 /// Executes TogetherBranch: runs one branch body and appends its result.
 ///
 /// For branches after the first, the output slot holds the previous
-/// branch body result (a non-list value written by the branch body).
+/// branch body result written by the branch body.
 /// This function reads that result from the output slot, reads the
 /// accumulator list from the dedicated accumulator slot, appends the
 /// result, writes the updated accumulator list back, then jumps to the
@@ -98,22 +111,13 @@ pub fn together_join(
     }
     // Read the accumulator list built by together_branch invocations.
     let acc_value = *run.read_slot(accumulator)?;
-    let final_list = match acc_value {
-        SlotValue::List(id) => {
-            // Append the last branch body result if it's not already a list.
-            let last_result = *run.read_slot(out)?;
-            match last_result {
-                SlotValue::List(_) | SlotValue::Null => SlotValue::List(id),
-                other => {
-                    append_to_accumulator(run, store, accumulator, other, out)?;
-                    *run.read_slot(accumulator)?
-                }
-            }
-        }
-        _ => {
-            // No accumulator list; use whatever is in the output slot.
-            acc_value
-        }
+    // A distinct result slot holds a branch value, including Null or a list.
+    let final_list = if matches!(acc_value, SlotValue::List(_)) && out != accumulator {
+        let last_result = *run.read_slot(out)?;
+        append_to_accumulator(run, store, accumulator, last_result, out)?;
+        *run.read_slot(accumulator)?
+    } else {
+        acc_value
     };
     let acc_taint = run.read_taint(accumulator)?;
     let out_taint = run.read_taint(out)?;
@@ -144,8 +148,18 @@ fn append_to_accumulator(
     let list_id = expect_list(current)?;
     let existing = store.list(list_id)?;
     let mut items = existing.to_vec();
+    let mut taints = (0..existing.len())
+        .map(|index| {
+            let index = u32::try_from(index).map_err(|_| EngineError::AllocationFailed)?;
+            store
+                .list_item_with_taint(list_id, index)
+                .map(|(_, taint)| taint)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
     items.push(value);
-    let updated = store.insert_list(items.into_boxed_slice())?;
+    taints.push(branch_taint);
+    let updated =
+        store.insert_list_with_taint(items.into_boxed_slice(), taints.into_boxed_slice())?;
     run.write_slot_with_taint(accumulator, SlotValue::List(updated), combined_taint)?;
     Ok(())
 }

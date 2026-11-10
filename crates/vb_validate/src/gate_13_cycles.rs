@@ -1,14 +1,27 @@
 #![forbid(unsafe_code)]
 //! Gate 13: No circular references in slot dependency graph.
 
-#![allow(unreachable_pub)]
-#![allow(clippy::collapsible_if)]
-
 use crate::{ValidationError, ValidationResult};
 use vb_core::ids::SlotIdx;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, WorkflowParts};
 
-pub fn validate_gate_13_no_slot_cycles(parts: &WorkflowParts) -> ValidationResult<()> {
+pub(crate) fn validate_gate_13_no_slot_cycles(parts: &WorkflowParts) -> ValidationResult<()> {
+    // Executable flow, including the first activation, proves initialized cycles.
+    // The legacy graph retains cycle diagnostics when that proof fails; Gate 14
+    // independently reports every assignment or type failure.
+    match vb_core::workflow::validate_slot_flow(parts) {
+        Ok(()) => Ok(()),
+        Err(error) if error.reason == vb_core::workflow::SlotFlowFailure::AnalysisCapacity => {
+            Err(ValidationError::TypeMismatch {
+                expected: "bounded compiled slot flow".into(),
+                found: error.to_string(),
+            })
+        }
+        Err(_) => validate_dependency_graph(parts),
+    }
+}
+
+fn validate_dependency_graph(parts: &WorkflowParts) -> ValidationResult<()> {
     let slot_count = usize::from(parts.slot_count);
     if slot_count == 0 {
         return Ok(());
@@ -23,12 +36,12 @@ pub fn validate_gate_13_no_slot_cycles(parts: &WorkflowParts) -> ValidationResul
             if out_usize < slot_count {
                 for read_slot in reads {
                     let read_usize = read_slot.as_usize();
-                    if read_usize < slot_count && read_usize != out_usize {
-                        if let Some(list) = adjacency.get_mut(out_usize) {
-                            if !list.contains(&read_usize) {
-                                list.push(read_usize);
-                            }
-                        }
+                    if read_usize < slot_count
+                        && read_usize != out_usize
+                        && let Some(list) = adjacency.get_mut(out_usize)
+                        && !list.contains(&read_usize)
+                    {
+                        list.push(read_usize);
                     }
                 }
             }

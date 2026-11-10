@@ -1,7 +1,6 @@
 #![forbid(unsafe_code)]
 //! Choice-related replay step handlers.
 
-use crate::errors::EngineError;
 use crate::frame::RunFrame;
 use crate::ids::StepIdx;
 use crate::value::SlotValue;
@@ -19,18 +18,20 @@ pub fn replay_choose_slot(
         let branch = branches.get(index).ok_or(ReplayError::Internal {
             reason: "choose_slot branch index checked by loop bound",
         })?;
-        let value = run.read_slot(branch.condition).map_err(|e| match e {
-            EngineError::SlotOutOfBounds { slot } => ReplayError::SlotNotAvailable { slot },
-            EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
-            _ => ReplayError::Internal {
-                reason: "unexpected error reading choose_slot condition",
-            },
-        })?;
+        let value = run
+            .slot_cell(branch.condition)
+            .and_then(Option::as_ref)
+            .ok_or(ReplayError::SlotNotAvailable {
+                slot: branch.condition,
+            })?;
         match value {
             SlotValue::Bool(true) => {
-                run.set_pc(branch.target).map_err(engine_to_replay_err)?;
-                run.increment_executed()
-                    .map_err(|_| ReplayError::Internal {
+                run.set_pc_checked(branch.target)
+                    .ok_or(ReplayError::StepNotFound {
+                        step: branch.target,
+                    })?;
+                run.increment_executed_checked()
+                    .ok_or(ReplayError::Internal {
                         reason: "executed counter overflow",
                     })?;
                 return Ok(ReplayAction::Continue(branch.target));
@@ -49,9 +50,10 @@ pub fn replay_choose_slot(
     let target = otherwise.ok_or(ReplayError::Internal {
         reason: "choose_slot no branch matched and no otherwise",
     })?;
-    run.set_pc(target).map_err(engine_to_replay_err)?;
-    run.increment_executed()
-        .map_err(|_| ReplayError::Internal {
+    run.set_pc_checked(target)
+        .ok_or(ReplayError::StepNotFound { step: target })?;
+    run.increment_executed_checked()
+        .ok_or(ReplayError::Internal {
             reason: "executed counter overflow",
         })?;
     Ok(ReplayAction::Continue(target))

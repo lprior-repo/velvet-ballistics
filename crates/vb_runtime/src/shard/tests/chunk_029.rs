@@ -352,6 +352,7 @@ fn ask_timeout_only_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let ask = vb_core::workflow::node(vb_core::ids::StepIdx::new(2), CompiledNodeKind::Ask { prompt: SlotIdx::ZERO, timeout_slot: Some(SlotIdx::new(1)), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("ask_timeout_only"),
         digest: WorkflowDigest::from_bytes([9; 32]),
         nodes: Box::from([set_prompt, set_timeout, ask]),

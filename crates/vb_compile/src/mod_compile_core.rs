@@ -3,9 +3,9 @@
 pub use crate::limits::YamlLimits;
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use crate::mod_compile_validation::{
-    canonical_yaml_error, checked_utf8, reject_duplicate_mapping_keys,
-    reject_known_canonical_text_gaps, single_document, validate_canonical_workflow_document_shape,
-    validate_strict_profile, validate_workflow_document_shape,
+    canonical_yaml_error, checked_utf8, reject_duplicate_mapping_keys, single_document,
+    validate_canonical_workflow_document_shape, validate_strict_profile,
+    validate_workflow_document_shape,
 };
 use crate::{ast, control_flow, references, schema, strict_yaml, type_taint};
 use saphyr::{LoadableYamlNode, Yaml};
@@ -39,7 +39,6 @@ impl YamlCompiler {
     /// vb-y3ye5.
     pub fn compile(&self, source: &[u8]) -> Result<CompiledWorkflow, CompileErrors> {
         let text = checked_utf8(source, self.limits).map_err(|e| CompileErrors(vec![e]))?;
-        reject_known_canonical_text_gaps(text).map_err(|e| CompileErrors(vec![e]))?;
         let source = crate::parse_workflow_source_with_limits(text, &self.limits)
             .map_err(|e| CompileErrors(vec![canonical_yaml_error(e)]))?;
         self.enforce_canonical_document_validations(text)?;
@@ -75,7 +74,9 @@ impl YamlCompiler {
     /// Parses strict YAML into the cold typed AST without emitting runtime IR.
     pub fn parse_ast(&self, source: &[u8]) -> Result<ast::WorkflowAst, CompileErrors> {
         let text = checked_utf8(source, self.limits).map_err(|e| CompileErrors(vec![e]))?;
-        if let Err(error) = crate::yaml_profile::validate_yaml_profile_with_limits(text, &self.limits) {
+        if let Err(error) =
+            crate::yaml_profile::validate_yaml_profile_with_limits(text, &self.limits)
+        {
             if crate::mod_compile_validation::yaml_error_category(&error) != "limit_exceeded" {
                 strict_yaml::reject_unsupported_profile_events(text)
                     .map_err(|e| CompileErrors(vec![e]))?;

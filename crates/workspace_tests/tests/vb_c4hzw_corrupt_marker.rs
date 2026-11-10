@@ -34,7 +34,12 @@ fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {
         name: "vb_c4hzw_corrupt_marker".into(),
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: vb_core::workflow::InputSlotKind::Any,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([
             node(

@@ -76,6 +76,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("finished"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([set_const, finish]),
@@ -104,6 +105,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -115,7 +117,11 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::new([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -147,6 +153,7 @@ fn timed_wait_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkfl
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("timed_wait_then_finish"),
         digest: WorkflowDigest::from_bytes([4; 32]),
         nodes: Box::from([set_deadline, wait, finish]),
@@ -186,7 +193,7 @@ fn timed_ask_without_answer_workflow() -> Option<vb_core::workflow::CompiledWork
             prompt: SlotIdx::ZERO,
             timeout_slot: Some(SlotIdx::new(1)),
         },
-        None,
+        Some(vb_core::ids::SlotIdx::new(2)),
         Some(StepIdx::new(3)),
     );
     let resume = vb_core::workflow::node(
@@ -207,6 +214,7 @@ fn timed_ask_without_answer_workflow() -> Option<vb_core::workflow::CompiledWork
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("ask_then_finish"),
         digest: WorkflowDigest::from_bytes([7; 32]),
         nodes: Box::from([set_prompt, set_timeout, ask, resume, finish]),
@@ -249,7 +257,14 @@ fn submit_handler_persists_before_ack() {
     };
     let run = RunId::new(1);
 
-    submit_suspended(&shard, run, workflow);
+    shard
+        .enqueue(ShardCommand::SubmitWithContracts {
+            run: run,
+            workflow: workflow,
+            caps: CapabilitySet::empty(),
+            action_contracts: Box::new([]),
+        })
+        .expect("closed workflow submit enqueues");
     shard.tick().unwrap();
 
     let events = journal.snapshot().unwrap();
@@ -263,57 +278,67 @@ fn submit_handler_persists_before_ack() {
 }
 
 #[test]
-fn action_completed_persists_before_ack() {
+fn action_completed_persists_before_ack() -> Result<(), Box<dyn std::error::Error>> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut shard = Shard::new_with_journal(small_config(), journal.clone());
-    let Some(workflow) = suspended_workflow() else {
-        return;
-    };
+    let workflow = suspended_workflow().ok_or("suspended workflow")?;
     let run = RunId::new(1);
-
     submit_suspended(&shard, run, workflow);
-    shard.tick().unwrap();
-
-    // Clear journal from submit phase
-    let _ = journal.snapshot().unwrap();
-
-    let seq = vb_core::ids::SeqNo::ZERO;
-    let action = vb_core::ids::ActionId::new(0);
-    let ticket = vb_core::action::ActionTicket {
-        run,
-        step: StepIdx::ZERO,
-        seq,
-        action,
-        run_attempt: 1,
-        attempt: 1,
-        idempotency_key: vb_core::action::compute_action_idempotency_key(run, 1, seq, action),
-        capacity: 1,
-        fencing_token: 0,
-    };
+    shard.tick()?;
+    let before = journal.snapshot()?;
+    let ticket = shard
+        .pending_action_get(run)
+        .ok_or("issued action ticket")?;
+    let value = SlotValue::Bool(true);
+    let encoded = postcard::to_allocvec(&value)?;
     let output = vb_core::action::ActionOutputReady {
-        output_slot: SlotIdx::new(0),
-        value: SlotValue::Bool(true),
+        output_slot: SlotIdx::ZERO,
+        value,
         taint: Taint::Clean,
-        encoded_len: 2,
+        encoded_len: u32::try_from(encoded.len())?,
     };
-    shard
-        .enqueue(ShardCommand::ActionCompleted { ticket, output })
-        .unwrap();
-    shard.tick().unwrap();
+    shard.enqueue(ShardCommand::ActionCompleted { ticket, output })?;
+    shard.tick()?;
 
-    let events = journal.snapshot().unwrap();
-    let has_slot_written = events
-        .iter()
-        .any(|e| matches!(e, RuntimeJournalEvent::SlotWritten { run: r, .. } if *r == run));
-    let has_action_completed_envelope = events.iter().any(|e| {
-        matches!(e, RuntimeJournalEvent::ActionCompletedEnvelope { ticket, .. } if ticket.run == run)
-    });
-
-    assert!(has_slot_written, "SlotWritten must be persisted before ack");
-    assert!(
-        has_action_completed_envelope,
-        "ActionCompletedEnvelope must be persisted before ack"
+    let events = journal.snapshot()?;
+    let completed = events
+        .strip_prefix(before.as_slice())
+        .ok_or("journal prefix changed")?;
+    let contract = suspended_action_contracts()
+        .into_vec()
+        .into_iter()
+        .next()
+        .ok_or("action contract")?;
+    let expected = RuntimeJournalEvent::ActionCompletedEnvelope {
+        ticket,
+        output: output.output_slot,
+        value: encoded.clone(),
+        encoded_len: output.encoded_len,
+        taint: output.taint,
+        value_digest: *blake3::hash(&encoded).as_bytes(),
+        action_abi_digest: WorkflowDigest::from_bytes(
+            *blake3::hash(&postcard::to_allocvec(&contract)?).as_bytes(),
+        ),
+    };
+    assert_eq!(
+        completed.first(),
+        Some(&expected),
+        "the atomic value/completion envelope must persist before ack"
     );
+    assert_eq!(
+        completed
+            .iter()
+            .filter(|event| matches!(event, RuntimeJournalEvent::ActionCompletedEnvelope { .. }))
+            .collect::<Vec<_>>(),
+        vec![&expected]
+    );
+    assert!(
+        !completed
+            .iter()
+            .any(|event| matches!(event, RuntimeJournalEvent::SlotWritten { .. })),
+        "Do dispatch must not fabricate a separate output write"
+    );
+    Ok(())
 }
 
 #[test]

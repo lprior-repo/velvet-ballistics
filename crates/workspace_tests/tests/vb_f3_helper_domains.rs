@@ -194,14 +194,20 @@ fn yaml_runtime_and_expression_helpers_agree() -> Result<(), Box<dyn std::error:
         } else {
             format!("{keyword}($input.subject, $input.other)")
         };
+        let other_schema = if args.len() == 1 {
+            "{is: any, optional: true}"
+        } else {
+            "any"
+        };
         let source = format!(
-            "version: velvet-ballistics/v1\nname: helper_parity\nwhen: {{manual: {{}}}}\ninputs: {{subject: any, other: {{is: any, optional: true}}}}\nsteps:\n  - id: value\n    set: {{output: checked, value: '{expression}'}}\n  - id: done\n    finish: {{result: checked}}\n"
+            "version: velvet-ballistics/v1\nname: helper_parity\nwhen: {{manual: {{}}}}\ninputs: {{subject: any, other: {other_schema}}}\nsteps:\n  - id: value\n    set: {{output: checked, value: '{expression}'}}\n  - id: done\n    finish: {{result: checked}}\n"
         );
         let workflow = vb_compile::compile_workflow(source.as_bytes())?;
         let mut frame = new_run_frame(RunId::new(1), &workflow)?;
         for (declaration, value) in workflow.input_slots().iter().zip(&args) {
             frame.write_slot_with_taint(declaration.slot, *value, Taint::Clean)?;
         }
+        let mut replay = frame.clone();
         let result = drive_deterministic_full(
             &workflow,
             &mut frame,
@@ -215,6 +221,17 @@ fn yaml_runtime_and_expression_helpers_agree() -> Result<(), Box<dyn std::error:
             1,
         )?;
         assert_eq!(result, RuntimeSignal::Finished(expected), "helper {name:?}");
+        let node = workflow
+            .node(vb_core::StepIdx::ZERO)
+            .ok_or("missing expression node")?;
+        vb_core::replay::replay_step(node, &mut replay, &mut store.clone(), &workflow)
+            .map_err(|error| format!("replay failed: {error:?}"))?;
+        let output = node.output.slot().ok_or("missing expression output")?;
+        assert_eq!(
+            *replay.read_slot(output)?,
+            expected,
+            "replay helper {name:?}"
+        );
     }
     Ok(())
 }

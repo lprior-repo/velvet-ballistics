@@ -139,12 +139,12 @@ fn missing_slot_detected() -> TestResult<()> {
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::I64,
-                constraint: CompiledInputConstraint::unconstrained(),
+                constraint: CompiledInputConstraint::required(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(2),
                 kind: InputSlotKind::I64,
-                constraint: CompiledInputConstraint::unconstrained(),
+                constraint: CompiledInputConstraint::required(),
             },
         ],
         8,

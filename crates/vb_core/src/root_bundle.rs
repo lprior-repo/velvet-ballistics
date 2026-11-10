@@ -29,6 +29,7 @@ use crate::value_store::ValueStoreCheckpointV1;
 use crate::workflow::{CompiledInputSlot, CompiledWorkflow, ResourceContract};
 
 use binding::Binding;
+mod source_prefix;
 
 /// Immutable owned root bundle.
 ///
@@ -45,16 +46,39 @@ impl OwnedRootBundle {
     ///
     /// Consumes all inputs. Validates through eight phases in strict order.
     /// On success returns the immutable bundle. On failure returns a typed
-    /// error; no partial state is exposed.
+    /// error; no partial state is exposed. Equal text payloads are interned to
+    /// one admitted symbol identity, whether or not source metadata exists.
     pub fn new(
-        roots: Box<[(SlotIdx, SlotValue, Taint)]>,
-        checkpoint: ValueStoreCheckpointV1,
+        mut roots: Box<[(SlotIdx, SlotValue, Taint)]>,
+        mut checkpoint: ValueStoreCheckpointV1,
         workflow: &CompiledWorkflow,
     ) -> Result<Self, OwnedRootBundleError> {
         validation::preflight(&checkpoint, workflow)?;
-        let roots = roots::fill_defaults(roots, workflow)?;
+        if let Some(metadata) = workflow.source_metadata() {
+            source_prefix::relocate(&mut roots, &mut checkpoint, Some(metadata))
+                .map_err(OwnedRootBundleError::Checkpoint)?;
+            validation::preflight(&checkpoint, workflow)?;
+        }
+        crate::workflow::source_metadata::secrets::validate_roots(workflow, &roots)
+            .map_err(OwnedRootBundleError::Checkpoint)?;
+        let mut roots = roots::fill_defaults(roots, workflow, &mut checkpoint)?;
+        crate::workflow::source_metadata::secrets::validate_runtime_roots(workflow, &roots)
+            .map_err(OwnedRootBundleError::Checkpoint)?;
+        validation::preflight(&checkpoint, workflow)?;
         roots::validate(&roots, workflow, &checkpoint)?;
-        let graph = graph::validate(&checkpoint, &roots)?;
+        // Preserve root kind/reference error precedence when no source prefix exists.
+        if workflow.source_metadata().is_none() {
+            source_prefix::relocate(&mut roots, &mut checkpoint, None)
+                .map_err(OwnedRootBundleError::Checkpoint)?;
+            validation::preflight(&checkpoint, workflow)?;
+        }
+        let graph = graph::validate(
+            &checkpoint,
+            &roots,
+            workflow
+                .source_metadata()
+                .map_or(0, |metadata| metadata.symbols_count()),
+        )?;
         taint::validate(&roots, &graph)?;
         drop(graph);
 

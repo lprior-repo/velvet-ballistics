@@ -71,7 +71,7 @@ fn single_constraint(
 ) -> Result<vb_core::CompiledInputConstraint, Box<dyn std::error::Error>> {
     let compiled = vb_compile::compile_workflow(source(schema).as_bytes())?;
     let slot = compiled.input_slots().first().ok_or("missing slot")?;
-    Ok(slot.constraint)
+    Ok(slot.constraint.clone())
 }
 
 #[test]
@@ -99,6 +99,8 @@ fn longform_keywords_are_retained() -> Result<(), Box<dyn std::error::Error>> {
             element: None,
             allow_extra: None,
             secret: true,
+            fields: None,
+            default_cold: None,
         }
     );
     let list = single_constraint("{is: list, of: number, min: 0, max: 4}")?;
@@ -535,9 +537,14 @@ fn object_default_container_mapping_limit_is_checked_before_compile()
         Ok(_) => return Err("compiler accepted over-limit container mapping".into()),
     };
     assert!(
-        matches!(errors.0.as_slice(), [vb_compile::CompileError::CanonicalYaml {
-        category: "limit_exceeded", message,
-    }] if message.as_ref() == "mapping too large: 1025 entries, max 1024")
+        matches!(
+            errors.0.as_slice(),
+            [vb_compile::CompileError::MappingLimit {
+                actual: 1025,
+                limit: 1024
+            }]
+        ),
+        "{errors:?}"
     );
     Ok(())
 }

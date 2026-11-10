@@ -56,6 +56,54 @@ fn decode(
 }
 
 impl FjallJournal {
+    /// Reads complete inputs under independently verified admission authority.
+    ///
+    /// Owned receipts bind the entire payload, including the source digest.
+    /// Scalar receipts retain their historical input-map digest contract.
+    pub fn admitted_run_inputs(
+        &self,
+        run: RunId,
+        artifact: WorkflowDigest,
+        workflow: &CompiledWorkflow,
+        admission: &crate::JournalEvent,
+    ) -> Result<Option<RetainedRunInputs>, JournalError> {
+        let key = crate::keys::run_header_key(run)?;
+        let Some(bytes) = self.run_inputs.get(key)? else {
+            return Ok(None);
+        };
+        let header = codec::decode_record_header(&bytes, MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES)?;
+        let record = match RecordKind::from_id(header.record_kind) {
+            Some(RecordKind::RunOwnedInputs) => {
+                RetainedRunInputs::Owned(OwnedRunInputsRecordV1::decode_admitted(
+                    &bytes, run, artifact, workflow, admission,
+                )?)
+            }
+            Some(RecordKind::RunInputs) => {
+                let (_, record): (_, RunInputsRecord) =
+                    codec::decode_record(&bytes, MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES)?;
+                if record.run() != run || record.artifact_digest() != artifact {
+                    return Err(super::OwnedInputError::IdentityMismatch.into());
+                }
+                record.validate_admission(admission)?;
+                record.validate_workflow(workflow)?;
+                RetainedRunInputs::Scalar(record)
+            }
+            _ => {
+                return Err(JournalError::RecordKindPayloadMismatch {
+                    envelope_kind: header.record_kind,
+                    payload_kind: RecordKind::RunOwnedInputs.id(),
+                });
+            }
+        };
+        let source = match &record {
+            RetainedRunInputs::Scalar(record) => record.source_digest(),
+            RetainedRunInputs::Owned(record) => record.source_digest(),
+        };
+        self.workflow_source(source)?
+            .ok_or(super::OwnedInputError::IdentityMismatch)?;
+        Ok(Some(record))
+    }
+
     /// Reads either retained format, checking explicit independently accepted bindings.
     pub fn retained_run_inputs(
         &self,

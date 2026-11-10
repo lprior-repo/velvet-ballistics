@@ -52,9 +52,12 @@ pub fn validate_idempotency_key_ingredients(
         let Some(&slot) = key_slots.get(i) else {
             break;
         };
-        let slot_taint = frame
-            .read_taint(slot)
-            .map_err(|_| IdempotencyViolation::UnavailableKeySlot(u32::from(slot.get())))?;
+        let slot_taint =
+            frame
+                .initialized_taint(slot)
+                .ok_or(IdempotencyViolation::UnavailableKeySlot(u32::from(
+                    slot.get(),
+                )))?;
         match slot_taint {
             Taint::Clean => {}
             Taint::Secret | Taint::DerivedFromSecret => {

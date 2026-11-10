@@ -42,6 +42,7 @@ impl RestartSession {
         Ok(Self {
             resolver: StorageWorkflowResolver {
                 journal: Arc::clone(&journal),
+                available_names: Default::default(),
             },
             service: IpcJournalService { journal, queue },
             runtime,
@@ -127,6 +128,7 @@ fn scalar_ask_workflow() -> TestResult<vb_core::CompiledWorkflow> {
         name: "ipc-restart-scalar-ask".into(),
         digest: vb_core::WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: Box::from([
             vb_core::workflow::node(
                 StepIdx::new(0),
@@ -142,7 +144,7 @@ fn scalar_ask_workflow() -> TestResult<vb_core::CompiledWorkflow> {
                     prompt: SlotIdx::new(0),
                     timeout_slot: None,
                 },
-                None,
+                Some(SlotIdx::new(1)),
                 Some(StepIdx::new(2)),
             ),
             vb_core::workflow::node(

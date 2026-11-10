@@ -289,7 +289,15 @@ fn assert_numeric_do_reduce(input: &[i64], completions: &[i64], expected: i64) -
         matches!(body.kind, vb_core::CompiledNodeKind::Do { action, input }
         if action == vb_core::ActionId::new(0) && input == SlotIdx::new(1))
     );
-    let accumulator = body.output.slot().ok_or("numeric Do output missing")?;
+    let action_output = body.output.slot().ok_or("numeric Do output missing")?;
+    let accumulator = parts
+        .nodes
+        .iter()
+        .find_map(|node| match node.kind {
+            vb_core::CompiledNodeKind::ReduceStart { accumulator, .. } => Some(accumulator),
+            _ => None,
+        })
+        .ok_or("reduce accumulator missing")?;
     let next = body
         .routing
         .next
@@ -343,7 +351,7 @@ fn assert_numeric_do_reduce(input: &[i64], completions: &[i64], expected: i64) -
         let payload =
             postcard::to_allocvec(&SlotValue::I64(*value)).map_err(|error| error.to_string())?;
         let output = vb_core::action::ActionOutputReady {
-            output_slot: accumulator,
+            output_slot: action_output,
             value: SlotValue::I64(*value),
             taint: Taint::Clean,
             encoded_len: u32::try_from(payload.len()).map_err(|error| error.to_string())?,
@@ -360,7 +368,7 @@ fn assert_numeric_do_reduce(input: &[i64], completions: &[i64], expected: i64) -
         assert_eq!(continued, vb_core::EngineSignal::Continue);
         assert!(
             matches!(event, vb_core::action::ActionJournalEvent::Completed { ticket: actual, output, .. }
-            if actual == ticket && output.value == SlotValue::I64(*value) && output.output_slot == accumulator)
+            if actual == ticket && output.value == SlotValue::I64(*value) && output.output_slot == action_output)
         );
         assert_eq!(frame.pc(), next);
         assert_eq!(

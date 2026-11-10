@@ -1,0 +1,18 @@
+version: velvet-ballistics/v1
+name: nested_join_minimal
+when: {manual: {}}
+steps:
+  - id: outer
+    together:
+      branches:
+        - label: outer_branch
+          steps:
+            - id: inner
+              together:
+                branches:
+                  - label: inner_branch
+                    steps:
+                      - id: value
+                        set: {output: value, value: '7'}
+  - id: done
+    finish: {result: '$step.outer'}

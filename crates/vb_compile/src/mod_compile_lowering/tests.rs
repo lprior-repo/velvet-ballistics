@@ -928,17 +928,9 @@ fn lower_canonical_choose_rejects_65_branches() {
 // Plan N2 / RRO-B004
 // ─────────────────────────────────────────────────────────────────
 
-/// Verifies that `choose_width` propagates errors from `body_width`.
-///
-/// Direct overflow of `choose_width` requires usize::MAX body steps, which
-/// is not constructable in memory. This test exercises the error propagation
-/// path by using an unsupported body primitive (ForEach) that causes
-/// `canonical_body_step_width` to return Err, which propagates through
-/// `body_width` and then `choose_width`.
 #[test]
-fn choose_width_overflow_returns_error() {
-    // Given: a branch with an unsupported body primitive (ForEach)
-    let unsupported_step = crate::StepAst {
+fn choose_width_includes_recursive_primitive_width() {
+    let nested_step = crate::StepAst {
         id: "unsupported".to_string(),
         name: None,
         condition: None,
@@ -955,19 +947,10 @@ fn choose_width_overflow_returns_error() {
     };
     let branches = vec![crate::ChooseBranch {
         when: "0".to_string(),
-        steps: vec![unsupported_step],
+        steps: vec![nested_step],
     }];
-    // When: choose_width is called
     let result = choose_width(&branches);
-    // Then: error propagates from body_width through choose_width
-    assert!(
-        matches!(
-            result,
-            Err(crate::CompileError::UnsupportedStepPrimitive { .. })
-        ),
-        "choose_width must propagate unsupported body primitive error, got: {:?}",
-        result
-    );
+    assert_eq!(result, Ok(3));
 }
 
 // ─────────────────────────────────────────────────────────────────

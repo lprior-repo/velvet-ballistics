@@ -66,6 +66,7 @@ fn accepted_artifact(
         name: Box::from("ssei_admission_fixture"),
         digest: WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes,
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -75,7 +76,11 @@ fn accepted_artifact(
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-        input_slots: Box::new([]),
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::workflow::InputSlotKind::Any,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
     };
     let payload = postcard::to_allocvec(&parts)?;
     parts.digest = WorkflowDigest::from_bytes(blake3::hash(&payload).into());

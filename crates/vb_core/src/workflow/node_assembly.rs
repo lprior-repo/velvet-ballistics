@@ -33,6 +33,7 @@ pub fn node(
     next: Option<StepIdx>,
 ) -> CompiledNode {
     CompiledNode {
+        retry: None,
         id,
         output: NodeOutput::from(output),
         routing: NodeRouting {
@@ -73,6 +74,7 @@ pub fn node_with_handler(
     error_slot: Option<SlotIdx>,
 ) -> CompiledNode {
     CompiledNode {
+        retry: None,
         id,
         output: NodeOutput::from(output),
         routing: NodeRouting {

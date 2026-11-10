@@ -97,7 +97,8 @@ fn validate_choose_body_steps(branch: &Yaml<'_>, step: usize) -> Result<(), Comp
 fn validate_choose_body_step(body_step: &Yaml<'_>, step: usize) -> Result<(), CompileError> {
     let id = required_step_id(body_step, step)?;
     validate_public_name("step id", id)?;
-    let StepSpec { primitive, body } = step_spec(body_step, step)?;
+    let StepSpec { primitive, body } =
+        super::canonical_guarded_shape::canonical_step_spec(body_step, step)?;
     match primitive {
         StepPrimitive::Set | StepPrimitive::Save => validate_choose_body_set(body, step),
         StepPrimitive::Run | StepPrimitive::Do => {
@@ -119,9 +120,11 @@ pub(super) fn validate_choose_body_do(
     step: usize,
     primitive: &'static str,
 ) -> Result<(), CompileError> {
-    reject_unknown_primitive_fields(body, step, primitive, &["action", "input"])?;
+    reject_unknown_primitive_fields(body, step, primitive, &["action", "input", "with"])?;
     required_non_empty_step_string(body, step, "action", "choose.body.do.action")?;
-    required_non_empty_step_string(body, step, "input", "choose.body.do.input")?;
+    if body.as_mapping_get("input").is_some() {
+        required_non_empty_step_string(body, step, "input", "choose.body.do.input")?;
+    }
     Ok(())
 }
 

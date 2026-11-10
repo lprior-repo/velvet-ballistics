@@ -20,16 +20,37 @@ impl ForEachInputs {
     ) -> Self {
         let mut inputs = Self::new();
         for (name, slot) in bindings {
-            let Some(name) = name.strip_prefix("$input.") else { continue; };
-            let Some(declaration) = builder.input_slots.iter().find(|input| input.slot == *slot) else { continue; };
-            if declaration.kind != vb_core::InputSlotKind::List
-                || declaration.constraint.element != Some(vb_core::InputSlotKind::Any) { continue; }
-            let Some(max) = declaration.constraint.max else { continue; };
-            inputs.record(*slot, name, &AuthorValue::Mapping(vec![
-                AuthorEntry { key: "is".into(), value: AuthorValue::Text("list".into()) },
-                AuthorEntry { key: "of".into(), value: AuthorValue::Text("any".into()) },
-                AuthorEntry { key: "max".into(), value: AuthorValue::I64(max) },
-            ]));
+            let Some(name) = name.strip_prefix("$input.") else {
+                continue;
+            };
+            let Some(declaration) = builder.input_slots.iter().find(|input| input.slot == *slot)
+            else {
+                continue;
+            };
+            if declaration.kind != vb_core::InputSlotKind::List {
+                continue;
+            }
+            let Some(max) = declaration.constraint.max else {
+                continue;
+            };
+            inputs.record(
+                *slot,
+                name,
+                &AuthorValue::Mapping(vec![
+                    AuthorEntry {
+                        key: "is".into(),
+                        value: AuthorValue::Text("list".into()),
+                    },
+                    AuthorEntry {
+                        key: "of".into(),
+                        value: AuthorValue::Text("any".into()),
+                    },
+                    AuthorEntry {
+                        key: "max".into(),
+                        value: AuthorValue::I64(max),
+                    },
+                ]),
+            );
         }
         inputs
     }
@@ -69,7 +90,7 @@ impl ForEachInputs {
             return Err(shape_error(index));
         }
 
-        parse_list_any_max(schema, index)
+        parse_list_max(schema, index)
     }
 }
 
@@ -77,11 +98,11 @@ fn shape_error(index: usize) -> CompileError {
     CompileError::StepFieldShape {
         step: index,
         field: "for_each.input",
-        expected: "direct declared list<any> input with finite schema max",
+        expected: "direct declared list input with finite schema max",
     }
 }
 
-fn parse_list_any_max(schema: &AuthorValue, index: usize) -> Result<u32, CompileError> {
+fn parse_list_max(schema: &AuthorValue, index: usize) -> Result<u32, CompileError> {
     let entries = match schema {
         AuthorValue::Mapping(entries) => entries,
         _ => {
@@ -90,10 +111,6 @@ fn parse_list_any_max(schema: &AuthorValue, index: usize) -> Result<u32, Compile
     };
 
     if !is_list_schema(entries) {
-        return Err(shape_error(index));
-    }
-
-    if !is_of_any(entries) {
         return Err(shape_error(index));
     }
 
@@ -116,10 +133,6 @@ fn parse_list_any_max(schema: &AuthorValue, index: usize) -> Result<u32, Compile
 
 fn is_list_schema(entries: &[AuthorEntry<AuthorValue>]) -> bool {
     matches!(find_entry_value(entries, "is"), Some(AuthorValue::Text(s)) if s == "list")
-}
-
-fn is_of_any(entries: &[AuthorEntry<AuthorValue>]) -> bool {
-    matches!(find_entry_value(entries, "of"), Some(AuthorValue::Text(s)) if s == "any")
 }
 
 fn get_max_value(entries: &[AuthorEntry<AuthorValue>]) -> Option<i64> {

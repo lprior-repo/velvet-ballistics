@@ -335,7 +335,8 @@ fn drain_classify_event_to_pending_sets(
     event: &JournalEvent,
 ) {
     match event {
-        JournalEvent::WaitScheduledEvent { step, .. } => {
+        JournalEvent::RetryTimerScheduled { step, .. }
+        | JournalEvent::WaitScheduledEvent { step, .. } => {
             pending_waits.insert(*step);
         }
         JournalEvent::WaitResolvedEvent { step, .. } => {
@@ -800,6 +801,7 @@ fn classify_metadata_event(event: &JournalEvent) -> RecoveryResult<bool> {
         | JournalEvent::StepSucceeded { .. }
         | JournalEvent::StepFailed { .. }
         | JournalEvent::SlotWrittenEvent { .. }
+        | JournalEvent::RetryTimerScheduled { .. }
         | JournalEvent::WaitScheduledEvent { .. }
         | JournalEvent::AskScheduledEvent { .. }
         | JournalEvent::AskTimedOutEvent { .. }

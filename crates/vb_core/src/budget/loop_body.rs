@@ -2,7 +2,7 @@ use crate::ids::StepIdx;
 use crate::workflow::{CompiledNodeKind, NodeContinuation};
 
 use super::conditional_counter;
-use super::loop_region::count_body_region_nodes;
+use super::loop_region::{count_body_region_nodes, push_body_error_exits};
 use super::successors::{
     insert_tracked_jump_edge, insert_tracked_step, push_successor_targets, tracked_steps_contain,
 };
@@ -76,13 +76,18 @@ pub(super) fn visit_node_for_total_steps(
             )
             .map_err(map_loop_body_budget_error)?;
         }
-        CompiledNodeKind::ReduceStart { body, done, .. } => {
-            let iter_count = match u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE) {
-                Ok(value) => value,
-                Err(_) => return Err(BudgetTraversalError::StepCountOverflow { actual: u64::MAX }),
-            };
+        CompiledNodeKind::ReduceStart {
+            limit, body, done, ..
+        } => {
             total = count_and_push_loop_body(
-                nodes, *body, *done, iter_count, visited, node_count, total, stack,
+                nodes,
+                *body,
+                *done,
+                u64::from(*limit),
+                visited,
+                node_count,
+                total,
+                stack,
             )
             .map_err(map_loop_body_budget_error)?;
         }
@@ -139,6 +144,9 @@ pub(super) fn visit_node_for_total_steps(
                 stack.push(next);
             }
         }
+    }
+    if let Some(handler) = node.routing.error.handler() {
+        stack.push(handler);
     }
     Ok(total)
 }
@@ -238,6 +246,7 @@ fn count_and_push_loop_body(
             limit: u64::MAX,
         })?;
     push_done_continuation(nodes, done, node_count, stack)?;
+    push_body_error_exits(nodes, body, done, stack);
     Ok(total)
 }
 

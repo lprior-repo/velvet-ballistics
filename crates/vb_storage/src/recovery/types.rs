@@ -1444,6 +1444,7 @@ pub struct RunSnapshot {
 /// re-execution of non-idempotent actions.
 #[derive(Debug, Clone)]
 pub struct ActionReplayTracker {
+    retry_attempts: std::collections::HashMap<(ActionId, StepIdx), u16>,
     scheduled_tickets: std::collections::HashMap<(ActionId, StepIdx), ActionScheduleEvidence>,
     completed: std::collections::HashSet<(ActionId, StepIdx)>,
     failed: std::collections::HashSet<(ActionId, StepIdx)>,
@@ -1478,6 +1479,7 @@ impl ActionReplayTracker {
     #[must_use]
     pub fn new() -> Self {
         Self {
+            retry_attempts: std::collections::HashMap::new(),
             scheduled_tickets: std::collections::HashMap::new(),
             completed: std::collections::HashSet::new(),
             failed: std::collections::HashSet::new(),
@@ -1492,6 +1494,7 @@ impl ActionReplayTracker {
         output: SlotIdx,
         action_abi_digest: WorkflowDigest,
     ) -> RecoveryResult<ActionReplayEffect> {
+        self.consume_retry(ticket, input, output, action_abi_digest)?;
         let key = (ticket.action, ticket.step);
         if self.is_resolved(ticket.action, ticket.step) {
             return Err(RecoveryError::NonIdempotentActionBlocked {
@@ -1712,3 +1715,6 @@ impl DigestCheck {
         self.hierarchy_rank() < other.hierarchy_rank()
     }
 }
+
+#[path = "retry_authority.rs"]
+mod retry_authority;

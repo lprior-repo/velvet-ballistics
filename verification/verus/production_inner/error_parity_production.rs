@@ -3,16 +3,22 @@
 // Extern surface for `error_parity.rs` Verus spec.
 //
 // ============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// LEGACY CFG(TEST) STRUCTURAL MIRROR (NOT LIVE COMPILER PROOF)
 // ============================================================================
 //
-// This file binds the `error_parity.rs` spec to the production
-// `emit_single_body_set` function in
-// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179` and to
+// This retained file describes the historical error-parity spec and its
+// `cfg(test)` `emit_single_body_set` function in
+// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:97-180` and to
 // the production `canonical_primitive_name` function in
-// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:125-141`.
+// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:129-145`.
 //
-// The binding is structural + contract:
+// This file remains subject to the all-mirrors drift scan even when unused.
+// The proposed current roots include the live generic_body_values.rs directly;
+// this historical mirror supplies no live compiler or whole-emitter closure.
+// Existing opaque wrappers and their historical contracts are not body proofs.
+// No wrapper implementation or trusted boundary is changed by this refresh.
+//
+// Historical correspondence was structural plus trusted contracts:
 //
 //   1. Each production type that `emit_single_body_set` or
 //      `canonical_primitive_name` touches is mirrored with the SAME name,
@@ -79,9 +85,9 @@
 //      require `vb_compile::mod_compile_lowering::mod` to be in scope.
 //
 // The structural mirror below sidesteps every blocker while still
-// establishing a real end-to-end binding: any drift in the production
+// retaining historical structural correspondence: drift in the production
 // field names, discriminant sets, or fn signatures breaks the
-// `extern_error_parity` mirror and the spec proofs that depend on it.
+// `extern_error_parity` mirror. This is not an end-to-end correctness proof.
 //
 // This matches the established pattern in this repo for files too
 // intertwined with `vb_core` re-exports / `super::*` resolution for
@@ -106,15 +112,15 @@
 //   - `ActionId`                           <- mirror of vb_core::action::ActionId (u16 newtype)
 //   - `SlotCompiler`                       <- mirror of vb_compile::SlotCompiler builder surface
 //   - `canonical_primitive_name`           <- VERBATIM production body
-//                                              (part_05_digest.rs:125-141)
+//                                              (part_05_digest.rs:129-145)
 //   - `lower_set`                          <- production exec wrapper
-//                                              (part_05_ir.rs:44-51) `[verifier::external]`
+//                                              (part_05_ir.rs:45-52) `[verifier::external]`
 //   - `body_constant_index`                <- production exec wrapper
 //                                              (body_constants.rs:3-28) `[verifier::external]`
 //   - `integer_error_value`                <- production exec wrapper
 //                                              (part_12.rs:152-157) `[verifier::external]`
 //   - `emit_single_body_set`               <- production exec wrapper
-//                                              (part_04.rs:96-179) `[verifier::external]`
+//                                              (part_04.rs:97-180) `[verifier::external]`
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -131,14 +137,14 @@
 // outside Verus.
 //
 // ============================================================================
-// DRIFT POLICY: `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`
+// DRIFT POLICY: `crates/vb_compile/src/mod_compile_lowering/part_04.rs:97-180`
 // ============================================================================
 // Production source coverage:
-//   - `canonical_primitive_name`     <- part_05_digest.rs:125-141 (verbatim body)
-//   - `lower_set`                    <- part_05_ir.rs:44-51
+//   - `canonical_primitive_name`     <- part_05_digest.rs:129-145 (verbatim body)
+//   - `lower_set`                    <- part_05_ir.rs:45-52
 //   - `body_constant_index`          <- body_constants.rs:3-28
 //   - `integer_error_value`          <- part_12.rs:152-157
-//   - `emit_single_body_set`         <- part_04.rs:96-179
+//   - `emit_single_body_set`         <- part_04.rs:97-180
 //   - `StepIdx`, `SlotIdx`           <- vb_core/src/ids/mod.rs
 //   - `StepAst`, `StepPrimitive`     <- vb_compile::yaml_ast::types
 //   - `CompileError`, `CompileErrors` <- vb_compile::mod_compile_errors
@@ -384,7 +390,7 @@ pub struct ErrorHandlerAst {
 // Production `CompileError` at
 // `crates/vb_compile/src/mod_compile_errors/kind.rs:12` is `#[non_exhaustive]`
 // with 50+ variants. `emit_single_body_set` only constructs the following
-// subset (verified by reading part_04.rs:96-179 line by line):
+// subset (verified by reading part_04.rs:97-180 line by line):
 //
 //   - StepFieldShape { step, field, expected }  (part_04.rs:106, 113, 130, 146)
 //   - UnsupportedStepPrimitive { step, primitive }  (part_04.rs:173)
@@ -446,8 +452,16 @@ pub struct CompileErrors(pub Vec<CompileError>);
 // error-parity drift-detection surface because `emit_single_body_set`
 // cannot observe them.
 
+/// Legacy projection of production `CompiledRetryPolicy` at
+/// `crates/vb_core/src/workflow/retry_policy.rs:6-11`. Serde derives are omitted.
+#[derive(Clone, Copy)]
+pub struct CompiledRetryPolicy {
+    pub max_attempts: u16,
+    pub delay_ms: u64,
+}
+
 /// Mirror of production `CompiledNode` at
-/// `crates/vb_core/src/workflow/mod.rs:995-1004`. Every field name,
+/// `crates/vb_core/src/workflow/mod.rs:1070-1081`. Every field name,
 /// type, and visibility matches production exactly. Drift in any
 /// field breaks the mirror.
 pub struct CompiledNode {
@@ -455,10 +469,11 @@ pub struct CompiledNode {
     pub output: NodeOutput,
     pub routing: NodeRouting,
     pub kind: CompiledNodeKind,
+    pub retry: Option<CompiledRetryPolicy>,
 }
 
 /// Mirror of production `NodeOutput` at
-/// `crates/vb_core/src/workflow/mod.rs:1008-1013`.
+/// `crates/vb_core/src/workflow/mod.rs:1088-1093`.
 #[derive(Clone, Copy)]
 pub enum NodeOutput {
     Discard,
@@ -475,7 +490,7 @@ impl NodeOutput {
 }
 
 /// Mirror of production `NodeRouting` at
-/// `crates/vb_core/src/workflow/mod.rs:1028-1033`.
+/// `crates/vb_core/src/workflow/mod.rs:1108-1113`.
 #[derive(Clone, Copy)]
 pub struct NodeRouting {
     pub next: NodeContinuation,
@@ -483,7 +498,7 @@ pub struct NodeRouting {
 }
 
 /// Mirror of production `NodeContinuation` at
-/// `crates/vb_core/src/workflow/mod.rs:1037-1042`.
+/// `crates/vb_core/src/workflow/mod.rs:1117-1122`.
 #[derive(Clone, Copy)]
 pub enum NodeContinuation {
     End,
@@ -500,7 +515,7 @@ impl NodeContinuation {
 }
 
 /// Mirror of production `ErrorRouting` at
-/// `crates/vb_core/src/workflow/mod.rs:1083-1093`.
+/// `crates/vb_core/src/workflow/mod.rs:1163-1173`.
 #[derive(Clone, Copy)]
 pub enum ErrorRouting {
     None,
@@ -520,7 +535,7 @@ impl ErrorRouting {
 }
 
 /// Mirror of production `CompiledNodeKind` at
-/// `crates/vb_core/src/workflow/mod.rs:1191-1357`. Restricted to the
+/// `crates/vb_core/src/workflow/mod.rs:1271-1438`. Restricted to the
 /// `SetConst` and `Do` arms `emit_single_body_set` constructs.
 pub enum CompiledNodeKind {
     SetConst {
@@ -591,13 +606,13 @@ impl SlotCompiler {
 // ============================================================================
 //
 // Mirrors production `canonical_primitive_name` at
-// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:125-141`.
+// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:129-145`.
 // Body is reproduced verbatim so the spec proofs discharge against the
 // same discriminant mapping production emits in the
 // `UnsupportedStepPrimitive` error arm at part_04.rs:172-177.
 
 /// Mirror of production `canonical_primitive_name` at
-/// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:125-141`.
+/// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:129-145`.
 ///
 /// The production body maps every `StepPrimitive` discriminant to a
 /// canonical name string:
@@ -613,7 +628,7 @@ impl SlotCompiler {
 /// Marked `#[verifier::external]` so the body is opaque to Verus and
 /// the production contract is attached via `assume_specification` in
 /// the companion spec file. The body below is the production match
-/// verbatim (part_05_digest.rs:125-141); the spec-side
+/// verbatim (part_05_digest.rs:129-145); the spec-side
 /// `assume_specification` pins the same discriminant mapping using
 /// the `tag_length` length-tag approach (which avoids Verus's
 /// `cmp::eq_spec` postcondition check on direct `&str` equality).
@@ -669,7 +684,7 @@ pub fn is_do_primitive(primitive: &StepPrimitive) -> bool {
 // (`error_parity.rs`).
 
 /// Production wrapper for `lower_set` at
-/// `crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs:44-51`.
+/// `crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs:45-52`.
 /// Body skipped by Verus; contract attached via `assume_specification`
 /// in the spec file.
 #[verifier::external]
@@ -709,7 +724,7 @@ pub fn integer_error_value(_value: i64) -> usize {
 }
 
 /// Production wrapper for `emit_single_body_set` at
-/// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`.
+/// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:97-180`.
 /// Body skipped by Verus; contract attached via `assume_specification`
 /// in the spec file. This is the primary binding target for the
 /// `error_parity` proofs.

@@ -18,20 +18,31 @@ use vb_validate::shared::{ValidationPipeline, validate};
 fn make_parts(slot_count: u16, symbols_count: u32) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: Box::new([node(
-            StepIdx::new(0),
-            CompiledNodeKind::Finish {
-                result: SlotIdx::new(0),
-            },
-            None,
-            None,
-        )]),
+        nodes: Box::new([
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
+                    value: vb_core::ConstIdx::new(0),
+                },
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+                None,
+                None,
+            ),
+        ]),
         expressions: Box::new([]),
         accessors: Box::new([]),
-        constants: Box::new([]),
+        constants: Box::new([vb_core::ConstValue::Null]),
         slot_count,
         symbols_count,
         entry: StepIdx::new(0),
@@ -246,6 +257,7 @@ fn pipeline_validate_all_gates_disabled_accepts_anything() {
 fn pipeline_validate_rejects_slot_reference_out_of_range() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),

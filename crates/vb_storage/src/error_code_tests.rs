@@ -314,7 +314,7 @@ mod error_code_tests {
     #[test]
     fn artifact_version_incompatible_maps_to_artifact_malformed_code() {
         let err = JournalError::ArtifactVersionIncompatible {
-            held: crate::compat::SchemaVersion::new(2, 0, 0),
+            held: crate::compat::SchemaVersion::new(3, 0, 0),
             required: crate::compat::CURRENT_IR_VERSION,
             class: crate::compat::CompatibilityClass::Rejected,
         };
@@ -330,7 +330,7 @@ mod error_code_tests {
         );
         assert_eq!(
             format!("{err}"),
-            "artifact IR version 2.0.0 is not admissible against current IR version 1.0.0: Rejected"
+            "artifact IR version 3.0.0 is not admissible against current IR version 2.0.0: Rejected"
         );
     }
 }

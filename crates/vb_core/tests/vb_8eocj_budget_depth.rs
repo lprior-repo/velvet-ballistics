@@ -146,6 +146,7 @@ fn loop_nodes(
         ),
         LoopKind::Reduce => (
             CompiledNodeKind::ReduceStart {
+                limit: 65_535,
                 input: slot,
                 accumulator: SlotIdx::new(1),
                 initial: ConstIdx::new(0),
@@ -658,11 +659,15 @@ fn excessive_loop_steps_preserve_typed_overflow() {
     );
 }
 
-fn workflow_parts(nodes: Vec<CompiledNode>) -> vb_core::WorkflowParts {
+fn workflow_parts(
+    nodes: Vec<CompiledNode>,
+    inputs: &[(u16, vb_core::workflow::InputSlotKind)],
+) -> vb_core::WorkflowParts {
     vb_core::WorkflowParts {
         name: "budget-owner-depth".into(),
         digest: vb_core::WorkflowDigest::from_bytes([0x36; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: nodes.into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -672,13 +677,20 @@ fn workflow_parts(nodes: Vec<CompiledNode>) -> vb_core::WorkflowParts {
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-        input_slots: Box::new([]),
+        input_slots: inputs
+            .iter()
+            .map(|(slot, kind)| vb_core::workflow::CompiledInputSlot {
+                slot: SlotIdx::new(*slot),
+                kind: *kind,
+                constraint: vb_core::workflow::CompiledInputConstraint::required(),
+            })
+            .collect(),
     }
 }
 
 fn shared_body_owner_nodes(short_owner_first: bool) -> Vec<CompiledNode> {
     let (first, second) = if short_owner_first { (2, 1) } else { (1, 2) };
-    vec![
+    let mut nodes = vec![
         node(
             StepIdx::new(0),
             CompiledNodeKind::ChooseSlot {
@@ -778,7 +790,17 @@ fn shared_body_owner_nodes(short_owner_first: bool) -> Vec<CompiledNode> {
             },
             None,
         ),
-    ]
+    ];
+    for candidate in &mut nodes {
+        candidate.output = match candidate.kind {
+            CompiledNodeKind::ForEachStart { input, .. } => Some(input).into(),
+            CompiledNodeKind::TogetherStart { .. } | CompiledNodeKind::TogetherJoin { .. } => {
+                Some(SlotIdx::new(5)).into()
+            }
+            _ => candidate.output,
+        };
+    }
+    nodes
 }
 
 #[test]
@@ -789,8 +811,17 @@ fn shared_body_with_different_owner_exits_is_order_independent() -> TestResult {
         assert_eq!(actual.max_nesting_depth, 2);
         assert_eq!(actual.max_for_each_iterations, 2);
         assert_eq!(actual.max_timer_entries, 1);
-        let workflow = vb_core::CompiledWorkflow::try_from_parts(workflow_parts(nodes))
-            .map_err(|error| format!("valid shared-body constructor rejected: {error:?}"))?;
+        let workflow = vb_core::CompiledWorkflow::try_from_parts(workflow_parts(
+            nodes,
+            &[
+                (0, vb_core::workflow::InputSlotKind::Bool),
+                (1, vb_core::workflow::InputSlotKind::List),
+                (3, vb_core::workflow::InputSlotKind::List),
+                (6, vb_core::workflow::InputSlotKind::I64),
+                (7, vb_core::workflow::InputSlotKind::Null),
+            ],
+        ))
+        .map_err(|error| format!("valid shared-body constructor rejected: {error:?}"))?;
         assert_eq!(workflow.entry(), StepIdx::new(0));
     }
     Ok(())
@@ -812,13 +843,22 @@ fn genuinely_nested_loop_constructor_preserves_depth_policy() -> TestResult {
                     }
                 }
                 CompiledNodeKind::TogetherJoin { .. } => CompiledNodeKind::ForEachJoin {
-                    output: SlotIdx::new(1),
+                    output: SlotIdx::new(0),
                 },
                 kind => kind.clone(),
             };
+            if matches!(
+                candidate.kind,
+                CompiledNodeKind::ForEachStart { .. } | CompiledNodeKind::ForEachJoin { .. }
+            ) {
+                candidate.output = Some(SlotIdx::new(0)).into();
+            }
         }
         assert_eq!(budget(&nodes)?.max_nesting_depth, depth);
-        let result = vb_core::CompiledWorkflow::try_from_parts(workflow_parts(nodes));
+        let result = vb_core::CompiledWorkflow::try_from_parts(workflow_parts(
+            nodes,
+            &[(0, vb_core::workflow::InputSlotKind::List)],
+        ));
         if depth == 8 {
             assert!(result.is_ok(), "depth 8 constructor failed: {result:?}");
         } else {

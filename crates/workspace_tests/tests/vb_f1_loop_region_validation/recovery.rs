@@ -3,19 +3,20 @@
 use super::support::*;
 
 #[test]
-fn internal_recovered_error_routes_are_typed_unsupported() -> TestResult {
-    let mut route = paired(Family::ForEach)?;
-    edit(&mut route, 2)?.routing.error = ErrorRouting::Handler {
-        handler: step(3),
-        error_slot: None,
-    };
-    reject(
-        route,
-        WorkflowError::LoopRegionUnsupported {
-            control: step(4),
-            step: step(2),
-        },
-    )?;
+fn internal_direct_recovery_routes_preserve_exact_loop_ownership() -> TestResult {
+    for family in FAMILIES {
+        let mut route = paired(family)?;
+        edit(&mut route, 2)?.routing.error = ErrorRouting::Handler {
+            handler: step(3),
+            error_slot: None,
+        };
+        assert_region(&accept(route)?, 1, 2, 4, 5)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn internal_error_handler_wrappers_stay_typed_unsupported() -> TestResult {
     let mut handler = paired(Family::ForEach)?;
     edit(&mut handler, 2)?.kind = CompiledNodeKind::ErrorHandler {
         body: step(3),

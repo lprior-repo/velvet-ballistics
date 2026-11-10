@@ -37,6 +37,7 @@ pub(super) fn linear_parts(count: u16) -> TestResult<WorkflowParts> {
         name: "nested-entry-boundaries".into(),
         digest: WorkflowDigest::from_bytes([0x38; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: linear_nodes(count)?.into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -46,7 +47,11 @@ pub(super) fn linear_parts(count: u16) -> TestResult<WorkflowParts> {
         entry: step(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
-        input_slots: Box::new([]),
+        input_slots: Box::new([crate::workflow::CompiledInputSlot {
+            slot: slot(0),
+            kind: crate::workflow::InputSlotKind::Any,
+            constraint: crate::workflow::CompiledInputConstraint::required(),
+        }]),
     })
 }
 

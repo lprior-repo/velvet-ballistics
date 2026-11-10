@@ -1,0 +1,33 @@
+version: velvet-ballistics/v1
+name: probe
+when: {manual: {}}
+inputs: {divisor: number}
+steps:
+  - id: seed
+    set: {output: seed, value: '42'}
+  - id: fault
+    then: done
+    on_error: {handler: recovery}
+    set: {output: quotient, value: '1 / $input.divisor'}
+  - id: recovery
+    together:
+      branches:
+        - label: first
+          steps:
+            - id: nested
+              together:
+                branches:
+                  - label: nested_first
+                    steps:
+                      - id: one
+                        set: {output: one, value: '1'}
+                  - label: nested_second
+                    steps:
+                      - id: two
+                        set: {output: two, value: '2'}
+        - label: second
+          steps:
+            - id: other
+              set: {output: other, value: '3'}
+  - id: done
+    finish: {result: '$seed'}

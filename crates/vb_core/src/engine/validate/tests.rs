@@ -7,14 +7,19 @@ use crate::engine::validate::{
 use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::ConstValue;
 use crate::workflow::{
-    CompiledNodeKind, ContractResource, ExprBranch, ResourceContract, SlotBranch, WorkflowError,
-    WorkflowParts, node,
+    CompiledInputConstraint, CompiledInputSlot, CompiledNodeKind, ContractResource, ExprBranch,
+    InputSlotKind, ResourceContract, SlotBranch, WorkflowError, WorkflowParts, node,
 };
 
 fn valid_parts() -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([CompiledInputSlot {
+            slot: SlotIdx::new(0),
+            kind: InputSlotKind::Any,
+            constraint: CompiledInputConstraint::required(),
+        }]),
         name: Box::<str>::from("test"),
         digest: WorkflowDigest::from_bytes([0x00; 32]),
         nodes: vec![node(
@@ -52,6 +57,7 @@ fn validate_compiled_workflow_accepts_valid_parts() {
 fn validate_compiled_workflow_rejects_empty_nodes() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: Box::new([]),
         ..valid_parts()
     };
@@ -63,6 +69,7 @@ fn validate_compiled_workflow_rejects_empty_nodes() {
 fn validate_compiled_workflow_rejects_entry_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         entry: StepIdx::new(99),
         ..valid_parts()
     };
@@ -79,6 +86,7 @@ fn validate_compiled_workflow_rejects_entry_out_of_bounds() {
 fn validate_compiled_workflow_rejects_node_id_mismatch() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(StepIdx::new(5), CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
         ..valid_parts()
     };
@@ -96,6 +104,7 @@ fn validate_compiled_workflow_rejects_node_id_mismatch() {
 fn validate_compiled_workflow_rejects_unreachable_node() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![
             node(
                 StepIdx::new(0),
@@ -234,6 +243,7 @@ fn validate_resource_contract_rejects_max_expr_stack_over_limit() {
 fn validate_node_bounds_accepts_valid_linear_chain() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![
             node(
                 StepIdx::new(0),
@@ -261,6 +271,7 @@ fn validate_node_bounds_accepts_valid_linear_chain() {
 fn validate_node_bounds_rejects_node_id_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(StepIdx::new(5), CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
         ..valid_parts()
     };
@@ -277,6 +288,7 @@ fn validate_node_bounds_rejects_node_id_out_of_bounds() {
 fn validate_node_bounds_rejects_next_step_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::Nop,
@@ -310,6 +322,7 @@ fn validate_node_bounds_accepts_single_node_with_no_next() {
 fn validate_transition_target_accepts_valid_linear_chain() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![
             node(
                 StepIdx::new(0),
@@ -337,6 +350,7 @@ fn validate_transition_target_accepts_valid_linear_chain() {
 fn validate_transition_target_rejects_jump_to_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::Jump {
@@ -361,6 +375,7 @@ fn validate_transition_target_rejects_jump_to_out_of_bounds() {
 fn validate_transition_target_rejects_choose_branch_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::Choose {
@@ -390,6 +405,7 @@ fn validate_transition_target_rejects_choose_branch_out_of_bounds() {
 fn validate_transition_target_rejects_choose_otherwise_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::Choose {
@@ -415,6 +431,7 @@ fn validate_transition_target_rejects_choose_otherwise_out_of_bounds() {
 fn validate_transition_target_rejects_choose_slot_branch_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::ChooseSlot {
@@ -444,6 +461,7 @@ fn validate_transition_target_rejects_choose_slot_branch_out_of_bounds() {
 fn validate_transition_target_rejects_choose_slot_otherwise_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::ChooseSlot {
@@ -469,6 +487,7 @@ fn validate_transition_target_rejects_choose_slot_otherwise_out_of_bounds() {
 fn validate_transition_target_rejects_for_each_start_body_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::ForEachStart {
@@ -497,6 +516,7 @@ fn validate_transition_target_rejects_for_each_start_body_out_of_bounds() {
 fn validate_transition_target_rejects_for_each_start_done_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::ForEachStart {
@@ -525,6 +545,7 @@ fn validate_transition_target_rejects_for_each_start_done_out_of_bounds() {
 fn validate_transition_target_rejects_together_start_branch_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::TogetherStart {
@@ -550,6 +571,7 @@ fn validate_transition_target_rejects_together_start_branch_out_of_bounds() {
 fn validate_transition_target_rejects_together_start_join_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::TogetherStart {
@@ -575,6 +597,7 @@ fn validate_transition_target_rejects_together_start_join_out_of_bounds() {
 fn validate_transition_target_rejects_together_branch_entry_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::TogetherBranch {
@@ -602,6 +625,7 @@ fn validate_transition_target_rejects_together_branch_entry_out_of_bounds() {
 fn validate_transition_target_rejects_together_branch_join_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::TogetherBranch {
@@ -629,6 +653,7 @@ fn validate_transition_target_rejects_together_branch_join_out_of_bounds() {
 fn validate_transition_target_rejects_repeat_check_done_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::RepeatCheck {
@@ -654,6 +679,7 @@ fn validate_transition_target_rejects_repeat_check_done_out_of_bounds() {
 fn validate_transition_target_rejects_retry_check_body_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::RetryCheck {
@@ -680,6 +706,7 @@ fn validate_transition_target_rejects_retry_check_body_out_of_bounds() {
 fn validate_transition_target_rejects_error_handler_body_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::ErrorHandler {
@@ -706,6 +733,7 @@ fn validate_transition_target_rejects_error_handler_body_out_of_bounds() {
 fn validate_transition_target_rejects_error_handler_handler_out_of_bounds() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::ErrorHandler {
@@ -734,6 +762,7 @@ fn validate_transition_target_rejects_error_handler_handler_out_of_bounds() {
 fn validate_transition_target_accepts_valid_jump() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![
             node(
                 StepIdx::new(0),
@@ -763,6 +792,7 @@ fn validate_transition_target_accepts_valid_jump() {
 fn validate_transition_target_accepts_valid_for_each_start() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![
             node(
                 StepIdx::new(0),
@@ -797,6 +827,7 @@ fn validate_transition_target_accepts_valid_for_each_start() {
 fn validate_transition_target_accepts_valid_together_start() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![
             node(
                 StepIdx::new(0),
@@ -842,6 +873,7 @@ fn all_validators_accept_minimal_valid_parts() {
 fn all_validators_accept_three_node_linear_chain() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![
             node(
                 StepIdx::new(0),

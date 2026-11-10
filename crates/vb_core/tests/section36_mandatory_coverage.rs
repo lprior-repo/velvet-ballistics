@@ -498,6 +498,7 @@ fn default_contract() -> ResourceContract {
 fn valid_parts() -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("test"),
         digest: WorkflowDigest::from_bytes([1; 32]),
@@ -594,6 +595,7 @@ fn try_from_parts_rejects_unreachable_node() {
     // Create a 3-node workflow where node 2 is unreachable
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("unreachable"),
         digest: WorkflowDigest::from_bytes([2; 32]),
@@ -704,6 +706,7 @@ fn try_from_parts_rejects_resource_contract_exceeded_steps() {
 fn try_from_parts_rejects_empty_branch_table_without_otherwise() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("empty_branch"),
         digest: WorkflowDigest::from_bytes([3; 32]),
@@ -806,7 +809,12 @@ fn failed_step_does_not_become_succeeded_without_error_handler() -> Result<(), S
     // Set up a workflow that fails (Copy node without output slot)
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: SlotIdx::new(0),
+            kind: vb_core::workflow::InputSlotKind::I64,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
         name: Box::<str>::from("copy_fail"),
         digest: WorkflowDigest::from_bytes([0xEE; 32]),
         nodes: vec![
@@ -899,9 +907,10 @@ fn budget_exhaustion_does_not_advance_pc() -> Result<(), String> {
 }
 
 #[test]
-fn missing_output_slot_returns_typed_error() -> Result<(), String> {
+fn missing_set_const_output_slot_returns_typed_constructor_error() {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("missing_output"),
         digest: WorkflowDigest::from_bytes([0xFF; 32]),
@@ -933,24 +942,14 @@ fn missing_output_slot_returns_typed_error() -> Result<(), String> {
         resource_contract: default_contract(),
         step_names: Box::new([]),
     };
-    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
-    let mut frame = RunFrame::new(
-        RunId::new(1),
-        workflow.entry(),
-        workflow.node_count(),
-        workflow.slot_count(),
-    )
-    .map_err(|e| e.to_string())?;
-    let mut store = ValueStore::new();
-
-    let result = step_once(&workflow, &mut frame, &mut store);
     assert_eq!(
-        result,
-        Err(CoreError::MissingOutputSlot {
-            step: StepIdx::new(0)
-        })
+        CompiledWorkflow::try_from_parts(parts).map(|_| ()),
+        Err(WorkflowError::SlotFlow(vb_core::workflow::SlotFlowError {
+            step: StepIdx::new(0),
+            slot: None,
+            reason: vb_core::workflow::SlotFlowFailure::InvalidReference,
+        }))
     );
-    Ok(())
 }
 
 #[test]
@@ -1095,18 +1094,11 @@ fn eval_expr_value(
     let expression = ExprProgram::try_from_ops(ops)?;
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("section36_expr"),
         digest: WorkflowDigest::from_bytes([0x36; 32]),
-        nodes: vec![node(
-            StepIdx::new(0),
-            CompiledNodeKind::Finish {
-                result: SlotIdx::new(0),
-            },
-            Some(SlotIdx::new(0)),
-            None,
-        )]
-        .into_boxed_slice(),
+        nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
         expressions: vec![expression].into_boxed_slice(),
         accessors: Box::new([]),
         constants,
@@ -1142,6 +1134,7 @@ fn eval_expr_value(
 fn parts_with_contract(contract: ResourceContract) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("validate_test"),
         digest: WorkflowDigest::from_bytes([0xAA; 32]),
@@ -1776,6 +1769,7 @@ fn budget_parts_with_steps(step_count: usize, contract: ResourceContract) -> Wor
     }
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("budget_test"),
         digest: WorkflowDigest::from_bytes([0xBB; 32]),
@@ -2184,6 +2178,7 @@ fn branch_route_rejects_empty_branches_without_otherwise() {
     // Single-node workflow with empty branches and no otherwise
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("empty_branch"),
         digest: WorkflowDigest::from_bytes([3; 32]),
@@ -2233,14 +2228,7 @@ fn branch_route_accepts_empty_branches_with_otherwise() {
             None,
             None,
         ),
-        node(
-            StepIdx::new(1),
-            CompiledNodeKind::Finish {
-                result: SlotIdx::new(0),
-            },
-            None,
-            None,
-        ),
+        node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
     ]
     .into_boxed_slice();
     parts.slot_count = 1;
@@ -2363,16 +2351,6 @@ fn accessor_validation_accepts_valid_accessor_reference() {
     .unwrap();
     parts.expressions = vec![expr].into_boxed_slice();
     parts.accessors = vec![accessor].into_boxed_slice();
-    // Change node to EvalExpr
-    parts.nodes = vec![node(
-        StepIdx::new(0),
-        CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-        Some(SlotIdx::new(0)),
-        None,
-    )]
-    .into_boxed_slice();
     let result = CompiledWorkflow::try_from_parts(parts);
     assert!(
         result.is_ok(),

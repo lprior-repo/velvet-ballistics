@@ -258,6 +258,7 @@ fn do_with_retry_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let finish = vb_core::workflow::node(vb_core::ids::StepIdx::new(3), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("do_with_retry"),
         digest: WorkflowDigest::from_bytes([6; 32]),
         nodes: Box::from([set_policy, action, retry_check, finish]),
@@ -269,7 +270,11 @@ fn do_with_retry_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: vb_core::ids::StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }

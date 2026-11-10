@@ -54,6 +54,7 @@ fn policy_limit_budget(policy: BoundednessPolicy) -> WholeWorkflowBudget {
 fn two_step_workflow() -> Result<CompiledWorkflow, WorkflowError> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("vb-qi37-2-5-two-step"),
         digest: WorkflowDigest::from_bytes([37; 32]),
@@ -89,14 +90,19 @@ fn two_step_workflow() -> Result<CompiledWorkflow, WorkflowError> {
 fn workflow_parts(name: &'static str, nodes: Box<[CompiledNode]>) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: SlotIdx::new(0),
+            kind: vb_core::workflow::InputSlotKind::List,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
         name: Box::<str>::from(name),
         digest: WorkflowDigest::from_bytes([45; 32]),
         nodes,
         expressions: Box::from([]),
         accessors: Box::from([]),
         constants: Box::from([]),
-        slot_count: 1,
+        slot_count: 3,
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
@@ -124,7 +130,7 @@ fn finite_nested_nodes(collect_limit: u32) -> Box<[CompiledNode]> {
                 branches: Box::from([StepIdx::new(2), StepIdx::new(4)]),
                 join: StepIdx::new(5),
             },
-            None,
+            Some(SlotIdx::new(1)),
             None,
         ),
         node(
@@ -134,7 +140,7 @@ fn finite_nested_nodes(collect_limit: u32) -> Box<[CompiledNode]> {
                 body: StepIdx::new(3),
                 done: StepIdx::new(5),
             },
-            None,
+            Some(SlotIdx::new(2)),
             None,
         ),
         node(
@@ -154,7 +160,7 @@ fn finite_nested_nodes(collect_limit: u32) -> Box<[CompiledNode]> {
             CompiledNodeKind::CollectFinish {
                 collector_slot: SlotIdx::new(0),
             },
-            None,
+            Some(SlotIdx::new(0)),
             Some(StepIdx::new(6)),
         ),
         node(

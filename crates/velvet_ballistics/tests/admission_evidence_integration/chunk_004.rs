@@ -74,6 +74,7 @@ fn budget_validation_rejects_oversized_workflow() {
     tight_contract.max_steps = 1;
     let oversized_parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("oversized"),
         digest: WorkflowDigest::from_bytes([5u8; 32]),
         input_slots: Box::from([]),
@@ -101,6 +102,7 @@ fn budget_validation_rejects_oversized_workflow() {
     slot_contract.max_slots = 0;
     let slot_parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("slot_exceeded"),
         digest: WorkflowDigest::from_bytes([6u8; 32]),
         input_slots: Box::from([]),

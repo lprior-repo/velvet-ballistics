@@ -101,6 +101,7 @@ mod cycle_detection_and_backward_edges {
         ]);
         let p = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             expressions: vec![ExprProgram {
                 ops: Box::new([ExprOp::LoadConst(ConstIdx::new(0))]),
                 max_stack: 1,

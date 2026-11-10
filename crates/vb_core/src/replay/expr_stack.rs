@@ -13,6 +13,7 @@ pub struct ReplayExprStack {
 }
 
 impl ReplayExprStack {
+    #[cfg(test)]
     pub(crate) fn new(capacity: u8) -> Result<Self, ReplayError> {
         if usize::from(capacity) <= crate::limits::MAX_EXPRESSION_STACK_USIZE {
             Ok(Self {

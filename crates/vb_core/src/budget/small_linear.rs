@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! Small-linear fast path for budget computation over one- and two-node workflows.
+//! Budget computation over one- and two-node simple control-flow graphs.
 
 use crate::ids::StepIdx;
 use crate::workflow::{CompiledNodeKind, ResourceContract};
@@ -104,8 +104,22 @@ fn small_linear_metrics(
     let first_idx = entry.as_usize();
     let first = node_at_position(nodes, first_idx, entry)?;
     let first_metrics = small_linear_node_metrics(first);
-    match first.routing.next.step() {
-        Some(next) if next.as_usize() != first_idx => {
+    // In the checked two-node domain every distinct target is the other node.
+    // Its outgoing edges cannot make a third node reachable.
+    let target = first
+        .routing
+        .next
+        .step()
+        .filter(|step| step.as_usize() != first_idx)
+        .or_else(|| {
+            first
+                .routing
+                .error
+                .handler()
+                .filter(|step| step.as_usize() != first_idx)
+        });
+    match target {
+        Some(next) => {
             let second = node_at_position(nodes, next.as_usize(), next)?;
             Ok(first_metrics.add(small_linear_node_metrics(second)))
         }
@@ -114,7 +128,7 @@ fn small_linear_metrics(
 }
 
 fn small_linear_node_metrics(node: &crate::workflow::CompiledNode) -> SmallLinearMetrics {
-    match node.kind {
+    let mut metrics = match node.kind {
         CompiledNodeKind::Do { .. } => SmallLinearMetrics {
             steps: 1,
             actions: 1,
@@ -150,7 +164,11 @@ fn small_linear_node_metrics(node: &crate::workflow::CompiledNode) -> SmallLinea
             gates: 0,
             signals: 0,
         },
-    }
+    };
+    metrics.timers = metrics.timers.saturating_add(u32::from(
+        node.retry.is_some_and(|policy| policy.delay_ms > 0),
+    ));
+    metrics
 }
 
 impl SmallLinearMetrics {
