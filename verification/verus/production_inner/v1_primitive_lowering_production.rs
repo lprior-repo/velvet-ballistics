@@ -73,7 +73,7 @@
 //   - lower_together      <- part_06.rs:93-127
 //                             (2 CompiledNode; record_slot(accumulator);
 //                              Err PrimitiveLoweringLimitExceeded if branches.len() > u16::MAX)
-//   - lower_collect       <- bounded_collect.rs:243-260
+//   - lower_collect       <- bounded_collect.rs:257-277
 //                             (3 + body_len CompiledNode; record_slot(source),
 //                              allocate collector + finish slots, one slot per
 //                              body step; Err StepFieldShape if body is empty,
@@ -432,17 +432,17 @@ pub fn lower_together_projection(
 // two allocate_slot calls plus one slot per body step
 // ---------------------------------------------------------------------------
 //
-// Production source: bounded_collect.rs:243-260 (`lower_bounded_collect`,
+// Production source: bounded_collect.rs:257-277 (`lower_bounded_collect`,
 // split out of `part_03.rs`; the pre-split `lower_canonical_collect`
 // at `part_03.rs:195-256` no longer exists). The body validates the
-// variable name and capture (bounded_collect.rs:52-62, 64-76) and the
-// body (bounded_collect.rs:78-102), then builds the plan
-// (bounded_collect.rs:156-177): resolve the source, record its slot,
-// compute edges via `plan_compute_edges` (bounded_collect.rs:116-126),
-// validate bounds (bounded_collect.rs:128-144), allocate the
-// collector and finish slots (bounded_collect.rs:146-154). It then
+// variable name and capture (bounded_collect.rs:53-63, 65-77) and the
+// body (bounded_collect.rs:79-103), then builds the plan
+// (bounded_collect.rs:157-179): resolve the source, record its slot,
+// compute edges via `plan_compute_edges` (bounded_collect.rs:117-127),
+// validate bounds (bounded_collect.rs:129-145), allocate the
+// collector and finish slots (bounded_collect.rs:147-155). It then
 // emits `CollectStart`, the body steps, `CollectNext`, and
-// `CollectFinish` (bounded_collect.rs:179-241) and returns the finish
+// `CollectFinish` (bounded_collect.rs:181-244) and returns the finish
 // slot. Body steps are lowered by `emit_scoped_flat_body` through
 // `BranchBindings::lower` (canonical_branch_body.rs:93-127), which
 // allocates exactly one slot per body step and accepts Set or Do
@@ -453,10 +453,10 @@ pub fn lower_together_projection(
 // production order: empty body, then the `plan_compute_edges` checks
 // in order (body, advance_n, advance, done_n, done), then the slot
 // budget. Variable-name and capture validation
-// (bounded_collect.rs:52-76), source resolution
-// (bounded_collect.rs:39-50), bounds validation (pages/items,
-// bounded_collect.rs:128-144), and body-emission errors
-// (bounded_collect.rs:194-217) are not scalar-determined and stay
+// (bounded_collect.rs:53-77), source resolution
+// (bounded_collect.rs:40-51), bounds validation (pages/items,
+// bounded_collect.rs:129-145), and body-emission errors
+// (bounded_collect.rs:196-220) are not scalar-determined and stay
 // outside the projection: `ok == true` here means the
 // edge/slot/body-emptiness sub-decision succeeds, not that the full
 // production fn returns `Ok`.

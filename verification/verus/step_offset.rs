@@ -286,7 +286,7 @@ pub open spec fn spec_offset_ok(id: production::StepIdx, offset: int) -> bool {
 /// `u16::MAX - offset` headroom.
 ///
 /// Production call sites (collect offsets 1, 2, 3) live at:
-///   - crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:120-124
+///   - crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:121-125
 ///   - crates/vb_compile/src/mod_compile_lowering/part_10.rs:182-183 (reduce offsets 1, 2)
 pub proof fn lemma_collect_offsets(id: production::StepIdx)
     requires
