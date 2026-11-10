@@ -20,7 +20,6 @@ crates/vb_core/src/replay/tests.rs|lewis|vb-srclen|split-after-ledger-landing|te
 crates/vb_core/src/value_store/tests.rs|lewis|vb-srclen|split-after-ledger-landing|test_in_src 2250 lines (limit 1500) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_core/src/value_store/tests_and_verification.rs|lewis|vb-srclen|split-after-ledger-landing|test_in_src 2134 lines (limit 1500) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_core/src/workflow/mod.rs|lewis|vb-srclen|split-after-ledger-landing|production 2829 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
-crates/vb_core/src/workflow/tests.rs|lewis|vb-srclen|split-after-ledger-landing|test_in_src 5176 lines (limit 1500) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_ipc/src/verification/kani/kani_flag_validation.rs|lewis|vb-srclen|split-after-ledger-landing|kani 1005 lines (limit 800) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_ipc/src/server/impl_tests.rs|lewis|vb-srclen|split-after-ledger-landing|test_in_src 2249 lines (limit 1500) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_ipc/src/tests.rs|lewis|vb-srclen|split-after-ledger-landing|test_in_src 1915 lines (limit 1500) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
