@@ -4,12 +4,12 @@
 //! correctly rejects malformed versions, and correctly accepts valid semver strings.
 //!
 //! GOD RULE: Implements kani::Arbitrary for ContractFileMeta — no hardcoded inputs.
-//! Binds to: xtask/src/contracts.rs::parse_schema_version
+//! Binds to: xtask/src/contracts/version.rs::parse_schema_version
 
 use std::path::PathBuf;
 
 // ============================================================
-// Domain model — mirrors xtask/src/contracts.rs
+// Domain model — mirrors xtask/src/contracts/
 // ============================================================
 
 /// ContractKind mirrors the 6 valid enum values.
@@ -79,7 +79,7 @@ pub struct GateEvidence {
 
 /// Parses a schema_version string.
 ///
-/// Binds to: xtask/src/contracts.rs::parse_schema_version
+/// Binds to: xtask/src/contracts/version.rs::parse_schema_version
 ///
 /// # Requirements (INV-001)
 /// - Input must match `^\d+\.\d+\.\d+$`
@@ -124,7 +124,7 @@ pub fn parse_schema_version(raw: &str) -> std::result::Result<String, Validation
 
 /// Parses a contract_kind string.
 ///
-/// Binds to: xtask/src/contracts.rs::parse_contract_kind
+/// Binds to: xtask/src/contracts/model.rs::ContractKind::parse
 #[verifier::external]
 pub fn parse_contract_kind(raw: &str) -> std::result::Result<ContractKind, ValidationError> {
     match raw {
@@ -142,7 +142,7 @@ pub fn parse_contract_kind(raw: &str) -> std::result::Result<ContractKind, Valid
 
 /// Parses cue vet exit code.
 ///
-/// Binds to: xtask/src/contracts.rs::parse_vet_exit_code
+/// Binds to: xtask/src/contracts/version.rs::parse_vet_exit_code
 #[verifier::external]
 pub fn parse_vet_exit_code(exit_code: i32) -> std::result::Result<(), ValidationError> {
     if exit_code == 0 {
@@ -156,7 +156,7 @@ pub fn parse_vet_exit_code(exit_code: i32) -> std::result::Result<(), Validation
 
 /// Compares two semver strings.
 ///
-/// Binds to: xtask/src/contracts.rs::compare_semver
+/// Binds to: xtask/src/contracts/version.rs::compare_semver
 /// Returns -1 if old > new, 0 if equal, 1 if new > old
 #[verifier::external]
 pub fn compare_semver(old: &str, new: &str) -> i32 {
