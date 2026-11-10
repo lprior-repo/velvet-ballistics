@@ -175,7 +175,7 @@ obligations:
     required:
       tests: [step_state_invalid_transition_error]
     commands:
-      - cargo nextest run -p vb_core step_state_invalid
+      - cargo nextest run -p vb_core invalid_transition_rejected_in_run_frame_mark
 
   # ============================================================
   # STEP BUDGET (Section 15, 45)
@@ -369,7 +369,7 @@ obligations:
     commands:
       - cargo kani --harness kani_ipc_header_rejects_oversize
       - cargo fuzz run ipc_frame
-      - cargo nextest run -p vb_ipc ipc_decode
+      - cargo nextest run -p vb_ipc decoder_rejects
 
   - id: VB-IPC-DECODE-002
     section: [18, 21, 50]
@@ -400,7 +400,7 @@ obligations:
       tests: [envelope_header_unified]
     commands:
       - cargo fuzz run ipc_frame
-      - cargo nextest run -p vb_ipc ipc_format
+      - cargo nextest run -p vb_ipc decode_frame_roundtrip
     note: "Spec contradiction DRIFT-IPC-FORMAT - Section 18 vs Section 21"
 
   # ============================================================
@@ -679,7 +679,7 @@ obligations:
       tests: [fjall_fsync_boundary]
     commands:
       - cargo vet
-      - cargo nextest run -p vb_storage fjall_sync
+      - cargo nextest run -p vb_storage fjall_fsync_boundary
     note: "Externally assumed - Fjall fsync correctness is a trusted external dependency"
 
   # ============================================================
@@ -698,7 +698,7 @@ obligations:
       differential_tests: [bytecode_vs_ast]
       fuzz: [expr_bytecode]
     commands:
-      - cargo nextest run -p vb_expr bytecode_ast_equiv
+      - cargo nextest run -p vb_expr bytecode_vs_ast
       - cargo fuzz run expr_bytecode
 
   - id: VB-EXPR-002
