@@ -31,7 +31,7 @@
 //   - `DigestPair` / ActionAbiDigest..   <- crates/vb_storage/src/recovery/types.rs:346-526
 //   - `DigestCheck`                      <- crates/vb_storage/src/recovery/types.rs:1635-1678
 //   - Decision fns                       <- crates/vb_storage/src/recovery/recover.rs:32-187
-//                                            + crates/vb_storage/src/recovery/hydrate.rs:218-238
+//                                            + crates/vb_storage/src/recovery/hydrate/mod.rs:86-108
 //                                            + crates/vb_runtime/src/recovery/product.rs:36-41
 //                                            + crates/vb_runtime/src/recovery.rs:159-161
 //
@@ -53,7 +53,7 @@
 //   - `DigestPair` / ActionAbiDigest..   <- crates/vb_storage/src/recovery/types.rs:346-526
 //   - `DigestCheck`                      <- crates/vb_storage/src/recovery/types.rs:1635-1678
 //   - Decision fns                       <- crates/vb_storage/src/recovery/recover.rs:32-187
-//                                            + crates/vb_storage/src/recovery/hydrate.rs:218-238
+//                                            + crates/vb_storage/src/recovery/hydrate/mod.rs:86-108
 //                                            + crates/vb_runtime/src/recovery/product.rs:36-41
 //                                            + crates/vb_runtime/src/recovery.rs:159-161
 // Regenerate this file whenever production changes. Any rename of
