@@ -1123,7 +1123,7 @@ verus_registry:
     production: crates/vb_compile/src/mod_compile_lowering/part_04.rs
 
   - id: PO-VERUS-028
-    description: "v1 primitive source lowering: lower_set, lower_do, lower_choose, lower_for_each, lower_together, lower_collect, lower_reduce, lower_repeat, lower_wait, lower_ask, lower_finish spec/production parity (PRE-007, POST-003..005, POST-006-VERUS..012-VERUS, INV-001, INV-003..005). lower_collect is bound to lower_bounded_collect at bounded_collect.rs:243-260, not part_06.rs."
+    description: "v1 primitive source lowering: lower_set, lower_do, lower_choose, lower_for_each, lower_together, lower_collect, lower_reduce, lower_repeat, lower_wait, lower_ask, lower_finish spec/production parity (PRE-007, POST-003..005, POST-006-VERUS..012-VERUS, INV-001, INV-003..005). lower_collect is bound to lower_bounded_collect at bounded_collect.rs:257-277, not part_06.rs."
     verus: verification/verus/v1_primitive_lowering.rs
     production: crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs
 
