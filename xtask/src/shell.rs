@@ -16,6 +16,7 @@ pub(crate) fn render_top_level_help() -> anyhow::Result<()> {
     write_stdout(format_args!("Legacy commands:"))?;
     write_stdout(format_args!("  ui-snapshot"))?;
     write_stdout(format_args!("  ui-tokens"))?;
+    write_stdout(format_args!("  replay-lab"))?;
     write_stdout(format_args!("  ui-overlap-check"))?;
     write_stdout(format_args!("  ai-fast"))?;
     write_stdout(format_args!("  ai-deep"))?;
