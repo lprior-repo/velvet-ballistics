@@ -2,12 +2,12 @@
  *
  * Frame reconstruction from RecoveryFrameSeed, matching crates/vb_runtime/src/recovery.rs.
  *
- * Hydration pipeline (crates/vb_runtime/src/recovery/frame.rs:29-47):
- *   1. unsupported flags classified by classify_full_recovery_resume (crates/vb_runtime/src/recovery/full.rs:110-121), enforced by the gate at full.rs:223-234
- *   2. empty_recovered_frame (crates/vb_runtime/src/recovery/frame.rs:129-137)
- *   3. apply_recovered_steps (crates/vb_runtime/src/recovery/frame.rs:139-143)  -- two-phase for Waiting/Asking in apply_recovered_step (frame.rs:162-176)
- *   4. apply_recovered_slots (crates/vb_runtime/src/recovery/frame.rs:145-151)
- *   5. apply_recovered_pc (crates/vb_runtime/src/recovery/frame.rs:153-160)
+ * Hydration pipeline (crates/vb_runtime/src/recovery/frame.rs:27-45):
+ *   1. unsupported flags classified by classify_full_recovery_resume (crates/vb_runtime/src/recovery/full.rs:121-131), enforced by the gate at full.rs:229-241
+ *   2. empty_recovered_frame (crates/vb_runtime/src/recovery/frame.rs:127-135)
+ *   3. apply_recovered_steps (crates/vb_runtime/src/recovery/frame.rs:137-141)  -- two-phase for Waiting/Asking in apply_recovered_step (frame.rs:160-174)
+ *   4. apply_recovered_slots (crates/vb_runtime/src/recovery/frame.rs:143-149)
+ *   5. apply_recovered_pc (crates/vb_runtime/src/recovery/frame.rs:151-158)
  *
  * Audit fix (May 2026):
  *   - Increased bounds: MaxStepCount=3, MaxSlotCount=2, MaxPendingActionCount=2
@@ -110,7 +110,7 @@ DuplicateFreeSlots ==
     \A i, j \in DOMAIN seed.slots :
         i # j => seed.slots[i].slot # seed.slots[j].slot
 
-(* ALL unsupported flags must reject hydration (contract; crates/vb_runtime/src/recovery/full.rs:110-121, gate at full.rs:223-234) *)
+(* ALL unsupported flags must reject hydration (contract; crates/vb_runtime/src/recovery/full.rs:121-131, gate at full.rs:229-241) *)
 UnsupportedStateRejected ==
     hydration \in {"Ok", "Err"} =>
         ((seed.unsupported.slot_values = TRUE
@@ -123,7 +123,7 @@ UnsupportedStateRejected ==
 ActionPayloadsRejected ==
     seed.unsupported.action_payloads = TRUE => hydration # "Ok"
 
-(* PC must be within bounds when hydration succeeds (crates/vb_runtime/src/recovery/frame.rs:153-160) *)
+(* PC must be within bounds when hydration succeeds (crates/vb_runtime/src/recovery/frame.rs:151-158) *)
 PcValidAfterHydration ==
     hydration = "Ok" => pc < seed.step_count
 
@@ -131,11 +131,11 @@ PcValidAfterHydration ==
 PcOutOfBoundsMeansErr ==
     pc >= seed.step_count => hydration = "Err"
 
-(* PC must point to a resumable step (crates/vb_runtime/src/recovery/full.rs:110-121) *)
+(* PC must point to a resumable step (crates/vb_runtime/src/recovery/full.rs:121-131) *)
 PcResumable ==
     hydration = "Ok" => frame.step_states[pc] \in ResumableStates
 
-(* All recovered step states must be from the valid recovery set (crates/vb_runtime/src/recovery/frame.rs:162-176) *)
+(* All recovered step states must be from the valid recovery set (crates/vb_runtime/src/recovery/frame.rs:160-174) *)
 StepStateValid ==
     \A entry \in StepEntrySet : entry.state \in RecoveredStepStates
 
@@ -212,7 +212,7 @@ Init ==
     /\ pc = new_pc
     /\ step_apply_method = [i \in 0..(new_step_count - 1) |-> "None"]
 
-(* FullHydration: atomic pipeline matching crates/vb_runtime/src/recovery/frame.rs:29-47 *)
+(* FullHydration: atomic pipeline matching crates/vb_runtime/src/recovery/frame.rs:27-45 *)
 FullHydration ==
     /\ hydration = "Pending"
     /\ (LET rejected ==
