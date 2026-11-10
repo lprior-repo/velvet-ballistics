@@ -26,7 +26,7 @@
 //                                          (verification_proof_core at
 //                                          crates/vb_storage/src/admission/proof.rs:103-118;
 //                                          enforced by verify_accepted_artifact at
-//                                          crates/vb_storage/src/admission/verification.rs:56-86,
+//                                          crates/vb_storage/src/admission/verification.rs:60-90,
 //                                          which rejects any deviation with
 //                                          ArtifactEvidenceInvalid). The
 //                                          legacy 15-gate shape is the

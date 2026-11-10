@@ -16,11 +16,11 @@
 //   - `vb_storage::admission::verification_proof_core`
 //                                                 (crates/vb_storage/src/admission/proof.rs:103-118)
 //   - `vb_storage::admission::prepare_with_profile` proof construction
-//                                                 (crates/vb_storage/src/admission/verification.rs:35-38)
+//                                                 (crates/vb_storage/src/admission/verification.rs:39-42)
 //   - `vb_storage::admission::verify_accepted_artifact` enforcement
-//                                                 (crates/vb_storage/src/admission/verification.rs:56-86)
+//                                                 (crates/vb_storage/src/admission/verification.rs:60-90)
 //   - `vb_storage::admission::verify_expected_bindings`
-//                                                 (crates/vb_storage/src/admission/verification.rs:141-156)
+//                                                 (crates/vb_storage/src/admission/verification.rs:145-160)
 //   - `vb_runtime::admission::verify_stored_artifact` error mapping
 //                                                 (crates/vb_runtime/src/admission/registered_verification.rs:5-28)
 //   - `vb_runtime::admission::ArtifactEnvelopeError`
@@ -99,13 +99,13 @@ pub const PREPARED_GATE_COUNT: u8 = 0;
 // durable false, and every proof flag false (supplied counts and
 // durability are intentionally ignored by `VerificationProof::new` at
 // admission/proof.rs:125-141), and `prepare_with_profile` at
-// `crates/vb_storage/src/admission/verification.rs:35-38` then sets
+// `crates/vb_storage/src/admission/verification.rs:39-42` then sets
 // exactly `bounded_claimed` and `idempotency_verified_claimed` true
 // and leaves the idempotency attestation empty.
 // `submit_artifact_with_contracts` (admission.rs:92-112) performs no
 // gate-count or proof-flag validation of its own; the shape is
 // enforced by `verify_accepted_artifact` at
-// `crates/vb_storage/src/admission/verification.rs:56-86`, which
+// `crates/vb_storage/src/admission/verification.rs:60-90`, which
 // recomputes the expected artifact and rejects any deviation with
 // `ArtifactEvidenceInvalid` (see the gate-count and proof-flag tests
 // at `crates/vb_runtime/src/admission/artifact_envelope_tests.rs:205-318`).

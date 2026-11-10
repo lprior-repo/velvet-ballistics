@@ -19,10 +19,10 @@
 // (crates/vb_storage/src/admission/proof.rs:103-118), which forces
 // gate_count 0, durable false, and all flags false, and by
 // `prepare_with_profile`
-// (crates/vb_storage/src/admission/verification.rs:26-52), which sets
+// (crates/vb_storage/src/admission/verification.rs:30-56), which sets
 // only bounded_claimed and idempotency_verified_claimed true.
 // `verify_accepted_artifact`
-// (crates/vb_storage/src/admission/verification.rs:56-86) enforces the
+// (crates/vb_storage/src/admission/verification.rs:60-90) enforces the
 // prepared shape by recompute-and-compare; any deviation is returned
 // to callers as ArtifactEvidenceInvalid
 // (crates/vb_runtime/src/admission/registered_verification.rs:5-28).
@@ -76,7 +76,7 @@ pub fn is_strict_accepted_artifact_tag(tag: PayloadTag) -> bool {
 // crates/vb_storage/src/admission/proof.rs:103-118); the bool is the
 // prepared profile's claimed flags (bounded_claimed and
 // idempotency_verified_claimed, set by `prepare_with_profile` at
-// crates/vb_storage/src/admission/verification.rs:26-52). The legacy
+// crates/vb_storage/src/admission/verification.rs:30-56). The legacy
 // 15-gate shape exists only in the AlwaysPresentArtifactStore fixture
 // (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-91)
 // and is rejected by real validation.
