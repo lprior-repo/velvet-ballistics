@@ -5,6 +5,8 @@ include!("journal/chunk_001.rs");
 include!("journal/chunk_001b.rs");
 include!("journal/chunk_001c.rs");
 include!("journal/chunk_002.rs");
+include!("journal/chunk_002b.rs");
+include!("journal/chunk_002c.rs");
 include!("journal/chunk_003.rs");
 
 #[cfg(test)]
