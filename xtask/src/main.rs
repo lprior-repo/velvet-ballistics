@@ -11,6 +11,7 @@ mod benchmark_policy;
 mod cli;
 mod contracts;
 mod crash_lab;
+mod diff_test;
 mod evidence;
 mod forbidden_scan;
 mod gates;
@@ -82,6 +83,7 @@ fn run_legacy_cli(cli: Cli) -> anyhow::Result<()> {
             all_crash_points,
             &workspace_root,
         ),
+        Commands::DiffTest { suite } => diff_test::cmd_diff_test(&suite, &workspace_root),
         Commands::ForbiddenScan { crates, allowlist } => {
             forbidden_scan::cmd_forbidden_scan(crates.as_deref(), allowlist.as_deref())
         }

@@ -93,6 +93,11 @@ pub(crate) enum Commands {
         #[arg(long)]
         all_crash_points: bool,
     },
+    #[command(name = "diff-test")]
+    DiffTest {
+        #[arg(long)]
+        suite: String,
+    },
     #[command(name = "forbidden-scan")]
     ForbiddenScan {
         #[arg(long)]
