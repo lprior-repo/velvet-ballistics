@@ -11,8 +11,13 @@ pub enum StateCategory {
     Terminal,
 }
 
-impl StepState {
-    pub fn category(&self) -> StateCategory {
+pub trait StepStateCategory {
+    fn category(&self) -> StateCategory;
+    fn is_terminal(&self) -> bool;
+}
+
+impl StepStateCategory for StepState {
+    fn category(&self) -> StateCategory {
         match self {
             StepState::Pending => StateCategory::NonTerminal,
             StepState::Running => StateCategory::NonTerminal,
@@ -22,10 +27,12 @@ impl StepState {
             StepState::Failed => StateCategory::Terminal,
             StepState::Cancelled => StateCategory::Terminal,
             StepState::Skipped => StateCategory::Terminal,
+            // Unknown future variants stop the machine rather than drive on.
+            _ => StateCategory::Terminal,
         }
     }
 
-    pub fn is_terminal(&self) -> bool {
+    fn is_terminal(&self) -> bool {
         self.category() == StateCategory::Terminal
     }
 }
@@ -106,6 +113,7 @@ pub fn non_terminal_states() -> Vec<StepState> {
     ]
 }
 
+#[derive(Default)]
 pub struct StepStateMachine;
 
 impl StepStateMachine {
@@ -162,8 +170,17 @@ mod tests {
     fn test_terminal_states_immutable() {
         for &terminal in &terminal_states() {
             let next = next_states(terminal);
-            assert_eq!(next.len(), 1, "Terminal {:?} should only transition to itself", terminal);
-            assert_eq!(next[0], terminal, "Terminal {:?} should only transition to itself", terminal);
+            assert_eq!(
+                next.len(),
+                1,
+                "Terminal {:?} should only transition to itself",
+                terminal
+            );
+            assert_eq!(
+                next[0], terminal,
+                "Terminal {:?} should only transition to itself",
+                terminal
+            );
         }
     }
 
@@ -171,13 +188,16 @@ mod tests {
     fn test_invalid_transitions_rejected() {
         assert!(!is_valid_transition(StepState::Pending, StepState::Pending));
         assert!(!is_valid_transition(StepState::Running, StepState::Pending));
-        assert!(!is_valid_transition(StepState::Succeeded, StepState::Running));
+        assert!(!is_valid_transition(
+            StepState::Succeeded,
+            StepState::Running
+        ));
         assert!(!is_valid_transition(StepState::Failed, StepState::Running));
     }
 
     #[test]
     fn test_all_states_covered() {
-        let all_states = vec![
+        let all_states = [
             StepState::Pending,
             StepState::Running,
             StepState::Waiting,
