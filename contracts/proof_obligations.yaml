@@ -93,7 +93,7 @@ obligations:
       kani: kani_taint_lattice.rs
     commands:
       - verus verification/verus/taint_lattice.rs
-      - cargo kani --harness kani_taint_lattice
+      - cargo kani --package vb_core --harness kani_taint_lattice
 
   - id: VB-CORE-TAINT-005
     section: [47]
@@ -122,7 +122,7 @@ obligations:
       kani: kani_taint_propagation.rs
       tests: [taint_eval_expr_join, taint_build_object_join, taint_build_list_join]
     commands:
-      - cargo kani --harness kani_taint_propagation
+      - cargo kani --package vb_core --harness kani_taint_propagation
       - cargo nextest run -p vb_core taint_
     note: "Spec contradiction DRIFT-SECTION-68 - legacy sections claimed Always Clean"
 
@@ -144,11 +144,11 @@ obligations:
       - crates/vb_core/src/frame.rs
     required:
       verus: verification/verus/step_state_machine.rs
-      kani: kani_step_state.rs
+      kani: kani_step_state_transition.rs
       tests: [step_state_valid_transitions, step_state_invalid_transitions_rejected]
     commands:
       - verus verification/verus/step_state_machine.rs
-      - cargo kani --harness kani_step_state
+      - cargo kani --package vb_core --harness kani_step_state_transition
       - cargo nextest run -p vb_core step_state
 
   - id: VB-CORE-STATE-002
@@ -160,9 +160,9 @@ obligations:
     files:
       - crates/vb_core/src/frame.rs
     required:
-      kani: kani_step_state.rs
+      kani: kani_step_state_transition.rs
     commands:
-      - cargo kani --harness kani_step_state
+      - cargo kani --package vb_core --harness kani_step_state_transition
 
   - id: VB-CORE-STATE-003
     section: [45]
@@ -189,10 +189,10 @@ obligations:
     files:
       - crates/vb_core/src/engine.rs
     required:
-      kani: kani_step_budget.rs
+      kani: kani_step_budget_zero.rs
       tests: [step_budget_zero_no_transitions]
     commands:
-      - cargo kani --harness kani_step_budget_zero
+      - cargo kani --package vb_core --harness kani_step_budget_zero
 
   - id: VB-CORE-BUDGET-002
     section: [15, 45]
@@ -203,10 +203,10 @@ obligations:
     files:
       - crates/vb_core/src/engine.rs
     required:
-      kani: kani_step_budget.rs
+      kani: kani_step_budget_one.rs
       tests: [step_budget_one_single_transition]
     commands:
-      - cargo kani --harness kani_step_budget_one
+      - cargo kani --package vb_core --harness kani_step_budget_one
 
   - id: VB-CORE-BUDGET-003
     section: [15, 45]
@@ -221,7 +221,7 @@ obligations:
       kani: kani_step_budget.rs
     commands:
       - verus verification/verus/step_budget.rs
-      - cargo kani --harness kani_step_budget
+      - cargo kani --package vb_core --harness kani_step_budget
 
   # ============================================================
   # CHECKED ID INDEXING (Section 9, 15)
@@ -239,7 +239,7 @@ obligations:
       kani: kani_index_access.rs
       tests: [checked_index_validates_bounds]
     commands:
-      - cargo kani --harness kani_index_access
+      - cargo kani --package vb_core --harness kani_index_access
       - cargo nextest run -p vb_core checked_index
 
   - id: VB-CORE-IDX-002
@@ -348,7 +348,7 @@ obligations:
       kani: kani_resource_budget_bounded.rs
       property_tests: [whole_workflow_budget_within_policy]
     commands:
-      - cargo kani --harness kani_resource_budget_bounded
+      - cargo kani --package vb_core --harness kani_resource_budget_bounded
 
   # ============================================================
   # IPC DECODER (Section 18, 21, 50)
@@ -367,7 +367,7 @@ obligations:
       fuzz: [ipc_frame]
       tests: [bad_magic_rejected_before_allocation, oversized_payload_rejected]
     commands:
-      - cargo kani --harness kani_ipc_header_rejects_oversize
+      - cargo kani --package vb_ipc --harness kani_ipc_header_rejects_oversize
       - cargo fuzz run ipc_frame
       - cargo nextest run -p vb_ipc decoder_rejects
 
@@ -383,7 +383,7 @@ obligations:
       kani: kani_ipc_header.rs
       tests: [header_len_validation]
     commands:
-      - cargo kani --harness kani_ipc_header
+      - cargo kani --package vb_ipc --harness kani_ipc_header
       - cargo nextest run -p vb_ipc header
 
   - id: VB-IPC-DECODE-003
@@ -418,7 +418,7 @@ obligations:
       kani: kani_record_magic.rs
       tests: [magic_validated_before_alloc]
     commands:
-      - cargo kani --harness kani_record_magic
+      - cargo kani --package vb_storage --harness kani_record_magic
       - cargo nextest run -p vb_storage magic
 
   - id: VB-STORAGE-DECODE-002
@@ -432,7 +432,7 @@ obligations:
     required:
       kani: kani_record_schema.rs
     commands:
-      - cargo kani --harness kani_record_schema
+      - cargo kani --package vb_storage --harness kani_record_schema
 
   - id: VB-STORAGE-DECODE-003
     section: [18, 49]
@@ -445,7 +445,7 @@ obligations:
     required:
       kani: kani_record_kind.rs
     commands:
-      - cargo kani --harness kani_record_kind
+      - cargo kani --package vb_storage --harness kani_record_kind
 
   - id: VB-STORAGE-DECODE-004
     section: [18, 49]
@@ -459,7 +459,7 @@ obligations:
       kani: kani_record_payload_len.rs
       fuzz: [decode_record]
     commands:
-      - cargo kani --harness kani_record_payload_len
+      - cargo kani --package vb_storage --harness kani_record_payload_len
       - cargo fuzz run decode_record
 
   - id: VB-STORAGE-DECODE-005
@@ -474,7 +474,7 @@ obligations:
       kani: kani_record_crc.rs
       tests: [crc_validated_before_decode]
     commands:
-      - cargo kani --harness kani_record_crc
+      - cargo kani --package vb_storage --harness kani_record_crc
       - cargo nextest run -p vb_storage crc
 
   - id: VB-STORAGE-DECODE-006
@@ -489,7 +489,7 @@ obligations:
       kani: kani_record_digest.rs
       tests: [digest_validated_before_decode]
     commands:
-      - cargo kani --harness kani_record_digest
+      - cargo kani --package vb_storage --harness kani_record_digest
       - cargo nextest run -p vb_storage digest
 
   # ============================================================
@@ -644,7 +644,7 @@ obligations:
       kani: kani_terminal_state.rs
       tests: [terminal_state_immutable]
     commands:
-      - cargo kani --harness kani_terminal_state
+      - cargo kani --package vb_runtime --harness kani_terminal_state
       - cargo nextest run -p vb_runtime terminal
 
   - id: VB-REPLAY-007
@@ -713,7 +713,7 @@ obligations:
       kani: kani_expr_stack.rs
       property_tests: [expr_stack_bounds]
     commands:
-      - cargo kani --harness kani_expr_stack
+      - cargo kani --package vb_expr --harness kani_expr_stack
       - cargo nextest run -p vb_expr stack
 
   - id: VB-EXPR-003
