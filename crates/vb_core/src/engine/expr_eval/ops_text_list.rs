@@ -2,12 +2,11 @@
 //! Text and list operations for expression evaluation.
 
 use crate::errors::EngineError;
-use crate::value::SlotValue;
+use crate::value::{SlotValue, join_taint};
 use crate::value_store::ValueStore;
 
 use super::stack::{
-    ExprStack, expect_i64, expect_list, expect_object, expect_symbol, pop_pair, pop_triple,
-    push_value,
+    ExprStack, expect_i64, expect_list, expect_object, expect_symbol, pop_pair, push_value,
 };
 
 // ===== Text operations =====
@@ -15,10 +14,11 @@ use super::stack::{
 pub(super) fn eval_contains(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
     let (haystack, needle) = pop_pair(stack)?;
     if let SlotValue::List(id) = haystack {
-        let items = store
-            .list(id)
+        let (found, taint) = store
+            .list_contains_with_taint(id, needle)
             .map_err(|_| EngineError::ListOutOfBounds { list: id })?;
-        return push_value(stack, SlotValue::Bool(items.contains(&needle)));
+        stack.join_operand_taint(taint);
+        return push_value(stack, SlotValue::Bool(found));
     }
     let haystack_id = expect_symbol(haystack)?;
     let needle_id = expect_symbol(needle)?;
@@ -146,11 +146,12 @@ pub(super) fn eval_sum(stack: &mut ExprStack, store: &ValueStore) -> Result<(), 
     let value = super::stack::pop_value(stack)?;
     let list_id = expect_list(value)?;
     let items = store
-        .list(list_id)
+        .list_items_with_taint(list_id)
         .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
     let mut sum: i64 = 0;
-    for &item in items {
+    for (item, taint) in items {
         let n = expect_i64(item)?;
+        stack.join_operand_taint(taint);
         sum = sum
             .checked_add(n)
             .ok_or(EngineError::InvalidCompiledWorkflow {
@@ -179,76 +180,55 @@ pub(super) fn eval_append(
     stack: &mut ExprStack,
     store: &mut ValueStore,
 ) -> Result<(), EngineError> {
-    let (list, item) = pop_pair(stack)?;
+    let (item, item_taint) = stack.pop_tainted()?;
+    let (list, list_taint) = stack.pop_tainted()?;
     let list_id = expect_list(list)?;
-    let items = store
+    store
         .list(list_id)
         .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
-    let mut new_items: Vec<SlotValue> = Vec::new();
-    let new_len = items
-        .len()
-        .checked_add(1)
-        .ok_or(EngineError::AllocationFailed)?;
-    new_items
-        .try_reserve_exact(new_len)
+    let (values, taints) = store
+        .prepare_list_append(list_id, Some((item, item_taint)))
         .map_err(|_| EngineError::AllocationFailed)?;
     #[cfg(test)]
-    {
-        if tests::oom_inject::dec() {
-            return Err(EngineError::AllocationFailed);
-        }
+    if tests::oom_inject::dec() {
+        return Err(EngineError::AllocationFailed);
     }
-    new_items.extend_from_slice(items);
-    new_items.push(item);
     let new_list = store
-        .insert_list(new_items.into_boxed_slice())
+        .insert_list_with_taint(values, taints)
         .map_err(|_| EngineError::AllocationFailed)?;
-    push_value(stack, SlotValue::List(new_list))
+    stack.push_tainted(
+        SlotValue::List(new_list),
+        join_taint(list_taint, item_taint),
+    )
 }
 
 pub(super) fn eval_append_if(
     stack: &mut ExprStack,
     store: &mut ValueStore,
 ) -> Result<(), EngineError> {
-    let (list, item, condition) = pop_triple(stack)?;
+    let (condition, condition_taint) = stack.pop_tainted()?;
+    let (item, item_taint) = stack.pop_tainted()?;
+    let (list, list_taint) = stack.pop_tainted()?;
     let list_id = expect_list(list)?;
     let cond = super::stack::expect_bool(condition)?;
-    let items = store
+    store
         .list(list_id)
         .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
-    let mut new_items: Vec<SlotValue> = Vec::new();
-    let base_len = items.len();
-    if cond {
-        let new_len = base_len
-            .checked_add(1)
-            .ok_or(EngineError::AllocationFailed)?;
-        new_items
-            .try_reserve_exact(new_len)
-            .map_err(|_| EngineError::AllocationFailed)?;
-        #[cfg(test)]
-        {
-            if tests::oom_inject::dec() {
-                return Err(EngineError::AllocationFailed);
-            }
-        }
-        new_items.extend_from_slice(items);
-        new_items.push(item);
-    } else {
-        new_items
-            .try_reserve_exact(base_len)
-            .map_err(|_| EngineError::AllocationFailed)?;
-        #[cfg(test)]
-        {
-            if tests::oom_inject::dec() {
-                return Err(EngineError::AllocationFailed);
-            }
-        }
-        new_items.extend_from_slice(items);
+    let extra = cond.then_some((item, item_taint));
+    let (values, taints) = store
+        .prepare_list_append(list_id, extra)
+        .map_err(|_| EngineError::AllocationFailed)?;
+    #[cfg(test)]
+    if tests::oom_inject::dec() {
+        return Err(EngineError::AllocationFailed);
     }
     let new_list = store
-        .insert_list(new_items.into_boxed_slice())
+        .insert_list_with_taint(values, taints)
         .map_err(|_| EngineError::AllocationFailed)?;
-    push_value(stack, SlotValue::List(new_list))
+    stack.push_tainted(
+        SlotValue::List(new_list),
+        join_taint(join_taint(list_taint, item_taint), condition_taint),
+    )
 }
 
 pub(super) fn eval_unique(
@@ -257,25 +237,21 @@ pub(super) fn eval_unique(
 ) -> Result<(), EngineError> {
     let value = super::stack::pop_value(stack)?;
     let list_id = expect_list(value)?;
-    let items = store
+    store
         .list(list_id)
         .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
-    let mut seen: Vec<SlotValue> = Vec::new();
-    seen.try_reserve_exact(items.len())
+    let (values, taints) = store
+        .prepare_list_unique(list_id)
         .map_err(|_| EngineError::AllocationFailed)?;
     #[cfg(test)]
-    {
-        if tests::oom_inject::dec() {
-            return Err(EngineError::AllocationFailed);
-        }
+    if tests::oom_inject::dec() {
+        return Err(EngineError::AllocationFailed);
     }
-    for &item in items {
-        if !seen.contains(&item) {
-            seen.push(item);
-        }
+    for taint in taints.iter().copied() {
+        stack.join_operand_taint(taint);
     }
     let new_list = store
-        .insert_list(seen.into_boxed_slice())
+        .insert_list_with_taint(values, taints)
         .map_err(|_| EngineError::AllocationFailed)?;
     push_value(stack, SlotValue::List(new_list))
 }

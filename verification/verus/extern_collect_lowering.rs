@@ -8,7 +8,7 @@
 //
 // This file binds the collect_lowering.rs Verus spec to the production
 // exec fn `lower_bounded_collect` at
-// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277`.
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:244-261`.
 //
 // The production fn was split out of `mod_compile_lowering/part_03.rs`
 // (the pre-split `lower_canonical_collect` at part_03.rs no
@@ -104,7 +104,7 @@
 //                                                  (the exact variant produced by
 //                                                  `checked_body_length_offset` when
 //                                                  body_len+extra overflows u16)
-//   - `lower_bounded_collect`                   <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277
+//   - `lower_bounded_collect`                   <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:244-261
 //                                                  (plan build + start/body/next/finish emission;
 //                                                  edges computed by plan_compute_edges,
 //                                                  bounded_collect.rs:117-127)
@@ -168,7 +168,7 @@ use vstd::prelude::*;
 // `verus!` so the projection is nameable in spec mode.
 //
 // DRIFT POLICY: This mirror MUST be regenerated from
-// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277`
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:244-261`
 // whenever production changes. Section headers cite the originating
 // production line range so regeneration is mechanical.
 
@@ -384,7 +384,7 @@ pub struct SpecCollectOutcome {
 // ============================================================================
 //
 // Mirror of `lower_bounded_collect` at
-// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277`:
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:244-261`:
 //
 // ```ignore
 // pub(in crate::mod_compile_lowering) fn lower_bounded_collect(
@@ -429,7 +429,7 @@ pub struct SpecCollectOutcome {
 /// Mirror of `lower_bounded_collect(index: usize, id: StepIdx,
 /// config: CollectLowering<'_>, builder: &mut SlotCompiler) ->
 /// Result<SlotIdx, CompileErrors>` at
-/// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277`.
+/// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:244-261`.
 ///
 /// The projection returns `SpecCollectOutcome` (a `Copy` struct) so
 /// the spec proofs can reason about its fields directly.

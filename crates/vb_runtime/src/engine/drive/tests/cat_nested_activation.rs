@@ -80,6 +80,52 @@ fn start_count(evidence: &[EvidenceEvent], step: u16) -> usize {
         .count()
 }
 
+fn assert_outer_entry_evidence(
+    evidence: Vec<EvidenceEvent>,
+    run: &RunFrame,
+    store: &ValueStore,
+    source: vb_core::ListId,
+) -> Result<(), String> {
+    assert_eq!(
+        checked(run.read_slot(SlotIdx::ZERO))?,
+        &SlotValue::List(source)
+    );
+    let cursor_value = *checked(run.read_slot(SlotIdx::new(2)))?;
+    let SlotValue::List(cursor) = cursor_value else {
+        return Err("outer cursor must be a list".into());
+    };
+    assert_eq!(
+        checked(store.list(cursor))?,
+        &[SlotValue::I64(i64::from(source.get())), SlotValue::I64(1)]
+    );
+    assert_eq!(
+        evidence,
+        vec![
+            EvidenceEvent::StepStarted {
+                step: StepIdx::ZERO
+            },
+            EvidenceEvent::SlotWritten {
+                slot: SlotIdx::new(2),
+                value: cursor_value,
+                taint: Taint::Secret,
+                extra: None
+            },
+            EvidenceEvent::StepSucceeded {
+                step: StepIdx::ZERO,
+                output: Some(SlotIdx::new(2))
+            },
+            EvidenceEvent::StepStarted {
+                step: StepIdx::new(1)
+            },
+            EvidenceEvent::StepSucceeded {
+                step: StepIdx::new(1),
+                output: None
+            },
+        ]
+    );
+    Ok(())
+}
+
 fn drive_enter_inner(
     take_inner: bool,
 ) -> Result<
@@ -311,7 +357,7 @@ fn test_zero_budget_preserves_precedence_at_nested_start() -> Result<(), String>
 fn test_nested_loop_outer_repeat_completes() -> Result<(), String> {
     let wf = checked(build_nested_loop_workflow())?;
     let (mut run, mut store) = setup_run_and_store()?;
-    write_source_list(&mut run, &mut store)?;
+    let source = write_source_list(&mut run, &mut store)?;
     checked(run.write_slot_with_taint(SlotIdx::new(5), SlotValue::Bool(false), Taint::Clean))?;
 
     let mut evidence = EvidenceCollector::new();
@@ -324,7 +370,7 @@ fn test_nested_loop_outer_repeat_completes() -> Result<(), String> {
         &mut collect,
         100,
     ))?;
-    assert!(matches!(signal, RuntimeSignal::Finished(_)));
+    assert_eq!(signal, RuntimeSignal::Finished(SlotValue::List(source)));
 
     let started = evidence
         .drain()
@@ -456,7 +502,7 @@ fn test_entered_nested_start_allowed() -> Result<(), String> {
     let wf = checked(build_nested_loop_workflow())?;
     let source_before = wf.to_parts();
     let (mut run, mut store) = setup_run_and_store()?;
-    write_source_list(&mut run, &mut store)?;
+    let source = write_source_list(&mut run, &mut store)?;
     checked(run.write_slot_with_taint(SlotIdx::new(5), SlotValue::Bool(false), Taint::Clean))?;
 
     let mut evidence = EvidenceCollector::new();
@@ -472,7 +518,7 @@ fn test_entered_nested_start_allowed() -> Result<(), String> {
     assert_eq!(signal, RuntimeSignal::StepBudgetExhausted);
     assert_eq!(run.pc(), StepIdx::new(2));
 
-    assert!(!evidence.drain().is_empty());
+    assert_outer_entry_evidence(evidence.drain(), &run, &store, source)?;
 
     // Inner loop (RepeatStart at step 2) should now be allowed to execute
     // because the outer ForEachStart (step 0) has Succeeded.
@@ -484,7 +530,7 @@ fn test_entered_nested_start_allowed() -> Result<(), String> {
         &mut collect,
         50,
     ))?;
-    assert!(matches!(signal, RuntimeSignal::Finished(_)));
+    assert_eq!(signal, RuntimeSignal::Finished(SlotValue::List(source)));
 
     assert_eq!(wf.to_parts(), source_before);
     Ok(())
@@ -495,7 +541,7 @@ fn test_restored_cached_inner_body_and_control_reject_before_effects() -> Result
     let wf = checked(build_nested_loop_workflow())?;
     let source_before = wf.to_parts();
     let (mut run, mut store) = setup_run_and_store()?;
-    write_source_list(&mut run, &mut store)?;
+    let source = write_source_list(&mut run, &mut store)?;
     checked(run.write_slot_with_taint(SlotIdx::new(5), SlotValue::Bool(false), Taint::Clean))?;
 
     let mut evidence = EvidenceCollector::new();
@@ -510,7 +556,7 @@ fn test_restored_cached_inner_body_and_control_reject_before_effects() -> Result
     ))?;
     assert_eq!(run.pc(), StepIdx::new(2));
 
-    assert!(!evidence.drain().is_empty());
+    assert_outer_entry_evidence(evidence.drain(), &run, &store, source)?;
     for step_id in [3u16, 4, 5] {
         let mut test_run = run.clone();
         checked(test_run.set_pc(StepIdx::new(step_id)))?;
@@ -527,7 +573,7 @@ fn test_restored_cached_inner_body_and_control_reject_before_effects() -> Result
         expect_core_reason(result, "containing loop region start not succeeded")?;
         assert_eq!(test_run, before);
         assert_eq!(wf.to_parts(), source_before);
-        assert!(evidence.drain().is_empty());
+        assert_eq!(evidence.drain(), Vec::<EvidenceEvent>::new());
     }
 
     Ok(())

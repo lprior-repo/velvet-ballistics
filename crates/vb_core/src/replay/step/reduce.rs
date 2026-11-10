@@ -62,6 +62,13 @@ pub(super) fn replay_reduce_start(
     let first = items.first().copied().ok_or(ReplayError::Internal {
         reason: "reduce items checked nonempty during replay",
     })?;
+    let item_taint = crate::value::join_taint(
+        input_taint,
+        store
+            .list_item_with_taint(list_id, 0)
+            .map_err(engine_to_replay_err)?
+            .1,
+    );
     preflight_writes(run, &[accumulator, input, iter_output], body)?;
     let state = build_iterator_state(list_id, 1)?;
     let state_id = store
@@ -71,7 +78,7 @@ pub(super) fn replay_reduce_start(
         })?;
     run.write_slot(accumulator, init_value)
         .map_err(engine_to_replay_err)?;
-    run.write_slot_with_taint(input, first, input_taint)
+    run.write_slot_with_taint(input, first, item_taint)
         .map_err(engine_to_replay_err)?;
     run.write_slot_with_taint(iter_output, SlotValue::List(state_id), input_taint)
         .map_err(engine_to_replay_err)?;
@@ -110,6 +117,18 @@ pub(super) fn replay_reduce_next(
     let item = source.get(cursor).copied().ok_or(ReplayError::Internal {
         reason: "reduce cursor bounds-checked above during replay",
     })?;
+    let item_taint = crate::value::join_taint(
+        iter_taint,
+        store
+            .list_item_with_taint(
+                source_id,
+                u32::try_from(cursor).map_err(|_| ReplayError::Internal {
+                    reason: "iterator cursor exceeds u32",
+                })?,
+            )
+            .map_err(engine_to_replay_err)?
+            .1,
+    );
     preflight_writes(run, &[item_output, iterator_slot], body)?;
     let next_cursor = advance_cursor(cursor)?;
     let next_state = build_iterator_state(source_id, next_cursor)?;
@@ -118,7 +137,7 @@ pub(super) fn replay_reduce_next(
         .map_err(|_| ReplayError::Internal {
             reason: "insert reduce iterator state failed during replay",
         })?;
-    run.write_slot_with_taint(item_output, item, iter_taint)
+    run.write_slot_with_taint(item_output, item, item_taint)
         .map_err(engine_to_replay_err)?;
     run.write_slot_with_taint(iterator_slot, SlotValue::List(next_state_id), iter_taint)
         .map_err(engine_to_replay_err)?;

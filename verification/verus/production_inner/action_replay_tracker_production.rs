@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Structural copy of the real ActionReplayTracker with native dependencies.
-// Source: crates/vb_storage/src/recovery/types.rs:1446-1669
+// Source: crates/vb_storage/src/recovery/types/replay.rs:45-268
 // Source: crates/vb_storage/src/recovery/retry_authority.rs:5-69
 // Derive attributes and private field visibility retain the existing mirror
 // substitutions. RunId and SeqNo are represented by their transparent u64
@@ -119,7 +119,7 @@ pub type RecoveryResult<T> = Result<T, RecoveryError>;
 // VERBATIM PRODUCTION: ActionReplayTracker block
 // ---------------------------------------------------------------------------
 //
-// Source: crates/vb_storage/src/recovery/types.rs:1446-1669
+// Source: crates/vb_storage/src/recovery/types/replay.rs:45-268
 // Drift policy: any change to the production block between these line
 // numbers MUST be mirrored here.
 
@@ -127,7 +127,7 @@ pub type RecoveryResult<T> = Result<T, RecoveryError>;
 /// re-execution of non-idempotent actions.
 ///
 /// Note on field visibility: the production struct at
-/// `crates/vb_storage/src/recovery/types.rs:1446-1453` has PRIVATE fields
+/// `crates/vb_storage/src/recovery/types/replay.rs:45-51` has PRIVATE fields
 /// `retry_attempts`, `scheduled_tickets`, `completed`, `failed`, and
 /// `completed_envelopes`. This in-tree mirror declares them as `pub`
 /// so the companion Verus spec can reason about the HashSet view

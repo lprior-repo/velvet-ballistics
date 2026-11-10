@@ -166,61 +166,94 @@ fn nested_do_in_for_each_body_lowers_to_final_ir() -> Result<(), String> {
     );
     let workflow = compile_yaml(&yaml)?;
     let parts = workflow.to_parts();
-    assert_eq!(parts.entry, vb_core::StepIdx::new(0));
-    assert_eq!(parts.slot_count, 5);
-    assert_eq!(parts.nodes.len(), 4);
-    assert_node(
-        &parts.nodes,
-        0,
-        vb_core::CompiledNodeKind::ForEachStart {
-            input: vb_core::SlotIdx::new(0),
-            item_slot: vb_core::SlotIdx::new(3),
-            limit: 2,
-            body: vb_core::StepIdx::new(1),
-            done: vb_core::StepIdx::new(3),
-        },
-        Some(vb_core::SlotIdx::new(2)),
-        None,
-        None,
-        None,
-    )?;
-    assert_node(
-        &parts.nodes,
-        1,
-        vb_core::CompiledNodeKind::Do {
-            action: vb_core::ActionId::new(0),
-            input: vb_core::SlotIdx::new(1),
-        },
-        Some(vb_core::SlotIdx::new(4)),
-        Some(vb_core::StepIdx::new(2)),
-        None,
-        None,
-    )?;
-    assert_node(
-        &parts.nodes,
-        2,
-        vb_core::CompiledNodeKind::ForEachNext {
-            iterator_slot: vb_core::SlotIdx::new(2),
-            body: vb_core::StepIdx::new(1),
-            done: vb_core::StepIdx::new(3),
-        },
-        Some(vb_core::SlotIdx::new(3)),
-        None,
-        None,
-        None,
-    )?;
-    assert_node(
-        &parts.nodes,
-        3,
-        vb_core::CompiledNodeKind::Finish {
-            result: vb_core::SlotIdx::new(0),
-        },
-        None,
-        None,
-        None,
-        None,
-    )?;
-
+    use vb_core::{ActionId, CompiledNodeKind as K, ExprIdx, SlotIdx, StepIdx};
+    assert_eq!(parts.entry, StepIdx::ZERO);
+    assert_eq!(parts.slot_count, 7);
+    assert_eq!(parts.nodes.len(), 8);
+    for (index, kind, output, next) in [
+        (
+            0,
+            K::BuildList {
+                items: Box::new([]),
+            },
+            Some(SlotIdx::new(2)),
+            Some(StepIdx::new(1)),
+        ),
+        (
+            1,
+            K::EvalExpr {
+                expr: ExprIdx::new(0),
+            },
+            Some(SlotIdx::new(2)),
+            Some(StepIdx::new(2)),
+        ),
+        (
+            2,
+            K::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(4),
+                limit: 2,
+                body: StepIdx::new(3),
+                done: StepIdx::new(6),
+            },
+            Some(SlotIdx::new(3)),
+            None,
+        ),
+        (
+            3,
+            K::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::new(1),
+            },
+            Some(SlotIdx::new(6)),
+            Some(StepIdx::new(4)),
+        ),
+        (
+            4,
+            K::EvalExpr {
+                expr: ExprIdx::new(1),
+            },
+            Some(SlotIdx::new(2)),
+            Some(StepIdx::new(5)),
+        ),
+        (
+            5,
+            K::ForEachNext {
+                iterator_slot: SlotIdx::new(3),
+                body: StepIdx::new(3),
+                done: StepIdx::new(6),
+            },
+            Some(SlotIdx::new(4)),
+            None,
+        ),
+        (
+            6,
+            K::ForEachJoin {
+                output: SlotIdx::new(2),
+            },
+            Some(SlotIdx::new(5)),
+            Some(StepIdx::new(7)),
+        ),
+        (
+            7,
+            K::Finish {
+                result: SlotIdx::new(0),
+            },
+            None,
+            None,
+        ),
+    ] {
+        assert_node(&parts.nodes, index, kind, output, next, None, None)?;
+    }
+    assert_eq!(parts.expressions.len(), 2);
+    assert_eq!(
+        parts.expressions.get(1).ok_or("append")?.ops.as_ref(),
+        &[
+            vb_core::ExprOp::LoadSlot(SlotIdx::new(2)),
+            vb_core::ExprOp::LoadSlot(SlotIdx::new(6)),
+            vb_core::ExprOp::Append
+        ]
+    );
     Ok(())
 }
 

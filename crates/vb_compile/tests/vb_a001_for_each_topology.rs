@@ -79,12 +79,21 @@ fn node_kind_names(parts: &WorkflowParts) -> Vec<&'static str> {
 /// TEST-001: for_each compiled IR has the expected node kind sequence.
 ///
 /// After v1_primitive_lowering the sequence must be:
-///   [ForEachStart, SetConst(body), ForEachNext, Finish]
+///   [BuildList, source taint, ForEachStart, body, append, ForEachNext, ForEachJoin, Finish]
 #[test]
 fn vb_a001_for_each_node_kind_sequence() -> Result<(), Box<dyn std::error::Error>> {
     let workflow = compile_yaml(FOREACH_YAML)?;
     let kinds = node_kind_names(&workflow.to_parts());
-    let expected = vec!["ForEachStart", "SetConst", "ForEachNext", "Finish"];
+    let expected = vec![
+        "BuildList",
+        "EvalExpr",
+        "ForEachStart",
+        "SetConst",
+        "EvalExpr",
+        "ForEachNext",
+        "ForEachJoin",
+        "Finish",
+    ];
     assert_eq!(
         kinds, expected,
         "for_each node kinds must match expected sequence"
@@ -97,59 +106,62 @@ fn vb_a001_for_each_node_kind_sequence() -> Result<(), Box<dyn std::error::Error
 fn vb_a001_body_setconst_next_points_to_foreachnext() -> Result<(), Box<dyn std::error::Error>> {
     let workflow = compile_yaml(FOREACH_YAML)?;
     let parts = workflow.to_parts();
-
-    // Node 0: ForEachStart — body→1, done→3, next is None (loop semantics)
-    match &parts.nodes[0].kind {
-        CompiledNodeKind::ForEachStart { body, done, .. } => {
-            assert_eq!(
-                body,
-                &StepIdx::new(1),
-                "ForEachStart body → node 1 (SetConst)"
-            );
-            assert_eq!(
-                done,
-                &StepIdx::new(3),
-                "ForEachStart done → node 3 (Finish)"
-            );
+    let start = parts.nodes.get(2).ok_or("start")?;
+    let CompiledNodeKind::ForEachStart { body, done, .. } = start.kind else {
+        return Err("expected ForEachStart".into());
+    };
+    assert_eq!(body, StepIdx::new(3));
+    assert_eq!(done, StepIdx::new(6));
+    assert_eq!(start.routing.next.step(), None);
+    let body = parts.nodes.get(3).ok_or("body")?;
+    let CompiledNodeKind::SetConst { value } = body.kind else {
+        return Err("expected body SetConst".into());
+    };
+    assert_eq!(value, ConstIdx::new(1));
+    assert_eq!(
+        parts.constants.get(value.as_usize()),
+        Some(&vb_core::ConstValue::I64(1))
+    );
+    assert_eq!(body.routing.next.step(), Some(StepIdx::new(4)));
+    let append = parts.nodes.get(4).ok_or("append")?;
+    let CompiledNodeKind::EvalExpr { expr } = append.kind else {
+        return Err("expected append".into());
+    };
+    assert_eq!(
+        parts
+            .expressions
+            .get(expr.as_usize())
+            .ok_or("append program")?
+            .ops
+            .as_ref(),
+        &[
+            vb_core::ExprOp::LoadSlot(SlotIdx::new(1)),
+            vb_core::ExprOp::LoadSlot(SlotIdx::new(5)),
+            vb_core::ExprOp::Append
+        ]
+    );
+    assert_eq!(append.routing.next.step(), Some(StepIdx::new(5)));
+    let next = parts.nodes.get(5).ok_or("next")?;
+    let CompiledNodeKind::ForEachNext { body, done, .. } = next.kind else {
+        return Err("expected ForEachNext".into());
+    };
+    assert_eq!(body, StepIdx::new(3));
+    assert_eq!(done, StepIdx::new(6));
+    let join = parts.nodes.get(6).ok_or("join")?;
+    assert_eq!(
+        join.kind,
+        CompiledNodeKind::ForEachJoin {
+            output: SlotIdx::new(1)
         }
-        other => return Err(format!("node 0 expected ForEachStart, got {other:?}").into()),
-    }
-
-    // Node 1: SetConst (body) — THE FIX: next must be Some(StepIdx(2))
-    match &parts.nodes[1].kind {
-        CompiledNodeKind::SetConst { value } => {
-            assert_eq!(value, &ConstIdx::new(0), "body SetConst const index");
-            let next = parts.nodes[1]
-                .routing
-                .next
-                .step()
-                .ok_or("body SetConst must have a next edge to ForEachNext")?;
-            assert_eq!(
-                next,
-                StepIdx::new(2),
-                "body SetConst next must point to ForEachNext at index 2"
-            );
+    );
+    assert_eq!(join.output.slot(), Some(SlotIdx::new(4)));
+    assert_eq!(join.routing.next.step(), Some(StepIdx::new(7)));
+    assert_eq!(
+        parts.nodes.get(7).ok_or("finish")?.kind,
+        CompiledNodeKind::Finish {
+            result: SlotIdx::new(0)
         }
-        other => return Err(format!("node 1 expected SetConst, got {other:?}").into()),
-    }
-
-    // Node 2: ForEachNext — body→1 (loop), done→3 (exit)
-    match &parts.nodes[2].kind {
-        CompiledNodeKind::ForEachNext { body, done, .. } => {
-            assert_eq!(body, &StepIdx::new(1), "ForEachNext body → SetConst at 1");
-            assert_eq!(done, &StepIdx::new(3), "ForEachNext done → Finish at 3");
-        }
-        other => return Err(format!("node 2 expected ForEachNext, got {other:?}").into()),
-    }
-
-    // Node 3: Finish — terminal
-    match &parts.nodes[3].kind {
-        CompiledNodeKind::Finish { result } => {
-            assert_eq!(result, &SlotIdx::new(0));
-        }
-        other => return Err(format!("node 3 expected Finish, got {other:?}").into()),
-    }
-
+    );
     Ok(())
 }
 
@@ -326,11 +338,11 @@ fn vb_a001_all_compile_apis_agree_on_foreach_topology() -> Result<(), Box<dyn st
 #[test]
 fn vb_a001_for_each_slots_have_distinct_roles() -> Result<(), Box<dyn std::error::Error>> {
     let workflow = compile_yaml(FOREACH_YAML)?;
-    assert_eq!(workflow.to_parts().slot_count, 4);
+    assert_eq!(workflow.to_parts().slot_count, 6);
 
-    let start = workflow.node(StepIdx::new(0)).ok_or("missing start")?;
-    let body = workflow.node(StepIdx::new(1)).ok_or("missing body")?;
-    let next = workflow.node(StepIdx::new(2)).ok_or("missing next")?;
+    let start = workflow.node(StepIdx::new(2)).ok_or("missing start")?;
+    let body = workflow.node(StepIdx::new(3)).ok_or("missing body")?;
+    let next = workflow.node(StepIdx::new(5)).ok_or("missing next")?;
 
     let (actual_input, actual_item_slot) = match &start.kind {
         CompiledNodeKind::ForEachStart {
@@ -339,22 +351,22 @@ fn vb_a001_for_each_slots_have_distinct_roles() -> Result<(), Box<dyn std::error
         _ => return Err("expected ForEachStart".into()),
     };
     assert_eq!(actual_input, SlotIdx::new(0));
-    assert_eq!(actual_item_slot, SlotIdx::new(2));
+    assert_eq!(actual_item_slot, SlotIdx::new(3));
 
     let start_output = start.output.slot().ok_or("missing start output")?;
-    assert_eq!(start_output, SlotIdx::new(1));
+    assert_eq!(start_output, SlotIdx::new(2));
 
     let body_output = body.output.slot().ok_or("missing body output")?;
-    assert_eq!(body_output, SlotIdx::new(3));
+    assert_eq!(body_output, SlotIdx::new(5));
 
     let actual_iterator_slot = match &next.kind {
         CompiledNodeKind::ForEachNext { iterator_slot, .. } => *iterator_slot,
         _ => return Err("expected ForEachNext".into()),
     };
-    assert_eq!(actual_iterator_slot, SlotIdx::new(1));
+    assert_eq!(actual_iterator_slot, SlotIdx::new(2));
 
     let next_output = next.output.slot().ok_or("missing next output")?;
-    assert_eq!(next_output, SlotIdx::new(2));
+    assert_eq!(next_output, SlotIdx::new(3));
 
     assert_eq!(next_output, actual_item_slot);
     assert_eq!(actual_iterator_slot, start_output);
@@ -364,7 +376,19 @@ fn vb_a001_for_each_slots_have_distinct_roles() -> Result<(), Box<dyn std::error
     slots.insert(start_output);
     slots.insert(actual_item_slot);
     slots.insert(body_output);
-    assert_eq!(slots.len(), 4);
+    let accumulator = workflow
+        .node(StepIdx::new(0))
+        .and_then(|node| node.output.slot())
+        .ok_or("accumulator")?;
+    let result = workflow
+        .node(StepIdx::new(6))
+        .and_then(|node| node.output.slot())
+        .ok_or("aggregate")?;
+    assert_eq!(accumulator, SlotIdx::new(1));
+    assert_eq!(result, SlotIdx::new(4));
+    slots.insert(accumulator);
+    slots.insert(result);
+    assert_eq!(slots.len(), 6);
 
     Ok(())
 }
@@ -375,7 +399,7 @@ fn vb_a001_foreachstart_fields_valid() -> Result<(), Box<dyn std::error::Error>>
     let workflow = compile_yaml(FOREACH_YAML)?;
     let parts = workflow.to_parts();
 
-    match &parts.nodes[0].kind {
+    match &parts.nodes[2].kind {
         CompiledNodeKind::ForEachStart {
             input,
             item_slot,
@@ -406,7 +430,7 @@ fn vb_a001_foreachnext_targets_in_bounds() -> Result<(), Box<dyn std::error::Err
     let workflow = compile_yaml(FOREACH_YAML)?;
     let parts = workflow.to_parts();
 
-    match &parts.nodes[2].kind {
+    match &parts.nodes[5].kind {
         CompiledNodeKind::ForEachNext { body, done, .. } => {
             assert!(
                 body.as_usize() < parts.nodes.len(),
@@ -422,14 +446,14 @@ fn vb_a001_foreachnext_targets_in_bounds() -> Result<(), Box<dyn std::error::Err
     Ok(())
 }
 
-/// TEST-009: node count for canonical for_each is exactly 4.
+/// TEST-009: canonical materialization includes initialization, taint and a join.
 #[test]
 fn vb_a001_for_each_node_count_is_four() -> Result<(), Box<dyn std::error::Error>> {
     let workflow = compile_yaml(FOREACH_YAML)?;
     assert_eq!(
         workflow.to_parts().nodes.len(),
-        4,
-        "canonical for_each must produce exactly 4 nodes"
+        8,
+        "canonical for_each must produce exactly 8 nodes"
     );
     Ok(())
 }

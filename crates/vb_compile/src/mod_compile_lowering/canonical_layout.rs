@@ -3,8 +3,8 @@ use super::*;
 
 #[derive(Clone, Copy)]
 pub(in crate::mod_compile_lowering) struct CanonicalStepLayout {
-    start: StepIdx,
-    width: usize,
+    pub(in crate::mod_compile_lowering) start: StepIdx,
+    pub(in crate::mod_compile_lowering) width: usize,
 }
 
 pub(in crate::mod_compile_lowering) fn canonical_layout(
@@ -34,7 +34,15 @@ pub(in crate::mod_compile_lowering) fn canonical_step_width(
         | crate::StepPrimitive::Finish { .. }
         | crate::StepPrimitive::Wait { .. } => Ok(1),
         crate::StepPrimitive::Ask { .. } => Ok(2),
-        crate::StepPrimitive::ForEach { body, .. } => body_width(body, 2),
+        crate::StepPrimitive::ForEach { input, body, .. } => {
+            super::part_14::iteration_body_width(body)?
+                .checked_add(
+                    6usize
+                        .checked_add(super::list_input::source_width(input))
+                        .ok_or(CompileError::StepIndexOutOfRange { value: 6 })?,
+                )
+                .ok_or(CompileError::StepIndexOutOfRange { value: 6 })
+        }
         crate::StepPrimitive::Collect { body, .. } => body_width(body, 3),
         crate::StepPrimitive::Repeat { body, .. } => body_width(body, 4),
         crate::StepPrimitive::Aggregate { body, .. } => {

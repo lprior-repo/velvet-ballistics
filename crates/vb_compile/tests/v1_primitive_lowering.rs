@@ -1,3 +1,6 @@
+#[path = "v1_primitive_lowering/for_each.rs"]
+mod for_each_contract;
+use for_each_contract::{PRIMITIVE_CASES, node_kind_names};
 use proptest::prelude::*;
 use vb_compile::{
     CompileError, CompileErrors, YamlCompiler, compile_source, compile_workflow, lower_choose,
@@ -33,7 +36,16 @@ const PUBLIC_API_PATHS: &[PublicApiPath] = &[
     PublicApiPath::YamlCompilerCompile,
 ];
 
-const FOREACH_KINDS: &[&str] = &["ForEachStart", "SetConst", "ForEachNext", "Finish"];
+const FOREACH_KINDS: &[&str] = &[
+    "BuildList",
+    "EvalExpr",
+    "ForEachStart",
+    "SetConst",
+    "EvalExpr",
+    "ForEachNext",
+    "ForEachJoin",
+    "Finish",
+];
 const TOGETHER_KINDS: &[&str] = &[
     "TogetherStart",
     "TogetherBranch",
@@ -70,52 +82,6 @@ const REPEAT_KINDS: &[&str] = &[
 ];
 const WAIT_EVENT_KINDS: &[&str] = &["WaitEvent", "Finish"];
 const ASK_KINDS: &[&str] = &["Ask", "AskResume", "Finish"];
-
-const PRIMITIVE_CASES: &[PrimitiveCase] = &[
-    PrimitiveCase {
-        name: "for_each",
-        yaml_steps: "  - id: loop\n    for_each:\n      variable: entry\n      input: \"$input.items\"\n      at_once: 1\n      steps:\n        - id: capture\n          set:\n            output: seen\n            value: \"1\"\n  - id: done\n    finish:\n      result: $input.items\n",
-        expected_kinds: FOREACH_KINDS,
-        expected_slot_count: 4,
-    },
-    PrimitiveCase {
-        name: "together",
-        yaml_steps: "  - id: fanout\n    together:\n      branches:\n        - label: left\n          steps:\n            - id: left_set\n              set:\n                output: left\n                value: \"1\"\n        - label: right\n          steps:\n            - id: right_set\n              set:\n                output: right\n                value: \"2\"\n  - id: done\n    finish:\n      result: 0\n",
-        expected_kinds: TOGETHER_KINDS,
-        expected_slot_count: 5,
-    },
-    PrimitiveCase {
-        name: "collect",
-        yaml_steps: "  - id: collect_pages\n    collect:\n      variable: batch\n      source: \"0\"\n      pages: 3\n      items: 5\n      steps:\n        - id: remember_page\n          set:\n            output: page_seen\n            value: \"7\"\n  - id: done\n    finish:\n      result: 0\n",
-        expected_kinds: COLLECT_KINDS,
-        expected_slot_count: 4,
-    },
-    PrimitiveCase {
-        name: "reduce",
-        yaml_steps: "  - id: fold\n    reduce:\n      variable: acc\n      input: \"0\"\n      initial: \"10\"\n      steps:\n        - id: add_one
-          set:\n            output: acc_out\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
-        expected_kinds: REDUCE_KINDS,
-        expected_slot_count: 5,
-    },
-    PrimitiveCase {
-        name: "repeat",
-        yaml_steps: "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: attempt\n          set:\n            output: attempted\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
-        expected_kinds: REPEAT_KINDS,
-        expected_slot_count: 4,
-    },
-    PrimitiveCase {
-        name: "wait",
-        yaml_steps: "  - id: wait_for_event\n    wait:\n      event: \"0\"\n      timeout: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
-        expected_kinds: WAIT_EVENT_KINDS,
-        expected_slot_count: 2,
-    },
-    PrimitiveCase {
-        name: "ask",
-        yaml_steps: "  - id: ask_human\n    ask:\n      prompt: \"0\"\n      timeout: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
-        expected_kinds: ASK_KINDS,
-        expected_slot_count: 3,
-    },
-];
 
 #[test]
 fn compile_workflow_emits_supported_ir_when_each_scoped_primitive_is_valid() -> Result<(), String> {
@@ -1885,53 +1851,6 @@ fn workflow_yaml(steps: &str) -> String {
     yaml
 }
 
-fn node_kind_names(nodes: &[vb_core::CompiledNode]) -> Vec<&'static str> {
-    nodes
-        .iter()
-        .map(|node| node_kind_name(&node.kind))
-        .collect()
-}
-
-fn node_kind_name(kind: &CompiledNodeKind) -> &'static str {
-    match kind {
-        CompiledNodeKind::Nop => "Nop",
-        CompiledNodeKind::SetConst { .. } => "SetConst",
-        CompiledNodeKind::Copy { .. } => "Copy",
-        CompiledNodeKind::EvalExpr { .. } => "EvalExpr",
-        CompiledNodeKind::BuildObject { .. } => "BuildObject",
-        CompiledNodeKind::BuildList { .. } => "BuildList",
-        CompiledNodeKind::Do { .. } => "Do",
-        CompiledNodeKind::Choose { .. } => "Choose",
-        CompiledNodeKind::ChooseSlot { .. } => "ChooseSlot",
-        CompiledNodeKind::ForEachStart { .. } => "ForEachStart",
-        CompiledNodeKind::ForEachNext { .. } => "ForEachNext",
-        CompiledNodeKind::ForEachJoin { .. } => "ForEachJoin",
-        CompiledNodeKind::TogetherStart { .. } => "TogetherStart",
-        CompiledNodeKind::TogetherBranch { .. } => "TogetherBranch",
-        CompiledNodeKind::TogetherJoin { .. } => "TogetherJoin",
-        CompiledNodeKind::CollectStart { .. } => "CollectStart",
-        CompiledNodeKind::CollectPage { .. } => "CollectPage",
-        CompiledNodeKind::CollectNext { .. } => "CollectNext",
-        CompiledNodeKind::CollectFinish { .. } => "CollectFinish",
-        CompiledNodeKind::ReduceStart { .. } => "ReduceStart",
-        CompiledNodeKind::ReduceNext { .. } => "ReduceNext",
-        CompiledNodeKind::ReduceFinish { .. } => "ReduceFinish",
-        CompiledNodeKind::RepeatStart { .. } => "RepeatStart",
-        CompiledNodeKind::RepeatAttempt { .. } => "RepeatAttempt",
-        CompiledNodeKind::RepeatCheck { .. } => "RepeatCheck",
-        CompiledNodeKind::RepeatFinish { .. } => "RepeatFinish",
-        CompiledNodeKind::WaitUntil { .. } => "WaitUntil",
-        CompiledNodeKind::WaitEvent { .. } => "WaitEvent",
-        CompiledNodeKind::Ask { .. } => "Ask",
-        CompiledNodeKind::AskResume { .. } => "AskResume",
-        CompiledNodeKind::RetryCheck { .. } => "RetryCheck",
-        CompiledNodeKind::ErrorHandler { .. } => "ErrorHandler",
-        CompiledNodeKind::Jump { .. } => "Jump",
-        CompiledNodeKind::Finish { .. } => "Finish",
-        _ => "Unknown",
-    }
-}
-
 fn assert_exact_primitive_shape(
     workflow: &CompiledWorkflow,
     case_name: &str,
@@ -1953,45 +1872,6 @@ fn node_at(nodes: &[CompiledNode], index: usize) -> Result<&CompiledNode, String
     nodes
         .get(index)
         .ok_or_else(|| format!("missing node at index {index}"))
-}
-
-fn assert_exact_for_each(nodes: &[CompiledNode], constants: &[ConstValue]) -> Result<(), String> {
-    assert_set_const_node(nodes, constants, 1, Some(3), Some(2), 0, 1)?;
-    assert_finish_node(nodes, 3, 0)?;
-
-    let node0 = node_at(nodes, 0)?;
-    match &node0.kind {
-        CompiledNodeKind::ForEachStart {
-            input,
-            item_slot,
-            limit,
-            body,
-            done,
-        } => {
-            assert_eq!(
-                (input.get(), item_slot.get(), *limit, body.get(), done.get()),
-                (0, 2, 2, 1, 3)
-            );
-        }
-        other => return Err(format!("expected ForEachStart, got {other:?}")),
-    }
-    assert_eq!(node0.output, NodeOutput::Slot(SlotIdx::new(1)));
-    assert_eq!(node0.routing.next, NodeContinuation::End);
-
-    let node2 = node_at(nodes, 2)?;
-    match &node2.kind {
-        CompiledNodeKind::ForEachNext {
-            iterator_slot,
-            body,
-            done,
-        } => {
-            assert_eq!((iterator_slot.get(), body.get(), done.get()), (1, 1, 3));
-        }
-        other => return Err(format!("expected ForEachNext, got {other:?}")),
-    }
-    assert_eq!(node2.output, NodeOutput::Slot(SlotIdx::new(2)));
-
-    Ok(())
 }
 
 fn assert_exact_together(nodes: &[CompiledNode], constants: &[ConstValue]) -> Result<(), String> {
@@ -2513,6 +2393,50 @@ fn compile_workflow_rejects_empty_body_in_scoped_primitives() -> Result<(), Stri
         let yaml = workflow_yaml(yaml_steps);
         let errors = compile_yaml_error(&yaml)?;
         let first = first_compile_error(&errors)?;
+        if case_name == "for_each with empty body" {
+            assert_eq!(
+                first,
+                &CompileError::InvalidName {
+                    field: "for_each.variable",
+                    value: "item".into()
+                }
+            );
+            let accepted = compile_yaml(&yaml.replace("variable: item", "variable: entry"))?;
+            let parts = accepted.to_parts();
+            assert_eq!(
+                node_kind_names(&parts.nodes),
+                [
+                    "BuildList",
+                    "EvalExpr",
+                    "ForEachStart",
+                    "EvalExpr",
+                    "ForEachNext",
+                    "ForEachJoin",
+                    "Finish"
+                ]
+            );
+            assert_eq!(
+                parts.constants.as_ref(),
+                &[ConstValue::Bool(false), ConstValue::Null]
+            );
+            let CompiledNodeKind::EvalExpr { expr } = node_at(&parts.nodes, 3)?.kind else {
+                return Err("empty append".into());
+            };
+            assert_eq!(
+                parts
+                    .expressions
+                    .get(expr.as_usize())
+                    .ok_or("append")?
+                    .ops
+                    .as_ref(),
+                &[
+                    vb_core::ExprOp::LoadSlot(SlotIdx::new(1)),
+                    vb_core::ExprOp::LoadConst(vb_core::ConstIdx::new(1)),
+                    vb_core::ExprOp::Append
+                ]
+            );
+            continue;
+        }
         let expected = match case_name {
             "for_each with empty body" => (0, "for_each.body", "non-empty body"),
             "collect with empty body" => (0, "collect.body", "non-empty body"),
@@ -2549,7 +2473,7 @@ fn compile_workflow_rejects_terminal_only_scoped_bodies() -> Result<(), String> 
             "for_each with terminal body",
             "  - id: loop\n    for_each:\n      variable: entry\n      input: \"$input.items\"\n      steps:\n        - id: bad\n          finish:\n            result: 0\n  - id: done\n    finish:\n      result: $input.items\n",
             CompileError::Workflow(WorkflowError::UnreachableNode {
-                step: StepIdx::new(2),
+                step: StepIdx::new(4),
             }),
         ),
         (
@@ -2850,6 +2774,51 @@ fn assert_two_set_collect_contract(workflow: &CompiledWorkflow) -> Result<(), St
     Ok(())
 }
 
+#[path = "v1_primitive_lowering/nested_collect.rs"]
+mod nested_collect;
+
+fn assert_exact_for_each(nodes: &[CompiledNode], constants: &[ConstValue]) -> Result<(), String> {
+    assert_set_const_node(nodes, constants, 3, Some(5), Some(4), 1, 1)?;
+    assert_finish_node(nodes, 7, 0)?;
+
+    let node0 = node_at(nodes, 2)?;
+    match &node0.kind {
+        CompiledNodeKind::ForEachStart {
+            input,
+            item_slot,
+            limit,
+            body,
+            done,
+        } => {
+            assert_eq!(
+                (input.get(), item_slot.get(), *limit, body.get(), done.get()),
+                (0, 3, 2, 3, 6)
+            );
+        }
+        other => return Err(format!("expected ForEachStart, got {other:?}")),
+    }
+    assert_eq!(node0.output, NodeOutput::Slot(SlotIdx::new(2)));
+    assert_eq!(node0.routing.next, NodeContinuation::End);
+
+    let node2 = node_at(nodes, 5)?;
+    match &node2.kind {
+        CompiledNodeKind::ForEachNext {
+            iterator_slot,
+            body,
+            done,
+        } => {
+            assert_eq!((iterator_slot.get(), body.get(), done.get()), (2, 3, 6));
+        }
+        other => return Err(format!("expected ForEachNext, got {other:?}")),
+    }
+    assert_eq!(node2.output, NodeOutput::Slot(SlotIdx::new(3)));
+
+    let expected = for_each_contract::expected(false, &[1])?;
+    assert_eq!(nodes, expected.0.as_slice());
+    assert_eq!(constants, expected.1.as_slice());
+    Ok(())
+}
+
 fn assert_two_set_for_each_contract(
     workflow: &CompiledWorkflow,
     preamble: bool,
@@ -2864,13 +2833,78 @@ fn assert_two_set_for_each_contract(
     assert_all_targets_in_range(workflow, "two_set_for_each")?;
 
     if preamble {
-        assert_eq!(nodes.len(), 6, "preamble layout must have 6 nodes");
-        assert_eq!(slot_count, 6, "preamble layout must have 6 slots");
-        assert_eq!(constants.len(), 3, "preamble layout must have 3 constants");
+        assert_eq!(nodes.len(), 10, "preamble layout must have 10 nodes");
+        assert_eq!(slot_count, 8, "preamble layout must have 8 slots");
+        assert_eq!(constants.len(), 4, "preamble layout must have 4 constants");
 
         assert_set_const_node(nodes, constants, 0, Some(0), Some(1), 0, 1)?;
 
-        let node = node_at(nodes, 1)?;
+        let node = node_at(nodes, 3)?;
+        assert_eq!(
+            node.output.slot().map(|s| s.get()),
+            Some(3),
+            "Start output slot"
+        );
+        assert_eq!(
+            node.routing.next,
+            NodeContinuation::End,
+            "Start must not fall through"
+        );
+        match &node.kind {
+            CompiledNodeKind::ForEachStart {
+                input,
+                item_slot,
+                limit,
+                body,
+                done,
+            } => {
+                assert_eq!(input.get(), 1, "Start input slot");
+                assert_eq!(item_slot.get(), 4, "Start item slot");
+                assert_eq!(*limit, 2, "Start limit slot");
+                assert_eq!(body.get(), 4, "Start body target");
+                assert_eq!(done.get(), 8, "Start done target");
+            }
+            other => return Err(format!("expected Start at node 1, got {other:?}")),
+        }
+
+        assert_set_const_node(nodes, constants, 4, Some(6), Some(5), 2, 1)?;
+        assert_set_const_node(nodes, constants, 5, Some(7), Some(6), 3, 2)?;
+
+        let node = node_at(nodes, 7)?;
+        assert_eq!(
+            node.output.slot().map(|s| s.get()),
+            Some(4),
+            "Next output slot"
+        );
+        assert_eq!(
+            node.routing.next,
+            NodeContinuation::End,
+            "Next must not fall through"
+        );
+        match &node.kind {
+            CompiledNodeKind::ForEachNext {
+                iterator_slot,
+                body,
+                done,
+            } => {
+                assert_eq!(iterator_slot.get(), 3, "Next iterator slot");
+                assert_eq!(body.get(), 4, "Next body target");
+                assert_eq!(done.get(), 8, "Next done target");
+            }
+            other => return Err(format!("expected Next at node 4, got {other:?}")),
+        }
+
+        assert_finish_node(nodes, 9, 0)?;
+    } else {
+        assert_eq!(nodes.len(), 9, "non-preamble layout must have 9 nodes");
+        assert_eq!(slot_count, 7, "non-preamble layout must have 7 slots");
+        assert_eq!(
+            constants.len(),
+            3,
+            "non-preamble layout must have 3 constants"
+        );
+
+        let node = node_at(nodes, 2)?;
         assert_eq!(
             node.output.slot().map(|s| s.get()),
             Some(2),
@@ -2889,19 +2923,19 @@ fn assert_two_set_for_each_contract(
                 body,
                 done,
             } => {
-                assert_eq!(input.get(), 1, "Start input slot");
+                assert_eq!(input.get(), 0, "Start input slot");
                 assert_eq!(item_slot.get(), 3, "Start item slot");
                 assert_eq!(*limit, 2, "Start limit slot");
-                assert_eq!(body.get(), 2, "Start body target");
-                assert_eq!(done.get(), 5, "Start done target");
+                assert_eq!(body.get(), 3, "Start body target");
+                assert_eq!(done.get(), 7, "Start done target");
             }
-            other => return Err(format!("expected Start at node 1, got {other:?}")),
+            other => return Err(format!("expected Start at node 0, got {other:?}")),
         }
 
-        assert_set_const_node(nodes, constants, 2, Some(4), Some(3), 1, 1)?;
-        assert_set_const_node(nodes, constants, 3, Some(5), Some(4), 2, 2)?;
+        assert_set_const_node(nodes, constants, 3, Some(5), Some(4), 1, 1)?;
+        assert_set_const_node(nodes, constants, 4, Some(6), Some(5), 2, 2)?;
 
-        let node = node_at(nodes, 4)?;
+        let node = node_at(nodes, 6)?;
         assert_eq!(
             node.output.slot().map(|s| s.get()),
             Some(3),
@@ -2919,82 +2953,28 @@ fn assert_two_set_for_each_contract(
                 done,
             } => {
                 assert_eq!(iterator_slot.get(), 2, "Next iterator slot");
-                assert_eq!(body.get(), 2, "Next body target");
-                assert_eq!(done.get(), 5, "Next done target");
-            }
-            other => return Err(format!("expected Next at node 4, got {other:?}")),
-        }
-
-        assert_finish_node(nodes, 5, 0)?;
-    } else {
-        assert_eq!(nodes.len(), 5, "non-preamble layout must have 5 nodes");
-        assert_eq!(slot_count, 5, "non-preamble layout must have 5 slots");
-        assert_eq!(
-            constants.len(),
-            2,
-            "non-preamble layout must have 2 constants"
-        );
-
-        let node = node_at(nodes, 0)?;
-        assert_eq!(
-            node.output.slot().map(|s| s.get()),
-            Some(1),
-            "Start output slot"
-        );
-        assert_eq!(
-            node.routing.next,
-            NodeContinuation::End,
-            "Start must not fall through"
-        );
-        match &node.kind {
-            CompiledNodeKind::ForEachStart {
-                input,
-                item_slot,
-                limit,
-                body,
-                done,
-            } => {
-                assert_eq!(input.get(), 0, "Start input slot");
-                assert_eq!(item_slot.get(), 2, "Start item slot");
-                assert_eq!(*limit, 2, "Start limit slot");
-                assert_eq!(body.get(), 1, "Start body target");
-                assert_eq!(done.get(), 4, "Start done target");
-            }
-            other => return Err(format!("expected Start at node 0, got {other:?}")),
-        }
-
-        assert_set_const_node(nodes, constants, 1, Some(3), Some(2), 0, 1)?;
-        assert_set_const_node(nodes, constants, 2, Some(4), Some(3), 1, 2)?;
-
-        let node = node_at(nodes, 3)?;
-        assert_eq!(
-            node.output.slot().map(|s| s.get()),
-            Some(2),
-            "Next output slot"
-        );
-        assert_eq!(
-            node.routing.next,
-            NodeContinuation::End,
-            "Next must not fall through"
-        );
-        match &node.kind {
-            CompiledNodeKind::ForEachNext {
-                iterator_slot,
-                body,
-                done,
-            } => {
-                assert_eq!(iterator_slot.get(), 1, "Next iterator slot");
-                assert_eq!(body.get(), 1, "Next body target");
-                assert_eq!(done.get(), 4, "Next done target");
+                assert_eq!(body.get(), 3, "Next body target");
+                assert_eq!(done.get(), 7, "Next done target");
             }
             other => return Err(format!("expected Next at node 3, got {other:?}")),
         }
 
-        assert_finish_node(nodes, 4, 0)?;
+        assert_finish_node(nodes, 8, 0)?;
     }
 
+    let (expected_nodes, expected_constants, expected_slots) =
+        for_each_contract::expected(preamble, &[1, 2])?;
+    assert_eq!(parts.nodes.as_ref(), expected_nodes.as_slice());
+    assert_eq!(parts.constants.as_ref(), expected_constants.as_slice());
+    assert_eq!(parts.slot_count, expected_slots);
+    assert_eq!(parts.expressions.len(), 2);
+    assert_eq!(
+        parts
+            .expressions
+            .iter()
+            .map(|expr| expr.max_stack)
+            .collect::<Vec<_>>(),
+        [3, 2]
+    );
     Ok(())
 }
-
-#[path = "v1_primitive_lowering/nested_collect.rs"]
-mod nested_collect;

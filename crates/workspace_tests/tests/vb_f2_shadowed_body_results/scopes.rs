@@ -31,7 +31,7 @@ fn compound(family: &str, body: &str) -> TestResult<String> {
     Ok(format!("- id: scope\n{}", indent(&primitive, 2)))
 }
 
-fn execute_with_secret_source(yaml: &str, quantum: u64) -> TestResult {
+fn execute_with_secret_source(yaml: &str, quantum: u64, aggregate: bool) -> TestResult {
     let plan = vb_compile::compile_workflow(yaml.as_bytes())?;
     let original = plan.to_parts();
     vb_validate::shared::validate(&original)?;
@@ -83,7 +83,20 @@ fn execute_with_secret_source(yaml: &str, quantum: u64) -> TestResult {
             assert_eq!(value, SlotValue::Bool(true));
             for node in &original.nodes {
                 if let CompiledNodeKind::RepeatFinish { result } = node.kind {
-                    assert_eq!(*frame.read_slot(result)?, SlotValue::I64(7));
+                    if aggregate {
+                        let SlotValue::List(result_list) = *frame.read_slot(result)? else {
+                            return Err("repeat did not retain the for_each aggregate".into());
+                        };
+                        assert_eq!(store.list(result_list)?, values.as_ref());
+                        for (index, expected) in values.iter().copied().enumerate() {
+                            assert_eq!(
+                                store.list_item_with_taint(result_list, u32::try_from(index)?)?,
+                                (expected, Taint::Secret)
+                            );
+                        }
+                    } else {
+                        assert_eq!(*frame.read_slot(result)?, SlotValue::I64(7));
+                    }
                     assert_eq!(frame.read_taint(result)?, Taint::Secret);
                 }
             }
@@ -98,7 +111,7 @@ fn execute_with_secret_source(yaml: &str, quantum: u64) -> TestResult {
 #[test]
 fn nested_shared_callers_preserve_selected_values_taints_and_list_source() -> TestResult {
     for family in ["repeat", "together", "reduce", "collect", "for_each"] {
-        for (_, tail, waits) in TAILS {
+        for (name, tail, waits) in TAILS {
             if waits != 0 {
                 continue;
             }
@@ -106,11 +119,21 @@ fn nested_shared_callers_preserve_selected_values_taints_and_list_source() -> Te
                 "- id: value\n  set: {{output: value, value: '$input.items.0 + 4'}}\n{tail}"
             );
             let outer = compound(family, &repeated(&leaf, "inner"))?;
-            let result = match family {
-                "repeat" | "reduce" => "$step.scope == 7",
-                "together" => "$step.scope.0 == 7",
-                "collect" => "$step.scope.0 == 3 and $step.scope.1 == 5",
-                "for_each" => "$saved == 99",
+            let aggregate = name == "for_each";
+            if family == "reduce" && aggregate {
+                assert_numeric_reduce_rejection(&seeded_source(&outer, "$step.scope"));
+                continue;
+            }
+            let result = match (family, aggregate) {
+                ("repeat", true) => "$step.scope.0 == 3 and $step.scope.1 == 5",
+                ("repeat" | "reduce", false) => "$step.scope == 7",
+                ("together", true) => "$step.scope.0.0 == 3 and $step.scope.0.1 == 5",
+                ("together", false) => "$step.scope.0 == 7",
+                ("collect", _) => "$step.scope.0 == 3 and $step.scope.1 == 5",
+                ("for_each", true) => {
+                    "$step.scope.0.0 == 3 and $step.scope.0.1 == 5 and $step.scope.1.0 == 3 and $step.scope.1.1 == 5"
+                }
+                ("for_each", false) => "$step.scope.0 == 7 and $step.scope.1 == 7",
                 _ => return Err("unknown family".into()),
             };
             let body = format!(
@@ -118,7 +141,7 @@ fn nested_shared_callers_preserve_selected_values_taints_and_list_source() -> Te
             );
             let yaml = seeded_source(&body, "$step.checked");
             for quantum in [1, 64] {
-                execute_with_secret_source(&yaml, quantum)?;
+                execute_with_secret_source(&yaml, quantum, aggregate)?;
             }
         }
     }
@@ -127,7 +150,7 @@ fn nested_shared_callers_preserve_selected_values_taints_and_list_source() -> Te
 
 #[test]
 fn direct_reduce_keeps_its_body_value_through_nonproducing_shadows() -> TestResult {
-    for (_, tail, waits) in TAILS {
+    for (name, tail, waits) in TAILS {
         if waits != 0 {
             continue;
         }
@@ -138,8 +161,12 @@ fn direct_reduce_keeps_its_body_value_through_nonproducing_shadows() -> TestResu
             "{outer}- id: checked\n  set: {{output: checked, value: '$step.scope == 7 and $saved == 99'}}\n"
         );
         let yaml = seeded_source(&checked, "$step.checked");
+        if name == "for_each" {
+            assert_numeric_reduce_rejection(&yaml);
+            continue;
+        }
         for quantum in [1, 64] {
-            execute_with_secret_source(&yaml, quantum)?;
+            execute_with_secret_source(&yaml, quantum, false)?;
         }
     }
     Ok(())
@@ -147,8 +174,12 @@ fn direct_reduce_keeps_its_body_value_through_nonproducing_shadows() -> TestResu
 
 #[test]
 fn reduce_does_not_inherit_an_ancestor_as_its_required_body_value() -> TestResult {
-    for (_, tail, _) in TAILS {
+    for (name, tail, _) in TAILS {
         let yaml = seeded_source(&compound("reduce", tail)?, "$step.scope");
+        if name == "for_each" {
+            assert_numeric_reduce_rejection(&yaml);
+            continue;
+        }
         let result = vb_compile::compile_workflow(yaml.as_bytes());
         assert!(
             matches!(result, Err(vb_compile::CompileErrors(ref errors)) if errors.iter().any(|error| matches!(
@@ -159,6 +190,53 @@ fn reduce_does_not_inherit_an_ancestor_as_its_required_body_value() -> TestResul
             ))),
             "{result:?}"
         );
+    }
+    Ok(())
+}
+
+fn assert_numeric_reduce_rejection(yaml: &str) {
+    let result = vb_compile::compile_workflow(yaml.as_bytes());
+    assert!(
+        matches!(result, Err(vb_compile::CompileErrors(ref errors)) if errors.iter().any(|error| matches!(
+            error,
+            vb_compile::CompileError::StepFieldShape {
+                field: "reduce.steps", expected: "a set value preserving the i64 accumulator type", ..
+            }
+        ))),
+        "{result:?}"
+    );
+}
+
+#[test]
+fn shadowing_for_each_tail_publishes_exact_items_and_preserves_ancestor_reads() -> TestResult {
+    let (_, tail, _) = TAILS
+        .iter()
+        .find(|(name, _, _)| *name == "for_each")
+        .ok_or("for_each tail")?;
+    let tail = tail.replace(
+        "value: '$shadow_item'",
+        "value: '$shadow_item + $step.seed - 99'",
+    );
+    for produced in [false, true] {
+        let body = if produced {
+            format!("- id: value\n  set: {{output: value, value: '7'}}\n{tail}")
+        } else {
+            tail.clone()
+        };
+        for together in [false, true] {
+            let (outer, result) = if together {
+                (compound("together", &body)?, "$step.scope.0")
+            } else {
+                (repeated(&body, "scope"), "$step.scope")
+            };
+            let checked = format!(
+                "{outer}- id: checked\n  set: {{output: checked, value: '{result}.0 == 3 and {result}.1 == 5 and $step.seed == 99 and $saved == 99 and $delay == 10'}}\n"
+            );
+            let yaml = seeded_source(&checked, "$step.checked");
+            for quantum in [1, 64] {
+                execute_with_secret_source(&yaml, quantum, !together)?;
+            }
+        }
     }
     Ok(())
 }

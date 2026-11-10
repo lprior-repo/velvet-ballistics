@@ -59,9 +59,10 @@ fn exercise_with_capacity(
         .iter()
         .find(|node| {
             if full_arena {
-                matches!(node.kind, K::ForEachStart { .. })
+                matches!(&node.kind, K::BuildList { items } if items.is_empty())
             } else {
-                matches!(node.kind, K::EvalExpr { .. })
+                matches!(node.kind, K::EvalExpr { expr }
+                    if workflow.expression(expr).is_some_and(|program| program.ops.contains(&vb_core::ExprOp::Div)))
             }
         })
         .ok_or("failing node")?;
@@ -88,18 +89,23 @@ fn exercise_with_capacity(
         store.insert_list(Box::from([SlotValue::I64(3), SlotValue::I64(5)]))?
     };
     if full_arena {
+        let start = parts
+            .nodes
+            .iter()
+            .find(|node| matches!(node.kind, K::ForEachStart { .. }))
+            .ok_or("child start")?;
         let K::ForEachStart {
             item_slot,
             limit,
             body,
             done,
             ..
-        } = failing.kind
+        } = start.kind
         else {
             return Err("child start kind".into());
         };
         let mut frame = vb_core::new_run_frame(RunId::new(2), &workflow)?;
-        frame.set_pc(failed)?;
+        frame.set_pc(start.id)?;
         frame.write_slot_with_taint(input, SlotValue::List(list), Taint::Clean)?;
         let before = frame.clone();
         let checkpoint = store.checkpoint_v1();
@@ -112,7 +118,7 @@ fn exercise_with_capacity(
                 vb_core::ids::FanoutLimit::new(limit),
                 body,
                 done,
-                failing.output.slot(),
+                start.output.slot(),
             ),
             Err(vb_core::CoreError::BudgetExceeded {
                 budget: "max_slots",
@@ -185,9 +191,18 @@ fn exercise_with_capacity(
                 observed_failed_starts = observed_failed_starts
                     .checked_add(1)
                     .ok_or("observation overflow")?;
-                let K::ForEachStart { body, .. } = failing.kind else {
+                let start = parts
+                    .nodes
+                    .iter()
+                    .find(|node| matches!(node.kind, K::ForEachStart { .. }))
+                    .ok_or("child start")?;
+                let K::ForEachStart { body, .. } = start.kind else {
                     return Err("child start kind".into());
                 };
+                assert_eq!(
+                    state.frame.step_state(start.id)?,
+                    vb_core::StepState::Pending
+                );
                 assert_eq!(state.frame.step_state(body)?, vb_core::StepState::Pending);
                 assert_eq!(
                     state.store.checkpoint_v1().lists.len(),

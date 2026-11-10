@@ -73,13 +73,7 @@ fn validate_edge(
         (true, false) => {
             to != region.done
                 && !is_finish(parts, to)
-                && !(origin == EdgeOrigin::Error
-                    && to > region.control
-                    && regions.iter().flatten().any(|outer| {
-                        outer.body <= region.start
-                            && region.control < outer.control
-                            && outer.contains(to)
-                    }))
+                && !(origin == EdgeOrigin::Error && to > region.control)
         }
         (true, true) => to <= from && !owned_backedge(region, regions, node, to, origin),
         (false, false) => false,

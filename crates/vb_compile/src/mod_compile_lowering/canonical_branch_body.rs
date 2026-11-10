@@ -51,8 +51,34 @@ pub(in crate::mod_compile_lowering) fn emit_scoped_typed_body(
     builder: &mut SlotCompiler,
     primitive: &'static str,
 ) -> Result<Option<(SlotIdx, ExprType)>, CompileErrors> {
+    emit_typed_body(body, start, common_next, scope, builder, primitive, None)
+}
+
+pub(super) fn emit_typed_body(
+    body: &[crate::StepAst],
+    start: StepIdx,
+    common_next: StepIdx,
+    scope: CanonicalScope<'_>,
+    builder: &mut SlotCompiler,
+    primitive: &'static str,
+    tracked: Option<SlotIdx>,
+) -> Result<Option<(SlotIdx, ExprType)>, CompileErrors> {
     let mut local = BranchBindings::new(scope, primitive == "for_each");
-    let layout = canonical_layout(body, start.as_usize()).map_err(|e| CompileErrors(vec![e]))?;
+    let mut layout =
+        canonical_layout(body, start.as_usize()).map_err(|e| CompileErrors(vec![e]))?;
+    if tracked.is_some() {
+        let mut cursor = start.as_usize();
+        for (step, entry) in body.iter().zip(&mut layout) {
+            entry.start = step_idx(cursor).map_err(|e| CompileErrors(vec![e]))?;
+            entry.width = body_values::checked_sum(
+                entry.width,
+                usize::from(super::iteration_body::produces_value(step)),
+            )
+            .ok_or_else(|| index_error(cursor))?;
+            cursor =
+                body_values::checked_sum(cursor, entry.width).ok_or_else(|| index_error(cursor))?;
+        }
+    }
     let mut names = vec![Box::from(""); start.as_usize()];
     names.extend(canonical_step_names(body, &layout).map_err(|e| CompileErrors(vec![e]))?);
     let mut result = None;
@@ -62,7 +88,7 @@ pub(in crate::mod_compile_lowering) fn emit_scoped_typed_body(
         let id = body_id(start, offset, primitive)?;
         offset = body_values::checked_sum(
             offset,
-            canonical_step_width_with_condition(step).map_err(|e| CompileErrors(vec![e]))?,
+            layout_width(&layout, index).map_err(|e| CompileErrors(vec![e]))?,
         )
         .ok_or_else(|| index_error(offset))?;
         let next_index = body_values::checked_sum(index, 1).ok_or_else(|| index_error(index))?;
@@ -80,13 +106,37 @@ pub(in crate::mod_compile_lowering) fn emit_scoped_typed_body(
             builder,
         )?;
         let success = control.next.ok_or_else(|| index_error(id.as_usize()))?;
+        let capture = if tracked.is_some() && super::iteration_body::produces_value(step) {
+            let width =
+                canonical_step_width_with_condition(step).map_err(|e| CompileErrors(vec![e]))?;
+            Some(body_id(id, width, primitive)?)
+        } else {
+            None
+        };
         let candidate = local
-            .lower(&control.step, control.body, success, &names, builder)?
+            .lower(
+                &control.step,
+                control.body,
+                capture.unwrap_or(success),
+                &names,
+                builder,
+            )?
             .map(|slot| (slot, local.type_of(slot).unwrap_or(ExprType::Unknown)));
+        if let (Some(capture), Some(output)) = (capture, tracked) {
+            let source = candidate
+                .map(|value| value.0)
+                .ok_or_else(|| index_error(capture.as_usize()))?;
+            builder.push_node(vb_core::workflow::node(
+                capture,
+                CompiledNodeKind::Copy { source },
+                Some(output),
+                Some(success),
+            ));
+        }
         result = body_values::keep_last(result, candidate);
         super::part_02::canonical_controls::complete(&control, builder);
     }
-    Ok(result)
+    Ok(tracked.map(|slot| (slot, ExprType::Unknown)).or(result))
 }
 
 pub(in crate::mod_compile_lowering) fn emit_body_result(

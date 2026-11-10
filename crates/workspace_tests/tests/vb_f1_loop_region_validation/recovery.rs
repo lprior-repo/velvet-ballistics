@@ -63,14 +63,40 @@ fn direct_error_to_internal_finish_does_not_recover_into_body() -> TestResult {
 }
 
 #[test]
-fn crossing_error_exit_stays_a_geometric_error() -> TestResult {
-    let mut parts = linear_parts(8)?;
-    install_pair(&mut parts, Family::ForEach, 1, 2, 4, 5, 1)?;
-    edit(&mut parts, 2)?.routing.error = ErrorRouting::Handler {
-        handler: step(6),
-        error_slot: None,
-    };
-    reject(parts, crossing(4, 2, 6))
+fn forward_error_exit_preserves_ownership_and_the_declared_handler() -> TestResult {
+    for family in FAMILIES {
+        let mut parts = linear_parts(8)?;
+        install_pair(&mut parts, family, 1, 2, 4, 5, 1)?;
+        edit(&mut parts, 2)?.routing.error = ErrorRouting::Handler {
+            handler: step(6),
+            error_slot: None,
+        };
+        let plan = accept(parts)?;
+        assert_region(&plan, 1, 2, 4, 5)?;
+        assert_eq!(
+            plan.node(step(2)).ok_or("body")?.routing.error,
+            ErrorRouting::Handler {
+                handler: step(6),
+                error_slot: None,
+            }
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn forward_error_exit_cannot_enter_a_sibling_body_or_latch() -> TestResult {
+    for target in [6, 8] {
+        let mut parts = linear_parts(10)?;
+        install_pair(&mut parts, Family::ForEach, 1, 2, 4, 5, 1)?;
+        install_pair(&mut parts, Family::Collect, 5, 6, 8, 9, 2)?;
+        edit(&mut parts, 2)?.routing.error = ErrorRouting::Handler {
+            handler: step(target),
+            error_slot: None,
+        };
+        reject(parts, crossing(8, 2, target))?;
+    }
+    Ok(())
 }
 
 #[test]

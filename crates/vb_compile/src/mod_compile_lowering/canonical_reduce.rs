@@ -122,30 +122,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_aggregate(
     Ok((accumulator, inferred))
 }
 
-fn input_limit(mut source: SlotIdx, builder: &SlotCompiler) -> Result<u32, CompileErrors> {
-    let hard_max = u32::try_from(vb_core::limits::MAX_LIST_ITEMS_PER_VALUE).map_err(|_| {
-        CompileErrors(vec![CompileError::InvalidInputSchema {
-            field: "inputs.max",
-            expected: "list maximum representable as u32",
-        }])
-    })?;
-    for node in builder.nodes.iter().rev() {
-        if node.output.slot() == Some(source) {
-            if let CompiledNodeKind::Copy { source: input } = node.kind {
-                source = input;
-            } else {
-                return Ok(hard_max);
-            }
-        }
-    }
-    Ok(builder
-        .input_slots
-        .iter()
-        .find(|input| input.slot == source && input.kind == vb_core::InputSlotKind::List)
-        .and_then(|input| input.constraint.max)
-        .and_then(|max| u32::try_from(max).ok())
-        .map_or(hard_max, |max| max.min(hard_max)))
-}
+use super::list_input::input_limit;
 
 fn lower_body(
     config: &ReduceLowering<'_>,

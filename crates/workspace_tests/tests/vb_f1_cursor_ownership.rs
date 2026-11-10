@@ -659,7 +659,11 @@ fn eight_nested_foreach_and_reduce_levels_keep_distinct_cursors_and_finish() -> 
     use vb_runtime::engine::{
         EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeSignal, drive_deterministic_full,
     };
-    for reduce in [false, true] {
+    for (reduce, arena_slots, completes) in [
+        (false, 1024, false),
+        (false, 2048, true),
+        (true, 1024, true),
+    ] {
         let mut body = "- id: leaf\n  set: {output: leaf, value: '9'}\n".to_owned();
         for level in (0..8).rev() {
             let nested = body
@@ -684,6 +688,9 @@ fn eight_nested_foreach_and_reduce_levels_keep_distinct_cursors_and_finish() -> 
             "version: velvet-ballistics/v1\nname: genuine_nested_cursors\nwhen: {{manual: {{}}}}\ninputs: {{items: {{is: list, of: number, max: 2}}}}\nvars: {{sentinel: 42, marker: source_payload}}\nsteps:\n{steps}  - id: done\n    finish: {{result: '$vars.sentinel'}}\n"
         );
         let workflow = vb_compile::compile_workflow(source.as_bytes())?;
+        let mut parts = workflow.to_parts();
+        parts.resource_contract.max_slots = arena_slots;
+        let workflow = vb_core::CompiledWorkflow::try_from_parts(parts)?;
         let original = workflow.to_parts();
         let mut cursors = original
             .nodes
@@ -710,8 +717,9 @@ fn eight_nested_foreach_and_reduce_levels_keep_distinct_cursors_and_finish() -> 
         let mut collect = vb_runtime::primitives::collect::CollectStates::new();
         let mut leaves = 0usize;
         let mut finished = None;
+        let mut exhausted = false;
         for _ in 0..10_000 {
-            let signal = drive_deterministic_full(
+            let result = drive_deterministic_full(
                 &workflow,
                 &mut frame,
                 &mut StepBudget::new(1),
@@ -722,7 +730,18 @@ fn eight_nested_foreach_and_reduce_levels_keep_distinct_cursors_and_finish() -> 
                 &mut collect,
                 &CapabilitySet::empty(),
                 1,
-            )?;
+            );
+            let signal = match result {
+                Ok(signal) => signal,
+                Err(vb_runtime::engine::RuntimeEngineError::Core(
+                    vb_core::EngineError::AllocationFailed,
+                )) if !completes => {
+                    assert_eq!(store.total_arena_count(), u64::from(arena_slots));
+                    exhausted = true;
+                    break;
+                }
+                Err(error) => return Err(error.into()),
+            };
             leaves = leaves.checked_add(evidence.drain().iter().filter(|event| matches!(event, EvidenceEvent::StepSucceeded { step, .. } if *step == leaf)).count()).ok_or("leaf count")?;
             match signal {
                 RuntimeSignal::StepBudgetExhausted => {}
@@ -733,8 +752,16 @@ fn eight_nested_foreach_and_reduce_levels_keep_distinct_cursors_and_finish() -> 
                 other => return Err(format!("unexpected signal: {other:?}").into()),
             }
         }
-        assert_eq!(finished, Some(SlotValue::I64(42)));
-        assert_eq!(leaves, 2usize.checked_pow(8).ok_or("multiplicity")?);
+        let multiplicity = 2usize.checked_pow(8).ok_or("multiplicity")?;
+        if completes {
+            assert_eq!(finished, Some(SlotValue::I64(42)));
+            assert_eq!(leaves, multiplicity);
+            assert!(!exhausted);
+        } else {
+            assert!(exhausted);
+            assert_eq!(finished, None);
+            assert!(leaves < multiplicity);
+        }
         assert_eq!(store.list(input)?, payload.as_ref());
         assert_eq!(frame.read_slot(input_slot)?, &SlotValue::List(input));
         assert_eq!(frame.read_taint(input_slot)?, Taint::Secret);

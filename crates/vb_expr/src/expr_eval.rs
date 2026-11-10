@@ -4,8 +4,10 @@
 mod environment;
 mod evaluate;
 mod helper_store;
+mod helper_store_lists;
 mod helper_store_values;
 mod ops;
+mod vm_stack;
 
 pub use crate::lexer::{BinaryOp, UnaryOp};
 pub use crate::parser::ExprHelper;
@@ -19,3 +21,7 @@ pub use vb_core::limits::MAX_EXPRESSION_STACK;
 #[cfg(test)]
 #[path = "expr_eval_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "expr_eval/taint_tests.rs"]
+mod taint_tests;

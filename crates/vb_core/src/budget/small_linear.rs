@@ -7,7 +7,7 @@ use crate::workflow::{CompiledNodeKind, ResourceContract};
 use super::BudgetTraversalError;
 use super::WholeWorkflowBudget;
 use super::compute::derive_budget_dimensions;
-use super::node_at_position;
+use super::{find_node_position, node_at_position};
 
 pub(super) fn compute_small_linear_budget(
     nodes: &[crate::workflow::CompiledNode],
@@ -64,67 +64,76 @@ struct SmallLinearMetrics {
 
 fn small_linear_domain(nodes: &[crate::workflow::CompiledNode]) -> bool {
     match nodes {
-        [] => false,
-        [first] => first.id == StepIdx::new(0) && small_linear_node(first, 1),
-        [first, second] => {
-            first.id == StepIdx::new(0)
-                && second.id == StepIdx::new(1)
-                && small_linear_node(first, 2)
-                && small_linear_node(second, 2)
-        }
+        [first] => small_linear_node(first),
+        [first, second] => small_linear_node(first) && small_linear_node(second),
         _ => false,
     }
 }
 
-fn small_linear_node(node: &crate::workflow::CompiledNode, node_count: usize) -> bool {
-    small_linear_next(node.routing.next.step(), node_count)
-        && small_linear_next(node.routing.error.handler(), node_count)
-        && matches!(
-            node.kind,
-            CompiledNodeKind::Nop
-                | CompiledNodeKind::Do { .. }
-                | CompiledNodeKind::WaitUntil { .. }
-                | CompiledNodeKind::WaitEvent { .. }
-                | CompiledNodeKind::Ask { .. }
-                | CompiledNodeKind::Finish { .. }
-        )
-}
-
-fn small_linear_next(next: Option<StepIdx>, node_count: usize) -> bool {
-    match next {
-        Some(step) => step.as_usize() < node_count,
-        None => true,
-    }
+fn small_linear_node(node: &crate::workflow::CompiledNode) -> bool {
+    matches!(
+        node.kind,
+        CompiledNodeKind::Nop
+            | CompiledNodeKind::Do { .. }
+            | CompiledNodeKind::WaitUntil { .. }
+            | CompiledNodeKind::WaitEvent { .. }
+            | CompiledNodeKind::Ask { .. }
+            | CompiledNodeKind::Finish { .. }
+    )
 }
 
 fn small_linear_metrics(
     nodes: &[crate::workflow::CompiledNode],
     entry: StepIdx,
 ) -> Result<SmallLinearMetrics, BudgetTraversalError> {
-    let first_idx = entry.as_usize();
-    let first = node_at_position(nodes, first_idx, entry)?;
-    let first_metrics = small_linear_node_metrics(first);
-    // In the checked two-node domain every distinct target is the other node.
-    // Its outgoing edges cannot make a third node reachable.
-    let target = first
-        .routing
-        .next
-        .step()
-        .filter(|step| step.as_usize() != first_idx)
-        .or_else(|| {
-            first
-                .routing
-                .error
-                .handler()
-                .filter(|step| step.as_usize() != first_idx)
-        });
-    match target {
-        Some(next) => {
-            let second = node_at_position(nodes, next.as_usize(), next)?;
-            Ok(first_metrics.add(small_linear_node_metrics(second)))
+    // Two first visits push at most two routes each, plus the initial entry.
+    let mut pending = [Some(entry), None, None, None, None];
+    let mut pending_len = 1_usize;
+    let mut visited = [false; 2];
+    let mut metrics = SmallLinearMetrics {
+        steps: 0,
+        actions: 0,
+        timers: 0,
+        gates: 0,
+        signals: 0,
+    };
+    while let Some(index) = pending_len.checked_sub(1) {
+        pending_len = index;
+        let current = pending
+            .get_mut(index)
+            .and_then(Option::take)
+            .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
+        let position = find_node_position(nodes, current, nodes.len())?;
+        let flag = visited
+            .get_mut(position)
+            .ok_or(BudgetTraversalError::StepOutOfBounds { step: current })?;
+        if *flag {
+            continue;
         }
-        _ => Ok(first_metrics),
+        *flag = true;
+        let node = node_at_position(nodes, position, current)?;
+        metrics = metrics.add(small_linear_node_metrics(node));
+        push_small_target(&mut pending, &mut pending_len, node.routing.next.step())?;
+        push_small_target(&mut pending, &mut pending_len, node.routing.error.handler())?;
     }
+    Ok(metrics)
+}
+
+fn push_small_target(
+    pending: &mut [Option<StepIdx>; 5],
+    len: &mut usize,
+    target: Option<StepIdx>,
+) -> Result<(), BudgetTraversalError> {
+    if let Some(target) = target {
+        let slot = pending
+            .get_mut(*len)
+            .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
+        *slot = Some(target);
+        *len = len
+            .checked_add(1)
+            .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
+    }
+    Ok(())
 }
 
 fn small_linear_node_metrics(node: &crate::workflow::CompiledNode) -> SmallLinearMetrics {
@@ -182,3 +191,7 @@ impl SmallLinearMetrics {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "small_linear_route_tests.rs"]
+mod route_tests;

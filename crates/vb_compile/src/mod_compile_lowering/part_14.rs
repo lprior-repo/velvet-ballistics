@@ -8,8 +8,11 @@ use vb_core::{
 #[path = "canonical_branch_body.rs"]
 mod canonical_branch_body;
 use canonical_branch_body::emit_scoped_branch_body;
+#[path = "iteration_body.rs"]
+mod iteration_body;
 pub(super) use canonical_branch_body::emit_scoped_typed_body;
 pub(super) use canonical_branch_body::{emit_body_result, emit_scoped_flat_body};
+pub(super) use iteration_body::{emit_iteration_body, iteration_body_width};
 #[path = "canonical_choose_conditions.rs"]
 mod canonical_choose_conditions;
 use canonical_choose_conditions::choose_node;

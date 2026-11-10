@@ -81,24 +81,27 @@ fn validate_page_bound(page_size: usize, limit: u32) -> Result<(), EngineError> 
     }
 }
 
-fn write_collected_page(
-    run: &mut RunFrame,
-    store: &mut ValueStore,
-    collector: SlotIdx,
-    items: Box<[SlotValue]>,
-) -> Result<ListId, EngineError> {
-    let taint = run.read_taint(collector)?;
-    write_collected_page_with_taint(run, store, collector, items, taint)
-}
-
 fn write_collected_page_with_taint(
     run: &mut RunFrame,
     store: &mut ValueStore,
     collector: SlotIdx,
     items: Box<[SlotValue]>,
     taint: Taint,
+    source: ListId,
+    start: usize,
 ) -> Result<ListId, EngineError> {
-    let page_id = store.insert_list(items)?;
+    let mut taints = Vec::new();
+    taints
+        .try_reserve_exact(items.len())
+        .map_err(|_| EngineError::AllocationFailed)?;
+    taints.extend(
+        store
+            .list_items_with_taint(source)?
+            .skip(start)
+            .take(items.len())
+            .map(|(_, item)| item),
+    );
+    let page_id = store.insert_list_with_taint(items, taints.into_boxed_slice())?;
     run.write_slot_with_taint(collector, SlotValue::List(page_id), taint)?;
     Ok(page_id)
 }

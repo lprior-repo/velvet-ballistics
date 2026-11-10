@@ -1,5 +1,5 @@
 use super::support::{BODY, FINAL, SourceRun, source};
-use vb_core::{CoreError, EngineError, SlotValue, Taint};
+use vb_core::{CoreError, EngineError, SlotValue, StepState, Taint};
 use vb_runtime::engine::{EvidenceEvent, RuntimeEngineError};
 
 fn assert_limit(max: u32, values: &[SlotValue], taint: Taint) -> Result<(), String> {
@@ -12,8 +12,9 @@ fn assert_limit(max: u32, values: &[SlotValue], taint: Taint) -> Result<(), Stri
     );
     let mut run = SourceRun::new(&src, values, taint)?;
     let original = run.workflow.to_parts();
-    let first = run.output(2)?;
-    let second = run.output(3)?;
+    let layout = run.layout(max)?;
+    let first = layout.first;
+    let second = layout.second;
     let result = run.drive(128);
     match result {
         Err(RuntimeEngineError::Core(EngineError::IterationLimitExceeded { resource })) => {
@@ -36,27 +37,85 @@ fn assert_limit(max: u32, values: &[SlotValue], taint: Taint) -> Result<(), Stri
         Err(CoreError::SlotUninitialized { slot }) if slot == second => {}
         other => return Err(format!("second slot wrong: {other:?}")),
     }
+    for slot in [layout.item, layout.cursor, layout.output] {
+        assert_eq!(
+            run.frame.read_slot(slot),
+            Err(CoreError::SlotUninitialized { slot })
+        );
+        assert_eq!(
+            run.frame.read_taint(slot),
+            Err(CoreError::SlotUninitialized { slot })
+        );
+    }
+    assert_eq!(run.frame.read_slot(layout.anchor), Ok(&SlotValue::I64(42)));
+    assert_eq!(run.frame.read_taint(layout.anchor), Ok(Taint::Clean));
+    let SlotValue::List(accumulator) = *run
+        .frame
+        .read_slot(layout.accumulator)
+        .map_err(|e| format!("{e:?}"))?
+    else {
+        return Err("missing initialized accumulator".into());
+    };
+    assert_eq!(
+        run.store.list(accumulator).map_err(|e| format!("{e:?}"))?,
+        &[]
+    );
+    assert_eq!(run.frame.read_taint(layout.accumulator), Ok(taint));
+    assert_eq!(
+        run.store.list_count(),
+        3,
+        "Start must not allocate after the limit failure"
+    );
+    assert_eq!(run.frame.step_state(layout.start), Ok(StepState::Failed));
+    assert_eq!(run.frame.pc(), layout.start);
+    for step in layout.before_start {
+        assert_eq!(run.frame.step_state(step), Ok(StepState::Succeeded));
+    }
+    for step in layout.body.into_iter().chain(layout.after) {
+        assert_eq!(run.frame.step_state(step), Ok(StepState::Pending));
+    }
     let events = run.evidence.drain();
-    let started: Vec<u16> = events
+    let started: Vec<_> = events
         .iter()
         .filter_map(|e| match e {
-            EvidenceEvent::StepStarted { step, .. } => Some(step.get()),
+            EvidenceEvent::StepStarted { step, .. } => Some(*step),
             _ => None,
         })
         .collect();
-    if started != [0, 1] {
+    let mut expected_started = layout.before_start.to_vec();
+    expected_started.push(layout.start);
+    if started != expected_started {
         return Err(format!("started wrong: {started:?}"));
     }
-    let succeeded: Vec<u16> = events
+    let succeeded: Vec<_> = events
         .iter()
         .filter_map(|e| match e {
-            EvidenceEvent::StepSucceeded { step, .. } => Some(step.get()),
+            EvidenceEvent::StepSucceeded { step, .. } => Some(*step),
             _ => None,
         })
         .collect();
-    if succeeded != [0] {
+    if succeeded != layout.before_start {
         return Err(format!("succeeded wrong: {succeeded:?}"));
     }
+    let failed = events
+        .iter()
+        .filter_map(|e| match e {
+            EvidenceEvent::StepFailed { step } => Some(*step),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(failed, Vec::new());
+    let written = events
+        .iter()
+        .filter_map(|e| match e {
+            EvidenceEvent::SlotWritten { slot, .. } => Some(*slot),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        written,
+        vec![layout.anchor, layout.accumulator, layout.accumulator]
+    );
     for e in &events {
         if let EvidenceEvent::SlotWritten { slot, .. } = e {
             if *slot == first || *slot == second {

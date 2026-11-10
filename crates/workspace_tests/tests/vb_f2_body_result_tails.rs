@@ -160,3 +160,25 @@ fn sibling_body_emitters_accept_nonproducing_tails_without_changing_their_result
     }
     Ok(())
 }
+
+#[test]
+fn nested_repeat_result_types_support_numeric_continuations() -> TestResult {
+    for (literal, expected) in [
+        ("7", SlotValue::I64(8)),
+        ("1.5", SlotValue::F64(vb_core::FiniteF64::new(2.5)?)),
+    ] {
+        let inner = format!(
+            "- id: inner\n  repeat:\n    max_attempts: 2\n    steps:\n      - id: leaf\n        set: {{output: leaf, value: '{literal}'}}\n"
+        );
+        let body = format!(
+            "{}- id: observed\n  set: {{output: observed, value: '$step.scope + 1'}}\n",
+            repeated(&inner)
+        );
+        for quantum in [1, 64] {
+            let outcome = execute(&source("", &body, "$step.observed"), quantum, None)?;
+            assert_eq!(outcome.value, expected);
+            assert_eq!((outcome.asks, outcome.waits), (0, 0));
+        }
+    }
+    Ok(())
+}

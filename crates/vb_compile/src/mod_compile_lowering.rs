@@ -1,6 +1,7 @@
 //! Private compile lowering module.
 
 mod canonical_values;
+mod list_input;
 mod numeric_source_inputs;
 mod part_01;
 mod part_02;

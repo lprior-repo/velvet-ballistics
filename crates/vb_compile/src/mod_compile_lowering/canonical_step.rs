@@ -103,7 +103,11 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
             },
             builder,
         )
-        .map(|()| None),
+        .map(|slot| {
+            step_outputs.insert(step.id.to_string(), slot);
+            slot_types.insert(slot, ExprType::List);
+            Some(slot)
+        }),
         crate::StepPrimitive::Together { branches } => {
             lower_canonical_parallel(
                 index,
@@ -182,7 +186,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
             Ok(Some(slot))
         }
         crate::StepPrimitive::Repeat { max_attempts, body } => {
-            lower_canonical_repeat(
+            let (result, inferred) = lower_canonical_repeat(
                 index,
                 id,
                 *max_attempts,
@@ -195,14 +199,9 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                 },
                 builder,
             )?;
-            let output = builder.nodes.last().and_then(|node| match node.kind {
-                CompiledNodeKind::RepeatFinish { result } => Some(result),
-                _ => None,
-            });
-            if let Some(result) = output {
-                step_outputs.insert(step.id.clone(), result);
-            }
-            Ok(output)
+            step_outputs.insert(step.id.clone(), result);
+            slot_types.insert(result, inferred);
+            Ok(Some(result))
         }
         crate::StepPrimitive::Wait { event, timeout } => lower_canonical_wait(
             index,

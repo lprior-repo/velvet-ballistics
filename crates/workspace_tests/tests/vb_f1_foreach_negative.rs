@@ -39,17 +39,20 @@ steps:
 
 #[test]
 fn for_each_at_once_must_be_one() -> Result<(), String> {
-    let values = [0, 2];
-    for n in values {
+    for n in [0, 2] {
         let src = SOURCE.replace("at_once: 1", &format!("at_once: {n}"));
-        rejects(
-            &src,
-            StepFieldShape {
-                step: 1,
-                field: "for_each.at_once",
-                expected: "omitted or 1 until concurrent for_each lowering is implemented",
-            },
-        )?;
+        if n == 0 {
+            rejects(
+                &src,
+                StepFieldShape {
+                    step: 1,
+                    field: "for_each.at_once",
+                    expected: "a positive concurrency upper bound",
+                },
+            )?;
+        } else {
+            extras::assert_serial_cap(&src)?;
+        }
     }
     Ok(())
 }
@@ -75,10 +78,10 @@ fn for_each_input_shape_validation() -> Result<(), String> {
     let input_not_list = SOURCE.replace("$input.items", "0");
     rejects(
         &input_not_list,
-        CompileError::StepFieldShape {
-            step: 1,
+        CompileError::TypeMismatch {
             field: "for_each.input",
-            expected: "direct declared list<any> input with finite schema max",
+            expected: "list",
+            found: "non-list",
         },
     )?;
 
@@ -86,14 +89,7 @@ fn for_each_input_shape_validation() -> Result<(), String> {
     execute_typed_list(&typed_source)?;
 
     let input_no_max = SOURCE.replace(", max: 3", "");
-    rejects(
-        &input_no_max,
-        CompileError::StepFieldShape {
-            step: 1,
-            field: "for_each.input",
-            expected: "direct declared list input with finite schema max",
-        },
-    )?;
+    extras::assert_bound(&input_no_max, 65_535, None)?;
 
     Ok(())
 }
@@ -101,11 +97,22 @@ fn for_each_input_shape_validation() -> Result<(), String> {
 #[test]
 fn for_each_max_overflow() -> Result<(), String> {
     let overflow = SOURCE.replace("max: 3", "max: 4294967296");
+    extras::assert_bound(&overflow, 65_535, Some(4_294_967_296))?;
+    let mut store = vb_core::ValueStore::new();
+    let too_many = vb_core::limits::MAX_LIST_ITEMS_PER_VALUE
+        .checked_add(1)
+        .ok_or("list length")?;
+    assert_eq!(
+        store.insert_list(vec![vb_core::SlotValue::Null; too_many]),
+        Err(vb_core::CoreError::ResourceLimitExceeded {
+            resource: "list_items"
+        })
+    );
     rejects(
-        &overflow,
+        &SOURCE.replace("max: 3", "max: -1"),
         CompileError::InvalidInputSchema {
-            field: "inputs.max",
-            expected: "list maximum representable as u32",
+            field: "inputs.min/max",
+            expected: "non-negative list length bounds",
         },
     )
 }

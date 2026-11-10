@@ -55,7 +55,8 @@ pub(super) fn eval_expr_inner(
         index = next_expr_index(index)?;
     }
     let value = finish_expr_stack(&mut stack)?;
-    Ok((value, taint_accum))
+    let result_taint = stack.pending_operand_taint();
+    Ok((value, crate::value::join_taint(taint_accum, result_taint)))
 }
 
 fn eval_load_slot(
@@ -67,7 +68,7 @@ fn eval_load_slot(
     let value = *run.read_slot(slot)?;
     let slot_taint = run.read_taint(slot)?;
     *taint_accum = crate::value::join_taint(*taint_accum, slot_taint);
-    push_value(stack, value)
+    stack.push_tainted(value, slot_taint)
 }
 
 fn eval_load_const(
@@ -84,6 +85,23 @@ fn eval_load_const(
 }
 
 pub(super) fn eval_expr_op(
+    plan: &CompiledWorkflow,
+    run: &crate::RunFrame,
+    store: &mut ValueStore,
+    op: ExprOp,
+    stack: &mut ExprStack,
+    taint_accum: &mut Taint,
+) -> Result<(), EngineError> {
+    stack.reset_operand_taint();
+    let result = eval_expr_op_inner(plan, run, store, op, stack, taint_accum).and_then(|()| {
+        *taint_accum = crate::value::join_taint(*taint_accum, stack.result_taint()?);
+        Ok(())
+    });
+    stack.reset_operand_taint();
+    result
+}
+
+fn eval_expr_op_inner(
     plan: &CompiledWorkflow,
     run: &crate::RunFrame,
     store: &mut ValueStore,

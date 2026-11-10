@@ -7,7 +7,7 @@
 //! the replay arithmetic convention.
 
 use crate::ids::{ListId, ObjectId, StepIdx, SymbolId};
-use crate::value::SlotValue;
+use crate::value::{SlotValue, join_taint};
 use crate::value_store::ValueStore;
 use crate::workflow::ExprOp;
 
@@ -54,15 +54,6 @@ fn expect_i64(value: SlotValue) -> Result<i64, ReplayError> {
     }
 }
 
-fn pop_three(
-    stack: &mut ReplayExprStack,
-) -> Result<(SlotValue, SlotValue, SlotValue), ReplayError> {
-    let third = stack.pop()?;
-    let second = stack.pop()?;
-    let first = stack.pop()?;
-    Ok((first, second, third))
-}
-
 /// Dispatches one helper expression operation.
 pub(super) fn eval_helper_op(
     op: ExprOp,
@@ -91,6 +82,13 @@ pub(super) fn eval_helper_op(
 
 fn eval_contains(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {
     let (haystack, needle) = pop_pair(stack)?;
+    if let SlotValue::List(id) = haystack {
+        let (found, taint) = store
+            .list_contains_with_taint(id, needle)
+            .map_err(|_| failed())?;
+        stack.join_operand_taint(taint);
+        return stack.push(SlotValue::Bool(found));
+    }
     let haystack_id = expect_symbol(haystack)?;
     let needle_id = expect_symbol(needle)?;
     let haystack_str = store.symbol(haystack_id).map_err(|_| failed())?;
@@ -122,8 +120,11 @@ fn eval_ends_with(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result
 fn eval_has(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {
     let (list, item) = pop_pair(stack)?;
     let list_id = expect_list(list)?;
-    let items = store.list(list_id).map_err(|_| failed())?;
-    stack.push(SlotValue::Bool(items.contains(&item)))
+    let (found, taint) = store
+        .list_contains_with_taint(list_id, item)
+        .map_err(|_| failed())?;
+    stack.join_operand_taint(taint);
+    stack.push(SlotValue::Bool(found))
 }
 
 fn eval_exists(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {
@@ -182,10 +183,11 @@ fn eval_empty(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(),
 fn eval_sum(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {
     let value = stack.pop()?;
     let list_id = expect_list(value)?;
-    let items = store.list(list_id).map_err(|_| failed())?;
+    let items = store.list_items_with_taint(list_id).map_err(|_| failed())?;
     let mut sum: i64 = 0;
-    for item in items {
-        let number = expect_i64(*item)?;
+    for (item, taint) in items {
+        let number = expect_i64(item)?;
+        stack.join_operand_taint(taint);
         sum = sum.checked_add(number).ok_or_else(failed)?;
     }
     stack.push(SlotValue::I64(sum))
@@ -200,42 +202,37 @@ fn eval_count(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(),
 }
 
 fn eval_append(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {
-    let (list, item) = pop_pair(stack)?;
+    let (item, item_taint) = stack.pop_tainted()?;
+    let (list, list_taint) = stack.pop_tainted()?;
     let list_id = expect_list(list)?;
-    let items = store.list(list_id).map_err(|_| failed())?;
-    let new_len = items.len().checked_add(1).ok_or_else(failed)?;
-    let mut new_items: Vec<SlotValue> = Vec::new();
-    new_items.try_reserve_exact(new_len).map_err(|_| failed())?;
-    new_items.extend_from_slice(items);
-    new_items.push(item);
-    let new_list = store
-        .insert_list(new_items.into_boxed_slice())
+    let (values, taints) = store
+        .prepare_list_append(list_id, Some((item, item_taint)))
         .map_err(|_| failed())?;
-    stack.push(SlotValue::List(new_list))
+    let new_list = store
+        .insert_list_with_taint(values, taints)
+        .map_err(|_| failed())?;
+    stack.push_tainted(
+        SlotValue::List(new_list),
+        join_taint(list_taint, item_taint),
+    )
 }
 
 fn eval_append_if(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {
-    let (list, item, condition) = pop_three(stack)?;
+    let (condition, condition_taint) = stack.pop_tainted()?;
+    let (item, item_taint) = stack.pop_tainted()?;
+    let (list, list_taint) = stack.pop_tainted()?;
     let list_id = expect_list(list)?;
     let cond = expect_bool(condition)?;
-    let items = store.list(list_id).map_err(|_| failed())?;
-    let base_len = items.len();
-    let mut new_items: Vec<SlotValue> = Vec::new();
-    if cond {
-        let new_len = base_len.checked_add(1).ok_or_else(failed)?;
-        new_items.try_reserve_exact(new_len).map_err(|_| failed())?;
-        new_items.extend_from_slice(items);
-        new_items.push(item);
-    } else {
-        new_items
-            .try_reserve_exact(base_len)
-            .map_err(|_| failed())?;
-        new_items.extend_from_slice(items);
-    }
-    let new_list = store
-        .insert_list(new_items.into_boxed_slice())
+    let (values, taints) = store
+        .prepare_list_append(list_id, cond.then_some((item, item_taint)))
         .map_err(|_| failed())?;
-    stack.push(SlotValue::List(new_list))
+    let new_list = store
+        .insert_list_with_taint(values, taints)
+        .map_err(|_| failed())?;
+    stack.push_tainted(
+        SlotValue::List(new_list),
+        join_taint(join_taint(list_taint, item_taint), condition_taint),
+    )
 }
 
 fn eval_merge(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {
@@ -263,16 +260,12 @@ fn eval_merge(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(),
 fn eval_unique(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {
     let value = stack.pop()?;
     let list_id = expect_list(value)?;
-    let items = store.list(list_id).map_err(|_| failed())?;
-    let mut seen: Vec<SlotValue> = Vec::new();
-    seen.try_reserve_exact(items.len()).map_err(|_| failed())?;
-    for item in items {
-        if !seen.contains(item) {
-            seen.push(*item);
-        }
+    let (values, taints) = store.prepare_list_unique(list_id).map_err(|_| failed())?;
+    for taint in taints.iter().copied() {
+        stack.join_operand_taint(taint);
     }
     let new_list = store
-        .insert_list(seen.into_boxed_slice())
+        .insert_list_with_taint(values, taints)
         .map_err(|_| failed())?;
     stack.push(SlotValue::List(new_list))
 }

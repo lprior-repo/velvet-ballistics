@@ -43,11 +43,10 @@ fn unknown_or_overwritten_reduce_origin_keeps_the_hard_cap() -> TestResult {
             ..CompiledInputConstraint::required()
         },
     );
+    let null = builder.push_constant(ConstValue::Null)?;
     builder.push_node(node(
         StepIdx::new(0),
-        CompiledNodeKind::BuildList {
-            items: Box::new([]),
-        },
+        CompiledNodeKind::SetConst { value: null },
         Some(SlotIdx::new(0)),
         None,
     ));

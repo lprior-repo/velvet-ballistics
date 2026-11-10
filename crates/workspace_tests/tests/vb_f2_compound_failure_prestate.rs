@@ -28,7 +28,7 @@ fn allocation_failure(family: &str, next: bool) -> TestResult {
     let plan = vb_compile::compile_workflow(yaml.as_bytes())?;
     vb_validate::shared::validate(&plan.to_parts())?;
     let mut run = new_run_frame(RunId::new(1), &plan)?;
-    let mut store = ValueStore::with_max_slots(if next { 2 } else { 1 });
+    let mut store = ValueStore::with_max_slots(plan.resource_contract().max_slots);
     let source = store.insert_list_with_taint(
         Box::from([SlotValue::I64(3), SlotValue::I64(5)]),
         Box::from([Taint::Secret, Taint::DerivedFromSecret]),
@@ -49,6 +49,15 @@ fn allocation_failure(family: &str, next: bool) -> TestResult {
                 | ("collect", false, K::CollectStart { .. })
                 | ("collect", true, K::CollectNext { .. })
         );
+        if target {
+            let mut checkpoint = store.checkpoint_v1();
+            checkpoint.max_arena_entries = store.total_arena_count();
+            store = ValueStore::from_checkpoint_v1(checkpoint)?;
+            assert_eq!(
+                store.total_arena_count(),
+                store.checkpoint_v1().max_arena_entries
+            );
+        }
         let before = run.initialized_slots()?;
         let stored = store.checkpoint_v1();
         let pages = collect.checkpoint_v1();
@@ -67,7 +76,12 @@ fn allocation_failure(family: &str, next: bool) -> TestResult {
         )?;
         assert_eq!(signal, RuntimeSignal::StepBudgetExhausted);
         if !target {
-            evidence.drain();
+            assert!(
+                !evidence
+                    .drain()
+                    .iter()
+                    .any(|event| matches!(event, EvidenceEvent::StepFailed { .. }))
+            );
             continue;
         }
         assert_eq!(run.step_state(failed)?, StepState::Failed);

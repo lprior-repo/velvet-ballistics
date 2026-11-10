@@ -130,23 +130,20 @@ impl kani::Arbitrary for StepBudget {
 fn kani_harness_whole_workflow_budget_compute() {
     let inputs = budget_workflow_inputs();
     let node_count = inputs.node_count();
-    inputs.with_nodes(|nodes| {
-        kani::assume(focused_slice_domain(nodes, inputs.entry()));
+    let has_nop = inputs.covers_nop();
+    let has_do = inputs.covers_do();
+    let has_wait_until = inputs.covers_wait_until();
+    let has_finish = inputs.covers_finish();
+    inputs.with_nodes(|nodes, entry, contract| {
+        kani::assume(focused_slice_domain(nodes, entry));
         kani::cover!(node_count == 0, "budget generator covers empty workflow");
         kani::cover!(node_count == 1, "budget generator covers one-node workflow");
         kani::cover!(node_count == 2, "budget generator covers two-node workflow");
-        kani::cover!(inputs.covers_nop(), "budget generator covers Nop nodes");
-        kani::cover!(inputs.covers_do(), "budget generator covers Do nodes");
-        kani::cover!(
-            inputs.covers_wait_until(),
-            "budget generator covers WaitUntil nodes"
-        );
-        kani::cover!(
-            inputs.covers_finish(),
-            "budget generator covers Finish nodes"
-        );
-        let result =
-            WholeWorkflowBudget::compute_budget_local(nodes, inputs.entry(), inputs.contract());
+        kani::cover!(has_nop, "budget generator covers Nop nodes");
+        kani::cover!(has_do, "budget generator covers Do nodes");
+        kani::cover!(has_wait_until, "budget generator covers WaitUntil nodes");
+        kani::cover!(has_finish, "budget generator covers Finish nodes");
+        let result = WholeWorkflowBudget::compute_budget_local(nodes, entry, contract);
         let returned_ok = result.is_ok();
         let returned_err = result.is_err();
         kani::cover!(returned_ok, "compute returns Ok for this input");

@@ -1,10 +1,12 @@
 #![forbid(unsafe_code)]
 
 use vb_compile::compile_workflow;
+use vb_core::workflow::{CompiledNode, CompiledNodeKind as K, ExprOp};
 use vb_core::{
     CapabilitySet, CompiledWorkflow, InputSlotKind, ListId, RunFrame, RunId, SlotIdx, SlotValue,
     StepBudget, Taint, ValueStore, new_run_frame,
 };
+use vb_core::{ConstValue, StepIdx};
 use vb_runtime::engine::{
     EvidenceCollector, RetryPolicy, RuntimeEngineError, RuntimeSignal, drive_deterministic_full,
 };
@@ -132,16 +134,191 @@ impl SourceRun {
                 return Err(format!("list element {} changed", i));
             }
         }
+        let entries = self
+            .store
+            .list_items_with_taint(self.input_list)
+            .map_err(|error| format!("input metadata read failed: {error:?}"))?
+            .collect::<Vec<_>>();
+        let expected = values
+            .iter()
+            .map(|value| (*value, Taint::Clean))
+            .collect::<Vec<_>>();
+        assert_eq!(entries, expected, "source item metadata changed");
         Ok(())
     }
 
-    pub(super) fn output(&self, step: u16) -> Result<SlotIdx, String> {
+    pub(super) fn output(&self, step: StepIdx) -> Result<SlotIdx, String> {
         let node = self
             .workflow
-            .node(vb_core::StepIdx::new(step))
-            .ok_or_else(|| format!("step {} not found", step))?;
+            .node(step)
+            .ok_or_else(|| format!("step {step:?} not found"))?;
         node.output
             .slot()
-            .ok_or_else(|| format!("step {} has no output slot", step))
+            .ok_or_else(|| format!("step {step:?} has no output slot"))
+    }
+}
+
+pub(super) struct LoopLayout {
+    pub(super) before_start: [StepIdx; 3],
+    pub(super) start: StepIdx,
+    pub(super) body: [StepIdx; 4],
+    pub(super) after: [StepIdx; 2],
+    pub(super) anchor: SlotIdx,
+    pub(super) accumulator: SlotIdx,
+    pub(super) item: SlotIdx,
+    pub(super) cursor: SlotIdx,
+    pub(super) first: SlotIdx,
+    pub(super) second: SlotIdx,
+    pub(super) output: SlotIdx,
+}
+
+impl SourceRun {
+    fn node(&self, step: StepIdx) -> Result<&CompiledNode, String> {
+        self.workflow
+            .node(step)
+            .ok_or_else(|| format!("missing node {step:?}"))
+    }
+
+    fn next(&self, node: &CompiledNode) -> Result<&CompiledNode, String> {
+        self.node(
+            node.routing
+                .next
+                .step()
+                .ok_or_else(|| format!("missing next at {:?}", node.id))?,
+        )
+    }
+
+    fn assert_load(&self, node: &CompiledNode, source: SlotIdx) -> Result<(), String> {
+        let K::EvalExpr { expr } = &node.kind else {
+            return Err("body set must evaluate its slot reference".into());
+        };
+        let program = self
+            .workflow
+            .expression(*expr)
+            .ok_or("missing body expression")?;
+        assert_eq!(program.ops.as_ref(), &[ExprOp::LoadSlot(source)]);
+        Ok(())
+    }
+
+    pub(super) fn layout(&self, max: u32) -> Result<LoopLayout, String> {
+        let seed = self.node(self.workflow.entry())?;
+        let K::SetConst { value } = &seed.kind else {
+            return Err("seed must be SetConst".into());
+        };
+        assert_eq!(self.workflow.constant(*value), Some(&ConstValue::I64(42)));
+        let anchor = self.output(seed.id)?;
+        let init = self.next(seed)?;
+        assert_eq!(
+            init.kind,
+            K::BuildList {
+                items: Box::from([])
+            }
+        );
+        let accumulator = self.output(init.id)?;
+        let bridge = self.next(init)?;
+        let start = self.next(bridge)?;
+        let K::ForEachStart {
+            input,
+            item_slot,
+            limit,
+            body,
+            done,
+        } = &start.kind
+        else {
+            return Err("missing ForEachStart after root bridge".into());
+        };
+        assert_eq!(*input, self.input_slot);
+        assert_eq!(*limit, max);
+        let item = *item_slot;
+        let cursor = self.output(start.id)?;
+        let K::EvalExpr { expr } = &bridge.kind else {
+            return Err("missing source root bridge".into());
+        };
+        let bridge_ops = self
+            .workflow
+            .expression(*expr)
+            .ok_or("missing bridge expression")?;
+        let [
+            ExprOp::LoadSlot(left),
+            ExprOp::LoadSlot(source),
+            ExprOp::LoadConst(flag),
+            ExprOp::AppendIf,
+        ] = bridge_ops.ops.as_ref()
+        else {
+            return Err("wrong source root bridge".into());
+        };
+        assert_eq!((*left, *source), (accumulator, self.input_slot));
+        assert_eq!(
+            self.workflow.constant(*flag),
+            Some(&ConstValue::Bool(false))
+        );
+        assert_eq!(self.output(bridge.id)?, accumulator);
+        let first = self.node(*body)?;
+        self.assert_load(first, item)?;
+        let first_slot = self.output(first.id)?;
+        let second = self.next(first)?;
+        self.assert_load(second, first_slot)?;
+        let second_slot = self.output(second.id)?;
+        let append = self.next(second)?;
+        let K::EvalExpr { expr } = &append.kind else {
+            return Err("missing body result append".into());
+        };
+        let append_ops = self
+            .workflow
+            .expression(*expr)
+            .ok_or("missing append expression")?;
+        assert_eq!(
+            append_ops.ops.as_ref(),
+            &[
+                ExprOp::LoadSlot(accumulator),
+                ExprOp::LoadSlot(second_slot),
+                ExprOp::Append
+            ]
+        );
+        assert_eq!(self.output(append.id)?, accumulator);
+        let advance = self.next(append)?;
+        assert_eq!(
+            advance.kind,
+            K::ForEachNext {
+                iterator_slot: cursor,
+                body: *body,
+                done: *done
+            }
+        );
+        assert_eq!(self.output(advance.id)?, item);
+        let join = self.node(*done)?;
+        assert_eq!(
+            join.kind,
+            K::ForEachJoin {
+                output: accumulator
+            }
+        );
+        let output = self.output(join.id)?;
+        let finish = self.next(join)?;
+        assert_eq!(finish.kind, K::Finish { result: anchor });
+        assert_eq!(finish.routing.next.step(), None);
+        let layout = LoopLayout {
+            before_start: [seed.id, init.id, bridge.id],
+            start: start.id,
+            body: [first.id, second.id, append.id, advance.id],
+            after: [join.id, finish.id],
+            anchor,
+            accumulator,
+            item,
+            cursor,
+            first: first_slot,
+            second: second_slot,
+            output,
+        };
+        let steps = layout
+            .before_start
+            .into_iter()
+            .chain([layout.start])
+            .chain(layout.body)
+            .chain(layout.after)
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(steps.len(), 10);
+        assert_eq!(usize::from(self.workflow.node_count()), steps.len());
+        Ok(layout)
     }
 }

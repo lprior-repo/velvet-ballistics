@@ -2,7 +2,7 @@ use super::part_01::ForEachInputs;
 use super::*;
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use std::collections::HashMap;
-use vb_core::{CompiledNodeKind, SlotIdx, StepIdx};
+use vb_core::{SlotIdx, StepIdx};
 use vb_expr::expr_typecheck::ExprType;
 
 #[cfg(test)]

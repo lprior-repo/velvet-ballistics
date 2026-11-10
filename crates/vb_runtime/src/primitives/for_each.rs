@@ -52,10 +52,12 @@ pub fn for_each_start(
         .ok_or(EngineError::InternalInvariantViolation {
             reason: "for_each item_count checked nonzero",
         })?;
+    let item_taint =
+        vb_core::value::join_taint(input_taint, store.list_item_with_taint(list_id, 0)?.1);
     preflight_slot_writes(run, &[item_slot, iter_output], body)?;
     let state = build_iterator_state(list_id, 1)?;
     let state_id = store.insert_list(state)?;
-    run.write_slot_with_taint(item_slot, first, input_taint)?;
+    run.write_slot_with_taint(item_slot, first, item_taint)?;
     run.write_slot_with_taint(iter_output, SlotValue::List(state_id), input_taint)?;
     jump_to(run, body)
 }
@@ -87,6 +89,15 @@ pub(crate) fn for_each_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
         .ok_or(EngineError::InternalInvariantViolation {
             reason: "for_each cursor bounds-checked above",
         })?;
+    let item_taint = vb_core::value::join_taint(
+        iter_taint,
+        store
+            .list_item_with_taint(
+                source_id,
+                u32::try_from(cursor).map_err(|_| EngineError::AllocationFailed)?,
+            )?
+            .1,
+    );
     preflight_slot_writes(run, &[item_output, iterator_slot], body)?;
     let next_cursor = cursor
         .checked_add(1)
@@ -95,7 +106,7 @@ pub(crate) fn for_each_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
         })?;
     let next_state = build_iterator_state(source_id, next_cursor)?;
     let next_state_id = store.insert_list(next_state)?;
-    run.write_slot_with_taint(item_output, item, iter_taint)?;
+    run.write_slot_with_taint(item_output, item, item_taint)?;
     run.write_slot_with_taint(iterator_slot, SlotValue::List(next_state_id), iter_taint)?;
     P::jump(run, body)
 }

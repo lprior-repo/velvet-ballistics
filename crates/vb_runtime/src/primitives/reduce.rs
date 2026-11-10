@@ -101,10 +101,12 @@ pub fn reduce_start(
     }
     let iter_output = require_output(output, run.pc())?;
     let first = get_first_item(items)?;
+    let item_taint =
+        vb_core::value::join_taint(input_taint, store.list_item_with_taint(list_id, 0)?.1);
     preflight_slot_writes(run, &[accumulator, input, iter_output], body)?;
     let state_id = allocate_iterator_state(store, list_id, 1)?;
     run.write_slot(accumulator, init_value)?;
-    run.write_slot_with_taint(input, first, input_taint)?;
+    run.write_slot_with_taint(input, first, item_taint)?;
     run.write_slot_with_taint(iter_output, SlotValue::List(state_id), input_taint)?;
     jump_to(run, body)
 }
@@ -133,10 +135,19 @@ pub(crate) fn reduce_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
     }
     let item_output = require_output(output, run.pc())?;
     let item = get_item_at(source, cursor)?;
+    let item_taint = vb_core::value::join_taint(
+        iter_taint,
+        store
+            .list_item_with_taint(
+                source_id,
+                u32::try_from(cursor).map_err(|_| EngineError::AllocationFailed)?,
+            )?
+            .1,
+    );
     preflight_slot_writes(run, &[item_output, iterator_slot], body)?;
     let next_cursor = advance_cursor(cursor)?;
     let state_id = allocate_iterator_state(store, source_id, next_cursor)?;
-    run.write_slot_with_taint(item_output, item, iter_taint)?;
+    run.write_slot_with_taint(item_output, item, item_taint)?;
     run.write_slot_with_taint(iterator_slot, SlotValue::List(state_id), iter_taint)?;
     P::jump(run, body)
 }

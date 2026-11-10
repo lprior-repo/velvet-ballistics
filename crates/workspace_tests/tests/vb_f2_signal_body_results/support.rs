@@ -29,6 +29,13 @@ pub(super) fn execute(
     dynamic: Option<SlotValue>,
 ) -> TestResult<Outcome> {
     let plan = vb_compile::compile_workflow(source.as_bytes())?;
+    execute_compiled(plan, quantum, dynamic)
+}
+pub(super) fn execute_compiled(
+    plan: vb_core::CompiledWorkflow,
+    quantum: u64,
+    dynamic: Option<SlotValue>,
+) -> TestResult<Outcome> {
     vb_validate::shared::validate(&plan.to_parts())?;
     let ask_steps = plan
         .to_parts()

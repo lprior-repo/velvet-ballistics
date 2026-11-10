@@ -40,7 +40,14 @@ pub(super) fn replay_collect_start(
         return replay_jump(run, args.done);
     }
     let page = collect_page_items(items, 0, page_size)?;
-    let current_page = write_collect_page(run, store, collector, &page, source_taint)?;
+    let current_page = write_collect_page(
+        run,
+        store,
+        collector,
+        &page,
+        source_taint,
+        Some((list_id, 0)),
+    )?;
     states.upsert(
         collector,
         ReplayCollectState {
@@ -98,7 +105,14 @@ pub(super) fn replay_collect_next(
         return replay_jump(run, done);
     }
     let page = collect_page_items(source_items, state.cursor, state.page_size)?;
-    let current_page = write_collect_page(run, store, collector_slot, &page, state.taint)?;
+    let current_page = write_collect_page(
+        run,
+        store,
+        collector_slot,
+        &page,
+        state.taint,
+        Some((state.source, state.cursor)),
+    )?;
     states.upsert(
         collector_slot,
         ReplayCollectState {
@@ -192,9 +206,24 @@ fn write_collect_page(
     collector: SlotIdx,
     items: &[SlotValue],
     taint: Taint,
+    source: Option<(ListId, usize)>,
 ) -> Result<ListId, ReplayError> {
+    let taints = if let Some((source, start)) = source {
+        store
+            .list_items_with_taint(source)
+            .map_err(|_| ReplayError::Internal {
+                reason: "collect source taints missing during replay",
+            })?
+            .skip(start)
+            .take(items.len())
+            .map(|(_, taint)| taint)
+            .collect::<Vec<_>>()
+            .into_boxed_slice()
+    } else {
+        Box::from([])
+    };
     let page_id = store
-        .insert_list(items.to_vec().into_boxed_slice())
+        .insert_list_with_taint(items.to_vec().into_boxed_slice(), taints)
         .map_err(|_| ReplayError::Internal {
             reason: "insert collect page failed during replay",
         })?;
@@ -209,5 +238,5 @@ fn write_empty_collect_page(
     collector: SlotIdx,
     taint: Taint,
 ) -> Result<(), ReplayError> {
-    write_collect_page(run, store, collector, &[], taint).map(|_page_id| ())
+    write_collect_page(run, store, collector, &[], taint, None).map(|_page_id| ())
 }

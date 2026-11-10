@@ -24,11 +24,22 @@ impl BudgetWorkflowInputs {
         self.nodes.as_slice()
     }
 
-    pub(crate) fn with_nodes<R>(&self, visit: impl FnOnce(&[CompiledNode]) -> R) -> R {
-        match &self.nodes {
-            BudgetNodes::Empty => visit(&[]),
-            BudgetNodes::One(nodes) => visit(nodes),
-            BudgetNodes::Two(nodes) => visit(nodes),
+    pub(crate) fn with_nodes(
+        self,
+        visit: impl FnOnce(&[CompiledNode], StepIdx, &ResourceContract),
+    ) {
+        let entry = self.entry();
+        let contract = *self.contract();
+        match self.nodes {
+            BudgetNodes::Empty => visit(&[], entry, &contract),
+            BudgetNodes::One([node]) => with_focused_node(node, |node| {
+                visit(&[node], entry, &contract);
+            }),
+            BudgetNodes::Two([first, second]) => with_focused_node(first, |first| {
+                with_focused_node(second, |second| {
+                    visit(&[first, second], entry, &contract);
+                });
+            }),
         }
     }
 
@@ -63,6 +74,48 @@ impl BudgetWorkflowInputs {
 
     pub(crate) fn covers_finish(&self) -> bool {
         self.nodes.has_finish()
+    }
+}
+
+fn with_focused_node(node: CompiledNode, visit: impl FnOnce(CompiledNode)) {
+    match node.kind {
+        CompiledNodeKind::Nop => visit(CompiledNode {
+            kind: CompiledNodeKind::Nop,
+            ..node
+        }),
+        CompiledNodeKind::Do { action, input } => visit(CompiledNode {
+            kind: CompiledNodeKind::Do { action, input },
+            ..node
+        }),
+        CompiledNodeKind::WaitUntil { deadline_slot } => visit(CompiledNode {
+            kind: CompiledNodeKind::WaitUntil { deadline_slot },
+            ..node
+        }),
+        CompiledNodeKind::WaitEvent {
+            event,
+            timeout_slot,
+        } => visit(CompiledNode {
+            kind: CompiledNodeKind::WaitEvent {
+                event,
+                timeout_slot,
+            },
+            ..node
+        }),
+        CompiledNodeKind::Ask {
+            prompt,
+            timeout_slot,
+        } => visit(CompiledNode {
+            kind: CompiledNodeKind::Ask {
+                prompt,
+                timeout_slot,
+            },
+            ..node
+        }),
+        CompiledNodeKind::Finish { result } => visit(CompiledNode {
+            kind: CompiledNodeKind::Finish { result },
+            ..node
+        }),
+        _ => assert!(false, "budget generator produced an unsupported node kind"),
     }
 }
 

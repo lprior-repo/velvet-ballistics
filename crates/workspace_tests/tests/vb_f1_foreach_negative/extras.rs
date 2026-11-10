@@ -134,15 +134,16 @@ steps:
         ));
     }
 
-    if max1_budget.max_total_steps != 5 {
+    // Six fixed steps plus copy, append and next for each input item.
+    if max1_budget.max_total_steps != 9 {
         return Err(format!(
-            "expected max1 budget max_total_steps 5, got {}",
+            "expected max1 budget max_total_steps 9, got {}",
             max1_budget.max_total_steps
         ));
     }
-    if max3_budget.max_total_steps != 9 {
+    if max3_budget.max_total_steps != 15 {
         return Err(format!(
-            "expected max3 budget max_total_steps 9, got {}",
+            "expected max3 budget max_total_steps 15, got {}",
             max3_budget.max_total_steps
         ));
     }
@@ -156,4 +157,41 @@ steps:
     }
 
     Ok(())
+}
+
+pub(super) fn assert_bound(
+    source: &str,
+    expected_limit: u32,
+    expected_schema: Option<i64>,
+) -> Result<(), String> {
+    let workflow = compile_workflow(source.as_bytes()).map_err(|error| error.to_string())?;
+    let input = workflow.input_slots().first().ok_or("list input")?;
+    assert_eq!(input.kind, vb_core::InputSlotKind::List);
+    assert_eq!(input.constraint.max, expected_schema);
+    let parts = workflow.to_parts();
+    let bounds = parts
+        .nodes
+        .iter()
+        .filter_map(|node| match node.kind {
+            vb_core::CompiledNodeKind::ForEachStart { input, limit, .. } => Some((input, limit)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(bounds, [(input.slot, expected_limit)]);
+    let budget = vb_core::budget::WholeWorkflowBudget::compute(
+        &parts.nodes,
+        parts.entry,
+        &parts.resource_contract,
+    )
+    .map_err(|error| error.to_string())?;
+    assert_eq!(budget.max_for_each_iterations, expected_limit);
+    Ok(())
+}
+
+pub(super) fn assert_serial_cap(source: &str) -> Result<(), String> {
+    let plan = compile_workflow(source.as_bytes()).map_err(|error| error.to_string())?;
+    let serial = compile_workflow(SOURCE.as_bytes()).map_err(|error| error.to_string())?;
+    assert_eq!(plan.to_parts().nodes, serial.to_parts().nodes);
+    assert_eq!(plan.to_parts().expressions, serial.to_parts().expressions);
+    super::execute_typed_list(&source.replace("of: any", "of: number"))
 }

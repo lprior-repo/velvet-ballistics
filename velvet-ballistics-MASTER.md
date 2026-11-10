@@ -2161,7 +2161,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `input` slot (must be List) |
 | Slots written | `item_slot` with first item; `output` with an opaque cursor referencing the source list. If empty: `output` with an empty list. |
-| Taint | Input taint propagates to the item and cursor. |
+| Taint | The item joins its stored element taint with the input container taint; the cursor retains only the container taint. |
 | StepState | Pending → Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2175,7 +2175,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `iterator_slot` (must be List) |
 | Slots written | `output` with the next item; `iterator_slot` with the advanced opaque cursor |
-| Taint | Iterator taint propagates to the item and advanced cursor. |
+| Taint | The next item joins its own stored element taint with the cursor's container taint; the advanced cursor retains that container taint. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2241,7 +2241,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `source` slot (must be List) |
 | Slots written | `collector_slot` with first page; pagination state in global table |
-| Taint | Source taint propagates to the collector, including an empty result. |
+| Taint | Source container taint propagates to the collector, including an empty result; copied page elements retain their stored taints. |
 | StepState | Pending → Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2266,7 +2266,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `collector_slot` (List), pagination state |
 | Slots written | `collector_slot` with next page |
-| Taint | Preserves the collector taint across pages. |
+| Taint | Preserves the source container taint across pages and retains each copied element's stored taint. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2292,7 +2292,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | Constant pool at `initial`; `input` slot (must be List) |
 | Slots written | `accumulator` with initial value; for a non-empty list, `input` with first item and `output` with an opaque source-list cursor |
-| Taint | Initial constant is Clean; source input taint propagates to the first item and cursor. |
+| Taint | Initial constant is Clean; the first item joins its stored element taint with the source container taint, and the cursor retains only the container taint. |
 | StepState | Pending → Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2306,7 +2306,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `iterator_slot` (must be List) |
 | Slots written | `output` with next item; `iterator_slot` with the advanced opaque source-list cursor |
-| Taint | Iterator taint propagates to the item and advanced cursor. |
+| Taint | The next item joins its own stored element taint with the cursor's container taint; the advanced cursor retains that container taint. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |

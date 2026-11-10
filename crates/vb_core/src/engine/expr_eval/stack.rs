@@ -1,14 +1,16 @@
 #![forbid(unsafe_code)]
 //! Expression evaluation stack.
 
+use super::taints::OperandTaints;
 use crate::errors::EngineError;
 use crate::limits::MAX_EXPRESSION_STACK_USIZE;
-use crate::value::SlotValue;
+use crate::value::{SlotValue, Taint};
 
 pub(super) struct ExprStack {
     values: [SlotValue; MAX_EXPRESSION_STACK_USIZE],
     len: u8,
     capacity: u8,
+    taints: OperandTaints,
 }
 
 impl ExprStack {
@@ -18,6 +20,7 @@ impl ExprStack {
                 values: [SlotValue::Null; MAX_EXPRESSION_STACK_USIZE],
                 len: 0,
                 capacity,
+                taints: OperandTaints::new(),
             })
         } else {
             Err(EngineError::ExpressionStackOverflow { max: capacity })
@@ -28,11 +31,45 @@ impl ExprStack {
         self.len
     }
 
+    pub(super) fn result_taint(&self) -> Result<Taint, EngineError> {
+        self.len
+            .checked_sub(1)
+            .and_then(|index| self.taints.peek(usize::from(index)))
+            .ok_or(EngineError::InternalInvariantViolation {
+                reason: "expression result taint missing",
+            })
+    }
+    pub(super) fn pending_operand_taint(&self) -> Taint {
+        self.taints.pending()
+    }
+    pub(super) fn reset_operand_taint(&mut self) {
+        self.taints.reset();
+    }
+    pub(super) fn join_operand_taint(&mut self, taint: Taint) {
+        self.taints.join(taint);
+    }
     pub(super) fn push(&mut self, value: SlotValue) -> Result<(), EngineError> {
+        let result = self.push_tainted(value, self.taints.pending());
+        self.taints.reset();
+        result
+    }
+    pub(super) fn pop(&mut self) -> Result<SlotValue, EngineError> {
+        let (value, taint) = self.pop_tainted()?;
+        self.taints.join(taint);
+        Ok(value)
+    }
+    pub(super) fn push_tainted(
+        &mut self,
+        value: SlotValue,
+        taint: Taint,
+    ) -> Result<(), EngineError> {
         if self.len >= self.capacity {
             return Err(EngineError::ExpressionStackOverflow { max: self.capacity });
         }
         let index = usize::from(self.len);
+        self.taints
+            .put(index, taint)
+            .ok_or(EngineError::ExpressionStackOverflow { max: self.capacity })?;
         *self
             .values
             .get_mut(index)
@@ -44,7 +81,7 @@ impl ExprStack {
         Ok(())
     }
 
-    pub(super) fn pop(&mut self) -> Result<SlotValue, EngineError> {
+    pub(super) fn pop_tainted(&mut self) -> Result<(SlotValue, Taint), EngineError> {
         if self.len == 0 {
             return Err(EngineError::ExpressionStackUnderflow);
         }
@@ -52,11 +89,17 @@ impl ExprStack {
             .len
             .checked_sub(1)
             .ok_or(EngineError::ExpressionStackUnderflow)?;
-        self.values.get(usize::from(self.len)).copied().ok_or(
+        let value = self.values.get(usize::from(self.len)).copied().ok_or(
             EngineError::InternalInvariantViolation {
                 reason: "expression stack pop index checked by length",
             },
-        )
+        )?;
+        let taint = self.taints.take(usize::from(self.len)).ok_or(
+            EngineError::InternalInvariantViolation {
+                reason: "expression stack taint missing",
+            },
+        )?;
+        Ok((value, taint))
     }
 }
 
@@ -74,6 +117,7 @@ pub(super) fn pop_pair(stack: &mut ExprStack) -> Result<(SlotValue, SlotValue), 
     Ok((left, right))
 }
 
+#[cfg(test)]
 pub(super) fn pop_triple(
     stack: &mut ExprStack,
 ) -> Result<(SlotValue, SlotValue, SlotValue), EngineError> {

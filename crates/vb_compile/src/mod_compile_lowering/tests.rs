@@ -950,7 +950,7 @@ fn choose_width_includes_recursive_primitive_width() {
         steps: vec![nested_step],
     }];
     let result = choose_width(&branches);
-    assert_eq!(result, Ok(3));
+    assert_eq!(result, Ok(8));
 }
 
 // ─────────────────────────────────────────────────────────────────

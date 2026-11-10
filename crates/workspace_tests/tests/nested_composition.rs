@@ -9,7 +9,8 @@
 
 use vb_compile::compile_workflow;
 use vb_core::{
-    CapabilitySet, RunId, SlotIdx, SlotValue, StepBudget, Taint, ValueStore, new_run_frame,
+    CapabilitySet, CompiledNodeKind, RunId, SlotIdx, SlotValue, StepBudget, Taint, ValueStore,
+    new_run_frame,
 };
 use vb_runtime::engine::{
     EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeSignal, drive_deterministic_full,
@@ -17,15 +18,13 @@ use vb_runtime::engine::{
 use vb_runtime::primitives::collect::CollectStates;
 
 type TestResult = Result<(), String>;
+type Driven = (RuntimeSignal, Vec<EvidenceEvent>, Vec<Vec<SlotValue>>);
 
 const HEADER: &str =
     "version: velvet-ballistics/v1\nname: nested_composition\nwhen: {manual: {}}\n";
 const INPUTS: &str = "inputs:\n  items: {is: list, of: any, max: 4}\n";
 
-fn drive_source(
-    source: &str,
-    items: &[i64],
-) -> Result<(RuntimeSignal, Vec<EvidenceEvent>), String> {
+fn drive_source(source: &str, items: &[i64]) -> Result<Driven, String> {
     let workflow =
         compile_workflow(source.as_bytes()).map_err(|error| format!("compile: {error:?}"))?;
     let mut frame =
@@ -57,15 +56,39 @@ fn drive_source(
         1,
     )
     .map_err(|error| format!("drive: {error:?}"))?;
-    Ok((signal, evidence.drain()))
+    let events = evidence.drain();
+    let mut aggregates = Vec::new();
+    for event in &events {
+        let EvidenceEvent::SlotWritten {
+            slot,
+            value: SlotValue::List(list),
+            ..
+        } = event
+        else {
+            continue;
+        };
+        if workflow.to_parts().nodes.iter().any(|node| {
+            matches!(node.kind, CompiledNodeKind::ForEachJoin { .. })
+                && node.output.slot() == Some(*slot)
+        }) {
+            aggregates.push(
+                store
+                    .list(*list)
+                    .map_err(|error| format!("aggregate: {error:?}"))?
+                    .to_vec(),
+            );
+        }
+    }
+    Ok((signal, events, aggregates))
 }
 
-fn drive_twice(source: &str, items: &[i64]) -> Result<(RuntimeSignal, Vec<EvidenceEvent>), String> {
+fn drive_twice(source: &str, items: &[i64]) -> Result<Driven, String> {
     let first = drive_source(source, items)?;
     let second = drive_source(source, items)?;
     if std::mem::discriminant(&first.0) != std::mem::discriminant(&second.0) {
         return Err("drive signal drifted between runs".to_owned());
     }
+    assert_eq!(first.2, second.2);
     Ok(first)
 }
 
@@ -104,23 +127,25 @@ fn for_each_repeat_source() -> String {
 #[test]
 fn nested_repeat_runs_per_outer_item() -> TestResult {
     let source = for_each_repeat_source();
-    let (signal, events) = drive_twice(&source, &[1, 2])?;
+    let (signal, events, aggregates) = drive_twice(&source, &[1, 2])?;
     assert_eq!(signal, RuntimeSignal::Finished(SlotValue::I64(100)));
     // Outer body entered twice, inner tick set runs 2 attempts per item.
-    assert_eq!(start_count(&events, 1), 1);
-    assert_eq!(start_count(&events, 2), 2);
-    assert_eq!(start_count(&events, 3), 4);
-    assert_eq!(start_count(&events, 4), 4);
-    assert_eq!(start_count(&events, 6), 2);
+    assert_eq!(start_count(&events, 3), 1);
+    assert_eq!(start_count(&events, 4), 2);
+    assert_eq!(start_count(&events, 5), 4);
+    assert_eq!(start_count(&events, 6), 4);
+    assert_eq!(start_count(&events, 8), 2);
+    assert_eq!(aggregates, [vec![SlotValue::I64(1), SlotValue::I64(2)]]);
     Ok(())
 }
 
 #[test]
 fn nested_repeat_skipped_item_counts_stay_zero() -> TestResult {
-    let (signal, events) = drive_twice(&for_each_repeat_source(), &[])?;
+    let (signal, events, aggregates) = drive_twice(&for_each_repeat_source(), &[])?;
     assert_eq!(signal, RuntimeSignal::Finished(SlotValue::I64(100)));
-    assert_eq!(start_count(&events, 1), 1);
-    assert_eq!(start_count(&events, 3), 0);
+    assert_eq!(start_count(&events, 3), 1);
+    assert_eq!(start_count(&events, 5), 0);
+    assert_eq!(aggregates, [Vec::<SlotValue>::new()]);
     Ok(())
 }
 
@@ -135,16 +160,20 @@ fn nested_for_each_value_threads_through_repeat() -> TestResult {
     let source = repeat_for_each_source();
     let workflow =
         compile_workflow(source.as_bytes()).map_err(|error| format!("compile: {error:?}"))?;
-    let (signal, events) = drive_twice(&source, &[5, 6])?;
+    let (signal, events, aggregates) = drive_twice(&source, &[5, 6])?;
     assert_eq!(signal, RuntimeSignal::Finished(SlotValue::I64(100)));
-    // Layout: 0 seed, 1 repeat start, 2 inner start, 3 leaf, 4 inner next,
-    // 5 grab, 6 repeat check, 7 repeat finish, 8 done.
-    assert_eq!(start_count(&events, 3), 4);
-    assert_eq!(start_count(&events, 5), 2);
-    // The nested loop evaluates to its body's last value: grab copies the
-    // leaf slot, so the leaf slot sees every inner item in order.
+    // Each Repeat activation publishes the inner aggregate and copies it in grab.
+    assert_eq!(start_count(&events, 5), 4);
+    assert_eq!(start_count(&events, 9), 2);
+    assert_eq!(
+        aggregates,
+        [
+            vec![SlotValue::I64(5), SlotValue::I64(6)],
+            vec![SlotValue::I64(5), SlotValue::I64(6)]
+        ]
+    );
     let leaf_slot = workflow
-        .node(vb_core::StepIdx::new(3))
+        .node(vb_core::StepIdx::new(5))
         .ok_or_else(|| "missing leaf node".to_owned())?
         .output
         .slot()
@@ -163,18 +192,17 @@ fn nested_for_each_value_threads_through_repeat() -> TestResult {
 
 fn choose_nested_source() -> String {
     format!(
-        "{HEADER}{INPUTS}steps:\n  - id: seed\n    set: {{output: base, value: '100'}}\n  - id: flag\n    set: {{output: go, value: 'true'}}\n  - id: outer\n    for_each:\n      input: '$input.items'\n      variable: entry\n      steps:\n        - id: route\n          choose:\n            branches:\n              - when: '$flag'\n                steps:\n                  - id: inner\n                    repeat:\n                      max_attempts: 2\n                      steps:\n                        - id: tick\n                          set: {{output: tick_value, value: '$entry'}}\n            otherwise: done\n  - id: done\n    finish: {{result: '$seed'}}\n"
+        "{HEADER}{INPUTS}steps:\n  - id: seed\n    set: {{output: base, value: '100'}}\n  - id: flag\n    set: {{output: go, value: 'true'}}\n  - id: outer\n    for_each:\n      input: '$input.items'\n      variable: entry\n      steps:\n        - id: route\n          choose:\n            branches:\n              - when: '$flag'\n                steps:\n                  - id: inner\n                    repeat:\n                      max_attempts: 2\n                      steps:\n                        - id: tick\n                          set: {{output: tick_value, value: '$entry'}}\n            otherwise: after_route\n        - id: after_route\n          set: {{output: after_route, value: '$entry'}}\n  - id: done\n    finish: {{result: '$seed'}}\n"
     )
 }
 
 #[test]
 fn nested_repeat_inside_choose_branch_runs() -> TestResult {
-    let (signal, events) = drive_twice(&choose_nested_source(), &[7])?;
+    let (signal, events, aggregates) = drive_twice(&choose_nested_source(), &[7])?;
     assert_eq!(signal, RuntimeSignal::Finished(SlotValue::I64(100)));
-    // Layout: 0 seed, 1 flag, 2 outer start, 3 choose, 4 inner start,
-    // 5 tick, 6 inner check, 7 inner finish, 8 outer next, 9 done.
-    assert_eq!(start_count(&events, 3), 1);
-    assert_eq!(start_count(&events, 5), 2);
-    assert_eq!(start_count(&events, 8), 1);
+    assert_eq!(start_count(&events, 5), 1);
+    assert_eq!(start_count(&events, 7), 2);
+    assert_eq!(start_count(&events, 13), 1);
+    assert_eq!(aggregates, [vec![SlotValue::I64(7)]]);
     Ok(())
 }
