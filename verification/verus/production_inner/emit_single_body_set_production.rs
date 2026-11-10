@@ -32,7 +32,7 @@
 //
 //   1. `CompileError::StepFieldShape` at
 //      `crates/vb_compile/src/mod_compile_errors/kind.rs:123-124` and
-//      `CompileError::UnsupportedStepPrimitive` at kind.rs:117-118
+//      `CompileError::UnsupportedStepPrimitive` at crates/vb_compile/src/mod_compile_errors/kind.rs:117-118
 //      are mirrored as `SpecCompileError` with `&'static str` payloads
 //      flattened to `u8` tags. Field structure (3 payload fields for
 //      `StepFieldShape`, 2 for `UnsupportedStepPrimitive`) is preserved
@@ -164,10 +164,10 @@ pub const PRIMITIVE_FINISH_TAG: u8 = 11;
 //
 // Mirrors the two `CompileError` variants that `emit_single_body_set`
 // constructs:
-//   - `CompileError::StepFieldShape` at kind.rs:123-124
+//   - `CompileError::StepFieldShape` at crates/vb_compile/src/mod_compile_errors/kind.rs:123-124
 //     (production fields: `step: usize`, `field: &'static str`,
 //      `expected: &'static str`).
-//   - `CompileError::UnsupportedStepPrimitive` at kind.rs:117-118
+//   - `CompileError::UnsupportedStepPrimitive` at crates/vb_compile/src/mod_compile_errors/kind.rs:117-118
 //     (production fields: `step: usize`, `primitive: &'static str`).
 //
 // For the purpose of this binding we mirror each variant
@@ -180,7 +180,7 @@ pub const PRIMITIVE_FINISH_TAG: u8 = 11;
 /// `emit_single_body_set`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SpecCompileError {
-    /// Mirror of `CompileError::StepFieldShape` at kind.rs:123-124.
+    /// Mirror of `CompileError::StepFieldShape` at crates/vb_compile/src/mod_compile_errors/kind.rs:123-124.
     StepFieldShape {
         /// Widened to u64 to avoid Verus integer-width confusion
         /// when comparing against `usize` arguments.
@@ -192,7 +192,7 @@ pub enum SpecCompileError {
         expected: u8,
     },
     /// Mirror of `CompileError::UnsupportedStepPrimitive` at
-    /// kind.rs:117-118.
+    /// crates/vb_compile/src/mod_compile_errors/kind.rs:117-118.
     UnsupportedStepPrimitive {
         /// Widened to u64.
         step: u64,
@@ -202,7 +202,7 @@ pub enum SpecCompileError {
     },
 }
 
-/// `field` tag for the literal `"steps"` (production: kind.rs:124).
+/// `field` tag for the literal `"steps"` (production: crates/vb_compile/src/mod_compile_errors/kind.rs:124).
 pub const FIELD_STEPS: u8 = 0;
 
 /// `expected` tag for the literal `"exactly one set step"` (production:

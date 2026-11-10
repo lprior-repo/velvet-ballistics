@@ -36,7 +36,7 @@
 // `crates/vb_compile/src/mod_compile_errors/kind.rs:141` (which is
 // what `checked_step_offset` actually constructs on overflow — see
 // part_12.rs:199-212), and `CompileError::StepIndexOutOfRange` is at
-// kind.rs:126 (what `checked_body_length_offset` constructs when
+// crates/vb_compile/src/mod_compile_errors/kind.rs:126 (what `checked_body_length_offset` constructs when
 // body_len+extra overflows u16 — see bounded_collect.rs:108-114).
 // The spec lemmas are grounded in the production `StepIdx` contract
 // via `assume_specification` bridges.

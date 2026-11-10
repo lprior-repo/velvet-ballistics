@@ -401,10 +401,10 @@ pub struct ErrorHandlerAst {
 /// Mirror of production `CompileError` discriminant set reachable from
 /// `emit_single_body_set`. The variants and their fields match the
 /// production source line-by-line:
-///   - `StepFieldShape`                   <- kind.rs:124
-///   - `UnsupportedStepPrimitive`         <- kind.rs:118
-///   - `PrimitiveLoweringLimitExceeded`   <- kind.rs:141 (Do action branch)
-///   - `SlotIndexOutOfRange`              <- kind.rs:128 (Do input branch)
+///   - `StepFieldShape`                   <- crates/vb_compile/src/mod_compile_errors/kind.rs:124
+///   - `UnsupportedStepPrimitive`         <- crates/vb_compile/src/mod_compile_errors/kind.rs:118
+///   - `PrimitiveLoweringLimitExceeded`   <- crates/vb_compile/src/mod_compile_errors/kind.rs:141 (Do action branch)
+///   - `SlotIndexOutOfRange`              <- crates/vb_compile/src/mod_compile_errors/kind.rs:128 (Do input branch)
 pub enum CompileError {
     StepFieldShape {
         step: usize,
