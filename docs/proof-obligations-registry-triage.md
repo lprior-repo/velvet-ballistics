@@ -10,9 +10,20 @@ The registry lists 44 required test-name mentions across its `tests:`, `property
 
 42 distinct required names; at run start 7 resolved as Rust `fn` identifiers and 35 did not; PR #328 merged mid-run and added the eighth, so on current main 8 resolve and 34 are missing. The 8 that resolve are `whole_workflow_budget_within_policy`, `budget_bounded_default` (both added by #322), `test_repeat_max_attempts_changes_digest`, `test_repeat_body_changes_digest`, `test_repeat_digest_cross_path_equivalent`, `test_repeat_same_config_same_digest_cross_path`, `test_repeat_same_config_same_digest`, and `f64_rejected_or_implemented` (added by #328). This triage classifies the 35 names missing at run start; one of them, `f64_rejected_or_implemented`, resolved mid-run and is marked so in its row. No registry names were renamed and `contracts/proof_obligations.yaml` is untouched by this triage; a rename would erase a required-evidence gap, so each missing name below keeps its registry name and gains a disposition instead.
 
+Update 2026-11-10 (main `9809e4b3`, tip #336): the four genuinely-missing names now resolve as Rust `fn` identifiers — `journal_before_dispatch` (#331), `single_shard_owner` (#333), `fjall_fsync_boundary` (#334), `bytecode_vs_ast` (#337) — so 12 of 42 resolve and 30 are missing. Recount reproduced first-hand with `registry-recount.py` on that main. The other 30 are the 26 still-covered-under-another-name rows, the 2 reference-blocked names, the 1 obsolete name, and the 1 statement-error name; no other registry name changed state.
+
 ## Disposition summary
 
-27 of the 35 are covered under another test name (the property is tested and green, only the registry's name is stale — including `f64_rejected_or_implemented`, whose test under the exact registry name merged mid-run via #328); 4 are genuinely missing (no Rust test pins the property); 2 are blocked on the reference crate not compiling; 1 obligation is obsolete (its crate was removed); 1 is a registry-statement error (the statement names the wrong layer's constant). 34 names are still missing on current main. The covered set is the bulk of the gap: the registry's test names drifted while the tests themselves were written under descriptive names.
+27 of the 35 are covered under another test name (the property is tested and green, only the registry's name is stale — including `f64_rejected_or_implemented`, whose test under the exact registry name merged mid-run via #328); 4 are genuinely missing (no Rust test pins the property); 2 are blocked on the reference crate not compiling; 1 obligation is obsolete (its crate was removed); 1 is a registry-statement error (the statement names the wrong layer's constant). 34 names are still missing on current main. The covered set is the bulk of the gap: the registry's test names drifted while the tests themselves were written under descriptive names. Update 2026-11-10 (main `9809e4b3`): all 4 genuinely-missing names are resolved (see Resolutions since triage), so 30 names are still missing on current main: 26 covered under another test name, 2 blocked on the reference crate, 1 obsolete, 1 registry-statement error.
+
+## Resolutions since triage
+
+The four genuinely-missing names, resolved by the follow-up batches this triage named. Each row gives the merged PR, the test location verified first-hand in source on main `9809e4b3`, and the lib-suite count the PR body reports first-hand.
+
+- `journal_before_dispatch` (VB-REPLAY-001, L3): PR #331 — `crates/vb_runtime/src/shard/lifecycle_tests/chunk_012.rs:2` (`journal_before_dispatch`, plus the full-journal variant at :55); PR body reports vb_runtime lib 2438/0 first-hand (base 2436, +2).
+- `single_shard_owner` (VB-REPLAY-004, L3): PR #333 — `crates/vb_runtime/src/shard/lifecycle_tests/chunk_013.rs:2` (`single_shard_owner`, plus the checked-out-run variant at :48); PR body reports vb_runtime lib 2438/0 first-hand on its own base (2436 + 2).
+- `fjall_fsync_boundary` (VB-STORAGE-FJALL-001, L6): PR #334 — `crates/vb_storage/src/journal/tests.rs:2156` (`fjall_fsync_boundary`); PR body reports vb_storage lib 1742/0 first-hand (base 1741, +1).
+- `bytecode_vs_ast` (VB-EXPR-001, L2): PR #337 — `crates/vb_expr/src/expr_bytecode/bytecode_ast_equiv_tests.rs:169` (`bytecode_vs_ast`, plus anchored values :259, error shapes :276, and the bounded proptest :359); PR body reports vb_expr lib 954/0 first-hand (base 950, +4).
 
 ## Covered under another name (27)
 
@@ -48,7 +59,9 @@ Each row names the registry test, the obligation, the live test(s) that pin the 
 | `test_repeat_different_params_different_digest` | VB-COMPILE-DIGEST-REPEAT-003 (L3) | `proptest_repeat_different_params_different_digest` (`crates/vb_compile/tests/v1_primitive_lowering.rs:1534`), 1 passed, asserts `prop_assert_ne!` on the digests of two Repeat workflows differing only in `max_attempts`; the registry name without the `proptest_` prefix does not exist, but the proptest is the property the obligation names; Kani is blocked by BLOCKER-BLAKE3-INLINEASM per the registry note |
 | `f64_rejected_or_implemented` | VB-EXPR-003 (L2) | Resolved mid-run: the test under the exact registry name now exists, added by #328 (lane E, merged as `a3511a6a`) and re-run first-hand on the merged tree — `f64_rejected_or_implemented` 1 passed, `f64` filter 110 passed. The implemented side was already evidenced before #328: 109 `f64` tests in the vb_expr lib binary (`f64_arithmetic_roundtrips_through_eval`, 1 passed; `f64_literal_roundtrips_through_eval`; the typechecker accepts `F64` literals and arithmetic in `crates/vb_expr/src/expr_typecheck/mod.rs`); the registry's DRIFT-F64 contradiction note is stale — the evaluator implements f64 via `FiniteF64` with non-finite values rejected at the value boundary |
 
-## Genuinely missing (4)
+## Genuinely missing (4) — all resolved 2026-11-10
+
+All four resolved after this triage; the rows below are the triage-time record, and each resolution is in Resolutions since triage above.
 
 No Rust test pins the property; the TLA model exists where noted, but the Rust test leg the registry requires does not. Each is a follow-up batch, not part of this triage.
 
@@ -86,7 +99,7 @@ All five TLA models named by the VB-REPLAY obligations exist under `specs/tla/`:
 - Retire VB-CODEGEN-001 (`generated_vs_ir`) from the registry, or restate it against the interpreter-only architecture.
 - Correct VB-IPC-DECODE-002 (`header_len_validation`): IPC header is 24, record envelope is 60 — which layer the obligation pins.
 - Kani legs: are `kani_record_digest.rs`, `kani_terminal_state.rs`, `kani_expr_stack.rs` required, or does the passing test leg close VB-STORAGE-DECODE-006, VB-REPLAY-006, and VB-EXPR-002?
-- Follow-up batches (in triage order, each its own PR): `journal_before_dispatch`, `single_shard_owner`, `bytecode_vs_ast`, `fjall_fsync_boundary` test legs; reference-crate repair (20 errors) unblocking `engine_vs_reference` and `taint_vs_reference`; `diff-test` and `crash-lab` xtask commands.
+- Follow-up batches (in triage order, each its own PR): `journal_before_dispatch`, `single_shard_owner`, `bytecode_vs_ast`, `fjall_fsync_boundary` test legs; reference-crate repair (20 errors) unblocking `engine_vs_reference` and `taint_vs_reference`; `diff-test` and `crash-lab` xtask commands. Update 2026-11-10: the four test legs are done (see Resolutions since triage); reference-crate repair is PR #338 (open), `diff-test` is PR #343 (open), `crash-lab` still has no batch.
 - Nothing in this triage renames a registry name or edits `contracts/proof_obligations.yaml`; the 27 covered names stay stale-named in the registry until John directs a rename (renaming without his word would erase the evidence gap this document records).
 
 ## What this triage did not do

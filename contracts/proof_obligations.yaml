@@ -269,7 +269,7 @@ obligations:
       - crates/vb_core/src/engine.rs
     required:
       tests: [finish_signal_carries_taint]
-      fuzz: [expr_eval_finish_taint]
+      fuzz: [expr_eval]
     commands:
       - cargo nextest run -p vb_core finish_signal
       - cargo fuzz run expr_eval
@@ -364,11 +364,11 @@ obligations:
       - crates/vb_ipc/src/frame.rs
     required:
       kani: kani_ipc_header_rejects_oversize.rs
-      fuzz: [ipc_frame]
+      fuzz: [ipc_frame_fuzz]
       tests: [bad_magic_rejected_before_allocation, oversized_payload_rejected]
     commands:
       - cargo kani --package vb_ipc --harness kani_ipc_header_rejects_oversize
-      - cargo fuzz run ipc_frame
+      - cargo fuzz run ipc_frame_fuzz
       - cargo nextest run -p vb_ipc decoder_rejects
 
   - id: VB-IPC-DECODE-002
@@ -396,10 +396,10 @@ obligations:
     files:
       - crates/vb_ipc/src/frame.rs
     required:
-      fuzz: [ipc_frame]
+      fuzz: [ipc_frame_fuzz]
       tests: [envelope_header_unified]
     commands:
-      - cargo fuzz run ipc_frame
+      - cargo fuzz run ipc_frame_fuzz
       - cargo nextest run -p vb_ipc decode_frame_roundtrip
     note: "Spec contradiction DRIFT-IPC-FORMAT - Section 18 vs Section 21"
 
