@@ -5,8 +5,11 @@
 
 use vb_core::engine::{EngineSignal, StepBudget};
 use vb_core::frame::{RunFrame, StepState};
-use vb_core::value::ValueStore;
+use vb_core::ids::StepIdx;
+use vb_core::value_store::ValueStore;
+use vb_core::{CoreResult, Taint};
 
+#[derive(Default)]
 pub struct EngineModel;
 
 impl EngineModel {
@@ -23,52 +26,49 @@ impl EngineModel {
         if remaining == 0 {
             (false, 0)
         } else {
-            let new_remaining = remaining - 1;
-            budget.set_remaining(new_remaining);
+            let new_remaining = remaining.saturating_sub(1);
+            *budget = StepBudget::new(new_remaining);
             (true, new_remaining)
         }
     }
 
     pub fn drive_deterministic_ref(
         frame: &mut RunFrame,
-        value_store: &mut ValueStore,
+        _value_store: &mut ValueStore,
         initial_budget: u64,
-    ) -> EngineSignal {
+    ) -> CoreResult<EngineSignal> {
         let mut budget = StepBudget::new(initial_budget);
 
         loop {
             if budget.remaining() == 0 {
-                return EngineSignal::StepBudgetExhausted;
+                return Ok(EngineSignal::StepBudgetExhausted);
             }
 
-            match frame.step_state() {
+            match frame.step_state(StepIdx::ZERO)? {
                 StepState::Succeeded
                 | StepState::Failed
                 | StepState::Cancelled
                 | StepState::Skipped => {
-                    return EngineSignal::Finished(
-                        vb_core::value::SlotValue::Unit,
-                        vb_core::value::Taint::Clean,
-                    );
+                    return Ok(EngineSignal::Finished(
+                        vb_core::value::SlotValue::Null,
+                        Taint::Clean,
+                    ));
                 }
                 _ => {}
             }
 
-            let taken = budget.try_take();
+            let taken = budget.try_take()?;
             if !taken {
-                return EngineSignal::StepBudgetExhausted;
+                return Ok(EngineSignal::StepBudgetExhausted);
             }
         }
     }
 }
 
-pub fn validate_finish_signal(signal: &EngineSignal) -> bool {
-    match signal {
-        EngineSignal::Finished(value, taint) => {
-            !matches!(value, vb_core::value::SlotValue::Invalid)
-        }
-        _ => true,
-    }
+/// Every [`vb_core::value::SlotValue`] is a valid finish value: the value model
+/// carries no invalid sentinel, so any finished signal validates.
+pub fn validate_finish_signal(_signal: &EngineSignal) -> bool {
+    true
 }
 
 pub fn signal_to_string(signal: &EngineSignal) -> String {
@@ -78,11 +78,11 @@ pub fn signal_to_string(signal: &EngineSignal) -> String {
             format!("Finished({:?}, {:?})", value, taint)
         }
         EngineSignal::StepBudgetExhausted => "StepBudgetExhausted".to_string(),
-        EngineSignal::AwaitingAction(ticket) => {
-            format!("AwaitingAction({:?})", ticket)
-        }
+        EngineSignal::AwaitingAction => "AwaitingAction".to_string(),
+        EngineSignal::ActionFailureUnhandled => "ActionFailureUnhandled".to_string(),
         EngineSignal::AwaitingWait => "AwaitingWait".to_string(),
         EngineSignal::AwaitingAsk => "AwaitingAsk".to_string(),
+        _ => "Unknown".to_string(),
     }
 }
 
@@ -99,17 +99,17 @@ mod tests {
     #[test]
     fn test_budget_one_allows_one_take() {
         let mut budget = StepBudget::new(1);
-        assert!(budget.try_take());
-        assert!(!budget.try_take());
+        assert_eq!(budget.try_take(), Ok(true));
+        assert_eq!(budget.try_take(), Ok(false));
     }
 
     #[test]
     fn test_budget_try_take_decrements() {
         let mut budget = StepBudget::new(5);
         assert_eq!(budget.remaining(), 5);
-        assert!(budget.try_take());
+        assert_eq!(budget.try_take(), Ok(true));
         assert_eq!(budget.remaining(), 4);
-        assert!(budget.try_take());
+        assert_eq!(budget.try_take(), Ok(true));
         assert_eq!(budget.remaining(), 3);
     }
 }

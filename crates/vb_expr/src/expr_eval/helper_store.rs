@@ -51,7 +51,7 @@ fn push_binary_stack(
     store: &mut ValueStore,
     helper: fn(&SlotValue, &SlotValue, &mut ValueStore) -> ExprResult<SlotValue>,
 ) -> ExprResult<()> {
-    let (right, left) = pop_pair(stack)?;
+    let (left, right) = pop_pair(stack)?;
     let result = helper(&left, &right, store)?;
     push_value(stack, result)
 }
@@ -61,7 +61,7 @@ fn push_ternary_stack(
     store: &mut ValueStore,
     helper: fn(&SlotValue, &SlotValue, &SlotValue, &mut ValueStore) -> ExprResult<SlotValue>,
 ) -> ExprResult<()> {
-    let (third, second, first) = pop_triple(stack)?;
+    let (first, second, third) = pop_triple(stack)?;
     let result = helper(&first, &second, &third, store)?;
     push_value(stack, result)
 }

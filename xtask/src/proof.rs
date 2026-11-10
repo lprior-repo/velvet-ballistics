@@ -134,11 +134,29 @@ pub fn obligations_for_level(obligations: &[ProofObligation], level: &str) -> Ve
         .collect()
 }
 
+/// Derive the `--harness` filter from a `required: kani:` file reference.
+/// The registry names the proof file (`kani_step_budget.rs`) or a
+/// `file.rs::harness` pair; Kani matches filters against fully qualified
+/// harness names, which never contain `.rs`.
+fn kani_harness_filter(reference: &str) -> &str {
+    let bare = match reference.rsplit("::").next() {
+        Some(part) => part,
+        None => reference,
+    };
+    match bare.strip_suffix(".rs") {
+        Some(stem) => stem,
+        None => bare,
+    }
+}
+
 pub fn commands_for_obligation(obl: &ProofObligation) -> Vec<String> {
     let mut cmds = Vec::new();
 
     if let Some(ref kani) = obl.required.kani {
-        cmds.push(format!("cargo kani --harness {}", kani));
+        cmds.push(format!(
+            "cargo kani --harness {}",
+            kani_harness_filter(kani)
+        ));
     }
     if let Some(ref verus) = obl.required.verus {
         cmds.push(format!("verus {}", verus));
@@ -228,4 +246,62 @@ pub fn write_proof_evidence(
     std::fs::write(&path, &yaml).map_err(|e| e.to_string())?;
 
     Ok(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn kani_harness_filter_strips_rs_suffix() {
+        assert_eq!(
+            kani_harness_filter("kani_step_budget.rs"),
+            "kani_step_budget"
+        );
+        assert_eq!(
+            kani_harness_filter("kani_taint_lattice.rs"),
+            "kani_taint_lattice"
+        );
+    }
+
+    #[test]
+    fn kani_harness_filter_takes_harness_after_separator() {
+        assert_eq!(
+            kani_harness_filter("kani_digest_repeat.rs::kani_repeat_max_attempts_consumed"),
+            "kani_repeat_max_attempts_consumed"
+        );
+    }
+
+    #[test]
+    fn kani_harness_filter_leaves_bare_names_unchanged() {
+        assert_eq!(kani_harness_filter("kani_step_budget"), "kani_step_budget");
+        assert_eq!(kani_harness_filter(""), "");
+    }
+
+    #[test]
+    fn commands_for_obligation_derives_kani_filter_from_file_reference() {
+        let obligation = ProofObligation {
+            id: "VB-CORE-BUDGET-003".to_string(),
+            section: vec![47],
+            statement: "Step budget bound".to_string(),
+            proof_level: "L3".to_string(),
+            crate_name: "vb_core".to_string(),
+            files: vec!["crates/vb_core/src/budget.rs".to_string()],
+            required: RequiredProof {
+                verus: None,
+                kani: Some("kani_step_budget.rs".to_string()),
+                tests: vec![],
+                fuzz: None,
+                tla: None,
+                loom: None,
+                property_tests: vec![],
+                differential_tests: vec![],
+            },
+            commands: vec![],
+        };
+        assert_eq!(
+            commands_for_obligation(&obligation),
+            vec!["cargo kani --harness kani_step_budget".to_string()]
+        );
+    }
 }

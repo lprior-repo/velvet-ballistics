@@ -3,8 +3,6 @@
 //! This is the canonical reference implementation for resource budget arithmetic.
 //! Use this to verify the optimized implementation matches this behavior.
 
-use vb_core::resource::WholeWorkflowBudget;
-
 mod accumulator;
 
 pub use accumulator::BudgetAccumulator;
@@ -18,8 +16,8 @@ pub struct PolicyBounds {
     pub absolute_max_steps_executable: u32,
 }
 
-impl PolicyBounds {
-    pub fn default() -> Self {
+impl Default for PolicyBounds {
+    fn default() -> Self {
         PolicyBounds {
             absolute_max_action_tickets: 100_000,
             absolute_max_parallel: 256,
@@ -30,6 +28,7 @@ impl PolicyBounds {
     }
 }
 
+#[derive(Default)]
 pub struct ResourceModel;
 
 impl ResourceModel {
@@ -37,13 +36,21 @@ impl ResourceModel {
         ResourceModel
     }
 
-    pub fn compute_sequential(&self, a: &BudgetAccumulator, b: &BudgetAccumulator) -> BudgetAccumulator {
+    pub fn compute_sequential(
+        &self,
+        a: &BudgetAccumulator,
+        b: &BudgetAccumulator,
+    ) -> BudgetAccumulator {
         let mut result = a.clone();
         result.add_sequential(b);
         result
     }
 
-    pub fn compute_branch(&self, a: &BudgetAccumulator, b: &BudgetAccumulator) -> BudgetAccumulator {
+    pub fn compute_branch(
+        &self,
+        a: &BudgetAccumulator,
+        b: &BudgetAccumulator,
+    ) -> BudgetAccumulator {
         let mut result = a.clone();
         result.add_branch(b);
         result
