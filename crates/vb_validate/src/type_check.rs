@@ -43,31 +43,8 @@ fn validate_step_types(
 mod tests {
     use super::*;
     use crate::ValidationError;
-    use crate::type_sigs::{StepTypes, TypedValue, ValueType};
-
-    fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
-        WorkflowTypes {
-            inputs: vec![],
-            vars: vec![],
-            secrets: vec![],
-            steps,
-            resource_contract: crate::type_sigs::ResourceLimits::default(),
-        }
-    }
-
-    fn save_step(id: &str, value: TypedValue) -> StepTypes {
-        StepTypes {
-            id: id.to_owned(),
-            kind: StepKind::Save { value },
-        }
-    }
-
-    fn choose_step(id: &str, condition: TypedValue) -> StepTypes {
-        StepTypes {
-            id: id.to_owned(),
-            kind: StepKind::Choose { condition },
-        }
-    }
+    use crate::type_sigs::fixtures::{choose_step, make_workflow, save_step};
+    use crate::type_sigs::{TypedValue, ValueType};
 
     // -- Pass cases --
 

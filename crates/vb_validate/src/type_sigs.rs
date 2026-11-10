@@ -228,5 +228,42 @@ pub enum TypedValue {
 }
 
 #[cfg(test)]
+pub(crate) mod fixtures {
+    //! Shared builders for validation unit tests.
+    use super::{ResourceLimits, StepKind, StepTypes, TypedValue, WorkflowTypes};
+
+    pub(crate) fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
+        WorkflowTypes {
+            inputs: vec![],
+            vars: vec![],
+            secrets: vec![],
+            steps,
+            resource_contract: ResourceLimits::default(),
+        }
+    }
+
+    pub(crate) fn save_step(id: &str, value: TypedValue) -> StepTypes {
+        StepTypes {
+            id: id.to_owned(),
+            kind: StepKind::Save { value },
+        }
+    }
+
+    pub(crate) fn choose_step(id: &str, condition: TypedValue) -> StepTypes {
+        StepTypes {
+            id: id.to_owned(),
+            kind: StepKind::Choose { condition },
+        }
+    }
+
+    pub(crate) fn finish_step(id: &str, result: TypedValue) -> StepTypes {
+        StepTypes {
+            id: id.to_owned(),
+            kind: StepKind::Finish { result },
+        }
+    }
+}
+
+#[cfg(test)]
 #[path = "type_sigs/tests.rs"]
 mod tests;

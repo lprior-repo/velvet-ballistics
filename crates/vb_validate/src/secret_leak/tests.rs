@@ -4,25 +4,9 @@
 use crate::ValidationError;
 #[cfg(test)]
 use crate::secret_leak::validate_resource_limits;
+use crate::type_sigs::fixtures::{finish_step, make_workflow};
 #[cfg(test)]
-use crate::type_sigs::{ResourceLimits, StepKind, StepTypes, TypedValue, ValueType, WorkflowTypes};
-
-fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
-    WorkflowTypes {
-        inputs: vec![],
-        vars: vec![],
-        secrets: vec![],
-        steps,
-        resource_contract: ResourceLimits::default(),
-    }
-}
-
-fn finish_step(id: &str, result: TypedValue) -> StepTypes {
-    StepTypes {
-        id: id.to_owned(),
-        kind: StepKind::Finish { result },
-    }
-}
+use crate::type_sigs::{ResourceLimits, TypedValue, ValueType, WorkflowTypes};
 
 // -- Pass cases --
 

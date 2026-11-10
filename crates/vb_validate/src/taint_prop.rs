@@ -50,38 +50,8 @@ fn validate_step_taint(
 mod tests {
     use super::*;
     use crate::ValidationError;
-    use crate::type_sigs::{InputDecl, StepTypes, TypedValue, ValueType};
-
-    fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
-        WorkflowTypes {
-            inputs: vec![],
-            vars: vec![],
-            secrets: vec![],
-            steps,
-            resource_contract: crate::type_sigs::ResourceLimits::default(),
-        }
-    }
-
-    fn save_step(id: &str, value: TypedValue) -> StepTypes {
-        StepTypes {
-            id: id.to_owned(),
-            kind: StepKind::Save { value },
-        }
-    }
-
-    fn choose_step(id: &str, condition: TypedValue) -> StepTypes {
-        StepTypes {
-            id: id.to_owned(),
-            kind: StepKind::Choose { condition },
-        }
-    }
-
-    fn finish_step(id: &str, result: TypedValue) -> StepTypes {
-        StepTypes {
-            id: id.to_owned(),
-            kind: StepKind::Finish { result },
-        }
-    }
+    use crate::type_sigs::fixtures::{choose_step, finish_step, make_workflow, save_step};
+    use crate::type_sigs::{InputDecl, TypedValue, ValueType};
 
     // -- Pass cases --
 
