@@ -12,7 +12,8 @@ use vb_core::ids::{ActionId, ListId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDig
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+    InputSlotKind, ResourceContract, WorkflowParts,
 };
 use vb_runtime::RuntimeError;
 use vb_runtime::engine::compute_idempotency_key;
@@ -157,9 +158,19 @@ fn workflow_from_parts(
     constants: Box<[ConstValue]>,
     slot_count: u16,
 ) -> Result<CompiledWorkflow, String> {
+    workflow_from_parts_with_inputs(name, Box::from([]), nodes, constants, slot_count)
+}
+
+fn workflow_from_parts_with_inputs(
+    name: &str,
+    input_slots: Box<[CompiledInputSlot]>,
+    nodes: Box<[CompiledNode]>,
+    constants: Box<[ConstValue]>,
+    slot_count: u16,
+) -> Result<CompiledWorkflow, String> {
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        input_slots,
         name: Box::from(name),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes,
@@ -401,6 +412,11 @@ fn write_wait_boundary_events(
     workflow: &CompiledWorkflow,
     artifact_digest: WorkflowDigest,
 ) -> Result<(), String> {
+    // Slot 0 carries the wait deadline (0 ms: immediately due once resumed)
+    // and doubles as the finish result slot, so a resumed run can complete.
+    let deadline_bytes = encoded_slot_value(SlotValue::I64(0))?;
+    let deadline_extra =
+        encode_slot_written_extra(Taint::Clean, None).map_err(|err| format!("{err:?}"))?;
     let events = [
         JournalEvent::RunAccepted {
             run,
@@ -416,15 +432,23 @@ fn write_wait_boundary_events(
             granted_capabilities: CapabilitySet::empty(),
             policy: RuntimePolicy::Strict,
         },
-        JournalEvent::StepStarted {
+        JournalEvent::SlotWrittenEvent {
             run,
             seq: EventSeq::new(2),
+            slot: SlotIdx::ZERO,
+            value: Some(deadline_bytes),
+            extra: Some(deadline_extra),
+            attempt: 1,
+        },
+        JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(3),
             step: StepIdx::ZERO,
             attempt: 1,
         },
         JournalEvent::WaitScheduledEvent {
             run,
-            seq: EventSeq::new(3),
+            seq: EventSeq::new(4),
             step: StepIdx::ZERO,
             attempt: 1,
         },
@@ -1001,8 +1025,12 @@ fn recover_and_resume_fails_closed_for_store_dependent_fjall_pending_action_afte
     Ok(())
 }
 
+/// Bead vb-v0y0m: a run suspended on a durable wait schedule resumes.
+/// Previously `pending_timers` was fail-closed; the wait schedule now folds
+/// into a `WaitingTimer` boundary, the shard re-arms the timer from the
+/// recovered deadline slot, and the resumed run completes once it fires.
 #[test]
-fn recover_and_resume_fails_closed_for_fjall_wait_timer_after_reopen() -> Result<(), String> {
+fn recovered_fjall_wait_timer_resumes_after_reopen() -> Result<(), String> {
     let temp = tempfile::tempdir().map_err(|err| err.to_string())?;
     let run = RunId::new(7_703);
     let workflow = wait_then_finish_workflow()?;
@@ -1017,15 +1045,34 @@ fn recover_and_resume_fails_closed_for_fjall_wait_timer_after_reopen() -> Result
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal);
-    let recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
 
-    assert_product_cannot_resume(
-        recovered
-            .recover_product(run)
-            .map_err(|err| err.to_string())?,
-        "pending_timers",
-    )?;
-    assert_cannot_resume(recovered.recover_and_resume(run), "pending_timers")?;
+    match recovered
+        .recover_product(run)
+        .map_err(|err| err.to_string())?
+    {
+        RuntimeRecoveryProduct::Resumable(product) => {
+            assert_eq!(
+                product.boundary_kind(),
+                RecoveredRunBoundaryKind::WaitingTimer
+            );
+        }
+        other => {
+            return Err(format!(
+                "expected waiting-timer resumable product, got {other:?}"
+            ));
+        }
+    }
+    recovered
+        .recover_and_resume(run)
+        .map_err(|err| err.to_string())?;
+    // First tick processes the Recover command and leaves the run suspended
+    // on its re-armed timer; the timer is immediately due (0 ms deadline).
+    recovered.tick_all().map_err(|err| err.to_string())?;
+    // Second tick finds an empty queue, fires the recovered timer, and drives
+    // the run to its finish step.
+    recovered.tick_all().map_err(|err| err.to_string())?;
+    assert_eq!(recovered.counters_snapshot().runs_completed, 1);
     assert_eq!(recovered.list_active_runs(8, None), Vec::new());
     Ok(())
 }
@@ -1197,8 +1244,13 @@ fn recover_and_resume_fails_closed_for_store_dependent_fjall_open_ask_after_reop
     Ok(())
 }
 
+/// Bead vb-v0y0m: a run suspended on a timed ask resumes with both ask
+/// authority and its timeout timer restored. Previously `pending_asks` was
+/// fail-closed for any ask carrying a timeout slot; the schedule now folds
+/// into a `TimedAsk` boundary, the shard re-arms the timer (required for the
+/// pending-ask ticket lookup), and the recovered ticket answers normally.
 #[test]
-fn recover_and_resume_fails_closed_for_fjall_timed_ask_after_reopen() -> Result<(), String> {
+fn recovered_fjall_timed_ask_can_answer_after_reopen() -> Result<(), String> {
     let temp = tempfile::tempdir().map_err(|err| err.to_string())?;
     let run = RunId::new(7_705);
     let workflow = timed_ask_then_finish_workflow()?;
@@ -1213,15 +1265,41 @@ fn recover_and_resume_fails_closed_for_fjall_timed_ask_after_reopen() -> Result<
 
     let journal = open_journal(temp.path())?;
     let shared = StorageRuntimeJournal::shared_strict(journal);
-    let recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+    let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
 
-    assert_product_cannot_resume(
-        recovered
-            .recover_product(run)
-            .map_err(|err| err.to_string())?,
-        "pending_asks",
-    )?;
-    assert_cannot_resume(recovered.recover_and_resume(run), "pending_asks")?;
+    match recovered
+        .recover_product(run)
+        .map_err(|err| err.to_string())?
+    {
+        RuntimeRecoveryProduct::Resumable(product) => {
+            assert_eq!(product.boundary_kind(), RecoveredRunBoundaryKind::TimedAsk);
+        }
+        other => {
+            return Err(format!(
+                "expected timed-ask resumable product, got {other:?}"
+            ));
+        }
+    }
+    recovered
+        .recover_and_resume(run)
+        .map_err(|err| err.to_string())?;
+    recovered.tick_all().map_err(|err| err.to_string())?;
+    let ticket = recovered
+        .lookup_pending_ask_ticket(run, StepIdx::ZERO)
+        .ok_or("recovered timed ask must issue its persisted ticket")?;
+    let answer = vb_runtime::shard::AskAnswer::with_encoded_len(
+        ticket,
+        SlotIdx::new(2),
+        SlotValue::I64(77),
+        Taint::Clean,
+        1,
+    );
+    recovered
+        .answer_ask(answer)
+        .map_err(|err| err.to_string())?;
+    recovered.tick_all().map_err(|err| err.to_string())?;
+
+    assert_eq!(recovered.counters_snapshot().runs_completed, 1);
     assert_eq!(recovered.list_active_runs(8, None), Vec::new());
     Ok(())
 }
@@ -1238,10 +1316,15 @@ fn recover_and_resume_fails_closed_for_fjall_timed_ask_after_reopen() -> Result<
 // events; if the runtime classification step erased the storage
 // witness (the FINDING-002 typestate bypass) this test would fail.
 //
-// Exercises three cannot-resume reasons:
+// Exercises the storage-witness agreement for three durable evidences:
 //   - store_missing     — value-store-required slot values, no boundary
-//   - pending_timers    — unresolved WaitScheduledEvent
-//   - pending_asks      — unresolved AskScheduledEvent (timed variant)
+//     (still fail-closed; bead vb-v0y0m refines the other two below)
+//   - pending_timers    — unresolved WaitScheduledEvent: bead vb-v0y0m
+//     refines the runtime product to Resumable(WaitingTimer) while the
+//     storage witness keeps flagging the raw schedule
+//   - pending_asks      — unresolved AskScheduledEvent (timed variant):
+//     bead vb-v0y0m refines the runtime product to Resumable(TimedAsk)
+//     while the storage witness keeps flagging the raw schedule
 // ---------------------------------------------------------------------------
 
 /// Runtime product plus the independent storage-recovered value-store
@@ -1420,9 +1503,12 @@ fn runtime_recover_product_cannot_resume_witness_carries_through_for_store_missi
     Ok(())
 }
 
+/// Bead vb-v0y0m: the storage typed witness still flags `pending_timers`
+/// for an unresolved wait schedule, but the runtime layer now refines it
+/// into a resumable `WaitingTimer` boundary instead of `CannotResume`.
+/// The storage evidence is unchanged; only the runtime classification moved.
 #[test]
-fn runtime_recover_product_cannot_resume_witness_carries_through_for_pending_timers()
--> Result<(), String> {
+fn runtime_recover_product_refines_pending_timers_to_resumable_timer() -> Result<(), String> {
     let temp = tempfile::tempdir().map_err(|err| err.to_string())?;
     let run = RunId::new(7_711);
     let workflow = wait_then_finish_workflow()?;
@@ -1442,16 +1528,31 @@ fn runtime_recover_product_cannot_resume_witness_carries_through_for_pending_tim
     let product = recovered
         .recover_product(run)
         .map_err(|err| err.to_string())?;
-    assert_product_cannot_resume(product, "pending_timers")?;
+    match product {
+        RuntimeRecoveryProduct::Resumable(product) => {
+            assert_eq!(
+                product.boundary_kind(),
+                RecoveredRunBoundaryKind::WaitingTimer
+            );
+        }
+        other => {
+            return Err(format!(
+                "expected waiting-timer resumable product, got {other:?}"
+            ));
+        }
+    }
     assert_storage_typed_witness_carries_through(&journal, run, "pending_timers", |state| {
         state.pending_timers
     })?;
     Ok(())
 }
 
+/// Bead vb-v0y0m: the storage typed witness still flags `pending_asks`
+/// for an unresolved timed ask schedule, but the runtime layer now refines
+/// it into a resumable `TimedAsk` boundary instead of `CannotResume`.
+/// The storage evidence is unchanged; only the runtime classification moved.
 #[test]
-fn runtime_recover_product_cannot_resume_witness_carries_through_for_pending_asks()
--> Result<(), String> {
+fn runtime_recover_product_refines_pending_asks_to_resumable_timer() -> Result<(), String> {
     let temp = tempfile::tempdir().map_err(|err| err.to_string())?;
     let run = RunId::new(7_712);
     let workflow = timed_ask_then_finish_workflow()?;
@@ -1471,7 +1572,16 @@ fn runtime_recover_product_cannot_resume_witness_carries_through_for_pending_ask
     let product = recovered
         .recover_product(run)
         .map_err(|err| err.to_string())?;
-    assert_product_cannot_resume(product, "pending_asks")?;
+    match product {
+        RuntimeRecoveryProduct::Resumable(product) => {
+            assert_eq!(product.boundary_kind(), RecoveredRunBoundaryKind::TimedAsk);
+        }
+        other => {
+            return Err(format!(
+                "expected timed-ask resumable product, got {other:?}"
+            ));
+        }
+    }
     assert_storage_typed_witness_carries_through(&journal, run, "pending_asks", |state| {
         state.pending_asks
     })?;
@@ -1516,5 +1626,172 @@ fn runtime_records_actual_action_abi_at_schedule_boundary() -> Result<(), String
     assert_eq!(stored_digest, expected_digest);
     assert_ne!(stored_digest, zero_digest());
 
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Bead vb-v0y0m: arena restoration for owned retained inputs.
+//
+// A run whose prompt slot holds a `List` handle can only resume when the
+// cold value-store arenas are restored: the frame would otherwise hold a
+// dangling handle. The owned submission retains the complete validated
+// bundle (roots plus the full arena checkpoint); recovery revalidates it
+// against the independently loaded artifact and workflow, rebuilds the
+// shard store from the checkpoint, and lifts `store_missing` only when
+// every recovered handle resolves. A bare handle with no retained arena
+// (the `store_missing` tests above) stays fail-closed.
+// ---------------------------------------------------------------------------
+
+fn ask_with_list_input_workflow() -> Result<CompiledWorkflow, String> {
+    workflow_from_parts_with_inputs(
+        "fjall_owned_arena_ask_recovery",
+        Box::from([CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: InputSlotKind::List,
+            constraint: CompiledInputConstraint::default(),
+        }]),
+        Box::from([
+            node(
+                0,
+                None,
+                Some(1),
+                CompiledNodeKind::Ask {
+                    prompt: SlotIdx::ZERO,
+                    timeout_slot: None,
+                },
+            ),
+            node(
+                1,
+                None,
+                Some(2),
+                CompiledNodeKind::AskResume {
+                    answer: SlotIdx::new(1),
+                },
+            ),
+            node(
+                2,
+                None,
+                None,
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(1),
+                },
+            ),
+        ]),
+        Box::from([]),
+        2,
+    )
+}
+
+#[test]
+fn recovered_fjall_owned_arena_ask_resumes_after_reopen() -> Result<(), String> {
+    use vb_core::root_bundle::OwnedRootBundle;
+    use vb_core::value_store::ValueStore;
+
+    let temp = tempfile::tempdir().map_err(|err| err.to_string())?;
+    let run = RunId::new(7_714);
+    let workflow = ask_with_list_input_workflow()?;
+
+    // Cold arenas with one list root: the durable evidence the recovery
+    // boundary restores the shard store from.
+    let mut arenas = ValueStore::with_max_slots(workflow.resource_contract().max_slots);
+    let root = arenas
+        .insert_list(Box::from([SlotValue::I64(1), SlotValue::I64(2)]))
+        .map_err(|err| format!("{err:?}"))?;
+    let bundle = OwnedRootBundle::new(
+        Box::from([(SlotIdx::ZERO, SlotValue::List(root), Taint::Clean)]),
+        arenas.checkpoint_v1(),
+        &workflow,
+    )
+    .map_err(|err| format!("{err:?}"))?;
+
+    let artifact =
+        vb_storage::admission::prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &[])
+            .map_err(|err| format!("{err}"))?;
+    let source_bytes = b"fjall-owned-arena-ask-recovery-source";
+    let source = vb_storage::WorkflowSourceRecord {
+        digest: WorkflowDigest::from_bytes(blake3::hash(source_bytes).into()),
+        source: source_bytes.to_vec(),
+    };
+    let record = vb_storage::OwnedRunInputsRecordV1::new(
+        run,
+        artifact.digest,
+        source.digest,
+        &bundle,
+        &workflow,
+    )
+    .map_err(|err| format!("{err}"))?;
+    let header = vb_storage::RunHeaderRecord {
+        run,
+        workflow_id: vb_core::WorkflowId::new(0),
+        compiled_digest: workflow.digest(),
+        status: 0,
+        accepted_at_ms: 123,
+    };
+    let submission = vb_storage::RunSubmission::owned(source, artifact.clone(), record, header)
+        .map_err(|err| format!("{err}"))?;
+
+    let journal = open_journal(temp.path())?;
+    journal
+        .commit_run_submission(&submission, RuntimePolicy::Strict)
+        .map_err(|err| format!("{err}"))?;
+    // Suspend on the ask after the commit prefix (seq 0..=2).
+    let suspend = [
+        JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(3),
+            step: StepIdx::ZERO,
+            attempt: 1,
+        },
+        JournalEvent::AskScheduledEvent {
+            run,
+            seq: EventSeq::new(4),
+            step: StepIdx::ZERO,
+            attempt: 1,
+        },
+    ];
+    append_events(&journal, suspend)?;
+    drop(journal);
+
+    let journal = open_journal(temp.path())?;
+    let shared = StorageRuntimeJournal::shared_strict(journal);
+    let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+
+    // Reaching Resumable (rather than `store_missing`) proves the arena
+    // restored: the prompt root is a `List` handle that only resolves
+    // against the rebuilt store.
+    match recovered
+        .recover_product(run)
+        .map_err(|err| format!("{err:?}"))?
+    {
+        RuntimeRecoveryProduct::Resumable(product) => {
+            assert_eq!(product.boundary_kind(), RecoveredRunBoundaryKind::OpenAsk);
+        }
+        other => {
+            return Err(format!(
+                "expected owned-arena open-ask resumable product, got {other:?}"
+            ));
+        }
+    }
+    recovered
+        .recover_and_resume(run)
+        .map_err(|err| format!("{err:?}"))?;
+    recovered.tick_all().map_err(|err| format!("{err:?}"))?;
+    let ticket = recovered
+        .lookup_pending_ask_ticket(run, StepIdx::ZERO)
+        .ok_or("recovered owned-arena ask must issue its persisted ticket")?;
+    let answer = vb_runtime::shard::AskAnswer::with_encoded_len(
+        ticket,
+        SlotIdx::new(1),
+        SlotValue::I64(55),
+        Taint::Clean,
+        1,
+    );
+    recovered
+        .answer_ask(answer)
+        .map_err(|err| err.to_string())?;
+    recovered.tick_all().map_err(|err| err.to_string())?;
+
+    assert_eq!(recovered.counters_snapshot().runs_completed, 1);
+    assert_eq!(recovered.list_active_runs(8, None), Vec::new());
     Ok(())
 }

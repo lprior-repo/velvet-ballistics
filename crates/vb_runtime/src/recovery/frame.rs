@@ -19,24 +19,22 @@ pub(super) fn validate_recovery_seed_shape(seed: &RecoveryFrameSeed) -> RuntimeR
     Ok(())
 }
 
-pub(super) fn hydrate_shape_checked_run_frame(seed: &RecoveryFrameSeed) -> RuntimeResult<RunFrame> {
-    hydrate_shape_checked_run_frame_with_inputs(seed, Vec::new())
-}
-
 /// Hydrates a run frame from a shape-checked seed, seeding initial input values
 /// before applying recovered slot writes. Slots written during execution
 /// (in the recovery seed) overwrite initial input seeds (later writes win).
+/// Retained inputs carry their taints (owned roots may be secret); journal
+/// slot writes carry their own recovered taints.
 pub(super) fn hydrate_shape_checked_run_frame_with_inputs(
     seed: &RecoveryFrameSeed,
-    initial_inputs: Vec<(vb_core::SlotIdx, vb_core::SlotValue)>,
+    initial_inputs: Vec<(vb_core::SlotIdx, vb_core::SlotValue, vb_core::Taint)>,
 ) -> RuntimeResult<RunFrame> {
     let mut frame = empty_recovered_frame(seed)?;
 
     // Seed initial retained inputs before applying recovered slot writes.
     // Journal slot writes (applied later) overwrite initial seeds.
-    for (slot, value) in initial_inputs {
+    for (slot, value, taint) in initial_inputs {
         frame
-            .write_slot(slot, value)
+            .write_slot_with_taint(slot, value, taint)
             .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
     }
 

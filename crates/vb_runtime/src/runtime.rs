@@ -648,58 +648,14 @@ impl Runtime {
             prefix.admission.artifact_digest(),
         )?;
         Self::validate_recovery_admission(run, self.policy, &prefix, &recovered)?;
-        let retained_inputs = Self::load_retained_inputs_for_recovery(
-            &prefix,
-            &recovered,
+        let retained_inputs = crate::recovery::load_retained_inputs_for_recovery(
+            &prefix.events,
             fjall_journal.as_ref(),
+            &recovered.artifact,
+            &recovered.workflow,
             run,
         )?;
         self.build_runtime_recovery_product(run, prefix, recovered, retained_inputs)
-    }
-
-    /// Loads and validates retained typed inputs for cold startup recovery.
-    fn load_retained_inputs_for_recovery(
-        prefix: &RecoveryPrefixEvidence,
-        recovered: &RecoveryArtifactWorkflow,
-        journal: &vb_storage::FjallJournal,
-        run: RunId,
-    ) -> RuntimeResult<Option<vb_storage::RunInputsRecord>> {
-        // Check if this admission is new-bound (has input digest) or legacy
-        let admission_event = prefix
-            .events
-            .iter()
-            .find(|e| {
-                matches!(
-                    e,
-                    vb_storage::JournalEvent::RunAdmission { .. }
-                        | vb_storage::JournalEvent::RunAdmissionBudget { .. }
-                )
-            })
-            .ok_or(RuntimeError::Recovery {
-                error: "recovery: admission event not found in journal events".to_string(),
-            })?;
-
-        if !crate::recovery::admission_is_new_bound(admission_event) {
-            // Legacy unbound admission - no retained inputs expected
-            return Ok(None);
-        }
-
-        // New-bound admission - retained inputs required
-        let record = journal.run_inputs(run)?.ok_or(RuntimeError::Recovery {
-            error: format!(
-                "recovery: retained input record missing for new-bound run {:?}",
-                run
-            ),
-        })?;
-
-        crate::recovery::validate_input_record_binding(&record, run, admission_event)?;
-        crate::recovery::validate_input_record_artifact(
-            &record,
-            prefix.admission.artifact_digest(),
-        )?;
-        crate::recovery::validate_input_record_workflow(&record, &recovered.workflow)?;
-
-        Ok(Some(record))
     }
 
     fn recovery_storage_journal(&self) -> RuntimeResult<std::sync::Arc<vb_storage::FjallJournal>> {
@@ -809,7 +765,7 @@ impl Runtime {
         run: RunId,
         prefix: RecoveryPrefixEvidence,
         recovered: RecoveryArtifactWorkflow,
-        retained_inputs: Option<vb_storage::RunInputsRecord>,
+        retained_inputs: crate::recovery::RecoveredRetainedInputs,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         let expected = crate::recovery::action_abi_digests_from_contracts(
             &recovered.artifact.action_contracts,
@@ -877,7 +833,7 @@ impl Runtime {
         prefix: RecoveryPrefixEvidence,
         seed: vb_storage::recovery::RecoveryFrameSeedProduct,
         boundary: crate::recovery::RecoveredRunBoundary,
-        retained_inputs: Option<vb_storage::RunInputsRecord>,
+        retained_inputs: crate::recovery::RecoveredRetainedInputs,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         let context = RecoveredSeedProductContext {
             run,
@@ -885,15 +841,19 @@ impl Runtime {
             seed,
             boundary,
         };
-        Self::product_from_recovered_context(context, retained_inputs)
+        Self::product_from_recovered_context(context, &retained_inputs)
     }
 
     fn product_from_recovered_context(
         context: RecoveredSeedProductContext,
-        retained_inputs: Option<vb_storage::RunInputsRecord>,
+        retained_inputs: &crate::recovery::RecoveredRetainedInputs,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
-        let cannot_resume =
-            crate::recovery::classify_full_recovery_resume(context.seed.seed(), context.boundary);
+        let cannot_resume = crate::recovery::classify_full_recovery_resume(
+            context.seed.seed(),
+            context.boundary,
+            retained_inputs.initial_inputs(),
+            retained_inputs.store(),
+        );
         if !cannot_resume.is_resumable() {
             return Ok(crate::recovery::RuntimeRecoveryProduct::cannot_resume(
                 context.seed.summary(),
@@ -916,15 +876,14 @@ impl Runtime {
 
     fn resumable_product_from_recovered_context(
         context: RecoveredSeedProductContext,
-        retained_inputs: Option<vb_storage::RunInputsRecord>,
+        retained_inputs: &crate::recovery::RecoveredRetainedInputs,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
-        let initial_inputs = retained_inputs
-            .as_ref()
-            .map(|record| record.inputs().to_vec());
+        let initial_inputs = retained_inputs.initial_inputs().to_vec();
         let frame = crate::recovery::hydrate_frame_for_full_recovery_with_inputs(
             context.seed.seed(),
             context.boundary,
             initial_inputs,
+            retained_inputs.store(),
         )?;
         let collect_states = Self::hydrate_recovered_collect_states(&context.prefix.events)?;
         let open_gates = crate::manual_gate::reconstruct_open_gates(&context.prefix.events)
@@ -942,6 +901,7 @@ impl Runtime {
                     boundary: context.boundary,
                     open_gates,
                     admission: context.prefix.admission.clone(),
+                    restored_store: retained_inputs.store_checkpoint(),
                 },
             ),
         ))

@@ -1,25 +1,33 @@
 #![forbid(unsafe_code)]
 
 mod admission;
+mod arena;
 mod boundary;
 mod full_ask_schedule;
+mod full_wait_schedule;
 mod pending;
 mod product;
+mod suspended;
 
-use full_ask_schedule::pending_ask_schedule_for_step;
+use arena::recovered_arena_handles_resolve;
+use suspended::{
+    recoverable_open_ask_boundary, recoverable_timed_ask_boundary,
+    recoverable_waiting_timer_boundary,
+};
 
+use vb_core::CompiledWorkflow;
 use vb_core::action::ActionTicket;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::value::SlotValue;
-use vb_core::{CompiledNodeKind, CompiledWorkflow};
 use vb_storage::recovery::{RecoveredStepState, RecoveryFrameSeed};
 
 pub(crate) use admission::{
     RecoveredAdmissionContext, RecoveredAdmissionEvidence, action_abi_digests_from_contracts,
     action_contract_abi_digest, validate_recovered_admission_evidence,
 };
-pub use boundary::{RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind};
+pub use boundary::{
+    RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind, RecoveredTimerSuspension,
+};
 pub(crate) use pending::pending_action_ticket_from_events;
 pub(crate) use product::ResumableRecoveryParts;
 pub use product::{
@@ -81,15 +89,12 @@ impl RecoveredPendingActionTicket {
 pub(crate) fn hydrate_frame_for_full_recovery_with_inputs(
     seed: &RecoveryFrameSeed,
     boundary: RecoveredRunBoundary,
-    initial_inputs: Option<Vec<(vb_core::SlotIdx, vb_core::SlotValue)>>,
+    initial_inputs: Vec<(vb_core::SlotIdx, vb_core::SlotValue, vb_core::Taint)>,
+    store: Option<&vb_core::ValueStore>,
 ) -> RuntimeResult<RunFrame> {
     super::frame::validate_recovery_seed_shape(seed)?;
-    reject_unrecoverable_full_recovery_state(seed, boundary)?;
-    if let Some(inputs) = initial_inputs {
-        super::frame::hydrate_shape_checked_run_frame_with_inputs(seed, inputs)
-    } else {
-        super::frame::hydrate_shape_checked_run_frame(seed)
-    }
+    reject_unrecoverable_full_recovery_state(seed, boundary, &initial_inputs, store)?;
+    super::frame::hydrate_shape_checked_run_frame_with_inputs(seed, initial_inputs)
 }
 
 pub(crate) fn recovered_run_boundary_from_seed(
@@ -101,8 +106,14 @@ pub(crate) fn recovered_run_boundary_from_seed(
     if let Some(ticket) = pending_action {
         return RecoveredRunBoundary::from_pending_action(ticket);
     }
-    match recoverable_open_ask_boundary(seed, workflow, events) {
-        Some(ask) => RecoveredRunBoundary::from_open_ask(ask),
+    if let Some(ask) = recoverable_open_ask_boundary(seed, workflow, events) {
+        return RecoveredRunBoundary::from_open_ask(ask);
+    }
+    if let Some(timer) = recoverable_waiting_timer_boundary(seed, workflow, events) {
+        return RecoveredRunBoundary::from_waiting_timer(timer);
+    }
+    match recoverable_timed_ask_boundary(seed, workflow, events) {
+        Some(ask) => RecoveredRunBoundary::from_timed_ask(ask),
         None => RecoveredRunBoundary::none(),
     }
 }
@@ -110,8 +121,10 @@ pub(crate) fn recovered_run_boundary_from_seed(
 pub(crate) fn classify_full_recovery_resume(
     seed: &RecoveryFrameSeed,
     boundary: RecoveredRunBoundary,
+    initial_inputs: &[(vb_core::SlotIdx, vb_core::SlotValue, vb_core::Taint)],
+    store: Option<&vb_core::ValueStore>,
 ) -> vb_storage::recovery::RecoveryCannotResumeState {
-    let mut state = initial_full_recovery_resume_state(seed, boundary);
+    let mut state = initial_full_recovery_resume_state(seed, boundary, initial_inputs, store);
     mark_pending_action_range(seed, boundary, &mut state);
     mark_step_recovery_boundaries(seed, boundary, &mut state);
     state
@@ -148,6 +161,8 @@ pub(crate) fn run_is_currently_terminal(events: &[vb_storage::JournalEvent]) -> 
 fn initial_full_recovery_resume_state(
     seed: &RecoveryFrameSeed,
     boundary: RecoveredRunBoundary,
+    initial_inputs: &[(vb_core::SlotIdx, vb_core::SlotValue, vb_core::Taint)],
+    store: Option<&vb_core::ValueStore>,
 ) -> vb_storage::recovery::RecoveryCannotResumeState {
     let mut state = vb_storage::recovery::RecoveryCannotResumeState {
         slot_values: seed.unsupported.slot_values,
@@ -157,7 +172,8 @@ fn initial_full_recovery_resume_state(
             && boundary.kind() != RecoveredRunBoundaryKind::PendingAction,
         ..vb_storage::recovery::RecoveryCannotResumeState::RESUMABLE
     };
-    state.store_missing = state.store_missing || recovered_slots_require_value_store(seed);
+    state.store_missing =
+        state.store_missing || !recovered_arena_handles_resolve(seed, initial_inputs, store);
     state
 }
 
@@ -191,13 +207,16 @@ fn mark_step_recovery_boundary(
     state: &mut vb_storage::recovery::RecoveryCannotResumeState,
 ) {
     match recovered {
-        RecoveredStepState::Waiting => {
+        RecoveredStepState::Waiting if !boundary.is_waiting_timer_step(step) => {
             state.pending_timers = true;
         }
-        RecoveredStepState::Asking if !boundary.is_open_ask_step(step) => {
+        RecoveredStepState::Asking
+            if !boundary.is_open_ask_step(step) && !boundary.is_timed_ask_step(step) =>
+        {
             state.pending_asks = true;
         }
-        RecoveredStepState::Asking
+        RecoveredStepState::Waiting
+        | RecoveredStepState::Asking
         | RecoveredStepState::Running
         | RecoveredStepState::Succeeded
         | RecoveredStepState::Failed => {}
@@ -207,76 +226,17 @@ fn mark_step_recovery_boundary(
     }
 }
 
-fn recovered_slots_require_value_store(seed: &RecoveryFrameSeed) -> bool {
-    seed.slots
-        .iter()
-        .any(|entry| slot_value_requires_value_store(entry.value))
-}
-
-const fn slot_value_requires_value_store(value: SlotValue) -> bool {
-    matches!(
-        value,
-        SlotValue::List(_) | SlotValue::Object(_) | SlotValue::Blob(_)
-    )
-}
-
 fn reject_unrecoverable_full_recovery_state(
     seed: &RecoveryFrameSeed,
     boundary: RecoveredRunBoundary,
+    initial_inputs: &[(vb_core::SlotIdx, vb_core::SlotValue, vb_core::Taint)],
+    store: Option<&vb_core::ValueStore>,
 ) -> RuntimeResult<()> {
-    let state = classify_full_recovery_resume(seed, boundary);
+    let state = classify_full_recovery_resume(seed, boundary, initial_inputs, store);
     if state.is_resumable() {
         Ok(())
     } else {
         Err(cannot_resume_error(state.unsupported_reason()))
-    }
-}
-
-fn recoverable_open_ask_boundary(
-    seed: &RecoveryFrameSeed,
-    workflow: &CompiledWorkflow,
-    events: &[vb_storage::JournalEvent],
-) -> Option<RecoveredOpenAsk> {
-    let mut current = None;
-    for entry in seed
-        .steps
-        .iter()
-        .filter(|entry| entry.state == RecoveredStepState::Asking)
-    {
-        let ask = recoverable_open_ask(seed, workflow, entry.step, events)?;
-        if let Some(existing) = current
-            && existing != ask
-        {
-            return None;
-        }
-        current = Some(ask);
-    }
-    current
-}
-
-fn recoverable_open_ask(
-    seed: &RecoveryFrameSeed,
-    workflow: &CompiledWorkflow,
-    step: StepIdx,
-    events: &[vb_storage::JournalEvent],
-) -> Option<RecoveredOpenAsk> {
-    if seed.pc != step {
-        return None;
-    }
-    let node = workflow.node(step)?;
-    let CompiledNodeKind::Ask {
-        timeout_slot: None, ..
-    } = node.kind
-    else {
-        return None;
-    };
-    let resume_step = node.routing.next.step()?;
-    match workflow.node(resume_step).map(|resume| &resume.kind) {
-        Some(CompiledNodeKind::AskResume { .. }) => {
-            let (boundary_seq, _) = pending_ask_schedule_for_step(events, step)?;
-            Some(RecoveredOpenAsk::new(step, boundary_seq))
-        }
-        _ => None,
     }
 }
 

@@ -47,6 +47,25 @@ impl OwnedRunInputsRecordV1 {
         source: WorkflowDigest,
         workflow: &CompiledWorkflow,
     ) -> Result<Self, JournalError> {
+        let record = Self::decode_without_source(bytes, run, artifact, workflow)?;
+        if record.source_digest() != source {
+            return Err(OwnedInputError::IdentityMismatch.into());
+        }
+        Ok(record)
+    }
+
+    /// Decodes for cold recovery: checks run and artifact identity plus the
+    /// full bundle validation, without a caller-supplied source expectation.
+    ///
+    /// The embedded source digest is covered by the tamper-evident input
+    /// digest; the caller must additionally validate the durable admission
+    /// binding (`validate_admission`), whose input digest anchors the record.
+    pub fn decode_without_source(
+        bytes: &[u8],
+        run: RunId,
+        artifact: WorkflowDigest,
+        workflow: &CompiledWorkflow,
+    ) -> Result<Self, JournalError> {
         crate::keys::run_header_key(run)?;
         let (_, data) = codec::decode_record(bytes, MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES)?;
         let record = Self {
@@ -58,7 +77,7 @@ impl OwnedRunInputsRecordV1 {
                 actual: record.run(),
             });
         }
-        if record.artifact_digest() != artifact || record.source_digest() != source {
+        if record.artifact_digest() != artifact {
             return Err(OwnedInputError::IdentityMismatch.into());
         }
         record.validate_workflow(workflow)?;

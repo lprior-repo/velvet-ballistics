@@ -131,6 +131,10 @@ pub struct ResumableRecoveryProduct {
     /// Original historical admission validated against the durable artifact;
     /// must be restored verbatim rather than rebuilt from current policy.
     admission: crate::admission::RunAdmission,
+    /// Restored cold value store for arena-handle resolution, present when
+    /// the run retained owned inputs. Rebuilt into the shard `RunState`
+    /// instead of the default empty store.
+    restored_store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
 }
 
 impl ResumableRecoveryProduct {
@@ -147,6 +151,7 @@ impl ResumableRecoveryProduct {
             boundary: parts.boundary,
             open_gates: parts.open_gates,
             admission: parts.admission,
+            restored_store: parts.restored_store,
         }
     }
 
@@ -178,6 +183,7 @@ impl ResumableRecoveryProduct {
         )
         .with_open_gates(self.open_gates)
         .with_validated_admission(self.admission)
+        .with_restored_store(self.restored_store)
     }
 }
 
@@ -195,4 +201,7 @@ pub(crate) struct ResumableRecoveryParts {
     /// Original historical admission validated against the durable artifact;
     /// must be restored verbatim rather than rebuilt from current policy.
     pub(crate) admission: crate::admission::RunAdmission,
+    /// Restored cold value store for arena-handle resolution, present when
+    /// the run retained owned inputs.
+    pub(crate) restored_store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
 }

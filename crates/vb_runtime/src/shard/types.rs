@@ -319,6 +319,10 @@ pub struct RecoverRunCommand {
     /// authority from the current artifact; that requires the validated
     /// recovery product path.
     pub(crate) admission: RecoveredAdmissionKind,
+    /// Restored cold value store for arena-handle resolution, present when
+    /// the run retained owned inputs. `None` on the raw and retry paths and
+    /// for scalar runs, which restore the default empty store.
+    pub(crate) restored_store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
 }
 
 impl RecoverRunCommand {
@@ -352,6 +356,7 @@ impl RecoverRunCommand {
                 run_id: run,
                 artifact_digest,
             },
+            restored_store: None,
         }
     }
 
@@ -376,6 +381,22 @@ impl RecoverRunCommand {
         admission: crate::admission::RunAdmission,
     ) -> Self {
         self.admission = RecoveredAdmissionKind::Historical(Box::new(admission));
+        self
+    }
+
+    /// Attaches a restored cold value store from a validated recovery product.
+    ///
+    /// Crate-private: only the validated recovery product path should call
+    /// this, after the owned retained inputs have been revalidated against
+    /// the independently loaded artifact and workflow. The shard rebuilds
+    /// this checkpoint into the recovered `RunState` instead of the default
+    /// empty store.
+    #[must_use]
+    pub(crate) fn with_restored_store(
+        mut self,
+        store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
+    ) -> Self {
+        self.restored_store = store;
         self
     }
 
@@ -454,6 +475,7 @@ impl RecoverRunCommand {
             boundary: crate::recovery::RecoveredRunBoundary::none(),
             open_gates: Vec::new(),
             admission,
+            restored_store: None,
         })
     }
 }
