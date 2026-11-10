@@ -10,6 +10,7 @@ mod benchmark_freshness;
 mod benchmark_policy;
 mod cli;
 mod contracts;
+mod crash_lab;
 mod evidence;
 mod forbidden_scan;
 mod gates;
@@ -74,6 +75,16 @@ fn run_legacy_cli(cli: Cli) -> anyhow::Result<()> {
         Commands::ForbiddenScan { crates, allowlist } => {
             forbidden_scan::cmd_forbidden_scan(crates.as_deref(), allowlist.as_deref())
         }
+        Commands::CrashLab {
+            workflow,
+            crash_at,
+            all_crash_points,
+        } => crash_lab::cmd_crash_lab(
+            &workflow,
+            crash_at.as_deref(),
+            all_crash_points,
+            &workspace_root,
+        ),
         Commands::BenchmarkRegressionPolicy { budget, evidence } => {
             benchmark_policy::cmd_benchmark_policy(&budget, &evidence)
         }

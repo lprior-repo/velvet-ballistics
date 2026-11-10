@@ -91,6 +91,15 @@ pub(crate) enum Commands {
         #[arg(long)]
         allowlist: Option<String>,
     },
+    #[command(name = "crash-lab")]
+    CrashLab {
+        #[arg(long)]
+        workflow: String,
+        #[arg(long)]
+        crash_at: Option<String>,
+        #[arg(long)]
+        all_crash_points: bool,
+    },
     #[command(name = "benchmark-regression-policy")]
     BenchmarkRegressionPolicy {
         #[arg(long, default_value = "contracts/perf-budget.yaml")]
