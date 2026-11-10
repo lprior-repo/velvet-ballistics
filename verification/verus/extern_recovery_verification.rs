@@ -17,7 +17,7 @@
 //     (check_workflow_source_digest, check_compiled_ir_digest,
 //      check_action_abi_digest, check_policy_digest, verify_digests,
 //      recover_runtime_summary, recover_runtime_frame_seed)
-//   - crates/vb_storage/src/recovery/hydrate.rs
+//   - crates/vb_storage/src/recovery/hydrate/mod.rs
 //     (hydrate_run_frame, hydrate_run_frame_from_events,
 //      hydrate_snapshot_tail_preconditions,
 //      hydrate_snapshot_tail_run_matches,
@@ -37,7 +37,7 @@
 // WHY NOT FULL `#[path]` INCLUSION OF PRODUCTION SOURCES
 // ============================================================================
 // Direct `#[path = "../../crates/vb_storage/src/recovery/recover.rs"]` and
-// analogous `#[path]` to types.rs / hydrate.rs is blocked by:
+// analogous `#[path]` to types.rs / hydrate/mod.rs is blocked by:
 //
 //   1. `recover.rs:18-23` `use crate::recovery::types::{...}` and
 //      `use crate::{FjallJournal, JournalEvent}` cannot resolve outside
@@ -53,9 +53,10 @@
 //      cannot invoke proc-macro derives without registering the proc
 //      macro crates; `serde` is referenced by path in that derive,
 //      not via a `use` import.
-//   4. `crates/vb_storage/src/recovery/hydrate.rs:13-17` references `ActionReplayEffect`,
-//      `ActionReplayTracker`, and other internal types from `types.rs`
-//      and `hydrate_support.rs`, multiplying the module-tree
+//   4. `crates/vb_storage/src/recovery/hydrate/mod.rs:35-37` and
+//      `crates/vb_storage/src/recovery/hydrate/envelope.rs:9-11` reference
+//      `ActionReplayEffect`, `ActionReplayTracker`, and other internal types
+//      from `types.rs` and `hydrate_support.rs`, multiplying the module-tree
 //      dependency surface.
 //   5. `crates/vb_runtime/src/recovery.rs:5-8` uses `vb_storage` as an
 //      extern crate alias and pulls in additional runtime dependencies
@@ -138,7 +139,7 @@
 //        summarize_recovery_events. Pure projection: success iff
 //        has_events && summary_ok.)
 //   - `hydrate_run_frame`
-//        <- crates/vb_storage/src/recovery/hydrate.rs:220-242 +
+//        <- crates/vb_storage/src/recovery/hydrate/mod.rs:86-108 +
 //           crates/vb_runtime/src/recovery/product.rs:43-48
 //        (production body: validate_snapshot_recovery_inputs, then
 //        decode_snapshot_slots (alloc), then derive_dimensions
@@ -1044,7 +1045,7 @@ pub fn recover_runtime_summary_pure(has_events: bool, summary_ok: bool) -> bool 
 }
 
 /// Pure precondition decision mirroring `hydrate_run_frame` at
-/// `crates/vb_storage/src/recovery/hydrate.rs:220-242` AND the
+/// `crates/vb_storage/src/recovery/hydrate/mod.rs:86-108` AND the
 /// `DurableFrameRecoveryBoundary::hydrate_run_frame` driver at
 /// `crates/vb_runtime/src/recovery.rs:187-189`.
 ///
@@ -1104,10 +1105,10 @@ pub fn summary_recovery_boundary_hydrate_pure() -> bool {
 
 // ============================================================================
 // Helpers — line-by-line mirrors of the production "production proof
-// surface" predicates at crates/vb_storage/src/recovery/hydrate.rs:22-70
+// surface" predicates at crates/vb_storage/src/recovery/hydrate/preconditions.rs:9-57
 // ============================================================================
 
-/// Mirror of `hydrate_snapshot_tail_run_matches` at `crates/vb_storage/src/recovery/hydrate.rs:22-28`.
+/// Mirror of `hydrate_snapshot_tail_run_matches` at `crates/vb_storage/src/recovery/hydrate/preconditions.rs:9-15`.
 /// Production returns true iff `snapshot.run == run_id` AND every
 /// tail event has `run_id == run_id`.
 #[verifier::external]
@@ -1119,14 +1120,14 @@ pub fn hydrate_snapshot_tail_run_matches_pure(
 }
 
 /// Mirror of `hydrate_snapshot_tail_seq_after_snapshot` at
-/// `crates/vb_storage/src/recovery/hydrate.rs:32-37`. Production returns true iff every tail
+/// `crates/vb_storage/src/recovery/hydrate/preconditions.rs:19-24`. Production returns true iff every tail
 /// event has seq strictly after the snapshot seq.
 #[verifier::external]
 pub fn hydrate_snapshot_tail_seq_after_snapshot_pure(tail_seq_after_snapshot: bool) -> bool {
     tail_seq_after_snapshot
 }
 
-/// Mirror of `hydrate_snapshot_tail_has_evidence` at `crates/vb_storage/src/recovery/hydrate.rs:41-46`.
+/// Mirror of `hydrate_snapshot_tail_has_evidence` at `crates/vb_storage/src/recovery/hydrate/preconditions.rs:28-33`.
 /// Production returns true iff at least one of: tail events
 /// non-empty, snapshot slots non-empty, snapshot taint non-empty.
 #[verifier::external]
@@ -1138,7 +1139,7 @@ pub fn hydrate_snapshot_tail_has_evidence_pure(
     !tail_events_empty || !snapshot_slots_empty || !snapshot_taint_empty
 }
 
-/// Mirror of `hydrate_dimensions_positive` at `crates/vb_storage/src/recovery/hydrate.rs:67-70`.
+/// Mirror of `hydrate_dimensions_positive` at `crates/vb_storage/src/recovery/hydrate/preconditions.rs:54-57`.
 /// Production returns true iff `step_count > 0 && slot_count > 0`.
 #[verifier::external]
 pub fn hydrate_dimensions_positive_pure(
