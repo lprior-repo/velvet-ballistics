@@ -4,7 +4,7 @@
 mod adversarial;
 
 #[allow(unused_imports, dead_code)]
-use vb_core::{ConstIdx, ConstValue, ExprOp, SlotIdx};
+use vb_core::{ConstIdx, ConstValue, ExprOp, SlotIdx, SlotValue};
 
 #[allow(unused_imports)]
 use crate::ExprError;
@@ -13,8 +13,9 @@ use crate::bytecode::{
     ReferenceResolver, check_expr_stack_bound, compile_expr, compile_expr_to_bytecode,
     compile_expr_with_pool, compile_expr_with_resolver, const_fold_expr, push_constant,
 };
+use crate::eval::{eval_binary_op, eval_expr_program, eval_helper, eval_unary_op};
 use crate::lexer::lex_expr;
-use crate::parser::parse_expr;
+use crate::parser::{ExprAst, ExprLiteral, parse_expr};
 
 #[allow(dead_code)]
 fn resolve_test_reference(reference: &str) -> Option<SlotIdx> {
@@ -579,5 +580,133 @@ fn compile_with_resolver_uses_slots_for_multiple_refs() -> crate::ExprResult<()>
     assert_eq!(ops.len(), 3); // LoadSlot, LoadSlot, Mul
     assert!(matches!(ops.first(), Some(ExprOp::LoadSlot(_))));
     assert!(matches!(ops.get(1), Some(ExprOp::LoadSlot(_))));
+    Ok(())
+}
+
+#[allow(dead_code)]
+fn eval_ast(expr: &ExprAst, slots: &[Option<SlotValue>]) -> crate::ExprResult<SlotValue> {
+    match expr {
+        ExprAst::Literal(literal) => literal_to_slot_value(literal),
+        ExprAst::Reference(reference) => {
+            let slot = resolve_test_reference(reference).ok_or(ExprError::InvalidReference {
+                reference: reference.to_string(),
+            })?;
+            slots
+                .get(slot.as_usize())
+                .and_then(|value| *value)
+                .ok_or(ExprError::StackUnderflow)
+        }
+        ExprAst::Unary { op, expr: inner } => eval_unary_op(*op, eval_ast(inner, slots)?),
+        ExprAst::Binary { op, left, right } => {
+            eval_binary_op(*op, eval_ast(left, slots)?, eval_ast(right, slots)?)
+        }
+        ExprAst::Helper { name, args } => {
+            let evaluated: crate::ExprResult<Vec<SlotValue>> =
+                args.iter().map(|arg| eval_ast(arg, slots)).collect();
+            eval_helper(*name, &evaluated?)
+        }
+    }
+}
+
+#[allow(dead_code)]
+fn literal_to_slot_value(literal: &ExprLiteral) -> crate::ExprResult<SlotValue> {
+    match literal {
+        ExprLiteral::Null => Ok(SlotValue::Null),
+        ExprLiteral::Bool(value) => Ok(SlotValue::Bool(*value)),
+        ExprLiteral::I64(value) => Ok(SlotValue::I64(*value)),
+        ExprLiteral::F64(value) => Ok(SlotValue::F64(*value)),
+        ExprLiteral::Text(_) => Err(ExprError::UnsupportedLiteral {
+            literal: "text".into(),
+        }),
+    }
+}
+
+#[allow(dead_code)]
+fn eval_both(
+    source: &str,
+    slots: &[Option<SlotValue>],
+) -> crate::ExprResult<(crate::ExprResult<SlotValue>, crate::ExprResult<SlotValue>)> {
+    let tokens = lex_expr(source)?;
+    let ast = parse_expr(&tokens)?;
+    let ast_result = eval_ast(&ast, slots);
+    let mut constants = Vec::new();
+    let program = compile_expr_with_resolver(&ast, &mut constants, &resolve_test_reference)?;
+    let bytecode_result = eval_expr_program(&program, slots, &constants);
+    Ok((ast_result, bytecode_result))
+}
+
+#[test]
+fn bytecode_vs_ast() -> crate::ExprResult<()> {
+    let empty: &[Option<SlotValue>] = &[];
+    let slots: &[Option<SlotValue>] = &[
+        Some(SlotValue::I64(10)),
+        Some(SlotValue::I64(32)),
+        Some(SlotValue::I64(7)),
+    ];
+    let value_cases: &[(&str, &[Option<SlotValue>])] = &[
+        ("3 + 4 * 2", empty),
+        ("(3 + 4) * 2", empty),
+        ("10 - 2 - 3", empty),
+        ("2 * 3 + 4 * 5", empty),
+        ("10 / 3", empty),
+        ("1000000 * 1000000", empty),
+        ("1 < 2", empty),
+        ("2 <= 2", empty),
+        ("3 > 4", empty),
+        ("5 >= 6", empty),
+        ("1 == 1", empty),
+        ("1 != 2", empty),
+        ("true and false", empty),
+        ("true or false", empty),
+        ("not true", empty),
+        ("not false", empty),
+        ("1 == 1 and 2 < 3", empty),
+        ("not (1 == 2)", empty),
+        ("-5", empty),
+        ("-(3 + 2)", empty),
+        ("-2.5", empty),
+        ("1.5 + 2.5", empty),
+        ("2.5 * 4", empty),
+        ("3 * 1.5", empty),
+        ("7.5 - 2.5", empty),
+        ("7.5 / 2.5", empty),
+        ("null == null", empty),
+        ("null != 1", empty),
+        ("1 + 2 == 3", empty),
+        ("exists(1)", empty),
+        ("exists(null)", empty),
+        ("$a + $b", slots),
+        ("$a * 2 + $b", slots),
+        ("$c == 7", slots),
+        ("$a > $b", slots),
+        ("$a - $c * 2", slots),
+        ("not ($a == $b)", slots),
+        ("$a / $b", slots),
+        ("exists($a)", slots),
+        ("$a + $b * $c", slots),
+    ];
+    for (source, case_slots) in value_cases {
+        let (ast_result, bytecode_result) = eval_both(source, case_slots)?;
+        assert!(
+            ast_result.is_ok(),
+            "{source} ast eval failed: {ast_result:?}"
+        );
+        assert_eq!(ast_result, bytecode_result);
+    }
+    let error_cases: &[(&str, &[Option<SlotValue>])] = &[
+        ("1 / 0", empty),
+        ("9223372036854775807 + 1", empty),
+        ("9223372036854775807 * 2", empty),
+        ("10 / (3 - 3)", empty),
+        ("$a / ($b - $b)", slots),
+    ];
+    for (source, case_slots) in error_cases {
+        let (ast_result, bytecode_result) = eval_both(source, case_slots)?;
+        assert!(
+            ast_result.is_err(),
+            "{source} ast eval unexpectedly succeeded: {ast_result:?}"
+        );
+        assert_eq!(ast_result, bytecode_result);
+    }
     Ok(())
 }
