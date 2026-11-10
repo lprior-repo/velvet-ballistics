@@ -10,6 +10,7 @@ mod benchmark_freshness;
 mod benchmark_policy;
 mod cli;
 mod contracts;
+mod diff_test;
 mod evidence;
 mod forbidden_scan;
 mod gates;
@@ -71,6 +72,7 @@ fn run_legacy_cli(cli: Cli) -> anyhow::Result<()> {
         Commands::ProofEvidence { bead } => cmd_proof_evidence(&bead),
         Commands::ProofDrift { sections } => cmd_proof_drift(sections.as_deref()),
         Commands::Loom { model } => loom::cmd_loom(&model),
+        Commands::DiffTest { suite } => diff_test::cmd_diff_test(&suite, &workspace_root),
         Commands::ForbiddenScan { crates, allowlist } => {
             forbidden_scan::cmd_forbidden_scan(crates.as_deref(), allowlist.as_deref())
         }
