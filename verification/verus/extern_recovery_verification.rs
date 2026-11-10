@@ -39,12 +39,12 @@
 // Direct `#[path = "../../crates/vb_storage/src/recovery/recover.rs"]` and
 // analogous `#[path]` to types/mod.rs / hydrate/mod.rs is blocked by:
 //
-//   1. `recover.rs:18-23` `use crate::recovery::types::{...}` and
+//   1. `crates/vb_storage/src/recovery/recover.rs:18-23` `use crate::recovery::types::{...}` and
 //      `use crate::{FjallJournal, JournalEvent}` cannot resolve outside
 //      the vb_storage crate root. Fjall is a third-party C library; even
 //      the FjallJournal newtype and JournalEvent enum require the
 //      vb_storage module tree to be visible.
-//   2. `recover.rs:23` `use vb_core::{ActionId, RunId, ...}` requires
+//   2. `crates/vb_storage/src/recovery/recover.rs:23` `use vb_core::{ActionId, RunId, ...}` requires
 //      the vb_core extern crate alias, which is wired through
 //      `crates/vb_storage/Cargo.toml` and is unavailable in a
 //      standalone `verus --crate-type=lib` invocation.
