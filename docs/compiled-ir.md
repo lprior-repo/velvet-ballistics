@@ -19,7 +19,7 @@ entry StepIdx
 
 ## Current Node Kinds
 
-The authoritative `CompiledNodeKind` enum is defined in `crates/vb_core/src/nodes.rs`.
+The authoritative `CompiledNodeKind` enum is defined in `crates/vb_core/src/workflow/mod.rs`.
 It contains **34 variants** covering all workflow primitives:
 
 | Category | Variants |

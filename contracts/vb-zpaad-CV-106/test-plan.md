@@ -55,7 +55,7 @@ rejection branch well-covered).
 | `try_new_max_max_is_empty`                  | `try_new(MAX,MAX)` is empty.                                             |
 | `try_new_max_zero_is_err`                   | `try_new(MAX,0)` is the largest possible rejection.                      |
 
-### Layer 3: Kani harnesses in `crates/vb_core/src/kani/kani_span_try_new.rs`
+### Layer 3: Kani harnesses in `crates/vb_core/src/verification/kani/diagnostic/kani_span_try_new.rs`
 
 These run under `cargo kani -p vb_core --features
 kani-diagnostic-codes --harness <name>` and prove the post-state

@@ -12,18 +12,15 @@ parent: velvet-ballistics-MASTER.md
 The design token source is:
 
 ```text
-design/tokens/velvet_ui_tokens.toml
+contracts/ui_tokens_instance.cue
 ```
 
-Generated outputs:
+Live token artifacts:
 
 ```text
-crates/vb_ui_makepad/src/generated/tokens.rs
-crates/vb_ui_makepad/src/generated/tokens.splash
-contracts/ui_tokens.yaml
+contracts/ui_tokens.cue
+contracts/ui_tokens_instance.cue
 ```
-
-Manual edits to generated token files are rejected.
 
 ### Color Tokens
 
