@@ -214,7 +214,7 @@ impl CompiledWorkflow {
     /// Returns whether a step is a nested activation entry point.
     ///
     /// Returns `None` for out-of-range indices or when the cache was not
-    /// populated (unchecked constructors). `true` marks an unsupported nested Start or a step in its
+    /// populated (unchecked constructors). `true` marks a nested Start or a step in its
     /// validated inclusive body/control interval.
     #[must_use]
     pub fn nested_activation_blocked(&self, step: StepIdx) -> Option<bool> {

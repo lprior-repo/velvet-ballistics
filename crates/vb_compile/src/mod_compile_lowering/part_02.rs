@@ -35,11 +35,11 @@ use canonical_guarded_do::lower_top_level_do;
 
 #[path = "bounded_for_each.rs"]
 mod bounded_for_each;
-use bounded_for_each::{ForEachLowering, lower_bounded_for_each};
+pub(super) use bounded_for_each::{ForEachLowering, lower_bounded_for_each};
 
 #[path = "bounded_collect.rs"]
 pub(super) mod bounded_collect;
-use bounded_collect::{CollectLowering, lower_bounded_collect};
+pub(super) use bounded_collect::{CollectLowering, CollectOutput, lower_bounded_collect};
 
 #[path = "for_each_strict.rs"]
 mod for_each_strict;
@@ -128,9 +128,15 @@ pub(super) fn lower_canonical_step(
                     slot_types,
                 },
                 inputs: for_each_inputs,
+                nested: BodyCtx {
+                    inputs: for_each_inputs,
+                    step_names: step_names.as_slice(),
+                    index,
+                },
             },
             builder,
-        ),
+        )
+        .map(|_| ()),
         crate::StepPrimitive::Together { branches } => {
             lower_canonical_parallel(index, id, branches, next, builder)
         }
@@ -142,7 +148,7 @@ pub(super) fn lower_canonical_step(
             body,
             ..
         } => {
-            let slot = lower_bounded_collect(
+            let output = lower_bounded_collect(
                 index,
                 id,
                 CollectLowering {
@@ -157,11 +163,16 @@ pub(super) fn lower_canonical_step(
                         step_outputs,
                         slot_types,
                     },
+                    nested: BodyCtx {
+                        inputs: for_each_inputs,
+                        step_names: step_names.as_slice(),
+                        index,
+                    },
                 },
                 builder,
             )?;
-            step_outputs.insert(step.id.to_string(), slot);
-            slot_types.insert(slot, ExprType::List);
+            step_outputs.insert(step.id.to_string(), output.finish);
+            slot_types.insert(output.finish, ExprType::List);
             Ok(())
         }
         crate::StepPrimitive::Aggregate {
@@ -194,16 +205,21 @@ pub(super) fn lower_canonical_step(
         crate::StepPrimitive::Repeat { max_attempts, body } => lower_canonical_repeat(
             index,
             id,
-            *max_attempts,
-            body,
-            next,
-            CanonicalScope {
-                outputs,
-                step_outputs,
-                slot_types,
+            RepeatLowering {
+                max_attempts: *max_attempts,
+                body,
+                next,
+                scope: CanonicalScope {
+                    outputs,
+                    step_outputs,
+                    slot_types,
+                },
+                inputs: for_each_inputs,
+                step_names: step_names.as_slice(),
             },
             builder,
-        ),
+        )
+        .map(|_| ()),
         crate::StepPrimitive::Wait { event, timeout } => lower_canonical_wait(
             index,
             id,
@@ -246,6 +262,7 @@ pub(super) fn lower_canonical_step(
                     step_outputs,
                     slot_types,
                 },
+                inputs: for_each_inputs,
             },
             builder,
         ),
@@ -262,34 +279,6 @@ pub(super) fn lower_canonical_step(
     Ok(())
 }
 
-pub(super) fn extend_step_names_for_generated(
-    names: &mut Vec<Box<str>>,
-    step_id: &str,
-    node_count: usize,
-) {
-    while names.len() < node_count {
-        names.push(Box::from(step_id));
-    }
-}
-
-pub(super) fn lower_canonical_finish(
-    index: usize,
-    last: usize,
-    id: StepIdx,
-    result: &crate::ScalarValue,
-    outputs: &HashMap<String, SlotIdx>,
-    step_outputs: &HashMap<String, SlotIdx>,
-    builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
-    if index != last {
-        return Err(CompileErrors(vec![CompileError::StepFieldShape {
-            step: index,
-            field: "finish",
-            expected: "the last step",
-        }]));
-    }
-    let slot = super::canonical_finish_slot_with_step_outputs(result, outputs, step_outputs)?;
-    let node = lower_finish(id, slot, builder);
-    builder.push_node(node);
-    Ok(())
-}
+#[path = "canonical_finish.rs"]
+mod canonical_finish;
+pub(super) use canonical_finish::{extend_step_names_for_generated, lower_canonical_finish};

@@ -17,11 +17,13 @@
 #![forbid(unsafe_code)]
 
 use super::SlotCompiler;
+use super::part_01::ForEachInputs;
 use super::part_02::{
     CanonicalScope,
     bounded_collect::{CollectLowering, lower_bounded_collect as lower_canonical_collect},
 };
 use super::part_04::emit_single_body_set;
+use super::part_14::BodyCtx;
 use crate::{StepAst, StepPrimitive};
 use proptest::prelude::*;
 use std::collections::HashMap;
@@ -123,6 +125,7 @@ proptest! {
         let outputs = HashMap::new();
         let step_outputs = HashMap::new();
         let slot_types = HashMap::new();
+        let inputs = ForEachInputs::new();
         let collect = CollectLowering {
             source: &input.source,
             variable: "batch",
@@ -134,6 +137,11 @@ proptest! {
                 outputs: &outputs,
                 step_outputs: &step_outputs,
                 slot_types: &slot_types,
+            },
+            nested: BodyCtx {
+                inputs: &inputs,
+                step_names: &[],
+                index: 0,
             },
         };
         let result = lower_canonical_collect(0, id, collect, &mut builder);
@@ -161,6 +169,7 @@ proptest! {
         let outputs = HashMap::new();
         let step_outputs = HashMap::new();
         let slot_types = HashMap::new();
+        let inputs = ForEachInputs::new();
         let collect = CollectLowering {
             source: &input.source,
             variable: "batch",
@@ -172,6 +181,11 @@ proptest! {
                 outputs: &outputs,
                 step_outputs: &step_outputs,
                 slot_types: &slot_types,
+            },
+            nested: BodyCtx {
+                inputs: &inputs,
+                step_names: &[],
+                index: 0,
             },
         };
         let result = lower_canonical_collect(0, StepIdx::new(id), collect, &mut builder);

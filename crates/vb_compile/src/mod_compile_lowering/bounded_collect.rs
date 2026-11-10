@@ -1,4 +1,4 @@
-use super::super::part_14::emit_scoped_flat_body;
+use super::super::part_14::{BodyCtx, emit_scoped_flat_body};
 use super::super::{SlotCompiler, checked_step_offset, slot_from_text};
 use super::{CanonicalScope, resolve_slot_reference, validate_output_alias};
 use crate::mod_compile_validation::validate_public_name;
@@ -15,6 +15,7 @@ pub(in crate::mod_compile_lowering) struct CollectLowering<'a> {
     pub(in crate::mod_compile_lowering) body: &'a [crate::StepAst],
     pub(in crate::mod_compile_lowering) next: Option<StepIdx>,
     pub(in crate::mod_compile_lowering) scope: CanonicalScope<'a>,
+    pub(in crate::mod_compile_lowering) nested: BodyCtx<'a>,
 }
 
 struct CollectPlan {
@@ -105,9 +106,9 @@ fn checked_body_offset(id: StepIdx, n: u16, label: &'static str) -> Result<StepI
     checked_step_offset(id, n, "collect", label).map_err(|e| CompileErrors(vec![e]))
 }
 
-fn checked_body_length_offset(body_len: usize, extra: usize) -> Result<u16, CompileErrors> {
-    let total = body_len.checked_add(extra).ok_or(CompileErrors(vec![
-        CompileError::StepIndexOutOfRange { value: body_len },
+fn checked_body_length_offset(body_width: usize, extra: usize) -> Result<u16, CompileErrors> {
+    let total = body_width.checked_add(extra).ok_or(CompileErrors(vec![
+        CompileError::StepIndexOutOfRange { value: body_width },
     ]))?;
     u16::try_from(total)
         .map_err(|_| CompileErrors(vec![CompileError::StepIndexOutOfRange { value: total }]))
@@ -115,12 +116,12 @@ fn checked_body_length_offset(body_len: usize, extra: usize) -> Result<u16, Comp
 
 fn plan_compute_edges(
     id: StepIdx,
-    body_len: usize,
+    body_width: usize,
 ) -> Result<(StepIdx, StepIdx, StepIdx), CompileErrors> {
     let body = checked_body_offset(id, 1, "body")?;
-    let advance_n = checked_body_length_offset(body_len, 1)?;
+    let advance_n = checked_body_length_offset(body_width, 1)?;
     let advance = checked_body_offset(id, advance_n, "page")?;
-    let done_n = checked_body_length_offset(body_len, 2)?;
+    let done_n = checked_body_length_offset(body_width, 2)?;
     let done = checked_body_offset(id, done_n, "done")?;
     Ok((body, advance, done))
 }
@@ -161,7 +162,8 @@ fn plan_build(
 ) -> Result<CollectPlan, CompileErrors> {
     let source = resolve_source(index, config)?;
     builder.record_slot(source);
-    let (body, advance, done) = plan_compute_edges(id, config.body.len())?;
+    let width = super::super::body_width(config.body, 0).map_err(|e| CompileErrors(vec![e]))?;
+    let (body, advance, done) = plan_compute_edges(id, width)?;
     let limit = plan_validate_bounds(index, config)?;
     let (collector_slot, finish_slot) = allocate_collect_slots(builder)?;
     Ok(CollectPlan {
@@ -195,7 +197,7 @@ fn emit_body(
     config: &CollectLowering<'_>,
     plan: &CollectPlan,
     builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
+) -> Result<Option<SlotIdx>, CompileErrors> {
     let mut local_outputs = config.scope.outputs.clone();
     let mut local_types = config.scope.slot_types.clone();
     local_outputs.insert(config.variable.to_owned(), plan.collector_slot);
@@ -205,15 +207,16 @@ fn emit_body(
         step_outputs: config.scope.step_outputs,
         slot_types: &local_types,
     };
-    let _body_output = emit_scoped_flat_body(
+    let body_output = emit_scoped_flat_body(
         config.body,
         plan.body_step,
         plan.advance,
         local_scope,
+        config.nested,
         builder,
         "collect",
     )?;
-    Ok(())
+    Ok(body_output)
 }
 
 fn emit_next(plan: &CollectPlan, builder: &mut SlotCompiler) {
@@ -240,23 +243,37 @@ fn emit_finish(next: Option<StepIdx>, plan: &CollectPlan, builder: &mut SlotComp
     ));
 }
 
+/// Lowered collect output: the finish slot plus the inner body result slot.
+///
+/// The body result threads the nested-composition value convention (the last
+/// body step's slot) so a `collect` nested inside another body evaluates to
+/// its body's value, exactly like `repeat` does today.
+#[derive(Debug, Clone, Copy)]
+pub(in crate::mod_compile_lowering) struct CollectOutput {
+    pub(in crate::mod_compile_lowering) finish: SlotIdx,
+    pub(in crate::mod_compile_lowering) body: Option<SlotIdx>,
+}
+
 pub(in crate::mod_compile_lowering) fn lower_bounded_collect(
     index: usize,
     id: StepIdx,
     config: CollectLowering<'_>,
     builder: &mut SlotCompiler,
-) -> Result<SlotIdx, CompileErrors> {
+) -> Result<CollectOutput, CompileErrors> {
     validate_variable_name(config.variable)?;
     validate_variable_capture(config.variable, &config)?;
     validate_body(index, &config)?;
 
     let plan = plan_build(index, id, &config, builder)?;
     emit_start(id, &plan, builder);
-    emit_body(&config, &plan, builder)?;
+    let body = emit_body(&config, &plan, builder)?;
     emit_next(&plan, builder);
     emit_finish(config.next, &plan, builder);
 
-    Ok(plan.finish_slot)
+    Ok(CollectOutput {
+        finish: plan.finish_slot,
+        body,
+    })
 }
 
 #[cfg(test)]

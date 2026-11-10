@@ -932,21 +932,19 @@ fn lower_canonical_choose_rejects_65_branches() {
 ///
 /// Direct overflow of `choose_width` requires usize::MAX body steps, which
 /// is not constructable in memory. This test exercises the error propagation
-/// path by using an unsupported body primitive (ForEach) that causes
+/// path by using an unsupported body primitive (Wait) that causes
 /// `canonical_body_step_width` to return Err, which propagates through
 /// `body_width` and then `choose_width`.
 #[test]
 fn choose_width_overflow_returns_error() {
-    // Given: a branch with an unsupported body primitive (ForEach)
+    // Given: a branch with an unsupported body primitive (Wait)
     let unsupported_step = crate::StepAst {
         id: "unsupported".to_string(),
         name: None,
         condition: None,
-        primitive: crate::StepPrimitive::ForEach {
-            variable: "x".to_string(),
-            input: "items".to_string(),
-            at_once: None,
-            body: vec![],
+        primitive: crate::StepPrimitive::Wait {
+            event: None,
+            timeout: Some("deadline".to_string()),
         },
         with: None,
         retry: None,

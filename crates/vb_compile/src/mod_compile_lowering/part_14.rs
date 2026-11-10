@@ -7,8 +7,7 @@ use vb_core::{
 
 #[path = "canonical_branch_body.rs"]
 mod canonical_branch_body;
-use canonical_branch_body::emit_scoped_branch_body;
-pub(super) use canonical_branch_body::emit_scoped_flat_body;
+pub(super) use canonical_branch_body::{BodyCtx, emit_scoped_branch_body, emit_scoped_flat_body};
 #[path = "canonical_choose_conditions.rs"]
 mod canonical_choose_conditions;
 use canonical_choose_conditions::choose_node;
@@ -17,8 +16,14 @@ pub(super) struct ChooseScope<'a> {
     pub index: usize,
     pub names: &'a [Box<str>],
     pub bindings: CanonicalScope<'a>,
+    pub inputs: &'a ForEachInputs,
 }
 
+/// Test-only choose lowering with empty declared inputs.
+///
+/// Nested `for_each` bodies need declared inputs; tests covering those must
+/// go through [`lower_canonical_choose_in_scope`] (or `compile_source`) with
+/// a populated [`ForEachInputs`] instead of this helper.
 #[cfg(test)]
 pub(crate) fn lower_canonical_choose(
     index: usize,
@@ -32,6 +37,7 @@ pub(crate) fn lower_canonical_choose(
     let outputs = std::collections::HashMap::new();
     let steps = std::collections::HashMap::new();
     let types = std::collections::HashMap::new();
+    let inputs = ForEachInputs::new();
     lower_canonical_choose_in_scope(
         id,
         branches,
@@ -45,6 +51,7 @@ pub(crate) fn lower_canonical_choose(
                 step_outputs: &steps,
                 slot_types: &types,
             },
+            inputs: &inputs,
         },
         builder,
     )
@@ -72,8 +79,20 @@ pub(super) fn lower_canonical_choose_in_scope(
         builder,
     )?;
     builder.push_node(node);
+    let ctx = BodyCtx {
+        inputs: scope.inputs,
+        step_names: scope.names,
+        index: scope.index,
+    };
     for (branch, target) in branches.iter().zip(targets) {
-        emit_scoped_branch_body(&branch.steps, target, common_next, scope.bindings, builder)?;
+        emit_scoped_branch_body(
+            &branch.steps,
+            target,
+            common_next,
+            scope.bindings,
+            ctx,
+            builder,
+        )?;
     }
     Ok(())
 }
@@ -92,7 +111,14 @@ fn choose_targets(
             checked_step_offset(id, cursor, "choose", "body").map_err(|e| CompileErrors(vec![e]))?
         };
         targets.push(target);
-        cursor = add_body_offset(cursor, branch.steps.len(), id.as_usize())?;
+        let width = body_width(&branch.steps, 0).map_err(|e| CompileErrors(vec![e]))?;
+        let width = u16::try_from(width)
+            .map_err(|_| CompileErrors(vec![CompileError::StepIndexOutOfRange { value: width }]))?;
+        cursor = cursor.checked_add(width).ok_or_else(|| {
+            CompileErrors(vec![CompileError::StepIndexOutOfRange {
+                value: id.as_usize(),
+            }])
+        })?;
     }
     Ok(targets)
 }
@@ -164,6 +190,7 @@ fn resolve_choose_otherwise(
     Ok(Some(StepIdx::new(target)))
 }
 
+#[cfg(test)]
 pub(crate) fn add_body_offset(
     start_offset: u16,
     index: usize,
@@ -181,6 +208,10 @@ pub(crate) fn add_body_offset(
     })
 }
 
+/// Test-only branch-body emission with empty declared inputs.
+///
+/// See [`lower_canonical_choose`]: nested `for_each` bodies need declared
+/// inputs, so tests covering those go through the `*_in_scope` entry points.
 #[cfg(test)]
 pub(crate) fn emit_choose_branch_body(
     body: &[crate::StepAst],
@@ -192,10 +223,12 @@ pub(crate) fn emit_choose_branch_body(
 ) -> Result<usize, CompileErrors> {
     let start = checked_step_offset(base_id, start_offset, "choose", "body")
         .map_err(|e| CompileErrors(vec![e]))?;
-    add_body_offset(start_offset, body.len(), diagnostic_step)?;
+    let width = body_width(body, 0).map_err(|e| CompileErrors(vec![e]))?;
+    add_body_offset(start_offset, width, diagnostic_step)?;
     let outputs = std::collections::HashMap::new();
     let steps = std::collections::HashMap::new();
     let types = std::collections::HashMap::new();
+    let inputs = ForEachInputs::new();
     emit_scoped_branch_body(
         body,
         start,
@@ -204,6 +237,11 @@ pub(crate) fn emit_choose_branch_body(
             outputs: &outputs,
             step_outputs: &steps,
             slot_types: &types,
+        },
+        BodyCtx {
+            inputs: &inputs,
+            step_names: &[],
+            index: diagnostic_step,
         },
         builder,
     )

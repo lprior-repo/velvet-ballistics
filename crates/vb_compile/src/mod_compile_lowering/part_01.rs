@@ -183,11 +183,22 @@ pub(super) fn together_width(branches: &[crate::TogetherBranch]) -> Result<usize
     Ok(width)
 }
 
+/// Width of one step nested inside a loop body or choose branch.
+///
+/// Mirrors [`canonical_step_width`] for the container primitives that own
+/// multi-step bodies, so layout reserves exactly the nodes recursive body
+/// emission produces. Value-position containers (`aggregate`, `together`) and
+/// boundary/terminal primitives stay rejected here exactly as in emission.
 pub(super) fn canonical_body_step_width(
     primitive: &crate::StepPrimitive,
 ) -> Result<usize, CompileError> {
     match primitive {
         crate::StepPrimitive::Set { .. } | crate::StepPrimitive::Do { .. } => Ok(1),
+        crate::StepPrimitive::ForEach { body, .. } => body_width(body, 2),
+        crate::StepPrimitive::Collect { body, .. } | crate::StepPrimitive::Repeat { body, .. } => {
+            body_width(body, 3)
+        }
+        crate::StepPrimitive::Choose { branches, .. } => choose_width(branches),
         other => Err(CompileError::UnsupportedStepPrimitive {
             step: 0,
             primitive: canonical_primitive_name(other),

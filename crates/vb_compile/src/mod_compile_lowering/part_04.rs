@@ -22,7 +22,7 @@ pub(super) use canonical_reduce::{ReduceLowering, lower_canonical_aggregate};
 
 #[path = "canonical_repeat.rs"]
 mod canonical_repeat;
-pub(super) use canonical_repeat::lower_canonical_repeat;
+pub(super) use canonical_repeat::{RepeatLowering, lower_canonical_repeat};
 
 pub(super) fn lower_canonical_wait(
     index: usize,

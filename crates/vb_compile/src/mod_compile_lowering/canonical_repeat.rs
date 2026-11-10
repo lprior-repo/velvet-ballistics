@@ -1,48 +1,73 @@
-//! Bounded flat Repeat bodies with lexical Set/Do bindings.
+//! Bounded Repeat bodies with lexical bindings and nested composition.
+//!
+//! A `repeat` body may contain `set` / `do` leaves as well as nested
+//! `for_each` / `collect` / `repeat` / `choose` containers, lowered
+//! recursively. The body evaluates to its last step's slot, which the finish
+//! node forwards as the repeat value.
 
 use crate::mod_compile_errors::{CompileError, CompileErrors};
-use crate::mod_compile_lowering::part_14::emit_scoped_flat_body;
+use crate::mod_compile_lowering::part_01::ForEachInputs;
+use crate::mod_compile_lowering::part_14::{BodyCtx, emit_scoped_flat_body};
 use crate::mod_compile_lowering::{CanonicalScope, SlotCompiler, body_width, checked_step_offset};
 use vb_core::workflow::{NodeContinuation, NodeOutput, node};
 use vb_core::{CompiledNode, CompiledNodeKind, SlotIdx, StepIdx};
 
+pub(in crate::mod_compile_lowering) struct RepeatLowering<'a> {
+    pub(in crate::mod_compile_lowering) max_attempts: u16,
+    pub(in crate::mod_compile_lowering) body: &'a [crate::StepAst],
+    pub(in crate::mod_compile_lowering) next: Option<StepIdx>,
+    pub(in crate::mod_compile_lowering) scope: CanonicalScope<'a>,
+    pub(in crate::mod_compile_lowering) inputs: &'a ForEachInputs,
+    pub(in crate::mod_compile_lowering) step_names: &'a [Box<str>],
+}
+
 pub(in crate::mod_compile_lowering) fn lower_canonical_repeat(
     index: usize,
     id: StepIdx,
-    max_attempts: u16,
-    body: &[crate::StepAst],
-    next: Option<StepIdx>,
-    scope: CanonicalScope<'_>,
+    config: RepeatLowering<'_>,
     builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
-    if max_attempts == 0 {
+) -> Result<SlotIdx, CompileErrors> {
+    if config.max_attempts == 0 {
         return Err(field_error(
             index,
             "repeat.max_attempts",
             "a value of at least 1 (got 0)",
         ));
     }
-    if body.is_empty() {
+    if config.body.is_empty() {
         return Err(field_error(index, "steps", "at least one set or do step"));
     }
-    let layout = RepeatLayout::new(id, body).map_err(|e| CompileErrors(vec![e]))?;
+    let layout = RepeatLayout::new(id, config.body).map_err(|e| CompileErrors(vec![e]))?;
     let attempt_slot = builder
         .allocate_slot()
         .map_err(|e| CompileErrors(vec![e]))?;
     builder.push_node(node(
         id,
         CompiledNodeKind::RepeatStart {
-            max_attempts,
+            max_attempts: config.max_attempts,
             body: layout.body,
             done: layout.done,
         },
         Some(attempt_slot),
         None,
     ));
-    let result = emit_scoped_flat_body(body, layout.body, layout.check, scope, builder, "repeat")?
-        .ok_or_else(|| field_error(index, "steps", "at least one set or do step"))?;
-    push_repeat_continuations(layout, attempt_slot, result, next, builder);
-    Ok(())
+    let ctx = BodyCtx {
+        inputs: config.inputs,
+        step_names: config.step_names,
+        index,
+    };
+    let result = emit_scoped_flat_body(
+        config.body,
+        layout.body,
+        layout.check,
+        config.scope,
+        ctx,
+        builder,
+        "repeat",
+    )?
+    .ok_or_else(|| field_error(index, "steps", "at least one set or do step"))?;
+    push_repeat_continuations(layout, attempt_slot, result, config.next, builder);
+    Ok(result)
 }
 
 struct RepeatLayout {
@@ -53,9 +78,9 @@ struct RepeatLayout {
 
 impl RepeatLayout {
     fn new(id: StepIdx, steps: &[crate::StepAst]) -> Result<Self, CompileError> {
-        // The same checked flat width function is used by the outer layout.
-        // Nested primitives remain explicitly unsupported rather than gaining
-        // activation semantics merely because their source body has a length.
+        // The same checked recursive width function is used by the outer
+        // layout, so nested containers reserve exactly the nodes emission
+        // produces.
         let width = body_width(steps, 0)?;
         let width =
             u16::try_from(width).map_err(|_| CompileError::StepIndexOutOfRange { value: width })?;

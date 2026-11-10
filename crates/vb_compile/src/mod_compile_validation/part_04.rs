@@ -103,6 +103,13 @@ fn validate_choose_body_step(body_step: &Yaml<'_>, step: usize) -> Result<(), Co
         StepPrimitive::Run | StepPrimitive::Do => {
             validate_choose_body_do(body, step, primitive.as_str())
         }
+        // Nested containers recurse into their own shape validators. The
+        // nested step is never a workflow-last step, so the last-step bound
+        // cannot fire here.
+        StepPrimitive::ForEach => super::part_08::validate_for_each_shape(body, step, usize::MAX),
+        StepPrimitive::Collect => super::part_08::validate_collect_shape(body, step, usize::MAX),
+        StepPrimitive::Repeat => validate_repeat_shape(body, step, usize::MAX),
+        StepPrimitive::Choose => validate_canonical_choose_shape(body, step, usize::MAX),
         _ => Err(CompileError::UnsupportedStepPrimitive {
             step,
             primitive: primitive.as_str(),

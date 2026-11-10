@@ -45,18 +45,19 @@ fn preflight(
             EngineError::InvalidProgramCounter { step },
         ))?;
 
-        let blocked = plan
-            .nested_activation_blocked(step)
-            .ok_or_else(|| invalid("loop activation metadata missing"))?;
+        // Presence check only: nested entries are rearmable, so a missing
+        // entry means the loop-region cache was not populated.
+        if plan.nested_activation_blocked(step).is_none() {
+            return Err(invalid("loop activation metadata missing"));
+        }
 
         let state = run.step_state(step).map_err(RuntimeEngineError::Core)?;
 
         match state {
-            StepState::Pending => {}
-            StepState::Succeeded if !blocked => {}
-            StepState::Succeeded => {
-                return Err(invalid("nested loop activation unsupported"));
-            }
+            // Nested steps re-execute their Start on the next pass, which
+            // re-initializes their state slots; resetting them here is safe.
+            // Skipped branch steps stay Pending and need no reset.
+            StepState::Pending | StepState::Succeeded => {}
             _ => {
                 return Err(invalid("loop body step not in rearmable state"));
             }
@@ -98,14 +99,14 @@ pub(super) fn validate_activation(
     plan: &CompiledWorkflow,
     node: &CompiledNode,
 ) -> RuntimeEngineResult<()> {
-    match plan.nested_activation_blocked(node.id) {
-        Some(true) => Err(invalid("nested loop activation unsupported")),
-        Some(false) => Ok(()),
-        None if requires_activation_metadata(&node.kind) => {
-            Err(invalid("loop activation metadata missing"))
-        }
-        None => Ok(()),
-    }?;
+    // Nested Starts are ordinary activations: their Start handler
+    // re-initializes state slots on every pass, and loop-region edge checks
+    // already confine entries to the owning Start. Only a missing cache entry
+    // for a loop-kind node fails closed here.
+    if plan.nested_activation_blocked(node.id).is_none() && requires_activation_metadata(&node.kind)
+    {
+        return Err(invalid("loop activation metadata missing"));
+    }
 
     if let Some(body) = super::transitions::loop_body_target(node)
         && body < node.id

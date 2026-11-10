@@ -1,16 +1,18 @@
 use super::super::part_01::ForEachInputs;
+use super::super::part_14::BodyCtx;
 use super::{CanonicalScope, resolve_slot_reference};
 use crate::{CompileError, CompileErrors};
 use vb_core::{SlotIdx, StepIdx};
 
-pub(super) struct ForEachLowering<'a> {
-    pub(super) input: &'a str,
-    pub(super) variable: &'a str,
-    pub(super) at_once: Option<u32>,
-    pub(super) body: &'a [crate::StepAst],
-    pub(super) next: Option<StepIdx>,
-    pub(super) scope: CanonicalScope<'a>,
-    pub(super) inputs: &'a ForEachInputs,
+pub(in crate::mod_compile_lowering) struct ForEachLowering<'a> {
+    pub(in crate::mod_compile_lowering) input: &'a str,
+    pub(in crate::mod_compile_lowering) variable: &'a str,
+    pub(in crate::mod_compile_lowering) at_once: Option<u32>,
+    pub(in crate::mod_compile_lowering) body: &'a [crate::StepAst],
+    pub(in crate::mod_compile_lowering) next: Option<StepIdx>,
+    pub(in crate::mod_compile_lowering) scope: CanonicalScope<'a>,
+    pub(in crate::mod_compile_lowering) inputs: &'a ForEachInputs,
+    pub(in crate::mod_compile_lowering) nested: BodyCtx<'a>,
 }
 
 fn domain_error(index: usize) -> CompileErrors {
@@ -97,30 +99,33 @@ pub(super) struct ForEachEdges {
 
 fn body_edge(
     id: StepIdx,
-    body_len: usize,
+    body_width: usize,
     extra: usize,
     field: &'static str,
 ) -> Result<StepIdx, CompileErrors> {
-    let offset = body_len.checked_add(extra).ok_or(CompileErrors(vec![
-        CompileError::StepIndexOutOfRange { value: body_len },
+    let offset = body_width.checked_add(extra).ok_or(CompileErrors(vec![
+        CompileError::StepIndexOutOfRange { value: body_width },
     ]))?;
-    let offset = u16::try_from(offset)
-        .map_err(|_| CompileErrors(vec![CompileError::StepIndexOutOfRange { value: body_len }]))?;
+    let offset = u16::try_from(offset).map_err(|_| {
+        CompileErrors(vec![CompileError::StepIndexOutOfRange {
+            value: body_width,
+        }])
+    })?;
     super::super::checked_step_offset(id, offset, "for_each", field)
         .map_err(|e| CompileErrors(vec![e]))
 }
 
 pub(super) fn body_edges(
     id: StepIdx,
-    body_len: usize,
+    body_width: usize,
     next: Option<StepIdx>,
 ) -> Result<ForEachEdges, CompileErrors> {
     let body = super::super::checked_step_offset(id, 1, "for_each", "body")
         .map_err(|e| CompileErrors(vec![e]))?;
-    let advance = body_edge(id, body_len, 1, "next")?;
+    let advance = body_edge(id, body_width, 1, "next")?;
     let done = match next {
         Some(n) => n,
-        None => body_edge(id, body_len, 2, "done")?,
+        None => body_edge(id, body_width, 2, "done")?,
     };
     Ok(ForEachEdges {
         body,
@@ -209,7 +214,7 @@ fn emit_body(
     edges: &ForEachEdges,
     item: SlotIdx,
     builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
+) -> Result<Option<SlotIdx>, CompileErrors> {
     let mut local_outputs = config.scope.outputs.clone();
     let local_step_outputs = config.scope.step_outputs.clone();
     let mut local_types = config.scope.slot_types.clone();
@@ -223,27 +228,29 @@ fn emit_body(
         slot_types: &local_types,
     };
 
-    let _body_output = super::super::part_14::emit_scoped_flat_body(
+    let body_output = super::super::part_14::emit_scoped_flat_body(
         config.body,
         edges.body,
         edges.advance,
         local_scope,
+        config.nested,
         builder,
         "for_each",
     )?;
 
-    Ok(())
+    Ok(body_output)
 }
 
-pub(super) fn lower_bounded_for_each(
+pub(in crate::mod_compile_lowering) fn lower_bounded_for_each(
     index: usize,
     id: StepIdx,
     config: ForEachLowering<'_>,
     builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
+) -> Result<Option<SlotIdx>, CompileErrors> {
     validate_body_shape(index, &config)?;
 
-    let edges = body_edges(id, config.body.len(), config.next)?;
+    let width = super::super::body_width(config.body, 0).map_err(|e| CompileErrors(vec![e]))?;
+    let edges = body_edges(id, width, config.next)?;
 
     let (input, limit) = resolve_input(index, &config)?;
 
@@ -258,8 +265,8 @@ pub(super) fn lower_bounded_for_each(
         .map_err(|e| CompileErrors(vec![e]))?;
 
     emit_start(id, iterator, item, input, limit, &edges, builder);
-    emit_body(&config, &edges, item, builder)?;
+    let body_output = emit_body(&config, &edges, item, builder)?;
     emit_next(iterator, item, &edges, builder);
 
-    Ok(())
+    Ok(body_output)
 }

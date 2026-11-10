@@ -9,6 +9,7 @@ use vb_core::SlotIdx;
 ///
 /// Records each declared input schema nonfallibly and resolves
 /// selected slots into validated u32 bounds.
+#[derive(Default)]
 pub(in crate::mod_compile_lowering) struct ForEachInputs {
     inputs: HashMap<SlotIdx, (String, AuthorValue)>,
 }
