@@ -5,29 +5,29 @@
 // ============================================================================
 //
 // Drift-detection stubs for the recovery type surface at
-//   crates/vb_storage/src/recovery/types.rs
+//   crates/vb_storage/src/recovery/types/mod.rs
 //
-// DRIFT POLICY: `crates/vb_storage/src/recovery/types.rs:1-1714`
+// DRIFT POLICY: `crates/vb_storage/src/recovery/types/mod.rs:1-42`
 //
 // Source coverage:
 //   - `RecoveryTerminalState` enum (Cancelled, Killed, Finished{result},
-//      Failed)                                  <- types.rs:550-562
+//      Failed)                                  <- types/runtime.rs:9-21
 //   - `RecoveryRuntimeSummary` struct (run, first_seq, last_seq, workflow,
 //      steps_started, steps_succeeded,
 //      actions_scheduled, actions_resolved,
-//      suspensions, slots_written, terminal)    <- types.rs:566-589
+//      suspensions, slots_written, terminal)    <- types/runtime.rs:25-48
 //   - `RecoveryHydration` enum (Summary,
-//      FrameSeed)                                <- types.rs:612-617
+//      FrameSeed)                                <- types/hydration.rs:7-12
 //   - `RecoveredStepState` enum (Running,
-//      Succeeded, Failed, Waiting, Asking)      <- types.rs:793-804
+//      Succeeded, Failed, Waiting, Asking)      <- types/recovered.rs:6-17
 //   - `UnsupportedRecoveryState` struct (slot_values, slot_taint,
-//      action_payloads, pending_actions)       <- types.rs:837-846
+//      action_payloads, pending_actions)       <- types/unsupported.rs:3-12
 //   - `UnsupportedRecoveryState::SUPPORTED` const
-//                                                <- types.rs:850-855
+//                                                <- types/unsupported.rs:16-21
 //   - `UnsupportedRecoveryState::union` const fn (flagwise OR)
-//                                                <- types.rs:886-893
+//                                                <- types/unsupported.rs:52-59
 //   - `UnsupportedRecoveryState::is_fully_supported` const fn
-//                                                <- types.rs:897-899
+//                                                <- types/unsupported.rs:63-65
 //
 // The companion `verification/verus/recovery_types_production_bridge.rs`
 // uses `#[path = "production_inner/recovery_types_production.rs"]` to
@@ -41,7 +41,7 @@
 // standalone `verus --crate-type=lib` invocation cannot resolve the
 // vb_core extern crate alias. The field shape (names + ordering +
 // primitive types) is the drift-detection surface — see
-// `crates/vb_storage/src/recovery/types.rs:550-589, 612-617, 793-804, 837-846` for the
+// `crates/vb_storage/src/recovery/types/runtime.rs:9-48, crates/vb_storage/src/recovery/types/hydration.rs:7-12, crates/vb_storage/src/recovery/types/recovered.rs:6-17, crates/vb_storage/src/recovery/types/unsupported.rs:3-12` for the
 // canonical source. Spec proofs reason via the
 // `production::UnsupportedRecoveryState` field shape directly.
 //
@@ -120,10 +120,10 @@ pub struct StubEventSeq(pub u64);
 pub struct StubWorkflowDigest(pub u64);
 
 // ---------------------------------------------------------------------------
-// RecoveryTerminalState stub — types.rs:550-562
+// RecoveryTerminalState stub — types/runtime.rs:9-21
 // ---------------------------------------------------------------------------
 /// Mirror of `RecoveryTerminalState` at
-/// `crates/vb_storage/src/recovery/types.rs:550-562`. The closed variant
+/// `crates/vb_storage/src/recovery/types/runtime.rs:9-21`. The closed variant
 /// set is `Cancelled`, `Killed`, `Finished { result: SlotIdx }`, `Failed`.
 ///
 /// `PartialEq, Eq, Debug` are intentionally NOT derived (see
@@ -137,10 +137,10 @@ pub enum RecoveryTerminalStateStub {
 }
 
 // ---------------------------------------------------------------------------
-// RecoveredStepState stub — types.rs:793-804
+// RecoveredStepState stub — types/recovered.rs:6-17
 // ---------------------------------------------------------------------------
 /// Mirror of `RecoveredStepState` at
-/// `crates/vb_storage/src/recovery/types.rs:793-804`. The closed
+/// `crates/vb_storage/src/recovery/types/recovered.rs:6-17`. The closed
 /// variant set is `Running`, `Succeeded`, `Failed`, `Waiting`,
 /// `Asking`.
 #[derive(Clone, Copy)]
@@ -153,10 +153,10 @@ pub enum RecoveredStepStateStub {
 }
 
 // ---------------------------------------------------------------------------
-// RecoveryRuntimeSummary stub — types.rs:566-589
+// RecoveryRuntimeSummary stub — types/runtime.rs:25-48
 // ---------------------------------------------------------------------------
 /// Mirror of `RecoveryRuntimeSummary` at
-/// `crates/vb_storage/src/recovery/types.rs:566-589`. All fields
+/// `crates/vb_storage/src/recovery/types/runtime.rs:25-48`. All fields
 /// preserved by name, order, and primitive type category.
 ///
 /// Field inventory (drift-detection surface):
@@ -188,7 +188,7 @@ pub struct RecoveryRuntimeSummaryStub {
 }
 
 // ---------------------------------------------------------------------------
-// RecoveryFrameSeed stub — types.rs:939+ (minimal)
+// RecoveryFrameSeed stub — types/seed.rs:41+ (minimal)
 //
 // Spec proofs reason about the `summary()` method on `RecoveryHydration`
 // only; the FrameSeed payload is reduced to a length-counters struct.
@@ -205,10 +205,10 @@ pub struct RecoveryFrameSeedStub {
 }
 
 // ---------------------------------------------------------------------------
-// RecoveryHydration stub — types.rs:612-617
+// RecoveryHydration stub — types/hydration.rs:7-12
 // ---------------------------------------------------------------------------
 /// Mirror of `RecoveryHydration` at
-/// `crates/vb_storage/src/recovery/types.rs:612-617`. The closed
+/// `crates/vb_storage/src/recovery/types/hydration.rs:7-12`. The closed
 /// variant set is `Summary(RecoveryRuntimeSummary)` and
 /// `FrameSeed(RecoveryFrameSeed)`.
 #[derive(Clone, Copy)]
@@ -219,7 +219,7 @@ pub enum RecoveryHydrationStub {
 
 impl RecoveryHydrationStub {
     /// Mirror of `RecoveryHydration::summary(&self)` at
-    /// `crates/vb_storage/src/recovery/types.rs:634`. Production
+    /// `crates/vb_storage/src/recovery/types/hydration.rs:29`. Production
     /// body: `Summary(summary) -> *summary, FrameSeed(product) ->
     /// product.summary()` (the frame-seed arm goes through the typed
     /// `RecoveryFrameSeedProduct`; the mirror collapses the product
@@ -240,26 +240,26 @@ impl RecoveryHydrationStub {
 }
 
 // ---------------------------------------------------------------------------
-// UnsupportedRecoveryState stub — types.rs:837-846
+// UnsupportedRecoveryState stub — types/unsupported.rs:3-12
 // ---------------------------------------------------------------------------
 /// Mirror of `UnsupportedRecoveryState` at
-/// `crates/vb_storage/src/recovery/types.rs:837-846`. All four fields
+/// `crates/vb_storage/src/recovery/types/unsupported.rs:3-12`. All four fields
 /// are `bool`; the mirror is bit-identical to production.
 #[derive(Clone, Copy)]
 pub struct UnsupportedRecoveryStateStub {
-    /// Mirror of `slot_values: bool` at types.rs:839.
+    /// Mirror of `slot_values: bool` at types/unsupported.rs:7.
     pub slot_values: bool,
-    /// Mirror of `slot_taint: bool` at types.rs:841.
+    /// Mirror of `slot_taint: bool` at types/unsupported.rs:9.
     pub slot_taint: bool,
-    /// Mirror of `action_payloads: bool` at types.rs:843.
+    /// Mirror of `action_payloads: bool` at types/unsupported.rs:11.
     pub action_payloads: bool,
-    /// Mirror of `pending_actions: bool` at types.rs:845.
+    /// Mirror of `pending_actions: bool` at types/unsupported.rs:13.
     pub pending_actions: bool,
 }
 
 impl UnsupportedRecoveryStateStub {
     /// Mirror of `UnsupportedRecoveryState::SUPPORTED` const at
-    /// `crates/vb_storage/src/recovery/types.rs:850-855`.
+    /// `crates/vb_storage/src/recovery/types/unsupported.rs:16-21`.
     pub const SUPPORTED: Self = Self {
         slot_values: false,
         slot_taint: false,
@@ -268,7 +268,7 @@ impl UnsupportedRecoveryStateStub {
     };
 
     /// Mirror of `UnsupportedRecoveryState::union` const fn at
-    /// `crates/vb_storage/src/recovery/types.rs:886-893`. Body:
+    /// `crates/vb_storage/src/recovery/types/unsupported.rs:52-59`. Body:
     /// flagwise OR across all 4 fields.
     ///
     /// TRUST BOUNDARY: body is `#[verifier::external]`.
@@ -283,7 +283,7 @@ impl UnsupportedRecoveryStateStub {
     }
 
     /// Mirror of `UnsupportedRecoveryState::is_fully_supported` const fn
-    /// at `crates/vb_storage/src/recovery/types.rs:897-899`.
+    /// at `crates/vb_storage/src/recovery/types/unsupported.rs:63-65`.
     ///
     /// TRUST BOUNDARY: body is `#[verifier::external]`.
     #[verifier::external]
