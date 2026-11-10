@@ -107,7 +107,7 @@ impl Runtime {
                 collect_states,
                 boundary,
                 retry_checkpoint: Some(checkpoint),
-                initial_store: None,
+                restored_store: None,
                 open_gates,
                 admission: prefix.admission.clone(),
             }),

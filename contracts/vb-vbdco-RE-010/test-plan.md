@@ -36,7 +36,7 @@ and the raw test output that demonstrates they pass.
 | `bh_eng_15_evidence_collector_with_capacity_drops_excess` | (Earlier name retained for compatibility; asserts typed-error overflow instead of silent drop.)       |
 | `bh_evidence_events_always_alternate_started_succeeded` | Happy-path alternation invariant preserved after the typed-error migration.                            |
 
-### `crates/vb_runtime/src/engine/drive.rs` (`mod tests`)
+### `crates/vb_runtime/src/engine/drive/tests/mod.rs` (`mod tests`)
 
 | Test                                                       | Assertion                                                                                              |
 |------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|

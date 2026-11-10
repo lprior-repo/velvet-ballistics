@@ -52,34 +52,6 @@ pub(super) use for_each_strict::validate_for_each_expression;
 mod step;
 pub(super) use step::lower_canonical_step;
 
-pub(super) fn extend_step_names_for_generated(
-    names: &mut Vec<Box<str>>,
-    step_id: &str,
-    node_count: usize,
-) {
-    while names.len() < node_count {
-        names.push(Box::from(step_id));
-    }
-}
-
-pub(super) fn lower_canonical_finish(
-    index: usize,
-    last: usize,
-    id: StepIdx,
-    result: &crate::ScalarValue,
-    outputs: &HashMap<String, SlotIdx>,
-    step_outputs: &HashMap<String, SlotIdx>,
-    builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
-    if index != last {
-        return Err(CompileErrors(vec![CompileError::StepFieldShape {
-            step: index,
-            field: "finish",
-            expected: "the last step",
-        }]));
-    }
-    let slot = super::canonical_finish_slot_with_step_outputs(result, outputs, step_outputs)?;
-    let node = lower_finish(id, slot, builder);
-    builder.push_node(node);
-    Ok(())
-}
+#[path = "canonical_finish.rs"]
+mod canonical_finish;
+pub(super) use canonical_finish::{extend_step_names_for_generated, lower_canonical_finish};

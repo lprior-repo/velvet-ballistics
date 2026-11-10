@@ -142,11 +142,29 @@ pub(super) fn expected_verifier_digest() -> WorkflowDigest {
     hasher.update(include_bytes!(
         "../../../vb_storage/src/admission/verification.rs"
     ));
+    hasher.update(include_bytes!(
+        "../../../vb_storage/src/admission/verification/ledger.rs"
+    ));
     hasher.update(include_bytes!("../../../vb_core/src/workflow/mod.rs"));
     hasher.update(include_bytes!("../../../vb_core/src/budget.rs"));
     hasher.update(include_bytes!("../../../vb_core/src/action/registry.rs"));
     hasher.update(include_bytes!("../../../vb_validate/src/shared.rs"));
-    hasher.update(include_bytes!("../../../vb_validate/src/gates.rs"));
+    hasher.update(include_bytes!("../../../vb_validate/src/gates/mod.rs"));
+    hasher.update(include_bytes!("../../../vb_validate/src/gates/gate_07.rs"));
+    hasher.update(include_bytes!("../../../vb_validate/src/gates/gate_08.rs"));
+    hasher.update(include_bytes!("../../../vb_validate/src/gates/gate_09.rs"));
+    hasher.update(include_bytes!("../../../vb_validate/src/gates/gate_10.rs"));
+    hasher.update(include_bytes!(
+        "../../../vb_validate/src/gates/gate_10_refs.rs"
+    ));
+    hasher.update(include_bytes!("../../../vb_validate/src/gates/gate_11.rs"));
+    hasher.update(include_bytes!(
+        "../../../vb_validate/src/gates/gate_11_spans.rs"
+    ));
+    hasher.update(include_bytes!("../../../vb_validate/src/gates/gate_12.rs"));
+    hasher.update(include_bytes!("../../../vb_validate/src/gates/gate_13.rs"));
+    hasher.update(include_bytes!("../../../vb_validate/src/gates/gate_14.rs"));
+    hasher.update(include_bytes!("../../../vb_validate/src/gates/gate_15.rs"));
     WorkflowDigest::from_bytes(hasher.finalize().into())
 }
 

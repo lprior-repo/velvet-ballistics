@@ -128,11 +128,14 @@ pub struct ResumableRecoveryProduct {
     collect_states: crate::primitives::collect::CollectStates,
     boundary: RecoveredRunBoundary,
     retry_checkpoint: Option<crate::run_checkpoint::RunCheckpointV1>,
-    initial_store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
     open_gates: Vec<crate::shard::types::OpenGate>,
     /// Original historical admission validated against the durable artifact;
     /// must be restored verbatim rather than rebuilt from current policy.
     admission: crate::admission::RunAdmission,
+    /// Restored cold value store for arena-handle resolution, present when
+    /// the run retained owned inputs. Rebuilt into the shard `RunState`
+    /// instead of the default empty store.
+    restored_store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
 }
 
 impl ResumableRecoveryProduct {
@@ -148,9 +151,9 @@ impl ResumableRecoveryProduct {
             collect_states: parts.collect_states,
             boundary: parts.boundary,
             retry_checkpoint: parts.retry_checkpoint,
-            initial_store: parts.initial_store,
             open_gates: parts.open_gates,
             admission: parts.admission,
+            restored_store: parts.restored_store,
         }
     }
 
@@ -181,8 +184,8 @@ impl ResumableRecoveryProduct {
             self.boundary,
         )
         .with_open_gates(self.open_gates)
-        .with_validated_admission(self.admission);
-        let command = command.with_initial_store(self.initial_store);
+        .with_validated_admission(self.admission)
+        .with_restored_store(self.restored_store);
         match self.retry_checkpoint {
             Some(checkpoint) => command.with_retry_checkpoint(checkpoint),
             None => command,
@@ -201,9 +204,11 @@ pub(crate) struct ResumableRecoveryParts {
     pub(crate) collect_states: crate::primitives::collect::CollectStates,
     pub(crate) boundary: RecoveredRunBoundary,
     pub(crate) retry_checkpoint: Option<crate::run_checkpoint::RunCheckpointV1>,
-    pub(crate) initial_store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
     pub(crate) open_gates: Vec<crate::shard::types::OpenGate>,
     /// Original historical admission validated against the durable artifact;
     /// must be restored verbatim rather than rebuilt from current policy.
     pub(crate) admission: crate::admission::RunAdmission,
+    /// Restored cold value store for arena-handle resolution, present when
+    /// the run retained owned inputs.
+    pub(crate) restored_store: Option<vb_core::value_store::ValueStoreCheckpointV1>,
 }

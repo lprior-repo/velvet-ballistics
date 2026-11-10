@@ -1,11 +1,11 @@
 #![forbid(unsafe_code)]
 
-//! Cold entry flags for bounded nested-activation preflight.
+//! Cold entry flags marking steps owned by an outer loop region.
 //! Derive only after complete loop-region validation. Cached inner owners
 //! contribute their Start and exact inclusive body/control interval. Uncached
 //! loop Starts and TogetherStart contribute only their Start: their restored
-//! in-body ownership is not established here. These are union flags, not a
-//! cleanup proof or permission to activate nested state.
+//! in-body ownership is not established here. These are union flags used for
+//! metadata-presence checks; nested activation itself is supported.
 
 use super::{CompiledLoopRegion, WorkflowError, WorkflowParts, resource_error};
 use crate::workflow::CompiledNodeKind;

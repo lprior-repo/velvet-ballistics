@@ -884,3 +884,85 @@ fn budgeted_admission_recovery_carries_budget_and_latest_wins() {
     assert_eq!(recovered_plain.budget, None);
     assert_eq!(recovered_plain.artifact_digest, sample_digest(1));
 }
+
+#[test]
+fn retry_check_recovery_requires_execution_policy_authority() -> Result<(), String> {
+    use vb_core::workflow::{
+        CompiledNodeKind as K, CompiledWorkflow, ResourceContract, WorkflowParts, node,
+    };
+    let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+        semantic_source_identity: None,
+        source_metadata: None,
+        name: Box::from("retry-policy-recovery"),
+        digest: digest(90),
+        nodes: Box::from([
+            node(
+                StepIdx::ZERO,
+                K::RetryCheck {
+                    policy_slot: SlotIdx::ZERO,
+                    body: StepIdx::new(1),
+                    exhausted: StepIdx::new(2),
+                },
+                None,
+                None,
+            ),
+            node(
+                StepIdx::new(1),
+                K::Finish {
+                    result: SlotIdx::ZERO,
+                },
+                None,
+                None,
+            ),
+            node(
+                StepIdx::new(2),
+                K::Finish {
+                    result: SlotIdx::ZERO,
+                },
+                None,
+                None,
+            ),
+        ]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract {
+            max_retry_attempts: 1,
+            ..ResourceContract::DEFAULT
+        },
+        step_names: Box::from([]),
+        input_slots: Box::from([]),
+    })
+    .map_err(|error| error.to_string())?;
+    let run = RunId::new(90);
+    let events = [
+        JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: workflow.digest(),
+        },
+        JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::ZERO,
+            attempt: 1,
+        },
+        JournalEvent::StepSucceeded {
+            run,
+            seq: EventSeq::new(2),
+            step: StepIdx::ZERO,
+            output: SlotIdx::ZERO,
+        },
+    ];
+    assert_eq!(
+        recover_runtime_frame_seed_from_events_with_workflow(&events, &workflow),
+        Err(RecoveryError::ReplayDivergence {
+            step: StepIdx::ZERO,
+            detail: String::from("retry policy unavailable for deterministic recovery"),
+        })
+    );
+    Ok(())
+}

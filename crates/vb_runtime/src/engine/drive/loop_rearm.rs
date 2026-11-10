@@ -45,6 +45,12 @@ fn preflight(
             EngineError::InvalidProgramCounter { step },
         ))?;
 
+        // Presence check only: nested entries are rearmable, so a missing
+        // entry means the loop-region cache was not populated.
+        if plan.nested_activation_blocked(step).is_none() {
+            return Err(invalid("loop activation metadata missing"));
+        }
+
         let state = run.step_state(step).map_err(RuntimeEngineError::Core)?;
 
         match state {

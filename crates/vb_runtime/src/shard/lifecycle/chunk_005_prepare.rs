@@ -33,7 +33,11 @@ fn awaiting_schedule_event(
 /// validates the slot before suspension, so a missing or non-numeric slot can
 /// only come from a hand-built node; it resolves to an immediately due timer
 /// rather than panicking.
-fn awaiting_deadline(state: &RunState, step: StepIdx) -> std::time::Instant {
+///
+/// Shared with timer recovery: a recomputed deadline is conservative (the full
+/// timeout from the recovery point) because wall-clock instants are not
+/// durable, but it preserves live timeout semantics for resumed timers.
+pub(crate) fn awaiting_deadline(state: &RunState, step: StepIdx) -> std::time::Instant {
     let now = std::time::Instant::now();
     let Some(node) = state.workflow.node(step) else {
         return now;

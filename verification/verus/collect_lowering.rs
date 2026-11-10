@@ -9,11 +9,11 @@
 // ============================================================================
 //
 // This file is bound to the production exec fn `lower_bounded_collect`
-// at `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-260`
+// at `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277`
 // through the companion extern surface
 // `verification/verus/extern_collect_lowering.rs`. The production exec
 // fn computes edges via `plan_compute_edges`
-// (bounded_collect.rs:116-126): body is id + 1, advance is
+// (bounded_collect.rs:117-127): body is id + 1, advance is
 // id + body_len + 1, done is id + body_len + 2, each a
 // `StepIdx::checked_add` with u16 bounds, with body_len + 1 and
 // body_len + 2 u16-checked first. It then pushes one `CollectStart`
@@ -35,7 +35,7 @@
 //     `crates/vb_compile/src/mod_compile_errors/kind.rs:141` and
 //     `CompileError::StepIndexOutOfRange` from crates/vb_compile/src/mod_compile_errors/kind.rs:126 are what
 //     `checked_step_offset` (part_12.rs:199-212) and
-//     `checked_body_length_offset` (bounded_collect.rs:108-114)
+//     `checked_body_length_offset` (bounded_collect.rs:109-115)
 //     actually construct on overflow.
 //   - The shadow `int` parameters are gone. Each lemma takes the
 //     production `production::StepIdx` and `u16` types directly,
@@ -76,10 +76,10 @@
 //                                              crates/vb_compile/src/mod_compile_errors/kind.rs:126,141)
 //   - `lower_bounded_collect_projection`   <- extern_collect_lowering.rs
 //                                              (mirror of
-//                                              bounded_collect.rs:243-260)
+//                                              bounded_collect.rs:257-277)
 //   - `lower_bounded_collect_offsets`      <- extern_collect_lowering.rs
 //                                              (mirror of
-//                                              bounded_collect.rs:116-126)
+//                                              bounded_collect.rs:117-127)
 //
 // ============================================================================
 // RESHAPE FROM PRE-SPLIT BINDING
@@ -88,7 +88,7 @@
 // `lower_canonical_collect` (part_03.rs): fixed offsets 1/2/3,
 // a `CollectPage` node, a `3 + body.len()` node count, and a +1 slot
 // delta. The production split moved the fn to
-// `bounded_collect.rs:243-260` as `lower_bounded_collect` and changed
+// `bounded_collect.rs:257-277` as `lower_bounded_collect` and changed
 // the shape: edges depend on body length, the middle node is
 // `CollectNext`, the fn returns the finish slot, and the slot delta
 // is +3 (one record plus two allocates). The old lemmas L3
@@ -185,7 +185,7 @@ pub assume_specification[ production::StepIdx::checked_add ](
 // Bridge: `lower_bounded_collect_offsets` matches production semantics.
 // --------------------------------------------------------------------------
 // Mirrors `plan_compute_edges` at
-// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:116-126`:
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:117-127`:
 //
 //     let body = checked_body_offset(id, 1, "collect", "body")?;
 //     let advance_n = checked_body_length_offset(body_len, 1)?;
@@ -226,7 +226,7 @@ pub assume_specification[ production::lower_bounded_collect_offsets ](
 // Bridge: `lower_bounded_collect_projection` matches production emission.
 // --------------------------------------------------------------------------
 // Mirrors production `lower_bounded_collect` at
-// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-260`.
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277`.
 // The projection flattens the production args to
 // `(id: StepIdx, body_len: u16, body_node_count: u16,
 // pre_slot_count: u16)` and returns `SpecCollectOutcome` carrying
@@ -465,7 +465,7 @@ pub open spec fn spec_collect_error_kind(
 // ============================================================================
 // L1: Step offset strict monotonicity — body < advance < done
 // ============================================================================
-// Production source: bounded_collect.rs:116-126 (`plan_compute_edges`).
+// Production source: bounded_collect.rs:117-127 (`plan_compute_edges`).
 //
 // PO-COLLECT-001: When the production exec fn accepts `(id, body_len)`
 // (i.e. all edge sums fit in u16), the body offset is strictly less
@@ -492,7 +492,7 @@ pub proof fn lemma_collect_steps_strictly_increasing(id: production::StepIdx, bo
 // ============================================================================
 // L2: 3 emitted IDs within u16 bounds (body, advance, done, all fit)
 // ============================================================================
-// Production source: bounded_collect.rs:116-126.
+// Production source: bounded_collect.rs:117-127.
 //
 // PO-COLLECT-002: When `id + body_len + 2 <= u16::MAX`, all three
 // offsets (id + 1, id + body_len + 1, id + body_len + 2) produced by
@@ -523,7 +523,7 @@ pub proof fn lemma_collect_3_offsets_in_bounds(id: production::StepIdx, body_len
 // L3: Body starts at id + 1; advance/done stay consecutive;
 // the body-to-advance gap scales with body length
 // ============================================================================
-// Production source: bounded_collect.rs:116-126 (edge gaps are 1,
+// Production source: bounded_collect.rs:117-127 (edge gaps are 1,
 // body_len, 1).
 //
 // PO-COLLECT-003: The three offsets produced by the production
@@ -549,7 +549,7 @@ pub proof fn lemma_collect_edge_gaps(id: production::StepIdx, body_len: u16)
 // Production source: part_12.rs:199-212 (the
 // `PrimitiveLoweringLimitExceeded` error constructed when
 // `StepIdx::checked_add` returns None) and
-// bounded_collect.rs:108-114 (the `StepIndexOutOfRange` error
+// bounded_collect.rs:109-115 (the `StepIndexOutOfRange` error
 // constructed when `body_len + extra` overflows u16).
 //
 // PO-COLLECT-004: At `id == u16::MAX - body_len - 2`, the production
@@ -608,8 +608,8 @@ pub proof fn lemma_max_valid_collect_start(body_len: u16)
 // ============================================================================
 // L5: Option unwrap safety — pages.unwrap_or(1) and items.unwrap_or(1)
 // ============================================================================
-// Production source: bounded_collect.rs:135-136
-// (`plan_validate_bounds`) and bounded_collect.rs:170 (`plan_build`):
+// Production source: bounded_collect.rs:136-137
+// (`plan_validate_bounds`) and bounded_collect.rs:172 (`plan_build`):
 //
 //     let pages = config.pages.unwrap_or(1);
 //     let items = config.items.unwrap_or(1);
@@ -629,7 +629,7 @@ pub proof fn lemma_option_some_or_default_is_at_least_one(v: Option<u32>)
 // ============================================================================
 // L6: Full emission chain — production projection contract end-to-end
 // ============================================================================
-// Production source: bounded_collect.rs:243-260 (the full
+// Production source: bounded_collect.rs:257-277 (the full
 // `lower_bounded_collect` body).
 //
 // PO-COLLECT-006: For any valid starting `id` (where

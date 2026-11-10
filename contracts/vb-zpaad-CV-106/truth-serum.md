@@ -51,7 +51,7 @@ existing accessor range (0x1311-0x1315). **Confirmed.**
 
 ### Claim 6: Kani harness file is wired into the kani module
 
-**Verification:** `rtk rg "pub mod kani_span_try_new" crates/vb_core/src/kani/mod.rs`
+**Verification:** `rtk rg "pub mod kani_span_try_new" crates/vb_core/src/verification/kani/diagnostic/mod.rs`
 returns exactly one match. **Confirmed.**
 
 ### Claim 7: proptest file is in the correct location

@@ -11,6 +11,7 @@
 //!                                (`ValueStore`) helper tests
 //! - `expr_eval_tests_logic.rs`  edge cases + F64 arithmetic +
 //!                                AND/OR short-circuit + proptest invariants
+//! - `expr_eval_tests_mixed.rs`  mixed I64/F64 promotion (vb-cofe1)
 //!
 //! All test functions, helper functions, and `use` imports remain in the
 //! `tests` module scope so behavior is preserved bit-for-bit.
@@ -51,4 +52,5 @@ mod tests {
     include!("expr_eval_tests_core.rs");
     include!("expr_eval_tests_store.rs");
     include!("expr_eval_tests_logic.rs");
+    include!("expr_eval_tests_mixed.rs");
 }

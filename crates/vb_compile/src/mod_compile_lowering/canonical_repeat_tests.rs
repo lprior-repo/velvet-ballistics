@@ -289,3 +289,6 @@ fn nested_repeat_has_separate_validated_regions() -> Result<(), String> {
     }
     Ok(())
 }
+
+#[path = "canonical_repeat_tests/nested_layout.rs"]
+mod nested_layout;

@@ -273,6 +273,29 @@ fn f64_arithmetic_roundtrips_through_eval() -> crate::ExprResult<()> {
 }
 
 #[test]
+fn f64_rejected_or_implemented() -> crate::ExprResult<()> {
+    let tokens = lex_expr("3.14")?;
+    let ast = parse_expr(&tokens)?;
+    assert_eq!(
+        crate::typecheck::typecheck_expr(&ast, &crate::typecheck::TypeContext::new())?,
+        crate::typecheck::ExprType::F64
+    );
+    let (program, constants) = compile_with_pool("3.14")?;
+    let result = crate::eval::eval_expr_program(&program, &[], &constants)?;
+    assert!(matches!(result, vb_core::SlotValue::F64(finite) if finite.get() == 3.14));
+    let (program, constants) = compile_with_pool("1.5 + 2.5")?;
+    let result = crate::eval::eval_expr_program(&program, &[], &constants)?;
+    assert!(matches!(result, vb_core::SlotValue::F64(finite) if finite.get() == 4.0));
+    let (program, constants) = compile_with_pool("1.0 / 0.0")?;
+    let result = crate::eval::eval_expr_program(&program, &[], &constants);
+    assert!(matches!(result, Err(crate::ExprError::NonFiniteFloat)));
+    let overflowing = format!("1{}.0", "0".repeat(400));
+    let lexed = lex_expr(&overflowing);
+    assert!(matches!(lexed, Err(crate::ExprError::NonFiniteFloat)));
+    Ok(())
+}
+
+#[test]
 fn compile_expr_with_pool_uses_constant_pool() -> crate::ExprResult<()> {
     let tokens = lex_expr("10 + 20")?;
     let ast = parse_expr(&tokens)?;

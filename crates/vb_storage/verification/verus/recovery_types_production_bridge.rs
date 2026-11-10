@@ -49,8 +49,8 @@
 // referenced via `#[path = "../../../../verification/verus/recovery_types_production_bridge.rs"]`
 // and that file in turn binds via `production_inner/...`. Both
 // the bridge and the production_inner mirror are drift-detected
-// against `crates/vb_storage/src/recovery/types.rs:550-589, 612-617,
-// 793-804, 837-846`.
+// against `crates/vb_storage/src/recovery/types/runtime.rs:9-48, crates/vb_storage/src/recovery/types/hydration.rs:7-12,
+// crates/vb_storage/src/recovery/types/recovered.rs:6-17, crates/vb_storage/src/recovery/types/unsupported.rs:3-12`.
 //
 // NOTE: no `#![forbid(unsafe_code)]` here: the included canonical
 // bridge declares `assume_specification` contracts, which Verus

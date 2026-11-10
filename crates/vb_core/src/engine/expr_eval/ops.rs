@@ -2,6 +2,7 @@
 //! Expression operator evaluation.
 
 use crate::errors::EngineError;
+use crate::numeric::{self, NumericError};
 use crate::value::SlotValue;
 use crate::value_store::ValueStore;
 use crate::workflow::ExprOp;
@@ -32,65 +33,44 @@ fn eval_bool_pair(stack: &mut ExprStack, op: fn(bool, bool) -> bool) -> Result<(
 
 fn eval_numeric_pair(
     stack: &mut ExprStack,
-    op: fn(i64, i64) -> Option<i64>,
-    float: fn(f64, f64) -> f64,
+    op: fn(SlotValue, SlotValue) -> Result<SlotValue, NumericError>,
 ) -> Result<(), EngineError> {
     let (left, right) = pop_pair(stack)?;
-    let (SlotValue::I64(left), SlotValue::I64(right)) = (left, right) else {
-        let result = float(promote(left)?, promote(right)?);
-        return push_value(stack, SlotValue::F64(crate::value::FiniteF64::new(result)?));
-    };
-    let value = op(left, right).ok_or(EngineError::InvalidCompiledWorkflow {
-        reason: "integer arithmetic overflow",
-    })?;
-    push_value(stack, SlotValue::I64(value))
+    push_value(stack, op(left, right).map_err(map_numeric)?)
 }
 
-/// Evaluates integer division.
-///
-/// Division uses `checked_div` which truncates toward zero (not floor).
-/// For example: `-7 / 2 = -3` (not `-4`), and `7 / -2 = -3` (not `-4`).
-/// This matches the IEEE 754 semantics for integer division in Rust.
+fn map_numeric(error: NumericError) -> EngineError {
+    match error {
+        NumericError::NotNumeric { found } => EngineError::TypeMismatch {
+            expected: "number",
+            found,
+        },
+        NumericError::Overflow => EngineError::InvalidCompiledWorkflow {
+            reason: "integer arithmetic overflow",
+        },
+        NumericError::DivisionByZero => EngineError::DivisionByZero,
+        NumericError::NonFinite => EngineError::NonFiniteNumber,
+    }
+}
+
 fn eval_div(stack: &mut ExprStack) -> Result<(), EngineError> {
     let (left, right) = pop_pair(stack)?;
-    let (SlotValue::I64(left), SlotValue::I64(right)) = (left, right) else {
-        let value = crate::value::FiniteF64::new(promote(left)? / promote(right)?)?;
-        return push_value(stack, SlotValue::F64(value));
-    };
-    if right == 0 {
-        return Err(EngineError::DivisionByZero);
-    }
-    let value = left
-        .checked_div(right)
-        .ok_or(EngineError::InvalidCompiledWorkflow {
+    let result = numeric::div(left, right).map_err(|error| match error {
+        NumericError::Overflow => EngineError::InvalidCompiledWorkflow {
             reason: "integer division overflow",
-        })?;
-    push_value(stack, SlotValue::I64(value))
+        },
+        other => map_numeric(other),
+    })?;
+    push_value(stack, result)
 }
 
 fn eval_numeric_cmp(
     stack: &mut ExprStack,
-    op: fn(&i64, &i64) -> bool,
-    float: fn(f64, f64) -> bool,
+    accept: fn(core::cmp::Ordering) -> bool,
 ) -> Result<(), EngineError> {
     let (left, right) = pop_pair(stack)?;
-    let result = if let (SlotValue::I64(left), SlotValue::I64(right)) = (left, right) {
-        op(&left, &right)
-    } else {
-        float(promote(left)?, promote(right)?)
-    };
-    push_value(stack, SlotValue::Bool(result))
-}
-
-fn promote(value: SlotValue) -> Result<f64, EngineError> {
-    match value {
-        SlotValue::I64(value) => Ok(crate::value::FiniteF64::from_i64(value).get()),
-        SlotValue::F64(value) => Ok(value.get()),
-        other => Err(EngineError::TypeMismatch {
-            expected: "number",
-            found: other.type_name(),
-        }),
-    }
+    let ordering = numeric::compare(left, right).map_err(map_numeric)?;
+    push_value(stack, SlotValue::Bool(accept(ordering)))
 }
 
 // ===== Object operations =====
@@ -170,14 +150,14 @@ pub(super) fn eval_expr_operator(
         ExprOp::And => eval_bool_pair(stack, |left, right| left && right),
         ExprOp::Or => eval_bool_pair(stack, |left, right| left || right),
         ExprOp::Not => eval_not(stack),
-        ExprOp::Add => eval_numeric_pair(stack, i64::checked_add, |a, b| a + b),
-        ExprOp::Sub => eval_numeric_pair(stack, i64::checked_sub, |a, b| a - b),
-        ExprOp::Mul => eval_numeric_pair(stack, i64::checked_mul, |a, b| a * b),
+        ExprOp::Add => eval_numeric_pair(stack, numeric::add),
+        ExprOp::Sub => eval_numeric_pair(stack, numeric::sub),
+        ExprOp::Mul => eval_numeric_pair(stack, numeric::mul),
         ExprOp::Div => eval_div(stack),
-        ExprOp::Gt => eval_numeric_cmp(stack, i64::gt, |a, b| a > b),
-        ExprOp::Gte => eval_numeric_cmp(stack, i64::ge, |a, b| a >= b),
-        ExprOp::Lt => eval_numeric_cmp(stack, i64::lt, |a, b| a < b),
-        ExprOp::Lte => eval_numeric_cmp(stack, i64::le, |a, b| a <= b),
+        ExprOp::Gt => eval_numeric_cmp(stack, core::cmp::Ordering::is_gt),
+        ExprOp::Gte => eval_numeric_cmp(stack, core::cmp::Ordering::is_ge),
+        ExprOp::Lt => eval_numeric_cmp(stack, core::cmp::Ordering::is_lt),
+        ExprOp::Lte => eval_numeric_cmp(stack, core::cmp::Ordering::is_le),
         ExprOp::Contains => eval_contains(stack, store),
         ExprOp::StartsWith => eval_starts_with(stack, store),
         ExprOp::EndsWith => eval_ends_with(stack, store),

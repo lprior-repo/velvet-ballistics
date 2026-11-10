@@ -32,6 +32,9 @@ mod tests;
 // lowering property suites here so they can exercise private lowering seams
 // without a silent disabled module declaration.
 #[cfg(test)]
+#[path = "mod_compile_lowering/nested_body_tests.rs"]
+mod nested_body_tests;
+#[cfg(test)]
 #[path = "proptest_body_dispatcher.rs"]
 mod proptest_body_dispatcher;
 #[cfg(test)]

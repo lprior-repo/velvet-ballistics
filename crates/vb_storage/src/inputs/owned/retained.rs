@@ -55,6 +55,47 @@ fn decode(
     }
 }
 
+fn scalar_for_recovery(
+    bytes: &[u8],
+    run: RunId,
+    artifact: WorkflowDigest,
+    workflow: &CompiledWorkflow,
+) -> Result<RetainedRunInputs, JournalError> {
+    let (_, record): (_, RunInputsRecord) =
+        codec::decode_record(bytes, MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES)?;
+    if record.run() != run {
+        return Err(JournalError::WrongRun {
+            expected: run,
+            actual: record.run(),
+        });
+    }
+    if record.artifact_digest() != artifact {
+        return Err(super::OwnedInputError::IdentityMismatch.into());
+    }
+    record.validate_workflow(workflow)?;
+    Ok(RetainedRunInputs::Scalar(record))
+}
+
+fn decode_for_recovery(
+    bytes: &[u8],
+    run: RunId,
+    artifact: WorkflowDigest,
+    workflow: &CompiledWorkflow,
+) -> Result<RetainedRunInputs, JournalError> {
+    let header = codec::decode_record_header(bytes, MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES)?;
+    match RecordKind::from_id(header.record_kind) {
+        Some(RecordKind::RunOwnedInputs) => {
+            OwnedRunInputsRecordV1::decode_without_source(bytes, run, artifact, workflow)
+                .map(RetainedRunInputs::Owned)
+        }
+        Some(RecordKind::RunInputs) => scalar_for_recovery(bytes, run, artifact, workflow),
+        _ => Err(JournalError::RecordKindPayloadMismatch {
+            envelope_kind: header.record_kind,
+            payload_kind: RecordKind::RunOwnedInputs.id(),
+        }),
+    }
+}
+
 impl FjallJournal {
     /// Reads complete inputs under independently verified admission authority.
     ///
@@ -135,5 +176,29 @@ impl FjallJournal {
                 payload_kind: RecordKind::RunOwnedInputs.id(),
             }),
         }
+    }
+
+    /// Reads either retained format for cold recovery without a caller-supplied
+    /// source expectation.
+    ///
+    /// Production submissions bind records to the authored source digest,
+    /// which recovery cannot know out-of-band. The embedded source digest is
+    /// still covered by the tamper-evident input digest; the caller must
+    /// validate the durable admission binding
+    /// (`RunInputsRecord::validate_admission` /
+    /// `OwnedRunInputsRecordV1::validate_admission`), whose input digest
+    /// anchors the record, plus the workflow projection before trusting any
+    /// handle.
+    pub fn retained_run_inputs_for_recovery(
+        &self,
+        run: RunId,
+        artifact: WorkflowDigest,
+        workflow: &CompiledWorkflow,
+    ) -> Result<Option<RetainedRunInputs>, JournalError> {
+        let key = crate::keys::run_header_key(run)?;
+        let Some(bytes) = self.run_inputs.get(key)? else {
+            return Ok(None);
+        };
+        decode_for_recovery(&bytes, run, artifact, workflow).map(Some)
     }
 }

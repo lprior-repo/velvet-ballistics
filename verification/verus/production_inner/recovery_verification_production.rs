@@ -17,43 +17,43 @@
 // `verification/verus/extern_recovery_verification.rs`, which carries
 // verbatim copies of the production source at:
 //
-//   - `UnsupportedRecoveryState`         <- crates/vb_storage/src/recovery/types.rs:821-832
-//   - `RecoveryCannotResumeState`        <- crates/vb_storage/src/recovery/types.rs:1035-1068
-//   - `RecoveredStepState`               <- crates/vb_storage/src/recovery/types.rs:776-790
-//   - `RecoveredStepEntry`               <- crates/vb_storage/src/recovery/types.rs:792-799
-//   - `RecoveredSlotEntry`               <- crates/vb_storage/src/recovery/types.rs:801-810
-//   - `RecoveredPendingAction`           <- crates/vb_storage/src/recovery/types.rs:812-819
-//   - `RecoveryTerminalState`            <- crates/vb_storage/src/recovery/types.rs:547-562
-//   - `RecoveryRuntimeSummary`           <- crates/vb_storage/src/recovery/types.rs:564-589
-//   - `RecoveryHydration`                <- crates/vb_storage/src/recovery/types.rs:604-645
-//   - `RecoveryFrameSeedProduct`         <- crates/vb_storage/src/recovery/types.rs:660-665
-// Production `crates/vb_storage/src/recovery/types.rs:660-665`
-//   - `DigestPair` / ActionAbiDigest..   <- crates/vb_storage/src/recovery/types.rs:346-526
-//   - `DigestCheck`                      <- crates/vb_storage/src/recovery/types.rs:1635-1678
+//   - `UnsupportedRecoveryState`         <- crates/vb_storage/src/recovery/types/unsupported.rs:5-14
+//   - `RecoveryCannotResumeState`        <- crates/vb_storage/src/recovery/types/cannot_resume.rs:14-41
+//   - `RecoveredStepState`               <- crates/vb_storage/src/recovery/types/recovered.rs:8-19
+//   - `RecoveredStepEntry`               <- crates/vb_storage/src/recovery/types/recovered.rs:23-28
+//   - `RecoveredSlotEntry`               <- crates/vb_storage/src/recovery/types/recovered.rs:32-39
+//   - `RecoveredPendingAction`           <- crates/vb_storage/src/recovery/types/recovered.rs:43-48
+//   - `RecoveryTerminalState`            <- crates/vb_storage/src/recovery/types/runtime.rs:6-21
+//   - `RecoveryRuntimeSummary`           <- crates/vb_storage/src/recovery/types/runtime.rs:23-48
+//   - `RecoveryHydration`                <- crates/vb_storage/src/recovery/types/hydration.rs:9-40
+//   - `RecoveryFrameSeedProduct`         <- crates/vb_storage/src/recovery/types/hydration.rs:55-60
+// Production `crates/vb_storage/src/recovery/types/hydration.rs:55-60`
+//   - `DigestPair` / ActionAbiDigest..   <- crates/vb_storage/src/recovery/types/digests.rs:7-147
+//   - `DigestCheck`                      <- crates/vb_storage/src/recovery/types/digest_check.rs:6-13
 //   - Decision fns                       <- crates/vb_storage/src/recovery/recover.rs:32-187
-//                                            + crates/vb_storage/src/recovery/hydrate.rs:218-238
+//                                            + crates/vb_storage/src/recovery/hydrate/mod.rs:86-108
 //                                            + crates/vb_runtime/src/recovery/product.rs:36-41
 //                                            + crates/vb_runtime/src/recovery.rs:159-161
 //
 // This stub mirrors the production `UnsupportedRecoveryState` field
 // set as the smallest drift-detection surface.
 //
-// DRIFT POLICY: `crates/vb_storage/src/recovery/types.rs:647-740`
+// DRIFT POLICY: `crates/vb_storage/src/recovery/types/hydration.rs:42-135`
 // Production source coverage:
-//   - `UnsupportedRecoveryState`         <- crates/vb_storage/src/recovery/types.rs:821-832
-//   - `RecoveryCannotResumeState`        <- crates/vb_storage/src/recovery/types.rs:1035-1068
-//   - `RecoveredStepState`               <- crates/vb_storage/src/recovery/types.rs:776-790
-//   - `RecoveredStepEntry`               <- crates/vb_storage/src/recovery/types.rs:792-799
-//   - `RecoveredSlotEntry`               <- crates/vb_storage/src/recovery/types.rs:801-810
-//   - `RecoveredPendingAction`           <- crates/vb_storage/src/recovery/types.rs:812-819
-//   - `RecoveryTerminalState`            <- crates/vb_storage/src/recovery/types.rs:547-562
-//   - `RecoveryRuntimeSummary`           <- crates/vb_storage/src/recovery/types.rs:564-589
-//   - `RecoveryHydration`                <- crates/vb_storage/src/recovery/types.rs:604-645
-//   - `RecoveryFrameSeedProduct`         <- crates/vb_storage/src/recovery/types.rs:647-740
-//   - `DigestPair` / ActionAbiDigest..   <- crates/vb_storage/src/recovery/types.rs:346-526
-//   - `DigestCheck`                      <- crates/vb_storage/src/recovery/types.rs:1635-1678
+//   - `UnsupportedRecoveryState`         <- crates/vb_storage/src/recovery/types/unsupported.rs:5-14
+//   - `RecoveryCannotResumeState`        <- crates/vb_storage/src/recovery/types/cannot_resume.rs:14-41
+//   - `RecoveredStepState`               <- crates/vb_storage/src/recovery/types/recovered.rs:8-19
+//   - `RecoveredStepEntry`               <- crates/vb_storage/src/recovery/types/recovered.rs:23-28
+//   - `RecoveredSlotEntry`               <- crates/vb_storage/src/recovery/types/recovered.rs:32-39
+//   - `RecoveredPendingAction`           <- crates/vb_storage/src/recovery/types/recovered.rs:43-48
+//   - `RecoveryTerminalState`            <- crates/vb_storage/src/recovery/types/runtime.rs:6-21
+//   - `RecoveryRuntimeSummary`           <- crates/vb_storage/src/recovery/types/runtime.rs:23-48
+//   - `RecoveryHydration`                <- crates/vb_storage/src/recovery/types/hydration.rs:9-40
+//   - `RecoveryFrameSeedProduct`         <- crates/vb_storage/src/recovery/types/hydration.rs:42-135
+//   - `DigestPair` / ActionAbiDigest..   <- crates/vb_storage/src/recovery/types/digests.rs:7-147
+//   - `DigestCheck`                      <- crates/vb_storage/src/recovery/types/digest_check.rs:6-13
 //   - Decision fns                       <- crates/vb_storage/src/recovery/recover.rs:32-187
-//                                            + crates/vb_storage/src/recovery/hydrate.rs:218-238
+//                                            + crates/vb_storage/src/recovery/hydrate/mod.rs:86-108
 //                                            + crates/vb_runtime/src/recovery/product.rs:36-41
 //                                            + crates/vb_runtime/src/recovery.rs:159-161
 // Regenerate this file whenever production changes. Any rename of
@@ -71,24 +71,24 @@ verus! {
 // Drift-detection stubs
 // ---------------------------------------------------------------------------
 /// Mirror of production `UnsupportedRecoveryState` field shape at
-/// `crates/vb_storage/src/recovery/types.rs:821-832`. The stub is a
+/// `crates/vb_storage/src/recovery/types/unsupported.rs:5-14`. The stub is a
 /// struct with the SAME field names and types as production so any
 /// rename breaks the build.
 #[derive(Clone, Copy)]
 pub struct UnsupportedRecoveryStateStub {
-    /// Mirror of production `slot_values: bool` at types.rs:656.
+    /// Mirror of production `slot_values: bool` at types/unsupported.rs:7.
     pub slot_values: bool,
-    /// Mirror of production `slot_taint: bool` at types.rs:658.
+    /// Mirror of production `slot_taint: bool` at types/unsupported.rs:9.
     pub slot_taint: bool,
-    /// Mirror of production `action_payloads: bool` at types.rs:660.
+    /// Mirror of production `action_payloads: bool` at types/unsupported.rs:11.
     pub action_payloads: bool,
-    /// Mirror of production `pending_actions: bool` at types.rs:662.
+    /// Mirror of production `pending_actions: bool` at types/unsupported.rs:13.
     pub pending_actions: bool,
 }
 
 impl UnsupportedRecoveryStateStub {
     /// Mirror of production `is_fully_supported` decision at
-    /// `crates/vb_storage/src/recovery/types.rs:714-716`. Body is
+    /// `crates/vb_storage/src/recovery/types/unsupported.rs:63-65`. Body is
     /// `#[verifier::external]` (opaque).
     #[verifier::external]
     pub fn is_fully_supported_stub(self) -> bool {
@@ -97,7 +97,7 @@ impl UnsupportedRecoveryStateStub {
 }
 
 /// Mirror of production `RecoveryCannotResumeState` field shape at
-/// `crates/vb_storage/src/recovery/types.rs:1035-1068`.
+/// `crates/vb_storage/src/recovery/types/cannot_resume.rs:14-41`.
 #[derive(Clone, Copy)]
 pub struct RecoveryCannotResumeStateStub {
     pub slot_values: bool,
@@ -117,7 +117,7 @@ pub struct RecoveryCannotResumeStateStub {
 
 impl RecoveryCannotResumeStateStub {
     /// Mirror of production `RecoveryCannotResumeState::is_resumable`
-    /// decision at `crates/vb_storage/src/recovery/types.rs:1025-1039`.
+    /// decision at `crates/vb_storage/src/recovery/types/cannot_resume.rs:167-181`.
     #[verifier::external]
     pub fn is_resumable_stub(self) -> bool {
         !self.slot_values && !self.slot_taint && !self.action_payloads && !self.pending_actions
@@ -129,7 +129,7 @@ impl RecoveryCannotResumeStateStub {
 }
 
 /// Minimal mirror of production `RecoveryFrameSeed` identity used by
-/// the product split at `crates/vb_storage/src/recovery/types.rs:647-740`.
+/// the product split at `crates/vb_storage/src/recovery/types/hydration.rs:42-135`.
 #[derive(Clone, Copy)]
 pub struct RecoveryFrameSeed;
 

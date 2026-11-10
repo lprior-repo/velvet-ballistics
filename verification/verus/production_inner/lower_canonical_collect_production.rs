@@ -6,7 +6,7 @@
 //
 // This file is a minimal production-binding stub for the
 // `collect_ir_structure.rs` Verus spec. The primary production source
-// is `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-260`
+// is `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277`
 // (the `lower_bounded_collect` body). The production file cannot be
 // `#[path]`-included from this single-file Verus unit because:
 //
@@ -39,7 +39,7 @@
 // so the projection is nameable in spec mode.
 //
 // DRIFT POLICY: This mirror MUST be regenerated from
-// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-260`
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277`
 // whenever production changes. Section headers cite the originating
 // production line range so regeneration is mechanical.
 #![forbid(unsafe_code)]

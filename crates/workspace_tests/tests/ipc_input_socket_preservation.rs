@@ -406,9 +406,20 @@ fn malformed_inputs_fail_before_any_submission_is_enqueued_or_journaled() -> Tes
 }
 
 fn socket_dir() -> TestResult<tempfile::TempDir> {
-    Ok(tempfile::Builder::new()
-        .prefix("vb-ipc-owned-")
-        .tempdir_in("/tmp")?)
+    let mut dir = tempfile::Builder::new().prefix("vb-ipc-owned-").tempdir()?;
+    if dir
+        .path()
+        .join("exchange.sock")
+        .as_os_str()
+        .as_encoded_bytes()
+        .len()
+        >= 108
+    {
+        dir = tempfile::Builder::new()
+            .prefix("vb-ipc-owned-")
+            .tempdir_in("/tmp")?;
+    }
+    Ok(dir)
 }
 
 fn assert_bind_refused(path: &std::path::Path) {

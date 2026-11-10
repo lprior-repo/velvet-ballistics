@@ -1,22 +1,85 @@
     // ===== Edge-case tests added for comprehensive coverage =====
 
+    /// Edge case: mixed F64/I64 arithmetic promotes to F64 (vb-cofe1).
+    ///
+    /// The typechecker accepts mixed numeric pairs via `coerce_numeric`, so
+    /// the evaluator promotes the I64 operand and computes in F64 instead of
+    /// failing with TypeMismatch.
     #[test]
-    fn edge_f64_addition_promotes_integer() -> ExprResult<()> {
-        let float = vb_core::value::FiniteF64::new(3.14)?;
-        let result = eval_binary_op(BinaryOp::Add, SlotValue::F64(float), SlotValue::I64(1))?;
+    fn edge_f64_mixed_with_i64_addition_promotes() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Add,
+            SlotValue::F64(make_f64(2.5)),
+            SlotValue::I64(2),
+        )?;
+        assert_eq!(result, SlotValue::F64(make_f64(4.5)));
+        let result = eval_binary_op(
+            BinaryOp::Add,
+            SlotValue::I64(3),
+            SlotValue::F64(make_f64(0.5)),
+        )?;
+        assert_eq!(result, SlotValue::F64(make_f64(3.5)));
+        let rounded = vb_core::value::FiniteF64::new(3.14)?;
+        let result = eval_binary_op(BinaryOp::Add, SlotValue::F64(rounded), SlotValue::I64(1))?;
         assert_eq!(result, SlotValue::F64(vb_core::value::FiniteF64::new(4.140000000000001)?));
-        assert_eq!(eval_binary_op(BinaryOp::Add, SlotValue::I64(1), SlotValue::F64(float))?, result);
+        assert_eq!(eval_binary_op(BinaryOp::Add, SlotValue::I64(1), SlotValue::F64(rounded))?, result);
         Ok(())
     }
 
+    /// Edge case: mixed F64/I64 comparisons promote operands (vb-cofe1).
+    ///
+    /// Comparison operators accept the same mixed numeric pairs as
+    /// arithmetic; the I64 operand promotes to F64 before ordering.
     #[test]
-    fn edge_f64_comparison_promotes_integer() -> ExprResult<()> {
-        let float = vb_core::value::FiniteF64::new(1.0)?;
-        assert_eq!(eval_binary_op(BinaryOp::Lt, SlotValue::F64(float), SlotValue::I64(2))?, SlotValue::Bool(true));
-        assert_eq!(eval_binary_op(BinaryOp::Gt, SlotValue::I64(2), SlotValue::F64(float))?, SlotValue::Bool(true));
+    fn edge_f64_mixed_with_i64_comparison_promotes() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Lt,
+            SlotValue::F64(make_f64(1.0)),
+            SlotValue::I64(2),
+        )?;
+        assert_eq!(result, SlotValue::Bool(true));
+        let result = eval_binary_op(
+            BinaryOp::Gte,
+            SlotValue::I64(2),
+            SlotValue::F64(make_f64(2.0)),
+        )?;
+        assert_eq!(result, SlotValue::Bool(true));
+        assert_eq!(eval_binary_op(BinaryOp::Gt, SlotValue::I64(2), SlotValue::F64(make_f64(1.0)))?, SlotValue::Bool(true));
         Ok(())
     }
 
+    /// Edge case: mixed arithmetic still rejects non-numeric operands.
+    ///
+    /// Promotion only covers I64/F64 pairs; a boolean or null operand must
+    /// still fail with TypeMismatch naming the right domain.
+    #[test]
+    fn edge_mixed_with_non_number_still_rejects() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::Add, SlotValue::Bool(true), SlotValue::I64(1));
+        let Err(ExprError::TypeMismatch { expected, .. }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for Bool + I64".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        let result = eval_binary_op(
+            BinaryOp::Mul,
+            SlotValue::F64(make_f64(2.0)),
+            SlotValue::Null,
+        );
+        let Err(ExprError::TypeMismatch { expected, .. }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for F64 * Null".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        Ok(())
+    }
+
+    /// Edge case: Parenthesized groups override operator precedence.
+    ///
+    /// `(1 + 2) * (3 + 4)` should evaluate to `3 * 7 = 21`, not `1 + (2 * 3) + 4`.
+    /// This tests that parentheses correctly override the default precedence
+    /// where multiplication binds tighter than addition.
     #[test]
     fn edge_parenthesized_groups_override_precedence() -> ExprResult<()> {
         let tokens = crate::lexer::lex_expr("(1 + 2) * (3 + 4)")?;
@@ -478,8 +541,13 @@
     }
 
     #[test]
-    fn eval_binary_op_f64_promotes_i64_in_add() -> ExprResult<()> {
-        assert_eq!(eval_binary_op(BinaryOp::Add, SlotValue::F64(make_f64(1.0)), SlotValue::I64(2))?, SlotValue::F64(make_f64(3.0)));
+    fn eval_binary_op_f64_mixed_with_i64_in_add_promotes() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Add,
+            SlotValue::F64(make_f64(1.0)),
+            SlotValue::I64(2),
+        )?;
+        assert_eq!(result, SlotValue::F64(make_f64(3.0)));
         assert_eq!(eval_binary_op(BinaryOp::Add, SlotValue::I64(2), SlotValue::F64(make_f64(1.0)))?, SlotValue::F64(make_f64(3.0)));
         Ok(())
     }

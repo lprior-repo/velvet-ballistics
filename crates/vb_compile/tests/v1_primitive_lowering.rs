@@ -498,24 +498,6 @@ fn assert_two_set_repeat_control(nodes: &[CompiledNode]) -> Result<(), String> {
     Ok(())
 }
 
-#[test]
-fn compile_workflow_reports_missing_nested_collect_steps() -> Result<(), String> {
-    let yaml = workflow_yaml(
-        "  - id: collect_pages\n    collect:\n      variable: batch\n      source: \"0\"\n      pages: 1\n      items: 1\n      steps:\n        - id: inner\n          collect:\n            variable: inner_page\n            source: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
-    );
-    let errors = compile_yaml_error(&yaml)?;
-    let first = first_compile_error(&errors)?;
-    match first {
-        CompileError::MissingStepField { step, field } => {
-            assert_eq!((*step, *field), (0, "collect.steps"));
-            Ok(())
-        }
-        other => Err(format!(
-            "expected MissingStepField for nested collect.steps, got {other:?}"
-        )),
-    }
-}
-
 #[derive(Clone, Copy)]
 enum ExpectedShapeError {
     CanonicalYamlMessage(&'static str),
@@ -3013,3 +2995,6 @@ fn assert_two_set_for_each_contract(
 
     Ok(())
 }
+
+#[path = "v1_primitive_lowering/nested_collect.rs"]
+mod nested_collect;

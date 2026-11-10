@@ -175,7 +175,7 @@ obligations:
     required:
       tests: [step_state_invalid_transition_error]
     commands:
-      - cargo nextest run -p vb_core step_state_invalid
+      - cargo nextest run -p vb_core invalid_transition_rejected_in_run_frame_mark
 
   # ============================================================
   # STEP BUDGET (Section 15, 45)
@@ -343,7 +343,7 @@ obligations:
     crate: vb_core
     files:
       - crates/vb_core/src/budget.rs
-      - crates/vb_core/src/kani_resource_budget_bounded.rs
+      - crates/vb_core/src/verification/kani/kani_resource_budget_bounded.rs
     required:
       kani: kani_resource_budget_bounded.rs
       property_tests: [whole_workflow_budget_within_policy]
@@ -369,7 +369,7 @@ obligations:
     commands:
       - cargo kani --harness kani_ipc_header_rejects_oversize
       - cargo fuzz run ipc_frame
-      - cargo nextest run -p vb_ipc ipc_decode
+      - cargo nextest run -p vb_ipc decoder_rejects
 
   - id: VB-IPC-DECODE-002
     section: [18, 21, 50]
@@ -400,7 +400,7 @@ obligations:
       tests: [envelope_header_unified]
     commands:
       - cargo fuzz run ipc_frame
-      - cargo nextest run -p vb_ipc ipc_format
+      - cargo nextest run -p vb_ipc decode_frame_roundtrip
     note: "Spec contradiction DRIFT-IPC-FORMAT - Section 18 vs Section 21"
 
   # ============================================================
@@ -679,7 +679,7 @@ obligations:
       tests: [fjall_fsync_boundary]
     commands:
       - cargo vet
-      - cargo nextest run -p vb_storage fjall_sync
+      - cargo nextest run -p vb_storage fjall_fsync_boundary
     note: "Externally assumed - Fjall fsync correctness is a trusted external dependency"
 
   # ============================================================
@@ -698,7 +698,7 @@ obligations:
       differential_tests: [bytecode_vs_ast]
       fuzz: [expr_bytecode]
     commands:
-      - cargo nextest run -p vb_expr bytecode_ast_equiv
+      - cargo nextest run -p vb_expr bytecode_vs_ast
       - cargo fuzz run expr_bytecode
 
   - id: VB-EXPR-002
@@ -1057,9 +1057,9 @@ verus_registry:
 
   # --- Recovery kernels -------------------------------------------------
   - id: PO-VERUS-018
-    description: "Recovery boundary verification: reject_unsupported_live_frame_state, check_compiled_ir_digest, check_workflow_source_digest, hydration/refusal classification bound to production recovery decision surfaces (PO-003A, PO-011..017, PO-019..020, PO-027..029)."
+    description: "Recovery boundary verification: reject_unsupported_live_frame_state, check_compiled_ir_digest, check_workflow_source_digest, hydration/refusal classification bound to production recovery decision surfaces (PO-003A, PO-011..017, PO-019..020, PO-027..029); digest checks at crates/vb_storage/src/recovery/recover.rs:32-50 and :53-62, classification types in crates/vb_storage/src/recovery/types/ (mod.rs re-exports)."
     verus: verification/verus/recovery_verification.rs
-    production: crates/vb_storage/src/recovery/types.rs
+    production: crates/vb_storage/src/recovery/types/mod.rs
 
   # PO-VERUS-019 (Recovery hydration contracts) DELETED:
   #   The Verus spec `verification/verus/recovery_hydration_contracts.rs`
@@ -1069,10 +1069,11 @@ verus_registry:
   #   wrapper took a fabricated `SpecRecoveryInput` (16-field struct)
   #   with no single production counterpart. The actual production
   #   hydration decision is split across
-  #   `crates/vb_storage/src/recovery/hydrate.rs`
-  #   (hydrate_run_frame, hydrate_run_frame_from_events,
-  #   hydrate_snapshot_tail_preconditions, validate_*_metadata,
-  #   validate_recovery_data_present) and
+  #   `crates/vb_storage/src/recovery/hydrate/`
+  #   (hydrate_run_frame in mod.rs, hydrate_run_frame_from_events in
+  #   from_events.rs, hydrate_snapshot_tail_preconditions and
+  #   validate_*_metadata in preconditions.rs,
+  #   validate_recovery_data_present in preconditions.rs) and
   #   `crates/vb_storage/src/recovery/recover.rs`
   #   (recover_runtime_summary, recover_runtime_frame_seed,
   #   check_workflow_source_digest, check_compiled_ir_digest), each
@@ -1081,9 +1082,9 @@ verus_registry:
   #   Per GOD RULE 2, the file was deleted (not bound).
 
   - id: PO-VERUS-020
-    description: "ActionReplayTracker monotonicity: tracker only records action attempts, never rewinds; matches production crates/vb_storage/src/recovery/types.rs:1446-1714 verbatim (VERUS-REPLAY-004)."
+    description: "ActionReplayTracker monotonicity: tracker only records action attempts, never rewinds; matches production crates/vb_storage/src/recovery/types/replay.rs:45-265 verbatim (VERUS-REPLAY-004)."
     verus: verification/verus/idempotency_replay_tracker.rs
-    production: crates/vb_storage/src/recovery/types.rs
+    production: crates/vb_storage/src/recovery/types/replay.rs
 
   # --- IPC kernels ------------------------------------------------------
   - id: PO-VERUS-021
@@ -1123,7 +1124,7 @@ verus_registry:
     production: crates/vb_compile/src/mod_compile_lowering/part_04.rs
 
   - id: PO-VERUS-028
-    description: "v1 primitive source lowering: lower_set, lower_do, lower_choose, lower_for_each, lower_together, lower_collect, lower_reduce, lower_repeat, lower_wait, lower_ask, lower_finish spec/production parity (PRE-007, POST-003..005, POST-006-VERUS..012-VERUS, INV-001, INV-003..005). lower_collect is bound to lower_bounded_collect at bounded_collect.rs:243-260, not part_06.rs."
+    description: "v1 primitive source lowering: lower_set, lower_do, lower_choose, lower_for_each, lower_together, lower_collect, lower_reduce, lower_repeat, lower_wait, lower_ask, lower_finish spec/production parity (PRE-007, POST-003..005, POST-006-VERUS..012-VERUS, INV-001, INV-003..005). lower_collect is bound to lower_bounded_collect at bounded_collect.rs:257-277, not part_06.rs."
     verus: verification/verus/v1_primitive_lowering.rs
     production: crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs
 

@@ -12,7 +12,7 @@ This review covers the test surface for the CV-106 fix:
 - 7 property tests in
   `crates/vb_core/tests/proptest_span_try_new.rs`.
 - 4 Kani harnesses in
-  `crates/vb_core/src/kani/kani_span_try_new.rs`.
+  `crates/vb_core/src/verification/kani/diagnostic/kani_span_try_new.rs`.
 
 The review checks for: contract parity, assertion strength,
 determinism, public-API testing, and mutation resistance.

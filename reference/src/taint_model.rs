@@ -3,7 +3,7 @@
 //! This is the canonical reference implementation for the taint lattice.
 //! Use this to verify the optimized implementation matches this behavior.
 //!
-//! Lattice ordering: Clean < DerivedFromSecret < Secret
+//! Lattice ordering: Clean < DerivedFromSecret < Secret < Random < TimeDependent
 
 use vb_core::value::Taint;
 
@@ -12,6 +12,8 @@ pub enum TaintOrder {
     Clean,
     DerivedFromSecret,
     Secret,
+    Random,
+    TimeDependent,
 }
 
 impl TaintOrder {
@@ -20,6 +22,10 @@ impl TaintOrder {
             Taint::Clean => TaintOrder::Clean,
             Taint::DerivedFromSecret => TaintOrder::DerivedFromSecret,
             Taint::Secret => TaintOrder::Secret,
+            Taint::Random => TaintOrder::Random,
+            Taint::TimeDependent => TaintOrder::TimeDependent,
+            // Unknown future variants join at the lattice top, never downgrade.
+            _ => TaintOrder::TimeDependent,
         }
     }
 
@@ -28,6 +34,8 @@ impl TaintOrder {
             TaintOrder::Clean => Taint::Clean,
             TaintOrder::DerivedFromSecret => Taint::DerivedFromSecret,
             TaintOrder::Secret => Taint::Secret,
+            TaintOrder::Random => Taint::Random,
+            TaintOrder::TimeDependent => Taint::TimeDependent,
         }
     }
 
@@ -36,6 +44,8 @@ impl TaintOrder {
             TaintOrder::Clean => 0,
             TaintOrder::DerivedFromSecret => 1,
             TaintOrder::Secret => 2,
+            TaintOrder::Random => 3,
+            TaintOrder::TimeDependent => 4,
         }
     }
 }
@@ -43,11 +53,7 @@ impl TaintOrder {
 pub fn join_ref(a: TaintOrder, b: TaintOrder) -> TaintOrder {
     let rank_a = a.rank();
     let rank_b = b.rank();
-    if rank_a >= rank_b {
-        a
-    } else {
-        b
-    }
+    if rank_a >= rank_b { a } else { b }
 }
 
 pub fn join_many_ref(taints: &[TaintOrder]) -> TaintOrder {
@@ -62,7 +68,7 @@ pub fn lattice_laws() -> Vec<LatticeLaw> {
     vec![
         LatticeLaw {
             name: "commutative".to_string(),
-            check: |a: TaintOrder, b: TaintOrder| join_ref(a, b) == join_ref(b, a),
+            check: |a: TaintOrder, b: TaintOrder, _c: TaintOrder| join_ref(a, b) == join_ref(b, a),
         },
         LatticeLaw {
             name: "associative".to_string(),
@@ -72,15 +78,17 @@ pub fn lattice_laws() -> Vec<LatticeLaw> {
         },
         LatticeLaw {
             name: "idempotent".to_string(),
-            check: |a: TaintOrder, _b: TaintOrder| join_ref(a, a) == a,
+            check: |a: TaintOrder, _b: TaintOrder, _c: TaintOrder| join_ref(a, a) == a,
         },
         LatticeLaw {
             name: "identity".to_string(),
-            check: |a: TaintOrder, _b: TaintOrder| join_ref(a, TaintOrder::Clean) == a,
+            check: |a: TaintOrder, _b: TaintOrder, _c: TaintOrder| {
+                join_ref(a, TaintOrder::Clean) == a
+            },
         },
         LatticeLaw {
             name: "secret_never_downgrades".to_string(),
-            check: |_a: TaintOrder, b: TaintOrder| {
+            check: |_a: TaintOrder, b: TaintOrder, _c: TaintOrder| {
                 if b == TaintOrder::Secret {
                     join_ref(TaintOrder::Clean, b) == TaintOrder::Secret
                 } else {
@@ -90,7 +98,7 @@ pub fn lattice_laws() -> Vec<LatticeLaw> {
         },
         LatticeLaw {
             name: "derived_never_downgrades".to_string(),
-            check: |_a: TaintOrder, b: TaintOrder| {
+            check: |_a: TaintOrder, b: TaintOrder, _c: TaintOrder| {
                 if b == TaintOrder::DerivedFromSecret {
                     join_ref(TaintOrder::Clean, b) == TaintOrder::DerivedFromSecret
                 } else {
@@ -103,20 +111,17 @@ pub fn lattice_laws() -> Vec<LatticeLaw> {
 
 pub struct LatticeLaw {
     pub name: String,
-    pub check: fn(TaintOrder, TaintOrder) -> bool,
+    pub check: fn(TaintOrder, TaintOrder, TaintOrder) -> bool,
 }
 
 impl LatticeLaw {
+    /// Two-argument laws ignore the third argument; Clean is supplied for it.
     pub fn check_two(&self, a: TaintOrder, b: TaintOrder) -> bool {
-        (self.check)(a, b)
+        (self.check)(a, b, TaintOrder::Clean)
     }
 
-    pub fn check_three(&self, a: TaintOrder, b: TaintOrder, c: TaintOrder) -> bool
-    where
-        Self: Sized,
-    {
-        let f = self.check;
-        f(a, b) && f(b, c) && f(a, c)
+    pub fn check_three(&self, a: TaintOrder, b: TaintOrder, c: TaintOrder) -> bool {
+        (self.check)(a, b, c)
     }
 }
 
@@ -125,6 +130,8 @@ pub fn all_join_results() -> Vec<(TaintOrder, TaintOrder, TaintOrder)> {
         TaintOrder::Clean,
         TaintOrder::DerivedFromSecret,
         TaintOrder::Secret,
+        TaintOrder::Random,
+        TaintOrder::TimeDependent,
     ];
     let mut results = Vec::new();
     for &a in &values {
@@ -136,6 +143,7 @@ pub fn all_join_results() -> Vec<(TaintOrder, TaintOrder, TaintOrder)> {
     results
 }
 
+#[derive(Default)]
 pub struct TaintModel;
 
 impl TaintModel {
@@ -159,21 +167,64 @@ mod tests {
 
     #[test]
     fn test_join_commutative() {
-        let law = lattice_laws().into_iter().find(|l| l.name == "commutative").unwrap();
-        for &a in &[TaintOrder::Clean, TaintOrder::DerivedFromSecret, TaintOrder::Secret] {
-            for &b in &[TaintOrder::Clean, TaintOrder::DerivedFromSecret, TaintOrder::Secret] {
-                assert!(law.check_two(a, b), "join({}, {}) != join({}, {})", a.rank(), b.rank(), b.rank(), a.rank());
+        let law = lattice_laws()
+            .into_iter()
+            .find(|l| l.name == "commutative")
+            .unwrap();
+        for &a in &[
+            TaintOrder::Clean,
+            TaintOrder::DerivedFromSecret,
+            TaintOrder::Secret,
+            TaintOrder::Random,
+            TaintOrder::TimeDependent,
+        ] {
+            for &b in &[
+                TaintOrder::Clean,
+                TaintOrder::DerivedFromSecret,
+                TaintOrder::Secret,
+                TaintOrder::Random,
+                TaintOrder::TimeDependent,
+            ] {
+                assert!(
+                    law.check_two(a, b),
+                    "join({}, {}) != join({}, {})",
+                    a.rank(),
+                    b.rank(),
+                    b.rank(),
+                    a.rank()
+                );
             }
         }
     }
 
     #[test]
     fn test_join_associative() {
-        let law = lattice_laws().into_iter().find(|l| l.name == "associative").unwrap();
-        for &a in &[TaintOrder::Clean, TaintOrder::DerivedFromSecret, TaintOrder::Secret] {
-            for &b in &[TaintOrder::Clean, TaintOrder::DerivedFromSecret, TaintOrder::Secret] {
-                for &c in &[TaintOrder::Clean, TaintOrder::DerivedFromSecret, TaintOrder::Secret] {
-                    assert!(law.check(a, b, c), "associativity failed");
+        let law = lattice_laws()
+            .into_iter()
+            .find(|l| l.name == "associative")
+            .unwrap();
+        for &a in &[
+            TaintOrder::Clean,
+            TaintOrder::DerivedFromSecret,
+            TaintOrder::Secret,
+            TaintOrder::Random,
+            TaintOrder::TimeDependent,
+        ] {
+            for &b in &[
+                TaintOrder::Clean,
+                TaintOrder::DerivedFromSecret,
+                TaintOrder::Secret,
+                TaintOrder::Random,
+                TaintOrder::TimeDependent,
+            ] {
+                for &c in &[
+                    TaintOrder::Clean,
+                    TaintOrder::DerivedFromSecret,
+                    TaintOrder::Secret,
+                    TaintOrder::Random,
+                    TaintOrder::TimeDependent,
+                ] {
+                    assert!(law.check_three(a, b, c), "associativity failed");
                 }
             }
         }
@@ -181,23 +232,45 @@ mod tests {
 
     #[test]
     fn test_join_idempotent() {
-        let law = lattice_laws().into_iter().find(|l| l.name == "idempotent").unwrap();
-        for &a in &[TaintOrder::Clean, TaintOrder::DerivedFromSecret, TaintOrder::Secret] {
+        let law = lattice_laws()
+            .into_iter()
+            .find(|l| l.name == "idempotent")
+            .unwrap();
+        for &a in &[
+            TaintOrder::Clean,
+            TaintOrder::DerivedFromSecret,
+            TaintOrder::Secret,
+            TaintOrder::Random,
+            TaintOrder::TimeDependent,
+        ] {
             assert!(law.check_two(a, a), "idempotence failed for {:?}", a);
         }
     }
 
     #[test]
     fn test_join_identity() {
-        let law = lattice_laws().into_iter().find(|l| l.name == "identity").unwrap();
-        for &a in &[TaintOrder::Clean, TaintOrder::DerivedFromSecret, TaintOrder::Secret] {
-            assert!(law.check_two(a, TaintOrder::Clean), "identity failed for {:?}", a);
+        let law = lattice_laws()
+            .into_iter()
+            .find(|l| l.name == "identity")
+            .unwrap();
+        for &a in &[
+            TaintOrder::Clean,
+            TaintOrder::DerivedFromSecret,
+            TaintOrder::Secret,
+            TaintOrder::Random,
+            TaintOrder::TimeDependent,
+        ] {
+            assert!(
+                law.check_two(a, TaintOrder::Clean),
+                "identity failed for {:?}",
+                a
+            );
         }
     }
 
     #[test]
     fn test_all_join_results_table() {
         let results = all_join_results();
-        assert_eq!(results.len(), 9);
+        assert_eq!(results.len(), 25);
     }
 }

@@ -160,7 +160,7 @@ fn recovery_terminal_state_cancelled_round_trip() {
     // Round-trip was previously exercised through serde_json; the
     // proc-macro derives were removed in vb-wy33p.11 round 8 to enable
     // STRONG Verus production binding on
-    // `crates/vb_storage/src/recovery/types.rs`. The discriminant is
+    // `crates/vb_storage/src/recovery/types/runtime.rs`. The discriminant is
     // now verified through direct `PartialEq` plus pattern matching,
     // which is sufficient for the type-identification guarantee the
     // prior test was asserting.

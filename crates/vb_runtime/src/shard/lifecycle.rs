@@ -45,11 +45,13 @@ mod tests {
     include!("lifecycle_tests/chunk_009.rs");
     include!("lifecycle_tests/chunk_010.rs");
     include!("lifecycle_tests/chunk_011.rs");
+    include!("lifecycle_tests/chunk_012.rs");
     include!("lifecycle_tests/recovery_context_tests.rs");
     include!("lifecycle_tests/contract_validation_tests.rs");
     include!("lifecycle_tests/action_recovery_tests.rs");
     include!("lifecycle_tests/secret_recovery_tests.rs");
     include!("lifecycle_tests/timer_due_regressions.rs");
+    include!("lifecycle_tests/chunk_013.rs");
 
     mod strict_policy_sequence {
         include!("lifecycle_tests/strict_policy_sequence.rs");

@@ -435,7 +435,7 @@ impl Shard {
     /// 4. Seed journal sequence from command next_seq
     /// 5. Build admission with artifact's required capabilities
     /// 6. Construct RunState restoring collect_states
-    /// 7. Handle boundary (pending action / open ask)
+    /// 7. Handle boundary (pending action / open ask / recovered timer)
     /// 8. Drive run from recovered state
     pub(crate) fn handle_recover(
         &mut self,
@@ -450,6 +450,7 @@ impl Shard {
         let retry_checkpoint = command.retry_checkpoint;
         let boundary = command.boundary;
         let admission = command.admission;
+        let restored_store = command.restored_store;
 
         // Step 1: Load artifact by artifact_digest for verification
         let artifact = self
@@ -542,7 +543,7 @@ impl Shard {
         }
         let recovered_timer = self.recovered_retry_timer(boundary, retry_checkpoint.as_ref())?;
         let initial_store = recovery_store::restore(
-            command.initial_store,
+            restored_store,
             &frame,
             &workflow,
             retry_checkpoint.is_some(),
@@ -677,6 +678,28 @@ impl Shard {
                     return Ok(());
                 }
             }
+            crate::recovery::RecoveredRunBoundaryKind::WaitingTimer => {
+                // Re-arms the durable wait schedule as a live timer and leaves
+                // the run suspended. Recovery MUST NOT drive the wait node:
+                // re-driving would emit a duplicate WaitScheduledEvent.
+                if let Some(timer) = boundary.waiting_timer() {
+                    self.restore_recovered_timer(run, timer.step(), PendingTimerKind::Wait)?;
+                    self.apply(run, crate::shard::types::RuntimeEvent::AwaitTimer)?;
+                    return Ok(());
+                }
+            }
+            crate::recovery::RecoveredRunBoundaryKind::TimedAsk => {
+                // Restores both the ask authority and the timer the timeout
+                // slot armed. The timer is required: without it the pending
+                // ask ticket lookup refuses (ask_timer_matches) and the
+                // answer path cannot validate the ticket.
+                if let Some(ask) = boundary.timed_ask() {
+                    self.restore_recovered_timer(run, ask.step(), PendingTimerKind::Ask)?;
+                    self.record_pending_ask_authority(run, ask.step(), ask.boundary_seq());
+                    self.apply(run, crate::shard::types::RuntimeEvent::AwaitTimer)?;
+                    return Ok(());
+                }
+            }
         }
 
         // Step 8: Drive run from recovered state
@@ -689,6 +712,38 @@ impl Shard {
                 Err(error)
             }
         }
+    }
+
+    /// Re-arms a recovered timer suspension from its timeout slot.
+    ///
+    /// Covers waiting waits and timed asks. Wall-clock instants are not
+    /// durable, so the deadline is the full timeout from the recovery point
+    /// (the same helper the live drive path uses), never an expired instant
+    /// that would fire spuriously.
+    fn restore_recovered_timer(
+        &mut self,
+        run: RunId,
+        step: StepIdx,
+        kind: PendingTimerKind,
+    ) -> RuntimeResult<()> {
+        let deadline = match self.run_state_get(run) {
+            Some(state) => awaiting_deadline(state, step),
+            None => return Err(RuntimeError::RunNotFound),
+        };
+        let generation = match self.next_pending_timer_generation(run) {
+            Some(generation) => generation,
+            None => return Err(RuntimeError::InvalidTimerFire),
+        };
+        self.pending_timer_insert(
+            run,
+            PendingTimer {
+                step,
+                kind,
+                generation,
+                deadline,
+            },
+        )?;
+        Ok(())
     }
 
     fn validate_run_exists(&self, run: RunId) -> Result<(), ResumeError> {

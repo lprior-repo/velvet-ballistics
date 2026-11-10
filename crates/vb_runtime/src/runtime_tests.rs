@@ -487,7 +487,7 @@ mod tests {
             asking_recovery_prefix(run, &workflow),
             seed,
             boundary,
-            None,
+            crate::recovery::RecoveredRetainedInputs::empty(),
             None,
         )
         .map_err(|error| error.to_string())

@@ -1,6 +1,6 @@
 use super::PolicyBounds;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct BudgetAccumulator {
     pub max_steps_executable: u64,
     pub max_action_tickets: u64,
@@ -47,108 +47,58 @@ impl BudgetAccumulator {
         self.max_retries_per_action = self
             .max_retries_per_action
             .max(other.max_retries_per_action);
-        self.max_gather_pages = self
-            .max_gather_pages
-            .saturating_add(other.max_gather_pages);
-        self.max_gather_items = self
-            .max_gather_items
-            .saturating_add(other.max_gather_items);
+        self.max_gather_pages = self.max_gather_pages.saturating_add(other.max_gather_pages);
+        self.max_gather_items = self.max_gather_items.saturating_add(other.max_gather_items);
         self.max_for_each_iterations = self
             .max_for_each_iterations
             .max(other.max_for_each_iterations);
-        self.max_together_branches = self
-            .max_together_branches
-            .max(other.max_together_branches);
-        self.max_repeat_attempts = self
-            .max_repeat_attempts
-            .max(other.max_repeat_attempts);
+        self.max_together_branches = self.max_together_branches.max(other.max_together_branches);
+        self.max_repeat_attempts = self.max_repeat_attempts.max(other.max_repeat_attempts);
         self.max_run_time_seconds = self
             .max_run_time_seconds
             .saturating_add(other.max_run_time_seconds);
-        self.max_result_bytes = self
-            .max_result_bytes
-            .max(other.max_result_bytes);
+        self.max_result_bytes = self.max_result_bytes.max(other.max_result_bytes);
         self.max_total_slots_written = self
             .max_total_slots_written
             .saturating_add(other.max_total_slots_written);
     }
 
     pub fn add_branch(&mut self, other: &BudgetAccumulator) {
-        self.max_steps_executable = self
-            .max_steps_executable
-            .max(other.max_steps_executable);
-        self.max_action_tickets = self
-            .max_action_tickets
-            .max(other.max_action_tickets);
+        self.max_steps_executable = self.max_steps_executable.max(other.max_steps_executable);
+        self.max_action_tickets = self.max_action_tickets.max(other.max_action_tickets);
         self.max_parallel_in_flight = self
             .max_parallel_in_flight
             .saturating_add(other.max_parallel_in_flight);
         self.max_retries_per_action = self
             .max_retries_per_action
             .max(other.max_retries_per_action);
-        self.max_gather_pages = self
-            .max_gather_pages
-            .max(other.max_gather_pages);
-        self.max_gather_items = self
-            .max_gather_items
-            .max(other.max_gather_items);
+        self.max_gather_pages = self.max_gather_pages.max(other.max_gather_pages);
+        self.max_gather_items = self.max_gather_items.max(other.max_gather_items);
         self.max_for_each_iterations = self
             .max_for_each_iterations
             .max(other.max_for_each_iterations);
-        self.max_together_branches = self
-            .max_together_branches
-            .max(other.max_together_branches);
-        self.max_repeat_attempts = self
-            .max_repeat_attempts
-            .max(other.max_repeat_attempts);
-        self.max_run_time_seconds = self
-            .max_run_time_seconds
-            .max(other.max_run_time_seconds);
-        self.max_result_bytes = self
-            .max_result_bytes
-            .max(other.max_result_bytes);
+        self.max_together_branches = self.max_together_branches.max(other.max_together_branches);
+        self.max_repeat_attempts = self.max_repeat_attempts.max(other.max_repeat_attempts);
+        self.max_run_time_seconds = self.max_run_time_seconds.max(other.max_run_time_seconds);
+        self.max_result_bytes = self.max_result_bytes.max(other.max_result_bytes);
         self.max_total_slots_written = self
             .max_total_slots_written
             .max(other.max_total_slots_written);
     }
 
     pub fn multiply_loop(&mut self, iterations: u64) {
-        self.max_steps_executable = self
-            .max_steps_executable
-            .saturating_mul(iterations);
-        self.max_action_tickets = self
-            .max_action_tickets
-            .saturating_mul(iterations);
-        self.max_parallel_in_flight = self
-            .max_parallel_in_flight
-            .saturating_mul(iterations);
-        self.max_retries_per_action = self
-            .max_retries_per_action
-            .saturating_mul(iterations);
-        self.max_gather_pages = self
-            .max_gather_pages
-            .saturating_mul(iterations);
-        self.max_gather_items = self
-            .max_gather_items
-            .saturating_mul(iterations);
-        self.max_for_each_iterations = self
-            .max_for_each_iterations
-            .saturating_mul(iterations);
-        self.max_together_branches = self
-            .max_together_branches
-            .saturating_mul(iterations);
-        self.max_repeat_attempts = self
-            .max_repeat_attempts
-            .saturating_mul(iterations);
-        self.max_run_time_seconds = self
-            .max_run_time_seconds
-            .saturating_mul(iterations);
-        self.max_result_bytes = self
-            .max_result_bytes
-            .saturating_mul(iterations);
-        self.max_total_slots_written = self
-            .max_total_slots_written
-            .saturating_mul(iterations);
+        self.max_steps_executable = self.max_steps_executable.saturating_mul(iterations);
+        self.max_action_tickets = self.max_action_tickets.saturating_mul(iterations);
+        self.max_parallel_in_flight = self.max_parallel_in_flight.saturating_mul(iterations);
+        self.max_retries_per_action = self.max_retries_per_action.saturating_mul(iterations);
+        self.max_gather_pages = self.max_gather_pages.saturating_mul(iterations);
+        self.max_gather_items = self.max_gather_items.saturating_mul(iterations);
+        self.max_for_each_iterations = self.max_for_each_iterations.saturating_mul(iterations);
+        self.max_together_branches = self.max_together_branches.saturating_mul(iterations);
+        self.max_repeat_attempts = self.max_repeat_attempts.saturating_mul(iterations);
+        self.max_run_time_seconds = self.max_run_time_seconds.saturating_mul(iterations);
+        self.max_result_bytes = self.max_result_bytes.saturating_mul(iterations);
+        self.max_total_slots_written = self.max_total_slots_written.saturating_mul(iterations);
     }
 
     pub fn within_policy(&self, policy: &PolicyBounds) -> Vec<String> {

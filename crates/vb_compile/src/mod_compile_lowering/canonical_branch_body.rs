@@ -1,14 +1,16 @@
 //! Scoped lexical bodies. Bindings never escape their branch or loop body.
 
 use super::*;
-use std::collections::{HashMap, HashSet};
-use vb_core::{ActionId, SlotIdx};
+#[cfg(test)]
+use std::collections::HashMap;
+use vb_core::SlotIdx;
 use vb_expr::expr_typecheck::ExprType;
 
+#[path = "branch_bindings.rs"]
+mod bindings;
 #[path = "generic_body_values.rs"]
 mod body_values;
-#[path = "canonical_nested.rs"]
-mod nested;
+use bindings::BranchBindings;
 
 pub(super) fn emit_scoped_branch_body(
     body: &[crate::StepAst],
@@ -117,147 +119,6 @@ fn body_id(
 
 fn index_error(value: usize) -> CompileErrors {
     CompileErrors(vec![CompileError::StepIndexOutOfRange { value }])
-}
-
-#[derive(Clone, Copy)]
-struct BodyTarget {
-    id: StepIdx,
-    next: StepIdx,
-    slot: SlotIdx,
-}
-
-struct BranchBindings {
-    outputs: HashMap<String, SlotIdx>,
-    steps: HashMap<String, SlotIdx>,
-    types: HashMap<SlotIdx, ExprType>,
-    local_outputs: HashSet<String>,
-    local_steps: HashSet<String>,
-    strict_unknown: bool,
-}
-
-impl BranchBindings {
-    fn new(scope: CanonicalScope<'_>, strict_unknown: bool) -> Self {
-        Self {
-            outputs: scope.outputs.clone(),
-            steps: scope.step_outputs.clone(),
-            types: scope.slot_types.clone(),
-            local_outputs: HashSet::new(),
-            local_steps: HashSet::new(),
-            strict_unknown,
-        }
-    }
-
-    fn view(&self) -> CanonicalScope<'_> {
-        CanonicalScope {
-            outputs: &self.outputs,
-            step_outputs: &self.steps,
-            slot_types: &self.types,
-        }
-    }
-
-    fn type_of(&self, slot: SlotIdx) -> Option<ExprType> {
-        self.types.get(&slot).copied()
-    }
-
-    fn lower(
-        &mut self,
-        step: &crate::StepAst,
-        id: StepIdx,
-        next: StepIdx,
-        names: &[Box<str>],
-        builder: &mut SlotCompiler,
-    ) -> Result<Option<SlotIdx>, CompileErrors> {
-        if !self.local_steps.insert(step.id.clone()) {
-            return Err(CompileErrors(vec![CompileError::DuplicateStepId {
-                id: step.id.clone().into(),
-            }]));
-        }
-        if !matches!(
-            step.primitive,
-            crate::StepPrimitive::Set { .. } | crate::StepPrimitive::Do { .. }
-        ) {
-            return nested::lower_nested(step, id, next, self, names, builder);
-        }
-        let slot = builder
-            .allocate_slot()
-            .map_err(|e| CompileErrors(vec![e]))?;
-        let target = BodyTarget { id, next, slot };
-        match &step.primitive {
-            crate::StepPrimitive::Set { output, value } => {
-                self.lower_set(output, value, target, builder)?
-            }
-            crate::StepPrimitive::Do { action, input } => {
-                self.lower_do(action, input, target, builder)?
-            }
-            other => {
-                return Err(CompileErrors(vec![
-                    CompileError::UnsupportedStepPrimitive {
-                        step: id.as_usize(),
-                        primitive: canonical_primitive_name(other),
-                    },
-                ]));
-            }
-        }
-        self.steps.insert(step.id.clone(), slot);
-        Ok(Some(slot))
-    }
-
-    fn lower_set(
-        &mut self,
-        output: &str,
-        value: &str,
-        target: BodyTarget,
-        builder: &mut SlotCompiler,
-    ) -> Result<(), CompileErrors> {
-        validate_output_alias(output).map_err(|e| CompileErrors(vec![e]))?;
-        if !self.local_outputs.insert(output.to_owned()) {
-            return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-                name: output.into(),
-            }]));
-        }
-        if self.strict_unknown {
-            validate_for_each_expression(value, self.view())?;
-        }
-        let inferred = lower_canonical_set_expression(
-            target.id,
-            target.slot,
-            value,
-            Some(target.next),
-            self.view(),
-            builder,
-        )?;
-        self.outputs.insert(output.to_owned(), target.slot);
-        self.types.insert(target.slot, inferred);
-        Ok(())
-    }
-
-    fn lower_do(
-        &self,
-        action: &str,
-        input: &str,
-        target: BodyTarget,
-        builder: &mut SlotCompiler,
-    ) -> Result<(), CompileErrors> {
-        let action = action.parse::<u16>().map_err(|_| {
-            CompileErrors(vec![CompileError::StepFieldShape {
-                step: target.id.as_usize(),
-                field: "action",
-                expected: "numeric action ID (u16)",
-            }])
-        })?;
-        let input = resolve_slot_reference(input, &self.outputs, &self.steps)
-            .map_err(|e| CompileErrors(vec![e]))?;
-        let node = lower_do(
-            target.id,
-            ActionId::new(action),
-            input,
-            Some(target.slot),
-            Some(target.next),
-            builder,
-        );
-        builder.push_node(node);
-        Ok(())
-    }
 }
 
 fn reject_body_controls(step: &crate::StepAst, index: usize) -> Result<(), CompileErrors> {

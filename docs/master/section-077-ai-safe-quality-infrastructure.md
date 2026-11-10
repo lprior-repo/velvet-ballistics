@@ -123,7 +123,7 @@ model_notes:
   summary: "Implemented SetConst typed error behavior."
 files_changed:
   - crates/vb_core/src/engine.rs
-  - crates/vb_core/tests/engine.rs
+  - crates/vb_core/src/engine/tests/mod.rs
 public_api_changed: false
 hot_path_changed: true
 commands:
@@ -208,7 +208,7 @@ topic: engine
 relevant_files:
   - crates/vb_core/src/engine.rs
   - crates/vb_core/src/frame.rs
-  - crates/vb_core/src/compiled.rs
+  - crates/vb_core/src/workflow/mod.rs
   - crates/vb_core/src/errors.rs
 contracts:
   - "No unsupported primitive may silently continue."
@@ -460,7 +460,7 @@ areas:
   - durability
   - public_api
 files_changed:
-  - crates/vb_runtime/src/shard.rs
+  - crates/vb_runtime/src/shard/mod.rs
 required_checks:
   - ai-fast
   - loom:shutdown_drain

@@ -1,14 +1,28 @@
 #![forbid(unsafe_code)]
 //! Expression evaluation operations for replay.
 
+use core::cmp::Ordering;
+
 use crate::errors::EngineError;
 use crate::frame::RunFrame;
 use crate::ids::{AccessorIdx, ConstIdx, SlotIdx, StepIdx};
+use crate::numeric::{self, NumericError};
 use crate::value::{SlotValue, Taint, join_taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{CompiledWorkflow, ExprOp};
 
+use super::helpers::eval_helper_op;
 use super::{ReplayError, ReplayExprStack};
+
+fn failed() -> ReplayError {
+    ReplayError::ExpressionEvalFailed {
+        step: StepIdx::ZERO,
+    }
+}
+
+fn map_numeric(_: NumericError) -> ReplayError {
+    failed()
+}
 
 pub fn eval_replay_op(
     plan: &CompiledWorkflow,
@@ -33,13 +47,11 @@ pub fn eval_replay_op(
         ExprOp::Sub => eval_sub(stack),
         ExprOp::Mul => eval_mul(stack),
         ExprOp::Div => eval_div(stack),
-        ExprOp::Gt => eval_gt(stack),
-        ExprOp::Gte => eval_gte(stack),
-        ExprOp::Lt => eval_lt(stack),
-        ExprOp::Lte => eval_lte(stack),
-        _ => Err(ReplayError::Internal {
-            reason: "unsupported expression op for replay",
-        }),
+        ExprOp::Gt => eval_cmp(stack, is_greater),
+        ExprOp::Gte => eval_cmp(stack, is_greater_or_equal),
+        ExprOp::Lt => eval_cmp(stack, is_less),
+        ExprOp::Lte => eval_cmp(stack, is_less_or_equal),
+        _ => eval_helper_op(op, stack, store),
     }
 }
 
@@ -127,63 +139,49 @@ fn eval_not(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
 }
 
 pub(crate) fn eval_add(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
-    let (left, right) = pop_i64_pair(stack)?;
-    let result = left
-        .checked_add(right)
-        .ok_or(ReplayError::ExpressionEvalFailed {
-            step: StepIdx::ZERO,
-        })?;
-    stack.push(SlotValue::I64(result))
+    let (left, right) = pop_pair(stack)?;
+    let result = numeric::add(left, right).map_err(map_numeric)?;
+    stack.push(result)
 }
 
 pub(crate) fn eval_sub(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
-    let (left, right) = pop_i64_pair(stack)?;
-    let result = left
-        .checked_sub(right)
-        .ok_or(ReplayError::ExpressionEvalFailed {
-            step: StepIdx::ZERO,
-        })?;
-    stack.push(SlotValue::I64(result))
+    let (left, right) = pop_pair(stack)?;
+    let result = numeric::sub(left, right).map_err(map_numeric)?;
+    stack.push(result)
 }
 
 pub(crate) fn eval_mul(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
-    let (left, right) = pop_i64_pair(stack)?;
-    let result = left
-        .checked_mul(right)
-        .ok_or(ReplayError::ExpressionEvalFailed {
-            step: StepIdx::ZERO,
-        })?;
-    stack.push(SlotValue::I64(result))
+    let (left, right) = pop_pair(stack)?;
+    let result = numeric::mul(left, right).map_err(map_numeric)?;
+    stack.push(result)
 }
 
 fn eval_div(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
-    let (left, right) = pop_i64_pair(stack)?;
-    let result = left
-        .checked_div(right)
-        .ok_or(ReplayError::ExpressionEvalFailed {
-            step: StepIdx::ZERO,
-        })?;
-    stack.push(SlotValue::I64(result))
+    let (left, right) = pop_pair(stack)?;
+    let result = numeric::div(left, right).map_err(map_numeric)?;
+    stack.push(result)
 }
 
-fn eval_gt(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
-    let (left, right) = pop_i64_pair(stack)?;
-    stack.push(SlotValue::Bool(left > right))
+fn eval_cmp(stack: &mut ReplayExprStack, accept: fn(Ordering) -> bool) -> Result<(), ReplayError> {
+    let (left, right) = pop_pair(stack)?;
+    let ordering = numeric::compare(left, right).map_err(map_numeric)?;
+    stack.push(SlotValue::Bool(accept(ordering)))
 }
 
-fn eval_gte(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
-    let (left, right) = pop_i64_pair(stack)?;
-    stack.push(SlotValue::Bool(left >= right))
+fn is_greater(ordering: Ordering) -> bool {
+    ordering == Ordering::Greater
 }
 
-fn eval_lt(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
-    let (left, right) = pop_i64_pair(stack)?;
-    stack.push(SlotValue::Bool(left < right))
+fn is_greater_or_equal(ordering: Ordering) -> bool {
+    matches!(ordering, Ordering::Greater | Ordering::Equal)
 }
 
-fn eval_lte(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
-    let (left, right) = pop_i64_pair(stack)?;
-    stack.push(SlotValue::Bool(left <= right))
+fn is_less(ordering: Ordering) -> bool {
+    ordering == Ordering::Less
+}
+
+fn is_less_or_equal(ordering: Ordering) -> bool {
+    matches!(ordering, Ordering::Less | Ordering::Equal)
 }
 
 fn eval_accessor_for_replay(

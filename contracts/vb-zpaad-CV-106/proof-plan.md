@@ -44,7 +44,7 @@ under the worktree's nightly toolchain.
   `vb_core` (per AGENTS.md: "Bulky or stale harness groups must be
   behind package features, for example `vb_core/kani-diagnostic-codes`").
   The harness lives in
-  `crates/vb_core/src/kani/kani_span_try_new.rs` and is wired up via
+  `crates/vb_core/src/verification/kani/diagnostic/kani_span_try_new.rs` and is wired up via
   `lib.rs` behind `#[cfg(all(kani, feature = "kani-diagnostic-codes"))]`.
 - **proptest** lives in `crates/vb_core/tests/proptest_span_try_new.rs`
   and is part of the default test target, so it runs under

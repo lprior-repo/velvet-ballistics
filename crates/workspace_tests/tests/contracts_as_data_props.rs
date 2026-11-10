@@ -21,7 +21,7 @@ use proptest::proptest;
 mod contracts_proptest;
 
 // ============================================================
-// Domain model — mirrors xtask/src/contracts.rs
+// Domain model — mirrors xtask/src/contracts/
 // ============================================================
 
 /// ContractKind mirrors the 6 valid enum values.
@@ -93,7 +93,7 @@ impl proptest::arbitrary::Arbitrary for ContractKind {
     }
 }
 
-/// parse_contract_kind mirrors xtask/src/contracts.rs::parse_contract_kind
+/// parse_contract_kind mirrors xtask/src/contracts/model.rs::ContractKind::parse
 pub fn parse_contract_kind(raw: &str) -> Result<ContractKind, String> {
     match raw {
         "cli_envelope" => Ok(ContractKind::CliEnvelope),
@@ -106,7 +106,7 @@ pub fn parse_contract_kind(raw: &str) -> Result<ContractKind, String> {
     }
 }
 
-/// parse_schema_version mirrors xtask/src/contracts.rs::parse_schema_version
+/// parse_schema_version mirrors xtask/src/contracts/version.rs::parse_schema_version
 pub fn parse_schema_version(raw: &str) -> Result<String, String> {
     if raw.is_empty() {
         return Err("Missing schema version".to_string());
@@ -132,7 +132,7 @@ pub fn parse_schema_version(raw: &str) -> Result<String, String> {
     Ok(raw.to_string())
 }
 
-/// parse_vet_exit_code mirrors xtask/src/contracts.rs::parse_vet_exit_code
+/// parse_vet_exit_code mirrors xtask/src/contracts/version.rs::parse_vet_exit_code
 pub fn parse_vet_exit_code(exit_code: i32) -> Result<(), String> {
     if exit_code == 0 {
         Ok(())
@@ -141,7 +141,7 @@ pub fn parse_vet_exit_code(exit_code: i32) -> Result<(), String> {
     }
 }
 
-/// compare_semver mirrors xtask/src/contracts.rs::compare_semver
+/// compare_semver mirrors xtask/src/contracts/version.rs::compare_semver
 pub fn compare_semver(a: &str, b: &str) -> Result<std::cmp::Ordering, String> {
     let parse_parts = |s: &str| -> Option<(u64, u64, u64)> {
         let parts: Vec<&str> = s.split('.').collect();

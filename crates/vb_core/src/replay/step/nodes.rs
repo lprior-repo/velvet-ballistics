@@ -96,20 +96,6 @@ pub(super) fn replay_copy(
     Ok(ReplayAction::Continue(next))
 }
 
-pub(super) fn replay_ask_resume(
-    run: &mut RunFrame,
-    node: &CompiledNode,
-    answer: SlotIdx,
-) -> Result<ReplayAction, ReplayError> {
-    let value = *run.read_slot(answer).map_err(engine_to_replay_err)?;
-    let taint = run.read_taint(answer).map_err(engine_to_replay_err)?;
-    if let Some(output) = node.output.slot() {
-        run.write_slot_with_taint(output, value, taint)
-            .map_err(engine_to_replay_err)?;
-    }
-    Ok(ReplayAction::Continue(advance_to_next(run, node)?))
-}
-
 pub(super) fn replay_eval_expr(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,

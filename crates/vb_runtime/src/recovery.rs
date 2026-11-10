@@ -14,7 +14,8 @@ use vb_storage::recovery::{
 
 pub use full::{
     NonResumableRecoveryProduct, RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind,
-    ResumableRecoveryProduct, RuntimeRecoveryProduct, SummaryRecoveryProduct,
+    RecoveredTimerSuspension, ResumableRecoveryProduct, RuntimeRecoveryProduct,
+    SummaryRecoveryProduct,
 };
 pub(crate) use full::{
     RecoveredAdmissionContext, RecoveredAdmissionEvidence, RecoveredPendingActionTicket,
@@ -25,6 +26,7 @@ pub(crate) use full::{
     validate_recovered_admission_evidence,
 };
 
+pub(crate) use input_binding::{RecoveredRetainedInputs, load_retained_inputs_for_recovery};
 pub use input_binding::{
     admission_is_new_bound, validate_input_record_artifact, validate_input_record_binding,
     validate_input_record_workflow,

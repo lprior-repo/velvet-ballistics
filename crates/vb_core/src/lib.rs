@@ -30,6 +30,7 @@ pub mod input_schema;
 pub mod input_validation;
 pub mod limits;
 pub mod manual_gate;
+pub mod numeric;
 pub mod policy;
 pub mod replay;
 pub mod root_bundle;

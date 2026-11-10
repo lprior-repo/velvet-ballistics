@@ -73,7 +73,7 @@ pub(super) fn validate(
 
 /// Derives the nested activation entry map from validated loop regions.
 ///
-/// Returns a per-step boolean array where `true` blocks nested Starts and their validated
+/// Returns a per-step boolean array where `true` marks nested Starts and their validated
 /// inclusive body/control intervals. The array length matches the node count.
 pub(super) fn nested_activation_map(
     parts: &WorkflowParts,

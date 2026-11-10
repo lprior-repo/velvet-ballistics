@@ -1,9 +1,18 @@
 #![forbid(unsafe_code)]
 
+//! Nested loop activation: inner loops execute and outer rearm resets them.
+//!
+//! The fixture nests a `RepeatStart` region (steps 2..=5) inside an outer
+//! `ForEachStart` region (steps 1..=6). These tests prove the runtime
+//! activates the nested start, runs the inner region per outer item, and
+//! resets the whole inner region when the outer latch rearms.
+
 mod fixture;
 use super::common::mkr;
 use crate::engine::drive::drive_deterministic_full;
-use crate::engine::types::{EvidenceCollector, RetryPolicy, RuntimeEngineError, RuntimeSignal};
+use crate::engine::types::{
+    EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineError, RuntimeSignal,
+};
 use crate::primitives::collect::CollectStates;
 use fixture::build_nested_loop_workflow;
 use vb_core::capability::CapabilitySet;
@@ -41,22 +50,8 @@ fn drive_phase(
     )
 }
 
-fn expect_core_reason(
-    r: Result<RuntimeSignal, RuntimeEngineError>,
-    reason: &str,
-) -> Result<(), String> {
-    match r {
-        Err(RuntimeEngineError::Core(EngineError::InvalidCompiledWorkflow { reason: actual }))
-            if actual == reason =>
-        {
-            Ok(())
-        }
-        other => Err(format!("unexpected error: {other:?}")),
-    }
-}
-
 fn setup_run_and_store() -> Result<(RunFrame, ValueStore), String> {
-    let run = checked(mkr(8, 6))?;
+    let run = mkr(8, 6).map_err(|e| format!("{e:?}"))?;
     let store = ValueStore::new();
     Ok((run, store))
 }
@@ -65,14 +60,62 @@ fn write_source_list(
     run: &mut RunFrame,
     store: &mut ValueStore,
 ) -> Result<vb_core::ids::ListId, String> {
-    let list_id = checked(store.insert_list(Box::from([SlotValue::I64(7), SlotValue::I64(9)])))?;
-    checked(run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list_id), Taint::Secret))?;
+    let list_id = store
+        .insert_list(Box::from([SlotValue::I64(7), SlotValue::I64(9)]))
+        .map_err(|e| format!("{e:?}"))?;
+    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list_id), Taint::Secret)
+        .map_err(|e| format!("{e:?}"))?;
     Ok(list_id)
+}
+
+fn start_count(evidence: &[EvidenceEvent], step: u16) -> usize {
+    evidence
+        .iter()
+        .filter(|e| {
+            matches!(
+                e,
+                EvidenceEvent::StepStarted { step: s } if s.get() == step
+            )
+        })
+        .count()
+}
+
+fn drive_enter_inner(
+    take_inner: bool,
+) -> Result<
+    (
+        CompiledWorkflow,
+        RunFrame,
+        ValueStore,
+        EvidenceCollector,
+        CollectStates,
+    ),
+    String,
+> {
+    let wf = build_nested_loop_workflow()?;
+    let source_before = wf.to_parts();
+    let (mut run, mut store) = setup_run_and_store()?;
+    write_source_list(&mut run, &mut store)?;
+    run.write_slot_with_taint(SlotIdx::new(5), SlotValue::Bool(!take_inner), Taint::Clean)
+        .map_err(|e| format!("{e:?}"))?;
+    let mut evidence = EvidenceCollector::new();
+    let mut collect = CollectStates::new();
+    checked(drive_phase(
+        &wf,
+        &mut run,
+        &mut store,
+        &mut evidence,
+        &mut collect,
+        2,
+    ))?;
+    assert_eq!(run.pc(), StepIdx::new(2));
+    assert_eq!(wf.to_parts(), source_before);
+    Ok((wf, run, store, evidence, collect))
 }
 
 #[test]
 fn test_skipped_pending_nested_region_allows_outer_rearm() -> Result<(), String> {
-    let wf = checked(build_nested_loop_workflow())?;
+    let wf = build_nested_loop_workflow()?;
     let source_before = wf.to_parts();
     let (mut run, mut store) = setup_run_and_store()?;
     let source_list_id = write_source_list(&mut run, &mut store)?;
@@ -80,40 +123,48 @@ fn test_skipped_pending_nested_region_allows_outer_rearm() -> Result<(), String>
 
     let mut evidence = EvidenceCollector::new();
     let mut collect = CollectStates::new();
-    let signal = checked(drive_phase(
-        &wf,
-        &mut run,
-        &mut store,
-        &mut evidence,
-        &mut collect,
-        3,
-    ))?;
+    let signal = drive_phase(&wf, &mut run, &mut store, &mut evidence, &mut collect, 3)
+        .map_err(|e| format!("{e:?}"))?;
     assert_eq!(signal, RuntimeSignal::StepBudgetExhausted);
     assert_eq!(run.pc(), StepIdx::new(1));
 
     assert_eq!(
-        checked(run.step_state(StepIdx::new(0)))?,
+        run.step_state(StepIdx::new(0))
+            .map_err(|e| format!("{e:?}"))?,
         StepState::Succeeded
     );
     for id in [1u16, 2, 3, 4, 5, 6] {
         assert_eq!(
-            checked(run.step_state(StepIdx::new(id)))?,
+            run.step_state(StepIdx::new(id))
+                .map_err(|e| format!("{e:?}"))?,
             StepState::Pending
         );
     }
 
-    let item = checked(run.read_slot(SlotIdx::new(1)))?;
+    let item = run
+        .read_slot(SlotIdx::new(1))
+        .map_err(|e| format!("{e:?}"))?;
     assert_eq!(*item, SlotValue::I64(9));
-    assert_eq!(checked(run.read_taint(SlotIdx::new(1)))?, Taint::Secret);
+    assert_eq!(
+        run.read_taint(SlotIdx::new(1))
+            .map_err(|e| format!("{e:?}"))?,
+        Taint::Secret
+    );
 
-    let iter = checked(run.read_slot(SlotIdx::new(2)))?;
+    let iter = run
+        .read_slot(SlotIdx::new(2))
+        .map_err(|e| format!("{e:?}"))?;
     let iter_id = match *iter {
         SlotValue::List(id) => id,
-        other => return Err(format!("expected List, got {:?}", other)),
+        other => return Err(format!("expected List, got {other:?}")),
     };
-    assert_eq!(checked(run.read_taint(SlotIdx::new(2)))?, Taint::Secret);
+    assert_eq!(
+        run.read_taint(SlotIdx::new(2))
+            .map_err(|e| format!("{e:?}"))?,
+        Taint::Secret
+    );
 
-    let iter_items = checked(store.list(iter_id))?;
+    let iter_items = store.list(iter_id).map_err(|e| format!("{e:?}"))?;
     assert_eq!(
         iter_items,
         &[
@@ -122,15 +173,21 @@ fn test_skipped_pending_nested_region_allows_outer_rearm() -> Result<(), String>
         ]
     );
 
-    let source = checked(run.read_slot(SlotIdx::new(0)))?;
+    let source = run
+        .read_slot(SlotIdx::new(0))
+        .map_err(|e| format!("{e:?}"))?;
     let source_id = match *source {
         SlotValue::List(id) => id,
-        other => return Err(format!("expected List, got {:?}", other)),
+        other => return Err(format!("expected List, got {other:?}")),
     };
     assert_eq!(source_id, source_list_id);
-    assert_eq!(checked(run.read_taint(SlotIdx::new(0)))?, Taint::Secret);
+    assert_eq!(
+        run.read_taint(SlotIdx::new(0))
+            .map_err(|e| format!("{e:?}"))?,
+        Taint::Secret
+    );
 
-    let source_items = checked(store.list(source_list_id))?;
+    let source_items = store.list(source_list_id).map_err(|e| format!("{e:?}"))?;
     assert_eq!(source_items, &[SlotValue::I64(7), SlotValue::I64(9)]);
     assert_eq!(wf.to_parts(), source_before);
 
@@ -138,117 +195,110 @@ fn test_skipped_pending_nested_region_allows_outer_rearm() -> Result<(), String>
 }
 
 #[test]
-fn test_entered_nested_start_allowed() -> Result<(), String> {
-    let wf = checked(build_nested_loop_workflow())?;
+fn test_entered_nested_start_activates_before_effects() -> Result<(), String> {
+    let (wf, mut run, mut store, mut evidence, mut collect) = drive_enter_inner(true)?;
     let source_before = wf.to_parts();
-    let (mut run, mut store) = setup_run_and_store()?;
-    write_source_list(&mut run, &mut store)?;
-    checked(run.write_slot_with_taint(SlotIdx::new(5), SlotValue::Bool(false), Taint::Clean))?;
-
-    let mut evidence = EvidenceCollector::new();
-    let mut collect = CollectStates::new();
-    let signal = checked(drive_phase(
-        &wf,
-        &mut run,
-        &mut store,
-        &mut evidence,
-        &mut collect,
-        2,
-    ))?;
-    assert_eq!(signal, RuntimeSignal::StepBudgetExhausted);
-    assert_eq!(run.pc(), StepIdx::new(2));
-
     assert!(!evidence.drain().is_empty());
 
-    // Inner loop (RepeatStart at step 2) should now be allowed to execute
-    // because the outer ForEachStart (step 0) has Succeeded.
-    let signal = checked(drive_phase(
-        &wf,
-        &mut run,
-        &mut store,
-        &mut evidence,
-        &mut collect,
-        50,
-    ))?;
-    assert!(matches!(signal, RuntimeSignal::Finished(_)));
-
+    let signal = drive_phase(&wf, &mut run, &mut store, &mut evidence, &mut collect, 1)
+        .map_err(|e| format!("{e:?}"))?;
+    assert_eq!(signal, RuntimeSignal::StepBudgetExhausted);
+    assert_eq!(run.pc(), StepIdx::new(3));
+    assert_eq!(
+        run.step_state(StepIdx::new(2))
+            .map_err(|e| format!("{e:?}"))?,
+        StepState::Succeeded
+    );
     assert_eq!(wf.to_parts(), source_before);
+    assert!(!evidence.drain().is_empty());
+
     Ok(())
 }
 
 #[test]
-fn test_restored_cached_inner_body_and_control_reject_before_effects() -> Result<(), String> {
-    let wf = checked(build_nested_loop_workflow())?;
+fn test_inner_body_and_control_activate() -> Result<(), String> {
+    let (wf, mut run, mut store, mut evidence, mut collect) = drive_enter_inner(true)?;
     let source_before = wf.to_parts();
-    let (mut run, mut store) = setup_run_and_store()?;
-    write_source_list(&mut run, &mut store)?;
-    checked(run.write_slot_with_taint(SlotIdx::new(5), SlotValue::Bool(false), Taint::Clean))?;
-
-    let mut evidence = EvidenceCollector::new();
-    let mut collect = CollectStates::new();
-    checked(drive_phase(
-        &wf,
-        &mut run,
-        &mut store,
-        &mut evidence,
-        &mut collect,
-        2,
-    ))?;
-    assert_eq!(run.pc(), StepIdx::new(2));
-
     assert!(!evidence.drain().is_empty());
-    for step_id in [3u16, 4, 5] {
-        let mut test_run = run.clone();
-        checked(test_run.set_pc(StepIdx::new(step_id)))?;
 
-        let before = test_run.clone();
-        let result = drive_phase(
-            &wf,
-            &mut test_run,
-            &mut store,
-            &mut evidence,
-            &mut collect,
-            1,
+    let signal = drive_phase(&wf, &mut run, &mut store, &mut evidence, &mut collect, 7)
+        .map_err(|e| format!("{e:?}"))?;
+    assert_eq!(signal, RuntimeSignal::StepBudgetExhausted);
+    assert_eq!(run.pc(), StepIdx::new(6));
+    for id in [2u16, 3, 4, 5] {
+        assert_eq!(
+            run.step_state(StepIdx::new(id))
+                .map_err(|e| format!("{e:?}"))?,
+            StepState::Succeeded
         );
-        expect_core_reason(result, "containing loop region start not succeeded")?;
-        assert_eq!(test_run, before);
-        assert_eq!(wf.to_parts(), source_before);
-        assert!(evidence.drain().is_empty());
     }
+    let events = evidence.drain();
+    assert_eq!(start_count(&events, 2), 1);
+    assert_eq!(start_count(&events, 3), 2);
+    assert_eq!(start_count(&events, 5), 2);
+    assert_eq!(wf.to_parts(), source_before);
+
+    Ok(())
+}
+
+#[test]
+fn test_outer_rearm_resets_inner_region_between_items() -> Result<(), String> {
+    let (wf, mut run, mut store, mut evidence, mut collect) = drive_enter_inner(true)?;
+    let source_before = wf.to_parts();
+    assert!(!evidence.drain().is_empty());
+
+    let signal = drive_phase(&wf, &mut run, &mut store, &mut evidence, &mut collect, 8)
+        .map_err(|e| format!("{e:?}"))?;
+    assert_eq!(signal, RuntimeSignal::StepBudgetExhausted);
+    assert_eq!(run.pc(), StepIdx::new(1));
+    // The outer rearm interval is inclusive of its latch: the whole inner
+    // region plus the outer body and latch return to Pending.
+    for id in [1u16, 2, 3, 4, 5, 6] {
+        assert_eq!(
+            run.step_state(StepIdx::new(id))
+                .map_err(|e| format!("{e:?}"))?,
+            StepState::Pending
+        );
+    }
+    let events = evidence.drain();
+    assert_eq!(start_count(&events, 2), 1);
+    assert_eq!(start_count(&events, 3), 2);
+    assert_eq!(start_count(&events, 5), 2);
+    assert_eq!(start_count(&events, 6), 1);
+    assert_eq!(wf.to_parts(), source_before);
+
+    Ok(())
+}
+
+#[test]
+fn test_nested_loops_complete_once_per_outer_item() -> Result<(), String> {
+    let (wf, mut run, mut store, mut evidence, mut collect) = drive_enter_inner(true)?;
+    let source_before = wf.to_parts();
+    assert!(!evidence.drain().is_empty());
+
+    let signal = drive_phase(&wf, &mut run, &mut store, &mut evidence, &mut collect, 100)
+        .map_err(|e| format!("{e:?}"))?;
+    assert!(matches!(signal, RuntimeSignal::Finished(_)));
+    let events = evidence.drain();
+    assert_eq!(start_count(&events, 1), 1);
+    assert_eq!(start_count(&events, 2), 2);
+    assert_eq!(start_count(&events, 3), 4);
+    assert_eq!(start_count(&events, 5), 4);
+    assert_eq!(start_count(&events, 6), 2);
+    assert_eq!(wf.to_parts(), source_before);
 
     Ok(())
 }
 
 #[test]
 fn test_zero_budget_preserves_precedence_at_nested_start() -> Result<(), String> {
-    let wf = checked(build_nested_loop_workflow())?;
+    let (wf, mut run, mut store, mut evidence, mut collect) = drive_enter_inner(true)?;
     let source_before = wf.to_parts();
-    let (mut run, mut store) = setup_run_and_store()?;
-    write_source_list(&mut run, &mut store)?;
-    checked(run.write_slot_with_taint(SlotIdx::new(5), SlotValue::Bool(false), Taint::Clean))?;
-
-    let mut evidence = EvidenceCollector::new();
-    let mut collect = CollectStates::new();
-    checked(drive_phase(
-        &wf,
-        &mut run,
-        &mut store,
-        &mut evidence,
-        &mut collect,
-        2,
-    ))?;
-    assert_eq!(run.pc(), StepIdx::new(2));
-
     assert!(!evidence.drain().is_empty());
+
     let before = run.clone();
-    let signal = checked(drive_phase(
-        &wf,
-        &mut run,
-        &mut store,
-        &mut evidence,
-        &mut collect,
-        0,
-    ))?;
+    let signal = drive_phase(&wf, &mut run, &mut store, &mut evidence, &mut collect, 0)
+        .map_err(|e| format!("{e:?}"))?;
     assert_eq!(signal, RuntimeSignal::StepBudgetExhausted);
     assert_eq!(run, before);
     assert_eq!(wf.to_parts(), source_before);
@@ -384,5 +434,101 @@ fn completed_outer_control_cannot_authorize_an_unfinished_inner_repeat() -> Resu
         ))
     ));
     assert_eq!(run, before);
+    Ok(())
+}
+
+fn expect_core_reason(
+    r: Result<RuntimeSignal, RuntimeEngineError>,
+    reason: &str,
+) -> Result<(), String> {
+    match r {
+        Err(RuntimeEngineError::Core(EngineError::InvalidCompiledWorkflow { reason: actual }))
+            if actual == reason =>
+        {
+            Ok(())
+        }
+        other => Err(format!("unexpected error: {other:?}")),
+    }
+}
+
+#[test]
+fn test_entered_nested_start_allowed() -> Result<(), String> {
+    let wf = checked(build_nested_loop_workflow())?;
+    let source_before = wf.to_parts();
+    let (mut run, mut store) = setup_run_and_store()?;
+    write_source_list(&mut run, &mut store)?;
+    checked(run.write_slot_with_taint(SlotIdx::new(5), SlotValue::Bool(false), Taint::Clean))?;
+
+    let mut evidence = EvidenceCollector::new();
+    let mut collect = CollectStates::new();
+    let signal = checked(drive_phase(
+        &wf,
+        &mut run,
+        &mut store,
+        &mut evidence,
+        &mut collect,
+        2,
+    ))?;
+    assert_eq!(signal, RuntimeSignal::StepBudgetExhausted);
+    assert_eq!(run.pc(), StepIdx::new(2));
+
+    assert!(!evidence.drain().is_empty());
+
+    // Inner loop (RepeatStart at step 2) should now be allowed to execute
+    // because the outer ForEachStart (step 0) has Succeeded.
+    let signal = checked(drive_phase(
+        &wf,
+        &mut run,
+        &mut store,
+        &mut evidence,
+        &mut collect,
+        50,
+    ))?;
+    assert!(matches!(signal, RuntimeSignal::Finished(_)));
+
+    assert_eq!(wf.to_parts(), source_before);
+    Ok(())
+}
+
+#[test]
+fn test_restored_cached_inner_body_and_control_reject_before_effects() -> Result<(), String> {
+    let wf = checked(build_nested_loop_workflow())?;
+    let source_before = wf.to_parts();
+    let (mut run, mut store) = setup_run_and_store()?;
+    write_source_list(&mut run, &mut store)?;
+    checked(run.write_slot_with_taint(SlotIdx::new(5), SlotValue::Bool(false), Taint::Clean))?;
+
+    let mut evidence = EvidenceCollector::new();
+    let mut collect = CollectStates::new();
+    checked(drive_phase(
+        &wf,
+        &mut run,
+        &mut store,
+        &mut evidence,
+        &mut collect,
+        2,
+    ))?;
+    assert_eq!(run.pc(), StepIdx::new(2));
+
+    assert!(!evidence.drain().is_empty());
+    for step_id in [3u16, 4, 5] {
+        let mut test_run = run.clone();
+        checked(test_run.set_pc(StepIdx::new(step_id)))?;
+
+        let before = test_run.clone();
+        let result = drive_phase(
+            &wf,
+            &mut test_run,
+            &mut store,
+            &mut evidence,
+            &mut collect,
+            1,
+        );
+        expect_core_reason(result, "containing loop region start not succeeded")?;
+        assert_eq!(test_run, before);
+        assert_eq!(wf.to_parts(), source_before);
+        assert!(evidence.drain().is_empty());
+    }
+
     Ok(())
 }

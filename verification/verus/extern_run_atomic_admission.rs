@@ -18,7 +18,7 @@
 // `verification_proof_core` at crates/vb_storage/src/admission/proof.rs:103-118,
 // with only bounded_claimed and idempotency_verified_claimed set by
 // `prepare_with_profile` at
-// crates/vb_storage/src/admission/verification.rs:26-52).
+// crates/vb_storage/src/admission/verification.rs:30-56).
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
