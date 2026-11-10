@@ -1051,7 +1051,7 @@ verus_registry:
     production: crates/vb_runtime/src/admission.rs
 
   - id: PO-VERUS-017
-    description: "Idempotency decision table (vb-ko29.2; VERUS-DECISION-001..005, VERUS-PARITY-003) bound to production is_contract_idempotency_accepted at crates/vb_storage/src/admission.rs:427-441 and is_statically_idempotent_contract at crates/vb_validate/src/idempotency_contract.rs:140-187."
+    description: "Idempotency decision table (vb-ko29.2; VERUS-DECISION-001..005, VERUS-PARITY-003) bound to production is_contract_idempotency_accepted at crates/vb_storage/src/admission.rs:165-179 and is_statically_idempotent_contract at crates/vb_validate/src/idempotency_contract.rs:140-187."
     verus: verification/verus/idempotency_decision.rs
     production: crates/vb_storage/src/admission.rs
 

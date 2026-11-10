@@ -11,7 +11,7 @@
 //                + `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:83-189`
 // Production source coverage:
 //   - `WorkflowDigest`           <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255
-//   - `AcceptedArtifact`         <- crates/vb_storage/src/admission.rs:203-237
+//   - `AcceptedArtifact`         <- crates/vb_storage/src/admission.rs:37-73
 //   - `RunAdmission`             <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31
 //   - `RunAdmission::new`        <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:49-66
 //   - `RunAdmission::artifact_digest`

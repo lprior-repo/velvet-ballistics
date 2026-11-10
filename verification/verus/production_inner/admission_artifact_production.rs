@@ -16,11 +16,11 @@
 // Production `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255`
 //   - `vb_core::ids::ActionId`                   (crates/vb_core/src/ids/mod.rs:73)
 //   - `vb_storage::admission::VerificationWarning`
-//                                                 (crates/vb_storage/src/admission.rs:18-25)
-//   - `vb_storage::admission::VerificationProof` (crates/vb_storage/src/admission.rs:65-90)
-//   - `vb_storage::admission::AcceptedArtifact`   (crates/vb_storage/src/admission.rs:203-237)
+//                                                 (crates/vb_storage/src/admission/proof.rs:8-15)
+//   - `vb_storage::admission::VerificationProof` (crates/vb_storage/src/admission/proof.rs:55-80)
+//   - `vb_storage::admission::AcceptedArtifact`   (crates/vb_storage/src/admission.rs:37-73)
 //   - `vb_storage::admission::verification_proof_core`
-//                                                 (crates/vb_storage/src/admission.rs:113-128)
+//                                                 (crates/vb_storage/src/admission/proof.rs:103-118)
 //   - `vb_storage::admission::prepare_with_profile` proof construction
 //                                                 (crates/vb_storage/src/admission/verification.rs:35-38)
 //   - `vb_core::artifact::ObligationKind`        (crates/vb_core/src/artifact.rs:9-30)
@@ -94,10 +94,10 @@ pub struct ActionId(pub u16);
 // Production mirror: vb_storage::admission::VerificationWarning
 // ---------------------------------------------------------------------------
 //
-// Production `crates/vb_storage/src/admission.rs:18-25`
+// Production `crates/vb_storage/src/admission/proof.rs:8-15`
 //
 // Verbatim mirror of `vb_storage::admission::VerificationWarning` at
-// `crates/vb_storage/src/admission.rs:18-25`. Production `message` is
+// `crates/vb_storage/src/admission/proof.rs:8-15`. Production `message` is
 // `Box<str>`; the mirror carries `String`, the same class of projection
 // as the digest. The prepared shape reasons about the warnings by count
 // only; no mirror fn reads a message.
@@ -289,7 +289,7 @@ pub struct PackedArtifactEvidence {
 // ---------------------------------------------------------------------------
 //
 // Verbatim mirror of `vb_storage::admission::VerificationProof` at
-// `crates/vb_storage/src/admission.rs:65-90`. All 12 production fields
+// `crates/vb_storage/src/admission/proof.rs:55-80`. All 12 production fields
 // are mirrored: digest, gate_count, durable, bounded_claimed,
 // taint_safe_claimed, retry_safe_claimed,
 // idempotency_verified_claimed, replayable_claimed, idempotency_keyed,
@@ -314,7 +314,7 @@ pub struct VerificationProof {
 // ---------------------------------------------------------------------------
 //
 // Verbatim mirror of `vb_storage::admission::AcceptedArtifact` at
-// `crates/vb_storage/src/admission.rs:203-237`. The 4 digest fields
+// `crates/vb_storage/src/admission.rs:37-73`. The 4 digest fields
 // + embedded `VerificationProof` are mirrored because those are the
 // only fields the spec reasons about. Opaque payload fields are
 // omitted.
@@ -331,17 +331,17 @@ pub struct AcceptedArtifact {
 //
 // Mirrors the prepared-proof shape production constructs for every
 // admitted artifact: `verification_proof_core` at
-// `crates/vb_storage/src/admission.rs:113-128` forces gate_count 0,
+// `crates/vb_storage/src/admission/proof.rs:103-118` forces gate_count 0,
 // durable false, and every proof flag false (supplied counts and
 // durability are intentionally ignored by `VerificationProof::new` at
-// admission.rs:135-151, which also leaves the idempotency slices and
+// admission/proof.rs:125-141, which also leaves the idempotency slices and
 // warnings empty and the evidence `Unverified`), and
 // `prepare_with_profile` at
 // `crates/vb_storage/src/admission/verification.rs:35-38` then sets
 // exactly `bounded_claimed` and `idempotency_verified_claimed` true
 // and wraps the rebuilt evidence as `Verified` (Legacy profile; the
 // Registered profile wraps as `Packed` instead).
-// `submit_artifact_with_contracts` (admission.rs:354-374) performs no
+// `submit_artifact_with_contracts` (admission.rs:92-112) performs no
 // gate-count or proof-flag validation of its own; the shape is
 // enforced by `verify_accepted_artifact` at
 // `crates/vb_storage/src/admission/verification.rs:56-86`, which
@@ -419,7 +419,7 @@ pub fn digest_eq(a: &WorkflowDigest, b: &WorkflowDigest) -> bool {
 // ---------------------------------------------------------------------------
 //
 // Mirrors `vb_storage::admission::bind_artifact_digest` at
-// `crates/vb_storage/src/admission.rs:179-184`. Returns `true` iff
+// `crates/vb_storage/src/admission/digest.rs:29-34`. Returns `true` iff
 // the artifact's top-level digest equals the verification proof's
 // digest.
 #[verifier::external]

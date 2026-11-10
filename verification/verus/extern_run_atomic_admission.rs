@@ -13,9 +13,9 @@
 // semantics as the production source for accepted-run admission:
 // the prepared-proof gate-count decision
 // (`vb_storage::admission::submit_artifact_with_contracts` at
-// crates/vb_storage/src/admission.rs:354-374 performs no gate/flag
+// crates/vb_storage/src/admission.rs:92-112 performs no gate/flag
 // validation; the prepared proof carries gate_count 0 per
-// `verification_proof_core` at crates/vb_storage/src/admission.rs:113-128,
+// `verification_proof_core` at crates/vb_storage/src/admission/proof.rs:103-118,
 // with only bounded_claimed and idempotency_verified_claimed set by
 // `prepare_with_profile` at
 // crates/vb_storage/src/admission/verification.rs:26-52).

@@ -24,7 +24,7 @@
 //                                          storage-backed witness plus the
 //                                          prepared-proof shape
 //                                          (verification_proof_core at
-//                                          crates/vb_storage/src/admission.rs:113-128;
+//                                          crates/vb_storage/src/admission/proof.rs:103-118;
 //                                          enforced by verify_accepted_artifact at
 //                                          crates/vb_storage/src/admission/verification.rs:56-86,
 //                                          which rejects any deviation with
@@ -100,7 +100,7 @@ pub fn strict_admission_witness_decision(
     } else if gate_count != 0 {
         // Prepared gate count: `verification_proof_core` forces
         // gate_count 0 for every admitted artifact
-        // (crates/vb_storage/src/admission.rs:113-128). The literal is
+        // (crates/vb_storage/src/admission/proof.rs:103-118). The literal is
         // used here rather than a named const: a `pub const` in this
         // mirror triggers a known Verus erasure bug (see the
         // spec-side PREPARED_GATE_COUNT in strict_admission_witness.rs

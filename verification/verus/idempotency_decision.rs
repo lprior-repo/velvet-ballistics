@@ -13,7 +13,7 @@
 // `verification/verus/extern_idempotency_decision.rs`:
 //
 //   1. `vb_storage::admission::is_contract_idempotency_accepted`
-//      at crates/vb_storage/src/admission.rs:427-441
+//      at crates/vb_storage/src/admission.rs:165-179
 //   2. `vb_validate::idempotency_contract::is_statically_idempotent_contract`
 //      at crates/vb_validate/src/idempotency_contract.rs:140-187
 //
@@ -62,7 +62,7 @@
 //   - `is_contract_idempotency_accepted`  <- extern_idempotency_decision.rs
 //                                              `is_contract_idempotency_accepted`
 //                                              (mirror of
-//                                              crates/vb_storage/src/admission.rs:427-441)
+//                                              crates/vb_storage/src/admission.rs:165-179)
 //   - `is_statically_idempotent_contract` <- extern_idempotency_decision.rs
 //                                              `is_statically_idempotent_contract`
 //                                              (mirror of
@@ -117,7 +117,7 @@ pub use production::{
 /// True iff the production side_effect class is side-effecting
 /// (i.e. observable effect on the outside world). Mirrors the
 /// production decision-table discriminant at
-/// `crates/vb_storage/src/admission.rs:427-441` and
+/// `crates/vb_storage/src/admission.rs:165-179` and
 /// `crates/vb_validate/src/idempotency_contract.rs:140-187`.
 pub open spec fn prod_has_external_side_effect(side_effect: SideEffect) -> bool {
     match side_effect {
@@ -127,7 +127,7 @@ pub open spec fn prod_has_external_side_effect(side_effect: SideEffect) -> bool 
 }
 
 /// Spec model of `vb_storage::admission::is_contract_idempotency_accepted`
-/// at `crates/vb_storage/src/admission.rs:427-441`. Returns true iff the
+/// at `crates/vb_storage/src/admission.rs:165-179`. Returns true iff the
 /// action contract is admitted by the storage-side idempotency decision
 /// table. The if-else chain mirrors the production match arms
 /// line-for-line.
@@ -240,7 +240,7 @@ pub open spec fn parity_predicate(
 /// Bridge contract: `is_contract_idempotency_accepted` returns true iff
 /// the spec model accepts the contract's (side_effect, retry_safety,
 /// idempotency) tuple. Mirrors the production body at
-/// `crates/vb_storage/src/admission.rs:427-441`.
+/// `crates/vb_storage/src/admission.rs:165-179`.
 pub assume_specification[ production::is_contract_idempotency_accepted ](
     contract: &ActionContract,
 ) -> (result: bool)
@@ -294,7 +294,7 @@ pub assume_specification[ production::is_statically_idempotent_contract ](
 /// VERUS-DECISION-001: A contract with `SideEffect::None` is
 /// unconditionally accepted by the production decision table. Mirrors
 /// the production first arm at
-/// `crates/vb_storage/src/admission.rs:433` and
+/// `crates/vb_storage/src/admission.rs:171` and
 /// `crates/vb_validate/src/idempotency_contract.rs:148`.
 pub proof fn proof_none_side_effect_always_accepted(
     side_effect: SideEffect,
@@ -316,7 +316,7 @@ pub proof fn proof_none_side_effect_always_accepted(
 /// VERUS-DECISION-002: A side-effecting action with `RetrySafety::Unsafe`
 /// is unconditionally rejected with the `SideEffectingRetryUnsafe`
 /// discriminant. Mirrors the production second arm at
-/// `crates/vb_storage/src/admission.rs:434` and
+/// `crates/vb_storage/src/admission.rs:172` and
 /// `crates/vb_validate/src/idempotency_contract.rs:149-156`.
 pub proof fn proof_side_effecting_unsafe_rejected(
     side_effect: SideEffect,
@@ -340,7 +340,7 @@ pub proof fn proof_side_effecting_unsafe_rejected(
 /// `Idempotency::AtLeastOnceExternal` (and not Unsafe retry) is
 /// unconditionally rejected with the `SideEffectingAtLeastOnceExternal`
 /// discriminant. Mirrors the production third arm at
-/// `crates/vb_storage/src/admission.rs:435` and
+/// `crates/vb_storage/src/admission.rs:173` and
 /// `crates/vb_validate/src/idempotency_contract.rs:157-164`.
 pub proof fn proof_side_effecting_at_least_once_rejected(
     side_effect: SideEffect,
@@ -365,7 +365,7 @@ pub proof fn proof_side_effecting_at_least_once_rejected(
 /// `Idempotency::DeterministicPure` (and not Unsafe retry) is
 /// unconditionally rejected with the `SideEffectingDeterministicPure`
 /// discriminant. Mirrors the production fourth arm at
-/// `crates/vb_storage/src/admission.rs:435` and
+/// `crates/vb_storage/src/admission.rs:173` and
 /// `crates/vb_validate/src/idempotency_contract.rs:165-172`.
 pub proof fn proof_side_effecting_deterministic_pure_rejected(
     side_effect: SideEffect,
@@ -389,7 +389,7 @@ pub proof fn proof_side_effecting_deterministic_pure_rejected(
 /// VERUS-DECISION-005: A side-effecting action with retry_safety in
 /// `{Safe, KeyRequired}` and `Idempotency::IdempotentExternal` is
 /// unconditionally accepted. Mirrors the production fifth arm at
-/// `crates/vb_storage/src/admission.rs:436` and
+/// `crates/vb_storage/src/admission.rs:174` and
 /// `crates/vb_validate/src/idempotency_contract.rs:173-175`.
 pub proof fn proof_side_effecting_idempotent_external_safe_accepted(
     side_effect: SideEffect,

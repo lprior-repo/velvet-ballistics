@@ -68,7 +68,7 @@
 //                                       (mirror of
 //                                       vb_storage::admission::AcceptedArtifact
 //                                       at
-//                                       crates/vb_storage/src/admission.rs:201-237)
+//                                       crates/vb_storage/src/admission.rs:37-73)
 //   - SpecRunAdmission              <- extern_accepted_cli_digest_binding.rs
 //                                       (mirror of
 //                                       vb_runtime::admission::RunAdmission

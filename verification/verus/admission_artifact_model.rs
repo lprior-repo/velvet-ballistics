@@ -26,11 +26,11 @@
 //                                               equality reasoning)
 //   - `VerificationProof`                      <- extern_admission_artifact_model.rs
 //                                               (mirror of
-//                                               crates/vb_storage/src/admission.rs:65-90;
+//                                               crates/vb_storage/src/admission/proof.rs:55-80;
 //                                               all 12 production fields mirrored)
 //   - `VerificationWarning`                    <- extern_admission_artifact_model.rs
 //                                               (mirror of
-//                                               crates/vb_storage/src/admission.rs:18-25)
+//                                               crates/vb_storage/src/admission/proof.rs:8-15)
 //   - `ArtifactEvidence` / `ArtifactVerificationEvidence` /
 //     `VerificationLedgerEntry` / `ObligationKind` /
 //     `ObligationClosure` / `AssumptionId`      <- extern_admission_artifact_model.rs
@@ -48,18 +48,18 @@
 //                                               crates/vb_storage/src/admission/verification.rs:10)
 //   - `AcceptedArtifact`                       <- extern_admission_artifact_model.rs
 //                                               (mirror of
-//                                               crates/vb_storage/src/admission.rs:203-237;
+//                                               crates/vb_storage/src/admission.rs:37-73;
 //                                               4 digest fields + embedded
 //                                               VerificationProof mirrored)
 //   - `PREPARED_GATE_COUNT = 0`                 <- extern_admission_artifact_model.rs
 //                                               (mirror of the gate_count
 //                                               `verification_proof_core` forces
 //                                               at
-//                                               crates/vb_storage/src/admission.rs:113-128)
+//                                               crates/vb_storage/src/admission/proof.rs:103-118)
 //   - `proof_matches_prepared_shape`           <- extern_admission_artifact_model.rs
 //                                               (mirror of the prepared-proof
 //                                               shape: `verification_proof_core`
-//                                               at crates/vb_storage/src/admission.rs:113-128 plus
+//                                               at crates/vb_storage/src/admission/proof.rs:103-118 plus
 //                                               the flag assignments and
 //                                               evidence wrap in
 //                                               `prepare_with_profile` at
@@ -76,7 +76,7 @@
 //   - `artifact_digest_bound`                  <- extern_admission_artifact_model.rs
 //                                               (mirror of
 //                                               bind_artifact_digest at
-//                                               crates/vb_storage/src/admission.rs:179-184)
+//                                               crates/vb_storage/src/admission/digest.rs:29-34)
 //
 // ============================================================================
 // UPGRADE FROM PREVIOUS (VACUUM) FORM
@@ -175,7 +175,7 @@ pub use production::{
 // Spec constants (mirrors of production constants)
 // ============================================================================
 /// Mirror of the gate_count `verification_proof_core` forces
-/// (`crates/vb_storage/src/admission.rs:113-128`).
+/// (`crates/vb_storage/src/admission/proof.rs:103-118`).
 pub const PREPARED_GATE_COUNT: u8 = 0;
 
 /// Mirror of the evidence schema version `build_evidence` stamps and
@@ -200,9 +200,9 @@ pub open spec fn prepared_evidence_version() -> int {
 // prepared-proof shape production constructs for every admitted
 // artifact: `verification_proof_core` forces gate_count 0, durable
 // false, and every proof flag false
-// (`crates/vb_storage/src/admission.rs:113-128`), `VerificationProof::new`
+// (`crates/vb_storage/src/admission/proof.rs:103-118`), `VerificationProof::new`
 // leaves the idempotency slices and warnings empty and the evidence
-// `Unverified` (crates/vb_storage/src/admission.rs:135-151), and
+// `Unverified` (crates/vb_storage/src/admission/proof.rs:125-141), and
 // `prepare_with_profile` then sets exactly `bounded_claimed` and
 // `idempotency_verified_claimed` true and wraps the rebuilt evidence
 // as `Verified` at schema version 3
@@ -230,7 +230,7 @@ pub fn digest_eq_exec(a: &production::WorkflowDigest, b: &production::WorkflowDi
 
 // Production decision fn: `artifact_digest_bound` mirrors
 // `vb_storage::admission::bind_artifact_digest` at
-// `crates/vb_storage/src/admission.rs:179-184`.
+// `crates/vb_storage/src/admission/digest.rs:29-34`.
 pub fn artifact_digest_bound_exec(artifact: &production::AcceptedArtifact) -> bool {
     production::artifact_digest_bound(artifact)
 }
@@ -249,9 +249,9 @@ pub fn artifact_digest_bound_exec(artifact: &production::AcceptedArtifact) -> bo
 // carries the spec's `prepared_proof_shape`.
 // --------------------------------------------------------------------------
 // Mirrors the prepared-proof shape: `verification_proof_core` at
-// `crates/vb_storage/src/admission.rs:113-128`, the empty collections
+// `crates/vb_storage/src/admission/proof.rs:103-118`, the empty collections
 // and `Unverified` evidence `VerificationProof::new` leaves at
-// crates/vb_storage/src/admission.rs:135-151, plus the flag assignments and evidence wrap
+// crates/vb_storage/src/admission/proof.rs:125-141, plus the flag assignments and evidence wrap
 // in `prepare_with_profile` at
 // `crates/vb_storage/src/admission/verification.rs:35-38`.
 pub assume_specification[ production::proof_matches_prepared_shape ](
@@ -292,7 +292,7 @@ pub assume_specification[ production::digest_eq ](
 // top-level digest equals the verification proof's digest.
 // --------------------------------------------------------------------------
 // Mirrors production `bind_artifact_digest` at
-// `crates/vb_storage/src/admission.rs:179-184`, which sets both
+// `crates/vb_storage/src/admission/digest.rs:29-34`, which sets both
 // `artifact.digest` and `artifact.verification.digest` to the same
 // computed digest. The ensures uses direct field access (not the
 // exec fn `digest_eq`) because the spec-mode ensures clause cannot
@@ -311,7 +311,7 @@ pub assume_specification[ production::artifact_digest_bound ](
 /// values: `bounded_claimed` and `idempotency_verified_claimed` true,
 /// `taint_safe_claimed`, `retry_safe_claimed`, `durable`, and
 /// `replayable_claimed` false (production `verification_proof_core`
-/// at `crates/vb_storage/src/admission.rs:113-128` plus the flag
+/// at `crates/vb_storage/src/admission/proof.rs:103-118` plus the flag
 /// assignments in `prepare_with_profile` at
 /// `crates/vb_storage/src/admission/verification.rs:35-38`).
 pub open spec fn prepared_proof_flags(
@@ -332,7 +332,7 @@ pub open spec fn prepared_proof_flags(
 
 /// Spec view: true iff the idempotency slices and warnings are empty
 /// (production `VerificationProof::new` at
-/// `crates/vb_storage/src/admission.rs:135-151` leaves them empty and
+/// `crates/vb_storage/src/admission/proof.rs:125-141` leaves them empty and
 /// `prepare_with_profile` never touches them).
 pub open spec fn prepared_proof_collections(
     keyed_empty: bool,

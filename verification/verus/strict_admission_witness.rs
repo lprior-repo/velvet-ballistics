@@ -132,7 +132,7 @@ pub open spec fn valid_admission_witness(
 
 // Spec-side mirror constant: the gate_count `verification_proof_core`
 // forces for every admitted artifact
-// (crates/vb_storage/src/admission.rs:113-128). A proof carrying the
+// (crates/vb_storage/src/admission/proof.rs:103-118). A proof carrying the
 // legacy 15-gate count does not match the prepared shape and is
 // rejected by `verify_accepted_artifact` with `ArtifactEvidenceInvalid`.
 // `REQUIRED_GATE_COUNT` above mirrors the real `vb_runtime` constant
