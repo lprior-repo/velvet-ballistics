@@ -35,7 +35,6 @@ crates/vb_runtime/src/error/mod.rs|lewis|vb-srclen|split-after-ledger-landing|pr
 crates/vb_runtime/src/for_each_tests.rs|lewis|vb-srclen|split-after-ledger-landing|test_in_src 2015 lines (limit 1500) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_runtime/src/journal/chunk_001.rs|lewis|vb-srclen|split-after-ledger-landing|production 612 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_runtime/src/journal/chunk_002.rs|lewis|vb-srclen|split-after-ledger-landing|production 578 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
-crates/vb_runtime/src/manual_gate.rs|lewis|vb-srclen|split-after-ledger-landing|production 856 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_runtime/src/primitives/collect.rs|lewis|vb-srclen|split-after-ledger-landing|production 985 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_runtime/src/primitives/collect/tests.rs|lewis|vb-srclen|split-after-ledger-landing|test_in_src 3952 lines (limit 1500) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_runtime/src/primitives/reentry_proofs.rs|lewis|vb-srclen|split-after-ledger-landing|production 592 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
