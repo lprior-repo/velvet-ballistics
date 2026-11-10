@@ -145,7 +145,7 @@ on this branch produces a Kani unwind-bound failure (line 168,
 "unwinding assertion loop 0") after ~750s. Investigation:
 
 - The harness's static `unsupported` array has **33 entries** (lines
-  163-166 of `crates/vb_core/src/kani/kani_from_str_compat.rs`).
+  163-166 of `crates/vb_core/src/verification/kani/diagnostic/kani_from_str_compat.rs`).
 - The harness is annotated `#[kani::unwind(30)]`.
 - Kani refuses to unwind a 33-iteration loop with bound 30.
 

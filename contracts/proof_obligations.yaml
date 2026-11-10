@@ -343,7 +343,7 @@ obligations:
     crate: vb_core
     files:
       - crates/vb_core/src/budget.rs
-      - crates/vb_core/src/kani_resource_budget_bounded.rs
+      - crates/vb_core/src/verification/kani/kani_resource_budget_bounded.rs
     required:
       kani: kani_resource_budget_bounded.rs
       property_tests: [whole_workflow_budget_within_policy]
