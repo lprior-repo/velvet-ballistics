@@ -26,7 +26,7 @@
 // This stub mirrors the production `ValueStore::max_arena_entries`
 // field as the smallest drift-detection surface.
 //
-// DRIFT POLICY: `crates/vb_core/src/value_store.rs:44-135`
+// DRIFT POLICY: `crates/vb_core/src/value_store.rs:44-144`
 // Production source coverage:
 //   - `ObjectField::clean`              <- crates/vb_core/src/value_store/objects.rs:15-21
 //   - `ObjectField::with_taint`         <- crates/vb_core/src/value_store/objects.rs:24-26
