@@ -9,6 +9,10 @@ use crate::workflow::{
     ResourceContract,
 };
 
+#[path = "kani_workflow_budget_borrowed_domain.rs"]
+mod borrowed_domain;
+pub(crate) use borrowed_domain::focused_slice_domain;
+
 pub(crate) struct BudgetWorkflowInputs {
     nodes: BudgetNodes,
     entry: StepIdx,
@@ -18,6 +22,14 @@ pub(crate) struct BudgetWorkflowInputs {
 impl BudgetWorkflowInputs {
     pub(crate) fn nodes(&self) -> &[CompiledNode] {
         self.nodes.as_slice()
+    }
+
+    pub(crate) fn with_nodes<R>(&self, visit: impl FnOnce(&[CompiledNode]) -> R) -> R {
+        match &self.nodes {
+            BudgetNodes::Empty => visit(&[]),
+            BudgetNodes::One(nodes) => visit(nodes),
+            BudgetNodes::Two(nodes) => visit(nodes),
+        }
     }
 
     pub(crate) const fn node_count(&self) -> usize {

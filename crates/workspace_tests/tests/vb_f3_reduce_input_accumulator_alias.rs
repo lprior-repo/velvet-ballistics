@@ -130,7 +130,7 @@ fn execute(items: &[SlotValue], taint: Taint) -> TestResult {
             }
             assert_eq!(run.read_taint(SlotIdx::new(1))?, taint);
         } else {
-            assert!(items.is_empty());
+            assert_eq!(items, &[]);
             assert_eq!(
                 run.read_slot(SlotIdx::new(1)),
                 Err(vb_core::CoreError::SlotUninitialized {

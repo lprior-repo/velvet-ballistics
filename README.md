@@ -32,7 +32,7 @@ YAML source (cold public authoring surface)
   -> typed expressions, lexical scopes, and checked numeric lowering
   -> validated CompiledWorkflow numeric IR
   -> bounded IR interpreter
-  -> shard-owned in-memory runtime (no async, no allocation in hot path)
+  -> shard-owned in-memory runtime (bounded synchronous execution)
   -> native ActionId dispatch with taint enforcement
   -> Fjall binary persistence (9 keyspaces, blake3+crc32c envelopes)
   -> Unix domain socket IPC (bounded queue, 256 concurrent clients)
@@ -86,6 +86,7 @@ moon run :bench-build
 ## Documentation
 
 - `/velvet-ballistics-MASTER.md` — authoritative architecture contract, phase tracker, and implementation acceptance criteria
+- [Compiled IR](docs/compiled-ir.md) — YAML lowering, input admission, artifact compatibility, and supported recovery boundaries
 - `CHANGELOG.md` — release history and notable changes
 - `RELEASE_CHECKLIST.md` — steps for future releases
 - 62 normative sections covering runtime semantics, expression grammar, taint lattice, journal schemas, IPC transport, security threat model, and more
