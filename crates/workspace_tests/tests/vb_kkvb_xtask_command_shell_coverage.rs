@@ -43,13 +43,9 @@ fn xtask_version_prints_package_version_when_requested() -> Result<(), Box<dyn E
 }
 
 #[test]
-#[ignore] // UI commands moved to velvet-optional repo
-fn xtask_legacy_separator_routes_ui_overlap_check_and_reports_missing_screen()
--> Result<(), Box<dyn Error>> {
-    // Given
+fn xtask_legacy_separator_routes_ui_overlap_check_and_reports_moved() -> Result<(), Box<dyn Error>>
+{
     let workspace = TempDir::new()?;
-
-    // When
     let output = run_xtask(
         workspace.path(),
         &[
@@ -61,29 +57,14 @@ fn xtask_legacy_separator_routes_ui_overlap_check_and_reports_missing_screen()
             "missing_snapshots",
         ],
     )?;
-
-    // Then
-    assert_eq!(output.status.code(), Some(1));
-    assert_eq!(
-        stdout_text(&output)?.contains("FAIL: missing_snapshots/missing_screen.png does not exist"),
-        true
-    );
-    assert_eq!(
-        stderr_text(&output)?.contains("UI overlap check failed"),
-        true
-    );
-    Ok(())
+    assert_deferred_ui_command(&output)
 }
 
 #[test]
-#[ignore] // UI commands moved to velvet-optional repo
-fn xtask_ui_tokens_writes_rust_constants_when_tokens_are_valid() -> Result<(), Box<dyn Error>> {
-    // Given
+fn xtask_ui_tokens_reports_moved_when_tokens_are_valid() -> Result<(), Box<dyn Error>> {
     let workspace = TempDir::new()?;
     let output_path = workspace.path().join("generated").join("tokens.rs");
     let output_arg = output_path.to_string_lossy().to_string();
-
-    // When
     let output = run_xtask(
         workspace.path(),
         &[
@@ -96,23 +77,13 @@ fn xtask_ui_tokens_writes_rust_constants_when_tokens_are_valid() -> Result<(), B
             "json",
         ],
     )?;
-
-    // Then
-    assert_eq!(output.status.code(), Some(0));
-    assert_eq!(output_path.exists(), true);
-    assert_eq!(stdout_text(&output)?.contains("background_board"), true);
-    assert_eq!(
-        std::fs::read_to_string(output_path)?.contains("pub const TOKENS"),
-        true
-    );
+    assert_deferred_ui_command(&output)?;
+    assert_eq!(output_path.exists(), false);
     Ok(())
 }
 
 #[test]
-#[ignore] // UI commands moved to velvet-optional repo
-fn xtask_ui_tokens_check_confirms_generated_tokens_when_file_matches() -> Result<(), Box<dyn Error>>
-{
-    // Given
+fn xtask_ui_tokens_check_reports_moved_when_file_matches() -> Result<(), Box<dyn Error>> {
     let workspace = TempDir::new()?;
     let output_path = workspace.path().join("generated_tokens.rs");
     let output_arg = output_path.to_string_lossy().to_string();
@@ -120,9 +91,7 @@ fn xtask_ui_tokens_check_confirms_generated_tokens_when_file_matches() -> Result
         workspace.path(),
         &["ui-tokens", "--input", TOKENS_FILE, "--output", &output_arg],
     )?;
-    assert_eq!(write_output.status.code(), Some(0));
-
-    // When
+    assert_deferred_ui_command(&write_output)?;
     let check_output = run_xtask(
         workspace.path(),
         &[
@@ -134,26 +103,15 @@ fn xtask_ui_tokens_check_confirms_generated_tokens_when_file_matches() -> Result
             "--check",
         ],
     )?;
-
-    // Then
-    assert_eq!(check_output.status.code(), Some(0));
-    assert_eq!(
-        stdout_text(&check_output)?.contains("Generated UI tokens are current"),
-        true
-    );
-    Ok(())
+    assert_deferred_ui_command(&check_output)
 }
 
 #[test]
-#[ignore] // UI commands moved to velvet-optional repo
-fn xtask_ui_tokens_check_rejects_stale_generated_tokens() -> Result<(), Box<dyn Error>> {
-    // Given
+fn xtask_ui_tokens_check_reports_moved_when_tokens_are_stale() -> Result<(), Box<dyn Error>> {
     let workspace = TempDir::new()?;
     let output_path = workspace.path().join("stale_tokens.rs");
     std::fs::write(&output_path, "stale")?;
     let output_arg = output_path.to_string_lossy().to_string();
-
-    // When
     let output = run_xtask(
         workspace.path(),
         &[
@@ -165,25 +123,16 @@ fn xtask_ui_tokens_check_rejects_stale_generated_tokens() -> Result<(), Box<dyn 
             "--check",
         ],
     )?;
-
-    // Then
-    assert_eq!(output.status.code(), Some(1));
-    assert_eq!(
-        stderr_text(&output)?.contains("Generated UI tokens are stale"),
-        true
-    );
+    assert_deferred_ui_command(&output)?;
+    assert_eq!(std::fs::read_to_string(&output_path)?, "stale");
     Ok(())
 }
 
 #[test]
-#[ignore] // UI commands moved to velvet-optional repo
-fn xtask_ui_snapshot_captures_named_fixture_and_writes_report() -> Result<(), Box<dyn Error>> {
-    // Given
+fn xtask_ui_snapshot_reports_moved_when_fixture_requested() -> Result<(), Box<dyn Error>> {
     let workspace = TempDir::new()?;
     let output_dir = workspace.path().join("snapshots");
     let output_arg = output_dir.to_string_lossy().to_string();
-
-    // When
     let output = run_xtask(
         Path::new(WORKSPACE_ROOT),
         &[
@@ -196,31 +145,24 @@ fn xtask_ui_snapshot_captures_named_fixture_and_writes_report() -> Result<(), Bo
             "yaml",
         ],
     )?;
-
-    // Then
-    assert_eq!(output.status.code(), Some(0));
-    assert_eq!(output_dir.join("execution_overview.png").exists(), true);
-    assert_eq!(output_dir.join("ui_snapshot_report.yaml").exists(), true);
-    assert_eq!(
-        stdout_text(&output)?.contains("Snapshot report written to:"),
-        true
-    );
+    assert_deferred_ui_command(&output)?;
+    assert_eq!(output_dir.exists(), false);
     Ok(())
 }
 
 #[test]
-#[ignore] // UI commands moved to velvet-optional repo
-fn xtask_ui_snapshot_rejects_invocation_without_all_or_fixture() -> Result<(), Box<dyn Error>> {
-    // Given
+fn xtask_ui_snapshot_reports_moved_without_all_or_fixture() -> Result<(), Box<dyn Error>> {
     let workspace = TempDir::new()?;
-
-    // When
     let output = run_xtask(workspace.path(), &["ui-snapshot"])?;
+    assert_deferred_ui_command(&output)
+}
 
-    // Then
+fn assert_deferred_ui_command(output: &Output) -> Result<(), Box<dyn Error>> {
     assert_eq!(output.status.code(), Some(1));
+    assert_eq!(stdout_text(output)?, "");
     assert_eq!(
-        stderr_text(&output)?.contains("Must specify --all or --fixture <name>"),
+        stderr_text(output)?
+            .contains("UI commands moved to velvet-optional repo (deferred milestone)"),
         true
     );
     Ok(())
