@@ -142,6 +142,9 @@ pub(super) fn expected_verifier_digest() -> WorkflowDigest {
     hasher.update(include_bytes!(
         "../../../vb_storage/src/admission/verification.rs"
     ));
+    hasher.update(include_bytes!(
+        "../../../vb_storage/src/admission/verification/ledger.rs"
+    ));
     hasher.update(include_bytes!("../../../vb_core/src/workflow/mod.rs"));
     hasher.update(include_bytes!("../../../vb_core/src/budget.rs"));
     hasher.update(include_bytes!("../../../vb_core/src/action/registry.rs"));

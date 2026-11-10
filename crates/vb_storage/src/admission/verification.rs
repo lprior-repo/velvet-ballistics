@@ -13,6 +13,10 @@ pub(crate) const EVIDENCE_VERSION: u16 = 3;
 mod executor_profile;
 pub(crate) use executor_profile::ExecutorProfile;
 
+#[path = "verification/ledger.rs"]
+mod ledger;
+use ledger::{effect_closure, obligation_ledger};
+
 /// Prepare a checked envelope without writing a journal or claiming a durable ack.
 /// External assumptions in the ledger remain assumptions, not executed evidence.
 pub fn prepare_compiled_artifact(
@@ -211,68 +215,6 @@ fn build_evidence(
     })
 }
 
-fn effect_closure(
-    contracts: &[ActionContract],
-    verifier_digest: WorkflowDigest,
-) -> Result<ObligationClosure, JournalError> {
-    if contracts.is_empty() {
-        return Ok(ObligationClosure::RuntimeValidated { verifier_digest });
-    }
-    let declarations =
-        postcard::to_allocvec(contracts).map_err(JournalError::PostcardEncodeFailed)?;
-    Ok(ObligationClosure::ExternalAssumption {
-        assumption_id: AssumptionId::ExecutorHonorsActionContracts,
-        evidence_digest: digest(&declarations),
-    })
-}
-
-fn obligation_ledger(
-    policy_digest: WorkflowDigest,
-    verifier: WorkflowDigest,
-    effect_safety: ObligationClosure,
-) -> Result<[VerificationLedgerEntry; 10], JournalError> {
-    use ObligationKind::*;
-    let validated = ObligationClosure::RuntimeValidated {
-        verifier_digest: verifier,
-    };
-    let entry = |obligation, closure| VerificationLedgerEntry {
-        obligation,
-        closure,
-        policy_digest,
-    };
-    Ok([
-        entry(Determinism, validated),
-        entry(EffectSafety, effect_safety),
-        entry(CapabilityNonMinting, validated),
-        entry(Boundedness, validated),
-        entry(
-            ReplayEffectSeparation,
-            assumption(AssumptionId::RuntimeReplayEffectSeparation)?,
-        ),
-        entry(ArtifactValidity, validated),
-        entry(IdempotencyClassification, validated),
-        entry(
-            RecoveryClassification,
-            assumption(AssumptionId::RuntimeRecoverySemantics)?,
-        ),
-        entry(
-            TaintHandling,
-            assumption(AssumptionId::RuntimeTaintEnforcement)?,
-        ),
-        entry(PolicyBinding, validated),
-    ])
-}
-
-fn assumption(assumption_id: AssumptionId) -> Result<ObligationClosure, JournalError> {
-    // Identifies this explicit declaration; it is not a verifier or test result.
-    let declaration = ("velvet-ballistics/external-assumption/v1", assumption_id);
-    let bytes = postcard::to_allocvec(&declaration).map_err(JournalError::PostcardEncodeFailed)?;
-    Ok(ObligationClosure::ExternalAssumption {
-        assumption_id,
-        evidence_digest: digest(&bytes),
-    })
-}
-
 fn digest(bytes: &[u8]) -> WorkflowDigest {
     WorkflowDigest::from_bytes(blake3::hash(bytes).into())
 }
@@ -281,6 +223,7 @@ fn verifier_digest() -> WorkflowDigest {
     // Fingerprints verifier entrypoints, not a signed compiler/build identity.
     let mut hasher = blake3::Hasher::new();
     hasher.update(include_bytes!("verification.rs"));
+    hasher.update(include_bytes!("verification/ledger.rs"));
     hasher.update(include_bytes!("../../../vb_core/src/workflow/mod.rs"));
     hasher.update(include_bytes!("../../../vb_core/src/budget.rs"));
     hasher.update(include_bytes!("../../../vb_core/src/action/registry.rs"));
