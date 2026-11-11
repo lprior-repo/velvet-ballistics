@@ -71,3 +71,29 @@ fn versioned_resolver_rejects_future_outer_version() -> TestResult {
     );
     Ok(())
 }
+
+#[test]
+fn versioned_resolver_accepted_empty_binding() -> TestResult {
+    let expected = support::bound(&[])?;
+    let artifact = support::accepted_v2(&expected)?;
+    let found = resolve(support::accepted_record(&artifact)?)??;
+    assert_eq!(
+        found.symbol_payloads(),
+        Some(support::symbols(&[]).as_ref())
+    );
+    assert_eq!(found, expected);
+    Ok(())
+}
+
+#[test]
+fn versioned_resolver_accepted_ordered_payloads() -> TestResult {
+    let expected = support::bound(&["key", "é", " "])?;
+    let artifact = support::accepted_v2(&expected)?;
+    let found = resolve(support::accepted_record(&artifact)?)??;
+    assert_eq!(
+        found.symbol_payloads(),
+        Some(support::symbols(&["key", "é", " "]).as_ref())
+    );
+    assert_eq!(found, expected);
+    Ok(())
+}
