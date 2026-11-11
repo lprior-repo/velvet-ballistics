@@ -207,6 +207,9 @@ fn outer_state_preserved_across_rearm() -> TestResult {
     Ok(())
 }
 
+// White-box fixture exemption: the workflow is still source-compiled (no
+// hand IR); only the `RunFrame` state is hand-driven below to reach in-flight
+// mid-body state that source driving alone cannot reach.
 #[test]
 fn inflight_body_rejects_rearm_source() -> TestResult {
     let wf = compile(&repeat_source(3))?;

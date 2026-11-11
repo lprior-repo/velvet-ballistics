@@ -1,6 +1,20 @@
 use crate::{CompileError, CompileErrors, StepAst, StepPrimitive};
 
-pub(super) fn validate_for_each_capture(
+pub(in crate::mod_compile_lowering) fn validate_for_each_capture(
+    variable: &str,
+    body: &[StepAst],
+) -> Result<(), CompileErrors> {
+    validate_capture(variable, body)
+}
+
+pub(in crate::mod_compile_lowering) fn validate_reduce_capture(
+    variable: &str,
+    body: &[StepAst],
+) -> Result<(), CompileErrors> {
+    validate_capture(variable, body)
+}
+
+pub(in crate::mod_compile_lowering) fn validate_capture(
     variable: &str,
     body: &[StepAst],
 ) -> Result<(), CompileErrors> {
@@ -38,7 +52,10 @@ fn check_step(step: &StepAst, enclosing: &[String]) -> Result<(), CompileErrors>
         StepPrimitive::Repeat { body, .. } => walk_body(body, enclosing),
         StepPrimitive::Choose { branches, .. } => check_choose(branches, enclosing),
         StepPrimitive::Together { branches } => check_together(branches, enclosing),
-        StepPrimitive::Aggregate { body, .. } => walk_body(body, enclosing),
+        StepPrimitive::Aggregate { variable, body, .. } => {
+            check_binding(variable, enclosing)?;
+            descend(variable, body, enclosing)
+        }
         _ => Ok(()),
     }
 }

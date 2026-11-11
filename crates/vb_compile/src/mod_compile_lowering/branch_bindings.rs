@@ -126,24 +126,7 @@ impl<'a> BranchBindings<'a> {
                 variable,
                 at_once,
                 body,
-            } => {
-                let output = lower_bounded_for_each(
-                    self.ctx.index,
-                    id,
-                    ForEachLowering {
-                        input,
-                        variable,
-                        at_once: *at_once,
-                        body,
-                        next: Some(next),
-                        scope: self.view(),
-                        inputs: self.ctx.inputs,
-                        nested: self.ctx,
-                    },
-                    builder,
-                )?;
-                output.ok_or_else(|| Self::empty_body_error(self.ctx.index, "for_each.body"))
-            }
+            } => self.lower_nested_for_each(input, variable, *at_once, body, id, next, builder),
             crate::StepPrimitive::Collect {
                 source,
                 variable,
@@ -152,24 +135,7 @@ impl<'a> BranchBindings<'a> {
                 body,
                 ..
             } => {
-                let output: CollectOutput = lower_bounded_collect(
-                    self.ctx.index,
-                    id,
-                    CollectLowering {
-                        source,
-                        variable,
-                        pages: *pages,
-                        items: *items,
-                        body,
-                        next: Some(next),
-                        scope: self.view(),
-                        nested: self.ctx,
-                    },
-                    builder,
-                )?;
-                output
-                    .body
-                    .ok_or_else(|| Self::empty_body_error(self.ctx.index, "collect.body"))
+                self.lower_nested_collect(source, variable, *pages, *items, body, id, next, builder)
             }
             crate::StepPrimitive::Repeat { max_attempts, body } => {
                 self.lower_nested_repeat(*max_attempts, body, id, next, builder)
@@ -190,6 +156,67 @@ impl<'a> BranchBindings<'a> {
                 },
             ])),
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn lower_nested_for_each(
+        &mut self,
+        input: &str,
+        variable: &str,
+        at_once: Option<u32>,
+        body: &[crate::StepAst],
+        id: StepIdx,
+        next: StepIdx,
+        builder: &mut SlotCompiler,
+    ) -> Result<SlotIdx, CompileErrors> {
+        let output = lower_bounded_for_each(
+            self.ctx.index,
+            id,
+            ForEachLowering {
+                input,
+                variable,
+                at_once,
+                body,
+                next: Some(next),
+                scope: self.view(),
+                inputs: self.ctx.inputs,
+                nested: self.ctx,
+            },
+            builder,
+        )?;
+        output.ok_or_else(|| Self::empty_body_error(self.ctx.index, "for_each.body"))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn lower_nested_collect(
+        &mut self,
+        source: &str,
+        variable: &str,
+        pages: Option<u32>,
+        items: Option<u32>,
+        body: &[crate::StepAst],
+        id: StepIdx,
+        next: StepIdx,
+        builder: &mut SlotCompiler,
+    ) -> Result<SlotIdx, CompileErrors> {
+        let output: CollectOutput = lower_bounded_collect(
+            self.ctx.index,
+            id,
+            CollectLowering {
+                source,
+                variable,
+                pages,
+                items,
+                body,
+                next: Some(next),
+                scope: self.view(),
+                nested: self.ctx,
+            },
+            builder,
+        )?;
+        output
+            .body
+            .ok_or_else(|| Self::empty_body_error(self.ctx.index, "collect.body"))
     }
 
     fn empty_body_error(index: usize, field: &'static str) -> CompileErrors {

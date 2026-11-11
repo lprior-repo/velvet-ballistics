@@ -5,7 +5,7 @@
 
 use crate::{CompileError, compile_workflow};
 use vb_core::workflow::{NodeContinuation, NodeOutput};
-use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx};
+use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, SlotIdx, StepIdx};
 
 const HEADER: &str = "version: velvet-ballistics/v1\nname: nested_bodies\nwhen: {manual: {}}\n";
 const INPUTS: &str = "inputs:\n  outer_items: {is: list, of: any, max: 4}\n  inner_items: {is: list, of: any, max: 4}\n";
@@ -288,7 +288,48 @@ fn foreach_outer_variable_visible_two_levels() -> Result<(), String> {
         "  - id: seed\n    set: {output: base, value: '1'}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: entry\n      steps:\n        - id: inner\n          for_each:\n            input: '$input.inner_items'\n            variable: sub\n            steps:\n              - id: leaf\n                set: {output: picked, value: '$entry'}\n",
     ) + finish_tail();
     let workflow = compile(&text)?;
-    assert_eq!(workflow.to_parts().nodes.len(), 7);
+    let parts = workflow.to_parts();
+    assert_eq!(parts.nodes.len(), 7);
+    for (index, node) in parts.nodes.iter().enumerate() {
+        assert_eq!(node.id.as_usize(), index);
+    }
+    let CompiledNodeKind::ForEachStart {
+        item_slot: outer_item,
+        body: outer_body,
+        done: outer_done,
+        limit: outer_limit,
+        ..
+    } = &node(&workflow, 1)?.kind
+    else {
+        return Err("node 1 is not the outer ForEachStart".to_owned());
+    };
+    assert_eq!(
+        (*outer_body, *outer_done, *outer_limit),
+        (StepIdx::new(2), StepIdx::new(6), 4)
+    );
+    let CompiledNodeKind::ForEachStart {
+        item_slot: inner_item,
+        body: inner_body,
+        done: inner_done,
+        limit: inner_limit,
+        ..
+    } = &node(&workflow, 2)?.kind
+    else {
+        return Err("node 2 is not the inner ForEachStart".to_owned());
+    };
+    assert_eq!(
+        (*inner_body, *inner_done, *inner_limit),
+        (StepIdx::new(3), StepIdx::new(5), 4)
+    );
+    assert_ne!(outer_item, inner_item);
+    let CompiledNodeKind::EvalExpr { expr } = &node(&workflow, 3)?.kind else {
+        return Err("node 3 is not the leaf expression".to_owned());
+    };
+    let program = workflow
+        .expression(*expr)
+        .ok_or("missing expression program")?;
+    let ops: &[ExprOp] = &program.ops;
+    assert_eq!(ops, [ExprOp::LoadSlot(*outer_item)]);
     Ok(())
 }
 

@@ -7,8 +7,8 @@
 //! bindings, and nested results, never from steps that themselves read the
 //! accumulator slot.
 
-use super::parse_typed_initial;
-use crate::{CompileError, compile_workflow};
+use super::{checked_width_n, parse_typed_initial};
+use crate::{CompileError, CompileErrors, compile_workflow};
 use vb_core::workflow::{NodeContinuation, NodeOutput};
 use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, SlotIdx, StepIdx};
 use vb_expr::expr_typecheck::ExprType;
@@ -138,7 +138,7 @@ fn parse_typed_initial_variants() -> Result<(), String> {
         let parsed = parse_typed_initial(text, 0).map_err(|e| format!("{text}: {e:?}"))?;
         assert_eq!(parsed, (constant, ty), "initial {text}");
     }
-    for text in ["$increment", "\"text\"", "1 + 2", "sum($total)"] {
+    for text in ["$increment", "\"text\"", "1 + 2", "sum($total)", "9223372036854775808"] {
         let rejected = parse_typed_initial(text, 0);
         let ok = matches!(
             &rejected,
@@ -225,6 +225,35 @@ fn nested_container_in_multi_body_compiles() -> Result<(), String> {
     );
     assert_eq!(output(&workflow, 6)?, output(&workflow, 8)?);
     Ok(())
+}
+
+#[test]
+fn deep_set_output_alias_rejected() -> Result<(), String> {
+    rejects(
+        &source("10", "        - id: loop\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: inner\n                set: {output: total, value: '6'}\n        - id: update\n          set: {output: local_value, value: '$total + $steps.loop'}\n"),
+        |e| matches!(e, CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "total"),
+    )
+}
+
+#[test]
+fn deep_step_id_alias_rejected() -> Result<(), String> {
+    rejects(
+        &source("10", "        - id: loop\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: total\n                set: {output: tmp_value, value: '6'}\n        - id: update\n          set: {output: local_value, value: '$total + $steps.loop'}\n"),
+        |e| matches!(e, CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "total"),
+    )
+}
+
+#[test]
+fn width_overflow_pins_exact_step_index() {
+    assert_eq!(checked_width_n(65535), Ok(65535));
+    assert_eq!(
+        checked_width_n(65536),
+        Err(CompileErrors(vec![CompileError::StepIndexOutOfRange { value: 65536 }]))
+    );
+    assert_eq!(
+        checked_width_n(usize::MAX),
+        Err(CompileErrors(vec![CompileError::StepIndexOutOfRange { value: usize::MAX }]))
+    );
 }
 
 #[test]

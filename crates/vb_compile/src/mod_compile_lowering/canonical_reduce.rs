@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+use crate::mod_compile_lowering::part_02::for_each_capture;
 use super::canonical_reduce_initial::parse_typed_initial;
 use super::emit_single_body_set;
 use crate::mod_compile_errors::{CompileError, CompileErrors};
@@ -42,12 +43,16 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_aggregate(
     emit_reduce(index, id, &config, &edges, initial_value, initial_type, builder)
 }
 
+fn checked_width_n(width: usize) -> Result<u16, CompileErrors> {
+    u16::try_from(width)
+        .map_err(|_| CompileErrors(vec![CompileError::StepIndexOutOfRange { value: width }]))
+}
+
 fn plan_edges(id: StepIdx, body: &[crate::StepAst]) -> Result<ReduceEdges, CompileErrors> {
     let body_edge =
         checked_step_offset(id, 2, "aggregate", "body").map_err(|e| CompileErrors(vec![e]))?;
     let width = body_width(body, 0).map_err(|e| CompileErrors(vec![e]))?;
-    let width_n = u16::try_from(width)
-        .map_err(|_| CompileErrors(vec![CompileError::StepIndexOutOfRange { value: width }]))?;
+    let width_n = checked_width_n(width)?;
     let next =
         checked_step_offset(body_edge, width_n, "aggregate", "next").map_err(|e| CompileErrors(vec![e]))?;
     let done =
@@ -262,22 +267,7 @@ fn validate_body(index: usize, config: &ReduceLowering<'_>) -> Result<(), Compil
     if config.body.is_empty() {
         return Err(field_error(index, "steps", "at least one set or do step"));
     }
-    for step in config.body {
-        if step.id == config.variable {
-            return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-                name: config.variable.into(),
-            }]));
-        }
-        if matches!(
-            &step.primitive,
-            crate::StepPrimitive::Set { output, .. } if output == config.variable
-        ) {
-            return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-                name: config.variable.into(),
-            }]));
-        }
-    }
-    Ok(())
+    for_each_capture::validate_reduce_capture(config.variable, config.body)
 }
 
 fn field_error(step: usize, field: &'static str, expected: &'static str) -> CompileErrors {
