@@ -16,13 +16,14 @@ pub fn admit_run(
             let artifact = store
                 .load_accepted_artifact(digest)
                 .map_err(map_artifact_envelope_error)?;
-            validate_accepted_artifact_envelope(store, &artifact).map_err(map_artifact_envelope_error)?;
-            verify_stored_artifact(store, &artifact, Some(policy)).map_err(
-                |_| AdmissionError::ArtifactInvalidProofFlag {
+            let ir_compat_decision = checked_admission_ir_version(&artifact)?;
+            validate_accepted_artifact_envelope(store, &artifact)
+                .map_err(map_artifact_envelope_error)?;
+            verify_stored_artifact(store, &artifact, Some(policy)).map_err(|_| {
+                AdmissionError::ArtifactInvalidProofFlag {
                     flag: "admission_policy",
-                },
-            )?;
-            let ir_compat_decision = check_artifact_ir_version(&artifact)?;
+                }
+            })?;
             if artifact.digest != digest && artifact.source_digest != digest {
                 return Err(AdmissionError::ArtifactDigestMismatch {
                     requested: digest,
@@ -94,14 +95,14 @@ pub fn admit_artifact_run_with_certificate_floor(
             let artifact = store
                 .load_accepted_artifact(artifact_digest)
                 .map_err(map_artifact_envelope_error)?;
-            validate_accepted_artifact_envelope(store, &artifact).map_err(map_artifact_envelope_error)?;
-            verify_stored_artifact(store, &artifact, Some(policy)).map_err(
-                |_| AdmissionError::ArtifactInvalidProofFlag {
+            let ir_compat_decision = checked_admission_ir_version(&artifact)?;
+            validate_accepted_artifact_envelope(store, &artifact)
+                .map_err(map_artifact_envelope_error)?;
+            verify_stored_artifact(store, &artifact, Some(policy)).map_err(|_| {
+                AdmissionError::ArtifactInvalidProofFlag {
                     flag: "admission_policy",
-                },
-            )?;
-            let ir_compat_decision = check_artifact_ir_version(&artifact)?;
-
+                }
+            })?;
             // INV-002: digest binding must be total. The loaded artifact's digest
             // must match the requested digest exactly — a crafted artifact with
             // valid gates but wrong identity must not be admitted.
@@ -175,12 +176,7 @@ pub fn admit_artifact_run_with_certificate_floor(
         }
         RuntimePolicy::Relaxed => {
             // Relaxed: skip artifact loading and capability checking.
-            Ok(RunAdmission::new(
-                artifact_digest,
-                run_id,
-                caps,
-                policy,
-            ))
+            Ok(RunAdmission::new(artifact_digest, run_id, caps, policy))
         }
         _ => Err(AdmissionError::ArtifactInvalidProofFlag {
             flag: "runtime_policy",
