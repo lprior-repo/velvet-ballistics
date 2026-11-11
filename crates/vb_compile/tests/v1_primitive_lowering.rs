@@ -1031,7 +1031,7 @@ fn lower_choose_accepts_valid_otherwise_target() -> Result<(), String> {
             otherwise,
         } => {
             assert_eq!(branches.len(), 1);
-            assert_eq!(otherwise, Some(StepIdx::new(2)));
+            assert_eq!(otherwise.step(), Some(StepIdx::new(2)));
         }
         other => {
             return Err(format!("expected ChooseSlot node, got {other:?}"));
@@ -1062,7 +1062,7 @@ fn lower_choose_accepts_empty_branches_with_otherwise() -> Result<(), String> {
             otherwise,
         } => {
             assert_eq!(branches.len(), 0);
-            assert_eq!(otherwise, Some(StepIdx::new(2)));
+            assert_eq!(otherwise.step(), Some(StepIdx::new(2)));
         }
         other => {
             return Err(format!("expected ChooseSlot node, got {other:?}"));
@@ -2035,7 +2035,7 @@ fn assert_exact_for_each(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
             done,
         } => {
             assert_eq!(
-                (input.get(), item_slot.get(), *limit, body.get(), done.get()),
+                (input.get(), item_slot.get(), limit.get(), body.get(), done.get()),
                 (0, 2, 2, 1, 3)
             );
         }
@@ -2083,7 +2083,7 @@ fn assert_exact_together(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
             branch_count,
             accumulator,
         } => {
-            assert_eq!((*branch_count, accumulator.get()), (2, 1));
+            assert_eq!((branch_count.get(), accumulator.get()), (2, 1));
         }
         other => return Err(format!("expected TogetherJoin, got {other:?}")),
     }
@@ -2100,7 +2100,7 @@ fn assert_exact_together(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
             accumulator,
         } => {
             assert_eq!(
-                (*branch, entry.get(), join.get(), accumulator.get()),
+                (branch.get(), entry.get(), join.get(), accumulator.get()),
                 (0, 2, 5, 1)
             );
         }
@@ -2117,7 +2117,7 @@ fn assert_exact_together(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
             accumulator,
         } => {
             assert_eq!(
-                (*branch, entry.get(), join.get(), accumulator.get()),
+                (branch.get(), entry.get(), join.get(), accumulator.get()),
                 (1, 4, 5, 1)
             );
         }
@@ -2141,7 +2141,7 @@ fn assert_exact_collect(nodes: &[CompiledNode], constants: &[ConstValue]) -> Res
             done,
         } => {
             assert_eq!(
-                (source.get(), *limit, *page_size, body.get(), done.get()),
+                (source.get(), limit.get(), *page_size, body.get(), done.get()),
                 (0, 15, 5, 1, 3)
             );
         }
@@ -2260,7 +2260,7 @@ fn assert_exact_repeat(nodes: &[CompiledNode], constants: &[ConstValue]) -> Resu
             body,
             done,
         } => {
-            assert_eq!((*max_attempts, body.get(), done.get()), (3, 1, 3));
+            assert_eq!((max_attempts.get(), body.get(), done.get()), (3, 1, 3));
         }
         other => return Err(format!("expected RepeatStart, got {other:?}")),
     }
@@ -2297,7 +2297,7 @@ fn assert_exact_wait_event(nodes: &[CompiledNode]) -> Result<(), String> {
             event,
             timeout_slot,
         } => {
-            let timeout = timeout_slot.ok_or_else(|| String::from("missing wait timeout slot"))?;
+            let timeout = timeout_slot.slot().ok_or_else(|| String::from("missing wait timeout slot"))?;
             assert_eq!((event.get(), timeout.get()), (0, 1));
         }
         other => return Err(format!("expected WaitEvent, got {other:?}")),
@@ -2312,7 +2312,7 @@ fn assert_exact_ask(nodes: &[CompiledNode]) -> Result<(), String> {
             prompt,
             timeout_slot,
         } => {
-            let timeout = timeout_slot.ok_or_else(|| String::from("missing ask timeout slot"))?;
+            let timeout = timeout_slot.slot().ok_or_else(|| String::from("missing ask timeout slot"))?;
             assert_eq!((prompt.get(), timeout.get()), (0, 1));
         }
         other => return Err(format!("expected Ask, got {other:?}")),
@@ -2463,7 +2463,7 @@ fn assert_kind_targets_in_range(
             for branch in branches.as_ref() {
                 assert_target(branch.target, node_count, case_name, "choose.branch.target")?;
             }
-            assert_optional_target(*otherwise, node_count, case_name, "choose.otherwise")?;
+            assert_optional_target(otherwise.step(), node_count, case_name, "choose.otherwise")?;
         }
         CompiledNodeKind::ChooseSlot {
             branches,
@@ -2477,7 +2477,7 @@ fn assert_kind_targets_in_range(
                     "choose_slot.branch.target",
                 )?;
             }
-            assert_optional_target(*otherwise, node_count, case_name, "choose_slot.otherwise")?;
+            assert_optional_target(otherwise.step(), node_count, case_name, "choose_slot.otherwise")?;
         }
         CompiledNodeKind::ForEachStart { body, done, .. }
         | CompiledNodeKind::ForEachNext { body, done, .. }
@@ -2815,7 +2815,7 @@ fn assert_two_set_collect_contract(workflow: &CompiledWorkflow) -> Result<(), St
             done,
         } => {
             if source.get() != 0
-                || *limit != 2
+                || limit.get() != 2
                 || *page_size != 1
                 || body.get() != 1
                 || done.get() != 4
@@ -3014,7 +3014,7 @@ fn assert_two_set_for_each_contract(
             } => {
                 assert_eq!(input.get(), 1, "Start input slot");
                 assert_eq!(item_slot.get(), 3, "Start item slot");
-                assert_eq!(*limit, 2, "Start limit slot");
+                assert_eq!(limit.get(), 2, "Start limit slot");
                 assert_eq!(body.get(), 2, "Start body target");
                 assert_eq!(done.get(), 5, "Start done target");
             }
@@ -3079,7 +3079,7 @@ fn assert_two_set_for_each_contract(
             } => {
                 assert_eq!(input.get(), 0, "Start input slot");
                 assert_eq!(item_slot.get(), 2, "Start item slot");
-                assert_eq!(*limit, 2, "Start limit slot");
+                assert_eq!(limit.get(), 2, "Start limit slot");
                 assert_eq!(body.get(), 1, "Start body target");
                 assert_eq!(done.get(), 4, "Start done target");
             }

@@ -211,34 +211,27 @@ fn triple_nested_repeat_allocates_distinct_counters() -> Result<(), String> {
 }
 
 // Overflow: body width beyond u16 is rejected as StepIndexOutOfRange.
-// Direct width calculation is tested via large nested fanout; source-level
-// overflow manifests as SourceTooLarge or ResourceContractExceeded.
 #[test]
 fn repeat_body_width_overflow_is_rejected() -> Result<(), String> {
-    // Source-level overflow: huge body exceeds source limits or slot budget.
-    let mut body = String::new();
-    for i in 0..3000_u32 {
-        body.push_str(&format!(
-            "        - id: s{i}\n          set: {{output: v{i}, value: '1'}}\n"
-        ));
-    }
-    let text = repeat_source(&body, 2);
-    let errors = match compile_workflow(text.as_bytes()) {
-        Ok(_) => return Err("expected overflow rejection".to_owned()),
-        Err(e) => e,
-    };
-    let ok = errors.0.iter().any(|e| {
-        matches!(
-            e,
-            CompileError::StepIndexOutOfRange { .. }
-                | CompileError::SourceTooLarge { .. }
-                | CompileError::CanonicalYaml { .. }
-                | CompileError::Workflow(_)
-        )
-    });
-    if ok {
-        Ok(())
-    } else {
-        Err(format!("wrong diagnostic: {errors:?}"))
+    use crate::{StepAst, StepPrimitive};
+    let steps: Vec<StepAst> = (0..=usize::from(u16::MAX))
+        .map(|i| StepAst {
+            id: format!("s{i}"),
+            name: None,
+            condition: None,
+            primitive: StepPrimitive::Set {
+                output: format!("v{i}"),
+                value: String::from("1"),
+            },
+            with: None,
+            retry: None,
+            on_error: None,
+            then: None,
+        })
+        .collect();
+    match super::RepeatLayout::new(StepIdx::new(0), &steps) {
+        Err(CompileError::StepIndexOutOfRange { .. }) => Ok(()),
+        Err(other) => Err(format!("wrong diagnostic: {other:?}")),
+        Ok(_) => Err(String::from("expected overflow rejection")),
     }
 }

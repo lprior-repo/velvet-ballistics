@@ -366,7 +366,7 @@ fn vb_a001_foreachstart_fields_valid() -> Result<(), Box<dyn std::error::Error>>
             body,
             done,
         } => {
-            assert!(*limit > 0, "limit must be positive");
+            assert!(limit.get() > 0, "limit must be positive");
             assert!(body.as_usize() < parts.nodes.len(), "body in-range");
             assert!(done.as_usize() < parts.nodes.len(), "done in-range");
             assert!(
