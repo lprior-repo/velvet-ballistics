@@ -155,7 +155,7 @@ fn build_collect_workflow(limit: u32, body_node_count: u16) -> (Vec<CompiledNode
             StepIdx::new(0),
             CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
-                limit,
+                limit: limit.into(),
                 page_size: 1,
                 body: StepIdx::new(1),
                 done: StepIdx::new(collect_done),
@@ -213,7 +213,7 @@ fn build_repeat_workflow(max_attempts: u16, body_node_count: u16) -> (Vec<Compil
         node(
             StepIdx::new(0),
             CompiledNodeKind::RepeatStart {
-                max_attempts,
+                max_attempts: max_attempts.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(repeat_done),
             },
@@ -288,7 +288,7 @@ fn build_together_workflow(branch_count: u16) -> (Vec<CompiledNode>, StepIdx) {
     nodes.push(node(
         StepIdx::new(join_idx),
         CompiledNodeKind::TogetherJoin {
-            branch_count,
+            branch_count: branch_count.into(),
             accumulator: SlotIdx::new(0),
         },
         None,

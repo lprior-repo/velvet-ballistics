@@ -82,7 +82,7 @@ fn choose_node() -> vb_core::CompiledNode {
                 target: StepIdx::new(2),
             }]
             .into_boxed_slice(),
-            otherwise: Some(StepIdx::new(3)),
+            otherwise: Some(StepIdx::new(3)).into(),
         },
         None,
         Some(StepIdx::new(2)),

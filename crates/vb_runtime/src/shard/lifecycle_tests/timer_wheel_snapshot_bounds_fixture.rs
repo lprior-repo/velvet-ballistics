@@ -40,7 +40,7 @@ fn snapshot_ask_node() -> vb_core::workflow::CompiledNode {
         vb_core::ids::StepIdx::new(2),
         vb_core::workflow::CompiledNodeKind::Ask {
             prompt: vb_core::ids::SlotIdx::ZERO,
-            timeout_slot: Some(vb_core::ids::SlotIdx::new(1)),
+            timeout_slot: Some(vb_core::ids::SlotIdx::new(1)).into(),
         },
         None,
         Some(vb_core::ids::StepIdx::new(3)),

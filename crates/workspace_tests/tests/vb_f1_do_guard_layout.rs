@@ -65,10 +65,10 @@ fn check_guard(
                     branch.target, target
                 ));
             }
-            if otherwise != &Some(StepIdx::new(next)) {
+            if otherwise.step() != Some(StepIdx::new(next)) {
                 return Err(format!(
                     "otherwise {:?} != expected Some({})",
-                    otherwise, next
+                    otherwise.step(), next
                 ));
             }
         }

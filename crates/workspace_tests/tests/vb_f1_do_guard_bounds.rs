@@ -49,10 +49,10 @@ fn check_guard(
                     branch.target, target
                 ));
             }
-            if otherwise != &Some(StepIdx::new(next)) {
+            if otherwise.step() != Some(StepIdx::new(next)) {
                 return Err(format!(
                     "otherwise {:?} != expected Some({})",
-                    otherwise, next
+                    otherwise.step(), next
                 ));
             }
         }
@@ -213,10 +213,10 @@ steps:
             if *done != StepIdx::new(7) {
                 return Err(format!("repeat done {:?} != expected 7", done));
             }
-            if *max_attempts != 2 {
+            if max_attempts.get() != 2 {
                 return Err(format!(
                     "repeat max_attempts {} != expected 2",
-                    max_attempts
+                    max_attempts.get()
                 ));
             }
         }

@@ -250,14 +250,14 @@ fn nested_collect_body_lowers_to_bounded_region() -> Result<(), Box<dyn std::err
     let expected_kinds = [
         CompiledNodeKind::CollectStart {
             source: vb_core::SlotIdx::new(0),
-            limit: 1,
+            limit: vb_core::ids::FanoutLimit::new(1),
             page_size: 1,
             body: vb_core::StepIdx::new(1),
             done: vb_core::StepIdx::new(7),
         },
         CompiledNodeKind::CollectStart {
             source: vb_core::SlotIdx::new(1),
-            limit: 1,
+            limit: vb_core::ids::FanoutLimit::new(1),
             page_size: 1,
             body: vb_core::StepIdx::new(2),
             done: vb_core::StepIdx::new(6),

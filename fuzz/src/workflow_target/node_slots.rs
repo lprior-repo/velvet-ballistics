@@ -82,8 +82,8 @@ pub(super) fn check_node_slots(kind: &vb_core::CompiledNodeKind, slot_count: u16
             timeout_slot,
         } => {
             assert_slot(*event, slot_count, node_idx);
-            if let Some(timeout) = timeout_slot {
-                assert_slot(*timeout, slot_count, node_idx);
+            if let Some(timeout) = timeout_slot.slot() {
+                assert_slot(timeout, slot_count, node_idx);
             }
         }
         CompiledNodeKind::Ask {
@@ -91,8 +91,8 @@ pub(super) fn check_node_slots(kind: &vb_core::CompiledNodeKind, slot_count: u16
             timeout_slot,
         } => {
             assert_slot(*prompt, slot_count, node_idx);
-            if let Some(timeout) = timeout_slot {
-                assert_slot(*timeout, slot_count, node_idx);
+            if let Some(timeout) = timeout_slot.slot() {
+                assert_slot(timeout, slot_count, node_idx);
             }
         }
         CompiledNodeKind::AskResume { answer } => assert_slot(*answer, slot_count, node_idx),
@@ -100,7 +100,7 @@ pub(super) fn check_node_slots(kind: &vb_core::CompiledNodeKind, slot_count: u16
             assert_slot(*policy_slot, slot_count, node_idx);
         }
         CompiledNodeKind::ErrorHandler {
-            error_slot: Some(slot),
+            error_slot: vb_core::workflow::ErrorSink::Slot(slot),
             ..
         } => assert_slot(*slot, slot_count, node_idx),
         CompiledNodeKind::Finish { result } => assert_slot(*result, slot_count, node_idx),

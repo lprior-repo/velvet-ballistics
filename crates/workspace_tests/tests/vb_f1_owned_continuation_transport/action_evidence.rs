@@ -20,7 +20,7 @@ pub(super) fn compiled(workflow: &CompiledWorkflow) -> TestResult {
         branches.first().ok_or("guard branch missing")?.target,
         ACTION
     );
-    assert_eq!(*otherwise, Some(START));
+    assert_eq!(otherwise.step(), Some(START));
     let action = workflow.node(ACTION).ok_or("real Do missing")?;
     assert!(matches!(action.kind, CompiledNodeKind::Do { action, input }
         if action == vb_core::ActionId::new(0) && input == guard_slot(workflow)?));

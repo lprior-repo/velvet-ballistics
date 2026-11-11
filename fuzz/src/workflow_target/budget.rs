@@ -197,7 +197,7 @@ fn foreach_start(
     vb_core::CompiledNodeKind::ForEachStart {
         input: safe_slot,
         item_slot: safe_slot,
-        limit: 5,
+        limit: 5.into(),
         body: bounded_next(index, node_count, 1),
         done: bounded_next(index, node_count, 2),
     }

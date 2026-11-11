@@ -60,7 +60,7 @@ fn overflow_error_preserves_complete_populated_frame() -> CoreResult<()> {
     assert_eq!(
         frame.add_parallel_in_flight(1),
         Err(CoreError::InternalInvariantViolation {
-            reason: "parallel_in_flight overflow"
+            reason: "parallel_in_flight overflow".into()
         })
     );
     assert_eq!(frame, before);
@@ -74,7 +74,7 @@ fn underflow_error_preserves_complete_populated_frame() -> CoreResult<()> {
     assert_eq!(
         frame.sub_parallel_in_flight(3),
         Err(CoreError::InternalInvariantViolation {
-            reason: "parallel_in_flight underflow"
+            reason: "parallel_in_flight underflow".into()
         })
     );
     assert_eq!(frame, before);
