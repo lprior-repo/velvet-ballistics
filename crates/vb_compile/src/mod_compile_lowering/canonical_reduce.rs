@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
 use super::canonical_reduce_initial::parse_typed_initial;
-use super::emit_single_body_set;
+use super::{emit_single_body_set, field_error};
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use crate::mod_compile_lowering::part_02::for_each_capture;
 use crate::mod_compile_lowering::part_14::{BodyCtx, emit_scoped_flat_body};
@@ -51,9 +51,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_aggregate(
     )
 }
 
-pub(in crate::mod_compile_lowering) fn checked_width_n(
-    width: usize,
-) -> Result<u16, CompileErrors> {
+pub(in crate::mod_compile_lowering) fn checked_width_n(width: usize) -> Result<u16, CompileErrors> {
     u16::try_from(width)
         .map_err(|_| CompileErrors(vec![CompileError::StepIndexOutOfRange { value: width }]))
 }
@@ -295,14 +293,6 @@ fn validate_body(index: usize, config: &ReduceLowering<'_>) -> Result<(), Compil
         return Err(field_error(index, "steps", "at least one set or do step"));
     }
     for_each_capture::validate_reduce_capture(config.variable, config.body)
-}
-
-fn field_error(step: usize, field: &'static str, expected: &'static str) -> CompileErrors {
-    CompileErrors(vec![CompileError::StepFieldShape {
-        step,
-        field,
-        expected,
-    }])
 }
 
 #[cfg(test)]
