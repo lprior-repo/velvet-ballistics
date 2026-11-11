@@ -88,7 +88,9 @@ Update 2026-11-10 (main `8b770bb8`, tip #338): the reference crate now compiles 
 
 Three Kani harnesses named by the registry do not exist anywhere in `crates/`, so the Kani leg of three otherwise-covered obligations has no artifact: `kani_record_digest.rs` (VB-STORAGE-DECODE-006), `kani_terminal_state.rs` (VB-REPLAY-006), `kani_expr_stack.rs` (VB-EXPR-002). The test legs of all three obligations are covered above; whether the Kani leg is required or the test leg suffices is a proof-level decision, not something this triage settles. Two smaller naming drifts in the same class: the registry's `kani_step_state.rs` is `kani_step_state_transition.rs` on disk, and `kani_ipc_header.rs` exists as named.
 
-## Missing tooling (2 commands)
+## Missing tooling (2 commands) — both landed 2026-11-10
+
+Update 2026-11-10: both commands now exist — `diff-test` merged as #343 and `crash-lab` merged as #350 (verified first-hand in the tree on main `c953cf35`: `xtask/src/diff_test.rs` and `xtask/src/crash_lab.rs`, `crash-lab` subcommand at `xtask/src/cli.rs:87`). The sentence below is the triage-time record, not the current state.
 
 Two registry commands name xtask subcommands that do not exist: `cargo xtask diff-test --suite replay` (VB-REPLAY-007; `diff-test` / `diff_test` appears nowhere in `xtask/src/`, `Cargo.toml`, or `.moon/` — only a mention in `docs/master/section-077-ai-safe-quality-infrastructure.md`) and `cargo xtask crash-lab --workflow minimal --crash-at action_dispatch` (VB-REPLAY-001; `crash-lab` appears only as a proof-level label in `xtask/src/proof.rs`). Building either command is a tooling batch, separate from writing the tests that would use it.
 
@@ -101,7 +103,7 @@ All five TLA models named by the VB-REPLAY obligations exist under `specs/tla/`:
 - Retire VB-CODEGEN-001 (`generated_vs_ir`) from the registry, or restate it against the interpreter-only architecture.
 - Correct VB-IPC-DECODE-002 (`header_len_validation`): IPC header is 24, record envelope is 60 — which layer the obligation pins.
 - Kani legs: are `kani_record_digest.rs`, `kani_terminal_state.rs`, `kani_expr_stack.rs` required, or does the passing test leg close VB-STORAGE-DECODE-006, VB-REPLAY-006, and VB-EXPR-002?
-- Follow-up batches (in triage order, each its own PR): `journal_before_dispatch`, `single_shard_owner`, `bytecode_vs_ast`, `fjall_fsync_boundary` test legs; reference-crate repair (20 errors) unblocking `engine_vs_reference` and `taint_vs_reference`; `diff-test` and `crash-lab` xtask commands. Update 2026-11-10: the four test legs are done (see Resolutions since triage); reference-crate repair is PR #338 (open), `diff-test` is PR #343 (open), `crash-lab` still has no batch.
+- Follow-up batches (in triage order, each its own PR): `journal_before_dispatch`, `single_shard_owner`, `bytecode_vs_ast`, `fjall_fsync_boundary` test legs; reference-crate repair (20 errors) unblocking `engine_vs_reference` and `taint_vs_reference`; `diff-test` and `crash-lab` xtask commands. Update 2026-11-10: the four test legs are done (see Resolutions since triage); reference-crate repair merged as #338, `diff-test` merged as #343, `crash-lab` merged as #350; the differential tests the repair unblocked are open as #348.
 - Nothing in this triage renames a registry name or edits `contracts/proof_obligations.yaml`; the 27 covered names stay stale-named in the registry until John directs a rename (renaming without his word would erase the evidence gap this document records).
 
 ## What this triage did not do
