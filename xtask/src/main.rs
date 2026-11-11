@@ -17,6 +17,7 @@ mod forbidden_scan;
 mod gates;
 mod loom;
 mod proof;
+mod replay_lab;
 mod shell;
 // UI modules moved to velvet-optional repo (deferred):
 // mod ui_overlap;
@@ -90,6 +91,7 @@ fn run_legacy_cli(cli: Cli) -> anyhow::Result<()> {
         Commands::BenchmarkRegressionPolicy { budget, evidence } => {
             benchmark_policy::cmd_benchmark_policy(&budget, &evidence)
         }
+        Commands::ReplayLab => replay_lab::cmd_replay_lab(&workspace_root),
         Commands::ListCrates {
             include,
             exclude,

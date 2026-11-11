@@ -112,6 +112,8 @@ pub(crate) enum Commands {
         #[arg(long, default_value = "evidence/benchmark-evidence.jsonl")]
         evidence: String,
     },
+    #[command(name = "replay-lab")]
+    ReplayLab,
     // === New proof/test orchestrator commands ===
     #[command(name = "list-crates")]
     ListCrates {
