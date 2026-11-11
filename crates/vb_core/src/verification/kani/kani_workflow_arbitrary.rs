@@ -95,12 +95,9 @@ impl kani::Arbitrary for ExprProgram {
     fn any() -> Self {
         let ops_len: u8 = kani::any();
         kani::assume(ops_len <= 16);
-        let mut ops: Vec<ExprOp> = Vec::with_capacity(usize::from(ops_len));
-        ops.extend((0..ops_len).map(|_| kani::any::<ExprOp>()));
-        let max_stack: u8 = kani::any();
         Self {
-            ops: ops.into_boxed_slice(),
-            max_stack,
+            ops: bounded_symbolic_items(ops_len),
+            max_stack: kani::any(),
         }
     }
 }
@@ -156,167 +153,12 @@ impl kani::Arbitrary for SlotBranch {
 
 impl kani::Arbitrary for CompiledNodeKind {
     fn any() -> Self {
-        match kani::any::<u8>() {
-            0 => Self::Nop,
-            1 => Self::SetConst {
-                value: ConstIdx::new(kani::any()),
-            },
-            2 => Self::Copy {
-                source: SlotIdx::new(kani::any()),
-            },
-            3 => Self::EvalExpr {
-                expr: ExprIdx::new(kani::any()),
-            },
-            4 => Self::BuildObject {
-                fields: Box::new([]),
-            },
-            5 => Self::BuildList {
-                items: Box::new([]),
-            },
-            6 => Self::Do {
-                action: ActionId::new(kani::any()),
-                input: SlotIdx::new(kani::any()),
-            },
-            7 => Self::Choose {
-                branches: bounded_expr_branches(),
-                otherwise: if kani::any::<bool>() {.into()
-                    Some(StepIdx::new(kani::any()))
-                } else {
-                    None
-                },
-            },
-            8 => Self::ChooseSlot {
-                branches: bounded_slot_branches(),
-                otherwise: if kani::any::<bool>() {.into()
-                    Some(StepIdx::new(kani::any()))
-                } else {
-                    None
-                },
-            },
-            9 => Self::ForEachStart {
-                input: SlotIdx::new(kani::any()),
-                item_slot: SlotIdx::new(kani::any()),
-                limit: kani::any().into(),
-                body: StepIdx::new(kani::any()),
-                done: StepIdx::new(kani::any()),
-            },
-            10 => Self::ForEachNext {
-                iterator_slot: SlotIdx::new(kani::any()),
-                body: StepIdx::new(kani::any()),
-                done: StepIdx::new(kani::any()),
-            },
-            11 => Self::ForEachJoin {
-                output: SlotIdx::new(kani::any()),
-            },
-            12 => Self::TogetherStart {
-                branches: bounded_step_indices(),
-                join: StepIdx::new(kani::any()),
-            },
-            13 => Self::TogetherBranch {
-                branch: kani::any().into(),
-                entry: StepIdx::new(kani::any()),
-                join: StepIdx::new(kani::any()),
-                accumulator: SlotIdx::new(kani::any()),
-            },
-            14 => Self::TogetherJoin {
-                branch_count: kani::any().into(),
-                accumulator: SlotIdx::new(kani::any()),
-            },
-            15 => Self::CollectStart {
-                source: SlotIdx::new(kani::any()),
-                limit: kani::any().into(),
-                page_size: kani::any(),
-                body: StepIdx::new(kani::any()),
-                done: StepIdx::new(kani::any()),
-            },
-            16 => Self::CollectPage {
-                collector_slot: SlotIdx::new(kani::any()),
-                body: StepIdx::new(kani::any()),
-                done: StepIdx::new(kani::any()),
-            },
-            17 => Self::CollectNext {
-                collector_slot: SlotIdx::new(kani::any()),
-                body: StepIdx::new(kani::any()),
-                done: StepIdx::new(kani::any()),
-            },
-            18 => Self::CollectFinish {
-                collector_slot: SlotIdx::new(kani::any()),
-            },
-            19 => Self::ReduceStart {
-                input: SlotIdx::new(kani::any()),
-                accumulator: SlotIdx::new(kani::any()),
-                initial: ConstIdx::new(kani::any()),
-                body: StepIdx::new(kani::any()),
-                done: StepIdx::new(kani::any()),
-            },
-            20 => Self::ReduceNext {
-                iterator_slot: SlotIdx::new(kani::any()),
-                accumulator: SlotIdx::new(kani::any()),
-                body: StepIdx::new(kani::any()),
-                done: StepIdx::new(kani::any()),
-            },
-            21 => Self::ReduceFinish {
-                accumulator: SlotIdx::new(kani::any()),
-            },
-            22 => Self::RepeatStart {
-                max_attempts: kani::any().into(),
-                body: StepIdx::new(kani::any()),
-                done: StepIdx::new(kani::any()),
-            },
-            23 => Self::RepeatAttempt {
-                attempt_slot: SlotIdx::new(kani::any()),
-                body: StepIdx::new(kani::any()),
-                done: StepIdx::new(kani::any()),
-            },
-            24 => Self::RepeatCheck {
-                attempt_slot: SlotIdx::new(kani::any()),
-                done: StepIdx::new(kani::any()),
-            },
-            25 => Self::RepeatFinish {
-                result: SlotIdx::new(kani::any()),
-            },
-            26 => Self::WaitUntil {
-                deadline_slot: SlotIdx::new(kani::any()),
-            },
-            27 => Self::WaitEvent {
-                event: SlotIdx::new(kani::any()),
-                timeout_slot: if kani::any::<bool>() {.into()
-                    Some(SlotIdx::new(kani::any()))
-                } else {
-                    None
-                },
-            },
-            28 => Self::Ask {
-                prompt: SlotIdx::new(kani::any()),
-                timeout_slot: if kani::any::<bool>() {.into()
-                    Some(SlotIdx::new(kani::any()))
-                } else {
-                    None
-                },
-            },
-            29 => Self::AskResume {
-                answer: SlotIdx::new(kani::any()),
-            },
-            30 => Self::RetryCheck {
-                policy_slot: SlotIdx::new(kani::any()),
-                body: StepIdx::new(kani::any()),
-                exhausted: StepIdx::new(kani::any()),
-            },
-            31 => Self::ErrorHandler {
-                body: StepIdx::new(kani::any()),
-                handler: StepIdx::new(kani::any()),
-                error_slot: if kani::any::<bool>() {.into()
-                    Some(SlotIdx::new(kani::any()))
-                } else {
-                    None
-                },
-            },
-            32 => Self::Jump {
-                target: StepIdx::new(kani::any()),
-            },
-            _ => Self::Finish {
-                result: SlotIdx::new(kani::any()),
-            },
+        let choice: u8 = kani::any();
+        match choice {
+            0..=8 => arbitrary_node_group_0(choice),
+            9..=17 => arbitrary_node_group_1(choice),
+            18..=26 => arbitrary_node_group_2(choice),
+            _ => arbitrary_node_group_3(choice),
         }
     }
 }
@@ -359,78 +201,21 @@ impl kani::Arbitrary for ResourceContract {
 
 impl kani::Arbitrary for WorkflowParts {
     fn any() -> Self {
-        let node_count: u8 = kani::any();
-        kani::assume(node_count <= 8);
-        let mut nodes: Vec<CompiledNode> = Vec::with_capacity(usize::from(node_count));
-        nodes.extend((0..node_count).map(|_| kani::any::<CompiledNode>()));
-        let expr_count: u8 = kani::any();
-        kani::assume(expr_count <= 4);
-        let mut expressions: Vec<ExprProgram> = Vec::with_capacity(usize::from(expr_count));
-        expressions.extend((0..expr_count).map(|_| kani::any::<ExprProgram>()));
-        let const_count: u8 = kani::any();
-        kani::assume(const_count <= 4);
-        let mut constants: Vec<ConstValue> = Vec::with_capacity(usize::from(const_count));
-        constants.extend((0..const_count).map(|_| kani::any::<ConstValue>()));
-        let step_name_count: u8 = kani::any();
-        kani::assume(step_name_count <= 4);
-        let mut step_names: Vec<Box<str>> = Vec::with_capacity(usize::from(step_name_count));
-        step_names.extend((0..step_name_count).map(kani_step_name));
-        let input_slot_count: u8 = kani::any();
-        kani::assume(input_slot_count <= 4);
-        let mut input_slots: Vec<CompiledInputSlot> =
-            Vec::with_capacity(usize::from(input_slot_count));
-        input_slots.extend((0..input_slot_count).map(|index| {
-            let (min, max) = ordered_optional_bounds();
-            let (min_length, max_length) = ordered_optional_length_bounds();
-            CompiledInputSlot {
-                slot: SlotIdx::new(u16::from(index)),
-                kind: match kani::any::<u8>() {
-                    0 => InputSlotKind::Null,
-                    1 => InputSlotKind::Bool,
-                    2 => InputSlotKind::I64,
-                    3 => InputSlotKind::F64,
-                    4 => InputSlotKind::Symbol,
-                    5 => InputSlotKind::List,
-                    6 => InputSlotKind::Object,
-                    7 => InputSlotKind::Blob,
-                    _ => InputSlotKind::Any,
-                },
-                constraint: CompiledInputConstraint {
-                    presence: Presence::from_bool(kani::any::<bool>()),
-                    nullability: Nullability::from_bool(kani::any::<bool>()),
-                    default_value: None,
-                    min,
-                    max,
-                    min_length,
-                    max_length,
-                    element: None,
-                    extra: ExtraFields::Unspecified,
-                    secretness: Secretness::from_bool(kani::any::<bool>()),
-                },
-            }
-        }));
+        let (node_count, nodes) = bounded_workflow_nodes();
         Self {
             name: Box::from("kani_workflow"),
             digest: WorkflowDigest::from_bytes(kani::any::<[u8; 32]>()),
             semantic_source_identity: kani::any(),
-            nodes: nodes.into_boxed_slice(),
-            expressions: expressions.into_boxed_slice(),
+            nodes,
+            expressions: bounded_workflow_expressions(),
             accessors: bounded_accessors(),
-            constants: constants.into_boxed_slice(),
+            constants: bounded_workflow_constants(),
             slot_count: kani::any::<u16>(),
             symbols_count: kani::any::<u32>(),
-            entry: {
-                let entry_idx: u8 = kani::any();
-                let bounded_idx = if node_count == 0 {
-                    0
-                } else {
-                    entry_idx % node_count
-                };
-                StepIdx::new(bounded_idx as u16)
-            },
+            entry: bounded_workflow_entry(node_count),
             resource_contract: kani::any::<ResourceContract>(),
-            step_names: step_names.into_boxed_slice(),
-            input_slots: input_slots.into_boxed_slice(),
+            step_names: bounded_workflow_step_names(),
+            input_slots: bounded_workflow_input_slots(),
         }
     }
 }
@@ -448,84 +233,17 @@ impl kani::Arbitrary for RunFrame {
         let first_step_idx = StepIdx::new(first_step);
         // With valid assumes, RunFrame::new always succeeds (step_count > 0, first_step < step_count).
         // The Ok variant is guaranteed; Err is unreachable under these assumes.
-        RunFrame::new(run_id, first_step_idx, step_count, slot_count)
-            .unwrap_or_else(|_| unreachable!("RunFrame::new failed with valid assumes"))
+        match RunFrame::new(run_id, first_step_idx, step_count, slot_count) {
+            Ok(frame) => frame,
+            Err(_) => {
+                kani::assert(false, "valid symbolic frame construction must succeed");
+                std::process::abort()
+            }
+        }
     }
 }
 
-fn kani_step_name(index: u8) -> Box<str> {
-    match index {
-        0 => Box::from("step_0"),
-        1 => Box::from("step_1"),
-        2 => Box::from("step_2"),
-        _ => Box::from("step_3"),
-    }
-}
-
-fn bounded_path() -> Box<[PathSegment]> {
-    match bounded_len_3() {
-        0 => Box::new([]),
-        1 => Box::new([kani::any::<PathSegment>()]),
-        2 => Box::new([kani::any::<PathSegment>(), kani::any::<PathSegment>()]),
-        _ => Box::new([
-            kani::any::<PathSegment>(),
-            kani::any::<PathSegment>(),
-            kani::any::<PathSegment>(),
-        ]),
-    }
-}
-
-fn bounded_accessors() -> Box<[AccessorProgram]> {
-    match bounded_len_3() {
-        0 => Box::new([]),
-        1 => Box::new([kani::any::<AccessorProgram>()]),
-        2 => Box::new([
-            kani::any::<AccessorProgram>(),
-            kani::any::<AccessorProgram>(),
-        ]),
-        _ => Box::new([
-            kani::any::<AccessorProgram>(),
-            kani::any::<AccessorProgram>(),
-            kani::any::<AccessorProgram>(),
-        ]),
-    }
-}
-
-fn bounded_expr_branches() -> Box<[ExprBranch]> {
-    match bounded_len_2() {
-        0 => Box::new([]),
-        1 => Box::new([kani::any::<ExprBranch>()]),
-        _ => Box::new([kani::any(), kani::any()]),
-    }
-}
-
-fn bounded_slot_branches() -> Box<[SlotBranch]> {
-    match bounded_len_2() {
-        0 => Box::new([]),
-        1 => Box::new([kani::any::<SlotBranch>()]),
-        _ => Box::new([kani::any(), kani::any()]),
-    }
-}
-
-fn bounded_step_indices() -> Box<[StepIdx]> {
-    match bounded_len_2() {
-        0 => Box::new([]),
-        1 => Box::new([StepIdx::new(kani::any())]),
-        _ => Box::new([StepIdx::new(kani::any()), StepIdx::new(kani::any())]),
-    }
-}
-
-fn bounded_len_3() -> u8 {
-    let len: u8 = kani::any();
-    kani::assume(len <= 3);
-    len
-}
-
-fn bounded_len_2() -> u8 {
-    let len: u8 = kani::any();
-    kani::assume(len <= 2);
-    len
-}
+include!("kani_workflow_collections.rs");
 
 // -------------------------------------------------------------------------
 // kani::Arbitrary for Taint and SlotValue (needed by EngineSignal harness)
@@ -562,73 +280,18 @@ impl kani::Arbitrary for SlotValue {
 // kani::Arbitrary for action system types
 // -------------------------------------------------------------------------
 
-impl kani::Arbitrary for Idempotency {
-    fn any() -> Self {
-        match kani::any::<u8>() % 3 {
-            0 => Idempotency::DeterministicPure,
-            1 => Idempotency::IdempotentExternal,
-            _ => Idempotency::AtLeastOnceExternal,
-        }
-    }
+include!("kani_workflow_action_arbitrary.rs");
+
+fn arbitrary_optional_step() -> Option<StepIdx> {
+    kani::any::<bool>().then(|| StepIdx::new(kani::any()))
 }
 
-impl kani::Arbitrary for SideEffect {
-    fn any() -> Self {
-        match kani::any::<u8>() % 5 {
-            0 => SideEffect::None,
-            1 => SideEffect::Writes,
-            2 => SideEffect::Sends,
-            3 => SideEffect::Creates,
-            _ => SideEffect::Destroys,
-        }
-    }
+fn arbitrary_optional_slot() -> Option<SlotIdx> {
+    kani::any::<bool>().then(|| SlotIdx::new(kani::any()))
 }
 
-impl kani::Arbitrary for RetrySafety {
-    fn any() -> Self {
-        match kani::any::<u8>() % 3 {
-            0 => RetrySafety::Safe,
-            1 => RetrySafety::KeyRequired,
-            _ => RetrySafety::Unsafe,
-        }
-    }
-}
+include!("kani_workflow_node_generators_0.rs");
+include!("kani_workflow_node_generators_1.rs");
+include!("kani_workflow_node_dispatch.rs");
 
-impl kani::Arbitrary for Capability {
-    fn any() -> Self {
-        Capability::new(
-            // Bounded name to avoid unbounded symbolic strings
-            format!("cap_{}", kani::any::<u8>().wrapping_rem(16)).into_boxed_str(),
-            kani::any(),
-        )
-    }
-}
-
-impl kani::Arbitrary for ActionContract {
-    fn any() -> Self {
-        // Bounded capability count (0..4) to keep symbolic state space manageable
-        let cap_count = kani::any::<u8>() % 4;
-        let mut caps = Vec::with_capacity(usize::from(cap_count));
-        let mut i = 0u8;
-        while i < cap_count {
-            caps.push(kani::any::<Capability>());
-            i = match i.checked_add(1) {
-                Some(n) => n,
-                None => break,
-            };
-        }
-        ActionContract {
-            id: kani::any(),
-            name: ActionName::from_static_infallible("test-action"),
-            input_slot_count: kani::any(),
-            output_slot_count: kani::any(),
-            max_input_bytes: kani::any(),
-            max_output_bytes: kani::any(),
-            timeout_ms: kani::any(),
-            idempotency: kani::any(),
-            side_effect: kani::any(),
-            retry_safety: kani::any(),
-            required_capabilities: caps.into_boxed_slice(),
-        }
-    }
-}
+include!("kani_workflow_parts_generators.rs");

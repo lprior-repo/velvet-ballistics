@@ -1,234 +1,135 @@
 #![forbid(unsafe_code)]
-//! Kani model-checking harnesses for the replay module.
-//!
-//! Each harness is gated behind `#[cfg(kani)]` so that `cargo kani`
-//! picks it up as a proof obligation while regular `cargo test` skips it.
+//! Bounded, structurally generated replay proofs through real constructors.
 
+use super::{ReplayAction, ReplayError, step::replay_step};
 use crate::errors::CoreError;
-use crate::frame::RunFrame;
-use crate::ids::{RunId, SlotIdx, StepIdx};
-use crate::value::{ConstValue, SlotValue};
 use crate::value_store::ValueStore;
-use crate::workflow::{
-    CompiledNode, CompiledNodeKind, ResourceContract, SlotBranch, WorkflowParts,
-};
 
-use super::{ReplayAction, step::replay_step};
-
-fn make_minimal_plan(
-    nodes: Vec<CompiledNode>,
-    constants: Vec<ConstValue>,
-) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
-    crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
-        semantic_source_identity: None,
-        name: "kani_plan".into(),
-        digest: crate::ids::WorkflowDigest::from_bytes([0; 32]),
-        nodes: nodes.into(),
-        expressions: vec![].into(),
-        accessors: vec![].into(),
-        constants: constants.into(),
-        slot_count: 3,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
-        input_slots: Box::new([]),
-    })
-    .map_err(|_| CoreError::InvalidCompiledWorkflow {
-        reason: "kani test workflow validation failed",
-    })
-}
+#[path = "replay_kani_generators.rs"]
+mod generators;
+use generators::{ReplayShape, cover_shape, frame, one_branch, plan, setup_error, two_branches};
 
 #[cfg(kani)]
 mod verification {
     use super::*;
-    use crate::workflow::node;
 
-    /// Proves that `replay_choose_slot` never panics for any boolean
-    /// combination of two slot conditions, with and without an otherwise
-    /// branch. This covers the full branch-and-fallback state space
-    /// (2^2 × 2 = 8 concrete states).
     #[kani::proof]
+    #[kani::unwind(40)]
     fn verify_replay_choose_slot_two_branches_no_panic() {
-        let slot_a: bool = kani::any();
-        let slot_b: bool = kani::any();
-        let has_otherwise: bool = kani::any();
-
-        let plan = make_minimal_plan(
-            vec![
-                node(
-                    StepIdx::new(0),
-                    CompiledNodeKind::ChooseSlot {
-                        branches: vec![
-                            SlotBranch {
-                                condition: SlotIdx::new(0),
-                                target: StepIdx::new(1),
-                            },
-                            SlotBranch {
-                                condition: SlotIdx::new(1),
-                                target: StepIdx::new(2),
-                            },
-                        ]
-                        .into_boxed_slice(),
-                        otherwise: if has_otherwise {.into()
-                            Some(StepIdx::new(3))
-                        } else {
-                            None
-                        },
-                    },
-                    None,
-                    None,
-                ),
-                node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
-                node(StepIdx::new(2), CompiledNodeKind::Nop, None, None),
-                node(StepIdx::new(3), CompiledNodeKind::Nop, None, None),
-            ],
-            vec![],
-        )
-        .expect("plan construction failed");
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)
-            .expect("frame construction failed");
-        run.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_a))
-            .expect("write slot a failed");
-        run.write_slot(SlotIdx::new(1), SlotValue::Bool(slot_b))
-            .expect("write slot b failed");
-
-        let mut store = ValueStore::new();
-        let node = plan.node(StepIdx::new(0)).expect("node 0 missing");
-        let _result = replay_step(node, &mut run, &mut store, &plan);
-
-        if !slot_a && !slot_b && !has_otherwise {
-            assert!(_result.is_err());
-        } else {
-            assert!(_result.is_ok());
-        }
+        let (a, b, fallback): (bool, bool, bool) = kani::any();
+        kani::assert(
+            check_two_branches(a, b, fallback).is_ok(),
+            "valid two-branch setup",
+        );
     }
 
-    /// Proves that choose slot always selects a target from the input set
-    /// {branch targets} ∪ {otherwise}. Uses symbolic boolean slot values
-    /// to cover all concrete input combinations.
     #[kani::proof]
+    #[kani::unwind(40)]
     fn verify_choose_slot_output_in_input_set() {
-        let slot_a: bool = kani::any();
-        let slot_b: bool = kani::any();
-
-        let plan = make_minimal_plan(
-            vec![
-                node(
-                    StepIdx::new(0),
-                    CompiledNodeKind::ChooseSlot {
-                        branches: vec![
-                            SlotBranch {
-                                condition: SlotIdx::new(0),
-                                target: StepIdx::new(1),
-                            },
-                            SlotBranch {
-                                condition: SlotIdx::new(1),
-                                target: StepIdx::new(2),
-                            },
-                        ]
-                        .into_boxed_slice(),
-                        otherwise: Some(StepIdx::new(3)).into(),
-                    },
-                    None,
-                    None,
-                ),
-                node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
-                node(StepIdx::new(2), CompiledNodeKind::Nop, None, None),
-                node(StepIdx::new(3), CompiledNodeKind::Nop, None, None),
-            ],
-            vec![],
-        )
-        .expect("plan construction failed");
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)
-            .expect("frame construction failed");
-        run.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_a))
-            .expect("write slot a failed");
-        run.write_slot(SlotIdx::new(1), SlotValue::Bool(slot_b))
-            .expect("write slot b failed");
-
-        let mut store = ValueStore::new();
-        let node = plan.node(StepIdx::new(0)).expect("node 0 missing");
-        let result = replay_step(node, &mut run, &mut store, &plan);
-
-        match result {
-            Ok(ReplayAction::Continue(target)) => {
-                let valid = target == StepIdx::new(1)
-                    || target == StepIdx::new(2)
-                    || target == StepIdx::new(3);
-                assert!(valid);
-            }
-            Ok(_) => {
-                panic!("unexpected action variant");
-            }
-            Err(_) => {
-                panic!("unexpected error for input with otherwise");
-            }
-        }
+        let (a, b): (bool, bool) = kani::any();
+        kani::assert(
+            check_target_membership(a, b).is_ok(),
+            "valid target-set setup",
+        );
     }
 
-    /// Proves that replay is deterministic: two identical frames
-    /// with the same slot values produce identical results.
     #[kani::proof]
+    #[kani::unwind(40)]
     fn verify_replay_deterministic_for_same_input() {
-        let slot_val: bool = kani::any();
+        let value: bool = kani::any();
+        kani::assert(
+            check_determinism(value).is_ok(),
+            "valid deterministic setup",
+        );
+    }
+}
 
-        let plan = make_minimal_plan(
-            vec![
-                node(
-                    StepIdx::new(0),
-                    CompiledNodeKind::ChooseSlot {
-                        branches: vec![SlotBranch {
-                            condition: SlotIdx::new(0),
-                            target: StepIdx::new(1),
-                        }]
-                        .into_boxed_slice(),
-                        otherwise: Some(StepIdx::new(2)).into(),
-                    },
-                    None,
-                    None,
-                ),
-                node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
-                node(StepIdx::new(2), CompiledNodeKind::Nop, None, None),
-            ],
-            vec![],
-        )
-        .expect("plan construction failed");
+fn check_two_branches(a: bool, b: bool, fallback: bool) -> Result<(), CoreError> {
+    let shape: ReplayShape = kani::any();
+    let branches = two_branches(&shape);
+    let plan = plan(&shape, &branches, fallback.then_some(shape.fallback))?;
+    let mut run = frame(&shape, a, b)?;
+    let node = plan.node(plan.entry()).ok_or_else(setup_error)?;
+    let result = replay_step(node, &mut run, &mut ValueStore::new(), &plan);
+    if !a && !b && !fallback {
+        kani::assert(
+            matches!(
+                result,
+                Err(ReplayError::Internal {
+                    reason: "choose_slot no branch matched and no otherwise"
+                })
+            ),
+            "no branch and no fallback fails",
+        );
+    } else {
+        kani::assert(result.is_ok(), "a branch or fallback succeeds");
+    }
+    cover_cube(a, b, fallback);
+    cover_shape(&shape);
+    Ok(())
+}
 
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let node = plan.node(StepIdx::new(0)).expect("node 0 missing");
+fn check_target_membership(a: bool, b: bool) -> Result<(), CoreError> {
+    let shape: ReplayShape = kani::any();
+    let branches = two_branches(&shape);
+    let plan = plan(&shape, &branches, Some(shape.fallback))?;
+    let mut run = frame(&shape, a, b)?;
+    let node = plan.node(plan.entry()).ok_or_else(setup_error)?;
+    let result = replay_step(node, &mut run, &mut ValueStore::new(), &plan);
+    kani::assert(
+        matches!(result, Ok(ReplayAction::Continue(target)) if
+        branches.iter().any(|branch| branch.target == target) || target == shape.fallback),
+        "selected target is configured",
+    );
+    cover_pair(a, b);
+    cover_shape(&shape);
+    Ok(())
+}
 
-        let mut run_a = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)
-            .expect("frame a failed");
-        run_a
-            .write_slot(SlotIdx::new(0), SlotValue::Bool(slot_val))
-            .expect("write slot a failed");
-        let mut store_a = ValueStore::new();
-        let result_a = replay_step(node, &mut run_a, &mut store_a, &plan);
+fn check_determinism(value: bool) -> Result<(), CoreError> {
+    let shape: ReplayShape = kani::any();
+    let plan = plan(&shape, &one_branch(&shape), Some(shape.fallback))?;
+    let node = plan.node(plan.entry()).ok_or_else(setup_error)?;
+    let mut run_a = frame(&shape, value, false)?;
+    let mut run_b = frame(&shape, value, false)?;
+    let result_a = replay_step(node, &mut run_a, &mut ValueStore::new(), &plan);
+    let result_b = replay_step(node, &mut run_b, &mut ValueStore::new(), &plan);
+    kani::assert(
+        matching_results(result_a, result_b),
+        "matching replay outcomes",
+    );
+    kani::assert(run_a == run_b, "whole resulting frames are identical");
+    kani::cover(value, "true input");
+    kani::cover(!value, "false input");
+    cover_shape(&shape);
+    Ok(())
+}
 
-        let mut run_b = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)
-            .expect("frame b failed");
-        run_b
-            .write_slot(SlotIdx::new(0), SlotValue::Bool(slot_val))
-            .expect("write slot b failed");
-        let mut store_b = ValueStore::new();
-        let result_b = replay_step(node, &mut run_b, &mut store_b, &plan);
+fn cover_cube(a: bool, b: bool, fallback: bool) {
+    kani::cover(!a && !b && !fallback, "000");
+    kani::cover(!a && !b && fallback, "001");
+    kani::cover(!a && b && !fallback, "010");
+    kani::cover(!a && b && fallback, "011");
+    kani::cover(a && !b && !fallback, "100");
+    kani::cover(a && !b && fallback, "101");
+    kani::cover(a && b && !fallback, "110");
+    kani::cover(a && b && fallback, "111");
+}
 
-        match (result_a, result_b) {
-            (Ok(ReplayAction::Continue(a)), Ok(ReplayAction::Continue(b))) => {
-                assert_eq!(a, b);
-            }
-            (Err(_), Err(_)) => {}
-            _ => {
-                panic!("non-deterministic replay: mismatched results");
-            }
-        }
+fn cover_pair(a: bool, b: bool) {
+    kani::cover(!a && !b, "00");
+    kani::cover(!a && b, "01");
+    kani::cover(a && !b, "10");
+    kani::cover(a && b, "11");
+}
+
+fn matching_results(
+    a: Result<ReplayAction, ReplayError>,
+    b: Result<ReplayAction, ReplayError>,
+) -> bool {
+    match (a, b) {
+        (Ok(ReplayAction::Continue(a)), Ok(ReplayAction::Continue(b))) => a == b,
+        (Err(_), Err(_)) => true,
+        _ => false,
     }
 }

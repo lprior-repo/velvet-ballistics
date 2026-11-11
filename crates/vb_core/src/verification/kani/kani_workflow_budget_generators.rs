@@ -222,17 +222,7 @@ fn budget_node_kind() -> CompiledNodeKind {
             action: ActionId::new(kani::any()),
             input: bounded_slot(),
         },
-        2 => CompiledNodeKind::WaitUntil {
-            deadline_slot: bounded_slot(),
-        },
-        3 => CompiledNodeKind::WaitEvent {
-            event: bounded_slot(),
-            timeout_slot: maybe_slot(),
-        },
-        4 => CompiledNodeKind::Ask {
-            prompt: bounded_slot(),
-            timeout_slot: maybe_slot(),
-        },
+        2..=4 => budget_wait_kind(choice),
         _ => CompiledNodeKind::Finish {
             result: bounded_slot(),
         },
@@ -274,4 +264,20 @@ fn bounded_slot() -> SlotIdx {
     let value: u8 = kani::any();
     kani::assume(value <= 3);
     SlotIdx::new(u16::from(value))
+}
+
+fn budget_wait_kind(choice: u8) -> CompiledNodeKind {
+    match choice {
+        2 => CompiledNodeKind::WaitUntil {
+            deadline_slot: bounded_slot(),
+        },
+        3 => CompiledNodeKind::WaitEvent {
+            event: bounded_slot(),
+            timeout_slot: maybe_slot().into(),
+        },
+        _ => CompiledNodeKind::Ask {
+            prompt: bounded_slot(),
+            timeout_slot: maybe_slot().into(),
+        },
+    }
 }
