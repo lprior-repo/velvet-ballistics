@@ -36,10 +36,7 @@ pub(crate) fn cmd_compile(
 
     match emit {
         EmitTarget::Ir => {
-            // Serialize the compiled workflow parts using postcard.
-            // WorkflowParts is Serialize+Deserialize; CompiledWorkflow itself is not.
-            let parts = compiled.to_parts();
-            let encoded = match postcard::to_allocvec(&parts) {
+            let encoded = match vb_compile::encode_compiled_ir(&compiled) {
                 Ok(data) => data,
                 Err(e) => {
                     if output != OutputFormat::Text {
@@ -80,8 +77,7 @@ pub(crate) fn cmd_compile(
             }
         }
         EmitTarget::Yaml => {
-            let parts = compiled.to_parts();
-            let yaml_str = match serde_saphyr::to_string(&parts) {
+            let yaml_str = match encode_yaml(&compiled) {
                 Ok(s) => s,
                 Err(e) => {
                     if output != OutputFormat::Text {
@@ -122,8 +118,7 @@ pub(crate) fn cmd_compile(
             }
         }
         EmitTarget::Postcard => {
-            let parts = compiled.to_parts();
-            let encoded = match postcard::to_allocvec(&parts) {
+            let encoded = match vb_compile::encode_compiled_ir(&compiled) {
                 Ok(data) => data,
                 Err(e) => {
                     if output != OutputFormat::Text {
@@ -167,3 +162,18 @@ pub(crate) fn cmd_compile(
 
     ExitCode::SUCCESS
 }
+
+fn encode_yaml(workflow: &vb_core::CompiledWorkflow) -> Result<String, serde_saphyr::ser::Error> {
+    match workflow.to_versioned_parts() {
+        vb_core::workflow::VersionedWorkflowParts::V1(parts) => serde_saphyr::to_string(&parts),
+        vb_core::workflow::VersionedWorkflowParts::V2(ir) => serde_saphyr::to_string(&ir),
+    }
+}
+
+#[cfg(test)]
+#[path = "versioned_test_support.rs"]
+pub(crate) mod versioned_test_support;
+
+#[cfg(test)]
+#[path = "compile_versioned_tests.rs"]
+mod versioned_tests;
