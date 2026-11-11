@@ -185,6 +185,7 @@ pub(super) fn assert_bound(
     )
     .map_err(|error| error.to_string())?;
     assert_eq!(budget.max_for_each_iterations, expected_limit);
+    super::execute_policy_bound(&workflow)?;
     Ok(())
 }
 
