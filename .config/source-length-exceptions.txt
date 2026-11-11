@@ -5,7 +5,6 @@
 crates/vb_compile/src/mod_compile_lowering/tests.rs|lewis|vb-srclen|split-after-ledger-landing|test_in_src 1635 lines (limit 1500) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_core/src/diagnostic.rs|lewis|vb-srclen|split-after-ledger-landing|production 2100 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_core/src/errors.rs|lewis|vb-srclen|split-after-ledger-landing|production 817 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
-crates/vb_core/src/replay/ops/tests.rs|lewis|vb-srclen|split-after-ledger-landing|test_in_src 2188 lines (limit 1500) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_runtime/src/engine/tests.rs|lewis|vb-srclen|split-after-ledger-landing|test_in_src 2605 lines (limit 1500) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_runtime/src/error/mod.rs|lewis|vb-srclen|split-after-ledger-landing|production 315 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_runtime/src/primitives/reentry_proofs.rs|lewis|vb-srclen|split-after-ledger-landing|production 592 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
