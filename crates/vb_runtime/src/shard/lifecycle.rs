@@ -2,14 +2,8 @@
 //! Run lifecycle management: submit, resume, cancel, action completion, timers.
 
 #[cfg(test)]
-impl crate::shard::Shard {
-    pub(crate) fn drive_duplicate_retry_fixture(
-        &mut self,
-        run: vb_core::RunId,
-    ) -> crate::RuntimeResult<()> {
-        self.drive_run(run)
-    }
-}
+#[path = "lifecycle_tests/duplicate_retry_bridge_tests.rs"]
+mod duplicate_retry_bridge_tests;
 
 #[path = "lifecycle/execution_binding.rs"]
 mod execution_binding;
