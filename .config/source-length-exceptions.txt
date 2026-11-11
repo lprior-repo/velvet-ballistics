@@ -71,7 +71,6 @@ verification/verus/v1_primitive_lowering.rs|lewis|vb-srclen|split-after-ledger-l
 verification/verus/vb_runtime_execute_do_spec.rs|lewis|vb-srclen|split-after-ledger-landing|verus 1222 lines (limit 800) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 xtask/src/evidence/bundle.rs|lewis|vb-srclen|split-after-ledger-landing|production 505 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 xtask/src/evidence_gate.rs|lewis|vb-srclen|split-after-ledger-landing|production 545 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
-xtask/src/forbidden_scan.rs|lewis|vb-srclen|split-after-ledger-landing|production 503 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 xtask/src/main.rs|lewis|vb-srclen|split-after-ledger-landing|production 547 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 xtask/tests/bundle_tests.rs|lewis|vb-srclen|split-after-ledger-landing|production 527 lines (limit 300) on main c17b60e36; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 verification/verus/try_from_parts.rs|lewis|vb-srclen|split-after-ledger-landing|verus 801 lines (limit 800) on main 4e48039b0; crossed the limit in the Verus parity merge batch, split follow-up tracked under vb-srclen
