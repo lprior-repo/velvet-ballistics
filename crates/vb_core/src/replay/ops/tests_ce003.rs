@@ -12,7 +12,7 @@ fn replay_mixed_add_promotes_both_directions() -> Result<(), CoreError> {
     )?;
     if result != f64_value(3.5)? {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "I64(3) + F64(0.5) should be F64(3.5)",
+            reason: "I64(3) + F64(0.5) should be F64(3.5)".into(),
         });
     }
     let flipped = eval_stack_helper(
@@ -22,7 +22,7 @@ fn replay_mixed_add_promotes_both_directions() -> Result<(), CoreError> {
     )?;
     if flipped != f64_value(3.5)? {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "F64(1.5) + I64(2) should be F64(3.5)",
+            reason: "F64(1.5) + I64(2) should be F64(3.5)".into(),
         });
     }
     Ok(())
@@ -38,7 +38,7 @@ fn replay_mixed_sub_mul_div_promote() -> Result<(), CoreError> {
     )?;
     if result != f64_value(9.5)? {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "I64(10) - F64(0.5) should be F64(9.5)",
+            reason: "I64(10) - F64(0.5) should be F64(9.5)".into(),
         });
     }
     let result = eval_stack_helper(
@@ -48,7 +48,7 @@ fn replay_mixed_sub_mul_div_promote() -> Result<(), CoreError> {
     )?;
     if result != f64_value(10.0)? {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "F64(2.5) * I64(4) should be F64(10.0)",
+            reason: "F64(2.5) * I64(4) should be F64(10.0)".into(),
         });
     }
     let result = eval_stack_helper(
@@ -58,7 +58,7 @@ fn replay_mixed_sub_mul_div_promote() -> Result<(), CoreError> {
     )?;
     if result != f64_value(0.5)? {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "I64(1) / F64(2.0) should be F64(0.5)",
+            reason: "I64(1) / F64(2.0) should be F64(0.5)".into(),
         });
     }
     Ok(())
@@ -76,7 +76,7 @@ fn replay_f64_add_and_div_by_zero() -> Result<(), CoreError> {
     let result = eval_stack_helper(ExprOp::Add, &mut store, &[f64_value(1.5)?, f64_value(2.5)?])?;
     if result != f64_value(4.0)? {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "F64(1.5) + F64(2.5) should be F64(4.0)",
+            reason: "F64(1.5) + F64(2.5) should be F64(4.0)".into(),
         });
     }
     check_helper_type_error(ExprOp::Div, &[f64_value(1.0)?, f64_value(0.0)?])
@@ -92,7 +92,7 @@ fn replay_mixed_comparisons_promote_operands() -> Result<(), CoreError> {
     )?;
     if result != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "I64(3) < F64(3.5) should be true",
+            reason: "I64(3) < F64(3.5) should be true".into(),
         });
     }
     let result = eval_stack_helper(
@@ -102,7 +102,7 @@ fn replay_mixed_comparisons_promote_operands() -> Result<(), CoreError> {
     )?;
     if result != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "F64(2.0) >= I64(2) should be true",
+            reason: "F64(2.0) >= I64(2) should be true".into(),
         });
     }
     let result = eval_stack_helper(
@@ -112,7 +112,7 @@ fn replay_mixed_comparisons_promote_operands() -> Result<(), CoreError> {
     )?;
     if result != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "I64(10) > F64(9.5) should be true",
+            reason: "I64(10) > F64(9.5) should be true".into(),
         });
     }
     Ok(())
@@ -155,7 +155,7 @@ fn replay_mixed_add_via_expr_program() -> Result<(), CoreError> {
             ConstValue::I64(3),
             ConstValue::F64(FiniteF64::new(2.5).map_err(|_| {
                 CoreError::InternalInvariantViolation {
-                    reason: "test constant must be finite",
+                    reason: "test constant must be finite".into(),
                 }
             })?),
         ],
@@ -168,7 +168,7 @@ fn replay_mixed_add_via_expr_program() -> Result<(), CoreError> {
         .map_err(replay_err_to_core)?;
     if value != f64_value(5.5)? {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "replay of I64(3) + F64(2.5) should be F64(5.5)",
+            reason: "replay of I64(3) + F64(2.5) should be F64(5.5)".into(),
         });
     }
     Ok(())
@@ -237,12 +237,12 @@ fn ce003_replay_object_field_taint_joins_segment() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(42) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "CE-003: accessor should resolve object field to I64(42)",
+            reason: "CE-003: accessor should resolve object field to I64(42)".into(),
         });
     }
     if taint != Taint::Secret {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "CE-003: replay accessor must join field taint into accumulator",
+            reason: "CE-003: replay accessor must join field taint into accumulator".into(),
         });
     }
     Ok(())
@@ -299,12 +299,12 @@ fn ce003_replay_list_item_taint_joins_segment() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(20) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "CE-003: accessor should resolve list[1] to I64(20)",
+            reason: "CE-003: accessor should resolve list[1] to I64(20)".into(),
         });
     }
     if taint != Taint::Secret {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "CE-003: replay accessor must join list-item taint into accumulator",
+            reason: "CE-003: replay accessor must join list-item taint into accumulator".into(),
         });
     }
     Ok(())
@@ -382,12 +382,12 @@ fn ce003_replay_multi_segment_path_joins_every_segment_taint() -> Result<(), Cor
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(7) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "CE-003: deep accessor should resolve to I64(7)",
+            reason: "CE-003: deep accessor should resolve to I64(7)".into(),
         });
     }
     if taint != Taint::Secret {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "CE-003: replay must join every segment's taint along the path",
+            reason: "CE-003: replay must join every segment's taint along the path".into(),
         });
     }
     Ok(())
@@ -462,12 +462,12 @@ fn ce003_replay_root_taint_joins_into_accumulator() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(99) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "CE-003: accessor should resolve object field to I64(99)",
+            reason: "CE-003: accessor should resolve object field to I64(99)".into(),
         });
     }
     if taint != Taint::Secret {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "CE-003: replay accessor must join root slot taint into accumulator",
+            reason: "CE-003: replay accessor must join root slot taint into accumulator".into(),
         });
     }
     Ok(())
@@ -555,12 +555,12 @@ fn ce003_replay_lattice_random_respected() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(11) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "CE-003: deep accessor should resolve to I64(11)",
+            reason: "CE-003: deep accessor should resolve to I64(11)".into(),
         });
     }
     if taint != Taint::Random {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "CE-003: replay must respect lattice -- Random(3) outranks Secret(2)",
+            reason: "CE-003: replay must respect lattice -- Random(3) outranks Secret(2)".into(),
         });
     }
     Ok(())

@@ -11,12 +11,12 @@ fn expr_stack_push_pop_roundtrip() -> Result<(), CoreError> {
 
     if second != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "second pop should be Bool(true)",
+            reason: "second pop should be Bool(true)".into(),
         });
     }
     if first != SlotValue::I64(42) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "first pop should be I64(42)",
+            reason: "first pop should be I64(42)".into(),
         });
     }
     Ok(())
@@ -75,7 +75,7 @@ fn pop_pair_returns_left_then_right() -> Result<(), CoreError> {
     let (left, right) = pop_pair(&mut stack).map_err(replay_err_to_core)?;
     if left != SlotValue::I64(10) || right != SlotValue::I64(20) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "pop_pair order wrong",
+            reason: "pop_pair order wrong".into(),
         });
     }
     Ok(())
@@ -90,7 +90,7 @@ fn pop_i64_pair_succeeds_for_i64_values() -> Result<(), CoreError> {
     let (left, right) = pop_i64_pair(&mut stack).map_err(replay_err_to_core)?;
     if left != 5 || right != 3 {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "pop_i64_pair values wrong",
+            reason: "pop_i64_pair values wrong".into(),
         });
     }
     Ok(())
@@ -160,7 +160,7 @@ fn eval_add_succeeds() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(17) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "10 + 7 should be 17",
+            reason: "10 + 7 should be 17".into(),
         });
     }
     Ok(())
@@ -206,7 +206,7 @@ fn eval_sub_succeeds() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(63) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "100 - 37 should be 63",
+            reason: "100 - 37 should be 63".into(),
         });
     }
     Ok(())
@@ -248,7 +248,7 @@ fn eval_mul_succeeds() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(42) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "6 * 7 should be 42",
+            reason: "6 * 7 should be 42".into(),
         });
     }
     Ok(())
@@ -290,7 +290,7 @@ fn eval_div_succeeds() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(7) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "42 / 6 should be 7",
+            reason: "42 / 6 should be 7".into(),
         });
     }
     Ok(())
@@ -350,7 +350,7 @@ fn eval_sub_negative_result() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(-7) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "3 - 10 should be -7",
+            reason: "3 - 10 should be -7".into(),
         });
     }
     Ok(())
@@ -374,7 +374,7 @@ fn eval_mul_zero() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(0) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "i64::MAX * 0 should be 0",
+            reason: "i64::MAX * 0 should be 0".into(),
         });
     }
     Ok(())
@@ -398,7 +398,7 @@ fn eval_div_negative() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(-3) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "-10 / 3 should be -3 (truncating toward zero)",
+            reason: "-10 / 3 should be -3 (truncating toward zero)".into(),
         });
     }
     Ok(())
@@ -422,7 +422,7 @@ fn eval_gt_true() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "10 > 5 should be true",
+            reason: "10 > 5 should be true".into(),
         });
     }
     Ok(())
@@ -444,7 +444,7 @@ fn eval_gt_false_when_equal() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(false) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "5 > 5 should be false",
+            reason: "5 > 5 should be false".into(),
         });
     }
     Ok(())
@@ -466,7 +466,7 @@ fn eval_lt_true() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "3 < 8 should be true",
+            reason: "3 < 8 should be true".into(),
         });
     }
     Ok(())
@@ -488,7 +488,7 @@ fn eval_lt_false_when_greater() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(false) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "10 < 5 should be false",
+            reason: "10 < 5 should be false".into(),
         });
     }
     Ok(())
@@ -510,7 +510,7 @@ fn eval_gte_true_when_equal() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "5 >= 5 should be true",
+            reason: "5 >= 5 should be true".into(),
         });
     }
     Ok(())
@@ -532,7 +532,7 @@ fn eval_gte_false_when_less() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(false) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "3 >= 10 should be false",
+            reason: "3 >= 10 should be false".into(),
         });
     }
     Ok(())
@@ -554,7 +554,7 @@ fn eval_lte_true_when_equal() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "5 <= 5 should be true",
+            reason: "5 <= 5 should be true".into(),
         });
     }
     Ok(())
@@ -576,7 +576,7 @@ fn eval_lte_false_when_greater() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(false) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "10 <= 3 should be false",
+            reason: "10 <= 3 should be false".into(),
         });
     }
     Ok(())
@@ -600,7 +600,7 @@ fn eval_eq_same_i64() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "42 == 42 should be true",
+            reason: "42 == 42 should be true".into(),
         });
     }
     Ok(())
@@ -624,7 +624,7 @@ fn eval_eq_different_types_returns_false() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(false) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "I64(0) == Bool(false) should be false",
+            reason: "I64(0) == Bool(false) should be false".into(),
         });
     }
     Ok(())
@@ -646,7 +646,7 @@ fn eval_eq_null_null_returns_true() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "Null == Null should be true",
+            reason: "Null == Null should be true".into(),
         });
     }
     Ok(())
@@ -675,7 +675,7 @@ fn eval_not_eq_true() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "1 != 2 should be true",
+            reason: "1 != 2 should be true".into(),
         });
     }
     Ok(())
@@ -701,7 +701,7 @@ fn eval_and_true_true() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "true && true should be true",
+            reason: "true && true should be true".into(),
         });
     }
     Ok(())
@@ -727,7 +727,7 @@ fn eval_and_true_false() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(false) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "true && false should be false",
+            reason: "true && false should be false".into(),
         });
     }
     Ok(())
@@ -753,7 +753,7 @@ fn eval_or_false_true() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "false || true should be true",
+            reason: "false || true should be true".into(),
         });
     }
     Ok(())
@@ -779,7 +779,7 @@ fn eval_or_false_false() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(false) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "false || false should be false",
+            reason: "false || false should be false".into(),
         });
     }
     Ok(())
@@ -802,7 +802,7 @@ fn eval_not_true() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(false) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "!true should be false",
+            reason: "!true should be false".into(),
         });
     }
     Ok(())
@@ -825,7 +825,7 @@ fn eval_not_false() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "!false should be true",
+            reason: "!false should be true".into(),
         });
     }
     Ok(())

@@ -20,7 +20,7 @@ fn eval_load_slot_succeeds() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(99) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "loaded slot should be I64(99)",
+            reason: "loaded slot should be I64(99)".into(),
         });
     }
     Ok(())
@@ -70,7 +70,7 @@ fn eval_load_slot_propagates_taint() -> Result<(), CoreError> {
 
     if taint != Taint::Secret {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "taint should be Secret after loading tainted slot",
+            reason: "taint should be Secret after loading tainted slot".into(),
         });
     }
     Ok(())
@@ -97,7 +97,7 @@ fn eval_load_const_i64() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(77) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "loaded const should be I64(77)",
+            reason: "loaded const should be I64(77)".into(),
         });
     }
     Ok(())
@@ -124,7 +124,7 @@ fn eval_load_const_bool() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "loaded const should be Bool(true)",
+            reason: "loaded const should be Bool(true)".into(),
         });
     }
     Ok(())
@@ -151,7 +151,7 @@ fn eval_load_const_null() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::Null {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "loaded const should be Null",
+            reason: "loaded const should be Null".into(),
         });
     }
     Ok(())
@@ -235,7 +235,7 @@ fn eval_load_accessor_object_field() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(42) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "accessor should resolve object field to I64(42)",
+            reason: "accessor should resolve object field to I64(42)".into(),
         });
     }
     Ok(())
@@ -290,7 +290,7 @@ fn eval_load_accessor_list_index() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(20) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "accessor should resolve list[1] to I64(20)",
+            reason: "accessor should resolve list[1] to I64(20)".into(),
         });
     }
     Ok(())
@@ -342,7 +342,7 @@ fn eval_load_accessor_empty_path_returns_root() -> Result<(), CoreError> {
     let result = stack.pop().map_err(replay_err_to_core)?;
     if result != SlotValue::I64(99) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "empty accessor path should return root value",
+            reason: "empty accessor path should return root value".into(),
         });
     }
     Ok(())
@@ -440,7 +440,7 @@ fn eval_expr_for_replay_addition() -> Result<(), CoreError> {
 
     if value != SlotValue::I64(42) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "15 + 27 should be 42",
+            reason: "15 + 27 should be 42".into(),
         });
     }
     Ok(())
@@ -493,7 +493,7 @@ fn eval_expr_for_replay_comparison_chain() -> Result<(), CoreError> {
 
     if value != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "(10 > 5) && (3 < 8) should be true",
+            reason: "(10 > 5) && (3 < 8) should be true".into(),
         });
     }
     Ok(())
@@ -790,7 +790,7 @@ fn blackhat_helper_contains_matches_engine() -> Result<(), CoreError> {
     )?;
     if found != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: contains should find list member",
+            reason: "BLACKHAT BH-OPS-07: contains should find list member".into(),
         });
     }
     let absent = eval_stack_helper(
@@ -800,7 +800,7 @@ fn blackhat_helper_contains_matches_engine() -> Result<(), CoreError> {
     )?;
     if absent != SlotValue::Bool(false) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: contains should miss absent list member",
+            reason: "BLACKHAT BH-OPS-07: contains should miss absent list member".into(),
         });
     }
     Ok(())
@@ -818,7 +818,7 @@ fn blackhat_helper_starts_with_matches_engine() -> Result<(), CoreError> {
     )?;
     if result != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: starts_with should match prefix",
+            reason: "BLACKHAT BH-OPS-07: starts_with should match prefix".into(),
         });
     }
     Ok(())
@@ -836,7 +836,7 @@ fn blackhat_helper_ends_with_matches_engine() -> Result<(), CoreError> {
     )?;
     if result != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: ends_with should match suffix",
+            reason: "BLACKHAT BH-OPS-07: ends_with should match suffix".into(),
         });
     }
     Ok(())
@@ -849,7 +849,7 @@ fn insert_has_object(
     store
         .insert_object(vec![crate::ObjectField::clean(key, SlotValue::I64(1))].into_boxed_slice())
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "object insert must succeed",
+            reason: "object insert must succeed".into(),
         })
 }
 
@@ -896,18 +896,18 @@ fn blackhat_helper_exists_matches_engine() -> Result<(), CoreError> {
             .into_boxed_slice(),
         )
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "object insert must succeed",
+            reason: "object insert must succeed".into(),
         })?;
     let present = eval_stack_helper(ExprOp::Exists, &mut store, &[SlotValue::Object(object)])?;
     if present != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: exists should hold for non-empty object",
+            reason: "BLACKHAT BH-OPS-07: exists should hold for non-empty object".into(),
         });
     }
     let null = eval_stack_helper(ExprOp::Exists, &mut store, &[SlotValue::Null])?;
     if null != SlotValue::Bool(false) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: exists should fail for null",
+            reason: "BLACKHAT BH-OPS-07: exists should fail for null".into(),
         });
     }
     check_helper_type_error(ExprOp::Exists, &[SlotValue::I64(1)])
@@ -920,14 +920,14 @@ fn blackhat_helper_length_matches_engine() -> Result<(), CoreError> {
     let text_len = eval_stack_helper(ExprOp::Length, &mut store, &[SlotValue::Symbol(text)])?;
     if text_len != SlotValue::I64(5) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: length of text should be 5",
+            reason: "BLACKHAT BH-OPS-07: length of text should be 5".into(),
         });
     }
     let list = insert_numbers(&mut store, &[1, 2, 3])?;
     let list_len = eval_stack_helper(ExprOp::Length, &mut store, &[SlotValue::List(list)])?;
     if list_len != SlotValue::I64(3) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: length of list should be 3",
+            reason: "BLACKHAT BH-OPS-07: length of list should be 3".into(),
         });
     }
     check_helper_type_error(ExprOp::Length, &[SlotValue::Bool(true)])
@@ -939,21 +939,21 @@ fn blackhat_helper_empty_matches_engine() -> Result<(), CoreError> {
     let null_empty = eval_stack_helper(ExprOp::Empty, &mut store, &[SlotValue::Null])?;
     if null_empty != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: empty null should be true",
+            reason: "BLACKHAT BH-OPS-07: empty null should be true".into(),
         });
     }
     let empty_list = insert_numbers(&mut store, &[])?;
     let list_empty = eval_stack_helper(ExprOp::Empty, &mut store, &[SlotValue::List(empty_list)])?;
     if list_empty != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: empty list should be true",
+            reason: "BLACKHAT BH-OPS-07: empty list should be true".into(),
         });
     }
     let full_list = insert_numbers(&mut store, &[1])?;
     let list_full = eval_stack_helper(ExprOp::Empty, &mut store, &[SlotValue::List(full_list)])?;
     if list_full != SlotValue::Bool(false) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: non-empty list should be false",
+            reason: "BLACKHAT BH-OPS-07: non-empty list should be false".into(),
         });
     }
     Ok(())
@@ -972,18 +972,18 @@ fn blackhat_helper_append_matches_engine() -> Result<(), CoreError> {
         SlotValue::List(id) => id,
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "BLACKHAT BH-OPS-07: append must return a list",
+                reason: "BLACKHAT BH-OPS-07: append must return a list".into(),
             });
         }
     };
     let items = store
         .list(appended_id)
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "appended list must resolve",
+            reason: "appended list must resolve".into(),
         })?;
     if items != [SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)] {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: append should extend the list",
+            reason: "BLACKHAT BH-OPS-07: append should extend the list".into(),
         });
     }
     check_helper_type_error(ExprOp::Append, &[SlotValue::I64(1), SlotValue::I64(2)])
@@ -1006,18 +1006,18 @@ fn blackhat_helper_append_if_matches_engine() -> Result<(), CoreError> {
         SlotValue::List(id) => id,
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "BLACKHAT BH-OPS-07: append_if must return a list",
+                reason: "BLACKHAT BH-OPS-07: append_if must return a list".into(),
             });
         }
     };
     let items = store
         .list(appended_id)
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "append_if list must resolve",
+            reason: "append_if list must resolve".into(),
         })?;
     if items != [SlotValue::I64(1), SlotValue::I64(2)] {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: append_if true should extend the list",
+            reason: "BLACKHAT BH-OPS-07: append_if true should extend the list".into(),
         });
     }
     let kept = eval_stack_helper(
@@ -1033,18 +1033,18 @@ fn blackhat_helper_append_if_matches_engine() -> Result<(), CoreError> {
         SlotValue::List(id) => id,
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "BLACKHAT BH-OPS-07: append_if must return a list",
+                reason: "BLACKHAT BH-OPS-07: append_if must return a list".into(),
             });
         }
     };
     let kept_items = store
         .list(kept_id)
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "append_if list must resolve",
+            reason: "append_if list must resolve".into(),
         })?;
     if kept_items != [SlotValue::I64(1)] {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: append_if false should copy the list",
+            reason: "BLACKHAT BH-OPS-07: append_if false should copy the list".into(),
         });
     }
     Ok(())
@@ -1064,7 +1064,7 @@ fn blackhat_helper_merge_matches_engine() -> Result<(), CoreError> {
             .into_boxed_slice(),
         )
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "object insert must succeed",
+            reason: "object insert must succeed".into(),
         })?;
     let right = store
         .insert_object(
@@ -1075,7 +1075,7 @@ fn blackhat_helper_merge_matches_engine() -> Result<(), CoreError> {
             .into_boxed_slice(),
         )
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "object insert must succeed",
+            reason: "object insert must succeed".into(),
         })?;
     let result = eval_stack_helper(
         ExprOp::Merge,
@@ -1086,18 +1086,18 @@ fn blackhat_helper_merge_matches_engine() -> Result<(), CoreError> {
         SlotValue::Object(id) => id,
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "BLACKHAT BH-OPS-07: merge must return an object",
+                reason: "BLACKHAT BH-OPS-07: merge must return an object".into(),
             });
         }
     };
     let fields = store
         .object(merged_id)
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "merged object must resolve",
+            reason: "merged object must resolve".into(),
         })?;
     if fields.len() != 2 {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: merge should combine fields",
+            reason: "BLACKHAT BH-OPS-07: merge should combine fields".into(),
         });
     }
     check_helper_type_error(ExprOp::Merge, &[SlotValue::I64(1), SlotValue::I64(2)])
@@ -1110,7 +1110,7 @@ fn blackhat_helper_sum_matches_engine() -> Result<(), CoreError> {
     let result = eval_stack_helper(ExprOp::Sum, &mut store, &[SlotValue::List(list)])?;
     if result != SlotValue::I64(6) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: sum should total list items",
+            reason: "BLACKHAT BH-OPS-07: sum should total list items".into(),
         });
     }
     check_helper_type_error(ExprOp::Sum, &[SlotValue::I64(1)])
@@ -1123,7 +1123,7 @@ fn blackhat_helper_count_matches_engine() -> Result<(), CoreError> {
     let result = eval_stack_helper(ExprOp::Count, &mut store, &[SlotValue::List(list)])?;
     if result != SlotValue::I64(3) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: count should report list length",
+            reason: "BLACKHAT BH-OPS-07: count should report list length".into(),
         });
     }
     Ok(())
@@ -1138,18 +1138,18 @@ fn blackhat_helper_unique_matches_engine() -> Result<(), CoreError> {
         SlotValue::List(id) => id,
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "BLACKHAT BH-OPS-07: unique must return a list",
+                reason: "BLACKHAT BH-OPS-07: unique must return a list".into(),
             });
         }
     };
     let items = store
         .list(unique_id)
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "unique list must resolve",
+            reason: "unique list must resolve".into(),
         })?;
     if items != [SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)] {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BLACKHAT BH-OPS-07: unique should deduplicate preserving order",
+            reason: "BLACKHAT BH-OPS-07: unique should deduplicate preserving order".into(),
         });
     }
     Ok(())
