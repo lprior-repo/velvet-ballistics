@@ -12,6 +12,9 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, Workfl
 #[path = "../src/cli_postcard.rs"]
 mod cli_postcard;
 
+#[path = "cli_integration/input_bin_case_tests.rs"]
+mod input_bin_case;
+
 const CLI_WORKFLOW: &str = r"version: velvet-ballistics/v1
 name: cli_subprocess
 when:
@@ -1592,72 +1595,13 @@ fn cli_ai_context_reports_missing_and_invalid_run_ids() {
 }
 
 #[test]
-fn cli_run_maps_postcard_slot_values_from_input_bin() {
-    let dir = match cli_tempdir() {
-        Ok(dir) => dir,
-        Err(err) => {
-            assert!(forced_assertion_failure(), "tempdir failed: {err}");
-            return;
-        }
-    };
+fn cli_run_maps_postcard_slot_values_from_input_bin() -> Result<(), String> {
+    let dir = input_bin_case::directory()?;
     let workflow_path = dir.path().join("workflow.vbir");
     let input_path = dir.path().join("input.bin");
-
-    let parts = match input_slot_parts() {
-        Ok(p) => p,
-        Err(err) => {
-            assert!(
-                forced_assertion_failure(),
-                "failed to construct input slot parts: {err}"
-            );
-            return;
-        }
-    };
-    let workflow_payload = match postcard::to_allocvec(&parts) {
-        Ok(payload) => payload,
-        Err(err) => {
-            assert!(
-                forced_assertion_failure(),
-                "failed to encode workflow payload: {err}"
-            );
-            return;
-        }
-    };
-    if !write_test_file(&workflow_path, &workflow_payload) {
-        return;
-    }
-    let values: Box<[SlotValue]> = Box::from([SlotValue::I64(7)]);
-    let payload = match postcard::to_allocvec(&values) {
-        Ok(payload) => payload,
-        Err(err) => {
-            assert!(
-                forced_assertion_failure(),
-                "failed to encode input payload: {err}"
-            );
-            return;
-        }
-    };
-    if !write_test_file(&input_path, &payload) {
-        return;
-    }
-
-    let run_output = match run_cli(&[
-        std::ffi::OsStr::new("run-compiled"),
-        workflow_path.as_os_str(),
-        std::ffi::OsStr::new("--input-bin"),
-        input_path.as_os_str(),
-        std::ffi::OsStr::new("--durability"),
-        std::ffi::OsStr::new("none"),
-    ]) {
-        Some(output) => output,
-        None => return,
-    };
-    assert_cli_success(&run_output, "run-compiled --durability none with input-bin");
-    let run_stdout = output_stdout(&run_output);
-    assert!(
-        run_stdout.contains("run completed"),
-        "run stdout should report completion: {run_stdout}"
-    );
+    input_bin_case::write_workflow(&workflow_path)?;
+    input_bin_case::write_input(&input_path)?;
+    input_bin_case::run(&workflow_path, &input_path)
 }
 
 #[test]
