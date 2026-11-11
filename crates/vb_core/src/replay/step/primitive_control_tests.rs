@@ -56,18 +56,10 @@ fn replay_err_to_core(error: ReplayError) -> CoreError {
         ReplayError::SlotNotAvailable { slot } => CoreError::SlotOutOfBounds { slot },
         ReplayError::ExpressionEvalFailed { step } => CoreError::InvalidProgramCounter { step },
         ReplayError::NonDeterministicStep { step, .. } => CoreError::InvalidProgramCounter { step },
-        ReplayError::Internal { reason } => CoreError::InternalInvariantViolation { reason: reason.into() },
+        ReplayError::Internal { reason } => CoreError::InternalInvariantViolation {
+            reason: reason.into(),
+        },
     }
-}
-
-fn write_list(
-    store: &mut ValueStore,
-    run: &mut RunFrame,
-    slot: SlotIdx,
-    values: &[SlotValue],
-) -> Result<(), CoreError> {
-    let id = store.insert_list(values.to_vec().into_boxed_slice())?;
-    run.write_slot(slot, SlotValue::List(id))
 }
 
 fn finish_node(step: u16) -> CompiledNode {

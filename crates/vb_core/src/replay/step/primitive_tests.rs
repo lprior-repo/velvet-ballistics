@@ -1,7 +1,7 @@
 use crate::errors::CoreError;
 use crate::frame::RunFrame;
 use crate::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
-use crate::replay::{ReplayEngine, ReplayError};
+use crate::replay::ReplayError;
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{
@@ -56,7 +56,9 @@ fn replay_err_to_core(error: ReplayError) -> CoreError {
         ReplayError::SlotNotAvailable { slot } => CoreError::SlotOutOfBounds { slot },
         ReplayError::ExpressionEvalFailed { step } => CoreError::InvalidProgramCounter { step },
         ReplayError::NonDeterministicStep { step, .. } => CoreError::InvalidProgramCounter { step },
-        ReplayError::Internal { reason } => CoreError::InternalInvariantViolation { reason: reason.into() },
+        ReplayError::Internal { reason } => CoreError::InternalInvariantViolation {
+            reason: reason.into(),
+        },
     }
 }
 

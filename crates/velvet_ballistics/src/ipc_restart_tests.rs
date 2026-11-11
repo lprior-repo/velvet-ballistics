@@ -201,7 +201,7 @@ fn assert_open_ask_history(events: &[vb_storage::JournalEvent]) {
 fn socket_submitted_scalar_ask_survives_graceful_close_and_fjall_reopen() -> TestResult {
     let dir = tempfile::Builder::new()
         .prefix("vb68-")
-        .tempdir_in("/tmp")?;
+        .tempdir_in(std::env::temp_dir())?;
     let db = dir.path().join("journal");
     let first_socket = dir.path().join("first.sock");
     let second_socket = dir.path().join("second.sock");

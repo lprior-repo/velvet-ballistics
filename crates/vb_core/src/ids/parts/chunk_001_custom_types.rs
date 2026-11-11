@@ -159,9 +159,23 @@ impl From<u16> for BranchCount {
     }
 }
 
+impl WorkflowId {
+    /// Returns the raw workflow identifier as a `u32`.
+    #[must_use]
+    pub const fn as_u32(self) -> u32 {
+        self.get()
+    }
+}
+
 impl RunId {
     /// Zero run identifier.
     pub const ZERO: Self = Self(0);
+
+    /// Returns the raw run identifier as a `u64`.
+    #[must_use]
+    pub const fn as_u64(self) -> u64 {
+        self.get()
+    }
 
     /// Returns the shard index for this run.
     ///

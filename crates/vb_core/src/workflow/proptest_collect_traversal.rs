@@ -1,125 +1,62 @@
 // Verification artifact: proptest_collect_traversal.rs
 // PO: PO-023 (Collect traversal termination)
-// Bead: vb-xi2f.23
 // Verifier: proptest
 // Command: cargo test -p vb_core -- proptest_collect_traversal --test-threads=1
-//
-// Proof obligations:
-// - PO-023: Collect workflow traversal always terminates
-//
-// GOD RULE 1: Uses proptest with bounded workflow sizes.
-// GOD RULE 2: Binds to actual Rust CompiledWorkflow traversal.
 
 #![cfg(test)]
 #![forbid(unsafe_code)]
 
-use crate::ids::{SlotIdx, StepIdx};
-use crate::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node};
+use crate::ids::StepIdx;
+use crate::workflow::CompiledWorkflow;
 use proptest::prelude::*;
 
-// ─────────────────────────────────────────────────────────────────
-// Collect traversal helper
-// ─────────────────────────────────────────────────────────────────
+use super::proptest_collect_budget::{expected_budget_total, make_collect_workflow};
 
-/// Creates a valid 4-node Collect workflow for testing.
-fn make_collect_workflow(start_id: u16, limit: u32, page_size: u32) -> WorkflowParts {
-    let source_slot = SlotIdx::new(0);
-    let body_step = StepIdx::new(start_id + 1);
-    let done_step = StepIdx::new(start_id + 3);
-
-    WorkflowParts {
-        semantic_source_identity: None,
-        input_slots: Box::new([]),
-        name: Box::<str>::from("test_collect"),
-        digest: crate::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: vec![
-            node(
-                StepIdx::new(start_id),
-                CompiledNodeKind::CollectStart {
-                    source: source_slot,
-                    limit: limit.into(),
-                    page_size,
-                    body: body_step,
-                    done: done_step,
-                },
-                None,
-                None,
-            ),
-            node(
-                body_step,
-                CompiledNodeKind::SetConst {
-                    value: crate::ids::ConstIdx::new(0),
-                },
-                Some(SlotIdx::new(1)),
-                None,
-            ),
-            node(
-                StepIdx::new(start_id + 2),
-                CompiledNodeKind::CollectPage {
-                    collector_slot: source_slot,
-                    body: body_step,
-                    done: done_step,
-                },
-                None,
-                None,
-            ),
-            node(
-                done_step,
-                CompiledNodeKind::CollectFinish {
-                    collector_slot: source_slot,
-                },
-                None,
-                None,
-            ),
-        ]
-        .into_boxed_slice(),
-        expressions: Box::new([]),
-        accessors: Box::new([]),
-        constants: vec![crate::value::ConstValue::I64(0)].into_boxed_slice(),
-        slot_count: 2,
-        symbols_count: 0,
-        entry: StepIdx::new(start_id),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
-    }
+fn bounded_collect_strategy() -> impl Strategy<Value = (u32, u32)> {
+    (0..1000u32, 0..1000u32)
 }
 
-// ─────────────────────────────────────────────────────────────────
-// PO-023: Collect traversal terminates
-// ─────────────────────────────────────────────────────────────────
+fn assert_collect_region(limit: u32, page_size: u32) -> Result<(), String> {
+    let parts = make_collect_workflow(limit, page_size);
+    let compiled = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let region = compiled
+        .loop_region(StepIdx::new(2))
+        .ok_or("loop region at control step 2 missing")?;
+    assert_eq!(region.start(), StepIdx::ZERO);
+    assert_eq!(region.body(), StepIdx::new(1));
+    assert_eq!(region.control(), StepIdx::new(2));
+    assert_eq!(region.done(), StepIdx::new(3));
+    Ok(())
+}
 
 proptest! {
-    /// PO-023 H1: Collect workflow with bounded limit/page_size terminates.
     #[test]
-    fn proptest_collect_traversal(limit in any::<u32>(), page_size in any::<u32>()) {
-        // Create collect workflow with given budget
-        let parts = make_collect_workflow(0, limit, page_size);
-
-        // try_from_parts should construct the workflow
-        let _ = CompiledWorkflow::try_from_parts(parts);
-
-        // Either succeeds or fails validation, but does not hang or panic
-        prop_assert!(true, "try_from_parts completed without hanging");
+    fn proptest_collect_traversal((limit, page_size) in bounded_collect_strategy()) {
+        assert_collect_region(limit, page_size).map_err(TestCaseError::fail)?;
     }
 }
 
-/// PO-023 H2: Collect with limit=0 terminates.
 #[test]
-fn proptest_collect_traversal_limit_zero() {
-    let parts = make_collect_workflow(0, 0, 1);
-    let _ = CompiledWorkflow::try_from_parts(parts);
+fn proptest_collect_traversal_limit_zero() -> Result<(), String> {
+    assert_collect_region(0, 1)
 }
 
-/// PO-023 H3: Collect with limit=1 terminates.
 #[test]
-fn proptest_collect_traversal_limit_one() {
-    let parts = make_collect_workflow(0, 1, 1);
-    let _ = CompiledWorkflow::try_from_parts(parts);
+fn proptest_collect_traversal_limit_one() -> Result<(), String> {
+    assert_collect_region(1, 1)
 }
 
-/// PO-023 H4: Collect with limit=u32::MAX terminates (overflow checked by budget).
 #[test]
-fn proptest_collect_traversal_limit_max() {
-    let parts = make_collect_workflow(0, u32::MAX, u32::MAX);
-    let _ = CompiledWorkflow::try_from_parts(parts);
+fn proptest_collect_traversal_limit_max() -> Result<(), String> {
+    let parts = make_collect_workflow(u32::MAX, u32::MAX);
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(crate::workflow::WorkflowError::StepCountOverflow { actual }) => {
+            assert_eq!(
+                actual,
+                expected_budget_total(u32::MAX).map_err(|error| error.to_string())?
+            );
+        }
+        other => return Err(format!("expected StepCountOverflow, got {other:?}")),
+    }
+    Ok(())
 }

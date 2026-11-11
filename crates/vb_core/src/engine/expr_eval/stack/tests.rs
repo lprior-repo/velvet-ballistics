@@ -1,7 +1,9 @@
 use super::*;
+use crate::engine::expr_eval::ops::eval_expr_operator;
 use crate::errors::EngineError;
 use crate::ids::{ListId, ObjectId, SymbolId};
 use crate::value::SlotValue;
+use crate::workflow::ExprOp;
 
 fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
 where
@@ -116,6 +118,11 @@ fn pop_triple_returns_left_mid_right_ordering() -> Result<(), String> {
     ensure_equal(left, SlotValue::I64(1))?;
     ensure_equal(mid, SlotValue::I64(2))?;
     ensure_equal(right, SlotValue::I64(3))
+}
+
+fn pop_i64_pair(stack: &mut ExprStack) -> Result<(i64, i64), EngineError> {
+    let (left, right) = pop_pair(stack)?;
+    Ok((expect_i64(left)?, expect_i64(right)?))
 }
 
 // ===== pop_i64_pair =====
@@ -265,31 +272,33 @@ fn stack_new_with_excessive_capacity_fails() {
 }
 
 #[test]
-fn stack_push_exactly_at_capacity_fails() {
-    let mut stack = ExprStack::new(1).expect("valid");
-    push_value(&mut stack, SlotValue::I64(1)).expect("first push");
+fn stack_push_exactly_at_capacity_fails() -> Result<(), String> {
+    let mut stack = ExprStack::new(1).map_err(|e| format!("valid: {e}"))?;
+    push_value(&mut stack, SlotValue::I64(1)).map_err(|e| format!("first push: {e}"))?;
     let result = push_value(&mut stack, SlotValue::I64(2));
     assert!(
         matches!(result, Err(EngineError::ExpressionStackOverflow { max: 1 })),
         "expected ExpressionStackOverflow(1)"
     );
+    Ok(())
 }
 
 #[test]
-fn stack_pop_checked_sub_underflow_returns_underflow() {
-    let mut stack = ExprStack::new(4).expect("valid");
+fn stack_pop_checked_sub_underflow_returns_underflow() -> Result<(), String> {
+    let mut stack = ExprStack::new(4).map_err(|e| format!("valid: {e}"))?;
     // Directly set len to 0 and attempt pop; len==0 guard fires first.
     let result = pop_value(&mut stack);
     assert_eq!(result, Err(EngineError::ExpressionStackUnderflow));
+    Ok(())
 }
 
 #[test]
-fn stack_pop_get_failure_returns_invariant_violation() {
+fn stack_pop_get_failure_returns_invariant_violation() -> Result<(), String> {
     // This path is unreachable in normal use because len is clamped to
     // capacity which is <= MAX_EXPRESSION_STACK_USIZE. We exercise the
     // .get() failure branch by pushing then manually corrupting len.
-    let mut stack = ExprStack::new(4).expect("valid");
-    push_value(&mut stack, SlotValue::I64(1)).expect("push");
+    let mut stack = ExprStack::new(4).map_err(|e| format!("valid: {e}"))?;
+    push_value(&mut stack, SlotValue::I64(1)).map_err(|e| format!("push: {e}"))?;
     stack.len = 255; // corrupt len so get() fails
     let result = pop_value(&mut stack);
     assert_eq!(
@@ -298,4 +307,32 @@ fn stack_pop_get_failure_returns_invariant_violation() {
             reason: "expression stack pop index checked by length".into(),
         })
     );
+    Ok(())
+}
+
+#[test]
+fn stack_eval_subtraction_via_ops() -> Result<(), String> {
+    let mut store = crate::value_store::ValueStore::new();
+    let mut stack = ExprStack::new(4).map_err(|e| e.to_string())?;
+    push_value(&mut stack, SlotValue::I64(7)).map_err(|e| e.to_string())?;
+    push_value(&mut stack, SlotValue::I64(3)).map_err(|e| e.to_string())?;
+    eval_expr_operator(ExprOp::Sub, &mut stack, &mut store).map_err(|e| e.to_string())?;
+    let result = pop_value(&mut stack).map_err(|e| e.to_string())?;
+    ensure_equal(result, SlotValue::I64(4))
+}
+
+#[test]
+fn stack_eval_type_mismatch_via_ops() -> Result<(), String> {
+    let mut store = crate::value_store::ValueStore::new();
+    let mut stack = ExprStack::new(4).map_err(|e| e.to_string())?;
+    push_value(&mut stack, SlotValue::Bool(true)).map_err(|e| e.to_string())?;
+    push_value(&mut stack, SlotValue::I64(1)).map_err(|e| e.to_string())?;
+    let result = eval_expr_operator(ExprOp::Add, &mut stack, &mut store);
+    match result {
+        Err(EngineError::TypeMismatch {
+            expected: "number",
+            found: "boolean",
+        }) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
 }
