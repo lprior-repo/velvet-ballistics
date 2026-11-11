@@ -385,56 +385,41 @@ fn mul_overflow_returns_error() -> Result<(), String> {
     }
 }
 
-#[test]
-fn ut_i64_overflow_propagates_correctly() -> Result<(), String> {
+fn eval_i64_overflow_message(
+    op: ExprOp,
+    left: i64,
+    right: i64,
+    label: &str,
+) -> Result<String, String> {
     let mut store = ValueStore::new();
-    let add_overflow = eval_ops(
+    let result = eval_ops(
         vec![
             ExprOp::LoadConst(ConstIdx::new(0)),
             ExprOp::LoadConst(ConstIdx::new(1)),
-            ExprOp::Add,
+            op,
         ],
-        vec![ConstValue::I64(i64::MAX), ConstValue::I64(1)],
+        vec![ConstValue::I64(left), ConstValue::I64(right)],
         &mut store,
     );
-    let message = match add_overflow {
-        Err(message) => message,
-        other => return Err(format!("expected add overflow error, got {other:?}")),
-    };
+    match result {
+        Err(message) => Ok(message),
+        other => Err(format!("expected {label} overflow error, got {other:?}")),
+    }
+}
+
+#[test]
+fn ut_i64_overflow_propagates_correctly() -> Result<(), String> {
+    let message = eval_i64_overflow_message(ExprOp::Add, i64::MAX, 1, "add")?;
     assert!(
         message.contains("overflow"),
         "add overflow should propagate"
     );
-    let sub_overflow = eval_ops(
-        vec![
-            ExprOp::LoadConst(ConstIdx::new(0)),
-            ExprOp::LoadConst(ConstIdx::new(1)),
-            ExprOp::Sub,
-        ],
-        vec![ConstValue::I64(i64::MIN), ConstValue::I64(1)],
-        &mut store,
-    );
-    let message = match sub_overflow {
-        Err(message) => message,
-        other => return Err(format!("expected sub overflow error, got {other:?}")),
-    };
+    let message = eval_i64_overflow_message(ExprOp::Sub, i64::MIN, 1, "sub")?;
     assert!(
         message.contains("overflow"),
         "sub overflow should propagate"
     );
-    let mul_overflow = eval_ops(
-        vec![
-            ExprOp::LoadConst(ConstIdx::new(0)),
-            ExprOp::LoadConst(ConstIdx::new(1)),
-            ExprOp::Mul,
-        ],
-        vec![ConstValue::I64(i64::MAX), ConstValue::I64(2)],
-        &mut store,
-    );
-    let message = match mul_overflow {
-        Err(message) => message,
-        other => return Err(format!("expected mul overflow error, got {other:?}")),
-    };
+    let message = eval_i64_overflow_message(ExprOp::Mul, i64::MAX, 2, "mul")?;
     assert!(
         message.contains("overflow"),
         "mul overflow should propagate"

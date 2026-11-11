@@ -27,7 +27,7 @@ fn drive_numeric_expr(
         1
     } else {
         u16::try_from(slots.len()).map_err(|_| EngineError::InternalInvariantViolation {
-            reason: "slot count overflow",
+            reason: "slot count overflow".into(),
         })?
     };
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
@@ -64,12 +64,12 @@ fn drive_numeric_expr(
         step_names: Box::new([]),
     })
     .map_err(|_| EngineError::InternalInvariantViolation {
-        reason: "workflow construction failed",
+        reason: "workflow construction failed".into(),
     })?;
     let mut run = crate::frame::RunFrame::new(RunId::new(1), StepIdx::new(0), 2, slot_count)?;
     for (i, (value, taint)) in slots.iter().enumerate() {
         let idx = u16::try_from(i).map_err(|_| EngineError::InternalInvariantViolation {
-            reason: "slot index overflow",
+            reason: "slot index overflow".into(),
         })?;
         run.write_slot_with_taint(SlotIdx::new(idx), *value, *taint)?;
     }

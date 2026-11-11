@@ -34,7 +34,7 @@ fn contains_replay_choose_node() -> CompiledNode {
                 target,
             }]
             .into_boxed_slice(),
-            otherwise: Some(StepIdx::new(3)),
+            otherwise: Some(StepIdx::new(3)).into(),
         },
         None,
         Some(target),

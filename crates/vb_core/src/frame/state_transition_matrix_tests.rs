@@ -93,7 +93,7 @@ fn exercise_pair(frame: &mut RunFrame, source: StepState, target: StepState) -> 
         assert_eq!(
             result,
             Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
+                reason: "invalid_state_transition".into()
             })
         );
         assert_eq!(*frame, before);

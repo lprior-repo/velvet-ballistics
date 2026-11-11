@@ -8,6 +8,10 @@
 //! - `proof-evidence --bead <id>` - writes evidence bundle
 //! - `proof-drift` - checks spec/code alignment
 
+#[path = "proof/kani_filter.rs"]
+mod kani_filter;
+
+use kani_filter::kani_harness_filter;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -132,21 +136,6 @@ pub fn obligations_for_level(obligations: &[ProofObligation], level: &str) -> Ve
         .filter(|obl| obl.proof_level == level)
         .cloned()
         .collect()
-}
-
-/// Derive the `--harness` filter from a `required: kani:` file reference.
-/// The registry names the proof file (`kani_step_budget.rs`) or a
-/// `file.rs::harness` pair; Kani matches filters against fully qualified
-/// harness names, which never contain `.rs`.
-fn kani_harness_filter(reference: &str) -> &str {
-    let bare = match reference.rsplit("::").next() {
-        Some(part) => part,
-        None => reference,
-    };
-    match bare.strip_suffix(".rs") {
-        Some(stem) => stem,
-        None => bare,
-    }
 }
 
 pub fn commands_for_obligation(obl: &ProofObligation) -> Vec<String> {

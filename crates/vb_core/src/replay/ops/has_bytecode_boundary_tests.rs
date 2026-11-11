@@ -52,7 +52,7 @@ fn has_bytecode_choose_node() -> crate::workflow::CompiledNode {
                 target,
             }]
             .into_boxed_slice(),
-            otherwise: Some(otherwise),
+            otherwise: Some(otherwise).into(),
         },
         None,
         Some(target),
