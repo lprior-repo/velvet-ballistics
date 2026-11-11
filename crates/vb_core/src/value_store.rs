@@ -39,6 +39,9 @@ pub(crate) use symbols::validate_symbol_len;
 #[cfg(test)]
 pub(crate) use symbols::{next_symbol_id, symbol_index};
 
+mod symbol_inputs;
+pub use symbol_inputs::{InputSymbolBindingError, compose_compiler_symbols};
+
 /// Cold value arenas for strings, lists, objects, and blobs.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ValueStore {

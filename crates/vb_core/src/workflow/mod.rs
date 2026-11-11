@@ -18,6 +18,10 @@ use crate::value::{ConstValue, SlotValue};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
+mod bound_symbols;
+pub mod source_metadata;
+pub use bound_symbols::{VersionedWorkflowParts, WorkflowIrV2};
+
 /// Immutable compiled workflow.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompiledWorkflow {
@@ -35,6 +39,7 @@ pub struct CompiledWorkflow {
     step_names: Box<[Box<str>]>,
     input_slots: Box<[CompiledInputSlot]>,
     loop_slots: Box<[LoopRegionSlot]>,
+    source_symbols: Option<source_metadata::WorkflowSourceMetadata>,
 }
 
 impl CompiledWorkflow {
@@ -62,6 +67,7 @@ impl CompiledWorkflow {
             step_names: parts.step_names,
             input_slots: parts.input_slots,
             loop_slots,
+            source_symbols: None,
         })
     }
 
@@ -86,6 +92,7 @@ impl CompiledWorkflow {
             step_names: parts.step_names,
             input_slots: parts.input_slots,
             loop_slots: Box::new([]),
+            source_symbols: None,
         }
     }
 
@@ -108,6 +115,7 @@ impl CompiledWorkflow {
             step_names: parts.step_names,
             input_slots: parts.input_slots,
             loop_slots: Box::new([]),
+            source_symbols: None,
         }
     }
 
@@ -227,7 +235,8 @@ impl CompiledWorkflow {
         self.loop_slots.get(step.as_usize())
     }
 
-    /// Converts back to the serializable parts representation for artifact emission.
+    /// Returns the legacy parts-only projection without bound symbol payloads.
+    /// Use [`Self::to_versioned_parts`] to retain the bound representation.
     #[must_use]
     pub fn to_parts(&self) -> WorkflowParts {
         WorkflowParts {
@@ -1026,6 +1035,12 @@ pub enum PathSegment {
 #[derive(Debug, Clone, Error, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum WorkflowError {
+    /// Bound symbol payloads failed metadata validation.
+    #[error("invalid symbol metadata: {source}")]
+    InvalidSymbolMetadata {
+        /// Exact metadata validation failure.
+        source: source_metadata::SourceMetadataError,
+    },
     /// A step wrote to a repeat counter owned by a different step.
     #[error("step {writer:?} wrote to repeat counter slot {slot:?} owned by step {owner:?}")]
     RepeatCounterForeignWrite {

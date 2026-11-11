@@ -63,7 +63,7 @@ fn map_numeric_error(err: numeric::NumericError) -> EngineError {
             found,
         },
         numeric::NumericError::Overflow => EngineError::InvalidCompiledWorkflow {
-            reason: "integer arithmetic overflow".into(),
+            reason: "integer arithmetic overflow",
         },
         numeric::NumericError::DivisionByZero => EngineError::DivisionByZero,
         numeric::NumericError::NonFinite => EngineError::NonFiniteNumber,
@@ -77,7 +77,7 @@ fn map_div_error(err: numeric::NumericError) -> EngineError {
             found,
         },
         numeric::NumericError::Overflow => EngineError::InvalidCompiledWorkflow {
-            reason: "integer division overflow".into(),
+            reason: "integer division overflow",
         },
         numeric::NumericError::DivisionByZero => EngineError::DivisionByZero,
         numeric::NumericError::NonFinite => EngineError::NonFiniteNumber,
