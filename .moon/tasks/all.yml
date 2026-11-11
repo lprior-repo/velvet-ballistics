@@ -262,6 +262,7 @@ tasks:
     command: 'bash scripts/check-hot-cold-forbidden-apis.sh'
     inputs:
       - 'scripts/check-hot-cold-forbidden-apis.rs'
+      - 'scripts/check_hot_cold_driver.rs'
       - 'scripts/check-hot-cold-forbidden-apis.sh'
       - 'scripts/hot-cold-forbidden-apis.allow'
       - 'crates/vb_core/src/**/*'
