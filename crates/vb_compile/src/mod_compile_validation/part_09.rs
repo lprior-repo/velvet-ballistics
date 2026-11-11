@@ -46,21 +46,25 @@ pub(super) fn optional_vars_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> 
             return Err(non_string_key_error());
         };
         validate_public_name("vars", name)?;
-        match value {
-            Yaml::Sequence(_) | Yaml::Mapping(_) | Yaml::Tagged(..) => {
-                return Err(CompileError::ExpressionLoweringUnsupported {
-                    feature: format!(
-                        "vars.{name} currently requires a null, boolean, or integer static literal"
-                    )
-                    .into_boxed_str(),
-                });
-            }
-            _ => {
-                slot_value(value, 0)?;
-            }
-        }
+        validate_variable_literal(name, value)?;
     }
     Ok(())
+}
+
+fn validate_variable_literal(name: &str, value: &Yaml<'_>) -> Result<(), CompileError> {
+    if value.as_str().is_some() {
+        return Ok(());
+    }
+    match value {
+        Yaml::Sequence(_) | Yaml::Mapping(_) | Yaml::Tagged(..) => {
+            Err(CompileError::ExpressionLoweringUnsupported {
+                feature: format!(
+                    "vars.{name} currently requires a null, boolean, integer, or text static literal"
+                ).into_boxed_str(),
+            })
+        }
+        _ => slot_value(value, 0).map(|_| ()),
+    }
 }
 
 pub(super) fn optional_secret_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> {
@@ -117,4 +121,42 @@ pub(super) fn required_example_name<'a>(example: &'a Yaml<'a>) -> Result<&'a str
         field: "examples.name",
         expected: "a string",
     })
+}
+
+#[cfg(test)]
+mod source_text_tests {
+    use super::*;
+
+    #[test]
+    fn variable_text_validation_accepts_empty_and_utf8_bytes() {
+        for text in ["", "é", " key "] {
+            let value = Yaml::Value(saphyr::Scalar::String(text.into()));
+            assert_eq!(validate_variable_literal("text", &value), Ok(()));
+        }
+    }
+
+    #[test]
+    fn variable_containers_retain_exact_unsupported_error() {
+        for value in [
+            Yaml::Sequence(Vec::new()),
+            Yaml::Mapping(Default::default()),
+        ] {
+            assert_eq!(validate_variable_literal("items", &value), Err(
+                CompileError::ExpressionLoweringUnsupported {
+                    feature: "vars.items currently requires a null, boolean, integer, or text static literal".into(),
+                },
+            ));
+        }
+    }
+
+    #[test]
+    fn legacy_scalar_variable_validation_is_unchanged() {
+        for value in [
+            Yaml::Value(saphyr::Scalar::Null),
+            Yaml::Value(saphyr::Scalar::Boolean(true)),
+            Yaml::Value(saphyr::Scalar::Integer(7)),
+        ] {
+            assert_eq!(validate_variable_literal("scalar", &value), Ok(()));
+        }
+    }
 }

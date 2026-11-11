@@ -18,7 +18,10 @@ impl SlotCompiler {
     /// Creates a new empty slot compiler.
     #[must_use]
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            source_symbols: crate::source_symbols::SourceSymbolTable::new(),
+            ..Self::default()
+        }
     }
 
     /// Allocates one slot above every previously recorded or reserved slot.

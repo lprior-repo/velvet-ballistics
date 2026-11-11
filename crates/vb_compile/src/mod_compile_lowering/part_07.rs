@@ -146,6 +146,7 @@ pub fn lower_finish(id: StepIdx, result: SlotIdx, builder: &mut SlotCompiler) ->
 /// programs, and input slot metadata during step lowering.
 #[derive(Debug, Default)]
 pub struct SlotCompiler {
+    pub(super) source_symbols: crate::source_symbols::SourceSymbolTable,
     pub(super) nodes: Vec<CompiledNode>,
     pub(super) constants: Vec<ConstValue>,
     pub(super) expressions: Vec<ExprProgram>,

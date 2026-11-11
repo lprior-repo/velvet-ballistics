@@ -37,6 +37,8 @@ pub mod mod_compile_lowering;
 mod mod_compile_validation;
 mod references;
 mod schema;
+mod source_symbol_binding;
+mod source_symbols;
 pub mod strict_yaml;
 mod type_taint;
 

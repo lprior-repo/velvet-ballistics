@@ -3,6 +3,7 @@
 use super::{
     ForEachInputs, SlotCompiler, constraint_from_input_schema, kind_from_input_schema, step_idx,
 };
+use crate::source_symbol_binding::intern_source_text;
 use crate::{AuthorValue, CompileError, WorkflowSource};
 use std::collections::HashMap;
 use vb_core::workflow::node;
@@ -16,6 +17,26 @@ pub(super) fn prepare_source_declarations(
     builder: &mut SlotCompiler,
     for_each_inputs: &mut ForEachInputs,
 ) -> Result<Vec<Box<str>>, CompileError> {
+    prepare_inputs(source, outputs, types, builder, for_each_inputs)?;
+    let mut names = Vec::with_capacity(source.vars().len());
+    for variable in source.vars() {
+        let (value, ty) = scalar_variable(&variable.key, &variable.value, builder)?;
+        let slot = builder.allocate_slot()?;
+        emit_variable(value, slot, builder)?;
+        bind_declaration(outputs, format!("$vars.{}", variable.key), slot)?;
+        types.insert(slot, ty);
+        names.push(format!("$vars.{}", variable.key).into_boxed_str());
+    }
+    Ok(names)
+}
+
+fn prepare_inputs(
+    source: &WorkflowSource,
+    outputs: &mut HashMap<String, SlotIdx>,
+    types: &mut HashMap<SlotIdx, ExprType>,
+    builder: &mut SlotCompiler,
+    for_each_inputs: &mut ForEachInputs,
+) -> Result<(), CompileError> {
     for input in source.inputs() {
         let kind = kind_from_input_schema(&input.value)?;
         let constraint = constraint_from_input_schema(&input.value)?;
@@ -26,16 +47,7 @@ pub(super) fn prepare_source_declarations(
         types.insert(slot, input_type(kind));
         for_each_inputs.record(slot, &input.key, &input.value);
     }
-    let mut names = Vec::with_capacity(source.vars().len());
-    for variable in source.vars() {
-        let (value, ty) = scalar_variable(&variable.key, &variable.value)?;
-        let slot = builder.allocate_slot()?;
-        emit_variable(value, slot, builder)?;
-        bind_declaration(outputs, format!("$vars.{}", variable.key), slot)?;
-        types.insert(slot, ty);
-        names.push(format!("$vars.{}", variable.key).into_boxed_str());
-    }
-    Ok(names)
+    Ok(())
 }
 
 /// Rejects a `from` schema reference that names no declared input, variable,
@@ -110,19 +122,29 @@ fn emit_variable(
     Ok(())
 }
 
-fn scalar_variable(key: &str, value: &AuthorValue) -> Result<(ConstValue, ExprType), CompileError> {
+fn scalar_variable(
+    key: &str,
+    value: &AuthorValue,
+    builder: &mut SlotCompiler,
+) -> Result<(ConstValue, ExprType), CompileError> {
     match value {
         AuthorValue::Null => Ok((ConstValue::Null, ExprType::Null)),
         AuthorValue::Bool(value) => Ok((ConstValue::Bool(*value), ExprType::Bool)),
         AuthorValue::I64(value) => Ok((ConstValue::I64(*value), ExprType::I64)),
+        AuthorValue::Text(value) => intern_source_text(&mut builder.source_symbols, value)
+            .map(|symbol| (ConstValue::Symbol(symbol), ExprType::Text)),
         _ => Err(CompileError::ExpressionLoweringUnsupported {
             feature: format!(
-                "vars.{key} currently requires a null, boolean, or integer static literal"
+                "vars.{key} currently requires a null, boolean, integer, or text static literal"
             )
             .into_boxed_str(),
         }),
     }
 }
+
+#[cfg(test)]
+#[path = "source_text_declaration_tests.rs"]
+mod source_text_tests;
 
 fn input_type(kind: InputSlotKind) -> ExprType {
     match kind {

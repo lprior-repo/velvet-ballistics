@@ -11,6 +11,7 @@ use crate::expression_bytecode::compile_expr_to_bytecode_with_resolver;
 use crate::mod_compile_errors::CompileErrors;
 use crate::mod_compile_lowering::SlotCompiler;
 use crate::mod_compile_lowering::part_05::lower_set;
+use crate::source_symbol_binding::SymbolReferenceResolver;
 use vb_core::workflow::node;
 use vb_core::{CompiledNodeKind, ConstValue, SlotIdx, StepIdx};
 use vb_expr::expr_typecheck::ExprType;
@@ -132,11 +133,26 @@ fn compile_canonical_expression_with_binding(
         .map_err(|e| CompileErrors(vec![e]))?;
     let inferred = infer_canonical_expr_type(&parsed, scope.slot_types, &resolver)
         .map_err(|e| CompileErrors(vec![e]))?;
-    let program =
-        compile_expr_to_bytecode_with_resolver(&parsed, &mut builder.constants, &mut resolver)
-            .map_err(|e| CompileErrors(vec![e]))?;
+    let program = compile_symbolic_program(&parsed, builder, &mut resolver)?;
     let index = builder
         .push_expression(program)
         .map_err(|e| CompileErrors(vec![e]))?;
     Ok((index, inferred))
 }
+
+fn compile_symbolic_program(
+    parsed: &crate::expression::ParsedExpression,
+    builder: &mut SlotCompiler,
+    references: &mut impl crate::expression_bytecode::ExpressionReferenceResolver,
+) -> Result<vb_core::ExprProgram, CompileErrors> {
+    let mut resolver = SymbolReferenceResolver {
+        references,
+        symbols: &mut builder.source_symbols,
+    };
+    compile_expr_to_bytecode_with_resolver(parsed, &mut builder.constants, &mut resolver)
+        .map_err(|e| CompileErrors(vec![e]))
+}
+
+#[cfg(test)]
+#[path = "source_text_threading_tests.rs"]
+mod source_text_tests;
