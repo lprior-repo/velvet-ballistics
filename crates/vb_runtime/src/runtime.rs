@@ -229,3 +229,7 @@ pub use registered_executor::RegisteredExecutionError;
 #[cfg(test)]
 #[path = "runtime/shutdown_tests.rs"]
 mod shutdown_tests;
+
+#[cfg(test)]
+#[path = "runtime/bound_symbol_duplicate_retry_tests.rs"]
+mod bound_symbol_duplicate_retry_tests;
