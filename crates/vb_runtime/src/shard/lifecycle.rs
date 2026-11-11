@@ -9,6 +9,8 @@ mod fresh_inputs;
 pub(crate) mod owned_activation;
 #[path = "lifecycle/recovered_admission.rs"]
 mod recovered_admission;
+#[path = "lifecycle/recovered_store.rs"]
+mod recovered_store;
 #[path = "lifecycle/registered_completion.rs"]
 mod registered_completion;
 #[path = "lifecycle/registered_completion_context.rs"]
@@ -61,6 +63,12 @@ mod tests {
     include!("lifecycle_tests/timer_wheel_failure_retry_regressions.rs");
     include!("lifecycle_tests/timer_wheel_ask_answer_regressions.rs");
     include!("lifecycle_tests/bound_inputs_regressions.rs");
+
+    mod bound_symbol_checkpoint {
+        include!("lifecycle_tests/bound_symbol_checkpoint_fixture_tests.rs");
+        include!("lifecycle_tests/bound_symbol_checkpoint_snapshot_tests.rs");
+        include!("lifecycle_tests/bound_symbol_checkpoint_tests.rs");
+    }
 
     mod strict_policy_sequence {
         include!("lifecycle_tests/strict_policy_sequence.rs");

@@ -12,6 +12,23 @@ pub(crate) struct RunAggregate {
     pending_actions: IndexMap<RunId, ActionTicket>,
 }
 
+#[cfg(test)]
+impl RunAggregate {
+    pub(crate) fn recovery_membership_snapshot(
+        &self,
+    ) -> (
+        IndexMap<RunId, RuntimeState>,
+        IndexSet<RunId>,
+        IndexSet<RunId>,
+    ) {
+        (
+            self.runtime_states.clone(),
+            self.checked_out_runs.clone(),
+            self.terminal_runs.clone(),
+        )
+    }
+}
+
 impl RunAggregate {
     pub(crate) fn new() -> Self {
         Self {

@@ -14,6 +14,10 @@ use crate::admission::RunAdmission;
 use crate::primitives::collect::{CollectStates, CollectStatesCheckpointV1};
 use crate::shard::types::RunState;
 
+mod symbol_prefix;
+mod validation;
+pub(crate) use symbol_prefix::validate_bound_symbol_prefix;
+
 /// Complete v1 state needed to restore a run at a retry boundary.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RunCheckpointV1 {
@@ -88,6 +92,9 @@ pub enum RunCheckpointV1Error {
     /// A nested state DTO failed validation.
     #[error("nested checkpoint validation failed")]
     InvalidNestedState,
+    /// Compiler-assigned symbol bytes are missing or differ at this ID.
+    #[error("checkpoint compiler symbol prefix mismatch at index {index}")]
+    SymbolPrefixMismatch { index: u32 },
     /// The checkpoint payload could not be decoded from durable bytes.
     #[error("checkpoint payload decode failed")]
     DecodeError,
@@ -154,56 +161,22 @@ impl RunCheckpointV1 {
         Ok(checkpoint)
     }
 
-    /// Validates all identities and nested state against the accepted compiled workflow.
+    /// Validates all identities, nested state and compiler symbol bindings.
     pub fn validate_against(
         &self,
         workflow: &CompiledWorkflow,
         artifact_digest: WorkflowDigest,
         accepted_action_contracts: &[ActionContract],
     ) -> Result<(), RunCheckpointV1Error> {
-        if self.version != 3 {
-            return Err(RunCheckpointV1Error::UnsupportedVersion);
-        }
-        if self.workflow_digest != workflow.digest() {
-            return Err(RunCheckpointV1Error::WorkflowIdentityMismatch);
-        }
-        if self.artifact_digest != artifact_digest {
-            return Err(RunCheckpointV1Error::ArtifactIdentityMismatch);
-        }
-        if self.frame.run_id != self.run_id {
-            return Err(RunCheckpointV1Error::RunIdentityMismatch);
-        }
-        let step_count = u16::try_from(self.frame.states.len())
-            .map_err(|_| RunCheckpointV1Error::FrameDimensionsMismatch)?;
-        let slot_count = u16::try_from(self.frame.slots.len())
-            .map_err(|_| RunCheckpointV1Error::FrameDimensionsMismatch)?;
-        if step_count != workflow.node_count() || slot_count != workflow.slot_count() {
-            return Err(RunCheckpointV1Error::FrameDimensionsMismatch);
-        }
-        let retry_index = usize::from(self.retry_step.get());
-        if self.frame.states.get(retry_index) != Some(&CheckpointStepState::Pending)
-            || self.frame.pc != self.retry_step
-        {
-            return Err(RunCheckpointV1Error::RetryStepMismatch);
-        }
-        if self.action_attempts.len() != self.frame.states.len() {
-            return Err(RunCheckpointV1Error::ActionAttemptCountMismatch);
-        }
-        if let Some(admission) = &self.admission {
-            validate_admission(admission, self.run_id, self.artifact_digest)?;
-        } else {
-            return Err(RunCheckpointV1Error::MissingAdmissionAuthority);
-        }
-        if self.action_contracts.as_ref() != accepted_action_contracts {
-            return Err(RunCheckpointV1Error::ActionContractsMismatch);
-        }
-        RunFrame::from_checkpoint_v1(self.frame.clone())
-            .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
-        ValueStore::from_checkpoint_v1(self.value_store.clone())
-            .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
-        CollectStates::from_checkpoint_v1(self.collect_states.clone())
-            .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
-        Ok(())
+        self.validate_structure_against(workflow, artifact_digest, accepted_action_contracts)?;
+        self.validate_symbol_prefix(workflow)
+    }
+
+    pub(crate) fn validate_symbol_prefix(
+        &self,
+        workflow: &CompiledWorkflow,
+    ) -> Result<(), RunCheckpointV1Error> {
+        validate_bound_symbol_prefix(workflow, &self.value_store)
     }
 
     /// Restores a validated checkpoint using the independently loaded accepted workflow.
@@ -274,3 +247,11 @@ pub fn decode_checkpoint_payload(payload: &[u8]) -> Result<RunCheckpointV1, RunC
         _ => Err(RunCheckpointV1Error::UnsupportedVersion),
     }
 }
+
+#[cfg(test)]
+#[path = "run_checkpoint/symbol_prefix_fixture_tests.rs"]
+pub(crate) mod symbol_prefix_fixture;
+
+#[cfg(test)]
+#[path = "run_checkpoint/symbol_prefix_checkpoint_tests.rs"]
+mod symbol_prefix_checkpoint_tests;

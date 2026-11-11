@@ -2,6 +2,29 @@ use crate::journal::VolatileRuntimeJournal;
 use crate::recovery::RecoveredRunBoundary;
 use crate::shard::types::RecoverRunCommand;
 
+type CanonicalActionRecoveryParts = (
+    vb_core::workflow::WorkflowParts,
+    Vec<u8>,
+    vb_core::WorkflowDigest,
+);
+
+fn canonical_action_recovery_parts(
+    mut parts: vb_core::workflow::WorkflowParts,
+) -> Result<CanonicalActionRecoveryParts, Box<dyn std::error::Error>> {
+    parts.digest = vb_core::WorkflowDigest::from_bytes([0; 32]);
+    parts.digest =
+        vb_core::WorkflowDigest::from_bytes(blake3::hash(&postcard::to_allocvec(&parts)?).into());
+    assert_ne!(parts.digest, vb_core::WorkflowDigest::from_bytes([0; 32]));
+    let workflow = vb_core::CompiledWorkflow::try_from_parts(parts.clone())?;
+    let bytes = vb_storage::encode_compiled_ir(&workflow)?.into_vec();
+    assert_eq!(
+        vb_storage::decode_compiled_ir(&bytes, Some(vb_storage::compat::CURRENT_IR_VERSION))?,
+        workflow
+    );
+    let digest = parts.digest;
+    Ok((parts, bytes, digest))
+}
+
 fn action_recovery_test_contract()
 -> Result<vb_core::action::ActionContract, Box<dyn std::error::Error>> {
     let name = vb_core::action::ActionName::new("recovery-action")?;
@@ -94,8 +117,23 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
     let artifact_digest = vb_core::ids::WorkflowDigest::from_bytes([43u8; 32]);
     assert_ne!(artifact_digest, workflow_digest);
 
-    let do_node = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, vb_core::workflow::CompiledNodeKind::Do { action: vb_core::ids::ActionId::new(0), input: vb_core::ids::SlotIdx::new(0), }, Some(vb_core::ids::SlotIdx::new(1)), Some(vb_core::ids::StepIdx::new(1)));
-    let finish_node = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::new(1), }, None, None);
+    let do_node = vb_core::workflow::node(
+        vb_core::ids::StepIdx::ZERO,
+        vb_core::workflow::CompiledNodeKind::Do {
+            action: vb_core::ids::ActionId::new(0),
+            input: vb_core::ids::SlotIdx::new(0),
+        },
+        Some(vb_core::ids::SlotIdx::new(1)),
+        Some(vb_core::ids::StepIdx::new(1)),
+    );
+    let finish_node = vb_core::workflow::node(
+        vb_core::ids::StepIdx::new(1),
+        vb_core::workflow::CompiledNodeKind::Finish {
+            result: vb_core::ids::SlotIdx::new(1),
+        },
+        None,
+        None,
+    );
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("recovery-test"),
@@ -112,7 +150,8 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         input_slots: Box::from([]),
     };
 
-    let workflow_ir = postcard::to_allocvec(&parts)?;
+    let (parts, workflow_ir, workflow_digest) = canonical_action_recovery_parts(parts)?;
+    assert_ne!(artifact_digest, workflow_digest);
     let contract = action_recovery_test_contract()?;
 
     // Compute the actual policy digest from the workflow for fixture provenance.
@@ -131,7 +170,7 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
     };
     // vb-peb9u: Mocked store with internally consistent provenance. The artifact
     // digest is content hash [43u8;32]; source digest matches workflow identity
-    // [42u8;32]; policy digest is the real computed value. Full admission would
+    // computed above; policy digest is the real computed value. Full admission would
     // accept these together; the Unverified pin remains the test subject.
     let store = action_recovery_contract_store(
         artifact_digest,
@@ -696,10 +735,7 @@ fn recovery_test_gate(run: vb_core::ids::RunId, id: u64) -> vb_core::manual_gate
     }
 }
 
-fn recovery_test_open_gate(
-    run: vb_core::ids::RunId,
-    id: u64,
-) -> crate::shard::types::OpenGate {
+fn recovery_test_open_gate(run: vb_core::ids::RunId, id: u64) -> crate::shard::types::OpenGate {
     crate::shard::types::OpenGate {
         gate: recovery_test_gate(run, id),
         opened_at_ms: 0,
@@ -745,7 +781,10 @@ impl RecoveryGateJournal {
 }
 
 impl crate::journal::RuntimeJournal for RecoveryGateJournal {
-    fn append(&self, _event: crate::journal::RuntimeJournalEvent) -> crate::error::RuntimeResult<()> {
+    fn append(
+        &self,
+        _event: crate::journal::RuntimeJournalEvent,
+    ) -> crate::error::RuntimeResult<()> {
         Ok(())
     }
 
@@ -800,8 +839,23 @@ fn recovery_gate_shard() -> Result<
     let run_id = vb_core::ids::RunId::new(1);
     let workflow_digest = vb_core::ids::WorkflowDigest::from_bytes([42u8; 32]);
     let artifact_digest = vb_core::ids::WorkflowDigest::from_bytes([43u8; 32]);
-    let do_node = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, vb_core::workflow::CompiledNodeKind::Do { action: vb_core::ids::ActionId::new(0), input: vb_core::ids::SlotIdx::new(0), }, Some(vb_core::ids::SlotIdx::new(1)), Some(vb_core::ids::StepIdx::new(1)));
-    let finish_node = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::new(1), }, None, None);
+    let do_node = vb_core::workflow::node(
+        vb_core::ids::StepIdx::ZERO,
+        vb_core::workflow::CompiledNodeKind::Do {
+            action: vb_core::ids::ActionId::new(0),
+            input: vb_core::ids::SlotIdx::new(0),
+        },
+        Some(vb_core::ids::SlotIdx::new(1)),
+        Some(vb_core::ids::StepIdx::new(1)),
+    );
+    let finish_node = vb_core::workflow::node(
+        vb_core::ids::StepIdx::new(1),
+        vb_core::workflow::CompiledNodeKind::Finish {
+            result: vb_core::ids::SlotIdx::new(1),
+        },
+        None,
+        None,
+    );
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("recovery-test"),
@@ -817,7 +871,8 @@ fn recovery_gate_shard() -> Result<
         resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
         input_slots: Box::from([]),
     };
-    let workflow_ir = postcard::to_allocvec(&parts)?;
+    let (parts, workflow_ir, workflow_digest) = canonical_action_recovery_parts(parts)?;
+    assert_ne!(artifact_digest, workflow_digest);
     let contract = action_recovery_test_contract()?;
     let policy_digest = vb_storage::admission::compute_policy_digest(
         &vb_core::workflow::CompiledWorkflow::try_from_parts(parts)?,
@@ -837,11 +892,8 @@ fn recovery_gate_shard() -> Result<
         contract,
     );
     let journal = RecoveryGateJournal::shared();
-    let shard = crate::shard::Shard::new_with_journal_and_artifact_store(
-        config,
-        journal.clone(),
-        store,
-    );
+    let shard =
+        crate::shard::Shard::new_with_journal_and_artifact_store(config, journal.clone(), store);
     Ok((shard, journal, run_id, artifact_digest, workflow_digest))
 }
 
@@ -878,8 +930,7 @@ fn recovery_gate_command(
 #[test]
 fn recover_restores_open_gate_suspends_run_and_approves_to_drive()
 -> Result<(), Box<dyn std::error::Error>> {
-    let (mut shard, journal, run_id, artifact_digest, workflow_digest) =
-        recovery_gate_shard()?;
+    let (mut shard, journal, run_id, artifact_digest, workflow_digest) = recovery_gate_shard()?;
     let gate = recovery_test_gate(run_id, 7);
     let command = recovery_gate_command(
         run_id,
@@ -943,10 +994,8 @@ fn recover_restores_open_gate_suspends_run_and_approves_to_drive()
 }
 
 #[test]
-fn recover_rejects_open_gate_with_suspended_boundary()
--> Result<(), Box<dyn std::error::Error>> {
-    let (mut shard, _journal, run_id, artifact_digest, workflow_digest) =
-        recovery_gate_shard()?;
+fn recover_rejects_open_gate_with_suspended_boundary() -> Result<(), Box<dyn std::error::Error>> {
+    let (mut shard, _journal, run_id, artifact_digest, workflow_digest) = recovery_gate_shard()?;
     let ask = crate::recovery::RecoveredOpenAsk::new(
         vb_core::ids::StepIdx::ZERO,
         vb_storage::EventSeq::new(1),

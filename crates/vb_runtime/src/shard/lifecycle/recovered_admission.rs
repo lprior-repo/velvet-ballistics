@@ -89,22 +89,37 @@ pub(crate) fn validate_retry_checkpoint(
     artifact: &AcceptedArtifact,
     workflow: &CompiledWorkflow,
 ) -> RuntimeResult<()> {
-    if let Some(checkpoint) = checkpoint {
-        checkpoint
-            .validate_against(workflow, artifact.digest, &artifact.action_contracts)
-            .map_err(|error| RuntimeError::Recovery {
-                error: format!("retry checkpoint validation failed: {error}"),
-            })?;
-        if let Some(admission) = checkpoint.admission.as_ref() {
-            validate_recovered_admission_evidence(RecoveredAdmissionEvidence {
-                context,
-                admission,
-                artifact,
-                workflow,
-            })?;
-        }
+    checkpoint.map_or(Ok(()), |checkpoint| {
+        validate_attached_retry(checkpoint, context, artifact, workflow)
+    })
+}
+
+fn validate_attached_retry(
+    checkpoint: &RunCheckpointV1,
+    context: RecoveredAdmissionContext,
+    artifact: &AcceptedArtifact,
+    workflow: &CompiledWorkflow,
+) -> RuntimeResult<()> {
+    checkpoint
+        .validate_structure_against(workflow, artifact.digest, &artifact.action_contracts)
+        .map_err(retry_validation_error)?;
+    if let Some(admission) = checkpoint.admission.as_ref() {
+        validate_recovered_admission_evidence(RecoveredAdmissionEvidence {
+            context,
+            admission,
+            artifact,
+            workflow,
+        })?;
     }
-    Ok(())
+    checkpoint
+        .validate_symbol_prefix(workflow)
+        .map_err(retry_validation_error)
+}
+
+fn retry_validation_error(error: crate::run_checkpoint::RunCheckpointV1Error) -> RuntimeError {
+    RuntimeError::Recovery {
+        error: format!("retry checkpoint validation failed: {error}"),
+    }
 }
 
 /// Phase C: Build unverified admission for legacy recovery.

@@ -465,17 +465,7 @@ impl Shard {
                 },
             })?;
 
-        // Step 2: Deserialize and compile workflow from artifact IR
-        let parts: vb_core::workflow::WorkflowParts =
-            postcard::from_bytes(&artifact.ir).map_err(|_| RuntimeError::Recovery {
-                error: "artifact IR decode failed".to_string(),
-            })?;
-
-        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).map_err(|e| {
-            RuntimeError::Recovery {
-                error: format!("workflow compile failed: {e}"),
-            }
-        })?;
+        let workflow = recovered_store::decode_workflow(&artifact)?;
 
         // Step 3: Verify workflow identity matches command workflow_digest
         if workflow.digest() != workflow_digest {
@@ -532,6 +522,8 @@ impl Shard {
             None
         };
 
+        let state_source = recovered_store::prepare(retry_checkpoint, restored_store, &workflow)?;
+
         // Step 5: Seed journal sequence from recovered next_seq
         self.seed_journal_sequence(run, next_seq)?;
 
@@ -544,60 +536,48 @@ impl Shard {
             } else {
                 crate::shard::types::RegisteredExecutionMode::Live
             };
-        let state = if let Some(checkpoint) = retry_checkpoint {
-            let (state, _attempt, _retry_step, _prior_seq) = checkpoint
-                .restore(workflow, artifact_digest, &artifact.action_contracts)
-                .map_err(|error| RuntimeError::Recovery {
-                    error: format!("retry checkpoint validation failed: {error}"),
-                })?;
-            if state.frame.run_id() != run {
-                return Err(RuntimeError::Recovery {
-                    error: "retry checkpoint run identity mismatch".to_string(),
-                });
+        let state = match state_source {
+            recovered_store::RecoveredStateSource::Retry(checkpoint) => {
+                let (state, _attempt, _retry_step, _prior_seq) = checkpoint
+                    .restore(workflow, artifact_digest, &artifact.action_contracts)
+                    .map_err(|error| RuntimeError::Recovery {
+                        error: format!("retry checkpoint validation failed: {error}"),
+                    })?;
+                if state.frame.run_id() != run {
+                    return Err(RuntimeError::Recovery {
+                        error: "retry checkpoint run identity mismatch".to_string(),
+                    });
+                }
+                self.prepare_run_slots(run)?;
+                state
             }
-            self.prepare_run_slots(run)?;
-            state
-        } else {
-            // Step 7: Restore the original historical admission validated by the
-            // recovery prefix flow (validate_recovery_admission) rather than
-            // rebuilding admission from current policy. Rebuilding could upgrade
-            // a legacy Unverified admission to Pinned, authorizing external
-            // effects the original run never had authority for.
-            let frame_step_count = frame.step_count();
-            let max_slots = workflow.resource_contract().max_slots;
-            self.prepare_run_slots(run)?;
-            let state_admission = match admission {
-                crate::shard::types::RecoveredAdmissionKind::Historical(h) => Some(*h),
-                crate::shard::types::RecoveredAdmissionKind::Unverified { .. } => {
-                    unverified_admission
+            recovered_store::RecoveredStateSource::Store(store) => {
+                // Step 7: Restore the original historical admission validated by the
+                // recovery prefix flow (validate_recovery_admission) rather than
+                // rebuilding admission from current policy. Rebuilding could upgrade
+                // a legacy Unverified admission to Pinned, authorizing external
+                // effects the original run never had authority for.
+                let frame_step_count = frame.step_count();
+                self.prepare_run_slots(run)?;
+                let state_admission = match admission {
+                    crate::shard::types::RecoveredAdmissionKind::Historical(h) => Some(*h),
+                    crate::shard::types::RecoveredAdmissionKind::Unverified { .. } => {
+                        unverified_admission
+                    }
+                };
+                crate::shard::types::RunState {
+                    registered_execution,
+                    frame,
+                    run_attempt: core::num::NonZeroU16::MIN,
+                    workflow,
+                    store,
+                    action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
+                    admission: state_admission,
+                    run_started_millis: None,
+                    collect_states,
+                    journal_bytes_written: 0,
+                    action_contracts: artifact.action_contracts.clone(),
                 }
-            };
-            // Restores the validated cold value store when the run retained
-            // owned inputs, so recovered List/Object/Blob handles resolve.
-            // Scalar and raw runs keep the default empty store; their frames
-            // carry no arena handles (the recovery boundary refused otherwise).
-            let store = match restored_store {
-                Some(checkpoint) => {
-                    ValueStore::from_checkpoint_v1(checkpoint).map_err(|error| {
-                        RuntimeError::Recovery {
-                            error: format!("restored value store failed validation: {error:?}"),
-                        }
-                    })?
-                }
-                None => ValueStore::with_max_slots(max_slots),
-            };
-            crate::shard::types::RunState {
-                registered_execution,
-                frame,
-                run_attempt: core::num::NonZeroU16::MIN,
-                workflow,
-                store,
-                action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
-                admission: state_admission,
-                run_started_millis: None,
-                collect_states,
-                journal_bytes_written: 0,
-                action_contracts: artifact.action_contracts.clone(),
             }
         };
 
