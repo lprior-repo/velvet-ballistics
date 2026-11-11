@@ -59,6 +59,18 @@ fn poisoned_header_error() -> RuntimeError {
     }
 }
 
+fn assert_poisoned_header_outcome(outcome: &Result<(), RuntimeError>) {
+    assert_eq!(outcome, &Err(poisoned_header_error()));
+    assert!(matches!(
+        outcome,
+        Err(RuntimeError::StorageJournalAppend { source })
+            if matches!(
+                source.as_ref(),
+                JournalError::OwnedInputs(OwnedInputError::IdentityMismatch)
+            )
+    ));
+}
+
 #[test]
 fn bound_symbol_runtime_queued_activation_rechecks_state() -> TestResult {
     let case = goldens::fresh_case("key")?;
@@ -136,10 +148,8 @@ fn bound_symbol_runtime_source_binding_has_no_reparse_fallback() -> TestResult {
     header.compiled_digest = WorkflowDigest::from_bytes([98; 32]);
     journal.put_run_header(&header)?;
     let poisoned = snapshot(&case, &actor, &journal)?;
-    assert_eq!(
-        actor.activate_owned_submission(case.run, case.source.digest),
-        Err(poisoned_header_error())
-    );
+    let outcome = actor.activate_owned_submission(case.run, case.source.digest);
+    assert_poisoned_header_outcome(&outcome);
     assert_eq!(snapshot(&case, &actor, &journal)?, poisoned);
     assert_eq!(journal.run_header(case.run)?, Some(header));
     Ok(())
