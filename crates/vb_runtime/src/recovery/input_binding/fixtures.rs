@@ -186,22 +186,6 @@ pub(super) fn load(
     load_retained_inputs_for_recovery(&events, journal, &case.artifact, &case.workflow, RUN)
 }
 
-pub(super) fn assert_durable_unchanged(
-    case: &DurableCase,
-    journal: &FjallJournal,
-    events: &[JournalEvent],
-) -> TestResult {
-    assert_eq!(journal.events_for_run_full(RUN)?, events);
-    let record = journal
-        .owned_run_inputs(RUN, case.artifact.digest, source().digest, &case.workflow)?
-        .ok_or("retained owned record missing after recovery")?;
-    assert_eq!(
-        postcard::to_allocvec(&record)?,
-        postcard::to_allocvec(&case.record)?
-    );
-    Ok(())
-}
-
 pub(super) fn expected(key: &str, key_id: SymbolId, cap: u64) -> ValueStoreCheckpointV1 {
     let mut result = checkpoint(key, cap);
     result.symbols = vec![Box::from("key"), Box::from("noise")];

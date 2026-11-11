@@ -5,6 +5,22 @@ use vb_core::{CoreError, SymbolId};
 mod fixtures;
 use fixtures::*;
 
+pub(super) fn assert_durable_unchanged(
+    case: &DurableCase,
+    journal: &FjallJournal,
+    events: &[JournalEvent],
+) -> TestResult {
+    assert_eq!(journal.events_for_run_full(RUN)?, events);
+    let record = journal
+        .owned_run_inputs(RUN, case.artifact.digest, source().digest, &case.workflow)?
+        .ok_or("retained owned record missing after recovery")?;
+    assert_eq!(
+        postcard::to_allocvec(&record)?,
+        postcard::to_allocvec(&case.record)?
+    );
+    Ok(())
+}
+
 fn assert_reopened(key: &str, key_id: SymbolId) -> TestResult {
     let case = durable_case(Some(&["key"]), key, 8)?;
     let journal = FjallJournal::open(case.directory.path(), None)?;
