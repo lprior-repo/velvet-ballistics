@@ -99,12 +99,18 @@ fn prefix_retry_command(fixture: &PrefixActorFixture) -> TestResult<RecoverRunCo
 }
 
 fn corrupt_prefix(fixture: &mut PrefixActorFixture) -> TestResult {
-    *fixture
+    let prefix = fixture
         .checkpoint
         .value_store
         .symbols
         .get_mut(0)
-        .ok_or("missing prefix symbol")? = "wrong".into();
+        .ok_or("missing prefix symbol")?;
+    let replacement = "bad";
+    assert_eq!(prefix.as_ref(), "key");
+    assert_eq!(prefix.len(), 3);
+    assert_eq!(replacement.len(), prefix.len());
+    assert_ne!(prefix.as_ref(), replacement);
+    *prefix = replacement.into();
     assert_eq!(
         fixture.checkpoint.validate_structure_against(
             &fixture.workflow,

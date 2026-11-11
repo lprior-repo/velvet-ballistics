@@ -151,14 +151,82 @@ fn failed_state(workflow: CompiledWorkflow) -> TestResult<RunState> {
     })
 }
 
+fn nonempty_collect_state() -> TestResult<CollectStates> {
+    let mut collect_states = CollectStates::new();
+    let state = crate::primitives::collect::CollectPaginationState {
+        run_id: RunId::new(71),
+        collector_slot: SlotIdx::new(0),
+        source: ListId::new(0),
+        current_page: ListId::new(0),
+        cursor: 1,
+        page_size: 1,
+        item_count: 1,
+        limit: 3,
+        time_limit_ms: Some(50),
+        start_millis: 101,
+    };
+    collect_states
+        .upsert(state)
+        .map_err(|error| format!("fixture collect upsert failed: {error:?}"))?;
+    Ok(collect_states)
+}
+
+fn expected_collect_entry() -> crate::primitives::collect::CollectPaginationState {
+    crate::primitives::collect::CollectPaginationState {
+        run_id: RunId::new(71),
+        collector_slot: SlotIdx::new(0),
+        source: ListId::new(0),
+        current_page: ListId::new(0),
+        cursor: 1,
+        page_size: 1,
+        item_count: 1,
+        limit: 3,
+        time_limit_ms: Some(50),
+        start_millis: 101,
+    }
+}
+
+pub(crate) fn assert_nondefault_collect(
+    checkpoint: &crate::primitives::collect::CollectStatesCheckpointV1,
+) -> TestResult {
+    assert_eq!(checkpoint.entries, vec![expected_collect_entry()]);
+    assert_eq!(checkpoint.lineages.len(), 1);
+    let lineage = checkpoint
+        .lineages
+        .first()
+        .ok_or("missing collect lineage")?;
+    assert_eq!(lineage.run_id, RunId::new(71));
+    assert_eq!(lineage.collector_slot, SlotIdx::new(0));
+    assert_eq!(lineage.previous_page, None);
+    assert_eq!(lineage.stale_pages, Vec::<ListId>::new());
+    assert_eq!(checkpoint.total_items_consumed, 1);
+    assert_eq!(checkpoint.total_pages_delivered, 1);
+    Ok(())
+}
+
 pub(crate) fn retry_checkpoint(workflow: &CompiledWorkflow) -> TestResult<RunCheckpointV1> {
     let state = failed_state(workflow.clone())?;
+    capture_failed_state(&state)
+}
+
+pub(crate) fn complete_restoration_checkpoint(
+    workflow: &CompiledWorkflow,
+) -> TestResult<RunCheckpointV1> {
+    let mut state = failed_state(workflow.clone())?;
+    state.action_attempts = Box::from([2, 0]);
+    state.collect_states = nonempty_collect_state()?;
+    assert_eq!(state.action_attempts.as_ref(), [2, 0]);
+    assert_nondefault_collect(&state.collect_states.checkpoint_v1())?;
+    capture_failed_state(&state)
+}
+
+fn capture_failed_state(state: &RunState) -> TestResult<RunCheckpointV1> {
     Ok(RunCheckpointV1::capture(
         RunId::new(71),
         WorkflowDigest::from_bytes([43; 32]),
         NonZeroU16::new(2).ok_or("invalid fixture attempt")?,
         StepIdx::ZERO,
         9,
-        &state,
+        state,
     )?)
 }

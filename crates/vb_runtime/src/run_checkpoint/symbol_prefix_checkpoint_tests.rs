@@ -1,6 +1,6 @@
 use super::symbol_prefix_fixture::{
-    TestResult, fixture_contract, legacy_workflow, populated_store, prefix_workflow,
-    retry_checkpoint,
+    TestResult, assert_nondefault_collect, complete_restoration_checkpoint, fixture_contract,
+    legacy_workflow, populated_store, prefix_workflow, retry_checkpoint,
 };
 use super::*;
 
@@ -74,6 +74,7 @@ fn assert_restored_arenas(state: &RunState, checkpoint: &RunCheckpointV1) -> Tes
         state.collect_states.checkpoint_v1(),
         checkpoint.collect_states
     );
+    assert_nondefault_collect(&state.collect_states.checkpoint_v1())?;
     Ok(())
 }
 
@@ -84,6 +85,7 @@ fn assert_restored_metadata(
 ) {
     assert_eq!(state.admission, checkpoint.admission);
     assert_eq!(state.action_attempts, checkpoint.action_attempts);
+    assert_eq!(state.action_attempts.as_ref(), [2, 0]);
     assert_eq!(state.action_contracts, checkpoint.action_contracts);
     assert_eq!(state.run_started_millis, Some(101));
     assert_eq!(state.journal_bytes_written, 19);
@@ -98,7 +100,7 @@ fn assert_restored_metadata(
 #[test]
 fn bound_symbol_runtime_full_checkpoint_preserves_every_store_field() -> TestResult {
     let workflow = prefix_workflow(vec!["key".into()])?;
-    let checkpoint = retry_checkpoint(&workflow)?;
+    let checkpoint = complete_restoration_checkpoint(&workflow)?;
     let before = checkpoint.clone();
     assert_eq!(validate_checkpoint(&checkpoint, &workflow)?, Ok(()));
     let (state, attempt, step, seq) = checkpoint.clone().restore(
