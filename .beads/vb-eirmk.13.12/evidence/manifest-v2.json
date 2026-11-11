@@ -1,0 +1,18 @@
+{
+  "source_pin": "1a3a47754e04d69db27c43343a0b6c162c51483f",
+  "previous_manifest_sha256": "844f4e8d14a52ff4d29d793d5f9251fc19405a0041a64727a3a2ac003cdc7372",
+  "additional_entries": [
+    {
+      "path": "full-selected-result.json",
+      "sha256": "d052106ec0d049587e12c72fddbe270ff84cbbab9fc22a8844bfa48cb6d50637"
+    },
+    {
+      "path": "bead-closed.json",
+      "sha256": "9b90b6fea3078d69c95be23ed1176ee9b67f9e069de6797317a030a79eae43bb"
+    },
+    {
+      "path": "bead-completion-update.json",
+      "sha256": "eb90203c6a0bd78cdd9d3c7b490757fed8582e8557b7da43f2e1100cabd8327d"
+    }
+  ]
+}

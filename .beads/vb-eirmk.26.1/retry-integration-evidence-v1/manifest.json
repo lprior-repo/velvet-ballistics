@@ -1,0 +1,84 @@
+{
+  "source_pin": "7d2921f03d84500a6febbc1983f7f8c0436bc935",
+  "runtime_component_source_pin": "765a0b171da219df53cf78295b9d4de963344e88",
+  "source_delta_vs_runtime_component": "Only commit-proposal.txt evidence document differs; all Rust paths identical.",
+  "selected_moon": {
+    "passed": 16614,
+    "skipped": 7,
+    "tasks": 12,
+    "exit": 0
+  },
+  "runtime_all_features": {
+    "passed": 2448,
+    "skipped": 0,
+    "exit": 0
+  },
+  "canonical_moon_ci": "NOT_RUN",
+  "phase_55_accepted": false,
+  "inputs": [
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/expression-timer-retry-moon-selected-v5.log",
+      "file": "moon-selected-v5.log.gz",
+      "source_bytes": 3030862,
+      "source_sha256": "c865de1f64d96f53c2cdc8dd9e17427c71536e727ecf2eaa7f2ce761bed62715",
+      "archived_sha256": "2fdec92fd8dffe93a3f9e8674a45a884731a124d5532f1c5753ab018eadaca0c",
+      "gzip": true
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/expression-timer-retry-moon-selected-v5.exit",
+      "file": "moon-selected-v5.exit",
+      "source_bytes": 12,
+      "source_sha256": "99378a3544b6469ba679bcb306beeb8701cb1c42ab78e520775593a310116115",
+      "archived_sha256": "99378a3544b6469ba679bcb306beeb8701cb1c42ab78e520775593a310116115",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/timer-failure-retry-code-review-v1.json",
+      "file": "retry-code-review-v1.json",
+      "source_bytes": 5325,
+      "source_sha256": "8c7a969a3eb71a1034c61e06f4d0b14f4f94ee7ea0c77ddc393309374abf78d6",
+      "archived_sha256": "8c7a969a3eb71a1034c61e06f4d0b14f4f94ee7ea0c77ddc393309374abf78d6",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/timer-failure-retry-independent-review-v1.json",
+      "file": "retry-test-review-v1.json",
+      "source_bytes": 4491,
+      "source_sha256": "bacef23c909c5517b480c41da7b726128abfebd24aa50feebe25668ebdf8e3c2",
+      "archived_sha256": "bacef23c909c5517b480c41da7b726128abfebd24aa50feebe25668ebdf8e3c2",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/timer-retry-focused.log",
+      "file": "focused-native.log",
+      "source_bytes": 806,
+      "source_sha256": "06e6e6f0cd0e44d911b4847bf5e54243202fa00d6bcb420b6df0f41cb43a5f13",
+      "archived_sha256": "06e6e6f0cd0e44d911b4847bf5e54243202fa00d6bcb420b6df0f41cb43a5f13",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/timer-retry-focused.exit",
+      "file": "focused-native.exit",
+      "source_bytes": 2,
+      "source_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "archived_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "gzip": false
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/vb-runtime-lib-all-features.log",
+      "file": "runtime-native.log.gz",
+      "source_bytes": 295657,
+      "source_sha256": "99098d2e05a25bf6a3b5575400549ae3310c214636f57565cdcffb02b6e899f2",
+      "archived_sha256": "22a38400e3a4fdf28e36732f4a8b814fa9631454e5cc0cf5c58256b48244cf40",
+      "gzip": true
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/vb-runtime-lib-all-features.exit",
+      "file": "runtime-native.exit",
+      "source_bytes": 2,
+      "source_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "archived_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "gzip": false
+    }
+  ]
+}

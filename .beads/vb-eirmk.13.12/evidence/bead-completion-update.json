@@ -1,0 +1,18 @@
+[
+  {
+    "id": "vb-eirmk.13.12",
+    "title": "Prevent CLI scope tests from rebuilding the shared prebuilt acceptance binary",
+    "description": "Passing selected Moon1de run changed shared CLI SHA efce2d21 to8666c4ae during execution. Read-only source audit found five registered vb_nf2u_current_scope_tests invoking cargo run -p velvet-ballistics without all-features. Actual hash writer/feature cause remains unverified. Reuse an existing adequate binary selection helper where possible, honor explicitly supplied prebuilt CLI path for canonical acceptance, and retain current public command/argument/output assertions. Identify all callers of the shared spawning helper before edits. Do not weaken/drop tests, force profile flags, change Moon/gates or require new dependencies. Contract and independent CODE/TEST before closure. No source commit/push.",
+    "acceptance_criteria": "With an explicit prebuilt acceptance CLI path, every covered scenario executes that path and does not rebuild or overwrite it; invalid explicit path fails visibly and does not silently fall back. Preserve standalone behavior where no prebuilt path is supplied if existing contract requires it. Native original five scenarios pass; actual binary SHA remains unchanged during selected Moon, independent source evidence records exact candidate/profile limits. No blanket full-CI acceptance.",
+    "notes": "Physical3090 extracted the actual run_cli command builder. Initial extraction fc4cac34 failed compile2E0308, retained; corrected baseline c19d311f110883190456de986c6c32c4ba597672 registered pure selector guard. Actual native baseline exit100:1failed6skipped, left cargo right prebuilt-acceptance-cli, no subprocess/Cargo execution by guard. Physical3090 stage2 now implements authoritative Some(OsString) plus absent/invalid/nonUTF8 controls, preserves five scenario assertions. No stable-binary or full-CI acceptance yet.\nVerified scoped completion at frozen combinedsource1a3a47754e04d69db27c43343a0b6c162c51483f (CLI3pathsbyte-exact0d866b09). Physical3090sharedprivateOSpathselector andNF2U/KYYFrunners; retainsdistinctNoneCargoargv/cwd andexplicitinvalidSomevisiblefailure. KYYFsafeRED761ec0 onefail16filtered100 withoutspawn; fixed39/39twoaffectedtargets0skip0. IndependentCODE+TESTsharedreview-v3 PASS. Exactcanonical selectedMoon :fmt :check :test :ignored-fallible-results :workspace-assertions :lint-src at1a3a:16488passed7skipped12tasks exit0. PrebuiltCLIbefore=after879153585d3c5c7cf56c643b7c752bb5db28838390be7997737a96b65e31d7bd afterallfeatureprebuild. Durable .beads/vb-eirmk.13.12/evidence manifest844f4e8d14a52ff4d29d793d5f9251fc19405a0041a64727a3a2ac003cdc7372 plusfull-selected-result.json. ClosureonlyCLIselection/hashcriterion; fullmoonci/masteracceptance/Hasclosure remainopen. No sourceGitcommit/push.",
+    "status": "in_progress",
+    "priority": 1,
+    "issue_type": "task",
+    "assignee": "Lewis",
+    "owner": "priorlewis43@gmail.com",
+    "created_at": "2026-11-10T21:20:00Z",
+    "created_by": "Lewis",
+    "updated_at": "2026-11-10T23:28:33Z",
+    "started_at": "2026-11-10T21:20:41Z"
+  }
+]

@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "verdict": "PASS",
+  "scoped_verdict": "BOUNDED_HAS_RUNTIME_INTEGRATION_CODE_PASS",
+  "source_pin": "1a3a47754e04d69db27c43343a0b6c162c51483f",
+  "baseline_pin": "1de99017b80db741cf735a7301ead4f288ba47d4",
+  "contract_path": "/home/lewis/src/isoloated/velvet-ballistics-masterplan-locator-luna/.beads/vb-eirmk.42/has-parity-contract-proposal-v3.md",
+  "contract_sha256": "2f3329582a76616ad9b02e83ea0b5036a66c616fa5b49e39afcd71b33339d860",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+  "roots_verified": {
+    "git": true,
+    "jj": true
+  },
+  "findings": [],
+  "scope": {
+    "Has_changed_source_paths": 14,
+    "auxiliary_primary_source_paths": 4,
+    "total_source_paths_inspected": 18,
+    "new_test_declarations": 40,
+    "new_or_changed_functions_counted": 58,
+    "maximum_logical_lines_including_signature": 24
+  },
+  "Has_source_paths": [
+    "crates/vb_core/src/engine/expr_eval/ops_text_list.rs",
+    "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+    "crates/vb_core/src/engine/expr_eval/ops_text_list/has_parity_tests.rs",
+    "crates/vb_core/src/engine/expr_eval/ops_text_list/tests.rs",
+    "crates/vb_core/src/engine/expr_eval/tests/string_list_ops.rs",
+    "crates/vb_core/src/replay/helpers.rs",
+    "crates/vb_core/src/replay/ops/has_error_replay_tests.rs",
+    "crates/vb_core/src/replay/ops/has_parity_replay_tests.rs",
+    "crates/vb_core/src/replay/ops/tests.rs",
+    "crates/vb_core/src/replay/ops/tests_expr.rs",
+    "crates/vb_expr/src/expr_eval/helper_store_values.rs",
+    "crates/vb_expr/src/expr_eval_tests_store.rs",
+    "crates/workspace_tests/tests/has_operand_boundaries.rs",
+    "crates/workspace_tests/tests/has_store_key_validation.rs"
+  ],
+  "auxiliary_primary_source_paths": [
+    "crates/vb_core/src/value_store/insert.rs",
+    "crates/vb_core/src/value_store/resolve.rs",
+    "crates/vb_core/src/engine/expr_eval/stack.rs",
+    "crates/vb_core/src/replay/ops.rs"
+  ],
+  "production_assessment": [
+    "Hot eval_has, replay eval_has and store-aware vb_expr Has check receiver tag, key tag, Object handle, Symbol handle, then field membership. An invalid Object plus wrong key type selects key TypeMismatch before Object lookup; both invalid handles select Object first; empty Object does not mask an invalid Symbol.",
+    "Hot errors use exact existing TypeMismatch object/text with actual runtime type names and ObjectOutOfBounds/SymbolOutOfBounds IDs. vb_expr uses existing InvalidReference object/symbol strings. Replay private failures are remapped by public eval_replay_op to run.pc(); all six new replay negative fixtures assert exact PC1 rather than private ZERO.",
+    "Membership compares field.key==key_id in all three implementations. The actual ValueStore insert_symbol is append-only and assigns a new insertion ID; it does not deduplicate equal strings. Field identity is therefore SymbolId identity, not string equality or assumed interning. No public symbol/store behavior changed.",
+    "All three helpers borrow the store for checked lookup without allocating or mutating its contents. Missing valid key/empty object/only-other-key return Bool(false), not ObjectFieldNotFound. Existing stack behavior, helper arity, APIs, persisted formats, compiler production, Contains and other helper bodies remain unchanged."
+  ],
+  "test_and_preservation_assessment": [
+    "Four independent literal Boolean outcomes per store/hot/replay suite use actual allocated symbol/object handles and real evaluator/helper calls. No other production evaluator supplies expected Boolean values.",
+    "Seven hot typed-error cases isolate wrong receiver, wrong key, both wrong, key-tag-before-invalid-object, invalid Object, invalid Symbol on empty Object and Object-before-Symbol handle lookup.",
+    "Nineteen public vb_expr tests comprise fourteen store/key-validation cases plus five operand/context-free boundaries. They assert exact Result payloads, arities0/1/3, mixed-fault precedence and unchanged context-required behavior. Mandatory setup errors propagate.",
+    "Six replay public-operation errors use frames at PC1 and exact ExpressionEvalFailed { step:1 }. These establish the public collapsed error surface, not internally observable precedence distinctions.",
+    "Five legacy core Has test identities remain registered; wrong List fixtures are replaced by stronger normative Object/Symbol fixtures, including exact ObjectOutOfBounds. Two existing vb_expr registered fixture bodies now allocate valid stored symbols and retain positive/negative assertions.",
+    "No test-name deletion, ignored case, early successful setup escape, weakened assertion or Contains rename in the reviewed diff. Existing unrelated bodies remain untouched.",
+    "Counted all58 new/changed functions with signatures and closing punctuation lines. Maximum24 is the repaired legacy has_finds_element_in_list fixture; replay error cases max23. Production helpers are12 hot,8 replay,19 vb_expr logical lines. No compressed-statement gaming or added forbidden unsafe/unwrap/expect/panic/todo/unimplemented/dbg lines."
+  ],
+  "composition_verification": [
+    "Compared actual frozen source to component pins from raw composition receipts. Hot production matches df196c897ec4c8d0304c0badd59f40d2f485f291; replay production matches7830c8765b59654b77150fea05d0dc54d48b12b7; store production matches20e38890e651ec453c6442e1ed25cd87f06f3db1. Guard/legacy components match their cited78cd8ce6/5a530cd7/801a1050/04841fd8/05e262c9 sources.",
+    "Inspected registration compositions: one hot operand-error include and one replay error include are the only respective additions to the existing component module sources, apart from separating blank line. All component test/helper bodies and prior includes are retained. Latest followup receipt hashes match frozen modules.",
+    "All fourteen Has frozen file SHA256 values match the actual integration workspace files at audit time.",
+    "CLI three-path diff against separately approved0d866b09bed9a97b3d9a7562e6f816c0001b747d is empty. CLI source was not re-reviewed or counted as additional inspected source paths."
+  ],
+  "actual_selected_Moon_evidence": {
+    "log": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-cli-moon-selected.log",
+    "exit_receipt": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-cli-moon-selected.exit",
+    "selected_tasks": [
+      ":fmt",
+      ":check",
+      ":test",
+      ":ignored-fallible-results",
+      ":workspace-assertions",
+      ":lint-src"
+    ],
+    "observed_summary": "16488 tests run:16488 passed,7 skipped; Tasks:12 completed; MOON_EXIT=0",
+    "scope_note": "Selected tasks plus dependencies, not moon ci. Raw remote-cache upload warnings do not replace the observed command exit.",
+    "CLI_before_after_receipts": "Recorded executable SHA879153585d3c5c7cf56c643b7c752bb5db28838390be7997737a96b65e31d7bd matches in the two selected-run hash files; no writer-attribution or broad performance claim.",
+    "reviewer_execution": "Read existing nonempty logs/receipts only; no build/native/DB commands run."
+  },
+  "remaining_limits": [
+    "PASS is bounded CODE approval of these fourteen runtime-helper/fixture integration paths. It is not independent TEST self-approval or whole vb-eirmk.42/.42.1/master-phase acceptance.",
+    "Static Object/Text/Unknown and canonical compiler Any/mixed-fault/error-field coverage remains under the separate audit. No compiler/type-taint change or earlier public-compiler-defect claim approved.",
+    "Has-specific malformed-bytecode underflow/extra-result obligations, complete public workflow caller parity and exhaustive handle/domain/property/formal coverage are not established by the forty new examples or selected broad suite alone.",
+    "No native/full moon ci, verifier or fuzz execution performed by this reviewer; full canonical CI remains unrun in this scope.",
+    "No DB/source/gate changes, agents, JJ snapshots, cleanup, commits or pushes. Only requested own-workspace report written with apply_patch; shell commands used TMPDIR=/run/user/1000/vbs."
+  ]
+}

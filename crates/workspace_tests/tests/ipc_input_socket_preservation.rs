@@ -401,7 +401,7 @@ fn malformed_inputs_fail_before_any_submission_is_enqueued_or_journaled() -> Tes
 fn socket_dir() -> TestResult<tempfile::TempDir> {
     Ok(tempfile::Builder::new()
         .prefix("vb-ipc-owned-")
-        .tempdir_in("/tmp")?)
+        .tempdir_in(std::env::temp_dir())?)
 }
 
 fn assert_bind_refused(path: &std::path::Path) {

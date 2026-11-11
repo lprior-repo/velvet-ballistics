@@ -3,6 +3,10 @@
 
 mod adversarial;
 #[cfg(test)]
+mod contains_argument_types;
+#[cfg(test)]
+mod has_argument_types;
+#[cfg(test)]
 mod helper_argument_types;
 
 #[allow(unused_imports)]

@@ -1,0 +1,115 @@
+{
+  "bead": "vb-eirmk.23.2",
+  "review": "independent TEST v4 fixed-batch resource delta",
+  "verdict": "PASS",
+  "scope": "Source and bounded fixture-method approval for six new public TraceRing component cases only; no benchmark/smoke execution or performance acceptance.",
+  "pins": {
+    "candidate_change": "zmopxuxntqvrtylzttpwzrlnylusxzru",
+    "candidate_commit": "12bd596a17f6f02e095559e7861da44b87f2abbe",
+    "comparison_change": "qzwryyrkzowmznztypomsumosvxwpuxu",
+    "comparison_commit": "94f674911c99d732fdf9925de52b7584f3941067",
+    "empty_review_child_commit": "03779ffe4f857819376a889c903401924abf32ac"
+  },
+  "roots_verified": {
+    "git": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+    "jj": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol"
+  },
+  "findings": [],
+  "resource_gate": {
+    "test_status": "RESOLVED_AT_FROZEN_V4_SOURCE",
+    "prior_issue": "SmallInput batch residency grew with calibrated iteration count.",
+    "resolution": "Single FIXTURE_BATCH = BatchSize::NumIterations(32), used by all six iter_batched calls. Source fixture-count bound independent of calibration verified against installed Criterion.",
+    "execution_boundary": "Separate CODE approval and parent resource-capped smoke/measurement remain required; none executed by this reviewer."
+  },
+  "checks": [
+    {
+      "path": "crates/workspace_tests/benches/trace_ring_public.rs",
+      "lines": [
+        11,
+        96,
+        110,
+        129,
+        151,
+        175,
+        193
+      ],
+      "result": "PASS",
+      "detail": "Exactly one fixed NumIterations(32) constant and exactly six batch arguments, matching six iter_batched sites. No SmallInput remains in new module. No timer/resource limit increases, added loop, alternate timing method, or all-iterations fixture collection."
+    },
+    {
+      "path": "/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/criterion-0.8.2/src/lib.rs",
+      "lines": [
+        242,
+        248
+      ],
+      "result": "PASS_SOURCE_BOUND",
+      "detail": "NumIterations(size) returns size independent of iters. For this constant the outer selected batch size is 32; prior ceil(iters/10) behavior is absent."
+    },
+    {
+      "path": "/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/criterion-0.8.2/src/bencher.rs",
+      "lines": [
+        238,
+        257,
+        260,
+        262,
+        263,
+        266,
+        267,
+        270,
+        272
+      ],
+      "result": "PASS_SOURCE_BOUND",
+      "detail": "Batched path uses min(batch_size, remaining_iterations), creates inputs only for that batch and output capacity only for that batch. Routines move each fixture into retained output; input and output ownership share a total of at most 32 ring fixtures, not 32 new fixtures per output. black_box(outputs) is consumed and dropped at statement end after measurement, before next batch setup. No accumulation of fixtures across all iterations."
+    },
+    {
+      "path": "crates/workspace_tests/benches/trace_ring_public.rs",
+      "result": "PASS_PRESERVATION",
+      "detail": "Removing the single new constant and reversing exactly six FIXTURE_BATCH arguments reproduces v3 module byte-for-byte. Thus all four typed raw oracles, independent expected Full(event) setup, exact event values, capacity128, drain16, preallocated Vec, output retention/destructor placement and six case names remain unchanged. No weakened assertion, waiver or suppression."
+    },
+    {
+      "path": ".beads/vb-eirmk.23.2/contract.md",
+      "lines": [
+        19,
+        20,
+        21
+      ],
+      "result": "PASS_SCOPE_DISCLOSURE",
+      "detail": "New paragraph discloses fixed at-most32-fixture batch, Vec::extend, retained-output and instrumentation/harness overhead and excludes pure latency, comparative push ratios and speed claims. Setup remains outside measured interval per installed bencher; setup residency and harness/wall-time effects are not claimed to disappear. Distinct full-case validation disclosure remains intact."
+    },
+    {
+      "path": "crates/workspace_tests/benches/trace_ring_public.rs",
+      "result": "PASS_BOUNDS",
+      "detail": "Independent full-source scan found only bounded fixture loops128, prefill/drain loops16, per-fixture ring construction and drain Vec::with_capacity(16). No source path allocates fixtures for calibrated iteration count. Fourteen functions, maximum22 physical lines including signature, conservatively <=25 logical lines. No new helpers or forbidden constructs."
+    },
+    {
+      "path": "crates/workspace_tests/benches/rtrb.rs",
+      "result": "PASS_PRESERVATION",
+      "detail": "Unchanged registration file; independent removal of original module/group additions reproduces kspspopq raw benchmark file byte-identically. Candidate/v3 delta is only contract and new module; no production/API/dependency/gate edits."
+    }
+  ],
+  "module_sha256": "826ed3a9dcf63bba467b545043b5497b5423586582527cc3780f1950fe9d2449",
+  "evidence": {
+    "directory": "/home/lewis/src/isoloated/velvet-ballistics-trace-overhead-repair-luna/target/core-build-20261110/evidence/vb-eirmk.23.2-luna-reviewfix-v3",
+    "read_files": [
+      "native-check.log",
+      "native-check-exit.txt",
+      "native-check-command.txt",
+      "rustfmt.log",
+      "rustfmt-exit.txt",
+      "rustfmt-command.txt"
+    ],
+    "native_observed": "Checking workspace-tests in repair-luna; Finished dev profile in 0.11s; NATIVE_CARGO_CHECK_EXIT=0.",
+    "recorded_native_command": "CARGO_BUILD_JOBS=2 RUSTC_WRAPPER= RUSTFLAGS=-Dwarnings CARGO_TARGET_DIR=$PWD/target TMPDIR=/home/lewis/.vbs rustup run nightly-2026-04-28 cargo check -p velvet-ballistics-workspace-tests --all-features --bench rtrb",
+    "fmt_observed": "Empty rustfmt log; separate receipt RUSTFMT_EXIT=0.",
+    "recorded_fmt_command": "rustup run nightly-2026-04-28 rustfmt --edition 2024 crates/workspace_tests/benches/trace_ring_public.rs",
+    "independent_execution": "Source/hash/count comparisons and repository inspection only. No smoke, benchmark, mutation, native check, fmt or CI run by reviewer."
+  },
+  "limits": [
+    "Bound applies to live owned fixtures in each of six new Criterion cases, not total process RSS, allocator retention, build memory, calibrated run duration, or all legacy rtrb benchmark cases.",
+    "Source shows ring/history buffers and drain vectors bounded per fixture; no byte-level allocation measurement or process resource guarantee established.",
+    "Vec::extend/output movement, instrumentation and distinct validation work remain included; setup is excluded from measured routine time, and post-measurement fixture destruction remains excluded.",
+    "No measurement values, latency percentiles, allocations/bytes, speed, comparative full-push ratio, regression threshold, full tracing-on/off or whole-performance acceptance.",
+    "Actual resource-capped smoke/measurement, integration integrity and final candidate CI remain pending.",
+    "No other review report read or changed; v3 remains typed-only with its resource blocker recorded for its old pin. Only requested home JSON written; no source/gate/tracker/author edits, agents or root temporary-directory access."
+  ]
+}

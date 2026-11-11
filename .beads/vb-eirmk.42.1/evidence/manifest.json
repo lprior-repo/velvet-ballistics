@@ -1,0 +1,154 @@
+{
+  "source_pin": "1a3a47754e04d69db27c43343a0b6c162c51483f",
+  "master_acceptance": false,
+  "full_moon_ci": false,
+  "entries": [
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-masterplan-locator-luna/.beads/vb-eirmk.42/has-parity-contract-proposal-v3.md",
+      "path": "../contract.md",
+      "uncompressed_sha256": "2f3329582a76616ad9b02e83ea0b5036a66c616fa5b49e39afcd71b33339d860",
+      "archive_sha256": "2f3329582a76616ad9b02e83ea0b5036a66c616fa5b49e39afcd71b33339d860",
+      "bytes": 13180
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-cli-moon-selected.log",
+      "path": "selected-moon.log.gz",
+      "uncompressed_sha256": "3e72e0be7e3eaecb49da79404732e1f914bcb9c9d9adc66fc7a31738a3e6eb59",
+      "archive_sha256": "194143411bb8e22c2403ff5fd7c37e0be4a03a36bf01c33b9aed09f7c01291e2",
+      "bytes": 3008331
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-cli-moon-selected.exit",
+      "path": "selected-moon.exit",
+      "uncompressed_sha256": "99378a3544b6469ba679bcb306beeb8701cb1c42ab78e520775593a310116115",
+      "archive_sha256": "99378a3544b6469ba679bcb306beeb8701cb1c42ab78e520775593a310116115",
+      "bytes": 12
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-cli-moon-selected-before.sha256",
+      "path": "selected-cli-before.sha256",
+      "uncompressed_sha256": "68191fc2a5a94a1d11cd0b4d03a7705cc7e119d3a81051570e7ff8b3c48aff33",
+      "archive_sha256": "68191fc2a5a94a1d11cd0b4d03a7705cc7e119d3a81051570e7ff8b3c48aff33",
+      "bytes": 161
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-cli-moon-selected-after.sha256",
+      "path": "selected-cli-after.sha256",
+      "uncompressed_sha256": "68191fc2a5a94a1d11cd0b4d03a7705cc7e119d3a81051570e7ff8b3c48aff33",
+      "archive_sha256": "68191fc2a5a94a1d11cd0b4d03a7705cc7e119d3a81051570e7ff8b3c48aff33",
+      "bytes": 161
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-hot-tests-local5090/target/core-build-20261110/evidence/has-hot-baseline-v3.log",
+      "path": "hot-baseline.log",
+      "uncompressed_sha256": "c86ffb8360d68fe8cad72e83c0ef6c4c6fdb6a2b1a60dc9c6361d2b6bb0cb5b4",
+      "archive_sha256": "c86ffb8360d68fe8cad72e83c0ef6c4c6fdb6a2b1a60dc9c6361d2b6bb0cb5b4",
+      "bytes": 3247
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-hot-tests-local5090/target/core-build-20261110/evidence/has-hot-baseline-v3-exit.txt",
+      "path": "hot-baseline.exit",
+      "uncompressed_sha256": "6a23cc289e89401ff8a78bcfcf41c5e8282ed692da37f231046098755fdf8327",
+      "archive_sha256": "6a23cc289e89401ff8a78bcfcf41c5e8282ed692da37f231046098755fdf8327",
+      "bytes": 26
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-replay-tests-local3090/target/core-build-20261110/evidence/has-replay-baseline-v2.log",
+      "path": "replay-baseline.log",
+      "uncompressed_sha256": "5dfa93c0527887bc5722fa3fce0157f5d7b10a37417055849f2b24a3fa857a31",
+      "archive_sha256": "5dfa93c0527887bc5722fa3fce0157f5d7b10a37417055849f2b24a3fa857a31",
+      "bytes": 2937
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-replay-tests-local3090/target/core-build-20261110/evidence/has-replay-baseline-v2-exit.txt",
+      "path": "replay-baseline.exit",
+      "uncompressed_sha256": "228e46ca040022281b71af9ce96fc6a99aed221ce6493e7857071e4515ff4a40",
+      "archive_sha256": "228e46ca040022281b71af9ce96fc6a99aed221ce6493e7857071e4515ff4a40",
+      "bytes": 29
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-store-tests-local5090/target/core-build-20261110/evidence/has-store-baseline-v2.log",
+      "path": "store-baseline.log",
+      "uncompressed_sha256": "8ea6450e1a45cfce281d48cb6c165ae7975d71055ce9b56b2fd5269a89f48dec",
+      "archive_sha256": "8ea6450e1a45cfce281d48cb6c165ae7975d71055ce9b56b2fd5269a89f48dec",
+      "bytes": 3863
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-store-tests-local5090/target/core-build-20261110/evidence/has-store-baseline-v2.exit",
+      "path": "store-baseline.exit",
+      "uncompressed_sha256": "14b1cbad14fcd7c8b2a815b8fada920c736acf69bf3511e68d1ec48925b17722",
+      "archive_sha256": "14b1cbad14fcd7c8b2a815b8fada920c736acf69bf3511e68d1ec48925b17722",
+      "bytes": 16
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-store-tests-local5090/target/core-build-20261110/evidence/has-store-fixed-native.log",
+      "path": "store-fixed.log",
+      "uncompressed_sha256": "8df7155265f7980eac641c8d1ff63b7636a9c08f9a67fc93368bdf43995a987d",
+      "archive_sha256": "8df7155265f7980eac641c8d1ff63b7636a9c08f9a67fc93368bdf43995a987d",
+      "bytes": 2172
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-store-tests-local5090/target/core-build-20261110/evidence/has-store-fixed-native.exit",
+      "path": "store-fixed.exit",
+      "uncompressed_sha256": "aa7b9032e30a23d35090c33991b13943c26862e4b514e29dd279ba1314572053",
+      "archive_sha256": "aa7b9032e30a23d35090c33991b13943c26862e4b514e29dd279ba1314572053",
+      "bytes": 14
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-store-tests-local5090/target/core-build-20261110/evidence/has-store-vbexpr-suite-native.log",
+      "path": "vb-expr-package.log.gz",
+      "uncompressed_sha256": "e3692a16091d5ca9e7f3050592d7de4c58b79ef9b009d5c382387b94c9ec9cd1",
+      "archive_sha256": "959c341992fcf1b0384fe17e4498cb1f16996d166e742e4be7c5fa476bc5a16d",
+      "bytes": 105168
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-store-tests-local5090/target/core-build-20261110/evidence/has-store-vbexpr-suite-native.exit",
+      "path": "vb-expr-package.exit",
+      "uncompressed_sha256": "aa7b9032e30a23d35090c33991b13943c26862e4b514e29dd279ba1314572053",
+      "archive_sha256": "aa7b9032e30a23d35090c33991b13943c26862e4b514e29dd279ba1314572053",
+      "bytes": 14
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/has-integrated-code-review-v1.json",
+      "path": "code-review.json",
+      "uncompressed_sha256": "652c53ae55132b75cd35d4cef490592b86848437a15284eceac870187fa23b4a",
+      "archive_sha256": "652c53ae55132b75cd35d4cef490592b86848437a15284eceac870187fa23b4a",
+      "bytes": 8251
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/core-build-20261110/evidence/has-integrated-test-review-v1.json",
+      "path": "test-review.json",
+      "uncompressed_sha256": "9c69949211b708f68fa5c893e411334939b83e2f1fc0a2466921bd89d2d6c53b",
+      "archive_sha256": "9c69949211b708f68fa5c893e411334939b83e2f1fc0a2466921bd89d2d6c53b",
+      "bytes": 42897
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-hot-fixtures-luna/target/core-build-20261110/evidence/has-static-compiler-coverage.json",
+      "path": "static-compiler-coverage.json",
+      "uncompressed_sha256": "ba0e2055c543aa6355f7b86f13f1bf076aa08bcb0e7608eb5891d697a54d8708",
+      "archive_sha256": "ba0e2055c543aa6355f7b86f13f1bf076aa08bcb0e7608eb5891d697a54d8708",
+      "bytes": 3875
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-composition-initial-receipt.json",
+      "path": "has-composition-initial-receipt.json",
+      "uncompressed_sha256": "6fddc06dce1c4e0c63a276a2dcf32a18d681e24935d42db8322d561eb5f8fa6a",
+      "archive_sha256": "6fddc06dce1c4e0c63a276a2dcf32a18d681e24935d42db8322d561eb5f8fa6a",
+      "bytes": 3198
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-composition-followup-receipt-v2.json",
+      "path": "has-composition-followup-receipt-v2.json",
+      "uncompressed_sha256": "a3d17d0d7ccb450929a4b7b55c05cfa429f206a46691a98bfdcf7bdb6d59e948",
+      "archive_sha256": "a3d17d0d7ccb450929a4b7b55c05cfa429f206a46691a98bfdcf7bdb6d59e948",
+      "bytes": 1533
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/cli-has-composition-receipt.json",
+      "path": "cli-has-composition-receipt.json",
+      "uncompressed_sha256": "eb74ea7c0466f54485cb300b5358cf58c53ecdc643db5e8f784dae409a66cee2",
+      "archive_sha256": "eb74ea7c0466f54485cb300b5358cf58c53ecdc643db5e8f784dae409a66cee2",
+      "bytes": 900
+    }
+  ]
+}

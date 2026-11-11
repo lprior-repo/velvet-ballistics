@@ -1,0 +1,4 @@
+test integrity: FAIL
+DeletedTestDeclaration|crates/vb_core/src/replay/ops/tests.rs|removed_declarations=90 added_declarations=0
+WeakenedAssertion|crates/vb_core/src/replay/ops/tests.rs|removed_exact=4 added_exact=0 added_weak=0
+Add equal-or-stronger replacement coverage or bead-linked justification.

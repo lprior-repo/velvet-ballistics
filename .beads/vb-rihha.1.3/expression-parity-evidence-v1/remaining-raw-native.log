@@ -1,0 +1,14 @@
+Running as unit: vb-contains-remaining-raw-20261110.scope; invocation ID: 057befb4aec949c3918f4648e92d2531
+────────────
+ Nextest run ID 3dc86601-0993-414b-992a-263a3dc3ce1b with nextest profile: default
+    Starting 8 tests across 1 binary
+        PASS [   0.002s] (1/8) velvet-ballistics-workspace-tests::contains_route_edges singleton_list_missing_value_is_false_on_all_routes
+        PASS [   0.002s] (2/8) velvet-ballistics-workspace-tests::contains_route_edges invalid_stored_handle_scalar_needle_is_false_on_all_routes
+        PASS [   0.002s] (3/8) velvet-ballistics-workspace-tests::contains_route_edges null_receiver_wins_over_invalid_symbol_needle_on_all_routes
+        PASS [   0.002s] (4/8) velvet-ballistics-workspace-tests::contains_route_edges distinct_raw_invalid_list_handle_is_not_found_on_all_routes
+        PASS [   0.002s] (5/8) velvet-ballistics-workspace-tests::contains_route_edges identical_raw_invalid_list_handle_is_found_on_all_routes
+        PASS [   0.002s] (6/8) velvet-ballistics-workspace-tests::contains_route_edges empty_list_invalid_handle_needle_is_false_on_all_routes
+        PASS [   0.002s] (7/8) velvet-ballistics-workspace-tests::contains_route_edges invalid_list_receiver_wins_over_invalid_symbol_needle_on_all_routes
+        PASS [   0.002s] (8/8) velvet-ballistics-workspace-tests::contains_route_edges null_is_found_in_list_on_all_routes
+────────────
+     Summary [   0.003s] 8 tests run: 8 passed, 0 skipped

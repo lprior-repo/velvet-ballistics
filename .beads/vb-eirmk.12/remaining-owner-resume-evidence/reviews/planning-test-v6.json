@@ -1,0 +1,212 @@
+{
+  "verdict": "REJECT",
+  "proposal_sha256": "7a20dcc9f3d4caa8c5e32b681e550a807c7fdd1f1410a864e0d85d29a3ee157c",
+  "review_kind": "Independent bounded nine-owner V6 planning TEST/control readiness delta",
+  "proposal_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/remaining-owner-proposals/normalized-v6.json",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+  "parent_raw_readback": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-v3-preflight-live12.json",
+    "sha256": "551cc6ba494b889b2142332f6b0b3ff6bc02db69eba77569157ec352b856a696",
+    "design_sha256": "0af85ed146ed27fbe169a400ccd02d484f018db94f60c891d52052d17bbe2dd1"
+  },
+  "findings": [
+    {
+      "id": "V6-R1",
+      "severity": "blocker",
+      "json_path": "proposals[function:28:2,function:31:4,master44.16].reuse_task_readback.lifecycle_guards.1_before_any_reuse_task_mutation.verify_old_live_row_and_full_check_objects_exactly_equal",
+      "finding": "Top-level full rows are repaired, but these authoritative exact-equality guard copies remain old12-key projections. Actual retained rows have22 keys. A literal stage1 comparison therefore still fails for all three reuse entries; controls cannot be applied consistently without bypassing their stated guard.",
+      "instances": [
+        {
+          "requirement_id": "function:28:2",
+          "guard_keys": 12,
+          "actual_keys": 22,
+          "missing_keys": [
+            "exact_native_check_audit",
+            "excluded_scope_disposition",
+            "implementation_missing_disposition",
+            "preferred_existing_owner_id",
+            "proposed_owner_key",
+            "registered_check_evidence",
+            "scope_disposition",
+            "source_evidence",
+            "supporting_existing_owner_ids",
+            "unresolved_checks"
+          ]
+        },
+        {
+          "requirement_id": "function:31:4",
+          "guard_keys": 12,
+          "actual_keys": 22,
+          "missing_keys": [
+            "exact_native_check_audit",
+            "excluded_scope_disposition",
+            "implementation_missing_disposition",
+            "preferred_existing_owner_id",
+            "proposed_owner_key",
+            "registered_check_evidence",
+            "scope_disposition",
+            "source_evidence",
+            "supporting_existing_owner_ids",
+            "unresolved_checks"
+          ]
+        },
+        {
+          "requirement_id": "master44.16",
+          "guard_keys": 12,
+          "actual_keys": 22,
+          "missing_keys": [
+            "exact_native_check_audit",
+            "excluded_scope_disposition",
+            "implementation_missing_disposition",
+            "preferred_existing_owner_id",
+            "proposed_owner_key",
+            "registered_check_evidence",
+            "scope_disposition",
+            "source_evidence",
+            "supporting_existing_owner_ids",
+            "unresolved_checks"
+          ]
+        }
+      ],
+      "correction": "Replace each nested projection with its exact corresponding full live row, or a single explicit reference to the top-level full live_row_before. Preserve full-row equality, complete check payloads, frozen design hash and all stage ordering/timestamp/business checks. Do not weaken guard to compare only common12 fields; synchronize both IPC duplicates."
+    }
+  ],
+  "checks": {
+    "proposal_hash": true,
+    "parent_readback_hash": true,
+    "frozen_design_hash": true,
+    "190_false_null": true,
+    "4_create_payloads_unchanged": true,
+    "global_controls_unchanged": true,
+    "preserved_qualifier_controls_unchanged": true,
+    "function:24:1:full_row_exact": true,
+    "function:24:1:full_checks_exact": true,
+    "function:24:1:old12values_unchanged": true,
+    "function:24:1:all_other_proposal_fields_unchanged": true,
+    "function:28:2:full_row_exact": true,
+    "function:28:2:full_checks_exact": true,
+    "function:28:2:old12values_unchanged": true,
+    "function:28:2:all_other_proposal_fields_unchanged": true,
+    "function:28:2:reuse_stage1_full_row_exact": false,
+    "function:28:2:timestamp_response_guard": true,
+    "function:28:2:business_invariance": true,
+    "function:29:3:full_row_exact": true,
+    "function:29:3:full_checks_exact": true,
+    "function:29:3:old12values_unchanged": true,
+    "function:29:3:all_other_proposal_fields_unchanged": true,
+    "function:29:6:full_row_exact": true,
+    "function:29:6:full_checks_exact": true,
+    "function:29:6:old12values_unchanged": true,
+    "function:29:6:all_other_proposal_fields_unchanged": true,
+    "function:29:8:full_row_exact": true,
+    "function:29:8:full_checks_exact": true,
+    "function:29:8:old12values_unchanged": true,
+    "function:29:8:all_other_proposal_fields_unchanged": true,
+    "function:31:4:full_row_exact": true,
+    "function:31:4:full_checks_exact": true,
+    "function:31:4:old12values_unchanged": true,
+    "function:31:4:all_other_proposal_fields_unchanged": true,
+    "function:31:4:reuse_stage1_full_row_exact": false,
+    "function:31:4:timestamp_response_guard": true,
+    "function:31:4:business_invariance": true,
+    "77.17:full_row_exact": true,
+    "77.17:full_checks_exact": true,
+    "77.17:old12values_unchanged": true,
+    "77.17:all_other_proposal_fields_unchanged": true,
+    "77.10:full_row_exact": true,
+    "77.10:full_checks_exact": true,
+    "77.10:old12values_unchanged": true,
+    "77.10:all_other_proposal_fields_unchanged": true,
+    "master44.16:full_row_exact": true,
+    "master44.16:full_checks_exact": true,
+    "master44.16:old12values_unchanged": true,
+    "master44.16:all_other_proposal_fields_unchanged": true,
+    "master44.16:reuse_stage1_full_row_exact": false,
+    "master44.16:timestamp_response_guard": true,
+    "master44.16:business_invariance": true,
+    "13_checks": true,
+    "four_open_root_TASK_payloads": true
+  },
+  "rows": [
+    {
+      "requirement_id": "function:24:1",
+      "full_key_count": 24,
+      "full_row_matches": true,
+      "owned_checks": 2
+    },
+    {
+      "requirement_id": "function:28:2",
+      "full_key_count": 22,
+      "full_row_matches": true,
+      "owned_checks": 1
+    },
+    {
+      "requirement_id": "function:29:3",
+      "full_key_count": 24,
+      "full_row_matches": true,
+      "owned_checks": 2
+    },
+    {
+      "requirement_id": "function:29:6",
+      "full_key_count": 24,
+      "full_row_matches": true,
+      "owned_checks": 2
+    },
+    {
+      "requirement_id": "function:29:8",
+      "full_key_count": 22,
+      "full_row_matches": true,
+      "owned_checks": 1
+    },
+    {
+      "requirement_id": "function:31:4",
+      "full_key_count": 22,
+      "full_row_matches": true,
+      "owned_checks": 1
+    },
+    {
+      "requirement_id": "77.17",
+      "full_key_count": 22,
+      "full_row_matches": true,
+      "owned_checks": 1
+    },
+    {
+      "requirement_id": "77.10",
+      "full_key_count": 24,
+      "full_row_matches": true,
+      "owned_checks": 2
+    },
+    {
+      "requirement_id": "master44.16",
+      "full_key_count": 22,
+      "full_row_matches": true,
+      "owned_checks": 1
+    }
+  ],
+  "preserved_controls": {
+    "new_open_TASK_payloads": 4,
+    "reuse_targets": [
+      "vb-eirmk.53",
+      "vb-eirmk.24"
+    ],
+    "owned_checks": 13,
+    "canonical_scalar_paths": 53,
+    "all190_false_null": true,
+    "actual_future_timestamp": "successful BD update response.updated_at must equal fresh readback; only updated_at auto-exception",
+    "creation_order": "successful actual creation and exact TASK/root-parent/metadata/business readback before canonical ownership and final11 blocking edge; reuse requires no new creation receipt",
+    "existing_gate_snapshot": {
+      "record_count": 133,
+      "edge_type_counts": {
+        "blocks": 130,
+        "tracks": 2,
+        "parent-child": 1
+      },
+      "note": "Preserve all133 retained dependency records, including root parent-child hierarchy; new blocking edges must target actual new TASK IDs, not rootEPIC/keys/epochs/tracks/self."
+    }
+  },
+  "limits": [
+    "No DB access, builds/native/proof, source/gate/tracker writes, agents or apply. Only frozen proposal/raw parent evidence and prior frozen controls read; only own report written.",
+    "Raw preflight export is retained evidence, not a fresh live DB read. Any later unrelated changes require refreshed hash/full task/row/dependency preconditions before apply.",
+    "Nine top-level full-row correction is valid, but nested exact guard issue prevents readiness. Historical closed records and unexecuted native mappings must remain unchanged; no full190/full-plan or source qualification accepted."
+  ]
+}

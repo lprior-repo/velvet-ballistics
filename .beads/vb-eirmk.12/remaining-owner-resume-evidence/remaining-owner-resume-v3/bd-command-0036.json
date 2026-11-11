@@ -1,0 +1,10 @@
+{
+  "args": [
+    "show",
+    "vb-ito",
+    "--readonly"
+  ],
+  "stdout": "[\n  {\n    \"id\": \"vb-ito\",\n    \"title\": \"Phase 11: slot compiler foundation\",\n    \"description\": \"Implement slot layout, accessors, constants, symbol interning, and workflow digests for the compiler/IR boundary. Acceptance: bounded resources, no runtime YAML, tests for accessor/constant tables and compile/parse parity, moon ci.\",\n    \"status\": \"closed\",\n    \"priority\": 0,\n    \"issue_type\": \"feature\",\n    \"assignee\": \"Lewis\",\n    \"owner\": \"priorlewis43@gmail.com\",\n    \"created_at\": \"2026-04-30T02:48:01Z\",\n    \"created_by\": \"Lewis\",\n    \"updated_at\": \"2026-04-30T03:22:52Z\",\n    \"closed_at\": \"2026-04-30T03:22:52Z\",\n    \"close_reason\": \"Completed Phase 11 slot compiler foundation; moon ci passed\",\n    \"dependent_count\": 1,\n    \"dependency_count\": 0,\n    \"comment_count\": 0\n  }\n]\n",
+  "stderr": "",
+  "exit": 0
+}

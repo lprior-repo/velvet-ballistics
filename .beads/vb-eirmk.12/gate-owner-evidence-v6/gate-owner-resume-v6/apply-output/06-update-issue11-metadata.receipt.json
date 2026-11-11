@@ -1,0 +1,13 @@
+{
+  "args": [
+    "update",
+    "vb-eirmk.11",
+    "--metadata",
+    "@/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/metadata-after.json"
+  ],
+  "exit": 0,
+  "stdout_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/06-update-issue11-metadata.stdout.raw",
+  "stdout_sha256": "81218d339f40c78704fffdafecfaa4a48f9cc734b6017326196f5f32058ae70a",
+  "stderr_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/06-update-issue11-metadata.stderr.raw",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,114 @@
+Running as unit: vb-prebuilt-cli-two-targets-20261110.scope; invocation ID: 64d58dbae6d24750aa7a88fbfad18934
+error[E0433]: cannot find type `OsStr` in this scope
+   --> crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs:211:14
+    |
+211 |         vec![OsStr::new("version")]
+    |              ^^^^^ use of undeclared type `OsStr`
+    |
+help: consider importing this struct
+    |
+ 15 + use std::ffi::OsStr;
+    |
+
+error[E0433]: cannot find type `OsStr` in this scope
+   --> crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs:218:35
+    |
+218 |     assert_eq!(cmd.get_program(), OsStr::new("cargo"));
+    |                                   ^^^^^ use of undeclared type `OsStr`
+    |
+help: consider importing this struct
+    |
+ 15 + use std::ffi::OsStr;
+    |
+
+error[E0433]: cannot find type `OsStr` in this scope
+   --> crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs:222:13
+    |
+222 |             OsStr::new("run"),
+    |             ^^^^^ use of undeclared type `OsStr`
+    |
+help: consider importing this struct
+    |
+ 15 + use std::ffi::OsStr;
+    |
+
+error[E0433]: cannot find type `OsStr` in this scope
+   --> crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs:223:13
+    |
+223 |             OsStr::new("--quiet"),
+    |             ^^^^^ use of undeclared type `OsStr`
+    |
+help: consider importing this struct
+    |
+ 15 + use std::ffi::OsStr;
+    |
+
+error[E0433]: cannot find type `OsStr` in this scope
+   --> crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs:224:13
+    |
+224 |             OsStr::new("--manifest-path"),
+    |             ^^^^^ use of undeclared type `OsStr`
+    |
+help: consider importing this struct
+    |
+ 15 + use std::ffi::OsStr;
+    |
+
+error[E0433]: cannot find type `OsStr` in this scope
+   --> crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs:225:13
+    |
+225 |             OsStr::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../Cargo.toml")),
+    |             ^^^^^ use of undeclared type `OsStr`
+    |
+help: consider importing this struct
+    |
+ 15 + use std::ffi::OsStr;
+    |
+
+error[E0433]: cannot find type `OsStr` in this scope
+   --> crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs:226:13
+    |
+226 |             OsStr::new("-p"),
+    |             ^^^^^ use of undeclared type `OsStr`
+    |
+help: consider importing this struct
+    |
+ 15 + use std::ffi::OsStr;
+    |
+
+error[E0433]: cannot find type `OsStr` in this scope
+   --> crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs:227:13
+    |
+227 |             OsStr::new("velvet-ballistics"),
+    |             ^^^^^ use of undeclared type `OsStr`
+    |
+help: consider importing this struct
+    |
+ 15 + use std::ffi::OsStr;
+    |
+
+error[E0433]: cannot find type `OsStr` in this scope
+   --> crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs:228:13
+    |
+228 |             OsStr::new("--"),
+    |             ^^^^^ use of undeclared type `OsStr`
+    |
+help: consider importing this struct
+    |
+ 15 + use std::ffi::OsStr;
+    |
+
+error[E0433]: cannot find type `OsStr` in this scope
+   --> crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs:229:13
+    |
+229 |             OsStr::new("help")
+    |             ^^^^^ use of undeclared type `OsStr`
+    |
+help: consider importing this struct
+    |
+ 15 + use std::ffi::OsStr;
+    |
+
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_nf2u_current_scope_tests") due to 10 previous errors
+error: command `/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/bin/cargo test --no-run --message-format json-render-diagnostics --package velvet-ballistics-workspace-tests --test vb_nf2u_current_scope_tests --test vb_kyyf_cross_run_determinism --all-features --quiet` exited with code 101

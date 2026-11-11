@@ -1,0 +1,1224 @@
+{
+  "verdict": "REJECT",
+  "review_kind": "Independent bounded combined TEST re-review; source and retained raw execution evidence only",
+  "source_pin": "9661872b95e3af01b98070367b021dfb8c59795a",
+  "compared_to": "dba6db5594bd7dfdf545302ed1ceb31c2de24323",
+  "accepted_baseline_pin": "6d7789cd3fc8997e228b568da7270738ba8e2080",
+  "contracts": {
+    "contains_v6": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/.beads/vb-rihha.1.3/contains-parity-contract-proposal-v6.md",
+      "sha256": "4b5f05df3803dc88504425e9c2700922f9a3cec31c847fee21d4bf7c492f5477"
+    },
+    "has_v3": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-masterplan-locator-luna/.beads/vb-eirmk.42/has-parity-contract-proposal-v3.md",
+      "sha256": "2f3329582a76616ad9b02e83ea0b5036a66c616fa5b49e39afcd71b33339d860"
+    },
+    "has_bytecode_v5": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/.beads/vb-eirmk.42.1/has-bytecode-contract-clarification-v5.md",
+      "sha256": "b97207da41fcdc3369fe4706f7e6099283de684010f528962a99639903334b51"
+    }
+  },
+  "roots_verified": {
+    "git": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+    "jj": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol"
+  },
+  "delta_paths": [
+    "crates/vb_expr/src/expr_typecheck/tests/contains_argument_types.rs",
+    "crates/workspace_tests/tests/contains_compound_identity.rs",
+    "crates/workspace_tests/tests/contains_route_edges.rs",
+    "crates/workspace_tests/tests/contains_static_cold_guards.rs",
+    "crates/workspace_tests/tests/support/contains_three_routes.rs"
+  ],
+  "findings": [
+    {
+      "id": "CONTAINS-RAW-HANDLES-AND-NULL",
+      "severity": "HIGH",
+      "disposition": "blocker",
+      "status": "partially_fixed",
+      "path": "crates/workspace_tests/tests/contains_route_edges.rs",
+      "line": 63,
+      "support_path": "crates/workspace_tests/tests/support/contains_three_routes.rs",
+      "contract": "Contains V6 Minimum independent acceptance: each runtime route must assert an empty valid list with invalid raw handle needle returns false, and invalid stored handle versus nonmatching scalar returns false.",
+      "finding": "The new all-route edge file adds Null equality, identical-invalid ListId true, distinct-invalid ListId false, singleton false and two simultaneous-fault errors. It does not add the other two raw-handle cases from V1. They remain covered only by store tests contains_returns_false_for_invalid_raw_handle_needle_in_empty_list and contains_returns_false_for_invalid_stored_handle_and_scalar_needle. Neither calls the new route helper; existing Hot invalid-needle tests use nonempty I64 contents, and Replay workflow empty test uses a valid I64 needle.",
+      "required_correction": "Using the existing assert_routes helper, add (1) empty receiver list + invalid ListId needle => literal false; (2) receiver list containing invalid ListId + nonmatching I64 needle => literal false. Both must execute Store, Hot and validated public replay_step with the existing distinct targets and PC checks. Keep every current assertion.",
+      "surviving_mutants": [
+        "Hot- or Replay-only rejection/lookup of an invalid needle when receiver list is empty.",
+        "Hot- or Replay-only eager validation of invalid stored items when needle is scalar. Neither is excluded by identical/distinct invalid-handle needles or valid I64 empty-list tests."
+      ]
+    }
+  ],
+  "prior_findings": [
+    {
+      "id": "CONTAINS-OBJECT-IDENTITY",
+      "status": "fixed_with_evidence",
+      "path": "crates/workspace_tests/tests/contains_compound_identity.rs",
+      "lines": [
+        7,
+        25,
+        39,
+        55,
+        61,
+        67,
+        73,
+        79,
+        85
+      ],
+      "evidence": "Separate allocations of equal payload Objects/Blobs/Lists require distinct IDs and equal store payloads; each same-ID true/distinct-ID false is a literal caller expectation checked independently on all three routes. Store lookups establish setup equality, not membership oracle; no generic PartialEq outcome used as expected."
+    },
+    {
+      "id": "CONTAINS-RAW-HANDLES-AND-NULL",
+      "status": "blocker",
+      "evidence": "Null and same/distinct invalid ListId now truly run on all routes; empty-invalid and stored-invalid/scalar remain missing for Hot/Replay."
+    },
+    {
+      "id": "CONTAINS-ERROR-PRECEDENCE",
+      "status": "fixed_with_evidence",
+      "path": "crates/workspace_tests/tests/contains_route_edges.rs",
+      "lines": [
+        91,
+        110
+      ],
+      "evidence": "Null receiver+invalid Symbol(MAX) expects full store TypeMismatch(list,null) and Hot equivalent; invalid List(MAX)+invalid Symbol(MAX) expects full store InvalidReference(list-debug) and Hot ListOutOfBounds exact supplied ID. Replay asserts only exact ExpressionEvalFailed step1 and unchanged pc1; no typed hidden cause inferred."
+    },
+    {
+      "id": "CONTAINS-MINIMUM-MATRIX",
+      "status": "fixed_with_evidence",
+      "locations": [
+        {
+          "path": "crates/workspace_tests/tests/contains_route_edges.rs",
+          "line": 85
+        },
+        {
+          "path": "crates/vb_expr/src/expr_typecheck/tests/contains_argument_types.rs",
+          "line": 40
+        },
+        {
+          "path": "crates/workspace_tests/tests/contains_static_cold_guards.rs",
+          "line": 134
+        }
+      ],
+      "evidence": "Store singleton [11]/7 false now included via shared three-route test. Canonical checker tests known Text/List/Object needle types with List receiver. Cold test iterates the three declared schemas and asserts exact two input schemas and Contains reference arguments."
+    }
+  ],
+  "support_review": {
+    "path": "crates/workspace_tests/tests/support/contains_three_routes.rs",
+    "evidence": "Real ValueStore, checked ExprProgram and CompiledWorkflow, four valid nodes0..3, framePC1 initialized slots0/1. Store and Hot Results compared separately to literal expected Bool and Clean taint. Real public replay_step on Choose tests true2/false3 separately with both Continue target and pc assertions. Fatal constructor/setup propagation; no optional success extraction, early Ok bypass, reference evaluator oracle or ReplayEngine claim.",
+    "shared_expectation": "Callers supply literal true/false, never another evaluator result; deriving target2or3 from this independent bool does not make an implementation oracle.",
+    "function_limit": "All16new files measured including public(super) helpers and methods:153free functions+3methods, max23logical lines including signatures, excluding only standalone braces/comments/blanks."
+  },
+  "static_oracle_preservation": {
+    "evidence": "Schema helper changed Option(single) to exact expected input slice, asserts exact count and per-index name/schema with fatal missing input; all old single-schema calls retained equivalently. Parsed Contains helper and full arguments retained. Existing cold Bool errors arities1/2/3, valid prefix0/1/3, List/F64 and Any/Null assertions unchanged. Existing canonical scalar/Unknown successes, six typed receiver errors and exact arity errors unchanged; new tests add known needle categories."
+  },
+  "production_alignment": {
+    "no_production_delta_from_dba": true,
+    "basis": "Exact five-file delta contains only tests/shared test support; source checker production file untouched.",
+    "accepted_components_byte_equal": {
+      "crates/vb_core/src/replay/ops/has_bytecode_boundary_tests.rs": {
+        "prior_pin": "95b1daffe01cdee461faa35f48e4625a8310020c",
+        "byte_equal": true,
+        "sha256": "aaaa8f2ff55b768a0f8e4f0b0b4a7aeb1be48348f00325cd54bec7cea6dfe91a"
+      },
+      "crates/vb_core/src/replay/ops/has_bytecode_boundary_hot_tests.rs": {
+        "prior_pin": "95b1daffe01cdee461faa35f48e4625a8310020c",
+        "byte_equal": true,
+        "sha256": "9072c8a855161abb1aaf38f36618c440605ff6204014db353e74a0ee057ddd40"
+      },
+      "crates/vb_core/src/replay/ops/has_bytecode_boundary_replay_tests.rs": {
+        "prior_pin": "95b1daffe01cdee461faa35f48e4625a8310020c",
+        "byte_equal": true,
+        "sha256": "aac1ab306d4f23cf3387134e9d1ee69dbe53fed8e310fd1aad1aace7e1344365"
+      },
+      "crates/workspace_tests/tests/has_store_bytecode_boundaries.rs": {
+        "prior_pin": "003e442dfb7a63ecd3882a27b3c72b381dc6e940",
+        "byte_equal": true,
+        "sha256": "5a06e9516a6356086730d5058e5b014848bc4a184a1627fd7493df3c42070bad"
+      },
+      "crates/workspace_tests/tests/helper_bytecode_argument_order.rs": {
+        "prior_pin": "003e442dfb7a63ecd3882a27b3c72b381dc6e940",
+        "byte_equal": true,
+        "sha256": "b89cb67f9a36e61b3ea507f345e71a1fac08a1e91ee9d2bcbf1d95989633febf"
+      },
+      "crates/vb_expr/src/expr_eval/helper_store.rs": {
+        "prior_pin": "003e442dfb7a63ecd3882a27b3c72b381dc6e940",
+        "byte_equal": true,
+        "sha256": "3edb5e65dec08a6e142f9d313b19772fe56dfe5ed3d32b85325c544902a28414"
+      }
+    },
+    "prior_original13_except_two_static_test_files": "Composition retains Has9 gating/branch controls, public Has4 diagnostics, shared six caller regressions and earlier Contains fixtures."
+  },
+  "execution_evidence": {
+    "fresh_tests_or_builds_by_reviewer": false,
+    "raw": {
+      "contains-has-moon-selected-v3.log": {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/contains-has-moon-selected-v3.log",
+        "sha256": "0b827836099b783c405bba4f52083ad2777a82212415470439498d48d944bbeb",
+        "bytes": 3029117
+      },
+      "contains-has-moon-selected-v3.exit": {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/contains-has-moon-selected-v3.exit",
+        "sha256": "99378a3544b6469ba679bcb306beeb8701cb1c42ab78e520775593a310116115",
+        "bytes": 12
+      },
+      "contains-has-composed-function-counts-v3.json": {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/contains-has-composed-function-counts-v3.json",
+        "sha256": "808334eddbe936f57f3571a9d3ec95a64c3f4da56475f1960d1e36444d3f2592",
+        "bytes": 25756
+      },
+      "contains-has-test-integrity-live.log": {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/contains-has-test-integrity-live.log",
+        "sha256": "1f3017e87384c6f429a95bd468acaf4f7542b92d3c246be8ec917eb05aa401d8",
+        "bytes": 727
+      },
+      "contains-has-test-integrity-live.exit": {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/contains-has-test-integrity-live.exit",
+        "sha256": "d67339beb4bf7b4e7dab9149e109e5cd5f050b162f5c9c1ee572b6369fe6b34b",
+        "bytes": 22
+      }
+    },
+    "latest_selected_summary": "16611 tests run:16611passed,7skipped;12completed,4cached;MOON_EXIT=0",
+    "all_new_test_names_seen_PASS": 87,
+    "all_new_test_names": [
+      "contains_hot_existing_i64_true",
+      "contains_hot_absent_i64_false",
+      "contains_hot_empty_false",
+      "contains_hot_other_list_false",
+      "contains_hot_invalid_list_receiver_error",
+      "contains_hot_null_receiver_error",
+      "contains_hot_symbol_receiver_error",
+      "contains_hot_invalid_needle_handle_false",
+      "contains_hot_equal_text_distinct_symbol_ids_false",
+      "contains_hot_same_symbol_id_true",
+      "contains_hot_same_f64_tag_true",
+      "contains_hot_i64_f64_cross_tag_false",
+      "contains_list_parity_found_element",
+      "contains_list_parity_missing_element",
+      "contains_list_parity_empty_list",
+      "contains_replay_existing_i64_true",
+      "contains_replay_absent_i64_false",
+      "contains_replay_empty_false",
+      "contains_replay_other_list_false",
+      "contains_replay_invalid_list_receiver_step_one",
+      "contains_replay_null_receiver_step_one",
+      "contains_replay_symbol_receiver_step_one",
+      "contains_replay_invalid_needle_handle_false",
+      "contains_replay_equal_text_distinct_symbol_ids_false",
+      "contains_replay_same_symbol_id_true",
+      "contains_replay_same_f64_tag_true",
+      "contains_replay_i64_f64_cross_tag_false",
+      "contains_replay_workflow_takes_true_branch",
+      "contains_replay_workflow_takes_otherwise_for_missing_item",
+      "contains_replay_workflow_takes_otherwise_for_empty_list",
+      "contains_replay_workflow_wraps_wrong_receiver_at_choose_pc",
+      "has_bytecode_boundary_validators_reject_zero_one_and_three_stack_values",
+      "has_bytecode_boundary_hot_underflows_with_zero_stack_values",
+      "has_bytecode_boundary_hot_underflows_with_one_stack_value",
+      "has_bytecode_boundary_hot_rejects_three_values_at_finalization",
+      "has_bytecode_boundary_hot_validated_control_returns_true",
+      "has_bytecode_boundary_replay_zero_values_error_at_pc_one",
+      "has_bytecode_boundary_replay_one_value_error_at_pc_one",
+      "has_bytecode_boundary_replay_three_values_fail_finalization_at_pc_one",
+      "has_bytecode_boundary_replay_validated_control_takes_true_branch",
+      "contains_list_receiver_accepts_bool_i64_f64_and_null_needles",
+      "contains_list_receiver_accepts_text_list_object_needles",
+      "contains_unknown_receiver_accepts_bool_i64_f64_and_null_needles",
+      "contains_rejects_each_known_non_list_receiver_with_exact_mismatch",
+      "contains_typecheck_reports_exact_zero_one_and_three_argument_errors",
+      "same_object_handle_is_a_member_on_all_routes",
+      "equal_payload_distinct_object_handle_is_not_a_member_on_all_routes",
+      "same_blob_handle_is_a_member_on_all_routes",
+      "equal_bytes_distinct_blob_handle_is_not_a_member_on_all_routes",
+      "same_list_handle_is_a_member_on_all_routes",
+      "equal_contents_distinct_list_handle_is_not_a_member_on_all_routes",
+      "contains_returns_true_for_same_f64_tag_and_payload",
+      "contains_returns_false_for_equal_numeric_payload_with_different_tags",
+      "contains_returns_true_for_null_needle",
+      "contains_returns_true_for_boolean_needle",
+      "contains_returns_true_for_same_symbol_id",
+      "contains_returns_false_for_equal_symbol_text_with_distinct_ids",
+      "contains_returns_true_for_same_invalid_raw_list_handle",
+      "contains_returns_false_for_distinct_invalid_raw_list_handles",
+      "contains_returns_false_for_invalid_raw_handle_needle_in_empty_list",
+      "contains_returns_false_for_invalid_stored_handle_and_scalar_needle",
+      "contains_returns_exact_type_mismatch_for_wrong_receiver",
+      "contains_returns_exact_invalid_reference_for_invalid_receiver_id",
+      "list_contains_true",
+      "list_contains_false",
+      "empty_list_contains",
+      "null_is_found_in_list_on_all_routes",
+      "identical_raw_invalid_list_handle_is_found_on_all_routes",
+      "distinct_raw_invalid_list_handle_is_not_found_on_all_routes",
+      "singleton_list_missing_value_is_false_on_all_routes",
+      "null_receiver_wins_over_invalid_symbol_needle_on_all_routes",
+      "invalid_list_receiver_wins_over_invalid_symbol_needle_on_all_routes",
+      "parse_ast_rejects_bool_contains_receiver_with_exact_cold_type_error",
+      "parse_ast_accepts_list_receiver_f64_needle_and_retains_schema_and_arguments",
+      "parse_ast_accepts_any_receiver_and_retains_schema_and_arguments",
+      "parse_ast_retains_zero_one_and_three_argument_contains_without_cold_arity_checks",
+      "parse_ast_accepts_text_list_object_needle_with_list_receiver_and_retains_both_schemas",
+      "has_empty_stack_underflow",
+      "has_one_operand_underflow",
+      "has_overflow_final_two",
+      "has_positive",
+      "contains_preserves_source_order",
+      "starts_with_preserves_source_order",
+      "ends_with_preserves_source_order",
+      "append_preserves_source_order",
+      "merge_preserves_source_order_and_right_wins",
+      "append_if_preserves_source_order"
+    ],
+    "warnings": "Raw log contains cache upload/missing input warnings; no warning-free assertion.",
+    "live_integrity_limit": "Retained raw live failure reports90removed declarations and4removed exact assertions for replay/ops/tests.rs. That file is unchanged from prior composition; no fresh integrity execution by reviewer or new protected-ledger approval. Selected Moon is not full moonci."
+  },
+  "source_files": {
+    "crates/vb_compile/src/type_taint_expr.rs": {
+      "sha256": "b3e67affe066d4da0c4929e77796413b691b2013bc7feba85e17da62bb1536f0",
+      "new_vs_accepted6d": false
+    },
+    "crates/vb_core/src/engine/expr_eval/ops_text_list/contains_hot_parity_tests.rs": {
+      "sha256": "2ac9f3e48e4fb54b25c75d3e2ec7f6a0499aa411c0f2111abd50ace33b6cfbdc",
+      "new_vs_accepted6d": true,
+      "functions": [
+        {
+          "name": "contains_hot_cases",
+          "line": 11,
+          "logical_lines_including_signature": 21
+        },
+        {
+          "name": "contains_hot_program",
+          "line": 34,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "contains_hot_nodes",
+          "line": 45,
+          "logical_lines_including_signature": 8
+        },
+        {
+          "name": "contains_hot_plan",
+          "line": 55,
+          "logical_lines_including_signature": 20
+        },
+        {
+          "name": "contains_hot_eval",
+          "line": 77,
+          "logical_lines_including_signature": 15
+        },
+        {
+          "name": "contains_hot_existing_i64_true",
+          "line": 95,
+          "logical_lines_including_signature": 8
+        },
+        {
+          "name": "contains_hot_absent_i64_false",
+          "line": 106,
+          "logical_lines_including_signature": 8
+        },
+        {
+          "name": "contains_hot_empty_false",
+          "line": 117,
+          "logical_lines_including_signature": 8
+        },
+        {
+          "name": "contains_hot_other_list_false",
+          "line": 128,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "contains_hot_invalid_list_receiver_error",
+          "line": 143,
+          "logical_lines_including_signature": 8
+        },
+        {
+          "name": "contains_hot_null_receiver_error",
+          "line": 154,
+          "logical_lines_including_signature": 10
+        },
+        {
+          "name": "contains_hot_symbol_receiver_error",
+          "line": 167,
+          "logical_lines_including_signature": 11
+        },
+        {
+          "name": "contains_hot_invalid_needle_handle_false",
+          "line": 181,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "contains_hot_equal_text_distinct_symbol_ids_false",
+          "line": 196,
+          "logical_lines_including_signature": 13
+        },
+        {
+          "name": "contains_hot_same_symbol_id_true",
+          "line": 212,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "contains_hot_same_f64_tag_true",
+          "line": 227,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "contains_hot_i64_f64_cross_tag_false",
+          "line": 239,
+          "logical_lines_including_signature": 9
+        }
+      ],
+      "forbidden_constructs": []
+    },
+    "crates/vb_core/src/engine/expr_eval/ops_text_list/contains_list_parity_tests.rs": {
+      "sha256": "d5469c97ed09cc17acf44829e1fca5bef6d28b52988c223b66dec85b7be8a400",
+      "new_vs_accepted6d": true,
+      "functions": [
+        {
+          "name": "contains_list_hot_eval",
+          "line": 1,
+          "logical_lines_including_signature": 18
+        },
+        {
+          "name": "contains_list_parity_found_element",
+          "line": 22,
+          "logical_lines_including_signature": 6
+        },
+        {
+          "name": "contains_list_parity_missing_element",
+          "line": 31,
+          "logical_lines_including_signature": 6
+        },
+        {
+          "name": "contains_list_parity_empty_list",
+          "line": 40,
+          "logical_lines_including_signature": 5
+        }
+      ],
+      "forbidden_constructs": []
+    },
+    "crates/vb_core/src/engine/expr_eval/ops_text_list/tests.rs": {
+      "sha256": "80ea2178395491a9e6d57a38567232be201afb7289bd96cdae25801249c91067",
+      "new_vs_accepted6d": false
+    },
+    "crates/vb_core/src/engine/expr_eval/ops_text_list.rs": {
+      "sha256": "be5f26c0fabcaf0bb66228a45e0193496c5b5691e9724865b3d9d05aa818f497",
+      "new_vs_accepted6d": false
+    },
+    "crates/vb_core/src/engine/expr_eval/tests/string_list_ops.rs": {
+      "sha256": "81083cc8ca6d8a6a38aea4aed933d251e284ea6e1a14f9b2e3444f3f4ec1ffcf",
+      "new_vs_accepted6d": false
+    },
+    "crates/vb_core/src/replay/helpers.rs": {
+      "sha256": "6bdd1a842baa7f2c2daa805767b5964c2ae74e5c8b9c1dff63e287acd80a35fd",
+      "new_vs_accepted6d": false
+    },
+    "crates/vb_core/src/replay/ops/contains_replay_parity_tests.rs": {
+      "sha256": "cb00cb52b5d948cc394a6b75e04907dee86505323df160621ec24f3db4a91b0e",
+      "new_vs_accepted6d": true,
+      "functions": [
+        {
+          "name": "contains_replay_cases",
+          "line": 11,
+          "logical_lines_including_signature": 19
+        },
+        {
+          "name": "contains_replay_at_step_one",
+          "line": 32,
+          "logical_lines_including_signature": 14
+        },
+        {
+          "name": "contains_replay_existing_i64_true",
+          "line": 50,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "contains_replay_absent_i64_false",
+          "line": 65,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "contains_replay_empty_false",
+          "line": 80,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "contains_replay_other_list_false",
+          "line": 95,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "contains_replay_invalid_list_receiver_step_one",
+          "line": 110,
+          "logical_lines_including_signature": 10
+        },
+        {
+          "name": "contains_replay_null_receiver_step_one",
+          "line": 123,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "contains_replay_symbol_receiver_step_one",
+          "line": 135,
+          "logical_lines_including_signature": 10
+        },
+        {
+          "name": "contains_replay_invalid_needle_handle_false",
+          "line": 148,
+          "logical_lines_including_signature": 15
+        },
+        {
+          "name": "contains_replay_equal_text_distinct_symbol_ids_false",
+          "line": 166,
+          "logical_lines_including_signature": 16
+        },
+        {
+          "name": "contains_replay_same_symbol_id_true",
+          "line": 185,
+          "logical_lines_including_signature": 15
+        },
+        {
+          "name": "contains_replay_same_f64_tag_true",
+          "line": 203,
+          "logical_lines_including_signature": 13
+        },
+        {
+          "name": "contains_replay_i64_f64_cross_tag_false",
+          "line": 219,
+          "logical_lines_including_signature": 13
+        }
+      ],
+      "forbidden_constructs": []
+    },
+    "crates/vb_core/src/replay/ops/contains_replay_workflow_tests.rs": {
+      "sha256": "e97b30781efa4ba23bc1d25d0ecf62138d7dd62a0af0aaeb73a6cdaa46ab57c5",
+      "new_vs_accepted6d": true,
+      "functions": [
+        {
+          "name": "contains_replay_workflow_nodes",
+          "line": 12,
+          "logical_lines_including_signature": 13
+        },
+        {
+          "name": "contains_replay_choose_node",
+          "line": 27,
+          "logical_lines_including_signature": 15
+        },
+        {
+          "name": "contains_replay_finish_node",
+          "line": 44,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "contains_replay_workflow",
+          "line": 55,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "contains_replay_fixture",
+          "line": 69,
+          "logical_lines_including_signature": 22
+        },
+        {
+          "name": "contains_replay_workflow_step",
+          "line": 93,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "contains_replay_workflow_takes_true_branch",
+          "line": 105,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "contains_replay_workflow_takes_otherwise_for_missing_item",
+          "line": 120,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "contains_replay_workflow_takes_otherwise_for_empty_list",
+          "line": 135,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "contains_replay_workflow_wraps_wrong_receiver_at_choose_pc",
+          "line": 147,
+          "logical_lines_including_signature": 12
+        }
+      ],
+      "forbidden_constructs": []
+    },
+    "crates/vb_core/src/replay/ops/has_bytecode_boundary_hot_tests.rs": {
+      "sha256": "9072c8a855161abb1aaf38f36618c440605ff6204014db353e74a0ee057ddd40",
+      "new_vs_accepted6d": true,
+      "functions": [
+        {
+          "name": "assert_program_constructors_reject_has_depth",
+          "line": 1,
+          "logical_lines_including_signature": 11
+        },
+        {
+          "name": "assert_workflow_constructor_rejects_has_depth",
+          "line": 14,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "has_bytecode_boundary_validators_reject_zero_one_and_three_stack_values",
+          "line": 29,
+          "logical_lines_including_signature": 8
+        },
+        {
+          "name": "has_bytecode_boundary_hot_underflows_with_zero_stack_values",
+          "line": 42,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "has_bytecode_boundary_hot_underflows_with_one_stack_value",
+          "line": 58,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "has_bytecode_boundary_hot_rejects_three_values_at_finalization",
+          "line": 74,
+          "logical_lines_including_signature": 14
+        },
+        {
+          "name": "has_bytecode_boundary_hot_validated_control_returns_true",
+          "line": 91,
+          "logical_lines_including_signature": 10
+        }
+      ],
+      "forbidden_constructs": []
+    },
+    "crates/vb_core/src/replay/ops/has_bytecode_boundary_replay_tests.rs": {
+      "sha256": "aac1ab306d4f23cf3387134e9d1ee69dbe53fed8e310fd1aad1aace7e1344365",
+      "new_vs_accepted6d": true,
+      "functions": [
+        {
+          "name": "has_bytecode_boundary_replay_zero_values_error_at_pc_one",
+          "line": 3,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "has_bytecode_boundary_replay_one_value_error_at_pc_one",
+          "line": 16,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "has_bytecode_boundary_replay_three_values_fail_finalization_at_pc_one",
+          "line": 29,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "has_bytecode_boundary_replay_validated_control_takes_true_branch",
+          "line": 42,
+          "logical_lines_including_signature": 14
+        }
+      ],
+      "forbidden_constructs": []
+    },
+    "crates/vb_core/src/replay/ops/has_bytecode_boundary_tests.rs": {
+      "sha256": "aaaa8f2ff55b768a0f8e4f0b0b4a7aeb1be48348f00325cd54bec7cea6dfe91a",
+      "new_vs_accepted6d": true,
+      "functions": [
+        {
+          "name": "values",
+          "line": 9,
+          "logical_lines_including_signature": 5
+        },
+        {
+          "name": "ops",
+          "line": 17,
+          "logical_lines_including_signature": 10
+        },
+        {
+          "name": "constructor_error",
+          "line": 30,
+          "logical_lines_including_signature": 6
+        },
+        {
+          "name": "has_bytecode_constants",
+          "line": 40,
+          "logical_lines_including_signature": 2
+        },
+        {
+          "name": "has_bytecode_choose_node",
+          "line": 44,
+          "logical_lines_including_signature": 16
+        },
+        {
+          "name": "has_bytecode_nodes",
+          "line": 62,
+          "logical_lines_including_signature": 15
+        },
+        {
+          "name": "has_bytecode_finish_node",
+          "line": 79,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "has_bytecode_parts",
+          "line": 90,
+          "logical_lines_including_signature": 15
+        },
+        {
+          "name": "has_bytecode_fixture",
+          "line": 108,
+          "logical_lines_including_signature": 13
+        },
+        {
+          "name": "malformed_has_program",
+          "line": 123,
+          "logical_lines_including_signature": 4
+        },
+        {
+          "name": "valid_has_program",
+          "line": 130,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "checked_has_plan",
+          "line": 142,
+          "logical_lines_including_signature": 4
+        },
+        {
+          "name": "eval_hot_has",
+          "line": 149,
+          "logical_lines_including_signature": 10
+        },
+        {
+          "name": "replay_has",
+          "line": 162,
+          "logical_lines_including_signature": 10
+        },
+        {
+          "name": "replay_choose_with_plan",
+          "line": 174,
+          "logical_lines_including_signature": 11
+        },
+        {
+          "name": "assert_replay_error_at_pc_one",
+          "line": 188,
+          "logical_lines_including_signature": 7
+        }
+      ],
+      "forbidden_constructs": []
+    },
+    "crates/vb_core/src/replay/ops/tests.rs": {
+      "sha256": "5a2f9c1dff840db36a643414323a2edcc067b3e7a741fdfdbc616c0831b4bdd8",
+      "new_vs_accepted6d": false
+    },
+    "crates/vb_core/src/replay/ops/tests_expr.rs": {
+      "sha256": "2acc098de86f639b7a62ba6f6e7707ddd0fa70ea34e23e75639655c95e8f698f",
+      "new_vs_accepted6d": false
+    },
+    "crates/vb_expr/src/expr_eval/helper_store.rs": {
+      "sha256": "3edb5e65dec08a6e142f9d313b19772fe56dfe5ed3d32b85325c544902a28414",
+      "new_vs_accepted6d": false
+    },
+    "crates/vb_expr/src/expr_eval/helper_store_values.rs": {
+      "sha256": "fa41177765ff0beed3222e518d31debe959c67482bf18bef14e0a58802b66146",
+      "new_vs_accepted6d": false
+    },
+    "crates/vb_expr/src/expr_eval_tests_core.rs": {
+      "sha256": "b43594d69c66f0e88646f3a19e9789f89f682fd795346d5b4945765884de291c",
+      "new_vs_accepted6d": false
+    },
+    "crates/vb_expr/src/expr_eval_tests_store.rs": {
+      "sha256": "24a5840e51804571edf37d57a4249c39099c1bf18b798582a5f2f58c566b3afa",
+      "new_vs_accepted6d": false
+    },
+    "crates/vb_expr/src/expr_typecheck/helper_typecheck.rs": {
+      "sha256": "99f83afe4cac31253befc42b795e142d1a48de545e22ceded13edbe79593e70b",
+      "new_vs_accepted6d": false
+    },
+    "crates/vb_expr/src/expr_typecheck/tests/contains_argument_types.rs": {
+      "sha256": "cc06e963a108d312dbb4be9a5d13e43e6cbdcd844f3955f8d0016098664f5e5a",
+      "new_vs_accepted6d": true,
+      "functions": [
+        {
+          "name": "check",
+          "line": 5,
+          "logical_lines_including_signature": 4
+        },
+        {
+          "name": "check_with",
+          "line": 11,
+          "logical_lines_including_signature": 4
+        },
+        {
+          "name": "contains_ast",
+          "line": 17,
+          "logical_lines_including_signature": 4
+        },
+        {
+          "name": "contains_list_receiver_accepts_bool_i64_f64_and_null_needles",
+          "line": 25,
+          "logical_lines_including_signature": 11
+        },
+        {
+          "name": "contains_list_receiver_accepts_text_list_object_needles",
+          "line": 40,
+          "logical_lines_including_signature": 10
+        },
+        {
+          "name": "contains_unknown_receiver_accepts_bool_i64_f64_and_null_needles",
+          "line": 54,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "contains_rejects_each_known_non_list_receiver_with_exact_mismatch",
+          "line": 67,
+          "logical_lines_including_signature": 19
+        },
+        {
+          "name": "contains_typecheck_reports_exact_zero_one_and_three_argument_errors",
+          "line": 90,
+          "logical_lines_including_signature": 17
+        }
+      ],
+      "forbidden_constructs": []
+    },
+    "crates/vb_expr/src/expr_typecheck/tests.rs": {
+      "sha256": "aab2dde78b5e957bc558ad12382bc975fb9d6d8b6d470e9589ea757f2502c96c",
+      "new_vs_accepted6d": false
+    },
+    "crates/workspace_tests/tests/contains_compound_identity.rs": {
+      "sha256": "9bda55ebf4df10b245cad8a609100d9debcf90551b876953ae313fa565d8b197",
+      "new_vs_accepted6d": true,
+      "functions": [
+        {
+          "name": "object_fixture",
+          "line": 7,
+          "logical_lines_including_signature": 16
+        },
+        {
+          "name": "blob_fixture",
+          "line": 25,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "list_fixture",
+          "line": 39,
+          "logical_lines_including_signature": 13
+        },
+        {
+          "name": "same_object_handle_is_a_member_on_all_routes",
+          "line": 55,
+          "logical_lines_including_signature": 3
+        },
+        {
+          "name": "equal_payload_distinct_object_handle_is_not_a_member_on_all_routes",
+          "line": 61,
+          "logical_lines_including_signature": 3
+        },
+        {
+          "name": "same_blob_handle_is_a_member_on_all_routes",
+          "line": 67,
+          "logical_lines_including_signature": 3
+        },
+        {
+          "name": "equal_bytes_distinct_blob_handle_is_not_a_member_on_all_routes",
+          "line": 73,
+          "logical_lines_including_signature": 3
+        },
+        {
+          "name": "same_list_handle_is_a_member_on_all_routes",
+          "line": 79,
+          "logical_lines_including_signature": 3
+        },
+        {
+          "name": "equal_contents_distinct_list_handle_is_not_a_member_on_all_routes",
+          "line": 85,
+          "logical_lines_including_signature": 3
+        }
+      ],
+      "forbidden_constructs": []
+    },
+    "crates/workspace_tests/tests/contains_direct_helper_edges.rs": {
+      "sha256": "a7e4f46c4aefa8bcbc694b474806b2a20421b1b1010c124d5c87c834aa94276d",
+      "new_vs_accepted6d": true,
+      "functions": [
+        {
+          "name": "list_with",
+          "line": 6,
+          "logical_lines_including_signature": 2
+        },
+        {
+          "name": "list_with_in_store",
+          "line": 10,
+          "logical_lines_including_signature": 8
+        },
+        {
+          "name": "contains",
+          "line": 20,
+          "logical_lines_including_signature": 10
+        },
+        {
+          "name": "finite",
+          "line": 32,
+          "logical_lines_including_signature": 2
+        },
+        {
+          "name": "contains_returns_true_for_same_f64_tag_and_payload",
+          "line": 37,
+          "logical_lines_including_signature": 5
+        },
+        {
+          "name": "contains_returns_false_for_equal_numeric_payload_with_different_tags",
+          "line": 45,
+          "logical_lines_including_signature": 8
+        },
+        {
+          "name": "contains_returns_true_for_null_needle",
+          "line": 56,
+          "logical_lines_including_signature": 7
+        },
+        {
+          "name": "contains_returns_true_for_boolean_needle",
+          "line": 66,
+          "logical_lines_including_signature": 7
+        },
+        {
+          "name": "contains_returns_true_for_same_symbol_id",
+          "line": 76,
+          "logical_lines_including_signature": 11
+        },
+        {
+          "name": "contains_returns_false_for_equal_symbol_text_with_distinct_ids",
+          "line": 90,
+          "logical_lines_including_signature": 16
+        },
+        {
+          "name": "contains_returns_true_for_same_invalid_raw_list_handle",
+          "line": 109,
+          "logical_lines_including_signature": 8
+        },
+        {
+          "name": "contains_returns_false_for_distinct_invalid_raw_list_handles",
+          "line": 120,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "contains_returns_false_for_invalid_raw_handle_needle_in_empty_list",
+          "line": 135,
+          "logical_lines_including_signature": 8
+        },
+        {
+          "name": "contains_returns_false_for_invalid_stored_handle_and_scalar_needle",
+          "line": 146,
+          "logical_lines_including_signature": 8
+        },
+        {
+          "name": "contains_returns_exact_type_mismatch_for_wrong_receiver",
+          "line": 157,
+          "logical_lines_including_signature": 16
+        },
+        {
+          "name": "contains_returns_exact_invalid_reference_for_invalid_receiver_id",
+          "line": 176,
+          "logical_lines_including_signature": 11
+        }
+      ],
+      "forbidden_constructs": []
+    },
+    "crates/workspace_tests/tests/contains_list_store_parity.rs": {
+      "sha256": "5041660edb7ad20beac90cedc4bb8947589bd59d4d75ac3ff3bc824f157bc153",
+      "new_vs_accepted6d": true,
+      "functions": [
+        {
+          "name": "list_contains_true",
+          "line": 5,
+          "logical_lines_including_signature": 10
+        },
+        {
+          "name": "list_contains_false",
+          "line": 18,
+          "logical_lines_including_signature": 10
+        },
+        {
+          "name": "empty_list_contains",
+          "line": 31,
+          "logical_lines_including_signature": 8
+        }
+      ],
+      "forbidden_constructs": []
+    },
+    "crates/workspace_tests/tests/contains_route_edges.rs": {
+      "sha256": "560e122b4dbe14773d22c3a2fe2d15ece22e34b0e0d82f845a72cc640804be19",
+      "new_vs_accepted6d": true,
+      "functions": [
+        {
+          "name": "fixture",
+          "line": 9,
+          "logical_lines_including_signature": 2
+        },
+        {
+          "name": "assert_route_errors",
+          "line": 13,
+          "logical_lines_including_signature": 15
+        },
+        {
+          "name": "assert_hot_error",
+          "line": 30,
+          "logical_lines_including_signature": 14
+        },
+        {
+          "name": "assert_replay_error",
+          "line": 46,
+          "logical_lines_including_signature": 14
+        },
+        {
+          "name": "null_is_found_in_list_on_all_routes",
+          "line": 63,
+          "logical_lines_including_signature": 3
+        },
+        {
+          "name": "identical_raw_invalid_list_handle_is_found_on_all_routes",
+          "line": 69,
+          "logical_lines_including_signature": 4
+        },
+        {
+          "name": "distinct_raw_invalid_list_handle_is_not_found_on_all_routes",
+          "line": 76,
+          "logical_lines_including_signature": 6
+        },
+        {
+          "name": "singleton_list_missing_value_is_false_on_all_routes",
+          "line": 85,
+          "logical_lines_including_signature": 3
+        },
+        {
+          "name": "null_receiver_wins_over_invalid_symbol_needle_on_all_routes",
+          "line": 91,
+          "logical_lines_including_signature": 16
+        },
+        {
+          "name": "invalid_list_receiver_wins_over_invalid_symbol_needle_on_all_routes",
+          "line": 110,
+          "logical_lines_including_signature": 13
+        }
+      ],
+      "forbidden_constructs": []
+    },
+    "crates/workspace_tests/tests/contains_static_cold_guards.rs": {
+      "sha256": "b675da87add5a15c9c0165a8f7125f58973b1d7e370486f38300bbd230c7fdd4",
+      "new_vs_accepted6d": true,
+      "functions": [
+        {
+          "name": "parse_ast",
+          "line": 6,
+          "logical_lines_including_signature": 10
+        },
+        {
+          "name": "assert_input_schema",
+          "line": 18,
+          "logical_lines_including_signature": 11
+        },
+        {
+          "name": "assert_contains_ast",
+          "line": 32,
+          "logical_lines_including_signature": 21
+        },
+        {
+          "name": "parse_ast_rejects_bool_contains_receiver_with_exact_cold_type_error",
+          "line": 56,
+          "logical_lines_including_signature": 19
+        },
+        {
+          "name": "parse_ast_accepts_list_receiver_f64_needle_and_retains_schema_and_arguments",
+          "line": 79,
+          "logical_lines_including_signature": 13
+        },
+        {
+          "name": "parse_ast_accepts_any_receiver_and_retains_schema_and_arguments",
+          "line": 95,
+          "logical_lines_including_signature": 11
+        },
+        {
+          "name": "parse_ast_retains_zero_one_and_three_argument_contains_without_cold_arity_checks",
+          "line": 109,
+          "logical_lines_including_signature": 20
+        },
+        {
+          "name": "parse_ast_accepts_text_list_object_needle_with_list_receiver_and_retains_both_schemas",
+          "line": 133,
+          "logical_lines_including_signature": 15
+        }
+      ],
+      "forbidden_constructs": []
+    },
+    "crates/workspace_tests/tests/has_store_bytecode_boundaries.rs": {
+      "sha256": "5a06e9516a6356086730d5058e5b014848bc4a184a1627fd7493df3c42070bad",
+      "new_vs_accepted6d": true,
+      "functions": [
+        {
+          "name": "fixture_store",
+          "line": 8,
+          "logical_lines_including_signature": 14
+        },
+        {
+          "name": "has_empty_stack_underflow",
+          "line": 25,
+          "logical_lines_including_signature": 13
+        },
+        {
+          "name": "has_one_operand_underflow",
+          "line": 41,
+          "logical_lines_including_signature": 13
+        },
+        {
+          "name": "has_overflow_final_two",
+          "line": 57,
+          "logical_lines_including_signature": 23
+        },
+        {
+          "name": "has_positive",
+          "line": 83,
+          "logical_lines_including_signature": 14
+        }
+      ],
+      "forbidden_constructs": []
+    },
+    "crates/workspace_tests/tests/helper_bytecode_argument_order.rs": {
+      "sha256": "b89cb67f9a36e61b3ea507f345e71a1fac08a1e91ee9d2bcbf1d95989633febf",
+      "new_vs_accepted6d": true,
+      "functions": [
+        {
+          "name": "insert_symbol",
+          "line": 23,
+          "logical_lines_including_signature": 4
+        },
+        {
+          "name": "insert_symbols",
+          "line": 29,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "insert_objects",
+          "line": 40,
+          "logical_lines_including_signature": 23
+        },
+        {
+          "name": "insert_list",
+          "line": 65,
+          "logical_lines_including_signature": 5
+        },
+        {
+          "name": "build_fixture_slots",
+          "line": 72,
+          "logical_lines_including_signature": 19
+        },
+        {
+          "name": "fixture",
+          "line": 93,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "evaluate",
+          "line": 107,
+          "logical_lines_including_signature": 5
+        },
+        {
+          "name": "assert_appended",
+          "line": 114,
+          "logical_lines_including_signature": 18
+        },
+        {
+          "name": "assert_field_value",
+          "line": 134,
+          "logical_lines_including_signature": 8
+        },
+        {
+          "name": "assert_merge_fields",
+          "line": 144,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "contains_preserves_source_order",
+          "line": 159,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "starts_with_preserves_source_order",
+          "line": 174,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "ends_with_preserves_source_order",
+          "line": 189,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "append_preserves_source_order",
+          "line": 204,
+          "logical_lines_including_signature": 3
+        },
+        {
+          "name": "merge_preserves_source_order_and_right_wins",
+          "line": 210,
+          "logical_lines_including_signature": 14
+        },
+        {
+          "name": "append_if_preserves_source_order",
+          "line": 227,
+          "logical_lines_including_signature": 20
+        }
+      ],
+      "forbidden_constructs": []
+    },
+    "crates/workspace_tests/tests/support/contains_three_routes.rs": {
+      "sha256": "26b1229827c31c626d949d928eefc81a7dd38bb6030949c242ac293ac51336a1",
+      "new_vs_accepted6d": true,
+      "functions": [
+        {
+          "name": "fixture_with_store",
+          "line": 14,
+          "logical_lines_including_signature": 13
+        },
+        {
+          "name": "contains_plan",
+          "line": 29,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "contains_parts",
+          "line": 43,
+          "logical_lines_including_signature": 15
+        },
+        {
+          "name": "contains_nodes",
+          "line": 61,
+          "logical_lines_including_signature": 13
+        },
+        {
+          "name": "choose_node",
+          "line": 76,
+          "logical_lines_including_signature": 14
+        },
+        {
+          "name": "finish_node",
+          "line": 92,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "frame",
+          "line": 103,
+          "logical_lines_including_signature": 17
+        },
+        {
+          "name": "assert_routes",
+          "line": 122,
+          "logical_lines_including_signature": 18
+        },
+        {
+          "name": "assert_replay",
+          "line": 142,
+          "logical_lines_including_signature": 23
+        }
+      ],
+      "forbidden_constructs": []
+    }
+  },
+  "limits": [
+    "Reject is for two remaining contract-required route oracles, not proof of a current production defect.",
+    "No builds/native execution, source/tracker/gate/ledger/dependency changes or spawned agents by reviewer; own report only.",
+    "Prior raw RED and default/all-feature Has receipts remain historical bounded evidence; source byte equality preserves their reviewed tests, not a fresh default-feature execution at966.",
+    "Full Has literal Text lowering qualifier .53, full core/Has/Contains acceptance, Timer15scenarios, formal/performance/fullCI and whole-master closure remain outside this report."
+  ]
+}

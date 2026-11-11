@@ -1,0 +1,324 @@
+{
+  "verdict": "PASS",
+  "review_kind": "Bounded independent timer TEST composition/source-identity and retained-execution audit",
+  "source_pin": "8d3a2bbc3834a9f9ae341b3ba1c0dddb1beb994f",
+  "composition_parent_pin": "2736640b4f18a170a0996129f7cdf43a3acb9e98",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+  "roots_verified": {
+    "git": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+    "jj": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol"
+  },
+  "findings": [],
+  "composition": {
+    "delta": "Two unchanged regression files plus exactly2 include lines inside existing cfg(test) lifecycle::tests module; removing those2 lines restores parent registry byte-for-byte.",
+    "files": [
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle.rs",
+        "sha256": "a79f0d91b12b5e97ef624f6bc36dabb2a8785c81d9f9a915a8466649d6bf3c49",
+        "prior_reviewed_source_pin": null,
+        "byte_identical_to_prior_reviewed_source": false
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "sha256": "ae78a8e5bf440e2edde5b1ac5f55498917c92d1020fad5d48cd2d38ed9898335",
+        "prior_reviewed_source_pin": "415df7603fd238930a7a466db4e216d67fd33485",
+        "byte_identical_to_prior_reviewed_source": true
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "sha256": "46ac76897e1591e45d90ca9493fef23a8d3c59f8d437c09d576b1fef6fdd8e4a",
+        "prior_reviewed_source_pin": "6f3191a9e7a245e28e46e633c91addcc4efcd116",
+        "byte_identical_to_prior_reviewed_source": true
+      }
+    ],
+    "production_behavior_delta": false,
+    "no_test_cases_names_or_oracles_changed": true
+  },
+  "bounded_oracles": {
+    "capacity": [
+      "Admits2 suspended waits; complete snapshot compares RunId,StepIdx1,Wait kind,generation1 and independently supplied deadline for both entries sorted by RunId.",
+      "Replacement at full capacity asserts exact Some(old), exact replacement, token fields and complete two-timer snapshot including untouched survivor; generation explicitly2.",
+      "Third valid SubmitWithInputsAndContracts enqueue succeeds with queue depth1, tick returns exact ActiveRunCapacityExceeded{capacity:2}; state captured BEFORE enqueue. After reject compares boundary/map/all counters/both run states and no third run."
+    ],
+    "authority": [
+      "Step-only replacement asserts exact prior PendingTimer and unchanged whole TimerEntry token, then actual valid step1 restoration.",
+      "Stale token uses same due deadline/kind and one checked generation increment; exact InvalidTimerFire plus whole BEFORE run state/timer map/boundary/all counters/journal preservation, so early-fire rejection cannot mask staleness.",
+      "Current due token positive resolves once, terminal membership true, timer absent, exactly1WaitResolved; journal captured after legitimate fire then exact equality after idle tick.",
+      "MAX generation asserts direct next_pending_timer_generation==None and actual restore_recovered_timer exact InvalidTimerFire with whole BEFORE authority snapshot preserved."
+    ],
+    "scope": "These are actual preserved finite regression oracles, not architecture proof or exhaustive reachability coverage."
+  },
+  "functions": {
+    "max_logical_lines_including_signature": 21,
+    "method": "Nonblank noncomment meaningful-token lines; signature continuation included, structural punctuation-only lines excluded.",
+    "measurements": [
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "capacity_two_config",
+        "line": 10,
+        "logical_lines_including_signature": 4
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "future_deadline",
+        "line": 16,
+        "logical_lines_including_signature": 4
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "submit_wait_run",
+        "line": 22,
+        "logical_lines_including_signature": 5
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "expected_capacity_snapshot",
+        "line": 29,
+        "logical_lines_including_signature": 17
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "expected_wait_timer",
+        "line": 54,
+        "logical_lines_including_signature": 9
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "assert_complete_timer_snapshot",
+        "line": 66,
+        "logical_lines_including_signature": 16
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "capacity_two_suspended",
+        "line": 87,
+        "logical_lines_including_signature": 12
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "enqueue_third_wait_submission",
+        "line": 102,
+        "logical_lines_including_signature": 11
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "next_replacement_timer",
+        "line": 117,
+        "logical_lines_including_signature": 13
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "insert_replacement_timer",
+        "line": 132,
+        "logical_lines_including_signature": 12
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "assert_full_replacement",
+        "line": 146,
+        "logical_lines_including_signature": 20
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "capacity_state",
+        "line": 169,
+        "logical_lines_including_signature": 8
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "assert_third_submit_rejected",
+        "line": 181,
+        "logical_lines_including_signature": 9
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "assert_capacity_state_unchanged",
+        "line": 194,
+        "logical_lines_including_signature": 15
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "assert_capacity_rejection_unchanged",
+        "line": 211,
+        "logical_lines_including_signature": 10
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "timer_wheel_capacity_two_admits_and_sorts_two_pending_timers",
+        "line": 224,
+        "logical_lines_including_signature": 8
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "timer_wheel_capacity_two_replaces_one_timer_and_preserves_survivor",
+        "line": 235,
+        "logical_lines_including_signature": 8
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "name": "timer_wheel_capacity_two_rejects_third_submit_atomically",
+        "line": 246,
+        "logical_lines_including_signature": 7
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "name": "authority_snapshot",
+        "line": 10,
+        "logical_lines_including_signature": 16
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "name": "assert_authority_unchanged",
+        "line": 29,
+        "logical_lines_including_signature": 8
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "name": "authority_due_deadlines",
+        "line": 39,
+        "logical_lines_including_signature": 6
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "name": "authority_timer_entry",
+        "line": 47,
+        "logical_lines_including_signature": 7
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "name": "assert_step_only_authority_replacement",
+        "line": 56,
+        "logical_lines_including_signature": 18
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "name": "authority_next_replacement",
+        "line": 78,
+        "logical_lines_including_signature": 12
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "name": "insert_authority_replacement",
+        "line": 93,
+        "logical_lines_including_signature": 18
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "name": "install_due_replacement_and_capture_old_token",
+        "line": 115,
+        "logical_lines_including_signature": 14
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "name": "enqueue_authority_token",
+        "line": 133,
+        "logical_lines_including_signature": 11
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "name": "wait_resolution_count",
+        "line": 147,
+        "logical_lines_including_signature": 5
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "name": "assert_idle_tick_preserves_wait_journal",
+        "line": 154,
+        "logical_lines_including_signature": 11
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "name": "authority_set_maximum_timer_generation",
+        "line": 167,
+        "logical_lines_including_signature": 13
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "name": "timer_wheel_authority_step_replacement_preserves_old_token",
+        "line": 184,
+        "logical_lines_including_signature": 5
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "name": "timer_wheel_authority_stale_token_preserves_whole_shard_state",
+        "line": 192,
+        "logical_lines_including_signature": 19
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "name": "timer_wheel_authority_current_due_token_resolves_wait",
+        "line": 214,
+        "logical_lines_including_signature": 21
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "name": "timer_wheel_authority_max_generation_blocks_recovery_atomically",
+        "line": 240,
+        "logical_lines_including_signature": 11
+      }
+    ]
+  },
+  "retained_execution": {
+    "reviewer_native_execution": false,
+    "run": 7,
+    "passed": 7,
+    "filtered_or_skipped": 3015,
+    "exit": 0,
+    "tests": [
+      {
+        "name": "timer_wheel_capacity_two_admits_and_sorts_two_pending_timers",
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "retained_pass": "PASS [   0.003s] (3/7) vb_runtime shard::lifecycle::tests::timer_wheel_capacity_two_admits_and_sorts_two_pending_timers"
+      },
+      {
+        "name": "timer_wheel_capacity_two_replaces_one_timer_and_preserves_survivor",
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "retained_pass": "PASS [   0.003s] (1/7) vb_runtime shard::lifecycle::tests::timer_wheel_capacity_two_replaces_one_timer_and_preserves_survivor"
+      },
+      {
+        "name": "timer_wheel_capacity_two_rejects_third_submit_atomically",
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs",
+        "retained_pass": "PASS [   0.003s] (7/7) vb_runtime shard::lifecycle::tests::timer_wheel_capacity_two_rejects_third_submit_atomically"
+      },
+      {
+        "name": "timer_wheel_authority_step_replacement_preserves_old_token",
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "retained_pass": "PASS [   0.003s] (4/7) vb_runtime shard::lifecycle::tests::timer_wheel_authority_step_replacement_preserves_old_token"
+      },
+      {
+        "name": "timer_wheel_authority_stale_token_preserves_whole_shard_state",
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "retained_pass": "PASS [   0.003s] (5/7) vb_runtime shard::lifecycle::tests::timer_wheel_authority_stale_token_preserves_whole_shard_state"
+      },
+      {
+        "name": "timer_wheel_authority_current_due_token_resolves_wait",
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "retained_pass": "PASS [   0.003s] (6/7) vb_runtime shard::lifecycle::tests::timer_wheel_authority_current_due_token_resolves_wait"
+      },
+      {
+        "name": "timer_wheel_authority_max_generation_blocks_recovery_atomically",
+        "path": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs",
+        "retained_pass": "PASS [   0.003s] (2/7) vb_runtime shard::lifecycle::tests::timer_wheel_authority_max_generation_blocks_recovery_atomically"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-extra-validation/target/core-build-20261110/evidence/timer-extra-seven-native.log",
+        "sha256": "12c849eb2f4099f21d7726f9b59fb5132e2327848b7adf9bd8760b283c35d0d7",
+        "bytes": 1274
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-extra-validation/target/core-build-20261110/evidence/timer-extra-seven-native.exit",
+        "sha256": "aa7b9032e30a23d35090c33991b13943c26862e4b514e29dd279ba1314572053",
+        "bytes": 14
+      }
+    ]
+  },
+  "limits": [
+    "PASS covers unchanged suite composition at this exact pin and observed7-case retained run only; no fullTimerWheel/15-row contract/formal/wholephase acceptance.",
+    "Current-due positive uses a normal live token, not an advanced replacement generation positive control. Replacement deadline firing, bounded-selected membership and recovery fullpostconditions/due-error retries remain separate coverage where not independently established.",
+    "No baseline-red claim: preservation/integration tests can pass older behavioral implementation and do not prove data-structure architecture integration alone.",
+    "CombinedMoon43bc is user-reported failed/partial, not an integrated green receipt. Separate production lint repair and later candidate execution require their own evidence.",
+    "Reviewer made no DB/native/build/source/gate/tracker changes or agent calls. Prior reports preserved."
+  ]
+}

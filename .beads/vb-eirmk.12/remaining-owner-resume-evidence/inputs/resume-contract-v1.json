@@ -1,0 +1,2265 @@
+{
+  "schema_version": 1,
+  "artifact_kind": "remaining_owner_resume_contract",
+  "status": "plan_only_not_executed",
+  "v5_script": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-owner-creation-v5/apply.rb",
+    "sha256": "0d12cdd1c6906897b0b4e8b9be125d4ce9d4fbebd4889971190c5ebe4e349f4b"
+  },
+  "partial_run": {
+    "failure_log_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5-run.log",
+    "failure_log": "historical owner readback changed: vb-juuw",
+    "failure_exit_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5-run.exit",
+    "failure_exit": "APPLY_EXIT=1",
+    "diagnostic_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-v5-stopped-historical-diff.json",
+    "diagnostic_sha256": "f9abb52767835ef7f4c0edad2bbfb12dbd0942b1f1496b3ea109da4b9f5daf93",
+    "failure_classification": {
+      "historical_issue_id": "vb-juuw",
+      "status_before": "closed",
+      "status_after": "closed",
+      "historical_issue_own_fields_changed": false,
+      "only_changed_top_level_field": "dependencies",
+      "changed_nested_id": "vb-eirmk.24",
+      "dependency_type_preserved": true,
+      "changed_nested_fields": [
+        "acceptance_criteria",
+        "description",
+        "metadata",
+        "updated_at"
+      ],
+      "meaning": "derived child relation view expanded from the authorized .24 update receipt; historical issue itself was not edited"
+    },
+    "actual_created_tasks": [
+      {
+        "issue_id": "vb-eirmk.68",
+        "proposal_key": "proposal:current-qualification:function:24:1",
+        "readback_receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/bd-command-0018.json",
+        "readback_stdout_sha256": "599932b87f660cc425a35deadc3f95faeb3841dfe9ff8e7181d277a2315df756",
+        "status": "open",
+        "issue_type": "task",
+        "parent": "vb-eirmk",
+        "title": "Qualify checked raw access for every numeric ID type",
+        "metadata": {
+          "master_requirement_ids": [
+            "function:24:1"
+          ],
+          "qualification_only": true
+        },
+        "typed_dependencies": [
+          {
+            "id": "vb-eirmk",
+            "dependency_type": "parent-child"
+          }
+        ]
+      },
+      {
+        "issue_id": "vb-eirmk.69",
+        "proposal_key": "proposal:current-qualification:function:29:storage-keyspace-key-digest",
+        "readback_receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/bd-command-0025.json",
+        "readback_stdout_sha256": "53bfb58be61b45b903c1f4a74901ec3ff68523a9acc3111da1f7e7e5d445c322",
+        "status": "open",
+        "issue_type": "task",
+        "parent": "vb-eirmk",
+        "title": "Qualify current storage keyspace, key construction, and digest function clusters",
+        "metadata": {
+          "master_requirement_ids": [
+            "function:29:3",
+            "function:29:6",
+            "function:29:8"
+          ],
+          "qualification_only": true
+        },
+        "typed_dependencies": [
+          {
+            "id": "vb-eirmk",
+            "dependency_type": "parent-child"
+          }
+        ]
+      },
+      {
+        "issue_id": "vb-eirmk.70",
+        "proposal_key": "qualify-v1min-version-compatibility-algebra",
+        "readback_receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/bd-command-0032.json",
+        "readback_stdout_sha256": "8d1b02c49d55fe0510d406cae6175de73262d82a2afb25a6fa04e91ada961a9c",
+        "status": "open",
+        "issue_type": "task",
+        "parent": "vb-eirmk",
+        "title": "Qualify V1-min version compatibility algebra",
+        "metadata": {
+          "master_requirement_ids": [
+            "77.17"
+          ],
+          "qualification_only": true
+        },
+        "typed_dependencies": [
+          {
+            "id": "vb-eirmk",
+            "dependency_type": "parent-child"
+          }
+        ]
+      },
+      {
+        "issue_id": "vb-eirmk.71",
+        "proposal_key": "qualify-v1min-capability-grant-lifecycle",
+        "readback_receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/bd-command-0039.json",
+        "readback_stdout_sha256": "d45cb2722a884940aac43836446f010bef6630c2507e081fda5d9f79fb43d932",
+        "status": "open",
+        "issue_type": "task",
+        "parent": "vb-eirmk",
+        "title": "Qualify V1-min capability grant lifecycle",
+        "metadata": {
+          "master_requirement_ids": [
+            "77.10"
+          ],
+          "qualification_only": true
+        },
+        "typed_dependencies": [
+          {
+            "id": "vb-eirmk",
+            "dependency_type": "parent-child"
+          }
+        ]
+      }
+    ],
+    "reuse_update_receipts": {
+      "vb-eirmk.24": {
+        "receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/reuse-24-update-receipt.json",
+        "receipt_sha256": "902db8259d4454df25cbf1f4bac2d451626a1df1b22a96cb72f97a9bdf6762e6",
+        "updated_at_response": "2026-11-10T22:59:59Z",
+        "approved_nested_business_fields": {
+          "description": "Qualify the exact current master row: `mio` Unix socket loop, required commands, frame fuzzing.\n\nExisting implementation owners to qualify: vb-juuw, vb-x16d, vb-row1\n\nExclusions: No presumed missing feature; No implementation rewrite; No historical owner closure/reopening; No profile/target/deferred scope expansion.\n\nThis is qualification and contract mapping; no feature is presumed missing. Route actual reproduced defects to existing owners before new implementation. Local5090/3090 author tests/repairs in isolated Git/JJ workspaces using Holzman Rust, Scott DDD, functional Rust and BDD; Sol reviews. No source commit/push or gate change authorized. Current source reference 1dbcbe96, refresh before execution.\n\nAdditional exact qualification scope: function:31:4 and master44.16. Map every one of the eleven command handlers independently; preserve the existing Unix socket loop, required-command and frame-fuzz clauses.",
+          "acceptance_criteria": "Read current source and existing contracts first; preserve foreign implementation ownership and historical statuses.\nEstablish a dedicated phase parent and map implementation plus behavioral test, fuzz and benchmark child roles where required; use existing owners, do not create empty implementation placeholders. Each primitive family retains separate children.\nMap every stated obligation to exact current production entry point, registered behavior check, existing implementation owner and evidence receipt; unknowns remain explicit.\nRun only scoped qualification checks in separately assigned isolated Git/JJ workspace; capture source pin, raw command/exit, independent CODE and TEST reviews. Canonical integrated moon ci remains the final gate owner.\nIf a baseline defect is reproduced, reuse/update the existing defect bead; create a bounded implementation bead only after proving no adequate existing owner. No duplicate frontend/replay/nested compiler implementation.\n\nFor each named handler in function:31:4 and master44.16, record the exact production entrypoint and registered check; assert the valid response/correlation and command-specific effect, and a contract-defined invalid case with exact response/error and no unauthorized state/journal mutation. The eleven handler names are: handle_submit_run, handle_submit_run_inline, handle_cancel_run, handle_inspect_run, handle_list_events, handle_answer_ask, handle_complete_action, handle_fail_action, handle_drain_trace, handle_health, handle_shutdown. Keep vb-eirmk.24.1 frame encode/decode distinct. Record current pin, raw receipts, and separate CODE and independent TEST dispositions.",
+          "metadata": {
+            "master_requirement_ids": [
+              "phase:30",
+              "function:31:4",
+              "master44.16"
+            ],
+            "owner_repair_proposal": "proposal:phase:30",
+            "qualification_only": true
+          },
+          "updated_at": "2026-11-10T22:59:59Z"
+        },
+        "post_readback_sha256": "11fe28e4d6f85d567c2af19850498e133fc63dc87eea8872a50fa9b45b412fd2",
+        "post_readback_identity": {
+          "id": "vb-eirmk.24",
+          "status": "open",
+          "issue_type": "task",
+          "title": "Qualify phase:30 Binary IPC",
+          "metadata": {
+            "master_requirement_ids": [
+              "phase:30",
+              "function:31:4",
+              "master44.16"
+            ],
+            "owner_repair_proposal": "proposal:phase:30",
+            "qualification_only": true
+          }
+        }
+      },
+      "vb-eirmk.53": {
+        "receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/reuse-53-update-receipt.json",
+        "receipt_sha256": "d2bd0ddf0d14a5166f7677e3b2e5bafdb1386cfae845dd1664a8db3cdd4d584d",
+        "updated_at_response": "2026-11-10T22:59:59Z",
+        "approved_nested_business_fields": {
+          "metadata": {
+            "master_requirement_ids": [
+              "phase:11",
+              "function:28:2"
+            ],
+            "qualification_only": true
+          },
+          "updated_at": "2026-11-10T22:59:59Z"
+        },
+        "post_readback_sha256": "5a77b5db4bd0a3e976c17b00c401deaaa0ddce683f957705539e52a7eca441b8",
+        "post_readback_identity": {
+          "id": "vb-eirmk.53",
+          "status": "open",
+          "issue_type": "task",
+          "title": "Qualify current slot compiler layout, accessors, constants, interning, and digests",
+          "metadata": {
+            "master_requirement_ids": [
+              "phase:11",
+              "function:28:2"
+            ],
+            "qualification_only": true
+          }
+        }
+      }
+    },
+    "ledger_token_patch_applied": false,
+    "ledger_patch_receipt_present": false,
+    "design_after_written": false
+  },
+  "design_precondition": {
+    "raw_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/design-before.raw",
+    "raw_sha256": "0af85ed146ed27fbe169a400ccd02d484f018db94f60c891d52052d17bbe2dd1",
+    "required_live_design_sha256": "0af85ed146ed27fbe169a400ccd02d484f018db94f60c891d52052d17bbe2dd1"
+  },
+  "gate_edges": {
+    "preflight_count": 133,
+    "preflight_typed_edges": [
+      {
+        "id": "vb-0253.8",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-0253.9",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-0jns7",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-0xm95",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-2pp9.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-3l40a",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-3ruqy",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-5o9eg",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-64mha",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-6hg.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-6rt.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-6rt.2",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-6rt.3",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-6rt.4",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-7r7jv",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-88a03",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-89j5n",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-8c9jq",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-8eocj.9.3.3",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-8eocj.9.3.3.4",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-8vknz",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-awwnz",
+        "dependency_type": "tracks"
+      },
+      {
+        "id": "vb-b09dm",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-b5f.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-b5f.2",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-bhb.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ceago",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-cvuau",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-cyz6d",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-d9ywf",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk",
+        "dependency_type": "parent-child"
+      },
+      {
+        "id": "vb-eirmk.10",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.11.6",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.11.7",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.11.8",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.13",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.14",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.15",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.15.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.16",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.17",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.18",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.19",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.20",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.21",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.22",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.23",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.24",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.24.2",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.25",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.26",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.27",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.28",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.29",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.30",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.31",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.32",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.33",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.34",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.35",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.36",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.37",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.38",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.39",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.4.8",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.40",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.41",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.42",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.43",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.44",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.45",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.46",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.47",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.48",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.49",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.50",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.51",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.52",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.53",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.54",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.55",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.56",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.57",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.58",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.59",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.60",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.61",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.62",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.63",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.64",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.65",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.66",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.67",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eyij7",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-fodzb",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-god2f",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-h5j05",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-hokkd",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-honk.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-idxsn",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ifn5b",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-itdfr",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ito.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-jfg9l",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-jhwde",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ju4.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-kg5dg",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-l5dzb",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-lf3ev",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-lwq0w",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ma41g",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-mli.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ny068",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-o6qcf.5",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-o6qcf.6",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-peksc",
+        "dependency_type": "tracks"
+      },
+      {
+        "id": "vb-qbub0",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-qfka3",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-rihha.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-rihha.3",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-rihha.4",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-rihha.5",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-rihha.6",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-sfhyj",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-t36e0",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-tzsfr.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-um4oi",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-vj0i9",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-xeass",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-xx331",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-yhk98",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-z28qg",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-z9el8",
+        "dependency_type": "blocks"
+      }
+    ],
+    "actual_post_create_count": 137,
+    "actual_post_create_typed_edges": [
+      {
+        "id": "vb-0253.8",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-0253.9",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-0jns7",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-0xm95",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-2pp9.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-3l40a",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-3ruqy",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-5o9eg",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-64mha",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-6hg.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-6rt.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-6rt.2",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-6rt.3",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-6rt.4",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-7r7jv",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-88a03",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-89j5n",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-8c9jq",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-8eocj.9.3.3",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-8eocj.9.3.3.4",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-8vknz",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-awwnz",
+        "dependency_type": "tracks"
+      },
+      {
+        "id": "vb-b09dm",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-b5f.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-b5f.2",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-bhb.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ceago",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-cvuau",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-cyz6d",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-d9ywf",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk",
+        "dependency_type": "parent-child"
+      },
+      {
+        "id": "vb-eirmk.10",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.11.6",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.11.7",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.11.8",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.13",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.14",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.15",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.15.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.16",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.17",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.18",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.19",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.20",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.21",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.22",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.23",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.24",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.24.2",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.25",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.26",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.27",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.28",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.29",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.30",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.31",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.32",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.33",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.34",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.35",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.36",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.37",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.38",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.39",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.4.8",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.40",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.41",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.42",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.43",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.44",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.45",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.46",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.47",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.48",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.49",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.50",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.51",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.52",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.53",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.54",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.55",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.56",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.57",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.58",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.59",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.60",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.61",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.62",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.63",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.64",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.65",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.66",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.67",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.68",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.69",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.70",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.71",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eyij7",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-fodzb",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-god2f",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-h5j05",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-hokkd",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-honk.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-idxsn",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ifn5b",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-itdfr",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ito.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-jfg9l",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-jhwde",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ju4.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-kg5dg",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-l5dzb",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-lf3ev",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-lwq0w",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ma41g",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-mli.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ny068",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-o6qcf.5",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-o6qcf.6",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-peksc",
+        "dependency_type": "tracks"
+      },
+      {
+        "id": "vb-qbub0",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-qfka3",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-rihha.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-rihha.3",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-rihha.4",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-rihha.5",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-rihha.6",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-sfhyj",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-t36e0",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-tzsfr.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-um4oi",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-vj0i9",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-xeass",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-xx331",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-yhk98",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-z28qg",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-z9el8",
+        "dependency_type": "blocks"
+      }
+    ],
+    "new_blocks_edges": [
+      {
+        "id": "vb-eirmk.68",
+        "dependency_type": "blocks",
+        "receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/dependency-receipt-4720496ff3ff.json",
+        "receipt_sha256": "72a78e4b454df03364e45dfc7c7739cdbb3f6bfd04067e1741301b13c2fa4722"
+      },
+      {
+        "id": "vb-eirmk.69",
+        "dependency_type": "blocks",
+        "receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/dependency-receipt-7855de5a5d78.json",
+        "receipt_sha256": "53f7cd306c1fccdca7912467be889d93de184517b3ee453ecb6bce0f0746f6d3"
+      },
+      {
+        "id": "vb-eirmk.70",
+        "dependency_type": "blocks",
+        "receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/dependency-receipt-f3f7cb79e58e.json",
+        "receipt_sha256": "2dee3d09d8d983f8d3b695973d9b45345b305ef439ab2e9d1c25e6c142e4852d"
+      },
+      {
+        "id": "vb-eirmk.71",
+        "dependency_type": "blocks",
+        "receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/dependency-receipt-ee206a4d7d38.json",
+        "receipt_sha256": "27b133b973827fc9878b5228b6dae2dc80fdbc80098d703a9dac24c3132259bc"
+      }
+    ],
+    "types": {
+      "blocks": 134,
+      "tracks": 2,
+      "parent-child": 1
+    },
+    "observed_receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/bd-command-0043.json",
+    "observed_receipt_sha256": "a6048d112d1471dc1458107c73f8603aef3f0ee5664c3ee43a1706b0b1271c55"
+  },
+  "resume_preconditions": {
+    "code_review_path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/remaining-owner-planning-code-review-v7.json",
+    "code_review_binding_field": "artifact_sha256",
+    "test_review_path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/core-build-20261110/evidence/remaining-owner-planning-test-review-v7.json",
+    "test_review_binding_field": "proposal_sha256",
+    "both_reviews_must_be_PASS_and_bind_sha256": "9cef921c994a6bd6bbf706d597b3a244580970eba3a1d14139c566f9e011c155",
+    "require_fresh_full_readbacks_before_resume_mutation": true,
+    "live_design_sha256_must_equal": "0af85ed146ed27fbe169a400ccd02d484f018db94f60c891d52052d17bbe2dd1",
+    "all_four_task_readbacks_must_match_recorded_ids_scope_parent_and_parent_child_edges": [
+      {
+        "issue_id": "vb-eirmk.68",
+        "proposal_key": "proposal:current-qualification:function:24:1",
+        "readback_receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/bd-command-0018.json",
+        "readback_stdout_sha256": "599932b87f660cc425a35deadc3f95faeb3841dfe9ff8e7181d277a2315df756",
+        "status": "open",
+        "issue_type": "task",
+        "parent": "vb-eirmk",
+        "title": "Qualify checked raw access for every numeric ID type",
+        "metadata": {
+          "master_requirement_ids": [
+            "function:24:1"
+          ],
+          "qualification_only": true
+        },
+        "typed_dependencies": [
+          {
+            "id": "vb-eirmk",
+            "dependency_type": "parent-child"
+          }
+        ]
+      },
+      {
+        "issue_id": "vb-eirmk.69",
+        "proposal_key": "proposal:current-qualification:function:29:storage-keyspace-key-digest",
+        "readback_receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/bd-command-0025.json",
+        "readback_stdout_sha256": "53bfb58be61b45b903c1f4a74901ec3ff68523a9acc3111da1f7e7e5d445c322",
+        "status": "open",
+        "issue_type": "task",
+        "parent": "vb-eirmk",
+        "title": "Qualify current storage keyspace, key construction, and digest function clusters",
+        "metadata": {
+          "master_requirement_ids": [
+            "function:29:3",
+            "function:29:6",
+            "function:29:8"
+          ],
+          "qualification_only": true
+        },
+        "typed_dependencies": [
+          {
+            "id": "vb-eirmk",
+            "dependency_type": "parent-child"
+          }
+        ]
+      },
+      {
+        "issue_id": "vb-eirmk.70",
+        "proposal_key": "qualify-v1min-version-compatibility-algebra",
+        "readback_receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/bd-command-0032.json",
+        "readback_stdout_sha256": "8d1b02c49d55fe0510d406cae6175de73262d82a2afb25a6fa04e91ada961a9c",
+        "status": "open",
+        "issue_type": "task",
+        "parent": "vb-eirmk",
+        "title": "Qualify V1-min version compatibility algebra",
+        "metadata": {
+          "master_requirement_ids": [
+            "77.17"
+          ],
+          "qualification_only": true
+        },
+        "typed_dependencies": [
+          {
+            "id": "vb-eirmk",
+            "dependency_type": "parent-child"
+          }
+        ]
+      },
+      {
+        "issue_id": "vb-eirmk.71",
+        "proposal_key": "qualify-v1min-capability-grant-lifecycle",
+        "readback_receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/bd-command-0039.json",
+        "readback_stdout_sha256": "d45cb2722a884940aac43836446f010bef6630c2507e081fda5d9f79fb43d932",
+        "status": "open",
+        "issue_type": "task",
+        "parent": "vb-eirmk",
+        "title": "Qualify V1-min capability grant lifecycle",
+        "metadata": {
+          "master_requirement_ids": [
+            "77.10"
+          ],
+          "qualification_only": true
+        },
+        "typed_dependencies": [
+          {
+            "id": "vb-eirmk",
+            "dependency_type": "parent-child"
+          }
+        ]
+      }
+    ],
+    "all_137_gate_edges_must_match_exact_id_type_set": [
+      {
+        "id": "vb-0253.8",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-0253.9",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-0jns7",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-0xm95",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-2pp9.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-3l40a",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-3ruqy",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-5o9eg",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-64mha",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-6hg.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-6rt.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-6rt.2",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-6rt.3",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-6rt.4",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-7r7jv",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-88a03",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-89j5n",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-8c9jq",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-8eocj.9.3.3",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-8eocj.9.3.3.4",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-8vknz",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-awwnz",
+        "dependency_type": "tracks"
+      },
+      {
+        "id": "vb-b09dm",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-b5f.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-b5f.2",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-bhb.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ceago",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-cvuau",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-cyz6d",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-d9ywf",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk",
+        "dependency_type": "parent-child"
+      },
+      {
+        "id": "vb-eirmk.10",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.11.6",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.11.7",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.11.8",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.13",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.14",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.15",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.15.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.16",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.17",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.18",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.19",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.20",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.21",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.22",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.23",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.24",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.24.2",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.25",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.26",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.27",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.28",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.29",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.30",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.31",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.32",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.33",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.34",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.35",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.36",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.37",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.38",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.39",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.4.8",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.40",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.41",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.42",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.43",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.44",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.45",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.46",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.47",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.48",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.49",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.50",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.51",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.52",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.53",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.54",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.55",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.56",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.57",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.58",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.59",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.60",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.61",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.62",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.63",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.64",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.65",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.66",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.67",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.68",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.69",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.70",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eirmk.71",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eyij7",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-fodzb",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-god2f",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-h5j05",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-hokkd",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-honk.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-idxsn",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ifn5b",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-itdfr",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ito.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-jfg9l",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-jhwde",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ju4.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-kg5dg",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-l5dzb",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-lf3ev",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-lwq0w",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ma41g",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-mli.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ny068",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-o6qcf.5",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-o6qcf.6",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-peksc",
+        "dependency_type": "tracks"
+      },
+      {
+        "id": "vb-qbub0",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-qfka3",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-rihha.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-rihha.3",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-rihha.4",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-rihha.5",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-rihha.6",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-sfhyj",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-t36e0",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-tzsfr.1",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-um4oi",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-vj0i9",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-xeass",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-xx331",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-yhk98",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-z28qg",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-z9el8",
+        "dependency_type": "blocks"
+      }
+    ],
+    ".24_and_.53_readbacks_must_match_update_receipts_and_have_no_other_field_changes": {
+      "vb-eirmk.24": {
+        "receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/reuse-24-update-receipt.json",
+        "receipt_sha256": "902db8259d4454df25cbf1f4bac2d451626a1df1b22a96cb72f97a9bdf6762e6",
+        "updated_at_response": "2026-11-10T22:59:59Z",
+        "approved_nested_business_fields": {
+          "description": "Qualify the exact current master row: `mio` Unix socket loop, required commands, frame fuzzing.\n\nExisting implementation owners to qualify: vb-juuw, vb-x16d, vb-row1\n\nExclusions: No presumed missing feature; No implementation rewrite; No historical owner closure/reopening; No profile/target/deferred scope expansion.\n\nThis is qualification and contract mapping; no feature is presumed missing. Route actual reproduced defects to existing owners before new implementation. Local5090/3090 author tests/repairs in isolated Git/JJ workspaces using Holzman Rust, Scott DDD, functional Rust and BDD; Sol reviews. No source commit/push or gate change authorized. Current source reference 1dbcbe96, refresh before execution.\n\nAdditional exact qualification scope: function:31:4 and master44.16. Map every one of the eleven command handlers independently; preserve the existing Unix socket loop, required-command and frame-fuzz clauses.",
+          "acceptance_criteria": "Read current source and existing contracts first; preserve foreign implementation ownership and historical statuses.\nEstablish a dedicated phase parent and map implementation plus behavioral test, fuzz and benchmark child roles where required; use existing owners, do not create empty implementation placeholders. Each primitive family retains separate children.\nMap every stated obligation to exact current production entry point, registered behavior check, existing implementation owner and evidence receipt; unknowns remain explicit.\nRun only scoped qualification checks in separately assigned isolated Git/JJ workspace; capture source pin, raw command/exit, independent CODE and TEST reviews. Canonical integrated moon ci remains the final gate owner.\nIf a baseline defect is reproduced, reuse/update the existing defect bead; create a bounded implementation bead only after proving no adequate existing owner. No duplicate frontend/replay/nested compiler implementation.\n\nFor each named handler in function:31:4 and master44.16, record the exact production entrypoint and registered check; assert the valid response/correlation and command-specific effect, and a contract-defined invalid case with exact response/error and no unauthorized state/journal mutation. The eleven handler names are: handle_submit_run, handle_submit_run_inline, handle_cancel_run, handle_inspect_run, handle_list_events, handle_answer_ask, handle_complete_action, handle_fail_action, handle_drain_trace, handle_health, handle_shutdown. Keep vb-eirmk.24.1 frame encode/decode distinct. Record current pin, raw receipts, and separate CODE and independent TEST dispositions.",
+          "metadata": {
+            "master_requirement_ids": [
+              "phase:30",
+              "function:31:4",
+              "master44.16"
+            ],
+            "owner_repair_proposal": "proposal:phase:30",
+            "qualification_only": true
+          },
+          "updated_at": "2026-11-10T22:59:59Z"
+        },
+        "post_readback_sha256": "11fe28e4d6f85d567c2af19850498e133fc63dc87eea8872a50fa9b45b412fd2",
+        "post_readback_identity": {
+          "id": "vb-eirmk.24",
+          "status": "open",
+          "issue_type": "task",
+          "title": "Qualify phase:30 Binary IPC",
+          "metadata": {
+            "master_requirement_ids": [
+              "phase:30",
+              "function:31:4",
+              "master44.16"
+            ],
+            "owner_repair_proposal": "proposal:phase:30",
+            "qualification_only": true
+          }
+        }
+      },
+      "vb-eirmk.53": {
+        "receipt_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-creation-v5/reuse-53-update-receipt.json",
+        "receipt_sha256": "d2bd0ddf0d14a5166f7677e3b2e5bafdb1386cfae845dd1664a8db3cdd4d584d",
+        "updated_at_response": "2026-11-10T22:59:59Z",
+        "approved_nested_business_fields": {
+          "metadata": {
+            "master_requirement_ids": [
+              "phase:11",
+              "function:28:2"
+            ],
+            "qualification_only": true
+          },
+          "updated_at": "2026-11-10T22:59:59Z"
+        },
+        "post_readback_sha256": "5a77b5db4bd0a3e976c17b00c401deaaa0ddce683f957705539e52a7eca441b8",
+        "post_readback_identity": {
+          "id": "vb-eirmk.53",
+          "status": "open",
+          "issue_type": "task",
+          "title": "Qualify current slot compiler layout, accessors, constants, interning, and digests",
+          "metadata": {
+            "master_requirement_ids": [
+              "phase:11",
+              "function:28:2"
+            ],
+            "qualification_only": true
+          }
+        }
+      }
+    },
+    "fresh_historical_owner_ids": [
+      "vb-b5f",
+      "vb-f8lko",
+      "vb-hk1j8",
+      "vb-ito",
+      "vb-juuw",
+      "vb-o6qcf",
+      "vb-s6vj",
+      "vb-wymp"
+    ],
+    "all_eight_historical_owners_must_read_CLOSED_before_and_after": true,
+    "historical_readback_reference_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-v5-all-historical-readbacks.json",
+    "historical_readback_reference_sha256": "d131966d8b3db9f78aa1833ec6873bebcdb728cb7a657370c15b0a23157f1fdb",
+    "historical_expected_after_algorithm": {
+      "start_from_deep_copy_of_each_fresh_pre_resume_historical_readback": true,
+      "replace_only_nested_child_business_fields_from_exact_update_responses": {
+        "vb-eirmk.24": [
+          "description",
+          "acceptance_criteria",
+          "metadata",
+          "updated_at"
+        ],
+        "vb-eirmk.53": [
+          "metadata",
+          "updated_at"
+        ]
+      },
+      "preserve_nested_dependency_type_and_all_other_nested_fields": true,
+      "preserve_historical_issue_own_fields": true,
+      "preserve_all_typed_dependency_ids_and_order": true,
+      "compare_complete_expected_after_object": true,
+      "broad_field_exclusions_forbidden": true
+    }
+  },
+  "resume_scope": {
+    "only_permitted_action": "apply exact 53 scalar tokens to vb-eirmk.12 and perform final readbacks",
+    "create_or_update_task_issues": false,
+    "repeat_vb_eirmk_24_or_53_update": false,
+    "patch_rows": 9,
+    "patch_checks": 13,
+    "patch_tokens": 53,
+    "row_field_allowlist": [
+      "canonical_qualification_owner_id",
+      "current_owner_status",
+      "resolved_from_proposal_key"
+    ],
+    "check_field_allowlist": [
+      "accountable_bead_id",
+      "proposal_key"
+    ],
+    "exact_patch_plan": [
+      {
+        "requirement_id": "function:24:1",
+        "proposal_key": "proposal:current-qualification:function:24:1",
+        "actual_owner_id": "vb-eirmk.68",
+        "row_fields": {
+          "canonical_qualification_owner_id": "vb-eirmk.68",
+          "current_owner_status": "open",
+          "resolved_from_proposal_key": "proposal:current-qualification:function:24:1"
+        },
+        "check_fields": [
+          {
+            "check_id": "owner-scope:function:24:1",
+            "accountable_bead_id": "vb-eirmk.68",
+            "proposal_key": "proposal:current-qualification:function:24:1"
+          },
+          {
+            "check_id": "qualify:function:24:1",
+            "accountable_bead_id": "vb-eirmk.68",
+            "proposal_key": "proposal:current-qualification:function:24:1"
+          }
+        ]
+      },
+      {
+        "requirement_id": "function:28:2",
+        "proposal_key": "proposal:current-qualification:phase:11",
+        "actual_owner_id": "vb-eirmk.53",
+        "row_fields": {
+          "canonical_qualification_owner_id": "vb-eirmk.53",
+          "current_owner_status": "open",
+          "resolved_from_proposal_key": "proposal:current-qualification:phase:11"
+        },
+        "check_fields": [
+          {
+            "check_id": "qualify:function:28:2",
+            "accountable_bead_id": "vb-eirmk.53",
+            "proposal_key": "proposal:current-qualification:phase:11"
+          }
+        ]
+      },
+      {
+        "requirement_id": "function:29:3",
+        "proposal_key": "proposal:current-qualification:function:29:storage-keyspace-key-digest",
+        "actual_owner_id": "vb-eirmk.69",
+        "row_fields": {
+          "canonical_qualification_owner_id": "vb-eirmk.69",
+          "current_owner_status": "open",
+          "resolved_from_proposal_key": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+        },
+        "check_fields": [
+          {
+            "check_id": "owner-scope:function:29:3",
+            "accountable_bead_id": "vb-eirmk.69",
+            "proposal_key": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+          },
+          {
+            "check_id": "qualify:function:29:3",
+            "accountable_bead_id": "vb-eirmk.69",
+            "proposal_key": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+          }
+        ]
+      },
+      {
+        "requirement_id": "function:29:6",
+        "proposal_key": "proposal:current-qualification:function:29:storage-keyspace-key-digest",
+        "actual_owner_id": "vb-eirmk.69",
+        "row_fields": {
+          "canonical_qualification_owner_id": "vb-eirmk.69",
+          "current_owner_status": "open",
+          "resolved_from_proposal_key": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+        },
+        "check_fields": [
+          {
+            "check_id": "owner-scope:function:29:6",
+            "accountable_bead_id": "vb-eirmk.69",
+            "proposal_key": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+          },
+          {
+            "check_id": "qualify:function:29:6",
+            "accountable_bead_id": "vb-eirmk.69",
+            "proposal_key": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+          }
+        ]
+      },
+      {
+        "requirement_id": "function:29:8",
+        "proposal_key": "proposal:current-qualification:function:29:storage-keyspace-key-digest",
+        "actual_owner_id": "vb-eirmk.69",
+        "row_fields": {
+          "canonical_qualification_owner_id": "vb-eirmk.69",
+          "current_owner_status": "open",
+          "resolved_from_proposal_key": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+        },
+        "check_fields": [
+          {
+            "check_id": "qualify:function:29:8",
+            "accountable_bead_id": "vb-eirmk.69",
+            "proposal_key": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+          }
+        ]
+      },
+      {
+        "requirement_id": "function:31:4",
+        "proposal_key": "proposal:reuse-vb-eirmk.24-for-function:31:4-and-master44.16",
+        "actual_owner_id": "vb-eirmk.24",
+        "row_fields": {
+          "canonical_qualification_owner_id": "vb-eirmk.24",
+          "current_owner_status": "open",
+          "resolved_from_proposal_key": "proposal:reuse-vb-eirmk.24-for-function:31:4-and-master44.16"
+        },
+        "check_fields": [
+          {
+            "check_id": "qualify:function:31:4",
+            "accountable_bead_id": "vb-eirmk.24",
+            "proposal_key": "proposal:reuse-vb-eirmk.24-for-function:31:4-and-master44.16"
+          }
+        ]
+      },
+      {
+        "requirement_id": "77.17",
+        "proposal_key": "qualify-v1min-version-compatibility-algebra",
+        "actual_owner_id": "vb-eirmk.70",
+        "row_fields": {
+          "canonical_qualification_owner_id": "vb-eirmk.70",
+          "current_owner_status": "open",
+          "resolved_from_proposal_key": "qualify-v1min-version-compatibility-algebra"
+        },
+        "check_fields": [
+          {
+            "check_id": "qualify:77.17",
+            "accountable_bead_id": "vb-eirmk.70",
+            "proposal_key": "qualify-v1min-version-compatibility-algebra"
+          }
+        ]
+      },
+      {
+        "requirement_id": "77.10",
+        "proposal_key": "qualify-v1min-capability-grant-lifecycle",
+        "actual_owner_id": "vb-eirmk.71",
+        "row_fields": {
+          "canonical_qualification_owner_id": "vb-eirmk.71",
+          "current_owner_status": "open",
+          "resolved_from_proposal_key": "qualify-v1min-capability-grant-lifecycle"
+        },
+        "check_fields": [
+          {
+            "check_id": "owner-scope:77.10",
+            "accountable_bead_id": "vb-eirmk.71",
+            "proposal_key": "qualify-v1min-capability-grant-lifecycle"
+          },
+          {
+            "check_id": "qualify:77.10",
+            "accountable_bead_id": "vb-eirmk.71",
+            "proposal_key": "qualify-v1min-capability-grant-lifecycle"
+          }
+        ]
+      },
+      {
+        "requirement_id": "master44.16",
+        "proposal_key": "proposal:reuse-vb-eirmk.24-for-function:31:4-and-master44.16",
+        "actual_owner_id": "vb-eirmk.24",
+        "row_fields": {
+          "canonical_qualification_owner_id": "vb-eirmk.24",
+          "current_owner_status": "open",
+          "resolved_from_proposal_key": "proposal:reuse-vb-eirmk.24-for-function:31:4-and-master44.16"
+        },
+        "check_fields": [
+          {
+            "check_id": "qualify:master44.16",
+            "accountable_bead_id": "vb-eirmk.24",
+            "proposal_key": "proposal:reuse-vb-eirmk.24-for-function:31:4-and-master44.16"
+          }
+        ]
+      }
+    ],
+    "preserve_all_190_completion_verified_false": true,
+    "preserve_all_190_implementation_missing_null": true,
+    "stop_without_retry_on_any_precondition_or_postcondition_mismatch": true
+  }
+}

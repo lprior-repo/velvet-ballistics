@@ -85,8 +85,37 @@ fn owned_timer_fired_before_deadline_preserves_all_run_authority() -> Result<(),
     Ok(())
 }
 
-#[test]
-fn idle_tick_resolves_only_due_owned_timer_once() -> Result<(), String> {
+struct IdleDueFixture {
+    shard: Shard,
+    journal: std::sync::Arc<crate::journal::VolatileRuntimeJournal>,
+    future_run: RunId,
+    due_run: RunId,
+    future_deadline: std::time::Instant,
+    future_timer: crate::shard::types::PendingTimer,
+    future_state: crate::shard::RunState,
+    future_sequence: Option<vb_storage::EventSeq>,
+}
+
+fn schedule_due_wait(
+    shard: &mut Shard,
+    due_run: RunId,
+) -> Result<crate::shard::types::PendingTimer, String> {
+    timer_due_regression_submit_wait(shard, due_run)?;
+    timer_due_regression_set_deadline(shard, due_run, std::time::Instant::now())
+}
+
+fn capture_future_state(
+    shard: &Shard,
+    future_run: RunId,
+) -> Result<(crate::shard::RunState, Option<vb_storage::EventSeq>), String> {
+    let state = shard
+        .run_state_get(future_run)
+        .ok_or("future run must exist")?
+        .clone();
+    Ok((state, shard.journal_seq_get(future_run)))
+}
+
+fn setup_idle_due_fixture() -> Result<IdleDueFixture, String> {
     let future_run = RunId::new(84_002);
     let due_run = RunId::new(84_003);
     let (mut shard, journal) = timer_due_regression_fixture(future_run)?;
@@ -94,27 +123,49 @@ fn idle_tick_resolves_only_due_owned_timer_once() -> Result<(), String> {
         .checked_add(std::time::Duration::from_secs(86_400))
         .ok_or("future Instant must be representable")?;
     let future_timer = timer_due_regression_set_deadline(&mut shard, future_run, future_deadline)?;
-    timer_due_regression_submit_wait(&mut shard, due_run)?;
-    let due_timer =
-        timer_due_regression_set_deadline(&mut shard, due_run, std::time::Instant::now())?;
-    let future_before = shard
-        .run_state_get(future_run)
-        .ok_or("future run must exist")?
-        .clone();
-    let future_sequence = shard.journal_seq_get(future_run);
+    let due_timer = schedule_due_wait(&mut shard, due_run)?;
+    let (future_state, future_sequence) = capture_future_state(&shard, future_run)?;
     let unowned = shard.pending_timer_insert(RunId::new(84_004), due_timer);
     assert_eq!(unowned, Err(RuntimeError::RunNotFound));
     assert_eq!(shard.command_queue_len(), 0);
     assert_eq!(shard.pending_timer_count(), 2);
-    assert_eq!(shard.tick(), Ok(true));
+    Ok(IdleDueFixture {
+        shard,
+        journal,
+        future_run,
+        due_run,
+        future_deadline,
+        future_timer,
+        future_state,
+        future_sequence,
+    })
+}
+
+fn assert_due_run_finished(shard: &Shard, due_run: RunId) {
     assert!(shard.terminal_runs_contains(due_run));
     assert!(!shard.run_state_contains(due_run));
     assert_eq!(shard.pending_timer_get(due_run), None);
-    assert_eq!(shard.run_state_get(future_run), Some(&future_before));
+}
+
+fn assert_future_timer_retained(
+    shard: &Shard,
+    future_run: RunId,
+    future_before: &crate::shard::RunState,
+    future_timer: crate::shard::types::PendingTimer,
+    future_sequence: Option<vb_storage::EventSeq>,
+    future_deadline: std::time::Instant,
+) {
+    assert_eq!(shard.run_state_get(future_run), Some(future_before));
     assert_eq!(shard.pending_timer_get(future_run), Some(future_timer));
     assert_eq!(shard.journal_seq_get(future_run), future_sequence);
     assert_eq!(shard.pending_timer_count(), 1);
-    let after = journal.snapshot().map_err(|error| format!("{error:?}"))?;
+    assert_eq!(
+        shard.run_aggregate.pending_timer_next_deadline(),
+        Some(future_deadline)
+    );
+}
+
+fn assert_due_resolution_once(after: &[RuntimeJournalEvent], due_run: RunId, future_run: RunId) {
     assert_eq!(
         after
             .iter()
@@ -129,11 +180,55 @@ fn idle_tick_resolves_only_due_owned_timer_once() -> Result<(), String> {
         event,
         RuntimeJournalEvent::WaitResolved { run, .. } if *run == future_run
     )));
+}
+
+fn assert_second_idle_tick_unchanged(
+    shard: &mut Shard,
+    journal: &std::sync::Arc<crate::journal::VolatileRuntimeJournal>,
+    after: Vec<RuntimeJournalEvent>,
+) -> Result<(), String> {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         journal.snapshot().map_err(|error| format!("{error:?}"))?,
         after
     );
+    Ok(())
+}
+
+fn assert_due_resolution_then_idle_tick(
+    shard: &mut Shard,
+    journal: &std::sync::Arc<crate::journal::VolatileRuntimeJournal>,
+    due_run: RunId,
+    future_run: RunId,
+) -> Result<(), String> {
+    let after = journal.snapshot().map_err(|error| format!("{error:?}"))?;
+    assert_due_resolution_once(&after, due_run, future_run);
+    assert_second_idle_tick_unchanged(shard, journal, after)
+}
+
+#[test]
+fn idle_tick_resolves_only_due_owned_timer_once() -> Result<(), String> {
+    let IdleDueFixture {
+        mut shard,
+        journal,
+        future_run,
+        due_run,
+        future_deadline,
+        future_timer,
+        future_state: future_before,
+        future_sequence,
+    } = setup_idle_due_fixture()?;
+    assert_eq!(shard.tick(), Ok(true));
+    assert_due_run_finished(&shard, due_run);
+    assert_future_timer_retained(
+        &shard,
+        future_run,
+        &future_before,
+        future_timer,
+        future_sequence,
+        future_deadline,
+    );
+    assert_due_resolution_then_idle_tick(&mut shard, &journal, due_run, future_run)?;
     assert_eq!(shard.pending_timer_get(future_run), Some(future_timer));
     assert_eq!(shard.run_state_get(future_run), Some(&future_before));
     Ok(())

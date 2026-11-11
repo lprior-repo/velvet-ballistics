@@ -1,0 +1,1106 @@
+{
+  "verdict": "PASS",
+  "review_kind": "Independent postapply TEST/control receipt audit",
+  "proposal_sha256": "fb421d0eaef2f674f990d19c8ebf6cea6ed3d890b5412d9f19c5b1f9789f468f",
+  "executor_sha256": "8c508a85448145b3273cabc4a0e301d8d05295771b7e5a6b5685f440d3f91817",
+  "v7_proposal_sha256": "9cef921c994a6bd6bbf706d597b3a244580970eba3a1d14139c566f9e011c155",
+  "design_before_sha256": "0af85ed146ed27fbe169a400ccd02d484f018db94f60c891d52052d17bbe2dd1",
+  "design_after_sha256": "c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+  "roots_verified": {
+    "git": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+    "jj": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol"
+  },
+  "findings": [],
+  "execution_receipt": {
+    "exit": 0,
+    "stdout": {
+      "patched_rows": 9,
+      "patched_checks": 13,
+      "changed_scalar_tokens": 53,
+      "full_plan_accepted": false
+    },
+    "command_count": 40,
+    "read_only_commands": 39,
+    "DB_updates": 1,
+    "only_update_receipt": "bd-command-0023.json",
+    "only_update_args": [
+      "update",
+      "vb-eirmk.12",
+      "--design-file",
+      "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/design-after.raw"
+    ],
+    "all_exits_zero": true,
+    "all_stderr_empty": true,
+    "no_auto_backup_warning_observed": true
+  },
+  "review_bindings": {
+    "preflight_exact_contract_executor_V7_hashes": true,
+    "original_V7_review_receipts_exact": true,
+    "both_resume_review_records_bind_exact_contract_executor": true,
+    "own_TEST_receipt_hash_matches": true,
+    "other_CODE_reasoning_read": false
+  },
+  "raw_ledger_audit": {
+    "scalar_changes": 53,
+    "row_scalar_paths": 27,
+    "check_scalar_paths": 26,
+    "rows": 9,
+    "checks": 13,
+    "unmodified_rows": 181,
+    "full_expected_row_locations": 12,
+    "all190_completion_false_missing_null_before_after": true,
+    "semantic_changed_paths_equal_approved_targets": true,
+    "independent_byte_splice_equals_actual_after": true,
+    "all_unrelated_bytes_unchanged": true,
+    "method": "Full structural JSON diff accepts only enumerated scalar type/value changes, including authorized null-to-string proposal fields. Independently tokenize original raw JSON into byte spans and substitute only V7/actual-ID-derived 53 approved values; entire reconstructed buffer equals actual after bytes.",
+    "row_owner_map": [
+      {
+        "requirement_id": "function:24:1",
+        "actual_owner_id": "vb-eirmk.68",
+        "check_ids": [
+          "qualify:function:24:1",
+          "owner-scope:function:24:1"
+        ]
+      },
+      {
+        "requirement_id": "function:28:2",
+        "actual_owner_id": "vb-eirmk.53",
+        "check_ids": [
+          "qualify:function:28:2"
+        ]
+      },
+      {
+        "requirement_id": "function:29:3",
+        "actual_owner_id": "vb-eirmk.69",
+        "check_ids": [
+          "qualify:function:29:3",
+          "owner-scope:function:29:3"
+        ]
+      },
+      {
+        "requirement_id": "function:29:6",
+        "actual_owner_id": "vb-eirmk.69",
+        "check_ids": [
+          "qualify:function:29:6",
+          "owner-scope:function:29:6"
+        ]
+      },
+      {
+        "requirement_id": "function:29:8",
+        "actual_owner_id": "vb-eirmk.69",
+        "check_ids": [
+          "qualify:function:29:8"
+        ]
+      },
+      {
+        "requirement_id": "function:31:4",
+        "actual_owner_id": "vb-eirmk.24",
+        "check_ids": [
+          "qualify:function:31:4"
+        ]
+      },
+      {
+        "requirement_id": "77.17",
+        "actual_owner_id": "vb-eirmk.70",
+        "check_ids": [
+          "qualify:77.17"
+        ]
+      },
+      {
+        "requirement_id": "77.10",
+        "actual_owner_id": "vb-eirmk.71",
+        "check_ids": [
+          "qualify:77.10",
+          "owner-scope:77.10"
+        ]
+      },
+      {
+        "requirement_id": "master44.16",
+        "actual_owner_id": "vb-eirmk.24",
+        "check_ids": [
+          "qualify:master44.16"
+        ]
+      }
+    ],
+    "issue12_changed_keys": [
+      "design",
+      "updated_at"
+    ],
+    "updated_at_matches_actual_update_response": true,
+    "raw_design_matches_update_and_fresh_final_readbacks": true,
+    "changes": [
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          57,
+          "canonical_qualification_owner_id"
+        ],
+        "before": "vb-b5f",
+        "after": "vb-eirmk.68"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          57,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "before": "vb-b5f",
+        "after": "vb-eirmk.68"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          57,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:current-qualification:function:24:1"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          57,
+          "unresolved_checks",
+          1,
+          "accountable_bead_id"
+        ],
+        "before": "vb-b5f",
+        "after": "vb-eirmk.68"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          57,
+          "unresolved_checks",
+          1,
+          "proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:current-qualification:function:24:1"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          57,
+          "resolved_from_proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:current-qualification:function:24:1"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          57,
+          "current_owner_status"
+        ],
+        "before": "closed",
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          80,
+          "canonical_qualification_owner_id"
+        ],
+        "before": "vb-ito",
+        "after": "vb-eirmk.53"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          80,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "before": "vb-ito",
+        "after": "vb-eirmk.53"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          80,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:current-qualification:phase:11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          80,
+          "resolved_from_proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:current-qualification:phase:11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          80,
+          "current_owner_status"
+        ],
+        "before": "closed",
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          87,
+          "canonical_qualification_owner_id"
+        ],
+        "before": "vb-o6qcf",
+        "after": "vb-eirmk.69"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          87,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "before": "vb-o6qcf",
+        "after": "vb-eirmk.69"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          87,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          87,
+          "unresolved_checks",
+          1,
+          "accountable_bead_id"
+        ],
+        "before": "vb-o6qcf",
+        "after": "vb-eirmk.69"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          87,
+          "unresolved_checks",
+          1,
+          "proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          87,
+          "resolved_from_proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          87,
+          "current_owner_status"
+        ],
+        "before": "closed",
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          90,
+          "canonical_qualification_owner_id"
+        ],
+        "before": "vb-s6vj",
+        "after": "vb-eirmk.69"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          90,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "before": "vb-s6vj",
+        "after": "vb-eirmk.69"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          90,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          90,
+          "unresolved_checks",
+          1,
+          "accountable_bead_id"
+        ],
+        "before": "vb-s6vj",
+        "after": "vb-eirmk.69"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          90,
+          "unresolved_checks",
+          1,
+          "proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          90,
+          "resolved_from_proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          90,
+          "current_owner_status"
+        ],
+        "before": "closed",
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          92,
+          "canonical_qualification_owner_id"
+        ],
+        "before": "vb-wymp",
+        "after": "vb-eirmk.69"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          92,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "before": "vb-wymp",
+        "after": "vb-eirmk.69"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          92,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          92,
+          "resolved_from_proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          92,
+          "current_owner_status"
+        ],
+        "before": "closed",
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          105,
+          "canonical_qualification_owner_id"
+        ],
+        "before": "vb-juuw",
+        "after": "vb-eirmk.24"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          105,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "before": "vb-juuw",
+        "after": "vb-eirmk.24"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          105,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:reuse-vb-eirmk.24-for-function:31:4-and-master44.16"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          105,
+          "resolved_from_proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:reuse-vb-eirmk.24-for-function:31:4-and-master44.16"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          105,
+          "current_owner_status"
+        ],
+        "before": "closed",
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          152,
+          "canonical_qualification_owner_id"
+        ],
+        "before": "vb-juuw",
+        "after": "vb-eirmk.24"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          152,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "before": "vb-juuw",
+        "after": "vb-eirmk.24"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          152,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:reuse-vb-eirmk.24-for-function:31:4-and-master44.16"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          152,
+          "resolved_from_proposal_key"
+        ],
+        "before": null,
+        "after": "proposal:reuse-vb-eirmk.24-for-function:31:4-and-master44.16"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          152,
+          "current_owner_status"
+        ],
+        "before": "closed",
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          179,
+          "canonical_qualification_owner_id"
+        ],
+        "before": "vb-hk1j8",
+        "after": "vb-eirmk.71"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          179,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "before": "vb-hk1j8",
+        "after": "vb-eirmk.71"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          179,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "before": null,
+        "after": "qualify-v1min-capability-grant-lifecycle"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          179,
+          "unresolved_checks",
+          1,
+          "accountable_bead_id"
+        ],
+        "before": "vb-hk1j8",
+        "after": "vb-eirmk.71"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          179,
+          "unresolved_checks",
+          1,
+          "proposal_key"
+        ],
+        "before": null,
+        "after": "qualify-v1min-capability-grant-lifecycle"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          179,
+          "resolved_from_proposal_key"
+        ],
+        "before": null,
+        "after": "qualify-v1min-capability-grant-lifecycle"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          179,
+          "current_owner_status"
+        ],
+        "before": "closed",
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          185,
+          "canonical_qualification_owner_id"
+        ],
+        "before": "vb-f8lko",
+        "after": "vb-eirmk.70"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          185,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "before": "vb-f8lko",
+        "after": "vb-eirmk.70"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          185,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "before": null,
+        "after": "qualify-v1min-version-compatibility-algebra"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          185,
+          "resolved_from_proposal_key"
+        ],
+        "before": null,
+        "after": "qualify-v1min-version-compatibility-algebra"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          185,
+          "current_owner_status"
+        ],
+        "before": "closed",
+        "after": "open"
+      }
+    ]
+  },
+  "created_tasks_reused_without_creation": [
+    {
+      "id": "vb-eirmk.68",
+      "full_V7_payload_verified": true,
+      "full_resume_before_after_equal": true,
+      "original_hash_bound_readback_valid": true,
+      "typed_parent_edge_exact": true
+    },
+    {
+      "id": "vb-eirmk.69",
+      "full_V7_payload_verified": true,
+      "full_resume_before_after_equal": true,
+      "original_hash_bound_readback_valid": true,
+      "typed_parent_edge_exact": true
+    },
+    {
+      "id": "vb-eirmk.70",
+      "full_V7_payload_verified": true,
+      "full_resume_before_after_equal": true,
+      "original_hash_bound_readback_valid": true,
+      "typed_parent_edge_exact": true
+    },
+    {
+      "id": "vb-eirmk.71",
+      "full_V7_payload_verified": true,
+      "full_resume_before_after_equal": true,
+      "original_hash_bound_readback_valid": true,
+      "typed_parent_edge_exact": true
+    }
+  ],
+  "existing_reuse_readbacks_unchanged": [
+    {
+      "id": "vb-eirmk.24",
+      "original_receipt_sha256": "902db8259d4454df25cbf1f4bac2d451626a1df1b22a96cb72f97a9bdf6762e6",
+      "full_readback_equals_original_approved_post": true
+    },
+    {
+      "id": "vb-eirmk.53",
+      "original_receipt_sha256": "d2bd0ddf0d14a5166f7677e3b2e5bafdb1386cfae845dd1664a8db3cdd4d584d",
+      "full_readback_equals_original_approved_post": true
+    }
+  ],
+  "graph": {
+    "gate_receipts": [
+      {
+        "receipt": 12,
+        "edges": 137,
+        "types": {
+          "blocks": 134,
+          "tracks": 2,
+          "parent-child": 1
+        }
+      },
+      {
+        "receipt": 25,
+        "edges": 137,
+        "types": {
+          "blocks": 134,
+          "tracks": 2,
+          "parent-child": 1
+        }
+      }
+    ],
+    "named_ID_type_set_exact_before_after": true,
+    "cycle_receipts_empty": [
+      13,
+      26
+    ],
+    "parent_child_edges_exact": true,
+    "edge_write_calls": 0
+  },
+  "historical_closed_owners": [
+    {
+      "id": "vb-b5f",
+      "original_before_plus_receipt_only_fields_matches": true,
+      "full_resume_before_after_equal": true,
+      "status": "closed"
+    },
+    {
+      "id": "vb-f8lko",
+      "original_before_plus_receipt_only_fields_matches": true,
+      "full_resume_before_after_equal": true,
+      "status": "closed"
+    },
+    {
+      "id": "vb-hk1j8",
+      "original_before_plus_receipt_only_fields_matches": true,
+      "full_resume_before_after_equal": true,
+      "status": "closed"
+    },
+    {
+      "id": "vb-ito",
+      "original_before_plus_receipt_only_fields_matches": true,
+      "full_resume_before_after_equal": true,
+      "status": "closed"
+    },
+    {
+      "id": "vb-juuw",
+      "original_before_plus_receipt_only_fields_matches": true,
+      "full_resume_before_after_equal": true,
+      "status": "closed"
+    },
+    {
+      "id": "vb-o6qcf",
+      "original_before_plus_receipt_only_fields_matches": true,
+      "full_resume_before_after_equal": true,
+      "status": "closed"
+    },
+    {
+      "id": "vb-s6vj",
+      "original_before_plus_receipt_only_fields_matches": true,
+      "full_resume_before_after_equal": true,
+      "status": "closed"
+    },
+    {
+      "id": "vb-wymp",
+      "original_before_plus_receipt_only_fields_matches": true,
+      "full_resume_before_after_equal": true,
+      "status": "closed"
+    }
+  ],
+  "history_invariants": "All8 FULL before/after objects equal; prior approved nested24 view retained via saved-original-BEFORE + receipt-only24/53 fields. No whole dependency or field exclusions.",
+  "original_V5_partial_receipts": {
+    "design_before_raw_identical": true,
+    "four_created_task_hashed_readbacks_valid": true,
+    "create_responses_full_approved_fields_valid": true,
+    "reuse_receipt_hashes_valid": true,
+    "no_repeated_creates_reuse_updates_or_edges": true
+  },
+  "source_counts": {
+    "requirements": 190,
+    "mapped_rows": 9,
+    "owned_checks": 13,
+    "scalar_tokens": 53,
+    "already_created_TASKs": 4,
+    "reused_existing_TASKs": 2,
+    "closed_historical_records": 8,
+    "typed_gate_edges": 137,
+    "recorded_commands": 40
+  },
+  "backup_scope": "Frozen executor has per-command BD_BACKUP_ENABLED=false and RUN scratch. All40 actual stderr fields and outside run log are warning-free. Receipts omit environment values; this is not native backup-health/recovery or persistent configuration acceptance.",
+  "artifacts": [
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0001.json",
+      "sha256": "bbbb1cc5f534c0835b8e2b520d1d5a270324f6dbaa99a130bae70bc525bd3d46",
+      "bytes": 6312
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0002.json",
+      "sha256": "58d995a7f5a0949e4dc836ed7f1208c1986b919202f4b0ec5a008c89d6b33ce5",
+      "bytes": 4541
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0003.json",
+      "sha256": "16c4a7f7b7a1826641760d00cb277cd2563176da22f94a4dfa975ecb23dffc1c",
+      "bytes": 6808
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0004.json",
+      "sha256": "7a5014748cee599f1d08c12fb5cff6cf37a55c7431b11507da817bc28d9581a8",
+      "bytes": 4541
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0005.json",
+      "sha256": "f6d31d1d93d1123e77499421bc9213fcb96d90a5ad9b2a58c5fe958dd2a603ac",
+      "bytes": 6298
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0006.json",
+      "sha256": "ee614dcb860f46da6ada9230b49a7687a0c01be53ef379eb8a7eb71092204791",
+      "bytes": 4541
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0007.json",
+      "sha256": "fab335df4bafae75952d845eb1d742b3ea5b59d8eb937d422f4655ace1ceb9da",
+      "bytes": 6259
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0008.json",
+      "sha256": "d2a988e340c632653894eab7e4989774853f03ff94e2ee295abb9e4eebc3e77d",
+      "bytes": 4541
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0009.json",
+      "sha256": "997db19058a9f8103b5a2a2c255c48ac61ca09d51435cef698ae57baf09cb46b",
+      "bytes": 10416
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0010.json",
+      "sha256": "3ab57e9fac2e66ead927bbbba343a812d94f04b1450f8256a6943ccf931e0e5d",
+      "bytes": 11521
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0011.json",
+      "sha256": "dcaab92c9cc91c40d83089e91cb743ed76bf5adce5098b9d493ef4a4d1febaea",
+      "bytes": 5329463
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0012.json",
+      "sha256": "a9cb02b531a09a4b4a6504291fa16dbf014e8a6d6ac927b5c5608b95acf95991",
+      "bytes": 686567
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0013.json",
+      "sha256": "4ff7575f702dbb866c6cfb84664e79d54312b4629d6c48773b59e32db09e5bce",
+      "bytes": 111
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0014.json",
+      "sha256": "c261917dc3df43c4b8632e79ed73d4176ecdc395129da15b1264408e2381922d",
+      "bytes": 2988
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0015.json",
+      "sha256": "9991eb804ae76f0ee0097dcf633e63d4877100edb5cec4ad3211c1aa1618d26c",
+      "bytes": 9682
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0016.json",
+      "sha256": "9e9b97de9258a67e66fab8c770c47e39b9b9f0f32ff891b652fba61a19933ee6",
+      "bytes": 5691
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0017.json",
+      "sha256": "74a60f264be3ca59bd2b57483991ef007a6f84ee9e7096935804cc73977855c6",
+      "bytes": 968
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0018.json",
+      "sha256": "717c64080a1689972cd7f67027c7ec62ecdb45c736f516a600cdfcfa6b9585e9",
+      "bytes": 14136
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0019.json",
+      "sha256": "9c41d39279f275d1537cdfb5f51e1ee9a0d8e3b5e686aa5862c0aa7fb0b35db3",
+      "bytes": 315327
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0020.json",
+      "sha256": "16ebb0976f79b6b6c422f928e3411644da6560cf7bcdd64f591ab7ae999b905a",
+      "bytes": 4811
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0021.json",
+      "sha256": "0416ddb47c94e69095350b7af75400bf95f169cf24cdbf941b417b18fe5d9db7",
+      "bytes": 29031
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0022.json",
+      "sha256": "dcaab92c9cc91c40d83089e91cb743ed76bf5adce5098b9d493ef4a4d1febaea",
+      "bytes": 5329463
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0023.json",
+      "sha256": "099738f720400e40f2ff54090fc2872cca34e4e2cf985a0fe3b6a8176bb21506",
+      "bytes": 4878019
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0024.json",
+      "sha256": "48048fb96e434812b2a744f3f6edf273c9548570c5de7f9d0197b024a18bfd0f",
+      "bytes": 5330834
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0025.json",
+      "sha256": "a9cb02b531a09a4b4a6504291fa16dbf014e8a6d6ac927b5c5608b95acf95991",
+      "bytes": 686567
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0026.json",
+      "sha256": "4ff7575f702dbb866c6cfb84664e79d54312b4629d6c48773b59e32db09e5bce",
+      "bytes": 111
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0027.json",
+      "sha256": "bbbb1cc5f534c0835b8e2b520d1d5a270324f6dbaa99a130bae70bc525bd3d46",
+      "bytes": 6312
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0028.json",
+      "sha256": "16c4a7f7b7a1826641760d00cb277cd2563176da22f94a4dfa975ecb23dffc1c",
+      "bytes": 6808
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0029.json",
+      "sha256": "f6d31d1d93d1123e77499421bc9213fcb96d90a5ad9b2a58c5fe958dd2a603ac",
+      "bytes": 6298
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0030.json",
+      "sha256": "fab335df4bafae75952d845eb1d742b3ea5b59d8eb937d422f4655ace1ceb9da",
+      "bytes": 6259
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0031.json",
+      "sha256": "997db19058a9f8103b5a2a2c255c48ac61ca09d51435cef698ae57baf09cb46b",
+      "bytes": 10416
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0032.json",
+      "sha256": "3ab57e9fac2e66ead927bbbba343a812d94f04b1450f8256a6943ccf931e0e5d",
+      "bytes": 11521
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0033.json",
+      "sha256": "c261917dc3df43c4b8632e79ed73d4176ecdc395129da15b1264408e2381922d",
+      "bytes": 2988
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0034.json",
+      "sha256": "9991eb804ae76f0ee0097dcf633e63d4877100edb5cec4ad3211c1aa1618d26c",
+      "bytes": 9682
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0035.json",
+      "sha256": "9e9b97de9258a67e66fab8c770c47e39b9b9f0f32ff891b652fba61a19933ee6",
+      "bytes": 5691
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0036.json",
+      "sha256": "74a60f264be3ca59bd2b57483991ef007a6f84ee9e7096935804cc73977855c6",
+      "bytes": 968
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0037.json",
+      "sha256": "717c64080a1689972cd7f67027c7ec62ecdb45c736f516a600cdfcfa6b9585e9",
+      "bytes": 14136
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0038.json",
+      "sha256": "9c41d39279f275d1537cdfb5f51e1ee9a0d8e3b5e686aa5862c0aa7fb0b35db3",
+      "bytes": 315327
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0039.json",
+      "sha256": "16ebb0976f79b6b6c422f928e3411644da6560cf7bcdd64f591ab7ae999b905a",
+      "bytes": 4811
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/bd-command-0040.json",
+      "sha256": "0416ddb47c94e69095350b7af75400bf95f169cf24cdbf941b417b18fe5d9db7",
+      "bytes": 29031
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/preflight.json",
+      "sha256": "f8cea7d7fc2958d778ea1e1d415e3b5c09baa1f22ce94275c744acedff8d3e4d",
+      "bytes": 816926
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/design-before.raw",
+      "sha256": "0af85ed146ed27fbe169a400ccd02d484f018db94f60c891d52052d17bbe2dd1",
+      "bytes": 4147120
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/design-after.raw",
+      "sha256": "c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9",
+      "bytes": 4148359
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/ledger-token-patch.json",
+      "sha256": "9f3ea64613ac8b6aac6722aafaa784a269528b7bb7e97c1664c36bd3c794c6ab",
+      "bytes": 672
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/final-readbacks.json",
+      "sha256": "643d9cdb172cbdff6fc8d16e7534865adb2a3e4f92a1f9c177986f51007eba34",
+      "bytes": 425184
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/ledger-update-response.json",
+      "sha256": "2a99914ef9465f6dc9566d1495e6f82c9bc9146fd6ede2c221d4f314f87e8bce",
+      "bytes": 4410737
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3-run.log",
+      "sha256": "a2f3e2d734ab6bd19765153cfe4dff1ca1a0337cf1e7a4dcb29ce95e1d5872a3",
+      "bytes": 93
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3-run.exit",
+      "sha256": "713def2e1a389eeadf91bf3f96daf30d8a1eb2b80c4be85445f97fc1d0a49328",
+      "bytes": 14
+    }
+  ],
+  "limits": [
+    "Reviewer read retained raw command outputs and byte artifacts only; no live BD query, executor/native/build call, source/gate/DB write, parent artifact write or new agent.",
+    "PASS covers this recorded ledger-only resume execution and corresponding readback invariants. It does not establish later live state or absence of unrelated external activity outside receipts.",
+    "No implementation/runtime/proof/fuzz/benchmark/remote-push/backup-health/fullMoonCI acceptance.",
+    "All190 completion flags remain false and implementation_missing null. Full190/master plan qualification NOT accepted."
+  ]
+}

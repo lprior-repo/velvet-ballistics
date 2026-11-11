@@ -1,0 +1,10 @@
+{
+  "args": [
+    "dep",
+    "cycles",
+    "--readonly"
+  ],
+  "stdout": "[]\n",
+  "stderr": "",
+  "exit": 0
+}

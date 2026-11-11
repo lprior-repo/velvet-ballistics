@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "artifact_sha256": "644a8f5bef270175c9fa66f8811f4bf4834fa54051c2e61ebe7fdc04385a2372",
+  "verdict": "PASS",
+  "resume_contract_ready": true,
+  "review_kind": "independent_bounded_recovery_PLANNING",
+  "artifact": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-owner-creation-resume-contract-v1.json",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+  "roots_verified": {
+    "git": true,
+    "jj": true
+  },
+  "findings": [],
+  "scope": {
+    "remaining_action": "one exact scalar-token ledger patch and readbacks only",
+    "requirement_rows": 9,
+    "unresolved_checks": 13,
+    "scalar_tokens": 53,
+    "repeat_creates": 0,
+    "repeat_task_updates": 0,
+    "repeat_dependency_adds": 0
+  },
+  "evidence_verified": [
+    "Contract SHA matches. Referenced stopped V5 apply script SHA matches 0d12cdd1c6906897b0b4e8b9be125d4ce9d4fbebd4889971190c5ebe4e349f4b; source ordering places the strict historical guard before ledger-token planning/write.",
+    "Read actual failure log historical owner readback changed: vb-juuw and APPLY_EXIT=1. Fifty-four raw command receipts record four creates, four dependency additions and the two approved reuse updates; no vb-eirmk.12 design update. design-after.raw and ledger-token-patch.json are absent in that stopped run.",
+    "Four creation readback stdout hashes match, exits are zero, and full approved creation payload fields match actual .68/.69/.70/.71 records. Each is an open root-parent TASK with exact qualification metadata and typed parent-child edge.",
+    "Both reuse update receipt file hashes and JSON-serialized full post-readback hashes match. Response updated_at equals actual post-readback updated_at and contract timestamp. Full task comparisons against preflight permit only .53 metadata/updated_at and .24 metadata/description/acceptance/updated_at; every other recorded field is equal.",
+    "Hash-bound all-historical-readbacks reference d131966d8b3db9f78aa1833ec6873bebcdb728cb7a657370c15b0a23157f1fdb parses successfully. Independently reconstructed all eight expected after objects from full before objects and only exact named child fields copied from actual successful update responses. Every complete expected object equals the corresponding actual after object.",
+    "All eight historical statuses are closed before/after. Their own top-level fields are unchanged. Seven full views are identical; only vb-juuw.dependencies changes, solely in its embedded vb-eirmk.24 description/acceptance/metadata/updated_at. Nested dependency type, other fields and array ordering remain exact.",
+    "Observed gate receipt hash a6048d112d1471dc1458107c73f8603aef3f0ee5664c3ee43a1706b0b1271c55 and exit zero verified. Exact ID/type projection is 137 distinct edges:134 blocks,2 tracks,1 parent-child. It equals the 133-edge preflight set plus .68-.71 blocks edges, with no removals or self-edge. All four dependency receipt hashes match.",
+    "Design-before raw SHA is 0af85ed146ed27fbe169a400ccd02d484f018db94f60c891d52052d17bbe2dd1. Nine full before-row snapshots equal V7; all thirteen full check payloads match. V7's three nested full-row expectations were independently verified in the preserved V7 review.",
+    "Exact resume patch plan matches reviewed V7 allowed deltas after resolving actual IDs:24:1->.68;28:2->.53;29:3/6/8->.69;31:4/master44.16->.24;77.17->.70;77.10->.71. Computed nine*three row fields plus thirteen*two check fields=53 scalar replacements.",
+    "All190 completion_verified=false/implementation_missing=null in the raw baseline. Contract permits only those53 tokens, preserves these states, forbids repeated create/update/edge operations and requires stop without retry on any mismatch."
+  ],
+  "evidence_anomalies": [
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-v5-stopped-historical-diff.json",
+      "severity": "nonblocking_auxiliary_format",
+      "description": "Its f9abb52767835ef7f4c0edad2bbfb12dbd0942b1f1496b3ea109da4b9f5daf93 hash matches, but it contains concatenated JSON documents and fails standalone JSON.parse. It was not treated as structured proof. Failure classification was independently established from the valid full historical reference and actual update receipts. Do not use this auxiliary file as a single-JSON executor input; preserve it unchanged."
+    }
+  ],
+  "ready_conditions": [
+    "Before any resume mutation, bind required independent reviews to their exact reviewed artifacts and obtain fresh full task, gate-edge, historical and .12 design readbacks. Stop if design no longer equals0af85ed1... or any full row/check/task baseline or exact137 typed-edge set differs.",
+    "Revalidate all four actual created TASKs, .24/.53 exact approved updates and response timestamp bindings. Verify business fields and authorized nested-view reconstruction from receipt-bound named fields, not broad dependencies/metadata/timestamp exclusions.",
+    "Use complete expected historical objects; retain all own fields, other nested fields, dependency IDs/types/order and closed statuses. Compare fresh complete after objects again after the ledger write.",
+    "Perform only the53 allowlisted scalar substitutions in .12; no repeat creation, reuse mutation or edge addition. Preserve unrelated raw bytes by exact token patch and require raw-byte reversal to reconstruct the original design byte-for-byte.",
+    "After the single patch, require exact actual-ID/status/proposal remaps for9rows/13checks, all other field/assertion/status/reason equality,190false/null, full protected task readbacks and unchanged137 typed edges/no self-edge. Stop without retry on mismatch.",
+    "Review the actual resume executor separately before trusting its implementation; this report approves the frozen recovery contract and does not inspect or approve Aristotle's unseen executor."
+  ],
+  "limits": [
+    "Conditional bounded contract readiness only; no DB calls/mutations, resume execution, source edits, builds or agents performed.",
+    "Raw recorded state at the stopped run was audited, not fresh live DB state. No global graph-cycle proof or full190 plan/product/implementation/native/formal acceptance.",
+    "Only requested own-workspace report written with apply_patch; no historical artifact cleanup/rewrite, JJ snapshot, commit or push. Shell commands used TMPDIR=/run/user/1000/vbs."
+  ]
+}

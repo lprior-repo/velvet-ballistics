@@ -1,0 +1,32 @@
+[
+  {
+    "revision": "78cd8ce6d3832f6d42fbf3d0ad3d20b12703a501",
+    "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+    "before_sha256": "88f637a29fe7d85d4a6953354f93d3ab23b73bcb7a919a252f805099eed4a9da",
+    "after_sha256": "88f637a29fe7d85d4a6953354f93d3ab23b73bcb7a919a252f805099eed4a9da"
+  },
+  {
+    "revision": "78cd8ce6d3832f6d42fbf3d0ad3d20b12703a501",
+    "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/tests.rs",
+    "before_sha256": "f0ffde3e5977ae852e982cfb65be4d4a7d7ef888dbef94c4d0ad21759b18eebb",
+    "after_sha256": "9bebbe8f5fb1ae3a8c55ecb527df48b8943e1d9ef3e129f8bd91c50fe0c7a3b3"
+  },
+  {
+    "revision": "5a530cd7f2b8425db9328867bea5cded3b9e7245",
+    "path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+    "before_sha256": "7f8b0e835e13a945cd9708c9cb3e72fdb45eda199d8caaa9a332a7ef5b33610d",
+    "after_sha256": "3fc7c0aed3e63b103a5b437d45e341e31a047800a8cf3f151bf0f7ac2a48b0f6"
+  },
+  {
+    "revision": "801a1050a4776c25dd01b587a51402defbfb3265",
+    "path": "crates/vb_core/src/replay/ops/has_error_replay_tests.rs",
+    "before_sha256": null,
+    "after_sha256": "e126da8a3859126b87372dde6946a6263fbcf55f38b9729928b9adab9c230c04"
+  },
+  {
+    "path": "crates/vb_core/src/replay/ops/tests.rs",
+    "composition": "preserve positive include and append frozen negative include",
+    "before_sha256": "dfade5a804b242592fbf081095a796588efad2c874ddd0a86af61b2422a197db",
+    "after_sha256": "5c336d1c87c4f4246f0857c342f6eccf51ab01f9a5f648ece3a643a167d028d7"
+  }
+]

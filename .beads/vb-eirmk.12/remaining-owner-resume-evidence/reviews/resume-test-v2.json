@@ -1,0 +1,195 @@
+{
+  "verdict": "REJECT",
+  "proposal_sha256": "3411e4309adf9448b142e77a02b52bf75e97595eeb02f8f3073f9faa1f4db6b3",
+  "executor_sha256": "4910e47f51832ad028694c1cb1c1112a782eb60942007f8e7881abb116251c70",
+  "review_kind": "Independent recovery planning TEST/control and executor source review; no apply execution",
+  "proposal_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-owner-creation-resume-contract-v2.json",
+  "executor_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-owner-resume-v1/resume.rb",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+  "findings": [
+    {
+      "id": "RR2",
+      "severity": "blocker",
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-owner-resume-v1/resume.rb",
+      "line": 287,
+      "related_lines": [
+        299,
+        302,
+        307,
+        311,
+        315,
+        320
+      ],
+      "finding": "Full create payloads are loaded from unhashed V5 create-*.json, then compared to unhashed creation-receipts.json response and fresh live tasks. Only task type/open/root and scope-ID subset are checked against V7. The hash-bound V7 task_create_payloads full descriptions/acceptance/metadata/title are never used. Hashing the retained old readback stdout without comparing its content to those payloads does not anchor the live scope.",
+      "actual_state": "All four retained payloads and hashed readbacks currently equal approved V7 full payloads; this finding concerns executor fail-closed behavior, not an observed unauthorized tracker mutation.",
+      "negative_control": {
+        "execution": "Python in-memory data comparison only; no executor/BD/file mutation",
+        "issue_id": "vb-eirmk.68",
+        "mutated_field": "acceptance_criteria",
+        "mutated_value": "",
+        "changed_references": [
+          "unhashed local create payload",
+          "unhashed creation response",
+          "simulated fresh live task"
+        ],
+        "retained_hashed_readback": "unchanged and still passes executor hash check",
+        "current_executor_task_checks_accept": true,
+        "exact_hash_bound_V7_payload_check_rejects": true,
+        "historical_guard_does_not_cover_new_tasks": true
+      },
+      "required_correction": "Build expected payload map directly from read_hashed V7 task_create_payloads, require exact key set and complete payload equality with each retained create payload, and compare response, parsed hashed old readback, and fresh/final tasks to those approved fields (plus actual ID and typed parent relation). Add offline negative controls for altered description/acceptance/metadata/title with unchanged scope IDs, proving a stop before the sole ledger mutation."
+    }
+  ],
+  "RR1_disposition": {
+    "verdict": "fixed_with_evidence",
+    "source_lines": [
+      245,
+      494,
+      496,
+      497,
+      506,
+      574
+    ],
+    "description": "Expected historical object starts from hash-bound original preflight BEFORE, checked equal to saved BEFORE. Only exact successful .24 four-field / .53 two-field response values substitute nested children. Missing dependencies key stays missing; dependency type/order and all other own/nested fields stay exact. Expected==saved.after==fresh.before; post full history==fresh.before. No exclusions.",
+    "verified_historical_objects": [
+      {
+        "id": "vb-b5f",
+        "full_original_before_plus_named_fields_matches_saved_after": true,
+        "closed_own_fields_preserved": true,
+        "title_mutant_rejected_by_exact_expected": true,
+        "dependencies_key_presence_preserved": true
+      },
+      {
+        "id": "vb-f8lko",
+        "full_original_before_plus_named_fields_matches_saved_after": true,
+        "closed_own_fields_preserved": true,
+        "title_mutant_rejected_by_exact_expected": true,
+        "dependencies_key_presence_preserved": true
+      },
+      {
+        "id": "vb-hk1j8",
+        "full_original_before_plus_named_fields_matches_saved_after": true,
+        "closed_own_fields_preserved": true,
+        "title_mutant_rejected_by_exact_expected": true,
+        "dependencies_key_presence_preserved": true
+      },
+      {
+        "id": "vb-ito",
+        "full_original_before_plus_named_fields_matches_saved_after": true,
+        "closed_own_fields_preserved": true,
+        "title_mutant_rejected_by_exact_expected": true,
+        "dependencies_key_presence_preserved": true
+      },
+      {
+        "id": "vb-juuw",
+        "full_original_before_plus_named_fields_matches_saved_after": true,
+        "closed_own_fields_preserved": true,
+        "title_mutant_rejected_by_exact_expected": true,
+        "dependencies_key_presence_preserved": true
+      },
+      {
+        "id": "vb-o6qcf",
+        "full_original_before_plus_named_fields_matches_saved_after": true,
+        "closed_own_fields_preserved": true,
+        "title_mutant_rejected_by_exact_expected": true,
+        "dependencies_key_presence_preserved": true
+      },
+      {
+        "id": "vb-s6vj",
+        "full_original_before_plus_named_fields_matches_saved_after": true,
+        "closed_own_fields_preserved": true,
+        "title_mutant_rejected_by_exact_expected": true,
+        "dependencies_key_presence_preserved": true
+      },
+      {
+        "id": "vb-wymp",
+        "full_original_before_plus_named_fields_matches_saved_after": true,
+        "closed_own_fields_preserved": true,
+        "title_mutant_rejected_by_exact_expected": true,
+        "dependencies_key_presence_preserved": true
+      }
+    ]
+  },
+  "verified_retained_receipts": {
+    "created_tasks": [
+      {
+        "id": "vb-eirmk.68",
+        "proposal_key": "proposal:current-qualification:function:24:1",
+        "actual_retained_payload_equals_hash_bound_V7": true,
+        "retained_readback_sha256": "599932b87f660cc425a35deadc3f95faeb3841dfe9ff8e7181d277a2315df756"
+      },
+      {
+        "id": "vb-eirmk.69",
+        "proposal_key": "proposal:current-qualification:function:29:storage-keyspace-key-digest",
+        "actual_retained_payload_equals_hash_bound_V7": true,
+        "retained_readback_sha256": "53bfb58be61b45b903c1f4a74901ec3ff68523a9acc3111da1f7e7e5d445c322"
+      },
+      {
+        "id": "vb-eirmk.70",
+        "proposal_key": "qualify-v1min-version-compatibility-algebra",
+        "actual_retained_payload_equals_hash_bound_V7": true,
+        "retained_readback_sha256": "8d1b02c49d55fe0510d406cae6175de73262d82a2afb25a6fa04e91ada961a9c"
+      },
+      {
+        "id": "vb-eirmk.71",
+        "proposal_key": "qualify-v1min-capability-grant-lifecycle",
+        "actual_retained_payload_equals_hash_bound_V7": true,
+        "retained_readback_sha256": "d45cb2722a884940aac43836446f010bef6630c2507e081fda5d9f79fb43d932"
+      }
+    ],
+    "reuse_updates": [
+      {
+        "id": "vb-eirmk.24",
+        "receipt_sha256": "902db8259d4454df25cbf1f4bac2d451626a1df1b22a96cb72f97a9bdf6762e6",
+        "full_expected_after_matches": true,
+        "response_timestamp_exact": true
+      },
+      {
+        "id": "vb-eirmk.53",
+        "receipt_sha256": "d2bd0ddf0d14a5166f7677e3b2e5bafdb1386cfae845dd1664a8db3cdd4d584d",
+        "full_expected_after_matches": true,
+        "response_timestamp_exact": true
+      }
+    ],
+    "typed_gate_edges": 137,
+    "cycles": "Executor has fresh pre/post read-only cycle gates; reviewer did not execute them. Existing retained preflight cycle receipt is not proof of present cycles.",
+    "ledger": {
+      "full_row_locations": 12,
+      "rows": 9,
+      "checks": 13,
+      "tokens": 53,
+      "all_190_completion_false_and_missing_null": true,
+      "independent_expected_after_sha256": "c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9",
+      "outside_scalar_bytes": "Independent byte-span splice retains original bytes outside selected tokens; semantic reversal equals original manifest. In-memory only."
+    }
+  },
+  "executor_safety_review": {
+    "only_BD_mutation": "Exactly one syntactic bd update: vb-eirmk.12 --design-file fixed parent OUT/design-after.raw; no create, .24/.53 update, dependency write or retry. Command allowlist additionally rejects all other writes.",
+    "guard": "show must have exactly 3 caller arguments; dep list exactly 4; cycles exact. Appended --json only occurs inside checked bd wrapper. Fixed design file path only.",
+    "readbacks": "Fresh task scopes/type/status/parent and typed parent edges; full reuse receipt equality; unchanged raw design before and immediately before sole update; exact full raw patched design afterward; all137 typed gate edges and cycles before/after; full historical equality after; preserved review bytes during preflight.",
+    "evidence_writes": "Parent ignored OUT created only after preflight; abort if existing. Receipts and raw design before/after fsynced before update; no retry. Script was not run by reviewer.",
+    "remaining_gap": "Full new-task payload authority fails closed only after RR2 correction; no permission to apply this executor granted by this review."
+  },
+  "offline_evidence": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-owner-resume-v2-offline.log",
+    "sha256": "5d3626c085cbccdc58b1e9ed40825bf45d144043b2ec1378fd39a7a7ad7cac9a",
+    "observed_outputs": {
+      "syntax_exit": 0,
+      "guard_controls": 13,
+      "guard_passed": 13,
+      "reported_bd_calls": 0,
+      "plan_targets": 53,
+      "plan_exit": 0,
+      "history_objects": 8,
+      "history_exit": 0
+    },
+    "independent_check": "Script control flow exits both offline modes before live bd calls/evidence writes; original 3-argument show guard bug and placeholder-to-actual owner mapping corrected. Reviewer did not invoke offline executor modes.",
+    "limits": "Retained text receipt has no embedded executor hash or complete command transcript; source hash is separately frozen above. These offline positives do not exercise RR2 altered-payload negatives or constitute an apply receipt."
+  },
+  "limits": [
+    "No DB/BD/native/build/executor run, source changes, new agents, parent artifact writes or root temporary operations by reviewer.",
+    "Fresh live preconditions and real postapply readbacks remain mandatory; retained receipts do not establish present tracker state.",
+    "No repeat task creation, reuse update or dependency mutation authorized. No full master/190-row qualification or implementation acceptance."
+  ],
+  "hashes_rechecked_before_report": true
+}

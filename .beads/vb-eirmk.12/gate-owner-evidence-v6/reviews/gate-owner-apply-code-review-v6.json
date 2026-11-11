@@ -1,0 +1,126 @@
+{
+  "artifact_sha256": "6ea5bbee36dc5fd9bf0421aab85d7ab74f90f804e43b9617e29e0d71b4e91f1b",
+  "executor_sha256": "dd180d8cc9f9a100b54a5c816dd245c90ba2762597ef513cafe3dca29c684946",
+  "verdict": "PASS",
+  "review_kind": "independent bounded controlled Gate V6 executor CODE review and offline adversarial validation",
+  "contract_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-apply-contract-v6.json",
+  "executor_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/executor.rb",
+  "proposal_sha256": "e16e633cb711bc58eddd5c67049272214b59b856720355a77469964273f0d8f4",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+  "git_and_jj_roots_verified": true,
+  "findings": [],
+  "prior_finding": {
+    "id": "E1",
+    "status": "RESOLVED",
+    "evidence": "expect_reject now rescues only the yielded operation and raises its unexpected-acceptance guard after the rescue. Independent instrumentation observed the deliberately accepting block cause the harness failure, while real rejection cases threw GuardError inside their yielded operations.",
+    "previous_V5_rejection_preserved": true
+  },
+  "exact_binding_checks": {
+    "requested_final_contract_and_executor_hashes_match_actual_files": true,
+    "contract_executor_path_and_SHA_match_actual_script": true,
+    "CODE_and_TEST_nested_executor_binding_values_equal_actual_script_SHA": true,
+    "planning_version": "V5",
+    "executor_review_version": "V6",
+    "actual_planning_CODE_TEST_report_bytes_hash_PASS_and_exact_V5_proposal_binding_checked": true,
+    "planning_CODE_report_SHA": "d6c470d47959266500703d2dd2ea21d5e47d11aec16a304a1eef523f8683e1eb",
+    "planning_TEST_report_SHA": "1b864651af94cb43736fe7805b2fe4ff10858500b6c33af91d0e74063482625b",
+    "executor_review_requirements": {
+      "code_contract_field": "artifact_sha256",
+      "test_contract_field": "proposal_sha256",
+      "both_executor_fields": "executor_sha256",
+      "required_verdict": "PASS",
+      "exact_contract_digest": "6ea5bbee36dc5fd9bf0421aab85d7ab74f90f804e43b9617e29e0d71b4e91f1b",
+      "exact_executor_digest": "dd180d8cc9f9a100b54a5c816dd245c90ba2762597ef513cafe3dca29c684946",
+      "final_V6_report_paths_verified": true
+    },
+    "raw_issue11_issue12_and_typed_edge_file_hashes_independently_verified": true,
+    "no_stale_transient_executor_digest_used": true,
+    "removed_redundant_proposal_drafting_flag_check": "No authority widening: proposal bytes remain pinned to exact V5e16e SHA; active proposal version/no-apply checks remain, and actual V6 executor CODE+TEST reports are separately mandatory."
+  },
+  "reviewed_live_boundary": {
+    "live_apply_function_body_byte_identical_to_reviewed_V5": true,
+    "mutation_preservation_contract_sections_identical_to_reviewed_V5": true,
+    "update_call_sites": 2,
+    "subprocess_call_sites": 1,
+    "exact_read_commands": [
+      "show vb-eirmk.11 --readonly",
+      "show vb-eirmk.12 --readonly",
+      "dep list vb-eirmk.11 --readonly"
+    ],
+    "exact_writes": [
+      "update vb-eirmk.11 --metadata @<fixed unique OUT>/metadata-after.json",
+      "update vb-eirmk.12 --design-file <fixed unique OUT>/design-after.raw"
+    ],
+    "subprocess_environment": {
+      "BEADS_DOLT_SERVER_PORT": "37225",
+      "BD_DOLT_SERVER_PORT": "37225",
+      "BD_BACKUP_ENABLED": "false",
+      "TMPDIR": "/run/user/1000/vbs"
+    },
+    "environment_scope": "Per command only; no persistent settings or backup-health/recovery claim.",
+    "issue11": "Exact full before business record, including nested dependency business fields,137 distinct typed edges and no self-edge. Only exact seven-ID metadata union plus qualification_only and actual server response updated_at may differ after. Full post-readback equality and unchanged typed edges are mandatory.",
+    "issue12": "Guard only id and exact design bytes, permitting unrelated progress notes. Only49 exact owner/accountability scalar tokens in seven rows/fourteen checks may change. Byte offsets/tokens, nonoverlap, derived target map, outside-byte hashes, semantic reversal, raw final hash and all190 false/null invariants are checked.",
+    "issue11_before_canonical_SHA": "9eb4a387e744582713ec95a94c35a5a0b6d106f24bc6430deb2b6b8358cf5951",
+    "design_before_SHA": "c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9",
+    "design_after_SHA": "91693b0972b9cc82ccc573ac7615ab599bd6ccbcd1609a74f9fca2b0c5c36392",
+    "historical_status_or_dependency_mutation_authorized": false,
+    "no_create_delete_close_reopen_arbitrary_field_or_shell_command": true,
+    "evidence": "Fixed verified apply workspace and absent unique OUT; exact per-process stdout/stderr/argv/exit/hash receipts; fsynced metadata/design/preflight before first write.",
+    "fresh_order": "Full11/edges, design, exact reviews/contract/executor/proposal/master guards before metadata; validate actual response timestamp/full11/edges after; fresh design-only guard before12 update; exact final design/full11/edges.",
+    "fail_stop": "Non-atomic two-write sequence. Any guard/process/parse/receipt failure stops without retry, rollback or continuing the second mutation. Existing OUT prevents rerun."
+  },
+  "independent_offline_evidence": {
+    "unmodified_frozen_executor_mode": "--offline-controls",
+    "observed_exit": 0,
+    "observed_stdout": {
+      "offline_controls": "PASS",
+      "v5_planning_reviews": 2,
+      "design_targets": 49,
+      "target_value_and_offset_mutants_rejected": 98,
+      "typed_edge_mutants_rejected": 137,
+      "planning_review_mutants_rejected": 10,
+      "expect_reject_meta_control": "PASS",
+      "before_sha256": "c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9",
+      "after_sha256": "91693b0972b9cc82ccc573ac7615ab599bd6ccbcd1609a74f9fca2b0c5c36392",
+      "typed_edges": 137,
+      "bd_calls": 0,
+      "live_mutations": 0
+    },
+    "independent_instrumentation": {
+      "independent_observed_actual_guard_rejections": {
+        "scalar": 98,
+        "edge": 137,
+        "planning": 10
+      },
+      "meta_accepting_block_caused_harness_failure": true,
+      "all_expect_reject_invocations": 252,
+      "process_calls": 0,
+      "live_BD_calls": 0,
+      "file_writes": 0
+    },
+    "method": "Loaded only inspected frozen function definitions before command dispatch. Trapped Open3 process calls, bd and persist_bytes; instrumented each original expect_reject invocation to distinguish an actual yielded GuardError from a harness failure. Observed real yielded guard exceptions for all98 scalar/offset,137 edge and10 planning mutants, and a harness failure for the accepting meta-control. No modified source or fixture was written.",
+    "counts_are_independently_observed_not_only_printed_constants": true,
+    "original_BD_allowlist_and_review_binding_controls_passed": true,
+    "live_apply_invocations": 0,
+    "live_BD_calls": 0,
+    "file_writes_during_instrumented_probe": 0
+  },
+  "readiness": {
+    "executor_CODE_ready": true,
+    "live_apply_performed": false,
+    "this_review_executed_or_authorized_live_mutations": false,
+    "remaining_conditions": [
+      "Separate independent V6 executor TEST PASS must bind this exact contract and script.",
+      "Parent-controlled apply must satisfy every fresh live guard using the exact frozen files and unique absent output directory.",
+      "Retain actual response timestamps/raw receipts; independently audit both writes, full business/edge preservation and exact49-token design before/after.",
+      "Any partial failure stops and requires explicit recovery review rather than automatic retry."
+    ]
+  },
+  "limits": [
+    "PASS is this controlled executor's bounded CODE/offline readiness, not proof of successful live CLI or database behavior.",
+    "Reviewer ran no BD process, live apply, native Rust build, source/tracker/gate edit, new dependency or agent.",
+    "No global cycle/history readback beyond the specified records was queried live; typed edges are preserved and historical owner writes are prohibited.",
+    "No full190 plan, gate execution, runtime/product, full CI, formal proof or backup-health acceptance."
+  ],
+  "full_plan_accepted": false
+}

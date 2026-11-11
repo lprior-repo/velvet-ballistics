@@ -16,10 +16,9 @@ fn runtime() -> Runtime {
 }
 
 fn path(case: &str) -> std::path::PathBuf {
-    std::path::PathBuf::from(format!(
-        "/tmp/vb_reactor_{case}_{}.sock",
-        std::process::id()
-    ))
+    let dir = std::env::temp_dir();
+    let name = format!("vb_reactor_{case}_{}.sock", std::process::id());
+    dir.join(name)
 }
 
 fn health(correlation: u64, payload: usize) -> Result<Vec<u8>, Box<dyn std::error::Error>> {

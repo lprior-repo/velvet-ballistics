@@ -406,6 +406,37 @@ mod seqno_overflow_rejection {
 mod unknown_record_kind_rejection {
     use super::*;
 
+    /// Independent canonical enumeration of all known RecordKind IDs from kind.rs.
+    /// Deliberately not derived via production from_id; this array is the test oracle.
+    const KNOWN_KIND_IDS: [u16; 45] = [
+        1, 2, 3, 4, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+        30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
+    ];
+
+    /// Independent enumeration of known IDs that are NOT journal events.
+    /// These must produce RecordKindFamilyMismatch under MAGIC_JOURNAL_EVENT.
+    const NON_JOURNAL_KIND_IDS: [u16; 8] = [1, 2, 3, 4, 30, 40, 42, 50];
+
+    /// Exact family assertion for a known kind under journal magic.
+    /// Non-journal kinds must produce RecordKindFamilyMismatch with exact magic/kind.
+    /// Journal kinds must decode Ok with decoded.record_kind == kind.
+    fn exact_assert_family(
+        kind: u16,
+        result: Result<vb_storage::types::RecordHeader, JournalError>,
+    ) {
+        if NON_JOURNAL_KIND_IDS.contains(&kind) {
+            assert!(matches!(
+                result,
+                Err(JournalError::RecordKindFamilyMismatch {
+                    magic: vb_storage::constants::MAGIC_JOURNAL_EVENT,
+                    kind: k
+                }) if k == kind
+            ));
+        } else {
+            assert!(matches!(result, Ok(decoded) if decoded.record_kind == kind));
+        }
+    }
+
     #[test]
     fn decode_rejects_unknown_record_kind() -> Result<(), JournalError> {
         // Given: a record header with kind = 255 (unknown)
@@ -431,12 +462,16 @@ mod unknown_record_kind_rejection {
 
     #[test]
     fn decode_accepts_all_known_journal_event_kinds() -> Result<(), JournalError> {
-        // Given: record headers with kinds 10..=29, 31, and 38 (valid for MAGIC_JOURNAL_EVENT)
-        let known_journal_kinds: Vec<u16> = vec![
-            10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 38,
+        // Positive decode: all known journal-event kinds must decode Ok under journal magic.
+        // Known IDs from kind.rs; 30 (Snapshot), 40 (Blob), 50 (IndexUpdate),
+        // 1-4 (WorkflowSource/CompiledIr/RunHeader/RunInputs), 42 (RunOwnedInputs)
+        // are not journal events and are excluded here.
+        let journal_event_kinds: Vec<u16> = vec![
+            10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32,
+            33, 34, 35, 36, 37, 38, 39, 41, 43, 44, 45, 46, 47, 48, 49,
         ];
 
-        for &kind in &known_journal_kinds {
+        for &kind in &journal_event_kinds {
             let mut header = make_header_with_kind(kind);
             corrupt_kind_in_header(&mut header, kind);
 
@@ -446,45 +481,39 @@ mod unknown_record_kind_rejection {
                 vb_storage::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             );
 
-            // Then: no kind is rejected as unknown
-            assert!(
-                result.is_ok(),
-                "known journal event kind {} must not be rejected, got {:?}",
-                kind,
-                result
-            );
+            // Exact family assertion: decode Ok AND record_kind must match exactly
+            exact_assert_family(kind, result);
         }
 
-        // Explicit positive assertion: kind 38 (PolicyDecision) must decode Ok
-        // under journal magic with record_kind 38.
-        let kind38_header = make_header_with_kind(38);
-        let mut kind38_corrupted = kind38_header;
-        corrupt_kind_in_header(&mut kind38_corrupted, 38);
-        let decoded = decode_record_header(
-            &kind38_corrupted,
-            vb_storage::constants::MAGIC_JOURNAL_EVENT,
-            vb_storage::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        )?;
-        assert_eq!(
-            decoded.record_kind, 38,
-            "kind 38 (PolicyDecision) must decode with record_kind 38, got {}",
-            decoded.record_kind
-        );
+        // Explicit positive assertions: record_kind value must be preserved.
+        // Kind 38 (PolicyDecision) verified first, then 48 (GateOpened) and
+        // 49 (TenantAdmission) which were previously misclassified as unknown.
+        for kind in [38, 48, 49] {
+            let mut header = make_header_with_kind(kind);
+            corrupt_kind_in_header(&mut header, kind);
+            let decoded = decode_record_header(
+                &header,
+                vb_storage::constants::MAGIC_JOURNAL_EVENT,
+                vb_storage::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+            )?;
+            assert_eq!(
+                decoded.record_kind, kind,
+                "kind {} must decode with record_kind {}, got {}",
+                kind, kind, decoded.record_kind
+            );
+        }
 
         Ok(())
     }
 
     #[test]
     fn is_known_record_kind_returns_true_for_valid_kinds() {
-        // Given: kind values that are in the known set {1, 2, 3, 10-29, 30, 31-32, 33-37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 50}
-        // We test through decode_record_header which calls is_known_record_kind internally.
-        // Note: Some kinds will fail with RecordKindFamilyMismatch because they don't
-        // match MAGIC_JOURNAL_EVENT, but they should NOT fail with UnknownRecordKind.
-        let valid_kinds: Vec<u16> = vec![
-            1, 2, 3, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
-            29, 30, 31, 32, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 50,
-        ];
-        for &kind in &valid_kinds {
+        // Iterate every known ID from the independent canonical array.
+        // Under journal magic, non-journal kinds must produce exact
+        // RecordKindFamilyMismatch; journal kinds must decode Ok with
+        // decoded.record_kind == kind. The helper exact_assert_family encodes
+        // both expectations without accepting any other result.
+        for &kind in &KNOWN_KIND_IDS {
             let mut header = make_header_with_kind(kind);
             corrupt_kind_in_header(&mut header, kind);
 
@@ -494,31 +523,23 @@ mod unknown_record_kind_rejection {
                 vb_storage::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             );
 
-            // Then: none return UnknownRecordKind error (is_known_record_kind returned true)
-            // Some may return RecordKindFamilyMismatch if kind doesn't match MAGIC_JOURNAL_EVENT,
-            // but UnknownRecordKind means is_known_record_kind returned false.
-            assert!(
-                !matches!(result, Err(JournalError::UnknownRecordKind { .. })),
-                "kind {} must be known (is_known_record_kind returned true), got {:?}",
-                kind,
-                result
-            );
+            exact_assert_family(kind, result);
         }
     }
 
     #[test]
     fn is_known_record_kind_returns_false_for_invalid_kinds() {
-        // Given: kind values that are truly unknown (not in from_id).
-        // Known kinds: 1,2,3,4,10-29,30,31-37,38,39,40,41,42,43,44,45,46,47,50
-        // 36 (RunAdmissionBound), 37 (RetryCheckpoint), 38 (PolicyDecision),
-        // 39 (RunAdmissionPinned), and 41 (RunAdmissionBoundPinned) are journal-event kinds.
-        // 44 (GateDecision) is a journal-event kind since §77.15.
-        // 45 (CompatibilityDecision) is a journal-event kind since §77.17.
-        // 46 (CapabilityGrant) stays a reserved known id since §77.10; its
-        //   event variant is retired and payload decode fails loudly.
-        // 47 (RunAdmissionBudget) is a journal-event kind since §77.18.
-        let truly_unknown_kinds: Vec<u16> = vec![0, 5, 6, 7, 8, 9, 48, 49, 51, 52, 100, 255, 65535];
-        for &kind in &truly_unknown_kinds {
+        // Iterate the full u16 domain: u16::MIN..=u16::MAX.
+        // Exactly the 45 IDs in KNOWN_KIND_IDS must produce non-UnknownRecordKind results.
+        // Under journal magic, non-journal kinds must produce exact
+        // RecordKindFamilyMismatch; journal kinds must decode Ok with
+        // decoded.record_kind == kind. The helper exact_assert_family encodes
+        // both expectations. All other values must produce
+        // UnknownRecordKind { kind } with the exact echoed ID. Domain traversal
+        // plus exact matches proves full coverage; no count needed.
+        for kind in u16::MIN..=u16::MAX {
+            let is_known = KNOWN_KIND_IDS.contains(&kind);
+
             let mut header = make_header_with_kind(kind);
             corrupt_kind_in_header(&mut header, kind);
 
@@ -528,13 +549,19 @@ mod unknown_record_kind_rejection {
                 vb_storage::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             );
 
-            // Then: all return UnknownRecordKind error (is_known_record_kind returned false)
-            assert!(
-                matches!(result, Err(JournalError::UnknownRecordKind { kind: k }) if k == kind),
-                "kind {} must be unknown, got {:?}",
-                kind,
-                result
-            );
+            if is_known {
+                exact_assert_family(kind, result);
+            } else {
+                assert!(
+                    matches!(
+                        result,
+                        Err(JournalError::UnknownRecordKind { kind: k }) if k == kind
+                    ),
+                    "unknown kind {} must produce UnknownRecordKind with exact echoed ID, got {:?}",
+                    kind,
+                    result
+                );
+            }
         }
 
         // Kind 4 is a known compiled-artifact kind (MAGIC_COMPILED_ARTIFACT).

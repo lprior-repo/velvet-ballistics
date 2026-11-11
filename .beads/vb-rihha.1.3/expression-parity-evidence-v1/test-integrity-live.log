@@ -1,0 +1,12 @@
+[ WARN 2026-11-10 19:21:40.562] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+▮▮▮▮ velvet-ballistics:test-integrity (77d19164)
+test integrity: FAIL
+DeletedTestDeclaration|crates/vb_core/src/replay/ops/tests.rs|removed_declarations=90 added_declarations=0
+WeakenedAssertion|crates/vb_core/src/replay/ops/tests.rs|removed_exact=4 added_exact=0 added_weak=0
+Add equal-or-stronger replacement coverage or bead-linked justification.
+▮▮▮▮ velvet-ballistics:test-integrity (667ms, 77d19164)
+Error: task_runner::run_failed
+
+  × Task velvet-ballistics:test-integrity failed to run.
+  ╰─▶ Process bash failed: exit code 1
+

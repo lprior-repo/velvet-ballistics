@@ -1,0 +1,20 @@
+{
+  "proposal_sha256": "9cef921c994a6bd6bbf706d597b3a244580970eba3a1d14139c566f9e011c155",
+  "proposal_key": "proposal:current-qualification:function:29:storage-keyspace-key-digest",
+  "payload": {
+    "title": "Qualify current storage keyspace, key construction, and digest function clusters",
+    "issue_type": "task",
+    "status": "open",
+    "parent": "vb-eirmk",
+    "metadata": {
+      "master_requirement_ids": [
+        "function:29:3",
+        "function:29:6",
+        "function:29:8"
+      ],
+      "qualification_only": true
+    },
+    "description": "Qualification only across three separate families. 29:3 positive: exact put/get payload roundtrip and separation for source, IR, run header, snapshot, blob and indexes; negative: exact missing/wrong-key/index outcomes, preserve neighbors. 29:6 positive: exact bytes/namespace/order for every named key constructor; negative: malformed IDs and prefix/length boundaries. 29:8 positive: matching source/IR digest acceptance; negative: independently mutate each digest and assert exact typed mismatch. Map every API to source and registered checks with raw receipts, separate CODE and TEST; no duplicate implementation.",
+    "acceptance_criteria": "Qualification only across three separate families. 29:3 positive: exact put/get payload roundtrip and separation for source, IR, run header, snapshot, blob and indexes; negative: exact missing/wrong-key/index outcomes, preserve neighbors. 29:6 positive: exact bytes/namespace/order for every named key constructor; negative: malformed IDs and prefix/length boundaries. 29:8 positive: matching source/IR digest acceptance; negative: independently mutate each digest and assert exact typed mismatch. Map every API to source and registered checks with raw receipts, separate CODE and TEST; no duplicate implementation. Record exact current source pin, raw command/exit and production entrypoint/test mapping; keep unknown evidence unknown and obtain independent CODE plus separate TEST disposition."
+  }
+}

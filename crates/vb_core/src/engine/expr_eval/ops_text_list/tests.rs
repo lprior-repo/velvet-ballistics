@@ -124,17 +124,17 @@ fn eval_ops_with_slots(
 #[test]
 fn contains_matches_substring() -> Result<(), String> {
     let mut store = ValueStore::new();
-    let hay = store
-        .insert_symbol("hello world")
+    let list = store
+        .insert_list(vec![SlotValue::I64(7), SlotValue::I64(11)].into_boxed_slice())
         .map_err(|e| e.to_string())?;
-    let needle = store.insert_symbol("world").map_err(|e| e.to_string())?;
-    let result = eval_ops(
+    let result = eval_ops_with_slots(
         vec![
+            ExprOp::LoadSlot(SlotIdx::new(0)),
             ExprOp::LoadConst(ConstIdx::new(0)),
-            ExprOp::LoadConst(ConstIdx::new(1)),
             ExprOp::Contains,
         ],
-        vec![ConstValue::Symbol(hay), ConstValue::Symbol(needle)],
+        vec![SlotValue::List(list)],
+        vec![ConstValue::I64(7)],
         &mut store,
     )?;
     ensure_equal(result, SlotValue::Bool(true))
@@ -143,15 +143,17 @@ fn contains_matches_substring() -> Result<(), String> {
 #[test]
 fn contains_rejects_non_matching() -> Result<(), String> {
     let mut store = ValueStore::new();
-    let hay = store.insert_symbol("hello").map_err(|e| e.to_string())?;
-    let needle = store.insert_symbol("xyz").map_err(|e| e.to_string())?;
-    let result = eval_ops(
+    let list = store
+        .insert_list(vec![SlotValue::I64(7), SlotValue::I64(11)].into_boxed_slice())
+        .map_err(|e| e.to_string())?;
+    let result = eval_ops_with_slots(
         vec![
+            ExprOp::LoadSlot(SlotIdx::new(0)),
             ExprOp::LoadConst(ConstIdx::new(0)),
-            ExprOp::LoadConst(ConstIdx::new(1)),
             ExprOp::Contains,
         ],
-        vec![ConstValue::Symbol(hay), ConstValue::Symbol(needle)],
+        vec![SlotValue::List(list)],
+        vec![ConstValue::I64(13)],
         &mut store,
     )?;
     ensure_equal(result, SlotValue::Bool(false))
@@ -238,39 +240,22 @@ fn ends_with_rejects_non_suffix() -> Result<(), String> {
 #[test]
 fn has_finds_existing_element() -> Result<(), String> {
     let mut store = ValueStore::new();
-    let list = store
-        .insert_list(vec![SlotValue::I64(10), SlotValue::I64(20)].into_boxed_slice())
-        .map_err(|e| e.to_string())?;
-    let result = eval_ops_with_slots(
-        vec![
-            ExprOp::LoadSlot(SlotIdx::new(0)),
-            ExprOp::LoadConst(ConstIdx::new(0)),
-            ExprOp::Has,
-        ],
-        vec![SlotValue::List(list)],
-        vec![ConstValue::I64(20)],
-        &mut store,
-    )?;
-    ensure_equal(result, SlotValue::Bool(true))
+    let existing_key = store.insert_symbol("name").map_err(|e| e.to_string())?;
+    let fields = vec![crate::ObjectField::clean(existing_key, SlotValue::I64(20))];
+    let result = has_parity_hot_eval(&mut store, fields, existing_key)?;
+    assert_eq!(result, SlotValue::Bool(true));
+    Ok(())
 }
 
 #[test]
 fn has_returns_false_for_missing_element() -> Result<(), String> {
     let mut store = ValueStore::new();
-    let list = store
-        .insert_list(vec![SlotValue::I64(10)].into_boxed_slice())
-        .map_err(|e| e.to_string())?;
-    let result = eval_ops_with_slots(
-        vec![
-            ExprOp::LoadSlot(SlotIdx::new(0)),
-            ExprOp::LoadConst(ConstIdx::new(0)),
-            ExprOp::Has,
-        ],
-        vec![SlotValue::List(list)],
-        vec![ConstValue::I64(99)],
-        &mut store,
-    )?;
-    ensure_equal(result, SlotValue::Bool(false))
+    let present_key = store.insert_symbol("present").map_err(|e| e.to_string())?;
+    let absent_key = store.insert_symbol("absent").map_err(|e| e.to_string())?;
+    let fields = vec![crate::ObjectField::clean(present_key, SlotValue::I64(10))];
+    let result = has_parity_hot_eval(&mut store, fields, absent_key)?;
+    assert_eq!(result, SlotValue::Bool(false));
+    Ok(())
 }
 
 #[test]
@@ -565,10 +550,11 @@ fn contains_rejects_non_symbol_haystack() -> Result<(), String> {
         vec![ConstValue::I64(42), ConstValue::Symbol(needle)],
         &mut store,
     );
-    match result {
-        Err(msg) if msg.contains("TypeMismatch") || msg.contains("text") => Ok(()),
-        other => Err(format!("expected type error, got {other:?}")),
-    }
+    assert_eq!(
+        result,
+        Err("type mismatch: expected list, found number".to_owned())
+    );
+    Ok(())
 }
 
 #[test]
@@ -592,36 +578,37 @@ fn sum_overflow_returns_error() -> Result<(), String> {
 // ===== Error branches for store lookups =====
 
 #[test]
-fn contains_symbol_out_of_bounds_haystack() {
-    let mut stack = ExprStack::new(4).expect("valid");
+fn contains_symbol_out_of_bounds_haystack() -> Result<(), String> {
+    let mut stack = ExprStack::new(4).map_err(|e| e.to_string())?;
     let mut store = ValueStore::new();
-    let needle = store.insert_symbol("a").expect("insert");
-    // Push a SymbolId that does not exist in store
-    push_value(&mut stack, SlotValue::Symbol(SymbolId::new(99))).expect("push");
-    push_value(&mut stack, SlotValue::Symbol(needle)).expect("push");
+    let needle = store.insert_symbol("a").map_err(|e| e.to_string())?;
+    push_value(&mut stack, SlotValue::Symbol(SymbolId::new(99))).map_err(|e| e.to_string())?;
+    push_value(&mut stack, SlotValue::Symbol(needle)).map_err(|e| e.to_string())?;
     let result = eval_contains(&mut stack, &store);
     assert_eq!(
         result,
-        Err(EngineError::SymbolOutOfBounds {
-            symbol: SymbolId::new(99)
+        Err(EngineError::TypeMismatch {
+            expected: "list",
+            found: "symbol",
         })
     );
+    Ok(())
 }
 
 #[test]
-fn contains_symbol_out_of_bounds_needle() {
-    let mut stack = ExprStack::new(4).expect("valid");
+fn contains_symbol_out_of_bounds_needle() -> Result<(), String> {
+    let mut stack = ExprStack::new(4).map_err(|e| e.to_string())?;
     let mut store = ValueStore::new();
-    let hay = store.insert_symbol("hello").expect("insert");
-    push_value(&mut stack, SlotValue::Symbol(hay)).expect("push");
-    push_value(&mut stack, SlotValue::Symbol(SymbolId::new(99))).expect("push");
+    let list = store
+        .insert_list(vec![SlotValue::Symbol(SymbolId::new(1))].into_boxed_slice())
+        .map_err(|e| e.to_string())?;
+    push_value(&mut stack, SlotValue::List(list)).map_err(|e| e.to_string())?;
+    push_value(&mut stack, SlotValue::Symbol(SymbolId::new(99))).map_err(|e| e.to_string())?;
     let result = eval_contains(&mut stack, &store);
-    assert_eq!(
-        result,
-        Err(EngineError::SymbolOutOfBounds {
-            symbol: SymbolId::new(99)
-        })
-    );
+    assert_eq!(result, Ok(()));
+    let top = stack.pop().map_err(|error| error.to_string())?;
+    assert_eq!(top, SlotValue::Bool(false));
+    Ok(())
 }
 
 #[test]
@@ -657,18 +644,16 @@ fn ends_with_symbol_out_of_bounds_suffix() {
 }
 
 #[test]
-fn has_list_out_of_bounds() {
-    let mut stack = ExprStack::new(4).expect("valid");
-    let store = ValueStore::new();
-    push_value(&mut stack, SlotValue::List(ListId::new(99))).expect("push");
-    push_value(&mut stack, SlotValue::I64(1)).expect("push");
+fn has_list_out_of_bounds() -> Result<(), EngineError> {
+    let mut stack = ExprStack::new(4)?;
+    let mut store = ValueStore::new();
+    let key = store.insert_symbol("valid-key")?;
+    let object = ObjectId::new(u32::MAX);
+    push_value(&mut stack, SlotValue::Object(object))?;
+    push_value(&mut stack, SlotValue::Symbol(key))?;
     let result = eval_has(&mut stack, &store);
-    assert_eq!(
-        result,
-        Err(EngineError::ListOutOfBounds {
-            list: ListId::new(99)
-        })
-    );
+    assert_eq!(result, Err(EngineError::ObjectOutOfBounds { object }));
+    Ok(())
 }
 
 #[test]
@@ -971,3 +956,9 @@ fn oom_inject_disarmed_happy_path_succeeds() -> Result<(), String> {
     let result = eval_append(&mut stack, &mut store);
     ensure_equal(result, Ok(()))
 }
+
+// ===== Has parity tests for object field lookup semantics =====
+include!("has_parity_tests.rs");
+include!("has_operand_errors.rs");
+include!("contains_list_parity_tests.rs");
+include!("contains_hot_parity_tests.rs");

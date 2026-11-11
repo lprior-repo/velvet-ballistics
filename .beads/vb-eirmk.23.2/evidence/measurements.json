@@ -1,0 +1,84 @@
+{
+  "unit": "nanoseconds per component harness iteration",
+  "warning": "Mean confidence intervals are not latency percentiles; fixed batch/output movement/validation overhead included; full cases not comparable as isolated pushes",
+  "cases": [
+    {
+      "id": "trace_ring_public/raw_pop_16",
+      "samples": 20,
+      "mean_ns": 35.73863284000669,
+      "mean_estimate_confidence_interval": {
+        "confidence_level": 0.95,
+        "lower_bound": 35.52328321317025,
+        "upper_bound": 35.982424042374376
+      },
+      "total_iterations": 14583450.0,
+      "raw_sample": "target/core-build-20261110/evidence/trace-benchmark-run/criterion/trace_ring_public_raw_pop_16/new/sample.json",
+      "raw_estimates": "target/core-build-20261110/evidence/trace-benchmark-run/criterion/trace_ring_public_raw_pop_16/new/estimates.json"
+    },
+    {
+      "id": "trace_ring_public/raw_push_empty",
+      "samples": 20,
+      "mean_ns": 13.711930275344116,
+      "mean_estimate_confidence_interval": {
+        "confidence_level": 0.95,
+        "lower_bound": 13.603068584633462,
+        "upper_bound": 13.811991704161986
+      },
+      "total_iterations": 17867010.0,
+      "raw_sample": "target/core-build-20261110/evidence/trace-benchmark-run/criterion/trace_ring_public_raw_push_empty/new/sample.json",
+      "raw_estimates": "target/core-build-20261110/evidence/trace-benchmark-run/criterion/trace_ring_public_raw_push_empty/new/estimates.json"
+    },
+    {
+      "id": "trace_ring_public/raw_push_full_and_verify_returned_event",
+      "samples": 20,
+      "mean_ns": 15.75533990881319,
+      "mean_estimate_confidence_interval": {
+        "confidence_level": 0.95,
+        "lower_bound": 15.642794434380622,
+        "upper_bound": 15.86200094816978
+      },
+      "total_iterations": 8305920.0,
+      "raw_sample": "target/core-build-20261110/evidence/trace-benchmark-run/criterion/trace_ring_public_raw_push_full_and_verify_returned_event/new/sample.json",
+      "raw_estimates": "target/core-build-20261110/evidence/trace-benchmark-run/criterion/trace_ring_public_raw_push_full_and_verify_returned_event/new/estimates.json"
+    },
+    {
+      "id": "trace_ring_public/wrapper_drain_16",
+      "samples": 20,
+      "mean_ns": 41.3493718720414,
+      "mean_estimate_confidence_interval": {
+        "confidence_level": 0.95,
+        "lower_bound": 41.26008694828754,
+        "upper_bound": 41.45160481875072
+      },
+      "total_iterations": 8224650.0,
+      "raw_sample": "target/core-build-20261110/evidence/trace-benchmark-run/criterion/trace_ring_public_wrapper_drain_16/new/sample.json",
+      "raw_estimates": "target/core-build-20261110/evidence/trace-benchmark-run/criterion/trace_ring_public_wrapper_drain_16/new/estimates.json"
+    },
+    {
+      "id": "trace_ring_public/wrapper_push_empty",
+      "samples": 20,
+      "mean_ns": 13.778547428180335,
+      "mean_estimate_confidence_interval": {
+        "confidence_level": 0.95,
+        "lower_bound": 13.64136666391274,
+        "upper_bound": 13.92806821652339
+      },
+      "total_iterations": 19355490.0,
+      "raw_sample": "target/core-build-20261110/evidence/trace-benchmark-run/criterion/trace_ring_public_wrapper_push_empty/new/sample.json",
+      "raw_estimates": "target/core-build-20261110/evidence/trace-benchmark-run/criterion/trace_ring_public_wrapper_push_empty/new/estimates.json"
+    },
+    {
+      "id": "trace_ring_public/wrapper_push_full_and_observe_dropped",
+      "samples": 20,
+      "mean_ns": 13.101941934080685,
+      "mean_estimate_confidence_interval": {
+        "confidence_level": 0.95,
+        "lower_bound": 13.03629477125583,
+        "upper_bound": 13.178633008801171
+      },
+      "total_iterations": 2170350.0,
+      "raw_sample": "target/core-build-20261110/evidence/trace-benchmark-run/criterion/trace_ring_public_wrapper_push_full_and_observe_dropped/new/sample.json",
+      "raw_estimates": "target/core-build-20261110/evidence/trace-benchmark-run/criterion/trace_ring_public_wrapper_push_full_and_observe_dropped/new/estimates.json"
+    }
+  ]
+}

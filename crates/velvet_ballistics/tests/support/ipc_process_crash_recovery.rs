@@ -63,7 +63,7 @@ impl CrashFixture {
     pub(crate) fn new() -> TestResult<Self> {
         let root = tempfile::Builder::new()
             .prefix("vb-pcr-")
-            .tempdir_in("/tmp")?;
+            .tempdir_in(std::env::temp_dir())?;
         let deadline = Instant::now()
             .checked_add(Duration::from_secs(30))
             .ok_or(Refusal::Limit("scenario deadline"))?;

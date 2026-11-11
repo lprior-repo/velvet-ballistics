@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "artifact_sha256": "7a20dcc9f3d4caa8c5e32b681e550a807c7fdd1f1410a864e0d85d29a3ee157c",
+  "verdict": "REJECT",
+  "creation_remap_ready": false,
+  "review_kind": "independent_bounded_PLANNING",
+  "artifact": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/remaining-owner-proposals/normalized-v6.json",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+  "roots_verified": {
+    "git": true,
+    "jj": true
+  },
+  "preflight_raw_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-v3-preflight-live12.json",
+  "preflight_raw_sha256": "551cc6ba494b889b2142332f6b0b3ff6bc02db69eba77569157ec352b856a696",
+  "design_sha256": "0af85ed146ed27fbe169a400ccd02d484f018db94f60c891d52052d17bbe2dd1",
+  "findings": [
+    {
+      "id": "V6-C1",
+      "severity": "blocking",
+      "path": "normalized-v6.json",
+      "lines": [
+        596,
+        2050,
+        3018
+      ],
+      "json_paths": [
+        "proposals[1].reuse_task_readback.lifecycle_guards.1_before_any_reuse_task_mutation.verify_old_live_row_and_full_check_objects_exactly_equal",
+        "proposals[5].reuse_task_readback.lifecycle_guards.1_before_any_reuse_task_mutation.verify_old_live_row_and_full_check_objects_exactly_equal",
+        "proposals[8].reuse_task_readback.lifecycle_guards.1_before_any_reuse_task_mutation.verify_old_live_row_and_full_check_objects_exactly_equal"
+      ],
+      "description": "V6 replaces all nine top-level live_row_before snapshots correctly, but the authoritative stage-1 reuse guards for function:28:2, function:31:4 and master44.16 still contain the old 12-key row projections under an exact-equality control. Each corresponding raw row now has 22 keys. These nested expected objects remain unequal to both the raw row and the new full live_row_before, so faithfully evaluating that reuse guard reproduces the partial-object equality failure.",
+      "required_correction": "Synchronize these three authoritative lifecycle before-row expectations with their complete V6 live_row_before objects, or replace the duplicated values with an explicit reference requiring equality to that complete object. Preserve full check payloads, stage ordering, timestamp binding and all other approved semantic controls. Do not silently reinterpret exact object equality as selected-field equality."
+    }
+  ],
+  "verified": {
+    "frozen_artifact_hash_matches": true,
+    "raw_preflight_file_hash_matches": true,
+    "raw_design_hash_matches": true,
+    "all_nine_full_live_row_before_equal_raw_rows": true,
+    "all_thirteen_check_objects_equal_raw_unresolved_checks": true,
+    "all_old_twelve_field_values_preserved": true,
+    "all_other_proposal_semantics_exactly_equal_v5": true,
+    "delta_reconstruction": "Restoring V5 live_row_before values, removing only V6 v5_preservation/row_snapshot_refresh_provenance and restoring the V5 verdict makes the complete V6 JSON equal V5.",
+    "full_row_key_counts": {
+      "function:24:1": 24,
+      "function:28:2": 22,
+      "function:29:3": 24,
+      "function:29:6": 24,
+      "function:29:8": 22,
+      "function:31:4": 22,
+      "77.17": 22,
+      "77.10": 24,
+      "master44.16": 22
+    },
+    "all_190_completion_false_missing_null": true,
+    "creation_and_reuse_semantics": "Four open root-parent TASK payloads with nested qualification metadata, grouping of three storage rows, full-scope .53/.24 reuse, actual-ID receipts, .11 dependencies on actual TASK IDs, three-row/two-check scalar allowlists and actual response-to-readback updated_at binding remain unchanged from V5. None are rejected independently here."
+  },
+  "prior_v5_assessment": {
+    "report_preserved": true,
+    "explanation": "The prior V5 readiness PASS verified exact common field values and all thirteen full check payloads, but its before-row snapshots were only twelve selected fields. That was insufficient for a full-object equality preflight. The earlier readiness verdict was too broad on this point; V6 repairs the primary snapshots but still leaves the three duplicated exact-equality expectations partial.",
+    "no_history_or_prior_report_rewrite": true
+  },
+  "limits": [
+    "REJECT only for the remaining duplicated before-row guard inconsistency; no apply performed or authorized.",
+    "Raw hash-bound preflight evidence inspected without BD/DB access. No fresh live-state assertion is made; apply still requires fresh global design/task/dependency readbacks.",
+    "Only nine-row/thirteen-check ownership readiness reviewed. No full190 plan, implementation, native, gate, proof or product acceptance.",
+    "No DB/source/native/new-agent actions, JJ snapshots, cleanup, commits or pushes. Only requested own-workspace report written using apply_patch; every shell command used TMPDIR=/run/user/1000/vbs."
+  ]
+}

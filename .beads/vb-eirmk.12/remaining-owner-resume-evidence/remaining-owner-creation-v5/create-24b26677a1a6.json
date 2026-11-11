@@ -1,0 +1,18 @@
+{
+  "proposal_sha256": "9cef921c994a6bd6bbf706d597b3a244580970eba3a1d14139c566f9e011c155",
+  "proposal_key": "qualify-v1min-capability-grant-lifecycle",
+  "payload": {
+    "title": "Qualify V1-min capability grant lifecycle",
+    "issue_type": "task",
+    "status": "open",
+    "parent": "vb-eirmk",
+    "metadata": {
+      "master_requirement_ids": [
+        "77.10"
+      ],
+      "qualification_only": true
+    },
+    "description": "Qualification only for required grant fields, all three admission modes, narrowed executor tokens, journaled time/revocation facts, replay/live-effect distinction. Negative: exact pre-dispatch errors for missing/overgrant, wrong bindings/scopes, expiry/not-yet-valid/revocation/delegation; human approval cannot broaden authority. Preserve V1-MIN exclusions and vb-hk1j8 historical ownership.",
+    "acceptance_criteria": "Qualification only for required grant fields, all three admission modes, narrowed executor tokens, journaled time/revocation facts, replay/live-effect distinction. Negative: exact pre-dispatch errors for missing/overgrant, wrong bindings/scopes, expiry/not-yet-valid/revocation/delegation; human approval cannot broaden authority. Preserve V1-MIN exclusions and vb-hk1j8 historical ownership. Record exact current source pin, raw command/exit and production entrypoint/test mapping; keep unknown evidence unknown and obtain independent CODE plus separate TEST disposition."
+  }
+}

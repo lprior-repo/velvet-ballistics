@@ -47,9 +47,8 @@ fn temp_socket_path(name: &str) -> PathBuf {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let pid = std::process::id();
     let counter = COUNTER.fetch_add(1, Ordering::Relaxed);
-    std::path::PathBuf::from("/tmp").join(format!(
-        "vb_te1i_ipc_acceptance_test_{name}_{pid}_{counter:04x}.sock"
-    ))
+    let short = name.chars().take(8).collect::<String>();
+    std::env::temp_dir().join(format!("vb_te1i_{short}_{pid}_{counter:04x}.sock"))
 }
 
 /// Builds a minimal runtime for tests.
@@ -688,4 +687,27 @@ fn ipc_rejects_oversize_payload() {
             other => panic!("expected FrameError for oversize payload, got {other:?}"),
         }
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+#[test]
+fn ipc_socket_path_uses_configured_temp_dir() {
+    let path = temp_socket_path("configured");
+
+    // The parent must be the OS-configured temp directory.
+    let base = std::env::temp_dir();
+    assert_eq!(
+        path.parent(),
+        Some(base.as_path()),
+        "IPC socket path parent must be the OS temp dir, not a hardcoded prefix"
+    );
+
+    // The full path must fit within the unix(7) SUN_LEN limit (108 bytes).
+    let path_bytes = path.as_os_str().as_encoded_bytes();
+    assert!(
+        path_bytes.len() < 108,
+        "IPC socket path is too long for unix(7) SUN_LEN: {} bytes",
+        path_bytes.len()
+    );
 }

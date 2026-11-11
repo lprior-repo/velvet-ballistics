@@ -1,0 +1,10 @@
+Running as unit: vb-helper-scalars-verify-20261110.scope; invocation ID: 9ab845216df74dbd95688ab6b2ed9d51
+────────────
+ Nextest run ID 8d47fb24-ecf2-4ef4-bfcf-7139b72a608d with nextest profile: default
+    Starting 4 tests across 1 binary
+        PASS [   0.002s] (1/4) velvet-ballistics-workspace-tests::helper_scalar_typecheck known_scalar_references_return_exact_helper_type_mismatches
+        PASS [   0.002s] (2/4) velvet-ballistics-workspace-tests::helper_scalar_typecheck deferred_and_compatible_references_keep_helper_result_types
+        PASS [   0.002s] (3/4) velvet-ballistics-workspace-tests::helper_scalar_typecheck scalar_literals_return_exact_helper_type_mismatches
+        PASS [   0.004s] (4/4) velvet-ballistics-workspace-tests::helper_scalar_typecheck public_compiler_returns_exact_errors_for_all_scalar_helper_pairs
+────────────
+     Summary [   0.004s] 4 tests run: 4 passed, 0 skipped

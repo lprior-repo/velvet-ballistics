@@ -1,0 +1,53 @@
+Running as unit: vb-trace-bench-measure-20261110.scope; invocation ID: bdb798791466434d86f17a8060caa662
+Gnuplot not found, using plotters backend
+Benchmarking trace_ring_public/raw_push_empty
+Benchmarking trace_ring_public/raw_push_empty: Warming up for 1.0000 s
+Benchmarking trace_ring_public/raw_push_empty: Collecting 20 samples in estimated 2.0000 s (18M iterations)
+Benchmarking trace_ring_public/raw_push_empty: Analyzing
+trace_ring_public/raw_push_empty
+                        time:   [13.442 ns 13.617 ns 13.774 ns]
+Found 4 outliers among 20 measurements (20.00%)
+  1 (5.00%) low severe
+  1 (5.00%) low mild
+  2 (10.00%) high mild
+
+Benchmarking trace_ring_public/wrapper_push_empty
+Benchmarking trace_ring_public/wrapper_push_empty: Warming up for 1.0000 s
+Benchmarking trace_ring_public/wrapper_push_empty: Collecting 20 samples in estimated 2.0000 s (19M iterations)
+Benchmarking trace_ring_public/wrapper_push_empty: Analyzing
+trace_ring_public/wrapper_push_empty
+                        time:   [13.727 ns 13.968 ns 14.155 ns]
+
+Benchmarking trace_ring_public/raw_push_full_and_verify_returned_event
+Benchmarking trace_ring_public/raw_push_full_and_verify_returned_event: Warming up for 1.0000 s
+Benchmarking trace_ring_public/raw_push_full_and_verify_returned_event: Collecting 20 samples in estimated 2.0000 s (8.3M iterations)
+Benchmarking trace_ring_public/raw_push_full_and_verify_returned_event: Analyzing
+trace_ring_public/raw_push_full_and_verify_returned_event
+                        time:   [15.548 ns 15.664 ns 15.821 ns]
+Found 5 outliers among 20 measurements (25.00%)
+  4 (20.00%) low severe
+  1 (5.00%) high severe
+
+Benchmarking trace_ring_public/wrapper_push_full_and_observe_dropped
+Benchmarking trace_ring_public/wrapper_push_full_and_observe_dropped: Warming up for 1.0000 s
+Benchmarking trace_ring_public/wrapper_push_full_and_observe_dropped: Collecting 20 samples in estimated 2.0001 s (2.2M iterations)
+Benchmarking trace_ring_public/wrapper_push_full_and_observe_dropped: Analyzing
+trace_ring_public/wrapper_push_full_and_observe_dropped
+                        time:   [13.065 ns 13.213 ns 13.326 ns]
+Found 3 outliers among 20 measurements (15.00%)
+  3 (15.00%) high mild
+
+Benchmarking trace_ring_public/raw_pop_16
+Benchmarking trace_ring_public/raw_pop_16: Warming up for 1.0000 s
+Benchmarking trace_ring_public/raw_pop_16: Collecting 20 samples in estimated 2.0000 s (15M iterations)
+Benchmarking trace_ring_public/raw_pop_16: Analyzing
+trace_ring_public/raw_pop_16
+                        time:   [35.690 ns 35.957 ns 36.172 ns]
+
+Benchmarking trace_ring_public/wrapper_drain_16
+Benchmarking trace_ring_public/wrapper_drain_16: Warming up for 1.0000 s
+Benchmarking trace_ring_public/wrapper_drain_16: Collecting 20 samples in estimated 2.0000 s (8.2M iterations)
+Benchmarking trace_ring_public/wrapper_drain_16: Analyzing
+trace_ring_public/wrapper_drain_16
+                        time:   [41.277 ns 41.392 ns 41.492 ns]
+

@@ -1,0 +1,129 @@
+{
+  "bead": "vb-eirmk.23.2",
+  "verdict": "PASS",
+  "scope": "Independent read-only execution-evidence audit of six bounded V4 component benchmark cases only.",
+  "source_commit": "23749f4b5b0b1822243a956ae22dd1b59912a0e1",
+  "workspace": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+    "git_and_jj_roots_verified": true,
+    "clean": true,
+    "method": "Read frozen source through git show; no workspace revision or source mutation needed."
+  },
+  "findings": [],
+  "evidence_directory": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/trace-benchmark-run",
+  "build": {
+    "observed": "build.log completes bench profile; build-artifacts.jsonl has successful build-finished and newly built bench artifact (fresh=false); BENCH_BUILD_EXIT=0.",
+    "executable": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/release/deps/rtrb-79219df668c9c02c",
+    "binding": "Executable path agrees among Cargo bench artifact, executable.txt, provenance and both run commands.",
+    "profile": {
+      "opt_level": "3",
+      "debuginfo": 2,
+      "debug_assertions": false,
+      "overflow_checks": false,
+      "test": true
+    },
+    "manifest_profile": "Frozen Cargo.toml bench profile inherits optimized release, debug=true, thin LTO, codegen-units1; matches recorded profile.",
+    "recorded_limits": {
+      "profile": "bench",
+      "lto": "thin",
+      "codegen_units": 1,
+      "jobs": 2,
+      "rustflags": "-Dwarnings",
+      "memory_high": "20G",
+      "memory_max": "24G",
+      "swap_max": 0,
+      "timeout_seconds": 900
+    },
+    "limits_evidence": "Build log identifies the systemd scope. Detailed build flags/resource settings are recorded in provenance; no separate build-command argv receipt exists in this directory, and effective cgroup/peak-memory telemetry was not independently recovered."
+  },
+  "source_binding": {
+    "sha256": {
+      "Cargo.lock": "307cb7e5ecaa002ebe817d6963fab48c681b3d42927081863a2f35d4ea4b37fd",
+      "crates/workspace_tests/benches/rtrb.rs": "160401766df2bbe5ddd533644b2e7fb5fc5a48e6e025821896db56266d15cfb2",
+      "crates/workspace_tests/benches/trace_ring_public.rs": "826ed3a9dcf63bba467b545043b5497b5423586582527cc3780f1950fe9d2449",
+      "crates/vb_runtime/src/trace.rs": "44239b791169e7a19a43cccac05766433474d429b14e390d91e401df59241b2c",
+      "crates/vb_runtime/src/frame_pool.rs": "f9b0eaf8af48accb4f3a349a286a849ee83f636adbbc72e3183f62e8fac78f63"
+    },
+    "verified": "All five hashes independently match both frozen Git source and current parent-home source files, including Cargo.lock and the V4 bench. No source hash drift detected. Source pin and provenance agree."
+  },
+  "modes_and_commands": {
+    "criterion_primary_source": "Installed criterion-0.8.2/src/lib.rs:958-965: --bench without --test selects statistical mode; --bench --test selects fixture test mode; absence of --bench would select test mode.",
+    "smoke": "Recorded executable --bench --test trace_ring_public --noplot. Actual six Testing/Success pairs exactly equal frozen source case names and smoke-validation.json. SMOKE_EXIT=0.",
+    "measurement": "Recorded executable --bench trace_ring_public --noplot --sample-size20 --warm-up-time1 --measurement-time2 --save-baseline vb_eirmk_23_2_v4_20261110. Raw log explicitly shows all six warmups, 20-sample collections and analyses. MEASUREMENT_EXIT=0.",
+    "runtime_caps": "Both commands request MemoryHigh1G, MemoryMax2G, MemorySwapMax0 and home TMPDIR/CRITERION_HOME. Actual smoke timeout is120s, measurement timeout300s; both use kill-after10s. These are recorded command limits, not measured peak resource usage."
+  },
+  "freshness": {
+    "assessment": "No evidence of stale estimate reuse. Bench binary was freshly rebuilt. CRITERION_HOME is the dedicated run directory, shared only by smoke and subsequent measurement in these receipts.",
+    "filesystem_receipt": "Smoke-exit file created 2026-11-10 11:43:01 CST. Measurement command/log created11:44:06. Criterion directory created11:44:10, after smoke completion; six new estimates files created11:44:10 through11:44:27 within the measurement log interval. This supports the claimed absence of estimates after smoke.",
+    "crosschecks": "Exactly six new result directories match the six reviewed names. Saved named-baseline benchmark/sample/estimates files are byte-identical to corresponding new files. No prior comparison baseline needed or performance comparison claimed.",
+    "limit": "Filesystem timestamps and raw execution receipts support chronology; they are not tamper-proof attestations or an independent observation of the historical run."
+  },
+  "sample_validation": {
+    "all_six_verified": true,
+    "checks": [
+      "Every benchmark.json full_id equals a reviewed source name; no missing or additional case.",
+      "Each sample has exactly20 times and20 iteration counts; every value positive and finite.",
+      "Mean recomputed as arithmetic mean of sample time/iterations matches raw mean estimate within1e-14 relative tolerance.",
+      "Each measurements.json mean, mean confidence interval and total iteration count matches raw estimates/sample; mean bounds finite, positive and ordered.",
+      "Mean confidence intervals are not per-event latency p95/p99; console time output may represent regression slope rather than the JSON mean."
+    ],
+    "cases": [
+      {
+        "id": "trace_ring_public/raw_pop_16",
+        "samples": 20,
+        "mean_ns": 35.73863284000669
+      },
+      {
+        "id": "trace_ring_public/raw_push_empty",
+        "samples": 20,
+        "mean_ns": 13.711930275344116
+      },
+      {
+        "id": "trace_ring_public/raw_push_full_and_verify_returned_event",
+        "samples": 20,
+        "mean_ns": 15.75533990881319
+      },
+      {
+        "id": "trace_ring_public/wrapper_drain_16",
+        "samples": 20,
+        "mean_ns": 41.3493718720414
+      },
+      {
+        "id": "trace_ring_public/wrapper_push_empty",
+        "samples": 20,
+        "mean_ns": 13.778547428180335
+      },
+      {
+        "id": "trace_ring_public/wrapper_push_full_and_observe_dropped",
+        "samples": 20,
+        "mean_ns": 13.101941934080685
+      }
+    ]
+  },
+  "provenance": {
+    "cpu": "AMD Ryzen 9 9950X3D 16-Core Processor",
+    "governor": "performance",
+    "kernel": "Linux 7.2.11-arch1-1 x86_64 GNU/Linux",
+    "rustc": "rustc 1.97.0-nightly (52b6e2c20 2026-04-27)",
+    "criterion": "0.8.2",
+    "fixture": {
+      "event": "StepStarted",
+      "run": 1,
+      "step": 1,
+      "capacity": 128,
+      "drain": 16,
+      "batch_maximum": 32
+    },
+    "host_load": "Build/start and measurement host loads recorded; no claim of exclusive-host benchmark isolation."
+  },
+  "contextual_checks": {
+    "selected_moon": "Actual log summary16421 passed,7 skipped; receipt MOON_EXIT=0;12 tasks completed,3 cached. This is selected Moon execution, not full CI.",
+    "source_length": "Direct source-length log reports zero over-limit files across governed categories; explicit shell exit0 is parent-reported, not separately encoded in this inspected log."
+  },
+  "limits": [
+    "Six local component-harness observations only; fixed-batch/output movement, instrumentation, validation and actual wrapper behavior contribute to measured values. Setup is outside per-batch timing but contributes wall-clock/calibration cost.",
+    "Full rejection cases perform different validation; no isolated push/wrapper ratio, speedup, allocation count, latency percentile, threshold compliance or whole-engine tracing-on/off claim.",
+    "No whole-master performance acceptance, formal proof, full CI closure or live ledger/checker approval. FramePool correctness is outside this execution audit.",
+    "No benchmark/native rerun, source/gate/tracker edits, agents or other review-report reads. Only this requested report written."
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "bead": "vb-eirmk.12",
+  "review": "bounded independent TEST/planning-oracle re-review",
+  "verdict": "PASS",
+  "creation_readiness": "READY_FOR_FOUR_QUALIFICATION_TASKS_ONLY",
+  "scope": "Frozen four-owner v2 proposal, prior TEST P1/P2 corrections and task-compatible dependency/remap design only. Actual creation and remapping not performed or approved as completed.",
+  "input": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/ownership-repair/qualification-owner-proposals-v2.json",
+    "sha256": "a4e1de27f65df6195071e7b09af862d3066c87cca19e896e4f6cad2261a84dc2",
+    "source_commit_reference": "23749f4b5b0b1822243a956ae22dd1b59912a0e1",
+    "source_manifest_resolved_path": "/home/lewis/src/isoloated/velvet-ballistics-masterplan-locator-luna/target/core-build-20261110/evidence/vb-eirmk.12-normalized-current-190-ownership.json",
+    "source_manifest_verified_sha256": "6272148b4bd5d0a2690c12c61cf6274af6d34d24388c198e63ae1d6307c65b7f",
+    "root_constraint_resolved_path": "/home/lewis/src/isoloated/velvet-ballistics-masterplan-locator-luna/target/core-build-20261110/evidence/vb-eirmk-root-live.json",
+    "root_constraint_verified_sha256": "5cfa5ad23f9873b2dc648719ad67c25e4f77ace03eb5a55bb69e3112026603dd",
+    "path_resolution": "Relative manifest/root receipt paths resolve in author workspace, not parent copied-proposal workspace. Exact bytes found and hashes independently verified; no prohibited temporary path followed."
+  },
+  "roots_verified": {
+    "git": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+    "jj": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol"
+  },
+  "findings": [],
+  "prior_findings": [
+    {
+      "id": "P1",
+      "disposition": "fixed_with_evidence",
+      "detail": "Each planned issue now specifies open/task/root parent, qualification_only=true, exact singleton master_requirement_ids, successful-create receipt requirement, actual-ID substitution trigger, precise five-field remap allowlist, preservation invariants and explicit final-acceptance dependency direction. Task classification supersedes prior epic recommendation because root contract prohibits task-on-epic dependency."
+    },
+    {
+      "id": "P2",
+      "disposition": "fixed_with_evidence",
+      "detail": "Phase-specific acceptance and family allocations replace generic-only coverage text. Source/owner inspection precedes child allocation; gaps distinguish evidence from demonstrated defects. Actual existing owners are reused only for inspected portions. Separate family mappings remain mandatory; no blank implementation placeholder or code-missing presumption."
+    }
+  ],
+  "phase_checks": [
+    {
+      "requirement_id": "phase:4",
+      "historical_owner": "vb-core-yaml-ast",
+      "family_rows": 6,
+      "result": "PASS_PLANNING",
+      "detail": "Workflow, trigger, step, active primitive families, expression and result AST remain separate inventory/mapping domains; positive shape preservation and rejected-invalid-shape/reference checks tied to parser-validator-compiler handoffs. vb-xvu support is bounded; historical AST owner reused only within inspected current scope."
+    },
+    {
+      "requirement_id": "phase:17",
+      "historical_owner": "vb-tzsfr",
+      "family_rows": 4,
+      "result": "PASS_PLANNING",
+      "detail": "Format/envelope, snapshot-plus-tail recovery, scoped journal recovery and corruption refusal are distinct. Requires persisted/drop/reopen parity, malformed/truncated refusal and current-source API/error identities; vb-eirmk.9 remains partial recovery support rather than full-phase replacement."
+    },
+    {
+      "requirement_id": "phase:20",
+      "historical_owner": "vb-2bbo",
+      "family_rows": 4,
+      "result": "PASS_PLANNING",
+      "detail": "Policy/attempt bounds, RetrySafety, delay/deadline and exhaustion/routing remain separately mapped, with initial/final/boundary cases and duplicate-redrive safety. vb-sfhyj and vb-eirmk.4.6 reuse restricted to inspected portions; .4.6 open prerequisites must be checked, not assumed accepted."
+    },
+    {
+      "requirement_id": "phase:21",
+      "historical_owner": "vb-heqb",
+      "family_rows": 4,
+      "result": "PASS_PLANNING",
+      "detail": "Handler dispatch/outcomes, typed error-slot identity/value/taint, forward transitions and applicable scoped/recovery support are distinct. Handled/unhandled and invalid-transition outcomes specified. The unresolved scoped-owner locator is explicitly not an actual BD assignment and must be resolved from live contracts before allocation; not a pre-created implementation child."
+    }
+  ],
+  "independent_controls": {
+    "manifest": "Frozen serialized manifest requirements exactly equal live vb-eirmk.12.design.normalized_current_190_ownership.requirements:190 rows. This comparison verifies snapshot identity/preservation only, not substantive qualification of unreviewed rows.",
+    "historical_status": "Live read-only bd show confirms vb-core-yaml-ast, vb-tzsfr, vb-2bbo and vb-heqb remain closed. Four canonical rows still reference these owners and have one unresolved qualify:phase:N check each; creation/remap have not happened.",
+    "duplicate_screen": "Repeated exact master_requirement_ids metadata lookup finds no current record for four phase IDs. Bounded metadata duplicate screen only; untagged semantic overlap must still be considered by creator if state changes.",
+    "issue_types": "All12 issue_type fields across four top-level proposals, planned_issue objects and creation receipts are task. Root is epic and final vb-eirmk.11 is open task. Live root design explicitly states task cannot depend on epic.",
+    "graph": "Each final edge is dependent vb-eirmk.11 -> prerequisite actual newly created qualifier task. Root epic relation is hierarchy only. No tracks substitution for required blocking dependency. Actual graph/acyclicity is still to be verified after IDs exist.",
+    "five_field_oracle": "Independently checked exact per-phase allowlist strings. In-memory remap using ephemeral identity tokens only changed canonical_qualification_owner_id, current_owner_status, owned unresolved_checks accountable_bead_id, owned check proposal_key, and resolved_from_proposal_key. Exactly20 leaf differences:5 per row at requirement indices5/18/21/22. No invented BD ID persisted and no tracker mutation.",
+    "preservation": "In-memory comparison confirmed all other186 rows identical, all other fields/checks in four rows identical, all190 completion_verified=false and implementation_missing=null unchanged. Historical/support IDs and closed statuses, check status/assertions and existing descriptions remain untouched. preserve_current_row_state is declarative: its paraphrased disposition text is not an additional update instruction."
+  },
+  "required_post_creation_audit": [
+    "Record actual successful create receipts for exactly four open full-phase qualification-only tasks under vb-eirmk, with singleton exact phase metadata and actual returned IDs. Never insert proposal keys or unresolved locator strings as BD identifiers.",
+    "Immediately recheck duplicate owners/current canonical rows against frozen manifest; stale state or unexpected existing owner requires reconciliation before remap, not silent overwrite.",
+    "Verify four actual task-to-task final blocking edges with final vb-eirmk.11 dependent on each qualifier, correct hierarchy parent and no reversed edges/cycles or tracks substitution.",
+    "Capture before/after full canonical rows and tracker records. Enforce exactly20 allowed leaf edits across four rows; no status/assertion/evidence/scope changes elsewhere, no historical reopening, all190 false/null values retained.",
+    "Resolve actual owner IDs and contracts for family/primitive gaps before creating any bounded child. Reuse existing qualified work; missing receipts alone do not authorize implementation repairs or pretend parent scope accepted.",
+    "Use Rust contract -> implementation only where justified -> tests -> CODE -> separate independent TEST. Existing required formal obligations remain required; no Go/full-proof-planning stage or waiver introduced.",
+    "Keep full190-plan, broader118-owner audit and99 unresolved native mappings unaccepted. Current creation-readiness PASS cannot close qualifiers, final11 or root."
+  ],
+  "limits": [
+    "Planning readiness only: no actual ID receipts, tracker edge results, canonical remap result or post-creation audit yet.",
+    "No CODE report read or CODE reasoning adopted; proposal review_provenance reference treated as provenance only.",
+    "Previous TEST rejection and metadata-fix dispositions preserved. Two already-applied metadata fixes are not reapplied or expanded here.",
+    "No Rust/source/API/schema/gate/dependency change, execution, formal, behavior-suite, full-CI or completion approval.",
+    "Only this new requested JSON report written; read-only bd show/list and bounded file/JSON/hash/in-memory comparisons used. No DB/tracker/source writes, new agents or root temporary-directory access."
+  ]
+}

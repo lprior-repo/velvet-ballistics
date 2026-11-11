@@ -1,0 +1,74 @@
+Align Has object-key evaluation across execution and replay
+
+Validate object and symbol handles before membership checks and preserve replay failure steps. Cover operand validation, stored symbol identity and context errors.
+
+- .beads/vb-eirmk.42.1/contract.md
+- .beads/vb-eirmk.42.1/evidence/bead-progress-update.json
+- .beads/vb-eirmk.42.1/evidence/cli-has-composition-receipt.json
+- .beads/vb-eirmk.42.1/evidence/code-review.json
+- .beads/vb-eirmk.42.1/evidence/full-selected-result.json
+- .beads/vb-eirmk.42.1/evidence/has-composition-followup-receipt-v2.json
+- .beads/vb-eirmk.42.1/evidence/has-composition-initial-receipt.json
+- .beads/vb-eirmk.42.1/evidence/hot-baseline.exit
+- .beads/vb-eirmk.42.1/evidence/hot-baseline.log
+- .beads/vb-eirmk.42.1/evidence/manifest-v2.json
+- .beads/vb-eirmk.42.1/evidence/manifest.json
+- .beads/vb-eirmk.42.1/evidence/replay-baseline.exit
+- .beads/vb-eirmk.42.1/evidence/replay-baseline.log
+- .beads/vb-eirmk.42.1/evidence/selected-cli-after.sha256
+- .beads/vb-eirmk.42.1/evidence/selected-cli-before.sha256
+- .beads/vb-eirmk.42.1/evidence/selected-moon.exit
+- .beads/vb-eirmk.42.1/evidence/selected-moon.log.gz
+- .beads/vb-eirmk.42.1/evidence/static-compiler-coverage.json
+- .beads/vb-eirmk.42.1/evidence/store-baseline.exit
+- .beads/vb-eirmk.42.1/evidence/store-baseline.log
+- .beads/vb-eirmk.42.1/evidence/store-fixed.exit
+- .beads/vb-eirmk.42.1/evidence/store-fixed.log
+- .beads/vb-eirmk.42.1/evidence/test-review.json
+- .beads/vb-eirmk.42.1/evidence/vb-expr-package.exit
+- .beads/vb-eirmk.42.1/evidence/vb-expr-package.log.gz
+- crates/vb_core/src/engine/expr_eval/ops_text_list.rs
+- crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs
+- crates/vb_core/src/engine/expr_eval/ops_text_list/has_parity_tests.rs
+- crates/vb_core/src/engine/expr_eval/ops_text_list/tests.rs
+- crates/vb_core/src/engine/expr_eval/tests/string_list_ops.rs
+- crates/vb_core/src/replay/helpers.rs
+- crates/vb_core/src/replay/ops/has_error_replay_tests.rs
+- crates/vb_core/src/replay/ops/has_parity_replay_tests.rs
+- crates/vb_core/src/replay/ops/tests.rs
+- crates/vb_core/src/replay/ops/tests_expr.rs
+- crates/vb_expr/src/expr_eval/helper_store_values.rs
+- crates/vb_expr/src/expr_eval_tests_store.rs
+- crates/workspace_tests/tests/has_operand_boundaries.rs
+- crates/workspace_tests/tests/has_store_key_validation.rs
+
+Use configured CLI paths in integration runners
+
+Share OS-path selection between NF2U and KYYF. Preserve standalone Cargo arguments and visible failures for explicit invalid paths.
+
+- .beads/vb-eirmk.13.12/commit-proposal.txt
+- .beads/vb-eirmk.13.12/contract.md
+- .beads/vb-eirmk.13.12/evidence/bead-closed.json
+- .beads/vb-eirmk.13.12/evidence/bead-completion-update.json
+- .beads/vb-eirmk.13.12/evidence/code-review.json
+- .beads/vb-eirmk.13.12/evidence/first-two-target-compile-failure.exit
+- .beads/vb-eirmk.13.12/evidence/first-two-target-compile-failure.log
+- .beads/vb-eirmk.13.12/evidence/focused-cli-after.sha256
+- .beads/vb-eirmk.13.12/evidence/focused-cli-before.sha256
+- .beads/vb-eirmk.13.12/evidence/full-selected-result.json
+- .beads/vb-eirmk.13.12/evidence/kyyf-baseline.exit
+- .beads/vb-eirmk.13.12/evidence/kyyf-baseline.log
+- .beads/vb-eirmk.13.12/evidence/manifest-v2.json
+- .beads/vb-eirmk.13.12/evidence/manifest.json
+- .beads/vb-eirmk.13.12/evidence/selected-cli-after.sha256
+- .beads/vb-eirmk.13.12/evidence/selected-cli-before.sha256
+- .beads/vb-eirmk.13.12/evidence/selected-moon.exit
+- .beads/vb-eirmk.13.12/evidence/selected-moon.log.gz
+- .beads/vb-eirmk.13.12/evidence/test-review.json
+- .beads/vb-eirmk.13.12/evidence/two-targets-pass.exit
+- .beads/vb-eirmk.13.12/evidence/two-targets-pass.log
+- .beads/vb-eirmk.13.12/kyyf-runner-contract-v3.md
+- .beads/vb-eirmk.13.12/relative-path-resolution-notes-v2.md
+- crates/workspace_tests/tests/support/prebuilt_cli_path.rs
+- crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs
+- crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs

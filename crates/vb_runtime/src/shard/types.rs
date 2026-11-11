@@ -21,6 +21,7 @@ use crate::frame_pool::FramePool;
 use crate::journal::SharedRuntimeJournal;
 use crate::primitives::collect::{CollectStates, CollectStatesCheckpointV1};
 
+use super::timer_wheel::{TimerEntry, TimerWheel};
 use crate::trace::TraceRing;
 
 // Aggregate resource model touchpoints for vb-qi37.2.1:

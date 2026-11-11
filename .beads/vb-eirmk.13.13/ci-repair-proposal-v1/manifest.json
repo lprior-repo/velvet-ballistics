@@ -1,0 +1,67 @@
+{
+  "state": "PROPOSED_NOT_APPLIED",
+  "approval_required_by": "AGENTS.md Boundaries: files that constrain agents and gate configs",
+  "base_main": "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178",
+  "source_pin": "2e67416679b4c8f6fd4abe93c365841a8370cfdb",
+  "protected_paths": [
+    ".moon/tasks/all.yml",
+    "scripts/check-panic-surface.sh",
+    "scripts/test-integrity-justifications.tsv"
+  ],
+  "ledger_before_sha256": "096df4425e06980160297b3fcdb126532d1f015af2329c37f4c475d5e507cafb",
+  "ledger_after_sha256": "46d680f48535f62c3020894af1a6e4bd3c880ae0e097cd199888cb7d8ba6b754",
+  "ledger_rows_added": 2,
+  "combined_patch_sha256": "9053a9ebf67c3ad56a01cd5927f3ec9070be4a86b63fdf4d2ecc5b4b7d0e55a4",
+  "inputs": [
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-core-main-landing/target/core-build-20261110/evidence/protected-probe-proposal/proposal.json",
+      "file": "nightly-proposal.json",
+      "sha256": "6e5036d29ebea5431c1bcdc62d527d79bb21269f7ef5aaf7a98db52eee74ca36"
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-core-main-landing/target/core-build-20261110/evidence/protected-probe-proposal/probe.log",
+      "file": "nightly-probe.log",
+      "sha256": "9f3e8dd428e685924ec4c689b522c6c80dc2b4c28a12d8af03c936e1687ee6d9"
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-core-main-landing/target/core-build-20261110/evidence/protected-probe-proposal/probe.exit",
+      "file": "nightly-probe.exit",
+      "sha256": "0d24825a529022e30387b8ec5c2d39bbcea8f87df53da96baec6235d41299739"
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-core-main-landing/target/core-build-20261110/evidence/protected-panic-proposal/proposal.json",
+      "file": "panic-proposal.json",
+      "sha256": "0540c4bbd9c83f5dbc177b5e3f3f4b2595aa5602edd9077adf2cadca37b948ef"
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-core-main-landing/target/core-build-20261110/evidence/protected-panic-proposal/full-candidate-preview.log",
+      "file": "panic-full-preview.log",
+      "sha256": "12b564164a3cb77d63fbf1663e830f1098f3799d0149fd4da824671edf861898"
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-core-main-landing/target/core-build-20261110/evidence/protected-panic-proposal/full-candidate-preview.exit",
+      "file": "panic-full-preview.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/target/core-build-20261110/evidence/test-integrity-current-proposal-v5-2e674.json",
+      "file": "ledger-proposal-v5.json",
+      "sha256": "daa308ebe2c32b67f2cba827cb05e459b96898667be2a2ccf37b6d49d404d090"
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/target/core-build-20261110/evidence/test-integrity-v5-2e674/case-results-corrected.json",
+      "file": "ledger-case-results.json",
+      "sha256": "c0f400e793e0c1b3e82fdf29ab7951174e57532cc52434c837f1dc05722de277"
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/protected-landing-patches-code-review-v3.json",
+      "file": "code-review-v3.json",
+      "sha256": "3067c7b37751ef7160bffb50bce7355fd4b773c765d94c14e11715945574d61d"
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/evidence/protected-landing-patches-test-review-v3.json",
+      "file": "test-review-v3.json",
+      "sha256": "84b1d73f67ed4b7df4b100939ee5ee9e3cecef20704632a986aa81bd665ed81d"
+    }
+  ]
+}

@@ -18,6 +18,7 @@ pub(crate) use registered_completion::RegisteredActionContext;
 include!("lifecycle/chunk_003.rs");
 include!("lifecycle/chunk_001.rs");
 include!("lifecycle/chunk_002.rs");
+include!("lifecycle/timer_clock.rs");
 include!("lifecycle/chunk_006.rs");
 include!("lifecycle/chunk_005_prepare.rs");
 include!("lifecycle/chunk_005_drive_apply.rs");
@@ -46,6 +47,17 @@ mod tests {
     include!("lifecycle_tests/timer_due_regressions.rs");
     include!("lifecycle_tests/chunk_013.rs");
     include!("lifecycle_tests/chunk_014.rs");
+    include!("lifecycle_tests/timer_wheel_cancel_authority_helpers.rs");
+    include!("lifecycle_tests/timer_wheel_integration_regressions.rs");
+    include!("lifecycle_tests/timer_wheel_capacity_regressions.rs");
+    include!("lifecycle_tests/timer_wheel_authority_regressions.rs");
+    include!("lifecycle_tests/timer_wheel_replacement_clock_regressions.rs");
+    include!("lifecycle_tests/timer_wheel_recovery_regressions.rs");
+    include!("lifecycle_tests/timer_wheel_recovery_policy_regressions.rs");
+    include!("lifecycle_tests/timer_wheel_snapshot_bounds_fixture.rs");
+    include!("lifecycle_tests/timer_wheel_snapshot_bounds_regressions.rs");
+    include!("lifecycle_tests/timer_wheel_failure_retry_regressions.rs");
+    include!("lifecycle_tests/timer_wheel_ask_answer_regressions.rs");
 
     mod strict_policy_sequence {
         include!("lifecycle_tests/strict_policy_sequence.rs");

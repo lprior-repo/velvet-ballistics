@@ -3762,16 +3762,15 @@ fn cli_run_nonexistent_workflow_file_fails_with_diagnostic() {
 }
 
 #[test]
-fn cli_validate_nonexistent_file_fails_with_diagnostic() {
-    let nonexistent_path = std::path::PathBuf::from("/tmp/vb-nonexistent-validate-test.yaml");
+fn cli_validate_nonexistent_file_fails_with_diagnostic() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
+    let nonexistent_path = dir.path().join("vb-nonexistent-validate-test.yaml");
 
-    let output = match run_cli(&[
+    let output = run_cli(&[
         std::ffi::OsStr::new("validate"),
         nonexistent_path.as_os_str(),
-    ]) {
-        Some(output) => output,
-        None => return,
-    };
+    ])
+    .ok_or("CLI binary must execute for validation scenario")?;
     assert!(
         !output.status.success(),
         "validate with nonexistent file must fail"
@@ -3783,6 +3782,7 @@ fn cli_validate_nonexistent_file_fails_with_diagnostic() {
             || stderr.contains("No such file"),
         "should report file error: {stderr}"
     );
+    Ok(())
 }
 
 #[test]

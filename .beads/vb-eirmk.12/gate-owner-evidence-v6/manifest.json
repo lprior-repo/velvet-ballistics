@@ -1,0 +1,469 @@
+{
+  "before_design_sha256": "c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9",
+  "after_design_sha256": "91693b0972b9cc82ccc573ac7615ab599bd6ccbcd1609a74f9fca2b0c5c36392",
+  "rows": 7,
+  "checks": 14,
+  "scalar_changes": 49,
+  "typed_edges_unchanged": 137,
+  "normalized_requirements": 190,
+  "all_completion_verified": false,
+  "all_implementation_missing": null,
+  "full_plan_accepted": false,
+  "entries": [
+    {
+      "path": "gate-owner-resume-v6/apply-output/01-before-issue11.receipt.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/01-before-issue11.receipt.json",
+      "source_sha256": "ce9d184a2bb52d4446ed04ef4a85e1a60bc9cbf43b3803e74e3d6bea0581615b",
+      "archive_sha256": "ce9d184a2bb52d4446ed04ef4a85e1a60bc9cbf43b3803e74e3d6bea0581615b",
+      "uncompressed_bytes": 637
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/01-before-issue11.stderr.raw",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/01-before-issue11.stderr.raw",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/01-before-issue11.stdout.raw.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/01-before-issue11.stdout.raw",
+      "source_sha256": "5a12f04115c99abd923acd0b489628cedccc3eace03a968a57c197fd93cce6cb",
+      "archive_sha256": "eca05fec2ae5d5440f8e278174bc2ecb430607931ec2e64bf0074ad377db6371",
+      "uncompressed_bytes": 671919
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/02-before-edges11.receipt.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/02-before-edges11.receipt.json",
+      "source_sha256": "9a9989e635f37fd54d134cf43227aba050fae7c32d601e0e926ef8787281019b",
+      "archive_sha256": "9a9989e635f37fd54d134cf43227aba050fae7c32d601e0e926ef8787281019b",
+      "uncompressed_bytes": 648
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/02-before-edges11.stderr.raw",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/02-before-edges11.stderr.raw",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/02-before-edges11.stdout.raw.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/02-before-edges11.stdout.raw",
+      "source_sha256": "f2551940d3e71046be569b8659c2610093624a7ee3327adf62513741ce938236",
+      "archive_sha256": "9dc80cdb7b6331c8a9dc1902625ecc4adc80ac8b75a6b5308ccdb20ad2095fa4",
+      "uncompressed_bytes": 658202
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/03-before-issue12.receipt.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/03-before-issue12.receipt.json",
+      "source_sha256": "9d4ce5b4d3025c1c9631689dc1c815d2a24eb5310017838c35baf851bc68a108",
+      "archive_sha256": "9d4ce5b4d3025c1c9631689dc1c815d2a24eb5310017838c35baf851bc68a108",
+      "uncompressed_bytes": 637
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/03-before-issue12.stderr.raw",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/03-before-issue12.stderr.raw",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/03-before-issue12.stdout.raw.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/03-before-issue12.stdout.raw",
+      "source_sha256": "f72592c2260b3a2bc3c3f75d51e35e1bb078023fa1b1e1815bad08779017dc65",
+      "archive_sha256": "7c85f82ca662ca23fc3d52ffba5621a3c4b10812b3ec9ffba4c02705e550625d",
+      "uncompressed_bytes": 4838314
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/04-immediate-before-issue11.receipt.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/04-immediate-before-issue11.receipt.json",
+      "source_sha256": "9e7f2e67c18b031f26f53a8db65ee66be056d1678c95082509884e608da5943c",
+      "archive_sha256": "9e7f2e67c18b031f26f53a8db65ee66be056d1678c95082509884e608da5943c",
+      "uncompressed_bytes": 657
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/04-immediate-before-issue11.stderr.raw",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/04-immediate-before-issue11.stderr.raw",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/04-immediate-before-issue11.stdout.raw.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/04-immediate-before-issue11.stdout.raw",
+      "source_sha256": "5a12f04115c99abd923acd0b489628cedccc3eace03a968a57c197fd93cce6cb",
+      "archive_sha256": "eca05fec2ae5d5440f8e278174bc2ecb430607931ec2e64bf0074ad377db6371",
+      "uncompressed_bytes": 671919
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/05-immediate-before-edges11.receipt.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/05-immediate-before-edges11.receipt.json",
+      "source_sha256": "3ba1249564679837df89f9478fec7eafaff506e0431794f0d347f9534eca032c",
+      "archive_sha256": "3ba1249564679837df89f9478fec7eafaff506e0431794f0d347f9534eca032c",
+      "uncompressed_bytes": 668
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/05-immediate-before-edges11.stderr.raw",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/05-immediate-before-edges11.stderr.raw",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/05-immediate-before-edges11.stdout.raw.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/05-immediate-before-edges11.stdout.raw",
+      "source_sha256": "f2551940d3e71046be569b8659c2610093624a7ee3327adf62513741ce938236",
+      "archive_sha256": "9dc80cdb7b6331c8a9dc1902625ecc4adc80ac8b75a6b5308ccdb20ad2095fa4",
+      "uncompressed_bytes": 658202
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/06-update-issue11-metadata.receipt.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/06-update-issue11-metadata.receipt.json",
+      "source_sha256": "66973806b0373d73fac15b6473c17946272648d0a2282578195dcf7dfb857311",
+      "archive_sha256": "66973806b0373d73fac15b6473c17946272648d0a2282578195dcf7dfb857311",
+      "uncompressed_bytes": 827
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/06-update-issue11-metadata.stderr.raw",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/06-update-issue11-metadata.stderr.raw",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/06-update-issue11-metadata.stdout.raw",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/06-update-issue11-metadata.stdout.raw",
+      "source_sha256": "81218d339f40c78704fffdafecfaa4a48f9cc734b6017326196f5f32058ae70a",
+      "archive_sha256": "81218d339f40c78704fffdafecfaa4a48f9cc734b6017326196f5f32058ae70a",
+      "uncompressed_bytes": 1715
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/07-after-issue11.receipt.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/07-after-issue11.receipt.json",
+      "source_sha256": "0a210d5cdd2f56f2f10f450557eee3e2878bc001a0748dae6887e8f8054a9a14",
+      "archive_sha256": "0a210d5cdd2f56f2f10f450557eee3e2878bc001a0748dae6887e8f8054a9a14",
+      "uncompressed_bytes": 635
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/07-after-issue11.stderr.raw",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/07-after-issue11.stderr.raw",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/07-after-issue11.stdout.raw.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/07-after-issue11.stdout.raw",
+      "source_sha256": "9d1fd15a12ce402b95e462073eb9262f89c0a51b6cc57cc590458afed36e2645",
+      "archive_sha256": "31f34c08c007143f4b1d76e55a5359446f50143a71cee61a317f908bd11f2c69",
+      "uncompressed_bytes": 672227
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/08-after-edges11.receipt.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/08-after-edges11.receipt.json",
+      "source_sha256": "ec71974c7363fc34e0e9db7bcf40ba6b8290530ee36b5798f5edd4f8e6f5bfa3",
+      "archive_sha256": "ec71974c7363fc34e0e9db7bcf40ba6b8290530ee36b5798f5edd4f8e6f5bfa3",
+      "uncompressed_bytes": 646
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/08-after-edges11.stderr.raw",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/08-after-edges11.stderr.raw",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/08-after-edges11.stdout.raw.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/08-after-edges11.stdout.raw",
+      "source_sha256": "f2551940d3e71046be569b8659c2610093624a7ee3327adf62513741ce938236",
+      "archive_sha256": "9dc80cdb7b6331c8a9dc1902625ecc4adc80ac8b75a6b5308ccdb20ad2095fa4",
+      "uncompressed_bytes": 658202
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/09-before-update-issue12.receipt.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/09-before-update-issue12.receipt.json",
+      "source_sha256": "cd401afd76bbf3789f20b5ae67e29be07be7b49994d72bff2d7428afcfb6d5ec",
+      "archive_sha256": "cd401afd76bbf3789f20b5ae67e29be07be7b49994d72bff2d7428afcfb6d5ec",
+      "uncompressed_bytes": 651
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/09-before-update-issue12.stderr.raw",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/09-before-update-issue12.stderr.raw",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/09-before-update-issue12.stdout.raw.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/09-before-update-issue12.stdout.raw",
+      "source_sha256": "f72592c2260b3a2bc3c3f75d51e35e1bb078023fa1b1e1815bad08779017dc65",
+      "archive_sha256": "7c85f82ca662ca23fc3d52ffba5621a3c4b10812b3ec9ffba4c02705e550625d",
+      "uncompressed_bytes": 4838314
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/10-update-issue12-design.receipt.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/10-update-issue12-design.receipt.json",
+      "source_sha256": "4c5fb5dea25e45433bfe062d89a4268aaf3b65e9c14eb68ae46613d66efec1ec",
+      "archive_sha256": "4c5fb5dea25e45433bfe062d89a4268aaf3b65e9c14eb68ae46613d66efec1ec",
+      "uncompressed_bytes": 822
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/10-update-issue12-design.stderr.raw",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/10-update-issue12-design.stderr.raw",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/10-update-issue12-design.stdout.raw.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/10-update-issue12-design.stdout.raw",
+      "source_sha256": "228be04827df5621fdc10e5bc90a4c1397658771ada5f63a624b1d97b6cd20c7",
+      "archive_sha256": "0c49fe062dddfa9b46cfc505bf96af36338922aa1b9c85a015c97f0108c4b0ba",
+      "uncompressed_bytes": 4434839
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/11-after-issue12.receipt.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/11-after-issue12.receipt.json",
+      "source_sha256": "57a5820d8185eaf4e19035526a2342c566997e2b5b0ea68db48439d67f5521ac",
+      "archive_sha256": "57a5820d8185eaf4e19035526a2342c566997e2b5b0ea68db48439d67f5521ac",
+      "uncompressed_bytes": 635
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/11-after-issue12.stderr.raw",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/11-after-issue12.stderr.raw",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/11-after-issue12.stdout.raw.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/11-after-issue12.stdout.raw",
+      "source_sha256": "b981ffbbacbd1e6c972ef4764a7e615b75ff676ee57bbfd40d0bd2ec5b9492c6",
+      "archive_sha256": "3b7d437a34fdd381916e2de63fdfbe60887d9c5b172439cd96e487960a85d858",
+      "uncompressed_bytes": 4839236
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/12-final-issue11.receipt.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/12-final-issue11.receipt.json",
+      "source_sha256": "d123d5d55dccbc05efb5eaff4276401c5c2105cc2c18c93031a312f8f60474bc",
+      "archive_sha256": "d123d5d55dccbc05efb5eaff4276401c5c2105cc2c18c93031a312f8f60474bc",
+      "uncompressed_bytes": 635
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/12-final-issue11.stderr.raw",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/12-final-issue11.stderr.raw",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/12-final-issue11.stdout.raw.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/12-final-issue11.stdout.raw",
+      "source_sha256": "9d1fd15a12ce402b95e462073eb9262f89c0a51b6cc57cc590458afed36e2645",
+      "archive_sha256": "31f34c08c007143f4b1d76e55a5359446f50143a71cee61a317f908bd11f2c69",
+      "uncompressed_bytes": 672227
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/13-final-edges11.receipt.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/13-final-edges11.receipt.json",
+      "source_sha256": "dc37b672a8fac03f6ff959191979109d1e25934ce607af6c1dbd3144f36779f0",
+      "archive_sha256": "dc37b672a8fac03f6ff959191979109d1e25934ce607af6c1dbd3144f36779f0",
+      "uncompressed_bytes": 646
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/13-final-edges11.stderr.raw",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/13-final-edges11.stderr.raw",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "archive_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/13-final-edges11.stdout.raw.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/13-final-edges11.stdout.raw",
+      "source_sha256": "f2551940d3e71046be569b8659c2610093624a7ee3327adf62513741ce938236",
+      "archive_sha256": "9dc80cdb7b6331c8a9dc1902625ecc4adc80ac8b75a6b5308ccdb20ad2095fa4",
+      "uncompressed_bytes": 658202
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/design-after.raw.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/design-after.raw",
+      "source_sha256": "91693b0972b9cc82ccc573ac7615ab599bd6ccbcd1609a74f9fca2b0c5c36392",
+      "archive_sha256": "8ad4af7e91584fa4f037a32aea819187b8f7acf296d34709e4867530f60d0131",
+      "uncompressed_bytes": 4149239
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/design-before.raw.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/design-before.raw",
+      "source_sha256": "c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9",
+      "archive_sha256": "498a4d0b952be5ab875edbbc8c72f2b9190ba65bc5b002c41968b1d751a17d4e",
+      "uncompressed_bytes": 4148359
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/final-readbacks.json.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/final-readbacks.json",
+      "source_sha256": "37377581bf250f1dd4ae1d7d64a7bd61723da7ab6e2e34189368bb5e7ed3c83d",
+      "archive_sha256": "70819a61d403b49936b0db7807c9344242976ae6d164020bcdc2490b3f97a049",
+      "uncompressed_bytes": 670603
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/issue11-after.raw.json.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/issue11-after.raw.json",
+      "source_sha256": "9263a42ea8e204ba7fb73fd769d2c9e878ce1a96b4ae367023ee64fe236641cb",
+      "archive_sha256": "fc23fd15fd441daee6d1dff2968a4950d621fadd3d0fbf01c995fad8fa7f2267",
+      "uncompressed_bytes": 637490
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/issue11-before.raw.json.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/issue11-before.raw.json",
+      "source_sha256": "6c41f91461a3a48a090561eca2007e8820ed09ae3e4805b0eb95f96e3fc4b36e",
+      "archive_sha256": "d265192f340d18c4d344e0e2f0d90af99c426828a4771c10dcfa4ec4f07e192f",
+      "uncompressed_bytes": 637279
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/issue12-after.raw.json.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/issue12-after.raw.json",
+      "source_sha256": "8728dbb4433b69f0df9886ebf6b82ebaadd70030370254efeb80ab2912de998b",
+      "archive_sha256": "06bb49c91f544ce502f97c9bdf3ef31c0ea4f9effd6dc21ad90d9dc88090c067",
+      "uncompressed_bytes": 4814608
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/issue12-before.raw.json.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/issue12-before.raw.json",
+      "source_sha256": "89eaf43dccad57b9007be2e3b85638e25675211d550811a2570e1f3d4822c4dd",
+      "archive_sha256": "f5abb83bb4682e1b6e900be7d07ea04a2b251efc5e727a100c756d4021de066c",
+      "uncompressed_bytes": 4813686
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/metadata-after.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/metadata-after.json",
+      "source_sha256": "553006d86c03112b42396b3576b0f6cf0a9bc2fac977794d840f736dc384e68b",
+      "archive_sha256": "553006d86c03112b42396b3576b0f6cf0a9bc2fac977794d840f736dc384e68b",
+      "uncompressed_bytes": 247
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/preflight.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/preflight.json",
+      "source_sha256": "8894b6e9ea9396caf839d7fb0307c0a10648b5b0cb8e47e6d52b3675c8900b1d",
+      "archive_sha256": "8894b6e9ea9396caf839d7fb0307c0a10648b5b0cb8e47e6d52b3675c8900b1d",
+      "uncompressed_bytes": 2478
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/typed-edges-after.raw.json.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/typed-edges-after.raw.json",
+      "source_sha256": "c3de3b414ae52d49d720be301b647a299988a033e9190eb3accb6de5bc593438",
+      "archive_sha256": "2db36d437809060148dc4e5c16d9581cbaf80c3a1ecb96b5d53e1a872cc5d704",
+      "uncompressed_bytes": 635859
+    },
+    {
+      "path": "gate-owner-resume-v6/apply-output/typed-edges-before.raw.json.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/typed-edges-before.raw.json",
+      "source_sha256": "c3de3b414ae52d49d720be301b647a299988a033e9190eb3accb6de5bc593438",
+      "archive_sha256": "2db36d437809060148dc4e5c16d9581cbaf80c3a1ecb96b5d53e1a872cc5d704",
+      "uncompressed_bytes": 635859
+    },
+    {
+      "path": "gate-owner-resume-v6/executor.rb.txt",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/executor.rb",
+      "source_sha256": "dd180d8cc9f9a100b54a5c816dd245c90ba2762597ef513cafe3dca29c684946",
+      "archive_sha256": "dd180d8cc9f9a100b54a5c816dd245c90ba2762597ef513cafe3dca29c684946",
+      "uncompressed_bytes": 37465
+    },
+    {
+      "path": "gate-owner-apply-contract-v6.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-apply-contract-v6.json",
+      "source_sha256": "6ea5bbee36dc5fd9bf0421aab85d7ab74f90f804e43b9617e29e0d71b4e91f1b",
+      "archive_sha256": "6ea5bbee36dc5fd9bf0421aab85d7ab74f90f804e43b9617e29e0d71b4e91f1b",
+      "uncompressed_bytes": 12642
+    },
+    {
+      "path": "gate-owner-apply-contract-v5.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-apply-contract-v5.json",
+      "source_sha256": "fd8ee490bf63a2db8e4d5ca8c48f3c815d20e5a690013d9f46cc9f8bcecace1b",
+      "archive_sha256": "fd8ee490bf63a2db8e4d5ca8c48f3c815d20e5a690013d9f46cc9f8bcecace1b",
+      "uncompressed_bytes": 9785
+    },
+    {
+      "path": "executor-v5.rb.txt",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v5/executor.rb",
+      "source_sha256": "5a071b4d4a7c86bf83d6525c32b8e4f37c5f63d58bd3db2be5e480a0a1d8cbc6",
+      "archive_sha256": "5a071b4d4a7c86bf83d6525c32b8e4f37c5f63d58bd3db2be5e480a0a1d8cbc6",
+      "uncompressed_bytes": 33729
+    },
+    {
+      "path": "gate-owner-resume-v6-apply.log",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6-apply.log",
+      "source_sha256": "e4b4ed86f11b5969059166a7b3ddf6c04997604d2893891a7795c9d5240099c1",
+      "archive_sha256": "e4b4ed86f11b5969059166a7b3ddf6c04997604d2893891a7795c9d5240099c1",
+      "uncompressed_bytes": 141
+    },
+    {
+      "path": "proposal-v5.json.gz",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-gate-owner-proposals/normalized-v5.json",
+      "source_sha256": "e16e633cb711bc58eddd5c67049272214b59b856720355a77469964273f0d8f4",
+      "archive_sha256": "6a4b6827c8d4bdd70d01a757b510a015f3e32f96fb9f28fead77a41baaa43bc1",
+      "uncompressed_bytes": 1619165
+    },
+    {
+      "path": "reviews/gate-owner-apply-code-review-v5.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/gate-owner-apply-code-review-v5.json",
+      "source_sha256": "f94681f1eae03cddcda1e35324956571493a30f7e7c06330b9bb1b8ec885f04f",
+      "archive_sha256": "f94681f1eae03cddcda1e35324956571493a30f7e7c06330b9bb1b8ec885f04f",
+      "uncompressed_bytes": 7840
+    },
+    {
+      "path": "reviews/gate-owner-apply-code-review-v6.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/gate-owner-apply-code-review-v6.json",
+      "source_sha256": "155dc9b5f62488901210459645be8303449e1f69f4a0b48891e606bef346d3a9",
+      "archive_sha256": "155dc9b5f62488901210459645be8303449e1f69f4a0b48891e606bef346d3a9",
+      "uncompressed_bytes": 8324
+    },
+    {
+      "path": "reviews/gate-owner-post-code-review-v6.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/gate-owner-post-code-review-v6.json",
+      "source_sha256": "c2efd9821698cfe66c24fafacf0855b49bd88daae863f22303ccd19e38dbdfd6",
+      "archive_sha256": "c2efd9821698cfe66c24fafacf0855b49bd88daae863f22303ccd19e38dbdfd6",
+      "uncompressed_bytes": 23989
+    },
+    {
+      "path": "reviews/gate-owner-apply-test-review-v5.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/core-build-20261110/evidence/gate-owner-apply-test-review-v5.json",
+      "source_sha256": "66dd0dd463e787831c8364091ad17d74ab883b445fdf34b05a3f0dd6479a62cd",
+      "archive_sha256": "66dd0dd463e787831c8364091ad17d74ab883b445fdf34b05a3f0dd6479a62cd",
+      "uncompressed_bytes": 6891
+    },
+    {
+      "path": "reviews/gate-owner-apply-test-review-v6.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/core-build-20261110/evidence/gate-owner-apply-test-review-v6.json",
+      "source_sha256": "80d63be5db8674d74763e835734b835311c8f05269ba252cf106c83f18fd935a",
+      "archive_sha256": "80d63be5db8674d74763e835734b835311c8f05269ba252cf106c83f18fd935a",
+      "uncompressed_bytes": 10828
+    },
+    {
+      "path": "reviews/gate-owner-post-test-review-v6.json",
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/evidence/gate-owner-post-test-review-v6.json",
+      "source_sha256": "eef9f028484622c2862da3ac6f1cb24c827ecc1c2823c61d5782cc98ad3b7d7b",
+      "archive_sha256": "eef9f028484622c2862da3ac6f1cb24c827ecc1c2823c61d5782cc98ad3b7d7b",
+      "uncompressed_bytes": 25566
+    },
+    {
+      "path": "parent/gate-owner-post-live11.json.gz",
+      "source": "target/core-build-20261110/evidence/gate-owner-post-live11.json",
+      "source_sha256": "9d1fd15a12ce402b95e462073eb9262f89c0a51b6cc57cc590458afed36e2645",
+      "archive_sha256": "174ac9e8b4c7824e41a131f47c1a1103e251c57ef2f46855b61fa54b3c0f8779",
+      "uncompressed_bytes": 672227
+    },
+    {
+      "path": "parent/gate-owner-post-live12.json.gz",
+      "source": "target/core-build-20261110/evidence/gate-owner-post-live12.json",
+      "source_sha256": "b981ffbbacbd1e6c972ef4764a7e615b75ff676ee57bbfd40d0bd2ec5b9492c6",
+      "archive_sha256": "36634eaa48ea9d711bb4fca771092a5cceb6730218821410a9bad5ad53ba6326",
+      "uncompressed_bytes": 4839236
+    },
+    {
+      "path": "parent/gate-owner-parent-live-validation.json",
+      "source": "target/core-build-20261110/evidence/gate-owner-parent-live-validation.json",
+      "source_sha256": "80f85043e93295830c68f5b3fbe9c41d85f555b892034a60c2b8a5a8755c9b1d",
+      "archive_sha256": "80f85043e93295830c68f5b3fbe9c41d85f555b892034a60c2b8a5a8755c9b1d",
+      "uncompressed_bytes": 574
+    }
+  ]
+}

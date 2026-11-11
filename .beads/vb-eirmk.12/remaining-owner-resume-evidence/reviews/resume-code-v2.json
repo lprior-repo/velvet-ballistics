@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "artifact_sha256": "3411e4309adf9448b142e77a02b52bf75e97595eeb02f8f3073f9faa1f4db6b3",
+  "executor_sha256": "4910e47f51832ad028694c1cb1c1112a782eb60942007f8e7881abb116251c70",
+  "verdict": "REJECT",
+  "resume_ready": false,
+  "review_kind": "independent_bounded_contract_and_executor_CODE",
+  "artifact": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-owner-creation-resume-contract-v2.json",
+  "executor": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-owner-resume-v1/resume.rb",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+  "roots_verified": {
+    "git": true,
+    "jj": true
+  },
+  "findings": [
+    {
+      "id": "RB1",
+      "severity": "blocking",
+      "path": "remaining-owner-creation-resume-contract-v2.json",
+      "lines": [
+        1319,
+        1323,
+        2267,
+        2271
+      ],
+      "executor_lines": [
+        105,
+        109,
+        273,
+        275,
+        276
+      ],
+      "description": "The V2 contract changes code/test review paths to V2 but retains resume_preconditions.both_reviews_must_be_PASS_and_bind_sha256=9cef921c... (the V7 proposal hash). Its new review_binding_rule instead requires both current reviews to bind the exact V2 contract bytes, SHA3411e430.... These are contradictory authoritative binding requirements for the same reviews. The executor enforces the new contract binding in review_receipt, while line273 repurposes the legacy both_reviews... field as a V7 source-proposal binding. That interpretation is not what the field declares.",
+      "required_correction": "Give the retained V7 source hash a source/proposal-specific field name and update its executor lookup, leaving current CODE/TEST review bindings explicitly tied to exact successor-contract bytes. Remove the contradictory current-review requirement rather than making resume approvals bind V7. Freeze successor hashes and re-review before execution."
+    }
+  ],
+  "resolved_and_verified": [
+    "Both input SHA256 values match and remained stable at final pre-write check. V2 gate-edge scope,53-token patch scope and unchanged-design precondition are exactly equal to V1; history/review controls are the substantive delta.",
+    "RR1 executor fix is present at lines245-259,481-514: start from hash-bound saved ORIGINAL before objects; validate the original preflight reference and saved-after hashes; replace only .24/.53 named nested fields using successful receipt-bound values; require expected==saved.after==fresh actual before.",
+    "Independently reconstructed all8 historical expected objects from original references and actual update receipts. Every full object/hash matches saved after. All8 remain closed, own fields are unchanged, typed-edge order/type is retained, and missing dependencies keys remain absent. Only vb-juuw's embedded .24 view changes.",
+    "Final historical readback at570-577 must equal the complete fresh pre-resume object, not a normalization or broad field exclusion. Auxiliary malformed concatenated diagnostic is explicitly not parsed.",
+    "permitted_bd_args? now checks the actual3-argument readonly show shape; no args.fetch(3) failure remains. Allowed commands are readonly show/dep-list/cycles and exactly update vb-eirmk.12 --design-file <fixed resume output>. Create/delete/reuse-update/edge-add/other output path are rejected.",
+    "Only Open3 invocation is the guarded bd wrapper; actual mutation call occurs once at545. Four .68-.71 tasks are read/validated, never re-created; .24/.53 receipts are reused and never updated. There is no retry loop or source/build/service operation.",
+    "Task checks compare existing creation responses, payload business fields, readonly current scope/status/root parent and typed parent edges. .24/.53 full expected post objects are reconstructed from V7 before+exact approved fields and compared in full to saved/live readbacks.",
+    "Live .12 comparison uses .b byte equality to the hash-bound original design.9full primary rows/13checks and3full nested reuse references are checked before mutation.137typed edges must match exactly and cycles must be absent before/after.",
+    "Actual-owner construction correctly distinguishes retained reuse IDs from creation placeholders in both offline and apply branches. Source placeholder deltas and actual target IDs are separately validated.",
+    "Scalar parser covers the complete known-valid design and exactly53 selected paths, verifies original scalar values, patches binary byte strings in descending byte-offset order and semantically reverses only those53 paths to the original. Every190false/null invariant is checked before/after.",
+    "Executor requires explicit --apply, exact parent isolated cwd and absent unique output directory. After preflight it creates the output once, fsyncs receipts/raw before+after/patch metadata, rechecks the live design immediately before the single update, and requires final raw design equality and all postconditions. Failures stop without retry."
+  ],
+  "offline_evidence": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-owner-resume-v2-offline.log",
+    "observed": [
+      "Syntax OK",
+      "13 controls,13 passed,bd_calls=0",
+      "offline53 targets;source_placeholders_validated=true;actual owner IDs.68-.71",
+      "patched_sha256=c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9",
+      "offline historical reconstruction8/8",
+      "syntax_exit=0;guard_exit=0;plan_exit=0;history_exit=0"
+    ],
+    "interpretation": "Read actual nonempty offline log; did not execute the executor or offline harness. Source confirms both offline entrypoints exit before any bd call or artifact mutation. These checks do not establish live resume success or resolve RB1."
+  },
+  "conditions_before_any_future_resume": [
+    "Resolve RB1 in frozen successor artifacts and obtain separate exact-bound CODE and independent TEST PASS reports, including the reviewed executor hash checked by the parent at invocation.",
+    "Revalidate all hash-bound references and fresh original design, full task/reuse/historical snapshots,137typed edges and cycles. Stop on any drift; do not recreate tasks, repeat reuse updates or re-add edges.",
+    "Perform only53 scalar replacements, preserve unrelated raw bytes/190false-null, capture raw write/exit/readback receipts and independently audit post-apply token reversal and protected full state."
+  ],
+  "limits": [
+    "Combined frozen contract/executor reviewed; aggregate readiness is REJECT for RB1 despite verified RR1/allowlist/byte-patch repairs.",
+    "No DB calls, executor/offline/native/build execution, source edits, agents, JJ snapshots, cleanup, commits or pushes performed. Only requested own-workspace report written via apply_patch; shell commands used TMPDIR=/run/user/1000/vbs.",
+    "No resume application, full190 plan, implementation, gate, product or formal acceptance. Earlier reports and stopped V5 evidence preserved."
+  ]
+}

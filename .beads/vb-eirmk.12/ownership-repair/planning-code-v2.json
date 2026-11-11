@@ -1,0 +1,90 @@
+{
+  "bead": "vb-eirmk.12",
+  "review_kind": "Bounded independent PLANNING re-review",
+  "verdict": "PASS",
+  "verdict_scope": "Creation-ready proposal for exactly four full-phase qualification-only TASK owners; no creation/remap performed and no execution, qualification or full-plan acceptance.",
+  "input": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/ownership-repair/qualification-owner-proposals-v2.json",
+    "sha256": "a4e1de27f65df6195071e7b09af862d3066c87cca19e896e4f6cad2261a84dc2",
+    "hash_verified_before_and_after_review": true
+  },
+  "workspace": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+    "git_and_jj_roots_verified": true,
+    "clean": true,
+    "mode": "Read-only proposal inspection and bd show/list; symbolic in-memory remap check only."
+  },
+  "findings": [],
+  "resolved_findings": [
+    {
+      "id": "P1",
+      "status": "RESOLVED for parent creation planning",
+      "assessment": "Each phase has distinct qualification acceptance and existing-owner allocations. Family rows remain separate; actual variants and primitive-family rows must be inventoried before child allocation. Each clause must be classified as qualified, unresolved evidence gap or demonstrated defect. Evidence/test/repair children require a demonstrated gap; no empty implementation placeholders or presumption of missing code."
+    },
+    {
+      "id": "P2",
+      "status": "RESOLVED for parent creation planning",
+      "assessment": "Each planned issue requires actual creation-ID receipt, open TASK type, root parent, qualification_only=true and one exact phase master_requirement_id. Final .11 depends on the actual qualifier TASK, with hierarchy-only root EPIC membership and no tracks substitution. Remapping is gated on successful receipt and has exactly five allowed leaf fields per targeted row, plus explicit preservation and acyclicity checks."
+    }
+  ],
+  "phase_assessment": {
+    "phase:4": "Typed workflow, trigger, step, actual active primitives, expression and result AST families plus parser-validator-compiler handoffs are distinct. Positive shape preservation and rejected invalid shapes/references are required; constructor-only coverage cannot close the phase.",
+    "phase:17": "Format/envelope, snapshot-plus-tail public recovery and corruption refusal are separate. Persist/drop/reopen parity, format/version/length/digest handling and duplicate-effect prevention require exact current APIs/checks. vb-eirmk.9 remains partial supporting recovery scope.",
+    "phase:20": "Policies/RetrySafety, attempt bounds, deadlines, last attempt/exhaustion and routing have separate allocations and boundary obligations. vb-sfhyj and vb-eirmk.4.6 are reused only within inspected scope and prerequisites.",
+    "phase:21": "Dispatch, typed error-slot identity/value/taint, then/forward transitions and handler outcomes have distinct mappings. Additional scoped compiler/recovery owner is explicitly unresolved pending live inventory; the descriptive placeholder is not a real owner or an approved tracker ID."
+  },
+  "task_graph": {
+    "verified": "Live vb-eirmk is EPIC and its design states TASK cannot depend on EPIC. vb-eirmk.11 is TASK. All four top-level proposal issue_types, planned issues and creation receipts consistently use TASK.",
+    "required_direction": "vb-eirmk.11 TASK depends_on each newly created qualifier TASK; vb-eirmk EPIC parent-child membership is hierarchy only.",
+    "limits": "No edges created. Actual dependency direction, uniqueness, cycle freedom and metadata must be checked after creation; declared dependency edge_kind must be implemented through supported tracker operations."
+  },
+  "canonical_remap": {
+    "authoritative_source": "Live vb-eirmk.12 design.normalized_current_190_ownership.requirements",
+    "reviewed_requirement_ids": [
+      "phase:4",
+      "phase:17",
+      "phase:20",
+      "phase:21"
+    ],
+    "allowed_fields_per_target": [
+      "canonical_qualification_owner_id := actual created ID",
+      "current_owner_status := actual qualifier open status",
+      "owned unresolved_checks entry accountable_bead_id := actual created ID",
+      "owned unresolved_checks entry proposal_key := stable proposal key",
+      "resolved_from_proposal_key := stable proposal key"
+    ],
+    "owned_checks": [
+      "qualify:phase:4",
+      "qualify:phase:17",
+      "qualify:phase:20",
+      "qualify:phase:21"
+    ],
+    "in_memory_check": "Symbolic receipt markers used solely in an in-memory copy: exactly20 changed leaf fields, five per target;186 other rows unchanged. No ID fabricated or persisted.",
+    "preserved": "All190 completion_verified=false and implementation_missing=null values preserved. Scope, required assertions, unresolved statuses, historical/support/preferred-owner references, proposed_owner_key and unrelated fields remain unchanged.",
+    "current_live_state": "All four targeted canonical owners still reference closed historical issues; no creation or remap is recorded.",
+    "historical_statuses": {
+      "vb-core-yaml-ast": "closed",
+      "vb-tzsfr": "closed",
+      "vb-2bbo": "closed",
+      "vb-heqb": "closed"
+    },
+    "semantic_requirements_snapshot_sha256": "0b63499d045f01ee402e264f095bc8a8928672d59e0a4cfa7988a4e4da65869f",
+    "semantic_hash_encoding": "SHA256 of current requirements JSON with sort_keys=true and separators=(',',':'); not the proposal's unavailable original serialized-file digest."
+  },
+  "duplicate_and_reuse_check": {
+    "observed": "Live list of nonclosed issues has no exact master_requirement_ids assignment for any of these four phases. Four scopes equal current canonical required_surface_or_delivery. Historical closure remains support evidence, not current completion.",
+    "precreation_requirement": "Repeat exact metadata and scope/title duplicate lookup immediately before creation; if an exact full-scope open owner appears, reuse it rather than create another. Partial .9 recovery and .4.6 scoped-controls owners must not be promoted to full-phase owners."
+  },
+  "postcreation_audit_required": [
+    "Capture actual IDs from successful creation and verify all four statuses/types/root parents/exact metadata against their receipts.",
+    "Capture before/after canonical records, enforce the five-field allowlist and total20 target leaf changes, and independently verify all186 other rows and all190 false/null values remain unchanged.",
+    "Verify all four historical issues remain closed, supporting scopes/statuses preserved, .11 depends on actual qualifier TASK IDs, no tracks substitution and no dependency cycle.",
+    "Retain separate family-level accountability and unresolved inventory; qualification closure requires current source/check/raw-evidence mapping, applicable existing formal mandates and independent review. Actual Rust repair children follow user contract -> implementation -> tests -> CODE -> independent TEST, without imposing boilerplate on this planning task."
+  ],
+  "evidence_limits": [
+    "Two snapshot paths cited inside v2 (normalized-current190 ownership JSON and root-live JSON) are absent from the specified parent-home evidence directory. Their claimed serialized hashes were not verified; live canonical/root records independently confirmed the relevant scopes, shapes, statuses and TASK graph rule. Capture allowed-home before-state receipts before application.",
+    "Only scoped ownership fields and aggregate preservation invariants were inspected; no acceptance of the other186 requirement scopes or broader118-owner audit.",
+    "Live canonical validation remains native_obligation_mapping_complete=false and full_plan_accepted=false. Unmapped native checks and the full190 plan remain UNACCEPTED.",
+    "No DB/source/gate changes, agents, forbidden-path access, implementation, tests or verifier execution. Only this new report written; previous reports preserved."
+  ]
+}

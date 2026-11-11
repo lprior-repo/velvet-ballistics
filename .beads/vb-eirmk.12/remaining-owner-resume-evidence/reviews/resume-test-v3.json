@@ -1,0 +1,337 @@
+{
+  "verdict": "PASS",
+  "readiness": "CONDITIONAL_READY for this frozen ledger-only executor after separate V3 CODE PASS and all fresh preflight gates; not executed or postapply accepted",
+  "proposal_sha256": "fb421d0eaef2f674f990d19c8ebf6cea6ed3d890b5412d9f19c5b1f9789f468f",
+  "executor_sha256": "8c508a85448145b3273cabc4a0e301d8d05295771b7e5a6b5685f440d3f91817",
+  "proposal_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-owner-creation-resume-contract-v3.json",
+  "executor_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-owner-resume-v3/resume.rb",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+  "roots_verified": {
+    "git": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+    "jj": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol"
+  },
+  "review_kind": "Independent recovery PLANNING TEST/control and executor delta review",
+  "findings": [],
+  "prior_findings": [
+    {
+      "id": "RR1",
+      "disposition": "fixed_with_evidence",
+      "evidence": "Hash-bound original preflight BEFORE, exact receipt-only nested fields, complete expected==saved.after==fresh.before and complete post==fresh.before; no broad exclusions or fresh-self-baseline."
+    },
+    {
+      "id": "RR2",
+      "disposition": "fixed_with_evidence",
+      "evidence": "Whole retained payload key/value equality against hash-bound V7 task_create_payloads; expected live/final fields originate directly from V7. Parsed hash-bound old task readback is now checked, not merely hashed. Create response's sole absent approved field parent is explicit; prior/live readback and typed parent-child relation must establish it before mutation."
+    }
+  ],
+  "review_bindings": {
+    "original_V7_sha256": "9cef921c994a6bd6bbf706d597b3a244580970eba3a1d14139c566f9e011c155",
+    "original_review_receipts_equal_hash_bound_V5_preflight": true,
+    "V3_binding": "New independent CODE and TEST verdicts must PASS and bind both exact V3 contract and computed executor hash; verified before live mutation. Old V7 receipt verdict/hash/binding are separately checked.",
+    "other_CODE_reasoning_read": false,
+    "scope": "Original CODE review pointer/verdict data in raw V5 receipt inspected only as binding data; independent conclusions use source/raw task/history receipts."
+  },
+  "verified_receipts": {
+    "created_tasks": [
+      {
+        "issue_id": "vb-eirmk.68",
+        "full_approved_payload_sha256": "85da340055c6e34839070e4a461a78b6cc84a6c2788c773d1c6861ae91a6c38e",
+        "retained_positive_matches": true,
+        "prior_readback_stdout_sha256": "599932b87f660cc425a35deadc3f95faeb3841dfe9ff8e7181d277a2315df756"
+      },
+      {
+        "issue_id": "vb-eirmk.69",
+        "full_approved_payload_sha256": "474e9a66a71229c439d9d4aed476591b3c9d35312455f186ac6dc051eab384ba",
+        "retained_positive_matches": true,
+        "prior_readback_stdout_sha256": "53bfb58be61b45b903c1f4a74901ec3ff68523a9acc3111da1f7e7e5d445c322"
+      },
+      {
+        "issue_id": "vb-eirmk.70",
+        "full_approved_payload_sha256": "df7d26a79cc88c7ce9440738004c012f8c3ed67b83c78ab935a4f184e120fec8",
+        "retained_positive_matches": true,
+        "prior_readback_stdout_sha256": "8d1b02c49d55fe0510d406cae6175de73262d82a2afb25a6fa04e91ada961a9c"
+      },
+      {
+        "issue_id": "vb-eirmk.71",
+        "full_approved_payload_sha256": "f3300012ff6a286c3dc1789a317e44923d537dc9e9562b418229aaf7342c70a4",
+        "retained_positive_matches": true,
+        "prior_readback_stdout_sha256": "d45cb2722a884940aac43836446f010bef6630c2507e081fda5d9f79fb43d932"
+      }
+    ],
+    "reused_tasks": [
+      "vb-eirmk.24",
+      "vb-eirmk.53"
+    ],
+    "historical_objects": [
+      {
+        "id": "vb-b5f",
+        "strict_original_before_plus_only_receipt_fields_equals_saved_after": true,
+        "closed_own_fields_preserved": true,
+        "title_drift_rejected": true,
+        "missing_dependencies_key_preserved": true
+      },
+      {
+        "id": "vb-f8lko",
+        "strict_original_before_plus_only_receipt_fields_equals_saved_after": true,
+        "closed_own_fields_preserved": true,
+        "title_drift_rejected": true,
+        "missing_dependencies_key_preserved": true
+      },
+      {
+        "id": "vb-hk1j8",
+        "strict_original_before_plus_only_receipt_fields_equals_saved_after": true,
+        "closed_own_fields_preserved": true,
+        "title_drift_rejected": true,
+        "missing_dependencies_key_preserved": true
+      },
+      {
+        "id": "vb-ito",
+        "strict_original_before_plus_only_receipt_fields_equals_saved_after": true,
+        "closed_own_fields_preserved": true,
+        "title_drift_rejected": true,
+        "missing_dependencies_key_preserved": true
+      },
+      {
+        "id": "vb-juuw",
+        "strict_original_before_plus_only_receipt_fields_equals_saved_after": true,
+        "closed_own_fields_preserved": true,
+        "title_drift_rejected": true,
+        "missing_dependencies_key_preserved": true
+      },
+      {
+        "id": "vb-o6qcf",
+        "strict_original_before_plus_only_receipt_fields_equals_saved_after": true,
+        "closed_own_fields_preserved": true,
+        "title_drift_rejected": true,
+        "missing_dependencies_key_preserved": true
+      },
+      {
+        "id": "vb-s6vj",
+        "strict_original_before_plus_only_receipt_fields_equals_saved_after": true,
+        "closed_own_fields_preserved": true,
+        "title_drift_rejected": true,
+        "missing_dependencies_key_preserved": true
+      },
+      {
+        "id": "vb-wymp",
+        "strict_original_before_plus_only_receipt_fields_equals_saved_after": true,
+        "closed_own_fields_preserved": true,
+        "title_drift_rejected": true,
+        "missing_dependencies_key_preserved": true
+      }
+    ],
+    "gate_edges": 137,
+    "raw_design_before_sha256": "0af85ed146ed27fbe169a400ccd02d484f018db94f60c891d52052d17bbe2dd1",
+    "full_row_snapshot_locations": 12,
+    "rows": 9,
+    "owned_checks": 13,
+    "tokens": 53,
+    "all_190_false_null": true,
+    "expected_after_sha256": "c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9",
+    "outside_token_bytes": "Independent in-memory byte-span replacement preserves every byte outside selected scalar spans; reversing selected semantic values reconstructs original manifest."
+  },
+  "executor_safety": {
+    "only_BD_mutation": "One allowlisted vb-eirmk.12 update --design-file fixed parent OUT/design-after.raw; no create/reuse update/dependency mutation/push/retry.",
+    "fresh_preflight": "Task full approved fields, actual IDs, open TASK/root parent and typed parent edges; full .24/.53 receipt equality; exact unchanged raw12 design; exact137 typed gate edges; empty cycle query; strict closed history; exact review and source bindings.",
+    "before_write": "OUT must not already exist; evidence raw before/after and command/preflight receipts fsynced before sole write; latest live design compared byte-for-byte again.",
+    "postconditions": "Final design equals exact 53-token bytes; 190 false/null retained; gate137 and cycles checked; approved task fields/IDs/parent exact; reuse full objects exact; all8 full historical objects equal pre-resume, including edge IDs/types/order.",
+    "read_only_command_allowlist": "Exact show3/dep-list4/cycles forms; all unauthorized writes rejected before Open3. --json appended only after argument validation.",
+    "per_command_environment": {
+      "TMPDIR": "/run/user/1000/vbs",
+      "BD_BACKUP_ENABLED": "false"
+    },
+    "backup_limit": "Override is local to subprocess environment; no persistent setting, deletion, native backup repair/recovery or remote synchronization acceptance implied.",
+    "source_line_anchors": {
+      "payload_comparator": 122,
+      "payload_authority": 408,
+      "local_payload_guard": 422,
+      "live_payload_guard": 452,
+      "prior_readback_guard": 449,
+      "history_expected": 630,
+      "fresh_history_guard": 640,
+      "history_post": 713,
+      "sole_mutation": 686,
+      "new_review_binding": 112,
+      "old_review_binding": 351
+    }
+  },
+  "offline_controls": {
+    "retained_log": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-owner-resume-v3-offline.log",
+      "sha256": "de1ff9432b58a1ce46e0866c417611ea0e54f55b1493493420556d19a2eee91f",
+      "bytes": 480
+    },
+    "observed_guard": {
+      "controls": 13,
+      "passed": 13,
+      "bd_calls": 0
+    },
+    "observed_plan": {
+      "offline": true,
+      "targets": 53,
+      "source_placeholders_validated": true,
+      "v7_reviews": 2,
+      "retained_tasks_checked": 4,
+      "payload_mutants_rejected": {
+        "title": "REJECT",
+        "description": "REJECT",
+        "acceptance_criteria": "REJECT",
+        "metadata": "REJECT"
+      },
+      "actual_owner_ids": [
+        "vb-eirmk.68",
+        "vb-eirmk.69",
+        "vb-eirmk.70",
+        "vb-eirmk.71"
+      ],
+      "patched_sha256": "c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9"
+    },
+    "observed_exits": {
+      "syntax": 0,
+      "guard": 0,
+      "plan": 0
+    },
+    "independent_python_controls": {
+      "mutants_rejected": 24,
+      "cases": [
+        {
+          "issue_id": "vb-eirmk.68",
+          "field": "title",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.68",
+          "field": "description",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.68",
+          "field": "acceptance_criteria",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.68",
+          "field": "metadata",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.68",
+          "field": "extra_key",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.68",
+          "field": "missing_description",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.69",
+          "field": "title",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.69",
+          "field": "description",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.69",
+          "field": "acceptance_criteria",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.69",
+          "field": "metadata",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.69",
+          "field": "extra_key",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.69",
+          "field": "missing_description",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.70",
+          "field": "title",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.70",
+          "field": "description",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.70",
+          "field": "acceptance_criteria",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.70",
+          "field": "metadata",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.70",
+          "field": "extra_key",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.70",
+          "field": "missing_description",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.71",
+          "field": "title",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.71",
+          "field": "description",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.71",
+          "field": "acceptance_criteria",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.71",
+          "field": "metadata",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.71",
+          "field": "extra_key",
+          "verdict": "REJECT"
+        },
+        {
+          "issue_id": "vb-eirmk.71",
+          "field": "missing_description",
+          "verdict": "REJECT"
+        }
+      ],
+      "positive_retained_tasks": 4,
+      "historical_title_drift_controls": 8
+    },
+    "execution_distinction": "Reviewer did not execute Ruby executor/offline modes or BD. Retained author offline stdout/exits were read; Python independently compared immutable data and reproduced patch bytes/comparator negatives in memory. Source offline branches exit before live BD calls."
+  },
+  "unchanged_V2_controls": [
+    "partial_run",
+    "design_precondition",
+    "gate_edges",
+    "resume_scope",
+    "resume_preconditions.historical_expected_after_algorithm"
+  ],
+  "limits": [
+    "No actual apply, fresh BD query, native/build, source/gate/DB change, new agent or parent artifact write by reviewer; only own report written.",
+    "Both exact V3 review PASS receipts and all current-state guards must succeed before parent applies. Any drift requires stop and refreshed evidence/review, never repeat creation/reuse/edge actions.",
+    "Retained cycles/edge/task receipts do not establish fresh live state or actual postapply invariants; separate receipt audit remains required after execution.",
+    "Offline log lacks its own embedded executor hash/complete command transcript; source separately frozen and inspected. Offline success is not a live recovery result.",
+    "No full190 plan, implementation/proof/runtime/backup/remote-push/fullCI acceptance. Parent last-push/master stability claims were not independently rerun or expanded."
+  ]
+}

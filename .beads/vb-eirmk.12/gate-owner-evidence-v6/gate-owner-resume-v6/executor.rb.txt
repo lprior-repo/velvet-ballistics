@@ -1,0 +1,750 @@
+#!/usr/bin/env ruby
+require 'digest'
+require 'json'
+require 'open3'
+require 'strscan'
+
+ROOT = '/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna'
+EVIDENCE = File.join(ROOT, 'target/core-build-20261110/evidence')
+CONTRACT_PATH = File.join(EVIDENCE, 'gate-owner-apply-contract-v6.json')
+PROPOSAL_PATH = File.join(EVIDENCE, 'remaining-gate-owner-proposals/normalized-v5.json')
+OUT = File.join(EVIDENCE, 'gate-owner-resume-v6/apply-output')
+RUN_TMP = '/run/user/1000/vbs'
+PROPOSAL_SHA = 'e16e633cb711bc58eddd5c67049272214b59b856720355a77469964273f0d8f4'
+DESIGN_BEFORE_SHA = 'c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9'
+DESIGN_AFTER_SHA = '91693b0972b9cc82ccc573ac7615ab599bd6ccbcd1609a74f9fca2b0c5c36392'
+ISSUE11_SHA = '9eb4a387e744582713ec95a94c35a5a0b6d106f24bc6430deb2b6b8358cf5951'
+METADATA = {
+  'master_requirement_ids' => %w[
+    gate:feature-powerset gate:miri gate:coverage gate:mutants-smoke
+    gate:bench-build gate:benchmark-regression-policy gate:fuzz-smoke
+  ],
+  'qualification_only' => true
+}.freeze
+BD_ENV = {
+  'BEADS_DOLT_SERVER_PORT' => '37225',
+  'BD_DOLT_SERVER_PORT' => '37225',
+  'BD_BACKUP_ENABLED' => 'false',
+  'TMPDIR' => RUN_TMP
+}.freeze
+
+class GuardError < StandardError; end
+
+def guard!(condition, message)
+  raise GuardError, message unless condition
+end
+
+def digest(bytes)
+  Digest::SHA256.hexdigest(bytes)
+end
+
+def canonical(value)
+  case value
+  when Hash
+    value.keys.sort.to_h { |key| [key, canonical(value.fetch(key))] }
+  when Array
+    value.map { |item| canonical(item) }
+  else
+    value
+  end
+end
+
+def json_bytes(value)
+  JSON.generate(canonical(value)).encode(Encoding::UTF_8)
+end
+
+def deep_copy(value)
+  JSON.parse(JSON.generate(value))
+end
+
+def read_json(path)
+  JSON.parse(File.binread(path))
+rescue JSON::ParserError => error
+  raise GuardError, "invalid JSON at #{path}: #{error.message}"
+end
+
+def one_issue(value, issue_id)
+  issue = if value.is_a?(Array)
+    guard!(value.length == 1, "expected one issue readback for #{issue_id}")
+    value.fetch(0)
+  else
+    value
+  end
+  guard!(issue.is_a?(Hash) && issue.fetch('id') == issue_id, "wrong issue identity: #{issue_id}")
+  issue
+end
+
+def issue11_business(issue, expected)
+  guard!(issue['metadata'].nil?, 'vb-eirmk.11 metadata is not null/absent')
+  business = deep_copy(issue)
+  business.delete('metadata')
+  guard!(business == expected, 'vb-eirmk.11 full business readback drift')
+  guard!(digest(json_bytes(business)) == ISSUE11_SHA, 'vb-eirmk.11 canonical full hash drift')
+  business
+end
+
+def edge_pairs(edges)
+  guard!(edges.is_a?(Array), 'typed dependency readback is not an array')
+  pairs = edges.map { |edge| [edge.fetch('id'), edge.fetch('dependency_type')] }.sort
+  guard!(pairs.length == 137 && pairs.uniq.length == 137, 'typed edge count/uniqueness is not 137')
+  guard!(pairs.none? { |id, _type| id == 'vb-eirmk.11' }, 'vb-eirmk.11 self-edge found')
+  pairs
+end
+
+def allowed_bd_args?(args)
+  reads = [
+    ['show', 'vb-eirmk.11', '--readonly'],
+    ['show', 'vb-eirmk.12', '--readonly'],
+    ['dep', 'list', 'vb-eirmk.11', '--readonly']
+  ]
+  writes = [
+    ['update', 'vb-eirmk.11', '--metadata', "@#{OUT}/metadata-after.json"],
+    ['update', 'vb-eirmk.12', '--design-file', "#{OUT}/design-after.raw"]
+  ]
+  reads.include?(args) || writes.include?(args)
+end
+
+def review_valid?(review, binding_field, binding_sha, executor_sha)
+  review.is_a?(Hash) &&
+    review['verdict'] == 'PASS' &&
+    review[binding_field] == binding_sha &&
+    review['executor_sha256'] == executor_sha
+end
+
+def check_report(path, expected_sha, binding_field, binding_sha, executor_sha)
+  bytes = File.binread(path)
+  guard!(digest(bytes) == expected_sha, "review bytes changed: #{path}") if expected_sha
+  data = JSON.parse(bytes)
+  guard!(review_valid?(data, binding_field, binding_sha, executor_sha), "review does not bind approved artifacts: #{path}")
+  { 'path' => path, 'sha256' => digest(bytes), 'verdict' => 'PASS',
+    'binding_field' => binding_field, 'bound_sha256' => binding_sha,
+    'executor_sha256' => executor_sha }
+end
+
+def validate_planning_review_data(data, field, proposal_sha)
+  guard!(data.is_a?(Hash) && data['verdict'] == 'PASS',
+    'planning review verdict is missing or not PASS')
+  guard!(data[field] == proposal_sha, "planning review binding mismatch: #{field}")
+  true
+end
+
+def validate_planning_review_bytes(bytes, expected_sha, path, field, proposal_sha)
+  guard!(digest(bytes) == expected_sha, "planning review file hash mismatch: #{path}")
+  data = JSON.parse(bytes)
+  validate_planning_review_data(data, field, proposal_sha)
+  data
+end
+
+def current_planning_reviews(contract, proposal_bytes)
+  rule = contract.fetch('v5_planning_reviews')
+  proposal_sha = digest(proposal_bytes)
+  guard!(proposal_sha == PROPOSAL_SHA, 'normalized V5 proposal hash drift')
+  records = [
+    [rule.dig('code', 'path'), rule.dig('code', 'sha256'), 'artifact_sha256',
+      rule.dig('code', 'bound_proposal_sha256')],
+    [rule.dig('test', 'path'), rule.dig('test', 'sha256'), 'proposal_sha256',
+      rule.dig('test', 'bound_proposal_sha256')]
+  ]
+  records.map do |path, sha, field, declared_binding|
+    guard!(declared_binding == proposal_sha, "V5 planning receipt binding mismatch: #{path}")
+    data = validate_planning_review_bytes(File.binread(path), sha, path, field, proposal_sha)
+    { 'path' => path, 'sha256' => sha, 'verdict' => 'PASS',
+      'binding_field' => field, 'bound_sha256' => data[field] }
+  end
+end
+
+def executor_reviews(contract, contract_sha, executor_sha)
+  rule = contract.fetch('executor_reviews')
+  [
+    check_report(rule.dig('code', 'path'), nil, 'artifact_sha256', contract_sha, executor_sha),
+    check_report(rule.dig('test', 'path'), nil, 'proposal_sha256', contract_sha, executor_sha)
+  ]
+end
+
+def expected_after_for_row(row_plan, before_row, row_index, expected_targets)
+  delta = row_plan.fetch('proposed_delta')
+  owner = 'vb-eirmk.11'
+  key = 'reuse:vb-eirmk.11:closed-gate-qualification'
+  guard!(delta.slice('canonical_qualification_owner_id', 'current_owner_status',
+    'resolved_from_proposal_key') == {
+      'canonical_qualification_owner_id' => owner,
+      'current_owner_status' => 'open',
+      'resolved_from_proposal_key' => key
+    }, "row delta drift: #{row_plan.fetch('requirement_id')}")
+  after_row = deep_copy(before_row)
+  delta.slice('canonical_qualification_owner_id', 'current_owner_status',
+    'resolved_from_proposal_key').each do |field, value|
+    expected_targets[['normalized_current_190_ownership', 'requirements', row_index, field]] = value
+    after_row[field] = value
+  end
+  checks = deep_copy(before_row.fetch('unresolved_checks'))
+  check_map = checks.to_h { |check| [check.fetch('check_id'), check] }
+  declared = row_plan.fetch('unresolved_checks_by_check_id')
+  guard!(check_map == declared, "full check snapshot drift: #{row_plan.fetch('requirement_id')}")
+  deltas = delta.fetch('checks_by_check_id')
+  guard!(deltas.keys.sort == check_map.keys.sort, 'check scalar scope mismatch')
+  deltas.each do |check_id, check_delta|
+    expected = { 'accountable_bead_id' => owner, 'proposal_key' => key }
+    guard!(check_delta == expected, "check delta drift: #{check_id}")
+    index = checks.index { |check| check.fetch('check_id') == check_id }
+    check_path = ['normalized_current_190_ownership', 'requirements', row_index,
+      'unresolved_checks', index]
+    expected.each { |field, value| expected_targets[check_path + [field]] = value }
+    check_map.fetch(check_id)['accountable_bead_id'] = owner
+    check_map.fetch(check_id)['proposal_key'] = key
+  end
+  after_row['unresolved_checks'] = check_map.values
+  guard!(after_row == row_plan.fetch('full_proposed_row_after'),
+    "complete proposed row differs: #{row_plan.fetch('requirement_id')}")
+end
+
+def manifest_invariants(manifest)
+  rows = manifest.dig('normalized_current_190_ownership', 'requirements')
+  guard!(rows.is_a?(Array) && rows.length == 190, 'design must contain all 190 rows')
+  guard!(rows.all? { |row| row.key?('completion_verified') &&
+    row['completion_verified'] == false && row.key?('implementation_missing') &&
+    row['implementation_missing'].nil? }, '190-row false/null invariants drifted')
+  rows
+end
+
+def validate_target_path!(path, before, after)
+  guard!(path.is_a?(Array), 'target path is not an array')
+  row_fields = %w[canonical_qualification_owner_id current_owner_status resolved_from_proposal_key]
+  check_fields = %w[accountable_bead_id proposal_key]
+  valid_row = path.length == 4 && path[0, 2] == ['normalized_current_190_ownership', 'requirements'] &&
+    path[2].is_a?(Integer) && row_fields.include?(path[3])
+  valid_check = path.length == 6 &&
+    path[0, 2] == ['normalized_current_190_ownership', 'requirements'] &&
+    path[2].is_a?(Integer) && path[3] == 'unresolved_checks' &&
+    path[4].is_a?(Integer) && check_fields.include?(path[5])
+  guard!(valid_row || valid_check, "target is outside the 49-scalar allowlist: #{path.inspect}")
+  field = path.last
+  expected = if %w[canonical_qualification_owner_id accountable_bead_id].include?(field)
+    'vb-eirmk.11'
+  elsif field == 'current_owner_status'
+    'open'
+  else
+    'reuse:vb-eirmk.11:closed-gate-qualification'
+  end
+  guard!(after == expected, "target value outside approved V5 owner map: #{path.inspect}")
+  guard!(before != after, "no-op scalar target: #{path.inspect}")
+end
+
+def validate_target_entry!(target, raw_design)
+  path = target.fetch('path')
+  before = target.fetch('before')
+  after = target.fetch('after')
+  validate_target_path!(path, before, after)
+  offset = target.fetch('byte_offset')
+  guard!(offset.is_a?(Integer) && offset >= 0, 'target byte offset is invalid')
+  before_token = JSON.generate(before).b
+  after_token = JSON.generate(after).b
+  guard!(target.fetch('before_token_bytes') == before_token.bytesize &&
+    target.fetch('after_token_bytes') == after_token.bytesize, 'target token length mismatch')
+  guard!(raw_design.byteslice(offset, before_token.bytesize) == before_token,
+    "raw before token differs at #{offset}")
+  true
+end
+
+def build_design_patch(proposal, raw_design)
+  preview = proposal.fetch('design_patch_preview')
+  guard!(preview.fetch('scalar_target_count') == 49, 'proposal does not authorize exactly 49 scalar edits')
+  guard!(digest(raw_design) == DESIGN_BEFORE_SHA &&
+    preview.fetch('before_design_sha256') == DESIGN_BEFORE_SHA, 'design baseline hash drift')
+  manifest = JSON.parse(raw_design.force_encoding(Encoding::UTF_8))
+  rows = manifest_invariants(manifest)
+  row_plans = proposal.fetch('rows')
+  selected = proposal.dig('fresh_design_snapshot', 'selected_rows')
+  guard!(row_plans.length == 7 && selected.length == 7, 'proposal row count is not seven')
+  derived = {}
+  row_plans.each do |row_plan|
+    id = row_plan.fetch('requirement_id')
+    index = rows.index { |row| row.fetch('requirement_id') == id }
+    guard!(index, "selected row missing: #{id}")
+    before = rows.fetch(index)
+    guard!(before == row_plan.fetch('full_current_row_before'), "selected full row drift: #{id}")
+    guard!(selected.find { |row| row.fetch('requirement_id') == id } == before,
+      "selected row snapshot drift: #{id}")
+    expected_after_for_row(row_plan, before, index, derived)
+  end
+  guard!(derived.length == 49, 'derived target map is not 49 scalars')
+  targets = proposal.dig('design_patch_preview', 'targets')
+  guard!(targets.length == 49, 'proposal target list is not 49 scalars')
+  target_map = {}
+  spans = []
+  targets.each do |target|
+    validate_target_entry!(target, raw_design)
+    path = target.fetch('path')
+    before = target.fetch('before')
+    after = target.fetch('after')
+    guard!(!target_map.key?(path), 'duplicate target path')
+    guard!(derived.fetch(path) == after, "target disagrees with row contract: #{path.inspect}")
+    offset = target.fetch('byte_offset')
+    before_token = JSON.generate(before).b
+    after_token = JSON.generate(after).b
+    target_map[path] = { 'before' => before, 'after' => after,
+      'offset' => offset, 'before_bytes' => before_token, 'after_bytes' => after_token }
+    spans << [offset, before_token.bytesize]
+  end
+  guard!(target_map.keys.sort_by(&:inspect) == derived.keys.sort_by(&:inspect),
+    'proposal targets do not exactly cover derived row/check scalars')
+  sorted_spans = spans.sort
+  sorted_spans.each_cons(2) do |left, right|
+    guard!(left[0] + left[1] <= right[0], 'target byte spans overlap')
+  end
+  outside = outside_bytes(raw_design, sorted_spans)
+  guard!(digest(outside) == preview.fetch('outside_target_bytes_sha256_before'),
+    'outside-target source bytes differ from V5 baseline')
+  patched = raw_design.b.dup
+  targets.sort_by { |target| -target.fetch('byte_offset') }.each do |target|
+    offset = target.fetch('byte_offset')
+    before_bytes = JSON.generate(target.fetch('before')).b
+    after_bytes = JSON.generate(target.fetch('after')).b
+    patched = patched.byteslice(0, offset) + after_bytes +
+      patched.byteslice(offset + before_bytes.bytesize,
+        patched.bytesize - offset - before_bytes.bytesize)
+  end
+  after_manifest = JSON.parse(patched.dup.force_encoding(Encoding::UTF_8))
+  after_rows = manifest_invariants(after_manifest)
+  targets.each do |target|
+    guard!(value_at(after_manifest, target.fetch('path')) == target.fetch('after'),
+      "patched target value mismatch: #{target.fetch('path').inspect}")
+  end
+  restored = deep_copy(after_manifest)
+  targets.each { |target| assign_at(restored, target.fetch('path'), target.fetch('before')) }
+  guard!(restored == manifest, 'semantic data outside approved scalar values changed')
+  shift = 0
+  after_spans = targets.sort_by { |target| target.fetch('byte_offset') }.map do |target|
+    before_length = target.fetch('before_token_bytes')
+    after_length = target.fetch('after_token_bytes')
+    span = [target.fetch('byte_offset') + shift, after_length]
+    shift += after_length - before_length
+    span
+  end
+  after_outside = outside_bytes(patched, after_spans)
+  guard!(digest(after_outside) == preview.fetch('outside_target_bytes_sha256_after'),
+    'patched outside-target bytes differ from proposal receipt')
+  guard!(digest(patched) == preview.fetch('proposed_raw_design_sha256') &&
+    digest(patched) == DESIGN_AFTER_SHA, 'patched design SHA differs from V5 proposal')
+  guard!(after_rows.length == 190, 'patched design row count changed')
+  { 'before' => raw_design, 'after' => patched, 'manifest_before' => manifest,
+    'manifest_after' => after_manifest, 'target_count' => targets.length,
+    'outside_sha256' => digest(outside) }
+end
+
+def outside_bytes(raw, spans)
+  cursor = 0
+  chunks = []
+  spans.each do |offset, length|
+    guard!(offset >= cursor && offset + length <= raw.bytesize, 'target span outside raw design')
+    chunks << raw.byteslice(cursor, offset - cursor)
+    cursor = offset + length
+  end
+  chunks << raw.byteslice(cursor, raw.bytesize - cursor)
+  chunks.join.b
+end
+
+def value_at(root, path)
+  path.reduce(root) { |value, key| value.fetch(key) }
+end
+
+def assign_at(root, path, value)
+  parent = path[0...-1].reduce(root) { |node, key| node.fetch(key) }
+  parent[path.last] = value
+end
+
+def design_only_matches?(issue, expected_sha)
+  issue.is_a?(Hash) && issue['id'] == 'vb-eirmk.12' &&
+    issue['design'].is_a?(String) && digest(issue['design'].b) == expected_sha
+end
+
+def persist_bytes(path, bytes)
+  File.open(path, 'wb', 0o600) do |file|
+    file.write(bytes)
+    file.flush
+    file.fsync
+  end
+end
+
+def persist_json(path, value)
+  persist_bytes(path, JSON.pretty_generate(value).encode(Encoding::UTF_8) + "\n")
+end
+
+def persist_command(out_dir, number, name, args, stdout, stderr, status)
+  prefix = format('%02d-%s', number, name)
+  stdout_path = File.join(out_dir, "#{prefix}.stdout.raw")
+  stderr_path = File.join(out_dir, "#{prefix}.stderr.raw")
+  persist_bytes(stdout_path, stdout.b)
+  persist_bytes(stderr_path, stderr.b)
+  persist_json(File.join(out_dir, "#{prefix}.receipt.json"), {
+    'args' => args, 'exit' => status, 'stdout_path' => stdout_path,
+    'stdout_sha256' => digest(stdout.b), 'stderr_path' => stderr_path,
+    'stderr_sha256' => digest(stderr.b)
+  })
+end
+
+def bd(args, name, out_dir)
+  guard!(allowed_bd_args?(args), "BD command outside exact allowlist: #{args.inspect}")
+  stdout, stderr, status = Open3.capture3(BD_ENV, 'bd', *args, '--json', chdir: ROOT)
+  persist_command(out_dir, $bd_count += 1, name, args, stdout, stderr, status.exitstatus)
+  guard!(status.success?, "BD command failed; stop and inspect receipt: #{name}")
+  JSON.parse(stdout)
+rescue JSON::ParserError => error
+  raise GuardError, "BD JSON parse failed; stop and inspect receipt: #{name}: #{error.message}"
+end
+
+def assert_issue11(issue, expected)
+  business = issue11_business(issue, expected)
+  edges = edge_pairs(issue.fetch('dependencies'))
+  guard!(edges.length == 137, 'embedded dependency edge count drift')
+  business
+end
+
+def compare_typed_edges(actual, expected)
+  pairs = edge_pairs(actual)
+  guard!(pairs == expected, 'typed dependency set changed')
+  pairs
+end
+
+def read_review_receipts(contract, proposal_bytes, executor_sha)
+  planning = current_planning_reviews(contract, proposal_bytes)
+  contract_sha = digest(File.binread(CONTRACT_PATH))
+  apply_reviews = executor_reviews(contract, contract_sha, executor_sha)
+  [planning, apply_reviews, contract_sha]
+end
+
+def verify_artifacts(contract, proposal_bytes, executor_sha)
+  guard!(digest(proposal_bytes) == PROPOSAL_SHA, 'V5 proposal bytes changed')
+  guard!(contract.fetch('schema_version') == 6 &&
+    contract.fetch('artifact_kind') == 'gate7_v6_controlled_executor_contract' &&
+    contract.fetch('status') == 'draft_controlled_not_executed', 'contract identity/status drift')
+  guard!(contract.fetch('proposal_path') == PROPOSAL_PATH &&
+    contract.fetch('proposal_sha256') == PROPOSAL_SHA, 'contract proposal binding drift')
+  guard!(contract.fetch('executor_path') == File.expand_path(__FILE__) &&
+    contract.fetch('executor_sha256') == executor_sha, 'contract does not bind exact executor bytes')
+  guard!(contract.fetch('run_tmp') == RUN_TMP, 'contract TMPDIR drift')
+  expected_reads = [
+    ['bd', 'show', 'vb-eirmk.11', '--readonly', '--json'],
+    ['bd', 'show', 'vb-eirmk.12', '--readonly', '--json'],
+    ['bd', 'dep', 'list', 'vb-eirmk.11', '--readonly', '--json']
+  ]
+  expected_writes = [
+    ['bd', 'update', 'vb-eirmk.11', '--metadata', '@<OUT>/metadata-after.json', '--json'],
+    ['bd', 'update', 'vb-eirmk.12', '--design-file', '<OUT>/design-after.raw', '--json']
+  ]
+  guard!(contract.fetch('read_only_argv_allowlist') == expected_reads &&
+    contract.fetch('mutating_argv_allowlist') == expected_writes,
+    'contract BD argv allowlist drift')
+  guard!(contract.fetch('bd_environment') == BD_ENV, 'per-command BD environment drift')
+  guard!(contract.dig('issue11', 'canonical_full_record_sha256') == ISSUE11_SHA &&
+    contract.dig('issue11', 'typed_edge_count') == 137 &&
+    contract.dig('issue11', 'metadata_after_exact') == METADATA &&
+    contract.dig('issue12_design', 'before_sha256') == DESIGN_BEFORE_SHA &&
+    contract.dig('issue12_design', 'after_sha256') == DESIGN_AFTER_SHA &&
+    contract.dig('issue12_design', 'target_count') == 49 &&
+    contract.dig('evidence_output', 'directory') == OUT,
+    'contract snapshot or scalar scope drift')
+  guard!(contract.dig('executor_reviews', 'preapply_required') == true &&
+    contract.dig('executor_reviews', 'code', 'path') ==
+      '/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/gate-owner-apply-code-review-v6.json' &&
+    contract.dig('executor_reviews', 'test', 'path') ==
+      '/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/core-build-20261110/evidence/gate-owner-apply-test-review-v6.json' &&
+    contract.dig('executor_reviews', 'code', 'contract_binding_field') == 'artifact_sha256' &&
+    contract.dig('executor_reviews', 'test', 'contract_binding_field') == 'proposal_sha256' &&
+    contract.dig('executor_reviews', 'code', 'executor_binding_field') == 'executor_sha256' &&
+    contract.dig('executor_reviews', 'test', 'executor_binding_field') == 'executor_sha256' &&
+    contract.dig('executor_reviews', 'code', 'executor_binding_value') == executor_sha &&
+    contract.dig('executor_reviews', 'test', 'executor_binding_value') == executor_sha,
+    'executor review bindings are not the exact V6 paths/fields/hashes')
+  proposal = JSON.parse(proposal_bytes)
+  guard!(proposal.fetch('verdict') == 'REUSE_VB_EIRMK_11_V5_PROPOSAL_ONLY_REQUIRES_V5_CODE_AND_TEST',
+    'V5 proposal identity/verdict drift')
+  guard!(proposal.dig('review_status', 'current_version') == 'V5' &&
+    proposal.dig('review_status', 'apply_allowed') == false,
+    'V5 proposal identity or no-apply status drift')
+  %w[code test].each do |role|
+    rule = contract.dig('v5_planning_reviews', role)
+    proposal_rule = proposal.dig('review_status', "v5_#{role}_review")
+    guard!(proposal_rule.fetch('path') == rule.fetch('path') &&
+      proposal_rule.fetch('binding_field') == rule.fetch('binding_field'),
+      "V5 #{role} review binding fields/path drift")
+  end
+  guard!(digest(File.binread(File.join(ROOT, 'velvet-ballistics-MASTER.md'))) ==
+    contract.dig('source', 'master_sha256'), 'current master hash drift')
+  guard!(proposal.dig('reuse_owner_readback', 'metadata_after_proposed') == METADATA,
+    'exact seven-ID metadata union drift')
+  guard!(contract.dig('source', 'master_sha256') == proposal.dig('source', 'master_sha256') &&
+    contract.dig('source', 'current_design_before_sha256') == DESIGN_BEFORE_SHA &&
+    contract.dig('source', 'proposal_design_after_sha256') == DESIGN_AFTER_SHA,
+    'source/master/design pin drift')
+  raw_rules = contract.fetch('raw_snapshots')
+  source_reads = proposal.dig('source', 'live_readback_refresh')
+  guard!(raw_rules.fetch('issue11_path') == source_reads.dig('reuse_issue', 'path') &&
+    raw_rules.fetch('issue11_raw_sha256') == source_reads.dig('reuse_issue', 'stdout_sha256') &&
+    raw_rules.fetch('issue12_path') == source_reads.dig('design_issue', 'path') &&
+    raw_rules.fetch('issue12_raw_sha256') == source_reads.dig('design_issue', 'stdout_sha256') &&
+    raw_rules.fetch('typed_edges_path') == source_reads.dig('typed_edges', 'path') &&
+    raw_rules.fetch('typed_edges_raw_sha256') == source_reads.dig('typed_edges', 'stdout_sha256'),
+    'raw snapshot path/hash bindings drift')
+  [proposal, current_planning_reviews(contract, proposal_bytes)]
+end
+
+def offline_controls
+  contract_bytes = File.binread(CONTRACT_PATH)
+  contract = JSON.parse(contract_bytes)
+  proposal_bytes = File.binread(PROPOSAL_PATH)
+  executor_sha = digest(File.binread(__FILE__))
+  proposal, planning = verify_artifacts(contract, proposal_bytes, executor_sha)
+  guard!(planning.length == 2, 'V5 planning review receipts missing')
+  expected = proposal.fetch('reuse_owner_readback').fetch('full_readback_before')
+  raw11_path = contract.dig('raw_snapshots', 'issue11_path')
+  issue11 = one_issue(read_json(raw11_path), 'vb-eirmk.11')
+  assert_issue11(issue11, expected)
+  dep_path = contract.dig('raw_snapshots', 'typed_edges_path')
+  compare_typed_edges(read_json(dep_path), proposal.dig('reuse_owner_readback', 'dependency_edges_before'))
+  raw12_path = contract.dig('raw_snapshots', 'issue12_path')
+  issue12 = one_issue(read_json(raw12_path), 'vb-eirmk.12')
+  guard!(design_only_matches?(issue12, DESIGN_BEFORE_SHA), 'V5 .12 design snapshot drift')
+  patch = build_design_patch(proposal, issue12.fetch('design').b)
+  exercise_offline_negatives(contract, proposal, expected, issue11, issue12, patch, executor_sha)
+  puts JSON.generate({ 'offline_controls' => 'PASS', 'v5_planning_reviews' => planning.length,
+    'design_targets' => patch.fetch('target_count'), 'target_value_and_offset_mutants_rejected' => 98,
+    'typed_edge_mutants_rejected' => 137, 'planning_review_mutants_rejected' => 10,
+    'expect_reject_meta_control' => 'PASS', 'before_sha256' => digest(patch.fetch('before')),
+    'after_sha256' => digest(patch.fetch('after')), 'typed_edges' => 137,
+    'bd_calls' => 0, 'live_mutations' => 0 })
+end
+
+def expect_reject(label)
+  rejected = false
+  begin
+    yield
+  rescue GuardError
+    rejected = true
+  end
+  guard!(rejected, "negative control unexpectedly accepted: #{label}")
+  true
+end
+
+def exercise_offline_negatives(contract, proposal, expected11, issue11, issue12, patch, executor_sha)
+  allowed = [
+    [['show', 'vb-eirmk.11', '--readonly'], true],
+    [['show', 'vb-eirmk.12', '--readonly'], true],
+    [['dep', 'list', 'vb-eirmk.11', '--readonly'], true],
+    [['update', 'vb-eirmk.11', '--metadata', "@#{OUT}/metadata-after.json"], true],
+    [['update', 'vb-eirmk.12', '--design-file', "#{OUT}/design-after.raw"], true],
+    [['create', '--title', 'x'], false], [['close', 'vb-eirmk.11'], false],
+    [['update', 'vb-eirmk.11', '--status', 'closed'], false],
+    [['dep', 'add', 'vb-eirmk.11', 'vb-eirmk.68'], false],
+    [['update', 'vb-eirmk.12', '--metadata', '{}'], false],
+    [['update', 'vb-eirmk.11', '--metadata', '@wrong.json'], false],
+    [['update', 'vb-eirmk.12', '--design-file', "#{OUT}/other.raw"], false]
+  ]
+  allowed.each { |args, want| guard!(allowed_bd_args?(args) == want, "BD allowlist control failed: #{args.inspect}") }
+  wrong_issue = deep_copy(issue11)
+  wrong_issue['title'] = 'mutated title'
+  expect_reject('issue11 full title') { issue11_business(wrong_issue, expected11) }
+  wrong_edges = deep_copy(issue11.fetch('dependencies'))
+  wrong_edges.pop
+  expect_reject('issue11 missing typed edge') { edge_pairs(wrong_edges) }
+  progress = deep_copy(issue12)
+  progress['notes'] = "#{progress['notes']} approved-progress"
+  guard!(design_only_matches?(progress, DESIGN_BEFORE_SHA), '.12 notes must not stale design-only precondition')
+  progress['design'] = '{}'
+  guard!(!design_only_matches?(progress, DESIGN_BEFORE_SHA), '.12 changed design must reject')
+  helper_failed_closed = false
+  begin
+    expect_reject('meta accepting input') { true }
+  rescue GuardError => error
+    helper_failed_closed = error.message == 'negative control unexpectedly accepted: meta accepting input'
+  end
+  guard!(helper_failed_closed, 'expect_reject helper accepted an input that returned normally')
+  guard!(expect_reject('positive real guard') { guard!(false, 'expected guard rejection') },
+    'expect_reject positive rejection control failed')
+  planning_rule = contract.fetch('v5_planning_reviews')
+  [['code', 'artifact_sha256'], ['test', 'proposal_sha256']].each do |role, field|
+    entry = planning_rule.fetch(role)
+    bytes = File.binread(entry.fetch('path'))
+    original = validate_planning_review_bytes(bytes, entry.fetch('sha256'),
+      entry.fetch('path'), field, PROPOSAL_SHA)
+    wrong_binding = deep_copy(original)
+    wrong_binding[field] = 'wrong-proposal-hash'
+    expect_reject("#{role} wrong V5 proposal binding") do
+      validate_planning_review_data(wrong_binding, field, PROPOSAL_SHA)
+    end
+    missing_binding = deep_copy(original)
+    missing_binding.delete(field)
+    expect_reject("#{role} missing V5 proposal binding") do
+      validate_planning_review_data(missing_binding, field, PROPOSAL_SHA)
+    end
+    missing_verdict = deep_copy(original)
+    missing_verdict.delete('verdict')
+    expect_reject("#{role} missing review verdict") do
+      validate_planning_review_data(missing_verdict, field, PROPOSAL_SHA)
+    end
+    rejected_verdict = deep_copy(original)
+    rejected_verdict['verdict'] = 'REJECT'
+    expect_reject("#{role} rejected review verdict") do
+      validate_planning_review_data(rejected_verdict, field, PROPOSAL_SHA)
+    end
+    expect_reject("#{role} altered report bytes") do
+      validate_planning_review_bytes(bytes + ' ', entry.fetch('sha256'),
+        entry.fetch('path'), field, PROPOSAL_SHA)
+    end
+  end
+  targets = proposal.dig('design_patch_preview', 'targets')
+  targets.each_with_index do |target, index|
+    altered_value = deep_copy(target)
+    altered_value['after'] = "mutated-target-#{index}"
+    expect_reject("target value #{index}") { validate_target_entry!(altered_value, patch.fetch('before')) }
+    altered_offset = deep_copy(target)
+    altered_offset['byte_offset'] += 1
+    expect_reject("target offset #{index}") { validate_target_entry!(altered_offset, patch.fetch('before')) }
+  end
+  expected_edges = proposal.dig('reuse_owner_readback', 'dependency_edges_before')
+  issue11.fetch('dependencies').each_with_index do |_edge, index|
+    mutated_edges = deep_copy(issue11.fetch('dependencies'))
+    mutated_edges.fetch(index)['id'] = "mutated-edge-#{index}"
+    expect_reject("typed edge #{index}") { compare_typed_edges(mutated_edges, expected_edges) }
+  end
+  contract_sha = digest(File.binread(CONTRACT_PATH))
+  valid_review = { 'verdict' => 'PASS', 'artifact_sha256' => contract_sha,
+    'executor_sha256' => executor_sha }
+  guard!(review_valid?(valid_review, 'artifact_sha256', contract_sha, executor_sha),
+    'positive executor review binding control failed')
+  wrong_contract = { 'verdict' => 'PASS', 'artifact_sha256' => 'wrong', 'executor_sha256' => executor_sha }
+  guard!(!review_valid?(wrong_contract, 'artifact_sha256', contract_sha, executor_sha),
+    'wrong contract review control failed')
+  wrong_executor = { 'verdict' => 'PASS', 'artifact_sha256' => digest(File.binread(CONTRACT_PATH)), 'executor_sha256' => 'wrong' }
+  guard!(!review_valid?(wrong_executor, 'artifact_sha256', contract_sha, executor_sha),
+    'wrong executor review control failed')
+  bad_target = deep_copy(proposal)
+  bad_target.fetch('design_patch_preview').fetch('targets').first['path'] = ['notes']
+  expect_reject('forbidden design field') do
+    build_design_patch(bad_target, issue12.fetch('design').b)
+  end
+  missing_target = deep_copy(proposal)
+  missing_target.fetch('design_patch_preview').fetch('targets').pop
+  expect_reject('missing scalar target') do
+    build_design_patch(missing_target, issue12.fetch('design').b)
+  end
+  changed_design = issue12.fetch('design').b + ' '
+  expect_reject('design hash drift') { build_design_patch(proposal, changed_design) }
+  guard!(digest(patch.fetch('after')) == DESIGN_AFTER_SHA, 'offline positive raw splice failed')
+end
+
+def apply
+  guard!(File.realpath(Dir.pwd) == ROOT, 'apply requires the verified isolated workspace root')
+  guard!(File.directory?(RUN_TMP), 'approved TMPDIR is unavailable')
+  guard!(!File.exist?(OUT), 'apply output exists; preserve it and do not retry')
+  contract_bytes = File.binread(CONTRACT_PATH)
+  contract = JSON.parse(contract_bytes)
+  contract_sha_initial = digest(contract_bytes)
+  proposal_bytes = File.binread(PROPOSAL_PATH)
+  executor_sha = digest(File.binread(__FILE__))
+  proposal, planning = verify_artifacts(contract, proposal_bytes, executor_sha)
+  guard!(contract.fetch('status') == 'draft_controlled_not_executed', 'contract not in draft state')
+  apply_reviews = executor_reviews(contract, digest(contract_bytes), executor_sha)
+  guard!(apply_reviews.length == 2, 'fresh executor CODE and TEST reviews required')
+  Dir.mkdir(OUT, 0o700)
+  $bd_count = 0
+  expected11 = proposal.fetch('reuse_owner_readback').fetch('full_readback_before')
+  expected_edges = proposal.dig('reuse_owner_readback', 'dependency_edges_before')
+  before11_raw = bd(['show', 'vb-eirmk.11', '--readonly'], 'before-issue11', OUT)
+  before11 = one_issue(before11_raw, 'vb-eirmk.11')
+  assert_issue11(before11, expected11)
+  edge_read = bd(['dep', 'list', 'vb-eirmk.11', '--readonly'], 'before-edges11', OUT)
+  compare_typed_edges(edge_read, expected_edges)
+  guard!(edge_pairs(before11.fetch('dependencies')) == expected_edges, '.11 embedded edges differ')
+  before12_raw = bd(['show', 'vb-eirmk.12', '--readonly'], 'before-issue12', OUT)
+  before12 = one_issue(before12_raw, 'vb-eirmk.12')
+  guard!(design_only_matches?(before12, DESIGN_BEFORE_SHA), '.12 design-only baseline drift')
+  patch = build_design_patch(proposal, before12.fetch('design').b)
+  current_reviews = read_review_receipts(contract, proposal_bytes, executor_sha)
+  guard!(current_reviews[0] == planning && current_reviews[1] == apply_reviews &&
+    current_reviews[2] == contract_sha_initial, 'review receipts changed before mutation')
+  guard!(digest(File.binread(CONTRACT_PATH)) == contract_sha_initial &&
+    digest(File.binread(__FILE__)) == executor_sha &&
+    digest(File.binread(PROPOSAL_PATH)) == PROPOSAL_SHA,
+    'contract/executor/proposal bytes changed before mutation')
+  persist_json(File.join(OUT, 'metadata-after.json'), METADATA)
+  persist_bytes(File.join(OUT, 'issue11-before.raw.json'), JSON.generate(before11_raw))
+  persist_bytes(File.join(OUT, 'issue12-before.raw.json'), JSON.generate(before12_raw))
+  persist_bytes(File.join(OUT, 'typed-edges-before.raw.json'), JSON.generate(edge_read))
+  persist_bytes(File.join(OUT, 'design-before.raw'), patch.fetch('before'))
+  persist_bytes(File.join(OUT, 'design-after.raw'), patch.fetch('after'))
+  persist_json(File.join(OUT, 'preflight.json'), {
+    'proposal_sha256' => PROPOSAL_SHA, 'contract_sha256' => current_reviews[2],
+    'executor_sha256' => executor_sha, 'planning_reviews' => planning,
+    'executor_reviews' => apply_reviews, 'issue11_full_sha256' => ISSUE11_SHA,
+    'typed_edge_count' => expected_edges.length, 'design_before_sha256' => DESIGN_BEFORE_SHA,
+    'design_after_sha256' => DESIGN_AFTER_SHA, 'scalar_target_count' => 49
+  })
+  latest11 = one_issue(bd(['show', 'vb-eirmk.11', '--readonly'], 'immediate-before-issue11', OUT),
+    'vb-eirmk.11')
+  assert_issue11(latest11, expected11)
+  latest_edges = bd(['dep', 'list', 'vb-eirmk.11', '--readonly'], 'immediate-before-edges11', OUT)
+  compare_typed_edges(latest_edges, expected_edges)
+  guard!(edge_pairs(latest11.fetch('dependencies')) == expected_edges,
+    '.11 embedded edges changed before metadata update')
+  current_reviews = read_review_receipts(contract, proposal_bytes, executor_sha)
+  guard!(current_reviews[0] == planning && current_reviews[1] == apply_reviews &&
+    current_reviews[2] == contract_sha_initial &&
+    digest(File.binread(File.join(ROOT, 'velvet-ballistics-MASTER.md'))) ==
+      contract.dig('source', 'master_sha256'),
+    'reviews, contract, or master changed before first mutation')
+  write11 = bd(['update', 'vb-eirmk.11', '--metadata', "@#{File.join(OUT, 'metadata-after.json')}"],
+    'update-issue11-metadata', OUT)
+  response11 = one_issue(write11, 'vb-eirmk.11')
+  timestamp = response11.fetch('updated_at')
+  guard!(timestamp.is_a?(String) && !timestamp.empty?, 'metadata update response lacks timestamp')
+  guard!(response11.fetch('metadata') == METADATA, 'metadata update response differs from seven-ID union')
+  after11_raw = bd(['show', 'vb-eirmk.11', '--readonly'], 'after-issue11', OUT)
+  after11 = one_issue(after11_raw, 'vb-eirmk.11')
+  expected11_after = deep_copy(expected11)
+  expected11_after['metadata'] = METADATA
+  expected11_after['updated_at'] = timestamp
+  guard!(after11 == expected11_after, '.11 full business readback changed outside metadata/timestamp')
+  edges_after11 = bd(['dep', 'list', 'vb-eirmk.11', '--readonly'], 'after-edges11', OUT)
+  compare_typed_edges(edges_after11, expected_edges)
+  latest12_raw = bd(['show', 'vb-eirmk.12', '--readonly'], 'before-update-issue12', OUT)
+  latest12 = one_issue(latest12_raw, 'vb-eirmk.12')
+  guard!(design_only_matches?(latest12, DESIGN_BEFORE_SHA), '.12 design changed before second mutation')
+  write12 = bd(['update', 'vb-eirmk.12', '--design-file', File.join(OUT, 'design-after.raw')],
+    'update-issue12-design', OUT)
+  response12 = one_issue(write12, 'vb-eirmk.12')
+  guard!(response12.fetch('design').b == patch.fetch('after').b, '.12 update response design mismatch')
+  final12_raw = bd(['show', 'vb-eirmk.12', '--readonly'], 'after-issue12', OUT)
+  final12 = one_issue(final12_raw, 'vb-eirmk.12')
+  guard!(final12.fetch('design').b == patch.fetch('after').b, 'final .12 design mismatch')
+  final11_raw = bd(['show', 'vb-eirmk.11', '--readonly'], 'final-issue11', OUT)
+  final11 = one_issue(final11_raw, 'vb-eirmk.11')
+  guard!(final11 == expected11_after, 'final .11 full readback changed')
+  final_edges = bd(['dep', 'list', 'vb-eirmk.11', '--readonly'], 'final-edges11', OUT)
+  compare_typed_edges(final_edges, expected_edges)
+  persist_bytes(File.join(OUT, 'issue11-after.raw.json'), JSON.generate(final11_raw))
+  persist_bytes(File.join(OUT, 'issue12-after.raw.json'), JSON.generate(final12_raw))
+  persist_bytes(File.join(OUT, 'typed-edges-after.raw.json'), JSON.generate(final_edges))
+  persist_json(File.join(OUT, 'final-readbacks.json'), {
+    'issue11_full_readback' => final11, 'issue11_updated_at_response' => timestamp,
+    'typed_edges_unchanged' => true, 'issue12_design_sha256' => digest(final12.fetch('design').b),
+    'issue12_design_matches_exact_raw_patch' => true, 'scalar_targets' => 49,
+    'all_190_completion_false_and_missing_null' => true, 'no_self_edge' => true
+  })
+  puts JSON.generate({ 'apply' => 'completed', 'issue11_metadata_union' => true,
+    'issue12_scalar_targets' => 49, 'typed_edges_unchanged' => true,
+    'live_acceptance_claimed' => false })
+end
+
+begin
+if ARGV == ['--offline-controls']
+  offline_controls
+elsif ARGV == ['--apply']
+  apply
+else
+  raise GuardError, 'usage: executor.rb --offline-controls | --apply'
+end
+rescue GuardError, JSON::ParserError, KeyError, Errno::ENOENT, Errno::EEXIST => error
+  warn "STOP: #{error.class}: #{error.message}"
+  exit 1
+end

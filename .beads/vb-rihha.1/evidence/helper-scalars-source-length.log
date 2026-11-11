@@ -1,0 +1,11 @@
+source-length gate summary:
+  generated          scanned=1     excluded (no limit)
+  perf               scanned=0     excluded (no limit)
+  kani               scanned=107   warn=3    over_limit=0    limit=800 warn_at=640
+  verus              scanned=108   warn=29   over_limit=0    limit=800 warn_at=640
+  flux               scanned=3     warn=0    over_limit=0    limit=800 warn_at=640
+  verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+  test_in_src        scanned=402   warn=51   over_limit=0    limit=1500 warn_at=1200
+  test_top_level     scanned=583   warn=5    over_limit=0    limit=3000 warn_at=2400
+  production         scanned=1096  warn=187  over_limit=0    limit=300 warn_at=240
+  ledger rows used:    92

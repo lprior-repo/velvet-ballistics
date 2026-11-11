@@ -1,0 +1,9 @@
+RunFrame reset qualification validates scalar getters, reinitialize invariants, and clean reset semantics.
+Fixture constructs a fully populated RunFrame with runid9, entry1, three steps, three slots, Running state, slot I64(7) with DerivedFromSecret taint, max_parallel 5, current 2, executed 1 via public methods only.
+Scalar getter assertions verify exact values: runid9, pc1, executed1, steps3, slots3, max5, current2 without names-as-oracle.
+Four invalid reinitialize cases verify Err return and frame immutability: zero steps yields InvalidCompiledWorkflow step_count_zero, firststep at count yields InvalidProgramCounter, changed step count yields dimension mismatch, changed slot count yields dimension mismatch.
+Each invalid case clones the populated frame before calling reinitialize and compares the entire frame after Err.
+One valid reset case reinitializes with same dimensions to runid99 entry0 and verifies the entire frame equals an independently constructed new RunFrame99/0/3/3, confirming all defaults are restored.
+Production source is not edited; only behavioral tests and contract are written.
+Two additional invalid reinitialize scenarios pin validation precedence: requested step_count 0 with entry StepIdx(3) and changed slot_count 4 returns exactly CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" }; requested step_count 4 with entry StepIdx(4) returns exactly CoreError::InvalidProgramCounter { step: StepIdx(4) } before detecting the changed dimensions. Both clone and compare the entire populated frame after the failed call.
+Registered mappings: reinitialize_step_count_zero_takes_precedence and reinitialize_first_step_at_count_takes_precedence_over_dimension cover those cases, alongside the original four negative cases, seven scalar getters, and one valid whole-frame reset: 14 registered native cases total.

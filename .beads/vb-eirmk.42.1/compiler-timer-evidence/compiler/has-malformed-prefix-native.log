@@ -1,0 +1,29 @@
+Running as unit: vb-has-prefix-twentythree-20261110.scope; invocation ID: 0e5f38cf4d55428b8d9db7c7e330d53b
+────────────
+ Nextest run ID 47167eaf-e4d6-45da-b2cc-96b23846165c with nextest profile: default
+    Starting 23 tests across 1 binary
+        PASS [   0.003s] ( 1/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation compile_preserves_i64_key_mismatch
+        PASS [   0.003s] ( 2/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation compile_rejects_arity_three
+        PASS [   0.003s] ( 3/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation compile_rejects_arity_zero
+        PASS [   0.003s] ( 4/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation has_precedence_cases::parse_ast_rejects_bool_receiver_with_one_argument
+        PASS [   0.003s] ( 5/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation has_precedence_cases::parse_ast_rejects_numeric_key_with_three_arguments
+        PASS [   0.003s] ( 6/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation compile_accepts_same_any_slot_in_both_has_positions
+        PASS [   0.003s] ( 7/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation compile_accepts_any_receiver_text_key
+        PASS [   0.003s] ( 8/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation compile_accepts_object_receiver_any_key
+        PASS [   0.003s] ( 9/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation compile_accepts_any_receiver_any_key
+        PASS [   0.007s] (10/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation compile_preserves_bool_receiver_mismatch
+        PASS [   0.009s] (11/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation parse_ast_preserves_has_bool_type_before_arithmetic
+        PASS [   0.009s] (12/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation has_precedence_cases::workflow_typecheck_precedence_bool_receiver
+        PASS [   0.009s] (13/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation parse_ast_preserves_no_inputs
+        PASS [   0.009s] (14/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation has_precedence_cases::parse_ast_typecheck_precedence_bool_receiver
+        PASS [   0.010s] (15/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation parse_ast_rejects_i64_key
+        PASS [   0.009s] (16/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation has_precedence_cases::parse_ast_three_arguments_report_receiver_first
+        PASS [   0.009s] (17/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation parse_ast_preserves_obj_key_value_inputs
+        PASS [   0.010s] (18/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation parse_ast_accepts_any_receiver_text_key
+        PASS [   0.010s] (19/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation compile_rejects_arity_one
+        PASS [   0.010s] (20/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation parse_ast_preserves_obj_input_declared_any
+        PASS [   0.010s] (21/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation parse_ast_accepts_any_any_inputs
+        PASS [   0.010s] (22/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation parse_ast_accepts_object_receiver_any_key
+        PASS [   0.010s] (23/23) velvet-ballistics-workspace-tests::has_helper_compiler_preservation parse_ast_rejects_bool_receiver
+────────────
+     Summary [   0.010s] 23 tests run: 23 passed, 0 skipped

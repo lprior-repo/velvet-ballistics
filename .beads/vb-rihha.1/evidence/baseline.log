@@ -1,0 +1,73 @@
+────────────
+ Nextest run ID 05ace00f-a34d-4134-bdd6-b8666d9f46a5 with nextest profile: default
+    Starting 4 tests across 1 binary
+        FAIL [   0.002s] (1/4) velvet-ballistics-workspace-tests::helper_scalar_typecheck scalar_literals_return_exact_helper_type_mismatches
+  stdout ───
+
+    running 1 test
+    test scalar_literals_return_exact_helper_type_mismatches ... FAILED
+
+    failures:
+
+    failures:
+        scalar_literals_return_exact_helper_type_mismatches
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'scalar_literals_return_exact_helper_type_mismatches' (3947006) panicked at crates/workspace_tests/tests/helper_scalar_typecheck.rs:57:13:
+    assertion `left == right` failed
+      left: Ok(I64)
+     right: Err(TypeMismatch { expected: "list", found: "i64" })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.003s] (2/4) velvet-ballistics-workspace-tests::helper_scalar_typecheck public_compiler_returns_exact_errors_for_all_scalar_helper_pairs
+  stdout ───
+
+    running 1 test
+    test public_compiler_returns_exact_errors_for_all_scalar_helper_pairs ... FAILED
+
+    failures:
+
+    failures:
+        public_compiler_returns_exact_errors_for_all_scalar_helper_pairs
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'public_compiler_returns_exact_errors_for_all_scalar_helper_pairs' (3947005) panicked at crates/workspace_tests/tests/helper_scalar_typecheck.rs:49:5:
+    assertion `left == right` failed
+      left: 0
+     right: 1
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.003s] (3/4) velvet-ballistics-workspace-tests::helper_scalar_typecheck known_scalar_references_return_exact_helper_type_mismatches
+  stdout ───
+
+    running 1 test
+    test known_scalar_references_return_exact_helper_type_mismatches ... FAILED
+
+    failures:
+
+    failures:
+        known_scalar_references_return_exact_helper_type_mismatches
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'known_scalar_references_return_exact_helper_type_mismatches' (3947007) panicked at crates/workspace_tests/tests/helper_scalar_typecheck.rs:76:13:
+    assertion `left == right` failed
+      left: Ok(I64)
+     right: Err(TypeMismatch { expected: "list", found: "i64" })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        PASS [   0.003s] (4/4) velvet-ballistics-workspace-tests::helper_scalar_typecheck deferred_and_compatible_references_keep_helper_result_types
+────────────
+     Summary [   0.003s] 4 tests run: 1 passed, 3 failed, 0 skipped
+        FAIL [   0.002s] (1/4) velvet-ballistics-workspace-tests::helper_scalar_typecheck scalar_literals_return_exact_helper_type_mismatches
+        FAIL [   0.003s] (2/4) velvet-ballistics-workspace-tests::helper_scalar_typecheck public_compiler_returns_exact_errors_for_all_scalar_helper_pairs
+        FAIL [   0.003s] (3/4) velvet-ballistics-workspace-tests::helper_scalar_typecheck known_scalar_references_return_exact_helper_type_mismatches
+error: test run failed

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "vb-eirmk.11",
+    "title": "Collect canonical master acceptance evidence on integrated Rust candidate",
+    "description": "After all implementation prerequisites and CODE/TEST reviews, run canonical moon ci from the isolated integrated workspace and read raw exit results. Reconcile master44 points1-24 against registered tests, exact verifier obligations, bounded fuzz/property coverage and real benchmark metadata. Existing evidence/fuzz/formal/P0 issues are reused; absent tools or failing lanes remain blockers. No gate edits, stale receipts, scaffolds or compile-only claims. Delivery: Rust contract in .beads/\u003cid\u003e/contract.md, implementation, registered behavioral tests, independent CODE review and independent TEST review; unique Git/JJ workspace, no commits/pushes, no new dependencies or weakened gates.",
+    "acceptance_criteria": "All current-scope canonical gates plus required production-bound verifier results, crash/replay/direct/IPC evidence and real benchmark receipts refer to the same candidate. Every relevant P0/phase/function/fuzz/benchmark bead closed only with current evidence. No completion if any required lane is unverified.",
+    "status": "open",
+    "priority": 1,
+    "issue_type": "task",
+    "owner": "priorlewis43@gmail.com",
+    "created_at": "2026-11-10T07:00:28Z",
+    "created_by": "Lewis",
+    "updated_at": "2026-11-11T01:29:25Z",
+    "metadata": {
+      "master_requirement_ids": [
+        "gate:feature-powerset",
+        "gate:miri",
+        "gate:coverage",
+        "gate:mutants-smoke",
+        "gate:bench-build",
+        "gate:benchmark-regression-policy",
+        "gate:fuzz-smoke"
+      ],
+      "qualification_only": true
+    }
+  }
+]

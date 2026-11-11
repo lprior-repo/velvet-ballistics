@@ -55,7 +55,10 @@ impl Shard {
                 // Storage-backed journal: use StorageArtifactStore for strict/journaled
                 // artifact validation. This ensures the shard can load and validate
                 // accepted artifacts from durable storage before admission.
-                std::sync::Arc::new(crate::admission::StorageArtifactStore::with_catalog(fjall_journal, journal.executor_catalog()))
+                std::sync::Arc::new(crate::admission::StorageArtifactStore::with_catalog(
+                    fjall_journal,
+                    journal.executor_catalog(),
+                ))
             } else {
                 match config.policy {
                     vb_core::policy::RuntimePolicy::Relaxed => {
@@ -633,7 +636,7 @@ impl Shard {
         self.run_aggregate.pending_timer_contains(run_id)
     }
 
-    pub(crate) fn pending_timer_iter(&self) -> impl Iterator<Item = (&RunId, &PendingTimer)> {
+    pub(crate) fn pending_timer_iter(&self) -> impl Iterator<Item = (RunId, PendingTimer)> + '_ {
         self.run_aggregate.pending_timer_iter()
     }
 
@@ -750,16 +753,15 @@ impl Shard {
     }
 
     fn drive_one_due_timer(&mut self) -> RuntimeResult<()> {
-        let now = std::time::Instant::now();
-        let due = self
-            .pending_timer_iter()
-            .filter(|(_, timer)| timer.deadline <= now)
-            .min_by_key(|(run, timer)| (timer.deadline, run.get()))
-            .map(|(run, timer)| (*run, *timer));
-        let Some((run, timer)) = due else {
+        self.drive_one_due_timer_at(std::time::Instant::now())
+    }
+
+    pub(super) fn drive_one_due_timer_at(&mut self, now: std::time::Instant) -> RuntimeResult<()> {
+        let due = self.run_aggregate.pending_timer_due_peek(now);
+        let Some(entry) = due else {
             return Ok(());
         };
-        self.handle_timer(run, timer.generation, timer.deadline, timer.kind)
+        self.handle_timer_at(entry.run, entry.generation, entry.deadline, entry.kind, now)
     }
 
     fn tick_inner(&mut self) -> RuntimeResult<bool> {
@@ -773,7 +775,10 @@ impl Shard {
         };
 
         match cmd {
-            ShardCommand::ActivateOwnedSubmission { run, expected_source_digest } => {
+            ShardCommand::ActivateOwnedSubmission {
+                run,
+                expected_source_digest,
+            } => {
                 self.handle_owned_activation(run, expected_source_digest)?;
             }
             ShardCommand::Submit {
@@ -827,7 +832,11 @@ impl Shard {
             ShardCommand::EscalateGate { run, gate, now_ms } => {
                 self.escalate_timed_out_gate(run, gate, now_ms)?;
             }
-            ShardCommand::RegisteredActionCompleted { ticket, receipt, output } => {
+            ShardCommand::RegisteredActionCompleted {
+                ticket,
+                receipt,
+                output,
+            } => {
                 self.handle_registered_action_completion(ticket, receipt, output)?;
             }
             ShardCommand::ActionCompleted { ticket, output } => {
@@ -1014,7 +1023,7 @@ impl Shard {
             EvidenceEvent::StepStarted { step } => {
                 Self::push_drive_journal_event(
                     journal_events,
-                    RuntimeJournalEvent::StepStarted { run, step, attempt},
+                    RuntimeJournalEvent::StepStarted { run, step, attempt },
                 )?;
                 trace_events.push(TraceEvent::StepStarted { run, step });
                 Ok(())

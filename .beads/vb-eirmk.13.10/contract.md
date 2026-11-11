@@ -1,0 +1,9 @@
+# vb-eirmk.13.10: Exact nested collector identities
+
+For this existing nested-collect fixture, require node 3 CollectNext to reference fresh collector SlotIdx(4) and node 5 CollectNext to reference fresh collector SlotIdx(2). Keep all existing case names, YAML, distinctness and region oracles; replace only the two presence assertions with mandatory typed equality.
+
+Source allocation evidence: SlotCompiler::allocate_slot in crates/vb_compile/src/mod_compile_lowering/part_08.rs allocates above every reserved or recorded slot. bounded_collect.rs::allocate_collect_slots reserves collector and finish slots before recursively emitting the body; emit_next uses the allocated collector. The independently existing complete-IR fixture compile_workflow_accepts_nested_collect_body in crates/vb_compile/tests/v1_primitive_lowering.rs asserts outer collector 2, inner collector 4 for the same source structure. Review that allocation derivation independently before acceptance.
+
+The initial coordinator proposal 1/0 incorrectly copied unused fields from a discriminant-only expected_kinds array. Those fields were never checked. The attempted 1/0 oracle fails on unchanged production with actual inner SlotIdx(4); raw original failure is retained in target/core-build-20261110/evidence/collector-initial-wrong-oracle.txt and the agent JSONL. This corrects a demonstrably wrong test proposal; no production, proof, gate, baseline or accepted mathematical contract changes.
+
+Run the pinned strict native runtime_version_barrier_tests suite, obtain independent CODE and TEST reviews, then rerun integrity against full baseline 1dbcbe96cacdc0fad91edbba641f7ad3ad542fb7. Native success alone is not acceptance of the allocation derivation or whole candidate. Existing oversized test-body and discriminant-only fixture debt remain explicit.

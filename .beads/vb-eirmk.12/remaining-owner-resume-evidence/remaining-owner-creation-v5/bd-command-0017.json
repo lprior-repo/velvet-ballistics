@@ -1,0 +1,20 @@
+{
+  "args": [
+    "create",
+    "--title",
+    "Qualify checked raw access for every numeric ID type",
+    "--type",
+    "task",
+    "--parent",
+    "vb-eirmk",
+    "--description",
+    "Qualification only. Positive: enumerate every current numeric ID wrapper and assert exact checked raw-access values and valid boundaries through current public APIs. Negative: every applicable out-of-range conversion has exact typed error; distinguish raw access from arithmetic/index conversion. Preserve vb-b5f as historical implementation and vb-jrco.9 as proof support; no implementation presumed missing.",
+    "--acceptance",
+    "Qualification only. Positive: enumerate every current numeric ID wrapper and assert exact checked raw-access values and valid boundaries through current public APIs. Negative: every applicable out-of-range conversion has exact typed error; distinguish raw access from arithmetic/index conversion. Preserve vb-b5f as historical implementation and vb-jrco.9 as proof support; no implementation presumed missing. Record exact current source pin, raw command/exit and production entrypoint/test mapping; keep unknown evidence unknown and obtain independent CODE plus separate TEST disposition.",
+    "--metadata",
+    "{\"master_requirement_ids\":[\"function:24:1\"],\"qualification_only\":true}"
+  ],
+  "stdout": "{\n  \"acceptance_criteria\": \"Qualification only. Positive: enumerate every current numeric ID wrapper and assert exact checked raw-access values and valid boundaries through current public APIs. Negative: every applicable out-of-range conversion has exact typed error; distinguish raw access from arithmetic/index conversion. Preserve vb-b5f as historical implementation and vb-jrco.9 as proof support; no implementation presumed missing. Record exact current source pin, raw command/exit and production entrypoint/test mapping; keep unknown evidence unknown and obtain independent CODE plus separate TEST disposition.\",\n  \"created_at\": \"2026-11-10T22:59:55.520542952Z\",\n  \"created_by\": \"Lewis\",\n  \"description\": \"Qualification only. Positive: enumerate every current numeric ID wrapper and assert exact checked raw-access values and valid boundaries through current public APIs. Negative: every applicable out-of-range conversion has exact typed error; distinguish raw access from arithmetic/index conversion. Preserve vb-b5f as historical implementation and vb-jrco.9 as proof support; no implementation presumed missing.\",\n  \"id\": \"vb-eirmk.68\",\n  \"issue_type\": \"task\",\n  \"metadata\": {\n    \"master_requirement_ids\": [\n      \"function:24:1\"\n    ],\n    \"qualification_only\": true\n  },\n  \"owner\": \"priorlewis43@gmail.com\",\n  \"priority\": 2,\n  \"schema_version\": 1,\n  \"status\": \"open\",\n  \"title\": \"Qualify checked raw access for every numeric ID type\",\n  \"updated_at\": \"2026-11-10T22:59:55.520542952Z\"\n}\n",
+  "stderr": "",
+  "exit": 0
+}

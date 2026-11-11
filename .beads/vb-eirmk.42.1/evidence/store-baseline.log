@@ -1,0 +1,64 @@
+Running as unit: vb-has-store-baseline-v2-20261110.scope; invocation ID: 18dd2d1a97374d75b42a48c2c666fbc5
+────────────
+ Nextest run ID fabfe177-c897-4b54-9670-5798452f915b with nextest profile: default
+    Starting 14 tests across 1 binary
+        PASS [   0.002s] ( 1/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_helper_arity_three_args
+        PASS [   0.002s] ( 2/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_helper_arity_one_arg
+        PASS [   0.002s] ( 3/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_helper_arity_zero_args
+        PASS [   0.002s] ( 4/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_true_when_field_present
+        PASS [   0.002s] ( 5/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_false_on_other_field
+        PASS [   0.002s] ( 6/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_false_on_empty_object
+        PASS [   0.002s] ( 7/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_object_reference_checked_first
+        PASS [   0.003s] ( 8/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_type_mismatch_wrong_receiver
+        PASS [   0.003s] ( 9/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_false_when_field_absent
+        PASS [   0.003s] (10/14) velvet-ballistics-workspace-tests::has_store_key_validation has_context_free_helper_arity_zero_args
+        PASS [   0.015s] (11/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_type_mismatch_wrong_key_type
+        PASS [   0.016s] (12/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_key_type_checked_before_object_lookup
+        FAIL [   0.016s] (13/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_invalid_symbol_empty_object
+  stdout ───
+
+    running 1 test
+    test has_store_invalid_symbol_empty_object ... FAILED
+
+    failures:
+
+    failures:
+        has_store_invalid_symbol_empty_object
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'has_store_invalid_symbol_empty_object' (2510636) panicked at crates/workspace_tests/tests/has_store_key_validation.rs:97:5:
+    assertion `left == right` failed
+      left: Ok(Bool(false))
+     right: Err(InvalidReference { reference: "symbol:SymbolId(4294967295)" })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+  Cancelling due to test failure: 1 test still running
+        FAIL [   0.016s] (14/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_invalid_symbol_nonempty_object
+  stdout ───
+
+    running 1 test
+    test has_store_invalid_symbol_nonempty_object ... FAILED
+
+    failures:
+
+    failures:
+        has_store_invalid_symbol_nonempty_object
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'has_store_invalid_symbol_nonempty_object' (2510638) panicked at crates/workspace_tests/tests/has_store_key_validation.rs:114:5:
+    assertion `left == right` failed
+      left: Ok(Bool(false))
+     right: Err(InvalidReference { reference: "symbol:SymbolId(4294967295)" })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+────────────
+     Summary [   0.016s] 14 tests run: 12 passed, 2 failed, 0 skipped
+        FAIL [   0.016s] (13/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_invalid_symbol_empty_object
+        FAIL [   0.016s] (14/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_invalid_symbol_nonempty_object
+error: test run failed

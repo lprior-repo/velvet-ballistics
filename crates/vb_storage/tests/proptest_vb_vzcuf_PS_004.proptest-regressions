@@ -8,3 +8,7 @@ cc 5179b7b36a7582f05e8bcca12d15478c335ed515b3e8aa3a5248ce4aa40b839e # shrinks to
 cc 990e13400cf23611c6359879e83ef2030a8c837d6f193299866b98cabeb87b7d # shrinks to run = 1
 cc 5de4ec314431e96fad99b93428e8dffcef34abca8dbc2fff3a092f75d3f938a5 # shrinks to run = 21, seq = 2
 cc 5b2321b6a0af834aacb3cb32dbee2157f7e603588895b7ac7487dce839ac2bc7 # shrinks to run = 1, seq = 87
+cc fd294b55965140b5ec9438d8ae4729a407774dab8d4625a1e26e5d6b573aa1d6 # shrinks to events = [(53, 6), (84, 36), (73, 11), (21, 12), (42, 39), (88, 41)]
+cc b1706791ee1d04b551bee6f8bb19fd6fabcc6c1457742aec1a25aa6535b89667 # shrinks to run = 370, seq = 19
+cc ada93df101f339936d4d60752e5c220bbd02619d905f2791d74be85661afc7a1 # shrinks to run = 931, seq = 23
+cc 6974854b6d088784d87bce7b4917d2dfc8ee2e0c5fe8c29c642f86a7ee1510d6 # shrinks to run = 904

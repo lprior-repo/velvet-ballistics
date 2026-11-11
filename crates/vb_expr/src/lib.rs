@@ -18,6 +18,9 @@ mod expr_property_tests;
 #[cfg(test)]
 mod expr_builtin_eval;
 #[cfg(test)]
+#[path = "expr_eval_tests_contains.rs"]
+mod expr_eval_contains_tests;
+#[cfg(test)]
 mod expr_eval_tests;
 
 // Re-exports for backward compatibility (vb_expr public API)

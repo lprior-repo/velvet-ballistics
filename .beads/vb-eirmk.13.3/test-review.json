@@ -1,0 +1,118 @@
+{
+  "bead": "vb-eirmk.13.3",
+  "review": "independent TEST relocation proposal",
+  "verdict": "PASS",
+  "scope": "Frozen relocation evidence and two-row ledger proposal only; no authorization to modify or apply protected live TSV/checker.",
+  "pins": {
+    "document_candidate_change": "mvkvvsrnsxlxutlystswypywslottmzs",
+    "document_candidate_commit": "6c57e127e589b93010d98526b3da1f823bd3bde9",
+    "review_child_commit": "523469b7e9fcf61a1c1281e0d4dde1d957c2a7c7",
+    "original_full_base": "1dbcbe96cacdc0fad91edbba641f7ad3ad542fb7",
+    "reviewed_source_split": "743f93433ed92f6d400c7ac2f008fd47e4be2636",
+    "recorded_run_jj_snapshot": "84d7edd0e4c7540d165782510d58407e10a7ee10",
+    "run_snapshot_parents": [
+      "2f3f82b4ad48de6c2b696d26ab8be4c8086c5600",
+      "01b56891a6cf8442ddb030afc65df2bdd35eb61f"
+    ],
+    "raw_git_head_is_not_merged_tree": "2f3f82b4ad48de6c2b696d26ab8be4c8086c5600"
+  },
+  "roots_verified": {
+    "git": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+    "jj": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol"
+  },
+  "findings": [],
+  "blob_controls": {
+    "proposal_sha256": "21df94f5d09edc452542b597d6555d0a5247af6ab68eaf279dbfe3b053b4dd95",
+    "review_document_git_blob": "1c08e67983dbd66ce2f076a0c89f5a9c49973dcb",
+    "old_source_git_blob": "6178f772bbca4f510f386f71172165ce430531b1",
+    "current_include_shell_git_blob": "c72d1036e72d16afc56947d8d83f8313328e515d",
+    "replacement_blobs": {
+      "crates/vb_core/src/replay/ops/tests_stack.rs": "99cc11f167ddbe5e0b424d3bdce36281c54a051f",
+      "crates/vb_core/src/replay/ops/tests_expr.rs": "5ec62370dc7635812b480c5132bbb11c96ca6fc3",
+      "crates/vb_core/src/replay/ops/tests_ce003.rs": "acb8a177acf3e0c04e34f8c0da9a64053d942165",
+      "crates/vb_core/src/replay/ops/context_tests.rs": "707d2b4b9ff4f087eb2b46ef21bbf7f112d784c0"
+    },
+    "verified": "Independently computed proposal SHA-256 and Git blob hashes from frozen file bytes; both rows bind exactly these same source/replacement/review blobs and full 40-character base."
+  },
+  "checks": [
+    {
+      "path": "crates/vb_core/src/replay/ops/tests.rs",
+      "result": "PASS",
+      "detail": "Independently compared all 100 original function declarations/signatures/bodies and immediate attributes across shell and chunks: byte-identical. Includes expand into the same lexical module. Expanded original source differs only in three section comments and whitespace after excluding the added context include. Imports, shared helpers, tests and original assertions retained."
+    },
+    {
+      "path": "crates/vb_core/src/replay/ops.rs",
+      "lines": [
+        279,
+        280,
+        281
+      ],
+      "result": "PASS",
+      "detail": "Exact cfg(test)/path/mod registration is present at both original base and split. Shell includes tests_stack, tests_expr and tests_ce003; tests_ce003 line 574 includes context_tests. No nested module changes qualified names or adds cfg/ignore conditions."
+    },
+    {
+      "path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+      "lines": [
+        136
+      ],
+      "result": "PASS",
+      "detail": "Original exact pop-pair underflow error with StepIdx::ZERO is byte-preserved."
+    },
+    {
+      "path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+      "lines": [
+        693,
+        698,
+        723
+      ],
+      "result": "PASS",
+      "detail": "Original exact I64(30), Taint::Secret and overflow-preserved I64(2) assertions are byte-preserved. All four original assert_eq invocations accounted for, not merely total assertion counts."
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-frame-snapshots-luna/target/core-build-20261110/evidence/replay-test-body-map.tsv",
+      "result": "PASS",
+      "detail": "Independently checked every row: 90 BYTE_IDENTICAL plus two ADDED_CASE entries, 92 unique mapped names. Every original/new function location and braced-body SHA-256 recomputed from frozen source, matching map. No original test/helper lost, weakened or ignored."
+    },
+    {
+      "path": "crates/vb_core/src/replay/ops/context_tests.rs",
+      "result": "PRESENCE_AND_REGISTRATION_VERIFIED",
+      "detail": "Only additional functions are eval_replay_op_uses_actual_step_index and eval_replay_op_preserves_load_slot_error. Both are unconditional #[test] functions in the existing test module. This relocation disposition does not newly approve their implementation, oversized bodies or production feature."
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/replay-current-catalog.json",
+      "result": "PASS",
+      "detail": "SHA-256 9f0f8b4a21ee9c58b4b4e7510b5ce785732a34a604edf885fefc1d703173227c verified. Exactly 92 replay::ops::tests entries have filter-match.status=matches. Names exactly equal map names and 92 unique raw PASS names in retained full-run log. Five test-source blobs at recorded run JJ snapshot equal reviewed qqklyzpu source blobs."
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/replay-ledger-preview/checker.rs",
+      "result": "PASS_PREVIEW_SOURCE",
+      "detail": "Independently reversed only JUSTIFICATIONS_REL value; copied checker then byte-identical to live checker. Combined ledger is exact existing ledger plus proposed two rows; copied proposal SHA matches frozen proposal. Checker source requires resolved full-base equality, finding kind/path/detail identity, actual old/current/replacement/review blobs. Short prefix cannot match full resolved base."
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/replay-ledger-preview/valid.log",
+      "result": "PASS_READ_EVIDENCE",
+      "detail": "Actual log contains exactly requested DeletedTestDeclaration and WeakenedAssertion JUSTIFIED lines plus PASS at full base. Negative raw logs wrong_review_blob, wrong_replacement_blob and short_base_prefix each retain DeletedTestDeclaration and report FAIL while second unchanged record remains justified. negative-controls.json records exit 1 for each. preview-setup.json and before receipt hashes agree with independently read current live files."
+    }
+  ],
+  "live_controls_sha256": {
+    "scripts/test-integrity-justifications.tsv": "096df4425e06980160297b3fcdb126532d1f015af2329c37f4c475d5e507cafb",
+    "scripts/check-test-integrity.rs": "461cf1a5bab360748745cfad9a59a6a9ea5f7d3dcfb696aad91e956a187b0c1e"
+  },
+  "execution_evidence": {
+    "mode": "Existing parent logs/receipts read; no independent test/checker execution. Independent source comparisons/hash computations executed only.",
+    "raw_full_run_log": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/trace-assertion-integrated-moon.log",
+    "run_id": "4fb3cd61-799f-40ce-a823-bff3fa105ebc",
+    "observed_summary": "16417 tests run: 16417 passed, 7 skipped",
+    "observed_separate_exit_receipt": "trace-assertion-integrated-moon-exit.txt: MOON_EXIT=0",
+    "replay_subgroup": "92 PASS, exact catalog/map parity",
+    "provenance_limit": "Raw full-run log does not itself embed the merged JJ pin. Run-to-JJ-snapshot binding is explicit parent observation recorded in corrected review document; independently verified snapshot ancestry and five replay blob identities. Raw Git HEAD alone is not treated as merged-tree evidence."
+  },
+  "limits": [
+    "Proposal only; protected live TSV and checker remain unapplied and unmodified. Explicit user approval remains required.",
+    "Preview success is copied-checker evidence, not live integrity PASS or canonical full-CI acceptance. No fresh execution was performed.",
+    "eval_replay_op production delta in ops.rs is real and outside relocation scope; no whole-feature, formal, performance or parent-phase approval.",
+    "Existing test/helper quality, function-size and forbidden-construct debt is neither repaired nor waived by byte-preserving relocation approval.",
+    "Obsolete short-base/wrong-pin proposals are not approved; only hash-bound current proposal and document reviewed.",
+    "Only requested JSON report written; no other review reports read, no agents, tracker/source/gate changes or root temporary-directory access."
+  ]
+}

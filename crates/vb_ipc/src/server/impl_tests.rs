@@ -32,13 +32,6 @@ use vb_core::{RunId, WorkflowDigest};
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 fn temp_socket_path(name: &str) -> PathBuf {
-    // Linux `unix(7)` `sun_path` is bounded by `SUN_LEN` (108) bytes. We
-    // bypass `std::env::temp_dir()` because cargo and CI frequently set
-    // `TMPDIR` to deep worktree paths (e.g. `$PWD/target/tmp`), which pushes
-    // the concatenated socket path past the limit and makes `bind(2)` fail
-    // with `EINVAL: path must be shorter than SUN_LEN`. Using a fixed short
-    // parent (`/tmp`) keeps every per-test path well below 108 bytes.
-    //
     // Per-test uniqueness is guaranteed by the process id (parallel cargo
     // test workers) and a static monotonic counter (successive invocations
     // within the same process). Each test owns cleanup of its socket path.
@@ -46,8 +39,9 @@ fn temp_socket_path(name: &str) -> PathBuf {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let pid = std::process::id();
     let counter = COUNTER.fetch_add(1, Ordering::Relaxed);
-    std::path::PathBuf::from("/tmp")
-        .join(format!("vb_ipc_impl_test_{name}_{pid}_{counter:04x}.sock"))
+    let dir = std::env::temp_dir();
+    let name = name.chars().take(8).collect::<String>();
+    dir.join(format!("vb_impl_{name}_{pid}_{counter:04x}.sock"))
 }
 
 fn make_runtime() -> Runtime {
@@ -2246,4 +2240,12 @@ fn serve_ipc_returns_ok_false_when_poll_once_indicates_shutdown() {
         Ok(false),
         "serve_ipc should return Ok(false) when poll_once indicates shutdown"
     );
+}
+
+#[test]
+fn ipc_socket_path_uses_configured_temp_dir() {
+    let path = temp_socket_path("configured");
+    let base = std::env::temp_dir();
+    assert_eq!(path.parent(), Some(base.as_path()));
+    assert!(path.as_os_str().as_encoded_bytes().len() < 108);
 }

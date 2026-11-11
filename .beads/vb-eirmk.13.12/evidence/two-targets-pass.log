@@ -1,0 +1,45 @@
+Running as unit: vb-prebuilt-cli-two-targets-v2-20261110.scope; invocation ID: 491e6d45c2a44c9c9aca65b6bc37a412
+────────────
+ Nextest run ID 901e0a2d-ea02-40df-91cc-f51148c4dc7a with nextest profile: default
+    Starting 39 tests across 2 binaries
+        PASS [   0.002s] ( 1/39) velvet-ballistics-workspace-tests::vb_nf2u_current_scope_tests prebuilt_cli_path::tests::resolve_empty_string
+        PASS [   0.002s] ( 2/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism compare_replay_returns_policy_blocked_before_sequence_or_normalized_mismatch
+        PASS [   0.002s] ( 3/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism compare_generated_ir_priority_order_is_unsupported_then_divergence_then_equal
+        PASS [   0.002s] ( 4/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism compare_generated_ir_returns_divergence_when_supported_observations_differ
+        PASS [   0.002s] ( 5/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism compare_cross_run_rejects_every_normalized_semantic_field_delta
+        PASS [   0.002s] ( 6/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism compare_cross_run_returns_nondeterministic_observation_when_semantic_field_changes
+        PASS [   0.003s] ( 7/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism digest_status_all_match_returns_false_for_each_single_digest_mismatch
+        PASS [   0.003s] ( 8/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism compare_generated_ir_returns_unsupported_subset_before_divergence
+        PASS [   0.003s] ( 9/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism given_vb_kyyf_scenario_finishes_when_runner_reports_then_evidence_path_is_traceable
+        PASS [   0.002s] (10/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism prebuilt_cli_path::tests::resolve_non_utf8_relative
+        PASS [   0.003s] (11/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism bdd_kyyf_007_malformed_catalog_rows_emit_exact_strength_diagnostics
+        PASS [   0.002s] (12/39) velvet-ballistics-workspace-tests::vb_nf2u_current_scope_tests prebuilt_path_preserves_non_utf8_os_bytes
+        PASS [   0.002s] (13/39) velvet-ballistics-workspace-tests::vb_nf2u_current_scope_tests prebuilt_cli_selector_honors_explicit_os_path
+        PASS [   0.002s] (14/39) velvet-ballistics-workspace-tests::vb_nf2u_current_scope_tests prebuilt_cli_path::tests::resolve_relative_with_parent
+        PASS [   0.002s] (15/39) velvet-ballistics-workspace-tests::vb_nf2u_current_scope_tests removed_codegen_ui_crates_are_not_workspace_members
+        PASS [   0.003s] (16/39) velvet-ballistics-workspace-tests::vb_nf2u_current_scope_tests removed_ui_command_is_refused_with_unknown_command_error
+        PASS [   0.003s] (17/39) velvet-ballistics-workspace-tests::vb_nf2u_current_scope_tests removed_ui_release_command_is_not_registered
+        PASS [   0.003s] (18/39) velvet-ballistics-workspace-tests::vb_nf2u_current_scope_tests validate_command_runs_on_valid_workflow
+        PASS [   0.003s] (19/39) velvet-ballistics-workspace-tests::vb_nf2u_current_scope_tests invalid_explicit_path_is_classified_before_spawn
+        PASS [   0.003s] (20/39) velvet-ballistics-workspace-tests::vb_nf2u_current_scope_tests prebuilt_cli_path::tests::resolve_bare_relative_name
+        PASS [   0.003s] (21/39) velvet-ballistics-workspace-tests::vb_nf2u_current_scope_tests prebuilt_cli_path::tests::resolve_absolute_path_unchanged
+        PASS [   0.003s] (22/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism prebuilt_cli_path::tests::resolve_absolute_path_unchanged
+        PASS [   0.003s] (23/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism prebuilt_cli_path::tests::resolve_empty_string
+        PASS [   0.003s] (24/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism kyyf_prebuilt_cli_selector_honors_explicit_os_path
+        PASS [   0.003s] (25/39) velvet-ballistics-workspace-tests::vb_nf2u_current_scope_tests prebuilt_cli_path::tests::resolve_non_utf8_relative
+        PASS [   0.003s] (26/39) velvet-ballistics-workspace-tests::vb_nf2u_current_scope_tests absent_path_selects_cargo_with_exact_prefix
+        PASS [   0.015s] (27/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism compare_replay_returns_sequence_violation_before_normalized_mismatch
+        PASS [   0.015s] (28/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism compare_replay_returns_digest_mismatch_before_policy_sequence_or_semantic_deltas
+        PASS [   0.015s] (29/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism digest_status_all_match_is_true_only_for_all_sixteen_matching_bit_combinations
+        PASS [   0.015s] (30/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism compare_replay_returns_digest_mismatch_for_each_digest_role_before_later_failures
+        PASS [   0.015s] (31/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism kyyf_explicit_invalid_path_fails_without_fallback
+        PASS [   0.003s] (32/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism prebuilt_cli_path::tests::resolve_relative_with_parent
+        PASS [   0.003s] (33/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism normalize_observation_strips_only_allowed_cold_metadata_when_runs_are_isolated
+        PASS [   0.003s] (34/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism prebuilt_cli_path::tests::resolve_bare_relative_name
+        PASS [   0.004s] (35/39) velvet-ballistics-workspace-tests::vb_nf2u_current_scope_tests cli_help_lists_current_command_surface
+        PASS [   0.015s] (36/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism normalize_observation_preserves_all_semantic_fields_and_erases_only_metadata_fields
+        PASS [   0.004s] (37/39) velvet-ballistics-workspace-tests::vb_nf2u_current_scope_tests cli_version_prints_version_string
+        PASS [   0.015s] (38/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism kyyf_none_builds_exact_cargo_command
+        PASS [   0.123s] (39/39) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism bdd_kyyf_001_to_006_require_executable_public_surfaces_not_catalog_bookkeeping_only
+────────────
+     Summary [   0.123s] 39 tests run: 39 passed, 0 skipped

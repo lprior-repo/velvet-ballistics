@@ -157,10 +157,11 @@ tasks:
     script: |
       bash -c '
         set -euo pipefail
+        mkdir -p target/nightly-feature-cargo-probe
         rustup run nightly-2026-04-28 cargo tree -p velvet-ballistics -e features \
-          --all-features --format "{p} {f}" > /tmp/opencode/nightly-features.txt
+          --all-features --format "{p} {f}" > target/nightly-feature-cargo-probe/nightly-features.txt
         rustup run nightly-2026-04-28 cargo metadata --format-version 1 \
-          --all-features > /tmp/opencode/nightly-features-metadata.json
+          --all-features > target/nightly-feature-cargo-probe/nightly-features-metadata.json
         echo "[nightly-feature-cargo-probe] OK: cargo-driven feature enumeration complete."
       '
     toolchains:

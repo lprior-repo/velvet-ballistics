@@ -1,0 +1,138 @@
+{
+  "bead": "vb-eirmk.12",
+  "review": "bounded independent TEST/planning post-apply invariants audit",
+  "verdict": "PASS",
+  "scope": "Actual four qualification-task creations, their live graph/metadata/contracts and exact canonical-design remap only. No phase/implementation/full-plan acceptance.",
+  "roots_verified": {
+    "git": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+    "jj": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol"
+  },
+  "findings": [],
+  "proposal_binding": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/ownership-repair/qualification-owner-proposals-v2.json",
+    "sha256": "a4e1de27f65df6195071e7b09af862d3066c87cca19e896e4f6cad2261a84dc2",
+    "verification": "New live task design JSON equals its exact frozen proposal object; live acceptance is exact newline join of proposal acceptance. Descriptions/titles and metadata match actual creation receipts. No other review report used."
+  },
+  "actual_owners": [
+    {
+      "requirement_id": "phase:4",
+      "actual_issue_id": "vb-eirmk.48",
+      "historical_owner": "vb-core-yaml-ast",
+      "status": "open",
+      "issue_type": "task",
+      "parent": "vb-eirmk"
+    },
+    {
+      "requirement_id": "phase:17",
+      "actual_issue_id": "vb-eirmk.49",
+      "historical_owner": "vb-tzsfr",
+      "status": "open",
+      "issue_type": "task",
+      "parent": "vb-eirmk"
+    },
+    {
+      "requirement_id": "phase:20",
+      "actual_issue_id": "vb-eirmk.50",
+      "historical_owner": "vb-2bbo",
+      "status": "open",
+      "issue_type": "task",
+      "parent": "vb-eirmk"
+    },
+    {
+      "requirement_id": "phase:21",
+      "actual_issue_id": "vb-eirmk.51",
+      "historical_owner": "vb-heqb",
+      "status": "open",
+      "issue_type": "task",
+      "parent": "vb-eirmk"
+    }
+  ],
+  "remap_validation": {
+    "before_sha256": "9b3529dffcd966d5854782572101e9c2628c2e3d0e39188b808bb81c9783f03a",
+    "after_sha256": "cdb6d341fd36c2196e797be8cd17b3758e112be3c57556d8d4b437089e9c39e6",
+    "before_size_bytes": 4144950,
+    "after_size_bytes": 4145248,
+    "independent_semantic_comparison": "Recursive full-design comparison found exactly20 scalar changes matching independently generated five-field allowlist and correct actual IDs/stable proposal keys. Object key sets/list lengths unchanged. Audit changed_scalar_paths independently matched, not accepted from its boolean fields.",
+    "changed_fields_per_row": [
+      "canonical_qualification_owner_id",
+      "current_owner_status",
+      "unresolved_checks[owned qualify:phase:N].accountable_bead_id",
+      "unresolved_checks[owned qualify:phase:N].proposal_key",
+      "resolved_from_proposal_key"
+    ],
+    "selected_row_indices": [
+      5,
+      18,
+      21,
+      22
+    ],
+    "byte_preservation": "Independent Python byte lexer parsed raw JSON and located exact scalar spans for the20 allowlisted value paths in both before/after bytes. Replacing only before spans with corresponding after scalar tokens, in reverse byte-offset order, reproduced entire after file byte-for-byte. This establishes all whitespace, keys, escapes and nonselected bytes unchanged; no reliance on Ruby parser or audit booleans.",
+    "encoding_control": "Measured before raw bytes all ASCII; byte-based independent lexer also avoids character/byte offset ambiguity regardless. No root temporary path followed.",
+    "rows_and_checks": "190 rows retained; all190 completion_verified are false and implementation_missing null. Other186 rows identical; all nonallowlisted fields in selected four rows identical. Check status, assertions, payloads, evidence, supporting/historical IDs, preferred owners and all unrelated design state preserved.",
+    "receipt_live_binding": "issue-before.json design exactly matches before.raw. post-update-live.json design exactly matches after.raw. Fresh read-only bd show vb-eirmk.12 design bytes exactly match after.raw; before/post issue-level changed keys are only design and updated_at. Parent metadata, including existing role metadata, unchanged."
+  },
+  "live_graph_validation": {
+    "read_commands": [
+      "bd show vb-eirmk.48/.49/.50/.51 --json (separate reads)",
+      "bd show vb-eirmk.11 --json",
+      "bd show vb-eirmk.12 --json",
+      "bd show four historical owners --json (separate reads)",
+      "bd list --all --has-metadata-key master_requirement_ids --limit 0 --json",
+      "bd dep cycles --json"
+    ],
+    "actual_blocking_edges": [
+      {
+        "dependent": "vb-eirmk.11",
+        "prerequisite": "vb-eirmk.48",
+        "dependency_type": "blocks"
+      },
+      {
+        "dependent": "vb-eirmk.11",
+        "prerequisite": "vb-eirmk.49",
+        "dependency_type": "blocks"
+      },
+      {
+        "dependent": "vb-eirmk.11",
+        "prerequisite": "vb-eirmk.50",
+        "dependency_type": "blocks"
+      },
+      {
+        "dependent": "vb-eirmk.11",
+        "prerequisite": "vb-eirmk.51",
+        "dependency_type": "blocks"
+      }
+    ],
+    "task_vs_epic": "Final11 is task; every new qualifier is task. Each new qualifier dependencies list contains only root vb-eirmk with parent-child type; no new blocking dependency on root epic or reverse final11 prerequisite. No tracks substitution.",
+    "cycles_observed": [],
+    "duplicate_check": "Each phase ID has exactly one live master_requirement_ids owner, respectively .48/.49/.50/.51. No duplicate tagged full-phase qualifier found.",
+    "historical_closure": "Fresh show confirms all four historical implementation owners remain closed."
+  },
+  "metadata_and_contract_validation": {
+    "each_new_owner": "metadata qualification_only=true, singleton exact master_requirement_ids and owner_repair_proposal equal frozen stable proposal key. Live metadata exactly equals creation receipt; no invented role/implementation assignment introduced.",
+    "phase_scopes": "Live issue design preserves each entire reviewed proposal, including phase-specific acceptance, family/primitive reuse restrictions, child allocation policy and five-field remap invariants. Description retains qualification-only/no missing-implementation presumption, source-reference refresh and Rust contract -> implementation -> behavioral tests -> CODE -> separate independent TEST for actual repairs.",
+    "parent_role_metadata": "vb-eirmk.12 metadata identical before/post and current live. No role/accountability changes outside approved canonical owner/check fields.",
+    "not_phase_acceptance": "Tasks are open; separate primitive-family mapping, existing-owner contract inspection and actual-source qualification work remain pending. No child implementation placeholder or blanket primitive acceptance created by remap."
+  },
+  "apply_script_inspection": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/ownership-repair/apply-reviewed-owners.rb",
+    "mode": "Read as data only; never executed by this reviewer.",
+    "observed_controls": "Hash-bound frozen proposal and before-design guards; exact owner/check preconditions; duplicate tagged-owner check; actual creates/dependencies; prewrite drift guard; postwrite readback and historical-status checks. Its boolean claims are corroborated by independent JSON/byte/live-state comparisons above.",
+    "limit": "This audit accepts actual observed results, not general correctness or reusability of the apply script."
+  },
+  "evidence_sha256": {
+    "creation-receipts.json": "af6df1425f2ccdb70382397e8296778810cae2411f9671e0a9977b4a4a7af2a5",
+    "remap-audit.json": "11ca9181fa814e40ce431fc734b455d3369f12bbf44ce037de3c3765e736b1de",
+    "design-before.raw": "9b3529dffcd966d5854782572101e9c2628c2e3d0e39188b808bb81c9783f03a",
+    "design-after.raw": "cdb6d341fd36c2196e797be8cd17b3758e112be3c57556d8d4b437089e9c39e6",
+    "post-update-live.json": "d1585365cfcd39cc41fcd8e7b510f3f3cd0ee4785b6ea100b3059cf1d939352f",
+    "apply-reviewed-owners.rb": "e61e3e5cc27b18d5858e316f61ffadd0aeb838c8eb2f2db5664bb69a0e332dba",
+    "issue-before.json": "09e3a3ab913bc0315cd650af1c611646f9ca57527cb83d87efe8b08c6e09ca8a"
+  },
+  "limits": [
+    "Post-apply ownership/metadata/graph acceptance only. Full190 plan, other118-owner audit and99 unresolved native mappings remain UNACCEPTED.",
+    "No required test, formal, fuzz, benchmark, canonical CI, phase or final11 completion obligation is discharged by owner creation/remap.",
+    "Live tracker invariants apply at audit time; subsequent owner/status/design/edge changes require their own audit.",
+    "Review performed read-only bd queries and bounded source/file/JSON/hash/byte comparisons. Only requested new report written; no DB/tracker/source/gate mutation, agents or root temporary-directory access.",
+    "Previous rejection and V2 readiness reports preserved; no CODE report read or reasoning relied on."
+  ]
+}

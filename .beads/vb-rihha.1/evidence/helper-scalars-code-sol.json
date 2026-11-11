@@ -1,0 +1,91 @@
+{
+  "bead": "vb-rihha.1",
+  "verdict": "PASS",
+  "verdict_kind": "SOURCE_ONLY",
+  "scope": "Bounded scalar-operand static helper validation only; not full RIHHA acceptance or native-green evidence.",
+  "candidate": {
+    "change": "qzluomyyzuyszvzyntzuxxvyluvxmqqs",
+    "commit": "df89acd5adc491c658d0046b800f6d0dc8a9000e"
+  },
+  "base": "178512867bcecde4532b65f6636442af9eae37d7",
+  "workspace": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+    "git_and_jj_roots_verified": true,
+    "review_child": "e2c8975813eb166394db53f7c72ebddd187e73f2",
+    "clean": true,
+    "author_workspace_not_modified": "/home/lewis/src/isoloated/velvet-ballistics-helper-source-local5090"
+  },
+  "reviewed_paths": [
+    "crates/vb_expr/src/expr_typecheck/helper_typecheck.rs",
+    ".beads/vb-rihha.1/contract.md"
+  ],
+  "findings": [],
+  "source_checks": [
+    {
+      "path": "crates/vb_expr/src/expr_typecheck/helper_typecheck.rs",
+      "lines": [
+        7,
+        19,
+        57,
+        69
+      ],
+      "assessment": "Only Length/Count/Empty dispatch now invokes check_scalar_arg. For their first argument, Bool/I64/F64 return exact ExprError::TypeMismatch { expected: \"list\", found: type_name(*ty) }. Existing typename mapping gives boolean/i64/f64 respectively. No other helper dispatch changed."
+    },
+    {
+      "path": "crates/vb_expr/src/expr_typecheck/helper_typecheck.rs",
+      "lines": [
+        57,
+        69
+      ],
+      "assessment": "Null, List, Unknown, Text and Object reach unchanged acceptance via wildcard. Unknown remains deferred without manufactured precision. Empty argument slice still returns Ok internally, consistent with prior positional behavior; public arity validation rejects it before this helper is called."
+    },
+    {
+      "path": "crates/vb_expr/src/expr_typecheck/mod.rs",
+      "lines": [
+        151,
+        172,
+        221,
+        231
+      ],
+      "assessment": "Actual caller checks exact arity before inferring arguments and calling positional validation; return type applied only after success. Existing source unchanged. Bool/I64/F64 type-name mapping verified in actual source."
+    },
+    {
+      "path": "crates/vb_expr/src/expr_typecheck/helper_typecheck.rs",
+      "lines": [
+        23,
+        35
+      ],
+      "assessment": "helper_return_type is byte-identical to base: Length/Count remain I64 and Empty remains Bool. All other existing private function bodies except dispatch are byte-identical; Contains remains Ok positional validation and Bool return."
+    },
+    {
+      "path": "crates/vb_expr/src/expr_parser/mod.rs",
+      "lines": [
+        216,
+        227
+      ],
+      "assessment": "Actual arity mapping unchanged: Length/Count/Empty each require one argument; Contains requires two. No parser, API or error-variant changes."
+    },
+    {
+      "path": ".beads/vb-rihha.1/contract.md",
+      "assessment": "Contract already exists at requested base and is byte-identical in candidate. Actual source supports its exact narrow scalar domain. Master table2444-2446 names List/Null while implementation notes discuss symbol/list/object behavior; Text/Object dispute deliberately remains unresolved rather than being silently changed."
+    }
+  ],
+  "compiler_source_binding": {
+    "entry": "crates/vb_compile/src/mod_compile_core.rs:102",
+    "inference": "crates/vb_compile/src/mod_compile_lowering/canonical_types.rs:20-27 invokes shared public typecheck_expr.",
+    "errors": "canonical_types.rs:94-100 maps actual TypeMismatch to CompileError::TypeMismatch field set.value and existing static labels.",
+    "set_path": "canonical_scalar.rs:61-68 tries the entire value as I64 before the expression path; length(1), count(true) and corresponding full helper expressions do not take the bare-integer fast path.",
+    "limits": "Source path inspected only. Nine compiler rejection cases and direct acceptance matrices have not been executed or independently TEST-reviewed here."
+  },
+  "logical_lines_including_signature": {
+    "check_helper_positions": 13,
+    "check_scalar_arg": 10
+  },
+  "change_integrity": "Full revision comparison against the specified ancestor changes only helper_typecheck.rs (18 added lines/one removed line); contract is unchanged. No tests, dependencies, gates, schemas or public APIs changed. Added function has no forbidden unsafe/unwrap/expect/panic/todo/unimplemented/dbg, unchecked indexing/casts or arithmetic.",
+  "remaining_verification": [
+    "No compile, native test, Moon, proof or integration command run or native-green claim made.",
+    "Independent repaired tests and public compiler/direct expression execution remain pending separately; preserve all existing cases and require exact typed errors/results.",
+    "Source PASS does not settle Text/Object or Contains semantic parity, whole IR type correctness, full vb-rihha.1/bead acceptance or broader implementation closure.",
+    "No DB/source/gate edits, author-workspace mutation or agents; only authorized review child and this requested report created."
+  ]
+}

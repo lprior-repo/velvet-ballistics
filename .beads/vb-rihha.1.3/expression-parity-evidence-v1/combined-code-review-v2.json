@@ -1,0 +1,57 @@
+{
+  "artifact": "contains-has-composition-code-review/v2",
+  "verdict": "PASS",
+  "source_pin": "9661872b95e3af01b98070367b021dfb8c59795a",
+  "comparison_pin": "dba6db5594bd7dfdf545302ed1ceb31c2de24323",
+  "scope": "Independent bounded composition CODE review, emphasizing all five test/support paths added or modified since prior dba review; no whole-feature acceptance.",
+  "workspace": {
+    "git_root": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+    "jj_root": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol"
+  },
+  "contracts": {
+    "has_v3": "2f3329582a76616ad9b02e83ea0b5036a66c616fa5b49e39afcd71b33339d860",
+    "has_clarification_v5": "b97207da41fcdc3369fe4706f7e6099283de684010f528962a99639903334b51",
+    "contains_v6": "4b5f05df3803dc88504425e9c2700922f9a3cec31c847fee21d4bf7c492f5477"
+  },
+  "findings": [],
+  "verified": {
+    "delta": "Three new Rust test/support files and two modified existing tests; 423 added/12 removed lines. No production changes from dba. Manifest, lockfile, Moon config, protected checker and live justification ledger unchanged.",
+    "route_oracles": [
+      "Six Object/Blob/List cases independently construct same payload under distinct handles, assert distinct handles and equal resolved payload, then assert same-handle true and distinct-handle false on all three routes. Expected outcomes are literal booleans, not calculated by production equality.",
+      "Six edge cases cover Null membership, identical/distinct invalid raw List handles, singleton miss, null receiver versus invalid Symbol needle, and invalid List receiver versus invalid Symbol needle.",
+      "Direct route invokes real eval_helper_with_store; Hot invokes public eval_expr_with_store over LoadSlot0/LoadSlot1/Contains. Receiver and needle order match compiler/stack semantics.",
+      "Public replay_step receives a validated four-node workflow and initialized PC1 frame; real Choose routes true to2 and false to3. Tests assert returned target and frame PC. Error cases assert complete ExpressionEvalFailed at PC1 plus unchanged PC, without inventing an underlying ReplayError cause.",
+      "All routes resolve the receiver list only and use tagged SlotValue equality; invalid needle handles remain opaque. Direct/Hot complete type/reference errors are independently specified and match actual receiver-validation-before-list-lookup-before-membership code."
+    ],
+    "static_and_cold": "Canonical typecheck adds Text/List/Object typed-reference needles against a List receiver. Cold parse_ast cases retain both declared input schemas and exact ordered Contains arguments. Existing Any, arity, malformed receiver, F64 and other prior assertions remain; schema helper generalization retains exact count/name/value checks.",
+    "registration": "New workspace tests are ordinary Cargo auto-discovered integration targets, with no new feature gate. Shared support is private per test crate via #[path], uses real stores/workflows and does not expose a public production API. No raw test-util hook is needed by these new routes.",
+    "functions": {
+      "author_receipt": "153 entries /16 files, claimed maximum23",
+      "independent_actual": "156 function definitions across the same16 files including fixture methods; maximum23, none above25. Count includes signature and punctuation closers, excludes blank/comment and standalone brace lines.",
+      "receipt_note": "Author ledger labels three pub(super) functions only as pub and omits three fixture methods from its function total. Independent count resolves these reporting defects; no size violation.",
+      "new_support_max": "assert_replay:23; fixture_with_store:13; frame:17; assert_routes:18"
+    },
+    "forbidden": "No added unwrap/expect/panic/unsafe/todo/unimplemented/dbg, ignored-case marker or conditional feature exclusion found in the delta."
+  },
+  "evidence": {
+    "selected_log": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/contains-has-moon-selected-v3.log",
+    "selected_log_sha256": "0b827836099b783c405bba4f52083ad2777a82212415470439498d48d944bbeb",
+    "selected_exit_sha256": "99378a3544b6469ba679bcb306beeb8701cb1c42ab78e520775593a310116115",
+    "observed": "MOON_EXIT=0;16611 passed,7 skipped;12 tasks completed,4 cached. Named new canonical, identity, precedence and cold cases are present as PASS in actual log. Remote cache upload warnings exist; this is not warning-free execution.",
+    "test_integrity": "Actual retained TEST_INTEGRITY_EXIT=1, known per-file90 deleted declarations/four exact assertions relocation. Protected live checker/ledger remain unchanged; no gate approval."
+  },
+  "source_hashes": {
+    "crates/vb_expr/src/expr_typecheck/tests/contains_argument_types.rs": "cc06e963a108d312dbb4be9a5d13e43e6cbdcd844f3955f8d0016098664f5e5a",
+    "crates/workspace_tests/tests/contains_compound_identity.rs": "9bda55ebf4df10b245cad8a609100d9debcf90551b876953ae313fa565d8b197",
+    "crates/workspace_tests/tests/contains_route_edges.rs": "560e122b4dbe14773d22c3a2fe2d15ece22e34b0e0d82f845a72cc640804be19",
+    "crates/workspace_tests/tests/contains_static_cold_guards.rs": "b675da87add5a15c9c0165a8f7125f58973b1d7e370486f38300bbd230c7fdd4",
+    "crates/workspace_tests/tests/support/contains_three_routes.rs": "26b1229827c31c626d949d928eefc81a7dd38bb6030949c242ac293ac51336a1"
+  },
+  "limits": [
+    "No tests/builds/tracker commands or source edits executed by reviewer; raw supplied receipts inspected.",
+    "New cold cases establish parse_ast artifact preservation, not new full compiled artifact coverage. Existing canonical/compiler/bytecode obligations remain separate.",
+    "No new default-feature execution was performed; source shows no added conditional hooks, and current selected all-feature evidence does not itself prove default-feature execution.",
+    "Public replay_step tests are bounded expression/Choose behavior, not full ReplayEngine execution or complete runtime recovery.",
+    "No full moon ci, independent TEST approval, protected relocation ledger acceptance, full Has/Contains/core/master closure, literal Text qualification .53, Timer15 scenario closure or formal proof claimed."
+  ]
+}

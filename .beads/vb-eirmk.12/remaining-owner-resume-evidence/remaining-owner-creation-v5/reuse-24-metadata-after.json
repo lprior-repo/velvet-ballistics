@@ -1,0 +1,9 @@
+{
+  "master_requirement_ids": [
+    "phase:30",
+    "function:31:4",
+    "master44.16"
+  ],
+  "owner_repair_proposal": "proposal:phase:30",
+  "qualification_only": true
+}

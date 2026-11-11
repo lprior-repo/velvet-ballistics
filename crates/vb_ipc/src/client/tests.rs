@@ -12,7 +12,7 @@ use vb_runtime::shard::ShardConfig;
 
 #[test]
 fn connect_ipc_rejects_nonexistent_socket() {
-    let path = PathBuf::from("/tmp/vb_ipc_test_nonexistent_39f2.socket");
+    let path = std::env::temp_dir().join("vb_ipc_test_nonexistent_39f2.socket");
     let result = IpcClient::connect(&path);
 
     assert!(
@@ -34,15 +34,21 @@ fn connect_ipc_rejects_nonexistent_socket() {
 #[test]
 fn connect_ipc_returns_connect_failed_error_variant() {
     // Given: a path to a socket that does not exist
-    let path = PathBuf::from("/tmp/vb_ipc_test_noexist_77a3.socket");
+    let path = std::env::temp_dir().join("vb_ipc_test_noexist_77a3.socket");
 
     // When: attempting to connect
     let result = IpcClient::connect(&path);
 
     // Then: the error is ConnectFailed with a source
-    let Err(IpcClientError::ConnectFailed { source: _source }) = result else {
-        return;
-    };
+    assert!(
+        matches!(result, Err(IpcClientError::ConnectFailed { .. })),
+        "expected ConnectFailed, but result is {}",
+        if result.is_ok() {
+            "Ok"
+        } else {
+            "a different error"
+        }
+    );
 }
 
 #[test]
@@ -112,27 +118,39 @@ fn ipc_client_error_encode_failed_display() {
 fn send_command_returns_connect_failed_when_socket_closed() {
     // Given: a client connected to a socket that immediately closes
     // We test with a nonexistent socket path (connection fails)
-    let path = PathBuf::from("/tmp/vb_ipc_test_send_fail_55b1.socket");
+    let path = std::env::temp_dir().join("vb_ipc_test_send_fail_55b1.socket");
     let client = IpcClient::connect(&path);
 
     // When: connection fails, no client to send with
     // Then: verify the client was not created
-    let Err(IpcClientError::ConnectFailed { .. }) = client else {
-        return;
-    };
+    assert!(
+        matches!(client, Err(IpcClientError::ConnectFailed { .. })),
+        "expected ConnectFailed, but result is {}",
+        if client.is_ok() {
+            "Ok"
+        } else {
+            "a different error"
+        }
+    );
 }
 
 #[test]
 fn recv_response_header_returns_error_without_server() {
     // Given: a client connected to nothing (connection will fail)
-    let path = PathBuf::from("/tmp/vb_ipc_test_recv_fail_88c2.socket");
+    let path = std::env::temp_dir().join("vb_ipc_test_recv_fail_88c2.socket");
     let client = IpcClient::connect(&path);
 
     // When: connection fails
     // Then: no recv possible
-    let Err(IpcClientError::ConnectFailed { .. }) = client else {
-        return;
-    };
+    assert!(
+        matches!(client, Err(IpcClientError::ConnectFailed { .. })),
+        "expected ConnectFailed, but result is {}",
+        if client.is_ok() {
+            "Ok"
+        } else {
+            "a different error"
+        }
+    );
 }
 
 // ══ Adversarial client tests ══
@@ -140,15 +158,21 @@ fn recv_response_header_returns_error_without_server() {
 #[test]
 fn adversarial_connect_to_directory_returns_connect_failed() {
     // Given: a path that is a directory, not a socket
-    let path = PathBuf::from("/tmp");
+    let path = std::env::temp_dir();
 
     // When: trying to connect
     let result = IpcClient::connect(&path);
 
     // Then: ConnectFailed
-    let Err(IpcClientError::ConnectFailed { .. }) = result else {
-        return;
-    };
+    assert!(
+        matches!(result, Err(IpcClientError::ConnectFailed { .. })),
+        "expected ConnectFailed, but result is {}",
+        if result.is_ok() {
+            "Ok"
+        } else {
+            "a different error"
+        }
+    );
 }
 
 #[test]
@@ -160,23 +184,35 @@ fn adversarial_connect_to_empty_path_returns_connect_failed() {
     let result = IpcClient::connect(&path);
 
     // Then: ConnectFailed
-    let Err(IpcClientError::ConnectFailed { .. }) = result else {
-        return;
-    };
+    assert!(
+        matches!(result, Err(IpcClientError::ConnectFailed { .. })),
+        "expected ConnectFailed, but result is {}",
+        if result.is_ok() {
+            "Ok"
+        } else {
+            "a different error"
+        }
+    );
 }
 
 #[test]
 fn adversarial_connect_to_nested_nonexistent_returns_connect_failed() {
     // Given: a deeply nested nonexistent path
-    let path = PathBuf::from("/tmp/vb_ipc_noexist_a1b2/noexist_subdir/noexist.socket");
+    let path = std::env::temp_dir().join("vb_ipc_noexist_a1b2/noexist_subdir/noexist.socket");
 
     // When: trying to connect
     let result = IpcClient::connect(&path);
 
     // Then: ConnectFailed
-    let Err(IpcClientError::ConnectFailed { .. }) = result else {
-        return;
-    };
+    assert!(
+        matches!(result, Err(IpcClientError::ConnectFailed { .. })),
+        "expected ConnectFailed, but result is {}",
+        if result.is_ok() {
+            "Ok"
+        } else {
+            "a different error"
+        }
+    );
 }
 
 #[test]
@@ -204,13 +240,6 @@ fn adversarial_client_error_variants_are_distinct() {
 // ── helpers ─────────────────────────────────────────────────────────────────
 
 fn temp_socket_path(name: &str) -> PathBuf {
-    // Linux `unix(7)` `sun_path` is bounded by `SUN_LEN` (108) bytes. We must
-    // bypass `std::env::temp_dir()` here because cargo and CI frequently set
-    // `TMPDIR` to deep worktree paths (e.g. `$PWD/target/tmp`), which pushes
-    // the concatenated socket path past the limit and makes `bind(2)` fail
-    // with `EINVAL: path must be shorter than SUN_LEN`. Using a fixed short
-    // parent (`/tmp`) keeps every per-test path well below 108 bytes.
-    //
     // Per-test uniqueness is guaranteed by the process id (parallel cargo
     // test workers) and a static monotonic counter (successive invocations
     // within the same process). The previous test run's stale socket, if
@@ -219,9 +248,9 @@ fn temp_socket_path(name: &str) -> PathBuf {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let pid = std::process::id();
     let counter = COUNTER.fetch_add(1, Ordering::Relaxed);
-    std::path::PathBuf::from("/tmp").join(format!(
-        "vb_ipc_client_test_{name}_{pid}_{counter:04x}.sock"
-    ))
+    let dir = std::env::temp_dir();
+    let name = name.chars().take(8).collect::<String>();
+    dir.join(format!("vb_client_{name}_{pid}_{counter:04x}.sock"))
 }
 
 struct CleanupPath<'a>(&'a std::path::Path);

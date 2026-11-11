@@ -1,0 +1,20 @@
+{
+  "expected": [
+    "trace_ring_public/raw_pop_16",
+    "trace_ring_public/raw_push_empty",
+    "trace_ring_public/raw_push_full_and_verify_returned_event",
+    "trace_ring_public/wrapper_drain_16",
+    "trace_ring_public/wrapper_push_empty",
+    "trace_ring_public/wrapper_push_full_and_observe_dropped"
+  ],
+  "actual": [
+    "trace_ring_public/raw_pop_16",
+    "trace_ring_public/raw_push_empty",
+    "trace_ring_public/raw_push_full_and_verify_returned_event",
+    "trace_ring_public/wrapper_drain_16",
+    "trace_ring_public/wrapper_push_empty",
+    "trace_ring_public/wrapper_push_full_and_observe_dropped"
+  ],
+  "successes": 6,
+  "exit": 0
+}

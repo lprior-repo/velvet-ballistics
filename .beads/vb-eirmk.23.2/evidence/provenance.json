@@ -1,0 +1,57 @@
+{
+  "recorded_utc": "2026-11-10 17:39:24 UTC",
+  "source_jj_commit": "23749f4b5b0b1822243a956ae22dd1b59912a0e1",
+  "status": "build0/smoke0/measurement0; six cases validated,20samples each",
+  "cpu_model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+  "governor": "performance",
+  "host_loadavg": "8.52 4.47 4.26 6/4962 2904436",
+  "fixture": {
+    "event": "StepStarted",
+    "run": 1,
+    "step": 1,
+    "capacity": 128,
+    "drain": 16,
+    "batch_maximum": 32
+  },
+  "build": {
+    "profile": "bench",
+    "lto": "thin",
+    "codegen_units": 1,
+    "jobs": 2,
+    "rustflags": "-Dwarnings",
+    "memory_high": "20G",
+    "memory_max": "24G",
+    "swap_max": 0,
+    "timeout_seconds": 900
+  },
+  "limits": [
+    "component harness observations; fixed batch, output movement, timer and validation overhead included",
+    "full rejection cases perform different validation; no pure push ratio",
+    "no allocation counts, latency percentiles, speed claim, threshold or full-performance acceptance"
+  ],
+  "source_sha256": {
+    "Cargo.lock": "307cb7e5ecaa002ebe817d6963fab48c681b3d42927081863a2f35d4ea4b37fd",
+    "crates/workspace_tests/benches/rtrb.rs": "160401766df2bbe5ddd533644b2e7fb5fc5a48e6e025821896db56266d15cfb2",
+    "crates/workspace_tests/benches/trace_ring_public.rs": "826ed3a9dcf63bba467b545043b5497b5423586582527cc3780f1950fe9d2449",
+    "crates/vb_runtime/src/trace.rs": "44239b791169e7a19a43cccac05766433474d429b14e390d91e401df59241b2c",
+    "crates/vb_runtime/src/frame_pool.rs": "f9b0eaf8af48accb4f3a349a286a849ee83f636adbbc72e3183f62e8fac78f63"
+  },
+  "compiled_executable": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/release/deps/rtrb-79219df668c9c02c",
+  "compiler_profile": {
+    "opt_level": "3",
+    "debuginfo": 2,
+    "debug_assertions": false,
+    "overflow_checks": false,
+    "test": true
+  },
+  "build_status": "BENCH_BUILD_EXIT=0",
+  "measurement_completed_utc": "2026-11-10 17:47:31 UTC",
+  "measurement_host_loadavg": "0.61 1.97 3.24 2/4791 2947375",
+  "measurement_resources": {
+    "memory_high": "1G",
+    "memory_max": "2G",
+    "swap_max": 0,
+    "timeout_seconds": 300
+  },
+  "executable_sha256_after_measurement": "d3278d7f47abf307d09e00319ab6504ce5514687910a32fb9e14c3b07e757e0a"
+}

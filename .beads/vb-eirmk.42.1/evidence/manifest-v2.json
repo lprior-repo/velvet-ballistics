@@ -1,0 +1,14 @@
+{
+  "source_pin": "1a3a47754e04d69db27c43343a0b6c162c51483f",
+  "previous_manifest_sha256": "1418a86b3c5c7875bc95e5e6b5e31905d7810ad94beb762f2d9a07da234c4cfe",
+  "additional_entries": [
+    {
+      "path": "full-selected-result.json",
+      "sha256": "d052106ec0d049587e12c72fddbe270ff84cbbab9fc22a8844bfa48cb6d50637"
+    },
+    {
+      "path": "bead-progress-update.json",
+      "sha256": "bbc467176bcdb72f840607b53e5c5267817d46953723cce6c3ba8653d7cec9d0"
+    }
+  ]
+}

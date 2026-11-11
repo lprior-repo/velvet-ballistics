@@ -32,7 +32,8 @@ pub fn eval_replay_op(
     stack: &mut ReplayExprStack,
     taint_accum: &mut Taint,
 ) -> Result<(), ReplayError> {
-    match op {
+    let step = run.pc();
+    let result = match op {
         ExprOp::LoadSlot(slot) => eval_load_slot(run, slot, stack, taint_accum),
         ExprOp::LoadConst(constant) => eval_load_const(plan, constant, stack),
         ExprOp::LoadAccessor(accessor) => {
@@ -52,7 +53,14 @@ pub fn eval_replay_op(
         ExprOp::Lt => eval_cmp(stack, is_less),
         ExprOp::Lte => eval_cmp(stack, is_less_or_equal),
         _ => eval_helper_op(op, stack, store),
-    }
+    };
+    result.map_err(|e| {
+        if let ReplayError::ExpressionEvalFailed { step: _ } = e {
+            ReplayError::ExpressionEvalFailed { step }
+        } else {
+            e
+        }
+    })
 }
 
 fn eval_load_slot(

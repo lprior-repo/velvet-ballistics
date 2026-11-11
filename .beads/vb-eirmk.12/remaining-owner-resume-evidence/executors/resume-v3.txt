@@ -1,0 +1,732 @@
+#!/usr/bin/env ruby
+require 'digest'
+require 'json'
+require 'open3'
+require 'strscan'
+
+ROOT = '/home/lewis/src/isoloated/velvet-ballistics-core-current-review'
+OUT = 'target/core-build-20261110/evidence/remaining-owner-resume-v3'
+V5_OUT = File.join(ROOT, 'target/core-build-20261110/evidence/remaining-owner-creation-v5')
+V5_SCRIPT = '/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-owner-creation-v5/apply.rb'
+V5_SCRIPT_SHA = '0d12cdd1c6906897b0b4e8b9be125d4ce9d4fbebd4889971190c5ebe4e349f4b'
+CONTRACT_PATH = '/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-owner-creation-resume-contract-v3.json'
+CONTRACT_SHA = 'fb421d0eaef2f674f990d19c8ebf6cea6ed3d890b5412d9f19c5b1f9789f468f'
+V7_PATH = '/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/remaining-owner-proposals/normalized-v7.json'
+V7_SHA = '9cef921c994a6bd6bbf706d597b3a244580970eba3a1d14139c566f9e011c155'
+CODE_REVIEW = '/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/remaining-owner-resume-code-review-v3.json'
+TEST_REVIEW = '/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/core-build-20261110/evidence/remaining-owner-resume-test-review-v3.json'
+EXECUTOR_SHA = Digest::SHA256.file(__FILE__).hexdigest
+TMP_RUN = '/run/user/1000/vbs'
+BD_ENV = {
+  'BEADS_DOLT_SERVER_PORT' => '37225',
+  'BD_DOLT_SERVER_PORT' => '37225',
+  'TMPDIR' => TMP_RUN,
+  'BD_BACKUP_ENABLED' => 'false'
+}.freeze
+
+def permitted_bd_args?(args)
+  design_path = File.join(ROOT, OUT, 'design-after.raw')
+  return true if args == ['update', 'vb-eirmk.12', '--design-file', design_path]
+  return args.length == 3 && args[0] == 'show' && args[1].match?(/\Avb-[a-z0-9.]+\z/) && args[2] == '--readonly' if args.first == 'show'
+  return args.length == 4 && args[0..1] == ['dep', 'list'] && args[2].match?(/\Avb-[a-z0-9.]+\z/) && args[3] == '--readonly' if args.first == 'dep' && args[1] == 'list'
+  args == ['dep', 'cycles', '--readonly']
+end
+
+if ARGV == ['--offline-guard-check']
+  output_path = File.join(ROOT, OUT, 'design-after.raw')
+  checks = [
+    [['show', 'vb-eirmk.12', '--readonly'], true],
+    [['dep', 'list', 'vb-eirmk.11', '--readonly'], true],
+    [['dep', 'cycles', '--readonly'], true],
+    [['update', 'vb-eirmk.12', '--design-file', output_path], true],
+    [['show', 'vb-eirmk.12'], false],
+    [['show', 'vb-eirmk.12', '--readonly', '--json'], false],
+    [['update', 'vb-eirmk.12', '--design-file'], false],
+    [['update', 'vb-eirmk.24', '--metadata', '{}'], false],
+    [['update', 'vb-eirmk.12', '--design-file', File.join(ROOT, OUT, 'other.raw')], false],
+    [['dep', 'list', 'vb-eirmk.11'], false],
+    [['dep', 'delete', 'vb-eirmk.11', '--readonly'], false],
+    [['create', '--title', 'unexpected'], false],
+    [['delete', 'vb-eirmk.12'], false]
+  ]
+  abort('offline BD argument guard control failed') unless checks.all? { |args, expected| permitted_bd_args?(args) == expected }
+  puts JSON.generate({ 'controls' => checks.size, 'passed' => checks.size, 'bd_calls' => 0 })
+  exit
+end
+
+if ARGV == ['--apply']
+  abort('run only from the parent core-current-review workspace') unless File.realpath(Dir.pwd) == ROOT
+  abort('run scratch directory is unavailable') unless File.directory?(TMP_RUN)
+  abort('resume OUT already exists; preserve it and do not retry') if File.exist?(File.join(ROOT, OUT))
+elsif ARGV != ['--offline-plan-check']
+  abort('resume requires explicit --apply')
+end
+
+def bytes_sha(bytes)
+  Digest::SHA256.hexdigest(bytes)
+end
+
+def read_hashed(path, expected)
+  bytes = File.binread(path)
+  abort("SHA-256 mismatch: #{path}") unless bytes_sha(bytes) == expected
+  bytes
+end
+
+def persist_bytes(path, bytes)
+  File.open(path, 'wb', 0o600) do |file|
+    file.write(bytes)
+    file.flush
+    file.fsync
+  end
+end
+
+def persist_json(path, value)
+  persist_bytes(path, JSON.pretty_generate(value) + "\n")
+end
+
+$commands = []
+$command_number = 0
+def bd(*args)
+  abort('BD argument is outside the resume read/write allowlist') unless permitted_bd_args?(args)
+  $command_number += 1
+  stdout, stderr, status = Open3.capture3(BD_ENV, 'bd', *args, '--json', chdir: ROOT)
+  receipt = { 'args' => args, 'stdout' => stdout, 'stderr' => stderr, 'exit' => status.exitstatus }
+  if File.directory?(File.join(ROOT, OUT))
+    persist_json(File.join(ROOT, OUT, format('bd-command-%04d.json', $command_number)), receipt)
+  else
+    $commands << receipt
+  end
+  abort("bd #{args.first} failed; stop and inspect receipts, do not retry") unless status.success?
+  JSON.parse(stdout)
+end
+
+def one(value)
+  value.is_a?(Array) ? value.fetch(0) : value
+end
+
+def review_receipt(path, binding_field)
+  bytes = File.binread(path)
+  data = JSON.parse(bytes)
+  abort("review is not PASS: #{path}") unless data.fetch('verdict') == 'PASS'
+  abort("review does not bind exact resume contract: #{path}") unless data.fetch(binding_field) == CONTRACT_SHA
+  abort("review does not bind exact executor bytes: #{path}") unless data.fetch('executor_sha256') == EXECUTOR_SHA
+  { 'path' => path, 'sha256' => bytes_sha(bytes), 'verdict' => data.fetch('verdict'),
+    'binding_field' => binding_field, 'bound_sha256' => data.fetch(binding_field),
+    'executor_sha256' => data.fetch('executor_sha256') }
+end
+
+def approved_payload_fields_match?(approved, observed)
+  approved.all? { |field, value| observed[field] == value }
+end
+
+def exact_approved_payload?(approved, observed)
+  approved.keys.sort == observed.keys.sort && approved_payload_fields_match?(approved, observed)
+end
+
+def approved_create_response_matches?(approved, response)
+  returned_fields = approved.reject { |field, _| field == 'parent' }
+  response_fields = response.select { |field, _| approved.key?(field) }
+  response_fields == returned_fields && !response.key?('parent')
+end
+
+def dependency_edges(issue_id)
+  bd('dep', 'list', issue_id, '--readonly').map do |edge|
+    { 'id' => edge.fetch('id'), 'dependency_type' => edge.fetch('dependency_type') }
+  end.sort_by { |edge| [edge.fetch('id'), edge.fetch('dependency_type')] }
+end
+
+def assert_manifest_invariants(manifest)
+  rows = manifest.dig('normalized_current_190_ownership', 'requirements')
+  abort('live manifest must retain 190 rows') unless rows&.size == 190
+  abort('completion_verified / implementation_missing invariants drifted') unless
+    rows.all? { |row| row['completion_verified'] == false && row['implementation_missing'].nil? }
+  rows
+end
+
+def scalar_spans(scanner, path, targets, spans)
+  scanner.skip(/\s*/)
+  case scanner.peek(1)
+  when '{'
+    scanner.getch
+    scanner.skip(/\s*/)
+    return scanner.getch if scanner.peek(1) == '}'
+    loop do
+      key_token = scanner.scan(/"(?:[^"\\]|\\.)*"/m)
+      abort('invalid design object key') unless key_token
+      key = JSON.parse(key_token)
+      scanner.skip(/\s*/)
+      abort('missing design object colon') unless scanner.getch == ':'
+      scalar_spans(scanner, path + [key], targets, spans)
+      scanner.skip(/\s*/)
+      separator = scanner.getch
+      break if separator == '}'
+      abort('missing design object comma') unless separator == ','
+      scanner.skip(/\s*/)
+    end
+  when '['
+    scanner.getch
+    scanner.skip(/\s*/)
+    return scanner.getch if scanner.peek(1) == ']'
+    index = 0
+    loop do
+      scalar_spans(scanner, path + [index], targets, spans)
+      scanner.skip(/\s*/)
+      separator = scanner.getch
+      break if separator == ']'
+      abort('missing design array comma') unless separator == ','
+      index += 1
+      scanner.skip(/\s*/)
+    end
+  else
+    start = scanner.pos
+    token = scanner.scan(/"(?:[^"\\]|\\.)*"|true|false|null|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/m)
+    abort('invalid design scalar') unless token
+    spans[path] = { 'offset' => start, 'length' => scanner.pos - start, 'original' => token } if targets.key?(path)
+  end
+end
+
+def value_at(root, path)
+  path.reduce(root) { |value, key| value.fetch(key) }
+end
+
+def assign_at(root, path, value)
+  parent = path[0...-1].reduce(root) { |node, key| node.fetch(key) }
+  parent[path.last] = value
+end
+
+def full_copy(value)
+  JSON.parse(JSON.generate(value))
+end
+
+if ARGV == ['--offline-plan-check']
+  contract = JSON.parse(read_hashed(CONTRACT_PATH, CONTRACT_SHA))
+  v7 = JSON.parse(read_hashed(V7_PATH, V7_SHA))
+  design_rule = contract.fetch('design_precondition')
+  design = read_hashed(File.join(V5_OUT, 'design-before.raw'), design_rule.fetch('required_live_design_sha256'))
+  manifest = JSON.parse(design)
+  rows = assert_manifest_invariants(manifest)
+  authority = contract.dig('resume_preconditions', 'task_create_payload_authority')
+  abort('offline response omission rule drift') unless authority.fetch('create_response_omits') == ['parent']
+  entries = v7.fetch(authority.fetch('source_field'))
+  payloads = entries.to_h { |entry| [entry.fetch(authority.fetch('entry_key')), entry.fetch(authority.fetch('payload_key'))] }
+  abort('offline V7 payload authority key/count mismatch') unless
+    entries.size == authority.fetch('payload_count') && payloads.keys.sort == authority.fetch('expected_proposal_keys').sort
+  v7_rule = contract.dig('resume_preconditions', 'approved_v7_proposal_review_rule')
+  v5_preflight = JSON.parse(read_hashed(v7_rule.fetch('v5_preflight_path'), v7_rule.fetch('v5_preflight_sha256')))
+  receipts = v5_preflight.fetch(v7_rule.fetch('receipt_field'))
+  abort('offline V7 review receipt set drift') unless receipts == v7_rule.fetch('required_receipts')
+  receipts.each do |receipt|
+    review = JSON.parse(read_hashed(receipt.fetch('path'), receipt.fetch('sha256')))
+    abort('offline V7 review did not bind approved proposal') unless
+      receipt.fetch('verdict') == 'PASS' && receipt.fetch('bound_sha256') == V7_SHA &&
+      review.fetch('verdict') == 'PASS' && review.fetch(receipt.fetch('binding_field')) == V7_SHA
+  end
+  expected_tasks = contract.dig('partial_run', 'actual_created_tasks')
+  create_paths = Dir.glob(File.join(V5_OUT, 'create-*.json'))
+  abort('offline retained create-file count drift') unless create_paths.size == expected_tasks.size
+  retained_payloads = create_paths.map { |path| JSON.parse(File.binread(path)) }.to_h do |record|
+    [record.fetch('proposal_key'), record.fetch('payload')]
+  end
+  create_receipts = JSON.parse(File.binread(File.join(V5_OUT, 'creation-receipts.json')))
+  expected_tasks.each do |task|
+    key = task.fetch('proposal_key')
+    id = task.fetch('issue_id')
+    approved = payloads.fetch(key)
+    abort("offline retained payload mismatch: #{key}") unless exact_approved_payload?(approved, retained_payloads.fetch(key))
+    receipt = create_receipts.find { |item| item.fetch('actual_issue_id') == id }
+    abort("offline create response mismatch: #{id}") unless
+      receipt.fetch('proposal_key') == key && receipt.dig('response', 'id') == id &&
+      approved_create_response_matches?(approved, receipt.fetch('response'))
+    readback_record = JSON.parse(File.binread(task.fetch('readback_receipt_path')))
+    stdout = readback_record.fetch('stdout')
+    abort("offline prior readback hash mismatch: #{id}") unless bytes_sha(stdout) == task.fetch('readback_stdout_sha256')
+    old = one(JSON.parse(stdout))
+    abort("offline prior readback payload mismatch: #{id}") unless
+      old.fetch('id') == id && approved_payload_fields_match?(approved, old)
+  end
+  rejected_fields = %w[title description acceptance_criteria metadata].select do |field|
+    approved = payloads.values.fetch(0)
+    mutated_local = full_copy(approved)
+    mutated_local[field] = 'offline-mutant'
+    !approved_payload_fields_match?(approved, mutated_local) && !exact_approved_payload?(approved, mutated_local)
+  end
+  abort('offline payload mutation was not rejected by executor payload comparator') unless
+    rejected_fields == %w[title description acceptance_criteria metadata]
+  ids = contract.dig('partial_run', 'actual_created_tasks').to_h { |task| [task.fetch('proposal_key'), task.fetch('issue_id')] }
+  patch_plan = contract.dig('resume_scope', 'exact_patch_plan').to_h { |row| [row.fetch('requirement_id'), row] }
+  targets = {}
+  v7.fetch('proposals').each do |proposal|
+    req = proposal.fetch('requirement_id')
+    row_index = rows.index { |row| row.fetch('requirement_id') == req }
+    abort("offline row snapshot drift: #{req}") unless row_index && rows.fetch(row_index) == proposal.fetch('live_row_before')
+    check_map = rows.fetch(row_index).fetch('unresolved_checks').to_h { |check| [check.fetch('check_id'), check] }
+    abort("offline check snapshot drift: #{req}") unless check_map == proposal.fetch('unresolved_checks_by_id')
+    approved = patch_plan.fetch(req)
+    key = proposal.fetch('proposal_key')
+    actual_owner = proposal.fetch('disposition') == 'reuse_existing_open_target' ? proposal.fetch('actual_existing_task_id') : ids.fetch(key)
+    source_owner = proposal.fetch('disposition') == 'reuse_existing_open_target' ? actual_owner : 'ACTUAL_ID_FROM_SUCCESSFUL_CREATE_RECEIPT'
+    expected_row = { 'canonical_qualification_owner_id' => actual_owner, 'current_owner_status' => 'open', 'resolved_from_proposal_key' => key }
+    source_row = expected_row.merge('canonical_qualification_owner_id' => source_owner)
+    abort("offline source/target row drift: #{req}") unless proposal.dig('allowed_ledger_delta', 'row_fields') == source_row && approved.fetch('row_fields') == expected_row
+    base = ['normalized_current_190_ownership', 'requirements', row_index]
+    expected_ids = proposal.fetch('unresolved_checks_by_id').keys.sort
+    plan = approved.fetch('check_fields')
+    source_checks = proposal.dig('allowed_ledger_delta', 'checks_by_id')
+    abort("offline check scope drift: #{req}") unless plan.map { |item| item.fetch('check_id') }.sort == expected_ids && source_checks.keys.sort == expected_ids
+    expected_row.each { |field, value| targets[base + [field]] = value }
+    plan.each do |item|
+      check_id = item.fetch('check_id')
+      expected = { 'accountable_bead_id' => actual_owner, 'proposal_key' => key }
+      source = { 'accountable_bead_id' => source_owner, 'proposal_key' => key }
+      abort("offline source/target check drift: #{check_id}") unless source_checks.fetch(check_id) == source && item.slice('accountable_bead_id', 'proposal_key') == expected
+      check_index = rows.fetch(row_index).fetch('unresolved_checks').index { |check| check.fetch('check_id') == check_id }
+      abort("offline check absent: #{check_id}") unless check_index
+      expected.each { |field, value| targets[base + ['unresolved_checks', check_index, field]] = value }
+    end
+  end
+  abort('offline expected 53 scalar targets') unless targets.size == 53
+  spans = {}
+  scanner = StringScanner.new(design.dup.force_encoding(Encoding::UTF_8))
+  scalar_spans(scanner, [], targets, spans)
+  abort('offline token coverage drift') unless scanner.eos? && spans.keys.sort_by(&:inspect) == targets.keys.sort_by(&:inspect)
+  patched = design.b.dup
+  spans.sort_by { |_, span| -span.fetch('offset') }.each do |path, span|
+    offset = span.fetch('offset')
+    patched = patched.byteslice(0, offset) + JSON.generate(targets.fetch(path)).b + patched.byteslice(offset + span.fetch('length'), patched.bytesize - offset - span.fetch('length'))
+  end
+  parsed = JSON.parse(patched.force_encoding(Encoding::UTF_8))
+  targets.each_key { |path| assign_at(parsed, path, value_at(manifest, path)) }
+  abort('offline patch changed non-target semantic data') unless parsed == manifest
+  puts JSON.generate({ 'offline' => true, 'targets' => targets.size, 'source_placeholders_validated' => true, 'v7_reviews' => receipts.size, 'retained_tasks_checked' => expected_tasks.size, 'payload_mutants_rejected' => rejected_fields.to_h { |field| [field, 'REJECT'] }, 'actual_owner_ids' => ids.values.sort, 'patched_sha256' => bytes_sha(patched) })
+  exit
+end
+
+def typed_edges(issue)
+  (issue['dependencies'] || []).map do |edge|
+    { 'id' => edge.fetch('id'), 'dependency_type' => edge.fetch('dependency_type') }
+  end
+end
+
+def normalize_historical_readback(issue, updates)
+  expected = full_copy(issue)
+  dependencies = expected['dependencies'] || []
+  dependencies.each do |dependency|
+    id = dependency.fetch('id')
+    next unless updates.key?(id)
+    before_type = dependency.fetch('dependency_type')
+    updates.fetch(id).each do |field, value|
+      abort("nested child field absent: #{id}.#{field}") unless dependency.key?(field)
+      dependency[field] = value
+    end
+    abort("nested dependency type changed: #{id}") unless dependency.fetch('dependency_type') == before_type
+  end
+  expected
+end
+
+contract_bytes = read_hashed(CONTRACT_PATH, CONTRACT_SHA)
+contract = JSON.parse(contract_bytes)
+abort('unexpected resume contract identity') unless
+  contract.fetch('schema_version') == 3 &&
+  contract.fetch('artifact_kind') == 'remaining_owner_resume_contract_v3' &&
+  contract.fetch('status') == 'plan_only_not_executed'
+abort('per-command backup override contract drift') unless
+  contract.dig('execution_controls', 'per_command_environment') == { 'BD_BACKUP_ENABLED' => 'false' } &&
+  BD_ENV.fetch('BD_BACKUP_ENABLED') == 'false'
+abort('contract does not bind original V5 script') unless
+  contract.dig('v5_script', 'sha256') == V5_SCRIPT_SHA && bytes_sha(File.binread(V5_SCRIPT)) == V5_SCRIPT_SHA
+v7_bytes = read_hashed(V7_PATH, V7_SHA)
+v7 = JSON.parse(v7_bytes)
+abort('V7 identity or verdict drift') unless
+  v7.fetch('verdict') == 'NORMALIZED_V7_FULL_NESTED_BEFORE_ROWS_PROPOSAL_ONLY_NOT_APPLIED'
+v7_review_rule = contract.dig('resume_preconditions', 'approved_v7_proposal_review_rule')
+abort('V7 review source binding drift') unless
+  v7_review_rule.fetch('artifact_path') == V7_PATH && v7_review_rule.fetch('artifact_sha256') == V7_SHA
+abort('V7 review contract rule drift') unless
+  v7_review_rule.fetch('both_verdicts') == 'PASS' &&
+  v7_review_rule.fetch('code_binding_field') == 'artifact_sha256' &&
+  v7_review_rule.fetch('test_binding_field') == 'proposal_sha256' &&
+  v7_review_rule.fetch('both_bound_to_v7_sha256') == V7_SHA
+v5_review_bytes = read_hashed(v7_review_rule.fetch('v5_preflight_path'), v7_review_rule.fetch('v5_preflight_sha256'))
+v5_review_receipts = JSON.parse(v5_review_bytes).fetch(v7_review_rule.fetch('receipt_field'))
+abort('V7 review receipts differ from hash-bound V5 preflight') unless
+  v5_review_receipts == v7_review_rule.fetch('required_receipts') && v5_review_receipts.size == 2
+expected_v7_review_bindings = [
+  ['/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/remaining-owner-planning-code-review-v7.json', 'artifact_sha256'],
+  ['/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/core-build-20261110/evidence/remaining-owner-planning-test-review-v7.json', 'proposal_sha256']
+]
+abort('V7 review receipt paths/bindings drift') unless
+  v5_review_receipts.map { |receipt| [receipt.fetch('path'), receipt.fetch('binding_field')] } == expected_v7_review_bindings
+v7_review_receipts = v5_review_receipts.map do |receipt|
+  review_bytes = read_hashed(receipt.fetch('path'), receipt.fetch('sha256'))
+  review_data = JSON.parse(review_bytes)
+  abort('V7 proposal review receipt identity/verdict drift') unless
+    receipt.fetch('verdict') == 'PASS' && review_data.fetch('verdict') == 'PASS' &&
+    receipt.fetch('bound_sha256') == V7_SHA && review_data.fetch(receipt.fetch('binding_field')) == V7_SHA
+  { 'path' => receipt.fetch('path'), 'sha256' => bytes_sha(review_bytes),
+    'verdict' => review_data.fetch('verdict'), 'binding_field' => receipt.fetch('binding_field'),
+    'bound_sha256' => review_data.fetch(receipt.fetch('binding_field')) }
+end
+v7_review_bytes_before = v7_review_receipts.map { |receipt| read_hashed(receipt.fetch('path'), receipt.fetch('sha256')) }
+resume_review_rule = contract.dig('resume_preconditions', 'resume_review_rule')
+code_rule = resume_review_rule.fetch('code')
+test_rule = resume_review_rule.fetch('test')
+abort('V3 code review binding rule drift') unless
+  code_rule.fetch('path') == CODE_REVIEW && code_rule.fetch('contract_binding_field') == 'artifact_sha256' &&
+  code_rule.fetch('contract_binding_value') == 'THIS_CONTRACT_SHA256' &&
+  code_rule.fetch('executor_binding_field') == 'executor_sha256' &&
+  code_rule.fetch('executor_binding_value') == 'SHA256_OF_EXACT_EXECUTOR_FILE'
+abort('V3 test review binding rule drift') unless
+  test_rule.fetch('path') == TEST_REVIEW && test_rule.fetch('contract_binding_field') == 'proposal_sha256' &&
+  test_rule.fetch('contract_binding_value') == 'THIS_CONTRACT_SHA256' &&
+  test_rule.fetch('executor_binding_field') == 'executor_sha256' &&
+  test_rule.fetch('executor_binding_value') == 'SHA256_OF_EXACT_EXECUTOR_FILE'
+reviews = [
+  review_receipt(CODE_REVIEW, 'artifact_sha256'),
+  review_receipt(TEST_REVIEW, 'proposal_sha256')
+]
+review_bytes_before = reviews.map { |review| read_hashed(review.fetch('path'), review.fetch('sha256')) }
+
+creation_path = File.join(V5_OUT, 'creation-receipts.json')
+creation_receipts = JSON.parse(File.binread(creation_path))
+expected_tasks = contract.dig('partial_run', 'actual_created_tasks')
+abort('contract must bind exactly four actual create receipts') unless expected_tasks.size == 4
+abort('create receipt IDs or proposal keys differ from resume contract') unless
+  creation_receipts.map { |receipt| [receipt.fetch('actual_issue_id'), receipt.fetch('proposal_key')] }.sort ==
+  expected_tasks.map { |task| [task.fetch('issue_id'), task.fetch('proposal_key')] }.sort
+create_paths = Dir.glob(File.join(V5_OUT, 'create-*.json'))
+abort('exactly four retained create payload files are required') unless create_paths.size == 4
+create_records = create_paths.map do |path|
+  record = JSON.parse(File.binread(path))
+  [record.fetch('proposal_key'), record.fetch('payload')]
+end
+abort('retained create payload keys must be unique') unless create_records.map(&:first).uniq.size == create_records.size
+payload_files = create_records.to_h
+payload_authority = contract.dig('resume_preconditions', 'task_create_payload_authority')
+abort('payload authority source binding drift') unless
+  payload_authority.fetch('source_path') == V7_PATH && payload_authority.fetch('source_sha256') == V7_SHA &&
+  payload_authority.fetch('create_response_omits') == ['parent']
+approved_payload_entries = v7.fetch(payload_authority.fetch('source_field'))
+approved_payloads = approved_payload_entries.to_h { |entry| [entry.fetch(payload_authority.fetch('entry_key')), entry.fetch(payload_authority.fetch('payload_key'))] }
+approved_keys = payload_authority.fetch('expected_proposal_keys').sort
+abort('V7 approved task payload keys/count drift') unless
+  approved_payload_entries.size == payload_authority.fetch('payload_count') &&
+  approved_payloads.size == approved_payload_entries.size && approved_payloads.keys.sort == approved_keys
+abort('retained create payload keys differ from V7 approved payload keys') unless payload_files.keys.sort == approved_keys
+payload_authority.fetch('exact_payload_fields').each do |field|
+  abort("V7 task payload omits required field: #{field}") unless approved_payloads.values.all? { |payload| payload.key?(field) }
+end
+expected_tasks = contract.dig('partial_run', 'actual_created_tasks')
+abort('V7 payload keys differ from actual creation receipt contract') unless
+  approved_keys == expected_tasks.map { |task| task.fetch('proposal_key') }.sort
+payload_files.each do |key, payload|
+  abort("retained create payload differs from hash-bound V7 payload: #{key}") unless
+    exact_approved_payload?(approved_payloads.fetch(key), payload)
+end
+v7_create_proposals = v7.fetch('proposals').select do |proposal|
+  %w[new_task new_group_task].include?(proposal.fetch('disposition'))
+end
+actual_id_by_key = expected_tasks.to_h { |task| [task.fetch('proposal_key'), task.fetch('issue_id')] }
+task_expectations = expected_tasks.map do |task|
+  id = task.fetch('issue_id')
+  key = task.fetch('proposal_key')
+  payload = approved_payloads.fetch(key)
+  proposal_rows = v7_create_proposals.select { |proposal| proposal.fetch('proposal_key') == key }
+  scoped_ids = proposal_rows.map { |proposal| proposal.fetch('requirement_id') }.sort
+  abort("creation payload scope differs from V7: #{key}") unless
+    payload.fetch('issue_type') == 'task' && payload.fetch('status') == 'open' &&
+    payload.fetch('parent') == 'vb-eirmk' &&
+    payload.dig('metadata', 'master_requirement_ids').sort == scoped_ids
+  created = creation_receipts.find { |receipt| receipt.fetch('actual_issue_id') == id }
+  abort("create receipt proposal key drift: #{id}") unless created.fetch('proposal_key') == key
+  response = created.fetch('response')
+  abort("create response ID/payload mismatch: #{id}") unless
+    response.fetch('id') == id && approved_create_response_matches?(payload, response)
+  readback_record = task.fetch('readback_receipt_path')
+  old_readback_bytes = File.binread(readback_record)
+  abort("historical create readback SHA drift: #{id}") unless
+    bytes_sha(JSON.parse(old_readback_bytes).fetch('stdout')) == task.fetch('readback_stdout_sha256')
+  old_readback = one(JSON.parse(JSON.parse(old_readback_bytes).fetch('stdout')))
+  abort("hash-bound prior task readback/payload drift: #{id}") unless
+    old_readback.fetch('id') == id && approved_payload_fields_match?(payload, old_readback)
+  live = one(bd('show', id, '--readonly'))
+  abort("created task live readback drift: #{id}") unless
+    live.fetch('id') == id && approved_payload_fields_match?(payload, live)
+  live_edges = dependency_edges(id)
+  abort("created task typed parent edge drift: #{id}") unless
+    live_edges == [{ 'id' => 'vb-eirmk', 'dependency_type' => 'parent-child' }]
+  abort("contract task scope drift: #{id}") unless
+    task.fetch('metadata') == payload.fetch('metadata') && task.fetch('parent') == live.fetch('parent')
+  { 'issue_id' => id, 'proposal_key' => key, 'payload' => payload, 'live_readback' => live,
+    'typed_dependencies' => live_edges, 'readback_sha256_before_resume' => task.fetch('readback_stdout_sha256') }
+end
+abort('actual task IDs differ from contract map') unless actual_id_by_key.size == 4
+
+reuse_receipts = {}
+validated_nested_updates = {}
+%w[vb-eirmk.24 vb-eirmk.53].each do |id|
+  record = contract.dig('partial_run', 'reuse_update_receipts', id)
+  receipt_path = record.fetch('receipt_path')
+  receipt_bytes = read_hashed(receipt_path, record.fetch('receipt_sha256'))
+  receipt = JSON.parse(receipt_bytes)
+  response = receipt.fetch('response')
+  post = receipt.fetch('post_readback')
+  abort("reuse update identity drift: #{id}") unless
+    receipt.fetch('issue_id') == id && response.fetch('id') == id &&
+    receipt.fetch('updated_at_response') == response.fetch('updated_at') &&
+    post.fetch('updated_at') == response.fetch('updated_at')
+  approved = record.fetch('approved_nested_business_fields')
+  approved.each { |field, value| abort("reuse receipt field drift: #{id}.#{field}") unless response.fetch(field) == value }
+  abort("reuse post-readback SHA drift: #{id}") unless bytes_sha(JSON.generate(post)) == record.fetch('post_readback_sha256')
+  before = if id == 'vb-eirmk.53'
+    v7.fetch('proposals').find { |proposal| proposal['actual_existing_task_id'] == id }
+      .dig('reuse_task_readback', 'before_full_issue_readback')
+  else
+    v7.fetch('preserved_existing_qualifiers').find { |entry| entry['issue_id'] == id }.fetch('full_task_before')
+  end
+  expected_after = full_copy(before)
+  approved.each { |field, value| expected_after.fetch(field); expected_after[field] = value }
+  abort("V7 full before snapshot does not produce exact approved postreadback: #{id}") unless expected_after == post
+  validated_nested_updates[id] = approved
+  current = one(bd('show', id, '--readonly'))
+  abort("reuse full live readback differs from update receipt: #{id}") unless current == post
+  reuse_receipts[id] = { 'receipt' => receipt, 'current_readback' => current, 'before_snapshot' => before }
+end
+reuse24_proposals = v7.fetch('proposals').select { |proposal| proposal['actual_existing_task_id'] == 'vb-eirmk.24' }
+abort('V7 must contain both full .24 nested snapshots') unless reuse24_proposals.size == 2
+reuse24_proposals.each do |proposal|
+  abort('V7 duplicate .24 nested snapshot differs') unless
+    proposal.dig('reuse_task_readback', 'before_full_issue_readback') == reuse_receipts.fetch('vb-eirmk.24').fetch('before_snapshot')
+end
+reuse_snapshots = v7.fetch('proposals').select { |proposal| proposal['actual_existing_task_id'] }
+abort('V7 must contain three nested full reuse snapshots') unless reuse_snapshots.size == 3
+reuse_snapshots.each do |proposal|
+  id = proposal.fetch('actual_existing_task_id')
+  before = proposal.dig('reuse_task_readback', 'before_full_issue_readback')
+  expected = full_copy(before)
+  validated_nested_updates.fetch(id).each do |field, value|
+    expected[field] = value
+  end
+  abort("nested V7 full snapshot differs from approved update: #{id}") unless
+    expected == reuse_receipts.fetch(id).fetch('receipt').fetch('post_readback')
+end
+
+design_before_path = File.join(V5_OUT, 'design-before.raw')
+design_before_raw = File.binread(design_before_path)
+required_design_sha = contract.dig('design_precondition', 'required_live_design_sha256')
+abort('resume design source SHA differs from contract') unless
+  bytes_sha(design_before_raw) == required_design_sha && required_design_sha ==
+  '0af85ed146ed27fbe169a400ccd02d484f018db94f60c891d52052d17bbe2dd1'
+live12 = one(bd('show', 'vb-eirmk.12', '--readonly'))
+abort('live design changed since V5 stopped before remap') unless live12.fetch('design').b == design_before_raw.b
+design_before = JSON.parse(design_before_raw)
+rows = assert_manifest_invariants(design_before)
+proposals = v7.fetch('proposals')
+row_indices = {}
+proposals.each do |proposal|
+  requirement_id = proposal.fetch('requirement_id')
+  index = rows.index { |row| row.fetch('requirement_id') == requirement_id }
+  abort("V7 full row snapshot differs: #{requirement_id}") unless index && rows.fetch(index) == proposal.fetch('live_row_before')
+  check_map = rows.fetch(index).fetch('unresolved_checks').to_h { |check| [check.fetch('check_id'), check] }
+  abort("V7 check snapshot differs: #{requirement_id}") unless check_map == proposal.fetch('unresolved_checks_by_id')
+  row_indices[requirement_id] = index
+end
+abort('resume requires exactly nine full design row snapshots') unless row_indices.size == 9
+
+contract_patch = contract.dig('resume_scope', 'exact_patch_plan').to_h { |row| [row.fetch('requirement_id'), row] }
+abort('contract patch rows differ from V7') unless contract_patch.keys.sort == proposals.map { |proposal| proposal.fetch('requirement_id') }.sort
+targets = {}
+proposals.each do |proposal|
+  requirement_id = proposal.fetch('requirement_id')
+  approved = contract_patch.fetch(requirement_id)
+  owner_id = approved.fetch('actual_owner_id')
+  proposal_owner = proposal.fetch('disposition') == 'reuse_existing_open_target' ?
+    proposal.fetch('actual_existing_task_id') : actual_id_by_key.fetch(proposal.fetch('proposal_key'))
+  abort("contract owner ID differs: #{requirement_id}") unless owner_id == proposal_owner
+  row_path = ['normalized_current_190_ownership', 'requirements', row_indices.fetch(requirement_id)]
+  expected_row = {
+    'canonical_qualification_owner_id' => owner_id,
+    'current_owner_status' => 'open',
+    'resolved_from_proposal_key' => proposal.fetch('proposal_key')
+  }
+  source_owner_id = proposal.fetch('disposition') == 'reuse_existing_open_target' ?
+    proposal.fetch('actual_existing_task_id') : 'ACTUAL_ID_FROM_SUCCESSFUL_CREATE_RECEIPT'
+  source_row = {
+    'canonical_qualification_owner_id' => source_owner_id,
+    'current_owner_status' => 'open',
+    'resolved_from_proposal_key' => proposal.fetch('proposal_key')
+  }
+  row_delta = proposal.dig('allowed_ledger_delta', 'row_fields')
+  abort("V7 source row delta drift: #{requirement_id}") unless row_delta == source_row
+  abort("contract row target drift: #{requirement_id}") unless approved.fetch('row_fields') == expected_row
+  expected_row.each { |field, value| targets[row_path + [field]] = value }
+  expected_check_ids = proposal.fetch('unresolved_checks_by_id').keys.sort
+  check_plan = approved.fetch('check_fields')
+  abort("check patch scope drift: #{requirement_id}") unless check_plan.map { |entry| entry.fetch('check_id') }.sort == expected_check_ids
+  source_check_map = proposal.dig('allowed_ledger_delta', 'checks_by_id')
+  abort("V7 source check scope drift: #{requirement_id}") unless source_check_map.keys.sort == expected_check_ids
+  check_plan.each do |entry|
+    check_id = entry.fetch('check_id')
+    expected_fields = { 'accountable_bead_id' => owner_id, 'proposal_key' => proposal.fetch('proposal_key') }
+    abort("check scalar allowlist/value drift: #{check_id}") unless entry.slice('accountable_bead_id', 'proposal_key') == expected_fields
+    source_check_owner = proposal.fetch('disposition') == 'reuse_existing_open_target' ?
+      proposal.fetch('actual_existing_task_id') : 'ACTUAL_ID_FROM_SUCCESSFUL_CREATE_RECEIPT'
+    source_check = { 'accountable_bead_id' => source_check_owner, 'proposal_key' => proposal.fetch('proposal_key') }
+    abort("V7 source check delta drift: #{check_id}") unless
+      proposal.dig('allowed_ledger_delta', 'checks_by_id', check_id) == source_check
+    check_index = rows.fetch(row_indices.fetch(requirement_id)).fetch('unresolved_checks').index do |check|
+      check.fetch('check_id') == check_id
+    end
+    abort("live check absent: #{check_id}") unless check_index
+    check_path = row_path + ['unresolved_checks', check_index]
+    expected_fields.each { |field, value| targets[check_path + [field]] = value }
+  end
+end
+abort('resume must contain exactly 53 scalar targets') unless targets.size == 53
+
+spans = {}
+scanner = StringScanner.new(design_before_raw.dup.force_encoding(Encoding::UTF_8))
+scalar_spans(scanner, [], targets, spans)
+scanner.skip(/\s*/)
+abort('design token parse/coverage mismatch') unless scanner.eos? && spans.keys.sort_by(&:inspect) == targets.keys.sort_by(&:inspect)
+targets.each_key do |path|
+  abort("target old scalar differs: #{path.inspect}") unless JSON.parse(spans.fetch(path).fetch('original')) == value_at(design_before, path)
+end
+design_after_raw = design_before_raw.b.dup
+spans.sort_by { |_, span| -span.fetch('offset') }.each do |path, span|
+  offset = span.fetch('offset')
+  length = span.fetch('length')
+  old = span.fetch('original').b
+  abort('source design token changed during patch construction') unless design_after_raw.byteslice(offset, length) == old
+  replacement = JSON.generate(targets.fetch(path)).b
+  design_after_raw = design_after_raw.byteslice(0, offset) + replacement +
+    design_after_raw.byteslice(offset + length, design_after_raw.bytesize - offset - length)
+end
+design_after = JSON.parse(design_after_raw.force_encoding(Encoding::UTF_8))
+restored = full_copy(design_after)
+targets.each_key { |path| assign_at(restored, path, value_at(design_before, path)) }
+abort('patch changed semantic data outside 53 approved scalar paths') unless restored == design_before
+assert_manifest_invariants(design_after)
+
+gate_expected = contract.dig('gate_edges', 'actual_post_create_typed_edges')
+gate_before = dependency_edges('vb-eirmk.11')
+abort('live gate does not match all 137 recorded typed edges') unless gate_before == gate_expected
+abort('dependency graph cycles are present') unless bd('dep', 'cycles', '--readonly').empty?
+
+history_rule = contract.dig('resume_preconditions', 'historical_expected_after_algorithm')
+abort('historical reference hash binding drift') unless
+  history_rule.fetch('saved_post_update_sha256') == contract.dig('resume_preconditions', 'historical_readback_reference_sha256')
+history_bytes = read_hashed(history_rule.fetch('saved_post_update_source'), history_rule.fetch('saved_post_update_sha256'))
+saved_history = JSON.parse(history_bytes)
+original_preflight_bytes = read_hashed(history_rule.fetch('original_before_source'), history_rule.fetch('original_before_sha256'))
+original_preflight = JSON.parse(original_preflight_bytes)
+historical_ids = contract.dig('resume_preconditions', 'fresh_historical_owner_ids')
+abort('historical reference ID set drift') unless saved_history.keys.sort == historical_ids.sort
+historical_before = historical_ids.to_h do |issue_id|
+  saved = saved_history.fetch(issue_id)
+  before = saved.fetch('before')
+  original = original_preflight.fetch('historical_owner_readbacks_before').fetch(issue_id)
+  abort("historical source before snapshot drift: #{issue_id}") unless before == original
+  abort("historical before snapshot hash drift: #{issue_id}") unless bytes_sha(JSON.generate(before)) == contract.dig('resume_preconditions', 'historical_expected_after_algorithm', 'snapshots', issue_id, 'before_sha256')
+  expected_after = normalize_historical_readback(before, validated_nested_updates)
+  abort("saved historical post-update snapshot is not exact receipt-normalized before: #{issue_id}") unless expected_after == saved.fetch('after')
+  different_keys = (before.keys | saved.fetch('after').keys).select { |key| before[key] != saved.fetch('after')[key] }.sort
+  abort("historical changed-key record drift: #{issue_id}") unless different_keys == saved.fetch('different_keys').sort
+  snapshot_rule = history_rule.dig('snapshots', issue_id)
+  abort("historical saved after snapshot hash drift: #{issue_id}") unless bytes_sha(JSON.generate(saved.fetch('after'))) == snapshot_rule.fetch('saved_after_sha256')
+  abort("historical saved status is not closed: #{issue_id}") unless before.fetch('status') == 'closed' && saved.fetch('after').fetch('status') == 'closed'
+  abort("historical typed edges differ from contract: #{issue_id}") unless typed_edges(saved.fetch('after')) == contract.dig('resume_preconditions', 'historical_expected_after_algorithm', 'snapshots', issue_id, 'typed_edges')
+  issue = one(bd('show', issue_id, '--readonly'))
+  abort("historical owner is not closed before resume: #{issue_id}") unless issue.fetch('status') == 'closed'
+  abort("fresh historical readback differs from receipt-normalized reference: #{issue_id}") unless issue == expected_after && issue == saved.fetch('after')
+  [issue_id, issue]
+end
+historical_edges_before = historical_before.transform_values { |issue| typed_edges(issue) }
+raw_command54 = read_hashed(history_rule.fetch('raw_vb_juuw_readback_source'), history_rule.fetch('raw_vb_juuw_readback_sha256'))
+command54 = JSON.parse(raw_command54)
+abort('raw command54 identity/exit drift') unless command54.fetch('args') == ['show', 'vb-juuw', '--readonly'] && command54.fetch('exit') == 0
+abort('raw command54 does not equal saved .juuw post-readback') unless
+  one(JSON.parse(command54.fetch('stdout'))) == saved_history.fetch('vb-juuw').fetch('after')
+
+reviews_after_preflight = reviews.map { |review| read_hashed(review.fetch('path'), review.fetch('sha256')) }
+abort('review files changed during preflight') unless reviews_after_preflight == review_bytes_before
+v7_reviews_after_preflight = v7_review_receipts.map { |review| read_hashed(review.fetch('path'), review.fetch('sha256')) }
+abort('V7 review files changed during preflight') unless v7_reviews_after_preflight == v7_review_bytes_before
+abort('contract or V7 artifact changed during preflight') unless
+  read_hashed(CONTRACT_PATH, CONTRACT_SHA) == contract_bytes && read_hashed(V7_PATH, V7_SHA) == v7_bytes
+abort('V5 review preflight changed during preflight') unless
+  read_hashed(v7_review_rule.fetch('v5_preflight_path'), v7_review_rule.fetch('v5_preflight_sha256')) == v5_review_bytes
+abort('resume OUT appeared during preflight; stop without writing') if File.exist?(File.join(ROOT, OUT))
+Dir.mkdir(File.join(ROOT, OUT), 0o700)
+$commands.each_with_index do |receipt, index|
+  persist_json(File.join(ROOT, OUT, format('bd-command-%04d.json', index + 1)), receipt)
+end
+persist_bytes(File.join(ROOT, OUT, 'design-before.raw'), design_before_raw)
+persist_bytes(File.join(ROOT, OUT, 'design-after.raw'), design_after_raw)
+persist_json(File.join(ROOT, OUT, 'preflight.json'), {
+  'contract_sha256' => CONTRACT_SHA, 'executor_sha256' => EXECUTOR_SHA,
+  'v7_sha256' => V7_SHA, 'v7_approved_reviews' => v7_review_receipts, 'v5_script_sha256' => V5_SCRIPT_SHA,
+  'reviews' => reviews, 'actual_task_readbacks' => task_expectations,
+  'reuse_update_receipts' => reuse_receipts.transform_values { |value| value.fetch('receipt') },
+  'live_design_sha256_before' => bytes_sha(design_before_raw), 'scalar_token_count' => targets.size,
+  'gate_edge_count' => gate_before.size, 'gate_typed_edges' => gate_before,
+  'historical_owner_readbacks_before' => historical_before,
+  'historical_owner_expected_after' => saved_history.transform_values { |entry| entry.fetch('after') },
+  'historical_typed_edges_before' => historical_edges_before,
+  'completion_verified_false_all_190' => true, 'implementation_missing_null_all_190' => true
+})
+persist_json(File.join(ROOT, OUT, 'ledger-token-patch.json'), {
+  'before_sha256' => bytes_sha(design_before_raw), 'after_sha256' => bytes_sha(design_after_raw),
+  'requirements' => rows.size, 'patched_rows' => row_indices.size,
+  'patched_checks' => contract.dig('resume_scope', 'patch_checks'), 'changed_scalar_tokens' => targets.size,
+  'actual_issue_ids' => actual_id_by_key.merge('reuse:vb-eirmk.24' => 'vb-eirmk.24', 'reuse:vb-eirmk.53' => 'vb-eirmk.53')
+})
+
+latest12 = one(bd('show', 'vb-eirmk.12', '--readonly'))
+abort('live design changed after preflight receipts were fsynced') unless latest12.fetch('design').b == design_before_raw.b
+write_response = one(bd('update', 'vb-eirmk.12', '--design-file', File.join(ROOT, OUT, 'design-after.raw')))
+persist_json(File.join(ROOT, OUT, 'ledger-update-response.json'), write_response)
+
+final12 = one(bd('show', 'vb-eirmk.12', '--readonly'))
+abort('final design is not exact 53-token patch') unless final12.fetch('design').b == design_after_raw.b
+final_rows = assert_manifest_invariants(JSON.parse(final12.fetch('design')))
+abort('final row count changed') unless final_rows.size == 190
+final_gate = dependency_edges('vb-eirmk.11')
+abort('final gate typed edge set changed') unless final_gate == gate_expected
+abort('final dependency graph cycles are present') unless bd('dep', 'cycles', '--readonly').empty?
+
+final_tasks = task_expectations.to_h do |task|
+  id = task.fetch('issue_id')
+  live = one(bd('show', id, '--readonly'))
+  expected = task.fetch('payload')
+  abort("final task readback drift: #{id}") unless
+    live.fetch('id') == id && approved_payload_fields_match?(expected, live)
+  [id, live]
+end
+%w[vb-eirmk.24 vb-eirmk.53].each do |id|
+  live = one(bd('show', id, '--readonly'))
+  abort("final reuse readback drift: #{id}") unless live == reuse_receipts.fetch(id).fetch('receipt').fetch('post_readback')
+end
+historical_after = historical_ids.to_h do |issue_id|
+  live = one(bd('show', issue_id, '--readonly'))
+  abort("historical owner status changed: #{issue_id}") unless live.fetch('status') == 'closed'
+  abort("historical full readback changed after pre-resume snapshot: #{issue_id}") unless
+    live == historical_before.fetch(issue_id)
+  abort("historical typed dependency IDs/order changed: #{issue_id}") unless
+    typed_edges(live) == historical_edges_before.fetch(issue_id)
+  [issue_id, live]
+end
+
+persist_json(File.join(ROOT, OUT, 'final-readbacks.json'), {
+  'final_design_sha256' => bytes_sha(final12.fetch('design')),
+  'final_gate_typed_edges' => final_gate, 'final_task_readbacks' => final_tasks,
+  'final_reuse_readbacks' => %w[vb-eirmk.24 vb-eirmk.53].to_h do |id|
+    [id, reuse_receipts.fetch(id).fetch('receipt').fetch('post_readback')]
+  end,
+  'historical_owner_readbacks_after' => historical_after,
+  'historical_typed_edges_unchanged' => true,
+  'patched_scalar_tokens' => targets.size,
+  'completion_verified_false_all_190' => true,
+  'implementation_missing_null_all_190' => true
+})
+puts JSON.generate({ 'patched_rows' => row_indices.size, 'patched_checks' => 13,
+  'changed_scalar_tokens' => targets.size, 'full_plan_accepted' => false })
