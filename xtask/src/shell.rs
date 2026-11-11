@@ -20,6 +20,7 @@ pub(crate) fn render_top_level_help() -> anyhow::Result<()> {
     write_stdout(format_args!("  ai-fast"))?;
     write_stdout(format_args!("  ai-deep"))?;
     write_stdout(format_args!("  ai-release"))?;
+    write_stdout(format_args!("  crash-lab"))?;
     write_stdout(format_args!("  diff-test"))?;
     write_stdout(format_args!(""))?;
     write_stdout(format_args!("Top-level options:"))?;
