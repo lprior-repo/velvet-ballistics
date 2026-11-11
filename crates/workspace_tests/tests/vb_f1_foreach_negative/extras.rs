@@ -26,7 +26,7 @@ fn unrelated_schema_is_not_a_foreach_restriction() -> Result<(), String> {
             .nodes
             .iter()
             .find_map(|node| match &node.kind {
-                CompiledNodeKind::ForEachStart { input, limit, .. } => Some((*input, limit.get())),
+                CompiledNodeKind::ForEachStart { input, limit, .. } => Some((*input, *limit)),
                 _ => None,
             });
 
@@ -102,11 +102,11 @@ steps:
     .map_err(|e| format!("{e:?}"))?;
 
     let max3_limit = max3_parts.nodes.iter().find_map(|node| match &node.kind {
-        CompiledNodeKind::ForEachStart { limit, .. } => Some(limit.get()),
+        CompiledNodeKind::ForEachStart { limit, .. } => Some(*limit),
         _ => None,
     });
     let max1_limit = max1_parts.nodes.iter().find_map(|node| match &node.kind {
-        CompiledNodeKind::ForEachStart { limit, .. } => Some(limit.get()),
+        CompiledNodeKind::ForEachStart { limit, .. } => Some(*limit),
         _ => None,
     });
 

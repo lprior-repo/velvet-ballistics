@@ -81,7 +81,7 @@ fn collect_bounds_compile() -> Result<(), String> {
             limit, page_size, ..
         } = &node.kind
         {
-            found_limit = Some(limit.get());
+            found_limit = Some(*limit);
             found_page_size = Some(*page_size);
         }
     }
