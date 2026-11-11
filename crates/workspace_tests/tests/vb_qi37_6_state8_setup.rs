@@ -89,12 +89,7 @@ fn run_fixture(lib: &str, kani: Option<&str>, expected: &str) -> Result<(), Stri
     Ok(())
 }
 
-#[test]
-fn state8_kani_exact_grant_setup_fixture_table() -> Result<(), String> {
-    let valid_lib = "#[cfg(kani)]\n#[path = \"verification/kani/kani_capability_harnesses.rs\"]\npub mod kani_capability_harnesses;\n";
-    let valid_kani = "#[kani::proof]\nfn capability_name_grants_harness() {}\n";
-    run_fixture(valid_lib, Some(valid_kani), "KANI_SETUP_PRESENT")?;
-    run_fixture(valid_lib, None, "KANI_FILE_MISSING")?;
+fn run_module_registration_failures(valid_kani: &str) -> Result<(), String> {
     run_fixture(
         "// no registration\n",
         Some(valid_kani),
@@ -110,6 +105,10 @@ fn state8_kani_exact_grant_setup_fixture_table() -> Result<(), String> {
         Some(valid_kani),
         "KANI_MODULE_UNREGISTERED",
     )?;
+    Ok(())
+}
+
+fn run_named_proof_failures(valid_lib: &str) -> Result<(), String> {
     run_fixture(
         valid_lib,
         Some("#[kani::proof]\nfn some_other_harness() {}\n"),
@@ -120,6 +119,17 @@ fn state8_kani_exact_grant_setup_fixture_table() -> Result<(), String> {
         Some("#[kani::proof]\nfn different_name() {}\n"),
         "NAMED_PROOF_MISSING",
     )?;
+    Ok(())
+}
+
+#[test]
+fn state8_kani_exact_grant_setup_fixture_table() -> Result<(), String> {
+    let valid_lib = "#[cfg(kani)]\n#[path = \"verification/kani/kani_capability_harnesses.rs\"]\npub mod kani_capability_harnesses;\n";
+    let valid_kani = "#[kani::proof]\nfn capability_name_grants_harness() {}\n";
+    run_fixture(valid_lib, Some(valid_kani), "KANI_SETUP_PRESENT")?;
+    run_fixture(valid_lib, None, "KANI_FILE_MISSING")?;
+    run_module_registration_failures(valid_kani)?;
+    run_named_proof_failures(valid_lib)?;
     Ok(())
 }
 
