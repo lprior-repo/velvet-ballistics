@@ -225,8 +225,10 @@ fn guard_text_expression() -> Result<(), String> {
     );
     expect_err(
         &y,
-        CompileError::ExpressionLoweringUnsupported {
-            feature: Box::from("text constants"),
+        CompileError::TypeMismatch {
+            field: "if",
+            expected: "boolean",
+            found: "string",
         },
     )
 }
