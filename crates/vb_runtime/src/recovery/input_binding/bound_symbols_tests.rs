@@ -5,7 +5,7 @@ use vb_core::{CoreError, SymbolId};
 mod fixtures;
 use fixtures::*;
 
-pub(super) fn assert_durable_unchanged(
+fn assert_durable_unchanged(
     case: &DurableCase,
     journal: &FjallJournal,
     events: &[JournalEvent],
