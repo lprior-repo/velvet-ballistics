@@ -20,7 +20,7 @@ fn compose_invalid_list_taint_shape() -> Result<(), String> {
         &invalid_taints(),
         &symbol_roots(&[0]),
         InputSymbolBindingError::Core(CoreError::InternalInvariantViolation {
-            reason: "list_taint_length_mismatch",
+            reason: "list_taint_length_mismatch".into(),
         }),
     )
 }
