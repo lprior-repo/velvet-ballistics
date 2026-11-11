@@ -2,9 +2,12 @@
 //! Runtime admission requires checked artifact evidence bound to the actual payload.
 //! Historical proof flags and gate counts do not establish that authority.
 
+#[path = "runtime_version_barrier_tests/collect_region.rs"]
+mod collect_region;
+
 use proptest::{prop_assert_eq, proptest};
 use vb_core::artifact::ArtifactEvidence;
-use vb_core::{CapabilitySet, CompiledNodeKind, RunId, RuntimePolicy, WorkflowDigest};
+use vb_core::{CapabilitySet, RunId, RuntimePolicy, WorkflowDigest};
 use vb_runtime::admission::{
     AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, MissingAcceptedArtifactStore,
     admit_artifact_run,
@@ -219,149 +222,14 @@ fn malformed_nested_collect_missing_steps_field() {
 
 #[test]
 fn nested_collect_body_lowers_to_bounded_region() -> Result<(), Box<dyn std::error::Error>> {
-    let yaml = b"version: velvet-ballistics/v1\nname: nested\nwhen: { manual: {} }\nsteps:\n  - id: collect_pages\n    collect:\n      variable: batch\n      source: \"0\"\n      pages: 1\n      items: 1\n      steps:\n        - id: inner\n          collect:\n            variable: inner_page\n            source: \"1\"\n            pages: 1\n            items: 1\n            steps:\n              - id: leaf\n                set: { output: picked, value: \"7\" }\n  - id: done\n    finish: { result: 0 }\n";
-    let workflow = vb_compile::compile_workflow(yaml)?;
+    let workflow = vb_compile::compile_workflow(collect_region::SOURCE)?;
     let parts = workflow.to_parts();
     let nodes = parts.nodes;
     assert_eq!(nodes.len(), 8, "nested collect must emit exactly 8 nodes");
-
-    let collect_start = nodes
-        .iter()
-        .filter(|n| matches!(n.kind, CompiledNodeKind::CollectStart { .. }))
-        .count();
-    let collect_next = nodes
-        .iter()
-        .filter(|n| matches!(n.kind, CompiledNodeKind::CollectNext { .. }))
-        .count();
-    let collect_finish = nodes
-        .iter()
-        .filter(|n| matches!(n.kind, CompiledNodeKind::CollectFinish { .. }))
-        .count();
-    assert_eq!(
-        collect_start, 2,
-        "two CollectStart nodes for outer and inner"
-    );
-    assert_eq!(collect_next, 2, "two CollectNext nodes for outer and inner");
-    assert_eq!(
-        collect_finish, 2,
-        "two CollectFinish nodes for outer and inner"
-    );
-
-    let expected_kinds = [
-        CompiledNodeKind::CollectStart {
-            source: vb_core::SlotIdx::new(0),
-            limit: vb_core::ids::FanoutLimit::new(1),
-            page_size: 1,
-            body: vb_core::StepIdx::new(1),
-            done: vb_core::StepIdx::new(7),
-        },
-        CompiledNodeKind::CollectStart {
-            source: vb_core::SlotIdx::new(1),
-            limit: vb_core::ids::FanoutLimit::new(1),
-            page_size: 1,
-            body: vb_core::StepIdx::new(2),
-            done: vb_core::StepIdx::new(6),
-        },
-        CompiledNodeKind::SetConst {
-            value: vb_core::ConstIdx::new(0),
-        },
-        CompiledNodeKind::CollectNext {
-            collector_slot: vb_core::SlotIdx::new(1),
-            body: vb_core::StepIdx::new(2),
-            done: vb_core::StepIdx::new(6),
-        },
-        CompiledNodeKind::CollectFinish {
-            collector_slot: vb_core::SlotIdx::new(1),
-        },
-        CompiledNodeKind::CollectNext {
-            collector_slot: vb_core::SlotIdx::new(0),
-            body: vb_core::StepIdx::new(1),
-            done: vb_core::StepIdx::new(7),
-        },
-        CompiledNodeKind::CollectFinish {
-            collector_slot: vb_core::SlotIdx::new(0),
-        },
-        CompiledNodeKind::Finish {
-            result: vb_core::SlotIdx::new(2),
-        },
-    ];
-    let actual_discriminants = nodes
-        .iter()
-        .map(|n| std::mem::discriminant(&n.kind))
-        .collect::<Vec<_>>();
-    let expected_discriminants = expected_kinds
-        .iter()
-        .map(std::mem::discriminant)
-        .collect::<Vec<_>>();
-    assert_eq!(
-        actual_discriminants, expected_discriminants,
-        "exact node kind order for outer collect wrapping inner collect"
-    );
-
-    let inner_collect_slot = nodes.get(3).and_then(|n| match n.kind {
-        CompiledNodeKind::CollectNext { collector_slot, .. } => Some(collector_slot),
-        _ => None,
-    });
-    let outer_collect_slot = nodes.get(5).and_then(|n| match n.kind {
-        CompiledNodeKind::CollectNext { collector_slot, .. } => Some(collector_slot),
-        _ => None,
-    });
-    assert_eq!(
-        inner_collect_slot,
-        Some(vb_core::SlotIdx::new(4)),
-        "node 3 must be CollectNext with collector slot 4"
-    );
-    assert_eq!(
-        outer_collect_slot,
-        Some(vb_core::SlotIdx::new(2)),
-        "node 5 must be CollectNext with collector slot 2"
-    );
-    assert_ne!(
-        inner_collect_slot, outer_collect_slot,
-        "inner and outer collect must have different collector slots"
-    );
-
-    let inner_fields = match workflow.loop_region(vb_core::StepIdx::new(3)) {
-        Some(r) => (
-            r.start().get(),
-            r.body().get(),
-            r.control().get(),
-            r.done().get(),
-        ),
-        None => (0, 0, 0, 0),
-    };
-    let outer_fields = match workflow.loop_region(vb_core::StepIdx::new(5)) {
-        Some(r) => (
-            r.start().get(),
-            r.body().get(),
-            r.control().get(),
-            r.done().get(),
-        ),
-        None => (0, 0, 0, 0),
-    };
-    assert_ne!(
-        inner_fields,
-        (0, 0, 0, 0),
-        "inner collect must have loop region"
-    );
-    assert_ne!(
-        outer_fields,
-        (0, 0, 0, 0),
-        "outer collect must have loop region"
-    );
-    assert_eq!(inner_fields.0, 1, "inner region start");
-    assert_eq!(inner_fields.1, 2, "inner region body");
-    assert_eq!(inner_fields.2, 3, "inner region control");
-    assert_eq!(inner_fields.3, 4, "inner region done");
-    assert_eq!(outer_fields.0, 0, "outer region start");
-    assert_eq!(outer_fields.1, 1, "outer region body");
-    assert_eq!(outer_fields.2, 5, "outer region control");
-    assert_eq!(outer_fields.3, 6, "outer region done");
-    assert!(
-        workflow.loop_region(vb_core::StepIdx::new(2)).is_none(),
-        "SetConst node must not be a loop region control"
-    );
-
+    collect_region::assert_kind_counts(&nodes);
+    collect_region::assert_kind_order(&nodes);
+    collect_region::assert_collector_slots(&nodes);
+    collect_region::assert_loop_regions(&workflow);
     Ok(())
 }
 

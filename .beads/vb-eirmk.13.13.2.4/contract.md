@@ -1,0 +1,11 @@
+# COV-U5L1 owned-input roundtrip decomposition
+
+Base is 17223ad38019b6279baa1f2aaf41cf7ba404cb19 in the unique colocated Git/JJ workspace velvet-ballistics-owned-roundtrip-functions-local5090; the actual registered path is crates/workspace_tests/tests/vb_f1_owned_inputs/roundtrip.rs.
+
+Extract meaningful typed receipt and owned-state assertion helpers from strict_owned_submission_reopens_with_exact_arenas_roots_taints_and_receipt without changing the test identity, fixture data, messages, assertion operands or execution order. Preserve the real Fjall commit/drop/reopen sequence, verified accepted artifact, source identity, input digest, complete roots/checkpoint, restored graph and taints, resource contract, ordered three-event receipt including every run/sequence/digest/pin/capability/policy/decision field, admission validation, retained owned record, run header and whole workflow parts.
+
+Keep the existing compatibility expectation computed with production decide_boundary unchanged; this test does not establish an independent compatibility algorithm oracle.
+
+Write fence is the existing roundtrip.rs, minimal private helper files registered from that module if necessary, and this contract. Do not change shared support.rs, production, APIs, schemas, gates, dependencies, proof harnesses or other tests. No macros, compression, ignored results, suppressed checks or weakened assertions. Every new or modified function has at most 25 logical lines including its signature after pinned formatting; each new file has at most 300 physical lines.
+
+Physical qwen36-5090 is primary author, with the actual Holzman, functional Rust and Scott skill contents supplied before editing; supervisor verifies its source and actual native results. Verification is file-only pinned nightly-2026-04-28 edition/style 2024 formatting and the complete registered vb_f1_owned_inputs integration target with all features, warnings denied, wrappers disabled, jobs two, memory 24 GiB and an explicit own-workspace target/native-vb-eirmk.13.13.2.4. Capture raw argv/log/actual exit, preservation fragments and function-size ledger; freeze a source revision and empty successor for independent CODE and TEST review. No full-workspace acceptance or proof closure is claimed.
