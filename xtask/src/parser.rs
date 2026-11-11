@@ -82,10 +82,12 @@ fn parse_legacy(command: &str) -> Option<&'static str> {
         "proof-check" => Some("proof-check"),
         "proof-evidence" => Some("proof-evidence"),
         "proof-drift" => Some("proof-drift"),
+        "replay-lab" => Some("replay-lab"),
         "loom" => Some("loom"),
         "list-crates" => Some("list-crates"),
         "proof" => Some("proof"),
         "contracts" => Some("contracts"),
+        "crash-lab" => Some("crash-lab"),
         "diff-test" => Some("diff-test"),
         _ => None,
     }
