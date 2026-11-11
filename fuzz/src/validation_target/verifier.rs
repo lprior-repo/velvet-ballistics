@@ -106,7 +106,7 @@ fn choose_slot(
             target: bounded_next(index, node_count, 1),
         }]
         .into_boxed_slice(),
-        otherwise: Some(bounded_next(index, node_count, 2)).into(),
+        otherwise: vb_core::BranchContinuation::Target(bounded_next(index, node_count, 2)),
     }
 }
 

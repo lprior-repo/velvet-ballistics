@@ -33,6 +33,12 @@ mod tests;
 #[path = "mod_compile_lowering/nested_body_tests.rs"]
 mod nested_body_tests;
 #[cfg(test)]
+#[path = "mod_compile_lowering/canonical_reduce_proptests.rs"]
+mod canonical_reduce_proptests;
+#[cfg(test)]
+#[path = "mod_compile_lowering/nested_repeat_proptests.rs"]
+mod nested_repeat_proptests;
+#[cfg(test)]
 #[path = "proptest_body_dispatcher.rs"]
 mod proptest_body_dispatcher;
 #[cfg(test)]

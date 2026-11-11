@@ -87,8 +87,8 @@ fn collect_bounds_compile() -> Result<(), String> {
     }
     let limit = found_limit.ok_or("missing CollectStart node")?;
     let page_size = found_page_size.ok_or("missing CollectStart node")?;
-    if limit != 2 {
-        return Err(format!("expected limit 2, got {}", limit));
+    if limit.get() != 2 {
+        return Err(format!("expected limit 2, got {}", limit.get()));
     }
     if page_size != 1 {
         return Err(format!("expected page_size 1, got {}", page_size));

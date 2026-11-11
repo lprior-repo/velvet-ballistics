@@ -14,10 +14,8 @@ use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, Slot
 use vb_expr::expr_typecheck::ExprType;
 
 const HEADER: &str = "version: velvet-ballistics/v1\nname: reduce_multi\nwhen: {manual: {}}\n";
-const SINGLE_STEP: &str =
-    "        - id: update\n          set: {output: local_value, value: '$total + 1'}\n";
-const IDENTITY: &str =
-    "        - id: update\n          set: {output: local_value, value: '$total'}\n";
+const SINGLE_STEP: &str = "        - id: update\n          set: {output: local_value, value: '$total + 1'}\n";
+const IDENTITY: &str = "        - id: update\n          set: {output: local_value, value: '$total'}\n";
 const TWO_STEPS: &str = "        - id: tmp_step\n          set: {output: tmp_value, value: '2'}\n        - id: update\n          set: {output: local_value, value: '$total + $tmp_value'}\n";
 
 fn source(initial: &str, body: &str) -> String {
@@ -81,7 +79,10 @@ fn multi_step_reduce_layout_writes_final_step_into_accumulator() -> Result<(), S
         }
     );
     assert_eq!(input, output(&workflow, 0)?);
-    assert_eq!(workflow.constant(initial), Some(&ConstValue::I64(10)));
+    assert_eq!(
+        workflow.constant(initial),
+        Some(&ConstValue::I64(10))
+    );
     assert_eq!(body, StepIdx::new(2));
     assert_eq!(done, StepIdx::new(5));
     assert_eq!(output(&workflow, 3)?, accumulator);
@@ -127,19 +128,13 @@ fn parse_typed_initial_variants() -> Result<(), String> {
         ("10", ConstValue::I64(10), ExprType::I64),
         ("-5", ConstValue::I64(-5), ExprType::I64),
         ("+5", ConstValue::I64(5), ExprType::I64),
+        ("9223372036854775807", ConstValue::I64(i64::MAX), ExprType::I64),
+        ("-9223372036854775808", ConstValue::I64(i64::MIN), ExprType::I64),
         ("true", ConstValue::Bool(true), ExprType::Bool),
         ("false", ConstValue::Bool(false), ExprType::Bool),
         ("null", ConstValue::Null, ExprType::Null),
-        (
-            "0.5",
-            ConstValue::F64(vb_core::FiniteF64::new(0.5).map_err(|e| e.to_string())?),
-            ExprType::F64,
-        ),
-        (
-            "-0.5",
-            ConstValue::F64(vb_core::FiniteF64::new(-0.5).map_err(|e| e.to_string())?),
-            ExprType::F64,
-        ),
+        ("0.5", ConstValue::F64(vb_core::FiniteF64::new(0.5).map_err(|e| e.to_string())?), ExprType::F64),
+        ("-0.5", ConstValue::F64(vb_core::FiniteF64::new(-0.5).map_err(|e| e.to_string())?), ExprType::F64),
     ];
     for (text, constant, ty) in cases {
         let parsed = parse_typed_initial(text, 0).map_err(|e| format!("{text}: {e:?}"))?;
@@ -151,16 +146,24 @@ fn parse_typed_initial_variants() -> Result<(), String> {
         "1 + 2",
         "sum($total)",
         "9223372036854775808",
+        "-9223372036854775809",
+        "inf",
+        "NaN",
+        "1e999",
     ] {
         let rejected = parse_typed_initial(text, 0);
         let ok = matches!(
             &rejected,
             Err(errors) if errors.0.iter().any(|e| matches!(
                 e,
-                CompileError::StepFieldShape { field: "aggregate.initial", .. }
+                CompileError::StepFieldShape {
+                    field: "aggregate.initial",
+                    expected: "a literal constant: null, boolean, integer, or finite float",
+                    ..
+                }
             ))
         );
-        assert!(ok, "initial {text} must fail: {rejected:?}");
+        assert!(ok, "initial {text} must fail with the canonical initial-shape error: {rejected:?}");
     }
     Ok(())
 }
@@ -174,16 +177,8 @@ fn parse_typed_initial_whitespace_padded_negatives() -> Result<(), String> {
         ("\t-5", ConstValue::I64(-5), ExprType::I64),
         ("\t-5\t", ConstValue::I64(-5), ExprType::I64),
         ("  -5  ", ConstValue::I64(-5), ExprType::I64),
-        (
-            " -0.5",
-            ConstValue::F64(vb_core::FiniteF64::new(-0.5).map_err(|e| e.to_string())?),
-            ExprType::F64,
-        ),
-        (
-            " -0.5 ",
-            ConstValue::F64(vb_core::FiniteF64::new(-0.5).map_err(|e| e.to_string())?),
-            ExprType::F64,
-        ),
+        (" -0.5", ConstValue::F64(vb_core::FiniteF64::new(-0.5).map_err(|e| e.to_string())?), ExprType::F64),
+        (" -0.5 ", ConstValue::F64(vb_core::FiniteF64::new(-0.5).map_err(|e| e.to_string())?), ExprType::F64),
     ];
     for (text, constant, ty) in cases {
         let parsed = parse_typed_initial(text, 0).map_err(|e| format!("{text:?}: {e:?}"))?;
@@ -210,7 +205,10 @@ fn padded_neg_i64_initial_pins_reduce_start_constant() -> Result<(), String> {
 
 #[test]
 fn typed_constants_reach_reduce_start() -> Result<(), String> {
-    let flags = [("true", ConstValue::Bool(true)), ("null", ConstValue::Null)];
+    let flags = [
+        ("true", ConstValue::Bool(true)),
+        ("null", ConstValue::Null),
+    ];
     for (text, constant) in flags {
         let workflow = compile(&source(text, IDENTITY))?;
         let CompiledNodeKind::ReduceStart { initial, .. } = node(&workflow, 1)?.kind else {
@@ -224,9 +222,7 @@ fn typed_constants_reach_reduce_start() -> Result<(), String> {
     };
     assert_eq!(
         workflow.constant(initial),
-        Some(&ConstValue::F64(
-            vb_core::FiniteF64::new(0.5).map_err(|e| e.to_string())?
-        ))
+        Some(&ConstValue::F64(vb_core::FiniteF64::new(0.5).map_err(|e| e.to_string())?))
     );
     Ok(())
 }
@@ -234,19 +230,8 @@ fn typed_constants_reach_reduce_start() -> Result<(), String> {
 #[test]
 fn type_mismatched_multi_body_rejected() -> Result<(), String> {
     rejects(
-        &source(
-            "10",
-            "        - id: tmp_step\n          set: {output: tmp_value, value: '2'}\n        - id: update\n          set: {output: local_value, value: '$total == 10'}\n",
-        ),
-        |e| {
-            matches!(
-                e,
-                CompileError::StepFieldShape {
-                    field: "reduce.steps",
-                    ..
-                }
-            )
-        },
+        &source("10", "        - id: tmp_step\n          set: {output: tmp_value, value: '2'}\n        - id: update\n          set: {output: local_value, value: '$total == 10'}\n"),
+        |e| matches!(e, CompileError::StepFieldShape { field: "reduce.steps", .. }),
     )
 }
 
@@ -263,10 +248,7 @@ fn empty_body_rejected() -> Result<(), String> {
 #[test]
 fn body_output_alias_rejected() -> Result<(), String> {
     rejects(
-        &source(
-            "10",
-            "        - id: tmp_step\n          set: {output: tmp_value, value: '2'}\n        - id: update\n          set: {output: total, value: '$tmp_value'}\n",
-        ),
+        &source("10", "        - id: tmp_step\n          set: {output: tmp_value, value: '2'}\n        - id: update\n          set: {output: total, value: '$tmp_value'}\n"),
         |e| matches!(e, CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "total"),
     )
 }
@@ -274,10 +256,7 @@ fn body_output_alias_rejected() -> Result<(), String> {
 #[test]
 fn step_id_alias_rejected() -> Result<(), String> {
     rejects(
-        &source(
-            "10",
-            "        - id: total\n          set: {output: tmp_value, value: '2'}\n        - id: update\n          set: {output: local_value, value: '$total'}\n",
-        ),
+        &source("10", "        - id: total\n          set: {output: tmp_value, value: '2'}\n        - id: update\n          set: {output: local_value, value: '$total'}\n"),
         |e| matches!(e, CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "total"),
     )
 }
@@ -310,10 +289,7 @@ fn deep_set_output_alias_rejected() -> Result<(), String> {
 #[test]
 fn deep_step_id_alias_rejected() -> Result<(), String> {
     rejects(
-        &source(
-            "10",
-            "        - id: loop\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: total\n                set: {output: tmp_value, value: '6'}\n        - id: update\n          set: {output: local_value, value: '$total + $steps.loop'}\n",
-        ),
+        &source("10", "        - id: loop\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: total\n                set: {output: tmp_value, value: '6'}\n        - id: update\n          set: {output: local_value, value: '$total + $steps.loop'}\n"),
         |e| matches!(e, CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "total"),
     )
 }
@@ -323,15 +299,11 @@ fn width_overflow_pins_exact_step_index() {
     assert_eq!(checked_width_n(65535), Ok(65535));
     assert_eq!(
         checked_width_n(65536),
-        Err(CompileErrors(vec![CompileError::StepIndexOutOfRange {
-            value: 65536
-        }]))
+        Err(CompileErrors(vec![CompileError::StepIndexOutOfRange { value: 65536 }]))
     );
     assert_eq!(
         checked_width_n(usize::MAX),
-        Err(CompileErrors(vec![CompileError::StepIndexOutOfRange {
-            value: usize::MAX
-        }]))
+        Err(CompileErrors(vec![CompileError::StepIndexOutOfRange { value: usize::MAX }]))
     );
 }
 
@@ -365,6 +337,88 @@ fn do_last_reduce_result_is_unknown_for_bool_operation() -> Result<(), String> {
         return Err("missing ReduceStart".to_owned());
     };
     assert_eq!(workflow.constant(initial), Some(&ConstValue::I64(10)));
+    Ok(())
+}
+
+#[test]
+fn last_step_not_set_or_do_rejected() -> Result<(), String> {
+    for last in [
+        "        - id: loop\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: inner\n                set: {output: tmp_value, value: '6'}\n",
+        "        - id: route\n          choose:\n            branches:\n              - when: 'true'\n                steps:\n                  - id: inner\n                    set: {output: tmp_value, value: '6'}\n            otherwise: done\n",
+    ] {
+        let body = format!(
+            "        - id: tmp_step\n          set: {{output: tmp_value, value: '2'}}\n{last}"
+        );
+        rejects(&source("10", &body), |e| {
+            matches!(
+                e,
+                CompileError::UnsupportedStepPrimitive {
+                    primitive: "repeat" | "choose",
+                    ..
+                }
+            )
+        })?;
+    }
+    Ok(())
+}
+
+#[test]
+fn deep_aggregate_variable_alias_rejected() -> Result<(), String> {
+    // A nested reduce is not dispatchable inside a reduce body at all; the
+    // scope dispatcher rejects the nested aggregate before capture runs.
+    rejects(
+        &source("10", "        - id: folded\n          reduce:\n            variable: total\n            input: '\"8\"'\n            initial: '\"0\"'\n            steps:\n              - id: update\n                set: {output: local_value, value: '$total'}\n        - id: update\n          set: {output: local_value, value: '$total + $steps.folded'}\n"),
+        |e| matches!(e, CompileError::UnsupportedStepPrimitive { primitive: "reduce", .. }),
+    )
+}
+
+
+#[test]
+fn deep_choose_branch_alias_rejected() -> Result<(), String> {
+    rejects(
+        &source("10", "        - id: route\n          choose:\n            branches:\n              - when: 'true'\n                steps:\n                  - id: taken\n                    set: {output: total, value: '6'}\n            otherwise: done\n        - id: update\n          set: {output: local_value, value: '$total'}\n"),
+        |e| matches!(e, CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "total"),
+    )
+}
+
+#[test]
+fn deep_together_in_repeat_alias_rejected() -> Result<(), String> {
+    // Together is not dispatchable inside a repeat body; the dispatcher
+    // rejects it before capture can walk the nested branch.
+    rejects(
+        &source("10", "        - id: loop\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: fan\n                together:\n                  branches:\n                    - label: a\n                      steps:\n                        - id: only\n                          set: {output: total, value: '6'}\n        - id: update\n          set: {output: local_value, value: '$total + $steps.loop'}\n"),
+        |e| matches!(e, CompileError::UnsupportedStepPrimitive { primitive: "together", .. }),
+    )
+}
+
+#[test]
+fn reduce_do_repeat_cross_lane_layout() -> Result<(), String> {
+    let body = "        - id: loop\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: inner\n                set: {output: tmp_value, value: '6'}\n              - id: act\n                do:\n                  action: '0'\n                  input: '1'\n        - id: update\n          do:\n            action: '0'\n            input: '1'\n";
+    let workflow = compile(&source("10", body))?;
+    let parts = workflow.to_parts();
+    for (index, node) in parts.nodes.iter().enumerate() {
+        assert_eq!(node.id.as_usize(), index);
+    }
+    let do_ids: Vec<u16> = parts
+        .nodes
+        .iter()
+        .filter(|n| matches!(n.kind, CompiledNodeKind::Do { .. }))
+        .map(|n| n.id.as_usize() as u16)
+        .collect();
+    assert_eq!(do_ids.len(), 2);
+    let final_do = do_ids[1];
+    let accumulator = output(
+        &workflow,
+        workflow
+            .node_count()
+            .checked_sub(2)
+            .ok_or_else(|| "reduce workflow too small".to_owned())?,
+    )?;
+    assert_eq!(output(&workflow, final_do)?, accumulator);
+    assert_eq!(
+        node(&workflow, final_do)?.routing.next,
+        NodeContinuation::Step(StepIdx::new(do_ids[1] + 1))
+    );
     Ok(())
 }
 

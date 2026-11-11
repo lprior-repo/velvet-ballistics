@@ -1,6 +1,23 @@
 #![forbid(unsafe_code)]
 
 //! Typed core failures with stable diagnostic codes.
+//!
+//! Intentional `&'static str` escapes: a few payloads stay bare `&'static str`
+//! because their value spaces are open registries, not closed taxonomies.
+//! Resource and budget dimension keys (`ResourceLimitExceeded`,
+//! `IterationLimitExceeded`, `BudgetExceeded`, and the `AggregateBudgetError`
+//! / `RemainingBudgetError` resource names) are policy-driven: new policy
+//! keys added later must be reportable without changing the error taxonomy,
+//! so a closed enum would grow (or misreport) with every policy change. Type
+//! names (`TypeMismatch`, `UnsupportedAccessorTraversal`) mirror
+//! [`SlotValue::type_name`][crate::value::SlotValue::type_name]. Diagnosis
+//! details (`InvalidCompiledWorkflow`, `BudgetParse`) are human-readable text
+//! owned by the diagnostic code, and capacity `required` descriptors /
+//! lifecycle `command` names are assigned at the shard dispatch boundary. A
+//! closed enum with an `Unknown` fallback would add a type without adding
+//! exhaustiveness — every new key lands in `Unknown` — so these stay
+//! `&'static str` by decision. Every closed taxonomy, by contrast, is a typed
+//! enum (`CompilePrimitive`, `InvariantKind`, `ContractResource`).
 
 use crate::action::{ActionFailureReport, ActionResumeReport};
 use crate::capability::{Capability, CapabilitySet};
@@ -554,10 +571,15 @@ pub enum CoreError {
         max: u16,
     },
     /// A repeat configuration or attempt counter is in an invalid state.
+    ///
+    /// Reuses [`InvariantKind`] so repeat-state reasons share the invariant
+    /// taxonomy; the `InvalidRepeatState` diagnostic code stays distinct from
+    /// `InternalInvariantViolation`. The `Display` output is frozen to the
+    /// legacy reason strings via `InvariantKind::as_str`.
     #[error("invalid repeat state: {reason}")]
     InvalidRepeatState {
         /// Stable invariant reason for the invalid repeat state.
-        reason: &'static str,
+        reason: InvariantKind,
     },
     /// A collection pagination limit was exceeded.
     #[error("collect page limit exceeded")]

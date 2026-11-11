@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use crate::{CompileError, CompileErrors, StepAst, StepPrimitive};
 
 pub(in crate::mod_compile_lowering) fn validate_for_each_capture(

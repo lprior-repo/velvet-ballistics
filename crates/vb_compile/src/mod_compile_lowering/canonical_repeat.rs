@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Bounded Repeat bodies with lexical bindings and nested composition.
 //!
 //! A `repeat` body may contain `set` / `do` leaves as well as nested
@@ -28,14 +30,18 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_repeat(
     builder: &mut SlotCompiler,
 ) -> Result<SlotIdx, CompileErrors> {
     if config.max_attempts == 0 {
-        return Err(field_error(
+        return Err(super::field_error(
             index,
             "repeat.max_attempts",
             "a value of at least 1 (got 0)",
         ));
     }
     if config.body.is_empty() {
-        return Err(field_error(index, "steps", "at least one set or do step"));
+        return Err(super::field_error(
+            index,
+            "steps",
+            "at least one set or do step",
+        ));
     }
     let layout = RepeatLayout::new(id, config.body).map_err(|e| CompileErrors(vec![e]))?;
     let attempt_slot = builder
@@ -66,8 +72,8 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_repeat(
         "repeat",
         None,
     )?;
-    let result =
-        result.ok_or_else(|| field_error(index, "steps", "at least one set or do step"))?;
+    let result = result
+        .ok_or_else(|| super::field_error(index, "steps", "at least one set or do step"))?;
     push_repeat_continuations(layout, attempt_slot, result, config.next, builder);
     Ok(result)
 }
@@ -115,14 +121,6 @@ fn push_repeat_continuations(
         Some(result),
         next,
     ));
-}
-
-fn field_error(step: usize, field: &'static str, expected: &'static str) -> CompileErrors {
-    CompileErrors(vec![CompileError::StepFieldShape {
-        step,
-        field,
-        expected,
-    }])
 }
 
 #[cfg(test)]

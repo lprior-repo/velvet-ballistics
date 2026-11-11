@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
 use vb_compile::compile_workflow;
-use vb_core::workflow::{NodeContinuation, NodeOutput};
+use vb_core::workflow::{BranchContinuation, NodeContinuation, NodeOutput};
 use vb_core::{CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx, WorkflowParts};
 
 const BASELINE: &str = r#"version: velvet-ballistics/v1
@@ -65,10 +65,10 @@ fn check_guard(
                     branch.target, target
                 ));
             }
-            if otherwise.step() != Some(StepIdx::new(next)) {
+            if otherwise != &BranchContinuation::Target(StepIdx::new(next)) {
                 return Err(format!(
-                    "otherwise {:?} != expected Some({})",
-                    otherwise.step(), next
+                    "otherwise {:?} != expected Target({})",
+                    otherwise, next
                 ));
             }
         }

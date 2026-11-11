@@ -55,7 +55,7 @@ fn numeric_vs_named_refs() -> Result<(), String> {
             timeout_slot,
         } => {
             assert_eq!(*prompt, SlotIdx::new(0));
-            assert_eq!(timeout_slot.slot(), Some(SlotIdx::new(1)));
+            assert_eq!(*timeout_slot, Deadline::Slot(SlotIdx::new(1)));
         }
         _ => return Err("baseline should be Ask node".into()),
     }
@@ -69,7 +69,7 @@ fn numeric_vs_named_refs() -> Result<(), String> {
             timeout_slot,
         } => {
             assert_eq!(*event, SlotIdx::new(0));
-            assert_eq!(timeout_slot.slot(), Some(SlotIdx::new(1)));
+            assert_eq!(*timeout_slot, Deadline::Slot(SlotIdx::new(1)));
         }
         _ => return Err("wait should be WaitEvent node".into()),
     }
@@ -89,7 +89,7 @@ fn absent_timeout_and_same_id_alias() -> Result<(), String> {
             timeout_slot,
         } => {
             assert_eq!(*prompt, SlotIdx::new(0));
-            assert_eq!(timeout_slot.slot(), None);
+            assert_eq!(*timeout_slot, Deadline::Unset);
         }
         _ => return Err("should be Ask node".into()),
     }
@@ -108,7 +108,7 @@ fn absent_timeout_and_same_id_alias() -> Result<(), String> {
             timeout_slot,
         } => {
             assert_eq!(*event, SlotIdx::new(0));
-            assert_eq!(timeout_slot.slot(), None);
+            assert_eq!(*timeout_slot, Deadline::Unset);
         }
         _ => return Err("should be WaitEvent node".into()),
     }
@@ -144,7 +144,7 @@ fn input_and_vars_slot_allocation() -> Result<(), String> {
             timeout_slot,
         } => {
             assert_eq!(*prompt, SlotIdx::new(2));
-            assert_eq!(timeout_slot.slot(), Some(SlotIdx::new(2)));
+            assert_eq!(*timeout_slot, Deadline::Slot(SlotIdx::new(2)));
         }
         _ => return Err("should be Ask node".into()),
     }
@@ -164,7 +164,7 @@ fn input_and_vars_slot_allocation() -> Result<(), String> {
             timeout_slot,
         } => {
             assert_eq!(*prompt, SlotIdx::new(2));
-            assert_eq!(timeout_slot.slot(), Some(SlotIdx::new(2)));
+            assert_eq!(*timeout_slot, Deadline::Slot(SlotIdx::new(2)));
         }
         _ => return Err("should be Ask node".into()),
     }
@@ -183,7 +183,7 @@ fn input_and_vars_slot_allocation() -> Result<(), String> {
             timeout_slot,
         } => {
             assert_eq!(*event, SlotIdx::new(2));
-            assert_eq!(timeout_slot.slot(), Some(SlotIdx::new(2)));
+            assert_eq!(*timeout_slot, Deadline::Slot(SlotIdx::new(2)));
         }
         _ => return Err("should be WaitEvent node".into()),
     }
@@ -202,7 +202,7 @@ fn input_and_vars_slot_allocation() -> Result<(), String> {
             timeout_slot,
         } => {
             assert_eq!(*event, SlotIdx::new(2));
-            assert_eq!(timeout_slot.slot(), Some(SlotIdx::new(2)));
+            assert_eq!(*timeout_slot, Deadline::Slot(SlotIdx::new(2)));
         }
         _ => return Err("should be WaitEvent node".into()),
     }

@@ -2180,7 +2180,7 @@ fn validate_node_kind(kind: &CompiledNodeKind, parts: &WorkflowParts) -> Result<
             max_attempts,
             body,
             done,
-        } => validate_repeat_start(max_attempts.get(), *body, *done, parts),
+        } => validate_repeat_start(*max_attempts, *body, *done, parts),
         CompiledNodeKind::RepeatAttempt {
             attempt_slot,
             body,
@@ -2335,12 +2335,12 @@ fn validate_reduce_next(
 }
 
 fn validate_repeat_start(
-    max_attempts: u16,
+    max_attempts: MaxAttempts,
     body: StepIdx,
     done: StepIdx,
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
-    validate_nonzero_u16(max_attempts, ContractResource::RetryAttempts)?;
+    validate_nonzero_u16(max_attempts.get(), ContractResource::RetryAttempts)?;
     validate_two_steps(body, done, parts)
 }
 

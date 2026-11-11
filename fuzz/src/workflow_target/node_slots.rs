@@ -100,7 +100,7 @@ pub(super) fn check_node_slots(kind: &vb_core::CompiledNodeKind, slot_count: u16
             assert_slot(*policy_slot, slot_count, node_idx);
         }
         CompiledNodeKind::ErrorHandler {
-            error_slot: vb_core::workflow::ErrorSink::Slot(slot),
+            error_slot: vb_core::ErrorSink::Slot(slot),
             ..
         } => assert_slot(*slot, slot_count, node_idx),
         CompiledNodeKind::Finish { result } => assert_slot(*result, slot_count, node_idx),

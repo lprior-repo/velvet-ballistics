@@ -1,6 +1,11 @@
 #![forbid(unsafe_code)]
 //! Aggregate resource budget types: whole-run budget, shard capacity and
 //! usage, per-tenant usage snapshot, reservations, and the aggregate error.
+//!
+//! Error resource names stay `&'static str` by decision: budget dimension
+//! keys are policy-driven (new keys must be reportable without retaxonomizing
+//! the error), so a closed enum would grow or misreport with every policy
+//! change. See the open-registry rationale in `crate::errors`.
 
 use crate::ids::{RunId, TenantId};
 #[cfg(not(kani))]
