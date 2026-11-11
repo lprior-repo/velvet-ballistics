@@ -13,6 +13,13 @@ use crate::workflow::{
 mod borrowed_domain;
 pub(crate) use borrowed_domain::focused_slice_domain;
 
+#[path = "kani_workflow_budget_partition/mod.rs"]
+mod compute_partition;
+
+#[path = "kani_workflow_budget_focused_visit.rs"]
+mod focused_visit;
+use focused_visit::kind_is_focused;
+
 pub(crate) struct BudgetWorkflowInputs {
     nodes: BudgetNodes,
     entry: StepIdx,
@@ -28,19 +35,7 @@ impl BudgetWorkflowInputs {
         self,
         visit: impl FnOnce(&[CompiledNode], StepIdx, &ResourceContract),
     ) {
-        let entry = self.entry();
-        let contract = *self.contract();
-        match self.nodes {
-            BudgetNodes::Empty => visit(&[], entry, &contract),
-            BudgetNodes::One([node]) => with_focused_node(node, |node| {
-                visit(&[node], entry, &contract);
-            }),
-            BudgetNodes::Two([first, second]) => with_focused_node(first, |first| {
-                with_focused_node(second, |second| {
-                    visit(&[first, second], entry, &contract);
-                });
-            }),
-        }
+        focused_visit::with_nodes(self.nodes.as_slice(), self.entry, &self.contract, visit);
     }
 
     pub(crate) const fn node_count(&self) -> usize {
@@ -74,48 +69,6 @@ impl BudgetWorkflowInputs {
 
     pub(crate) fn covers_finish(&self) -> bool {
         self.nodes.has_finish()
-    }
-}
-
-fn with_focused_node(node: CompiledNode, visit: impl FnOnce(CompiledNode)) {
-    match node.kind {
-        CompiledNodeKind::Nop => visit(CompiledNode {
-            kind: CompiledNodeKind::Nop,
-            ..node
-        }),
-        CompiledNodeKind::Do { action, input } => visit(CompiledNode {
-            kind: CompiledNodeKind::Do { action, input },
-            ..node
-        }),
-        CompiledNodeKind::WaitUntil { deadline_slot } => visit(CompiledNode {
-            kind: CompiledNodeKind::WaitUntil { deadline_slot },
-            ..node
-        }),
-        CompiledNodeKind::WaitEvent {
-            event,
-            timeout_slot,
-        } => visit(CompiledNode {
-            kind: CompiledNodeKind::WaitEvent {
-                event,
-                timeout_slot,
-            },
-            ..node
-        }),
-        CompiledNodeKind::Ask {
-            prompt,
-            timeout_slot,
-        } => visit(CompiledNode {
-            kind: CompiledNodeKind::Ask {
-                prompt,
-                timeout_slot,
-            },
-            ..node
-        }),
-        CompiledNodeKind::Finish { result } => visit(CompiledNode {
-            kind: CompiledNodeKind::Finish { result },
-            ..node
-        }),
-        _ => assert!(false, "budget generator produced an unsupported node kind"),
     }
 }
 
@@ -216,18 +169,6 @@ fn maybe_step_is_valid(step: Option<StepIdx>, node_count: usize) -> bool {
 
 fn step_is_valid(step: StepIdx, node_count: usize) -> bool {
     step.as_usize() < node_count
-}
-
-fn kind_is_focused(kind: &CompiledNodeKind) -> bool {
-    matches!(
-        kind,
-        CompiledNodeKind::Nop
-            | CompiledNodeKind::Do { .. }
-            | CompiledNodeKind::WaitUntil { .. }
-            | CompiledNodeKind::WaitEvent { .. }
-            | CompiledNodeKind::Ask { .. }
-            | CompiledNodeKind::Finish { .. }
-    )
 }
 
 pub(crate) fn budget_workflow_inputs() -> BudgetWorkflowInputs {

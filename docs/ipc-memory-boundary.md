@@ -6,11 +6,11 @@ Velvet Ballastics does not use HTTP as the runtime control plane. The primary in
 
 `vb-ipc` provides `MemoryIngress`, a bounded multi-producer/single-consumer queue. Producers use `try_submit`; a full queue returns backpressure immediately instead of blocking or allocating without limit.
 
+Unix domain sockets provide local process integration through `IpcServer` and the CLI IPC server, alongside `MemoryIngress`.
+
 ## Future IPC Options
 
 The next IPC transports should preserve the same bounded frame contract:
-
-- Unix domain sockets for local process integration.
 - Shared memory rings for lowest-copy same-host producers.
 - Memory-mapped files for replayable local handoff.
 - io_uring-backed local pipes only if benchmarked faster for the target workload.

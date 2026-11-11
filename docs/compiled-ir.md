@@ -20,6 +20,8 @@ ForEach publishes a list containing each iteration's last executed value-produci
 
 `at_once` is a positive upper bound, defaulting to 1. The synchronous runtime processes one item at a time, including when a larger cap is supplied. A suspended action or Ask completes before that iteration is captured and the next item starts. This scheduling behavior provides no parallel-throughput guarantee.
 
+ForEach bodies accept dynamic references in equality and helper arguments. Nested numeric and Boolean operators still require statically known operand types. Known helper argument mismatches remain compile errors; dynamic helper argument mismatches produce typed runtime failures.
+
 Idle ticks resume work yielded at a pending step, including one-step scheduler slices. Pending action, Ask, and Wait boundaries retain their issued authority until the matching host response. Nested Ask answers bind to named step outputs, preserve answer taint, and complete the suspended step before loop rearming.
 
 Together preserves ordered branch values, including Null and nested lists, with their per-item taints. An error route releases reservations for scopes it exits and retains reservations for enclosing scopes containing the handler. Cold budgets include error-handler paths.

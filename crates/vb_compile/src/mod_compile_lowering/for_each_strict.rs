@@ -1,6 +1,6 @@
 use super::canonical_types::validate_canonical_references;
 use super::{CanonicalScope, resolve_slot_reference};
-use crate::expression::{ParsedExpression, parse_expression};
+use crate::expression::{BinaryOp, ParsedExpression, parse_expression};
 use crate::{CompileError, CompileErrors};
 use vb_expr::expr_typecheck::ExprType;
 
@@ -11,10 +11,7 @@ pub(in crate::mod_compile_lowering) fn validate_for_each_expression(
     let expr = parse_expression(value).map_err(|e| CompileErrors(vec![e]))?;
     validate_canonical_references(&expr, scope.outputs, scope.step_outputs)
         .map_err(|e| CompileErrors(vec![e]))?;
-    match &expr {
-        ParsedExpression::Literal(_) | ParsedExpression::Reference(_) => Ok(()),
-        _ => reject_unknown(&expr, scope).map_err(|e| CompileErrors(vec![e])),
-    }
+    validate_operands(&expr, scope, true).map_err(|e| CompileErrors(vec![e]))
 }
 
 fn reject_unknown_reference(name: &str, scope: CanonicalScope<'_>) -> Result<(), CompileError> {
@@ -35,18 +32,24 @@ fn reject_unknown_reference(name: &str, scope: CanonicalScope<'_>) -> Result<(),
     }
 }
 
-fn reject_unknown(expr: &ParsedExpression, scope: CanonicalScope<'_>) -> Result<(), CompileError> {
+fn validate_operands(
+    expr: &ParsedExpression,
+    scope: CanonicalScope<'_>,
+    allow_unknown: bool,
+) -> Result<(), CompileError> {
     match expr {
+        ParsedExpression::Reference(_) if allow_unknown => Ok(()),
         ParsedExpression::Reference(name) => reject_unknown_reference(name, scope),
         ParsedExpression::Literal(_) => Ok(()),
-        ParsedExpression::Unary { expr: inner, .. } => reject_unknown(inner, scope),
-        ParsedExpression::Binary { left, right, .. } => {
-            reject_unknown(left, scope)?;
-            reject_unknown(right, scope)
+        ParsedExpression::Unary { expr: inner, .. } => validate_operands(inner, scope, false),
+        ParsedExpression::Binary { op, left, right } => {
+            let allow_unknown = matches!(op, BinaryOp::Eq | BinaryOp::NotEq);
+            validate_operands(left, scope, allow_unknown)?;
+            validate_operands(right, scope, allow_unknown)
         }
         ParsedExpression::HelperCall { args, .. } => {
             for arg in args {
-                reject_unknown(arg, scope)?;
+                validate_operands(arg, scope, true)?;
             }
             Ok(())
         }
