@@ -4,6 +4,9 @@ use vb_core::RuntimePolicy;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+#[path = "submission_version_test_support.rs"]
+mod version_support;
+
 fn submission(
     policy: RuntimePolicy,
     value: i64,
@@ -20,27 +23,7 @@ fn submission_with_version(
     let mut artifact = crate::admission::prepare_compiled_artifact(&workflow, policy, &[])?;
     artifact.artifact_version = version;
     crate::admission::bind_artifact_digest(&mut artifact)?;
-    let source = b"original source fixture".to_vec();
-    let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-    let inputs = RunInputsRecord::new(
-        RunId::new(7),
-        artifact.digest,
-        digest,
-        &workflow,
-        Box::from([(SlotIdx::new(0), SlotValue::I64(value))]),
-    )?;
-    Ok(RunSubmission::new(
-        WorkflowSourceRecord { digest, source },
-        artifact,
-        inputs,
-        RunHeaderRecord {
-            run: RunId::new(7),
-            workflow_id: vb_core::WorkflowId::new(0),
-            compiled_digest: workflow.digest(),
-            status: 0,
-            accepted_at_ms: 123,
-        },
-    )?)
+    Ok(version_support::construct(&workflow, artifact, value)?)
 }
 
 fn assert_empty(journal: &FjallJournal) -> TestResult {
@@ -117,27 +100,41 @@ fn injected_atomic_commit_failure_exposes_no_record_or_index_and_retry_succeeds(
 
 #[test]
 fn future_major_ir_version_is_rejected_before_any_write() -> TestResult {
-    for policy in [RuntimePolicy::Journaled, RuntimePolicy::Strict] {
-        let directory = tempfile::tempdir()?;
-        let journal = FjallJournal::open(directory.path(), None)?;
-        let submission =
-            submission_with_version(policy, 5, crate::compat::SchemaVersion::new(2, 0, 0))?;
-        assert!(matches!(
-            journal.commit_run_submission(&submission, policy),
-            Err(JournalError::ArtifactVersionIncompatible { .. })
-        ));
-        assert_empty(&journal)?;
-    }
-    let directory = tempfile::tempdir()?;
-    let journal = FjallJournal::open(directory.path(), None)?;
-    let submission = submission_with_version(
+    [
+        RuntimePolicy::Journaled,
+        RuntimePolicy::Strict,
         RuntimePolicy::Relaxed,
-        5,
-        crate::compat::SchemaVersion::new(2, 0, 0),
-    )?;
-    journal.commit_run_submission(&submission, RuntimePolicy::Relaxed)?;
-    assert_eq!(journal.events_for_run(RunId::new(7))?.len(), 0);
-    Ok(())
+    ]
+    .into_iter()
+    .try_for_each(version_support::future_rejection)
+}
+
+#[test]
+fn supported_v2_rejects_legacy_wire_before_any_write() -> TestResult {
+    [
+        RuntimePolicy::Journaled,
+        RuntimePolicy::Strict,
+        RuntimePolicy::Relaxed,
+    ]
+    .into_iter()
+    .try_for_each(version_support::wrong_wire_rejection)
+}
+
+#[test]
+fn relaxed_supported_v1_submission_preserves_no_events() -> TestResult {
+    let workflow = super::tests::workflow()?;
+    assert_eq!(workflow.symbol_payloads(), None);
+    version_support::relaxed_submission(&workflow, crate::compat::SchemaVersion::new(1, 0, 0))
+}
+
+#[test]
+fn relaxed_supported_v2_submission_preserves_no_events() -> TestResult {
+    let workflow = version_support::bound_workflow()?;
+    assert_eq!(
+        workflow.symbol_payloads(),
+        Some(Box::<[Box<str>]>::default().as_ref())
+    );
+    version_support::relaxed_submission(&workflow, crate::compat::SchemaVersion::new(2, 0, 0))
 }
 
 #[test]

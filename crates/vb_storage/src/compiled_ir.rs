@@ -27,6 +27,30 @@ pub fn decode_compiled_ir(
     bytes: &[u8],
     outer_version: Option<SchemaVersion>,
 ) -> Result<CompiledWorkflow, JournalError> {
+    decode_compiled_ir_validated(bytes, outer_version, |_| Ok(()), |error| error)
+        .map(|(workflow, ())| workflow)
+}
+
+/// Crate-private decode path that separates codec validation from caller validation.
+/// Runs byte/version/full-consumption checks and reconstruction first, then invokes
+/// the caller's pure validation callback, then canonical digest verification.
+pub(crate) fn decode_compiled_ir_validated<T, E>(
+    bytes: &[u8],
+    outer_version: Option<SchemaVersion>,
+    validate: impl FnOnce(&CompiledWorkflow) -> Result<T, E>,
+    map_codec: impl Fn(JournalError) -> E,
+) -> Result<(CompiledWorkflow, T), E> {
+    let decoded = read_parts(bytes, outer_version).map_err(&map_codec)?;
+    let workflow = reconstruct(&decoded).map_err(&map_codec)?;
+    let checked = validate(&workflow)?;
+    verify_parts_digest(&decoded).map_err(map_codec)?;
+    Ok((workflow, checked))
+}
+
+fn read_parts(
+    bytes: &[u8],
+    outer_version: Option<SchemaVersion>,
+) -> Result<VersionedWorkflowParts, JournalError> {
     checked_byte_length(bytes.len())?;
     let reader = match outer_version {
         Some(version) => outer_reader(version)?,
@@ -35,8 +59,8 @@ pub fn decode_compiled_ir(
     };
     match reader {
         Reader::V1 if bytes.starts_with(&V2_PREFIX) => Err(JournalError::ArtifactMalformed),
-        Reader::V1 => decode_v1(bytes),
-        Reader::V2 => decode_v2(bytes),
+        Reader::V1 => decode_full(bytes).map(VersionedWorkflowParts::V1),
+        Reader::V2 => read_v2(bytes).map(VersionedWorkflowParts::V2),
     }
 }
 
@@ -166,15 +190,7 @@ fn encode_v2(ir: WorkflowIrV2) -> Result<Box<[u8]>, JournalError> {
     encode_wire(&ir, &V2_PREFIX)
 }
 
-fn decode_v1(bytes: &[u8]) -> Result<CompiledWorkflow, JournalError> {
-    let parts: WorkflowParts = decode_full(bytes)?;
-    let workflow = CompiledWorkflow::try_from_parts(parts.clone())
-        .map_err(JournalError::WorkflowReconstruction)?;
-    verify_digest(&canonical_v1(&parts)?, parts.digest)?;
-    Ok(workflow)
-}
-
-fn decode_v2(bytes: &[u8]) -> Result<CompiledWorkflow, JournalError> {
+fn read_v2(bytes: &[u8]) -> Result<WorkflowIrV2, JournalError> {
     let body = bytes
         .strip_prefix(&V2_PREFIX)
         .ok_or(JournalError::ArtifactMalformed)?;
@@ -182,9 +198,22 @@ fn decode_v2(bytes: &[u8]) -> Result<CompiledWorkflow, JournalError> {
     if ir.wire_version != 2 {
         return Err(JournalError::ArtifactMalformed);
     }
-    let workflow = reconstruct_v2(&ir)?;
-    verify_digest(&canonical_v2(&ir)?, ir.parts.digest)?;
-    Ok(workflow)
+    Ok(ir)
+}
+
+fn reconstruct(parts: &VersionedWorkflowParts) -> Result<CompiledWorkflow, JournalError> {
+    match parts {
+        VersionedWorkflowParts::V1(parts) => CompiledWorkflow::try_from_parts(parts.clone())
+            .map_err(JournalError::WorkflowReconstruction),
+        VersionedWorkflowParts::V2(ir) => reconstruct_v2(ir),
+    }
+}
+
+fn verify_parts_digest(parts: &VersionedWorkflowParts) -> Result<(), JournalError> {
+    match parts {
+        VersionedWorkflowParts::V1(parts) => verify_digest(&canonical_v1(parts)?, parts.digest),
+        VersionedWorkflowParts::V2(ir) => verify_digest(&canonical_v2(ir)?, ir.parts.digest),
+    }
 }
 
 #[cfg(test)]

@@ -76,10 +76,12 @@ impl RunSubmission {
     }
 
     fn ir_compat_decision(&self) -> crate::compat::CompatDecision {
+        let required =
+            crate::admission::verification::required_ir_version(self.artifact.artifact_version);
         crate::compat::decide_boundary(
-            crate::compat::artifact_ir_version_inputs(self.artifact.artifact_version),
+            crate::compat::artifact_ir_version_inputs_for(self.artifact.artifact_version, required),
             crate::compat::schema_version_digest(self.artifact.artifact_version),
-            crate::compat::schema_version_digest(crate::compat::CURRENT_IR_VERSION),
+            crate::compat::schema_version_digest(required),
         )
     }
 
@@ -98,7 +100,9 @@ impl RunSubmission {
             if decision.authorize_live_effect().is_err() {
                 return Err(JournalError::ArtifactVersionIncompatible {
                     held: self.artifact.artifact_version,
-                    required: crate::compat::CURRENT_IR_VERSION,
+                    required: crate::admission::verification::required_ir_version(
+                        self.artifact.artifact_version,
+                    ),
                     class: decision.class,
                 });
             }

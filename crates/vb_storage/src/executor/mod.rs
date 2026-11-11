@@ -29,3 +29,6 @@ mod issuance_scoped_tests;
 
 #[cfg(test)]
 mod issuance_boundary_tests;
+
+#[cfg(test)]
+mod versioned_codec_tests;

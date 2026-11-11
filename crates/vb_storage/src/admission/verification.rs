@@ -1,6 +1,7 @@
 //! Independent cold-path IR verifier. No compiler or source-language dependency.
 
 use super::*;
+use crate::compiled_ir::{decode_compiled_ir_validated, encode_compiled_ir};
 use vb_core::artifact::{
     ArtifactEvidence, ArtifactVerificationEvidence, AssumptionId, ObligationClosure,
     ObligationKind, VerificationLedgerEntry,
@@ -16,6 +17,10 @@ pub(crate) use executor_profile::ExecutorProfile;
 #[path = "verification/ledger.rs"]
 mod ledger;
 use ledger::{effect_closure, obligation_ledger};
+
+#[path = "verification/versioned.rs"]
+mod versioned;
+pub(crate) use versioned::{prepare_for_version, required_ir_version};
 
 /// Prepare a checked envelope without writing a journal or claiming a durable ack.
 /// External assumptions in the ledger remain assumptions, not executed evidence.
@@ -33,26 +38,13 @@ pub(crate) fn prepare_with_profile(
     contracts: &[ActionContract],
     profile: ExecutorProfile<'_>,
 ) -> Result<AcceptedArtifact, JournalError> {
-    let parts = checked_parts(workflow, policy, contracts, &profile)?;
-    let ir = postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
-    let evidence = build_evidence(&parts, &ir, policy, contracts)?;
-    let mut proof = VerificationProof::new(zero_workflow_digest(), 0, false);
-    proof.bounded_claimed = true;
-    proof.idempotency_verified_claimed = true;
-    proof.evidence = profile.wrap(evidence);
-    let mut artifact = AcceptedArtifact {
-        digest: zero_workflow_digest(),
-        source_digest: workflow.digest(),
-        policy_digest: compute_policy_digest(workflow)?,
-        ir,
-        verification: proof,
-        accepted_at_seq: EventSeq::new(0),
-        required_capabilities: required_capabilities_from_contracts(contracts)?,
-        action_contracts: contracts.to_vec().into_boxed_slice(),
-        artifact_version: crate::compat::CURRENT_IR_VERSION,
-    };
-    bind_artifact_digest(&mut artifact)?;
-    Ok(artifact)
+    prepare_for_version(
+        workflow,
+        policy,
+        contracts,
+        profile,
+        versioned::writer_version(workflow),
+    )
 }
 
 /// Recompute checks and evidence from hostile artifact bytes before runtime use.
@@ -60,30 +52,20 @@ pub(crate) fn prepare_with_profile(
 pub fn verify_accepted_artifact(
     artifact: &AcceptedArtifact,
 ) -> Result<CompiledWorkflow, JournalError> {
-    let len = u32::try_from(artifact.ir.len()).map_err(|_| JournalError::ArtifactMalformed)?;
-    if len > crate::constants::MAX_COMPILED_IR_BYTES {
-        return Err(JournalError::PayloadTooLarge {
-            len,
-            max: crate::constants::MAX_COMPILED_IR_BYTES,
-        });
-    }
-    let evidence = checked_evidence_schema(&artifact.verification.evidence)?;
-    if accepted_artifact_digest(artifact)? != artifact.digest
-        || artifact.verification.digest != artifact.digest
-    {
-        return Err(JournalError::ArtifactChecksumMismatch);
-    }
-    let (parts, trailing) = postcard::take_from_bytes::<WorkflowParts>(&artifact.ir)
-        .map_err(JournalError::PostcardDecodeFailed)?;
-    if !trailing.is_empty() {
-        return Err(JournalError::ArtifactMalformed);
-    }
-    let workflow =
-        CompiledWorkflow::try_from_parts(parts).map_err(JournalError::WorkflowReconstruction)?;
-    let expected = prepare_compiled_artifact(
-        &workflow,
-        evidence.admission_policy,
-        &artifact.action_contracts,
+    let evidence = versioned::checked_artifact(artifact)?;
+    let (workflow, expected) = decode_compiled_ir_validated(
+        &artifact.ir,
+        Some(artifact.artifact_version),
+        |workflow| {
+            prepare_for_version(
+                workflow,
+                evidence.admission_policy,
+                &artifact.action_contracts,
+                ExecutorProfile::Legacy,
+                artifact.artifact_version,
+            )
+        },
+        |error| error,
     )?;
     verify_expected_bindings(artifact, &expected)?;
     Ok(workflow)
@@ -169,7 +151,7 @@ fn checked_parts(
         RuntimePolicy::Relaxed | RuntimePolicy::Journaled | RuntimePolicy::Strict => {}
         _ => return Err(JournalError::ArtifactMalformed),
     }
-    let mut parts = workflow.to_parts();
+    let parts = workflow.to_parts();
     CompiledWorkflow::try_from_parts(parts.clone())
         .map_err(JournalError::WorkflowReconstruction)?;
     vb_validate::shared::validate_with_contracts(&parts, contracts)
@@ -178,12 +160,6 @@ fn checked_parts(
         .map_err(JournalError::ArtifactActionRegistry)?;
     validate_idempotency_contracts(contracts)?;
     profile.check(policy, contracts)?;
-    parts.digest = zero_workflow_digest();
-    let canonical = postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
-    if digest(&canonical) != workflow.digest() {
-        return Err(JournalError::ArtifactChecksumMismatch);
-    }
-    parts.digest = workflow.digest();
     Ok(parts)
 }
 
@@ -224,10 +200,17 @@ fn verifier_digest() -> WorkflowDigest {
     let mut hasher = blake3::Hasher::new();
     hasher.update(include_bytes!("verification.rs"));
     hasher.update(include_bytes!("verification/ledger.rs"));
+    hasher.update(include_bytes!("verification/versioned.rs"));
+    hasher.update(include_bytes!("../compiled_ir.rs"));
     hasher.update(include_bytes!("../../../vb_core/src/workflow/mod.rs"));
     hasher.update(include_bytes!("../../../vb_core/src/budget.rs"));
     hasher.update(include_bytes!("../../../vb_core/src/action/registry.rs"));
     hasher.update(include_bytes!("../../../vb_validate/src/shared.rs"));
+    validation_fingerprint(&mut hasher);
+    WorkflowDigest::from_bytes(hasher.finalize().into())
+}
+
+fn validation_fingerprint(hasher: &mut blake3::Hasher) {
     hasher.update(include_bytes!("../../../vb_validate/src/gates/mod.rs"));
     hasher.update(include_bytes!("../../../vb_validate/src/gates/gate_07.rs"));
     hasher.update(include_bytes!("../../../vb_validate/src/gates/gate_08.rs"));
@@ -244,5 +227,4 @@ fn verifier_digest() -> WorkflowDigest {
     hasher.update(include_bytes!("../../../vb_validate/src/gates/gate_13.rs"));
     hasher.update(include_bytes!("../../../vb_validate/src/gates/gate_14.rs"));
     hasher.update(include_bytes!("../../../vb_validate/src/gates/gate_15.rs"));
-    WorkflowDigest::from_bytes(hasher.finalize().into())
 }

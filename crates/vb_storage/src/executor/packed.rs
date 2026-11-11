@@ -3,9 +3,7 @@ use crate::admission::verification::{self, ExecutorProfile};
 use crate::{AcceptedArtifact, FjallJournal};
 use vb_core::action_pack::{ActionPack, PackedArtifactEvidence};
 use vb_core::artifact::ArtifactEvidence;
-use vb_core::{
-    ActionContract, ActionId, CompiledWorkflow, RuntimePolicy, SideEffect, WorkflowParts,
-};
+use vb_core::{ActionContract, ActionId, CompiledWorkflow, RuntimePolicy, SideEffect};
 
 const MAX_PACKS: usize = 64;
 
@@ -37,11 +35,34 @@ impl ExecutorCatalog {
         policy: RuntimePolicy,
     ) -> Result<CompiledWorkflow, ExecutorError> {
         let packed = checked_envelope(artifact, policy)?;
-        let workflow = decode_workflow(artifact)?;
-        let expected =
-            self.prepare_artifact(&workflow, policy, &artifact.action_contracts, &packed.packs)?;
+        let (workflow, expected) = crate::compiled_ir::decode_compiled_ir_validated(
+            &artifact.ir,
+            Some(artifact.artifact_version),
+            |workflow| self.prepare_held(workflow, artifact, policy, &packed.packs),
+            codec_error,
+        )?;
         verification::verify_expected_bindings(artifact, &expected)?;
         Ok(workflow)
+    }
+
+    fn prepare_held(
+        &self,
+        workflow: &CompiledWorkflow,
+        artifact: &AcceptedArtifact,
+        policy: RuntimePolicy,
+        packs: &[ActionPack],
+    ) -> Result<AcceptedArtifact, ExecutorError> {
+        self.check_packs(&artifact.action_contracts, packs)?;
+        Ok(verification::prepare_for_version(
+            workflow,
+            policy,
+            &artifact.action_contracts,
+            ExecutorProfile::Registered {
+                catalog: self,
+                packs,
+            },
+            artifact.artifact_version,
+        )?)
     }
 
     /// Persist exact checked metadata and verify its strict durable readback.
@@ -137,16 +158,11 @@ fn checked_envelope(
     Ok(packed)
 }
 
-fn decode_workflow(artifact: &AcceptedArtifact) -> Result<CompiledWorkflow, ExecutorError> {
-    let len = u32::try_from(artifact.ir.len()).map_err(|_| ExecutorError::Capacity)?;
-    if len > crate::constants::MAX_COMPILED_IR_BYTES {
-        return Err(ExecutorError::Capacity);
+fn codec_error(error: crate::JournalError) -> ExecutorError {
+    match error {
+        crate::JournalError::PayloadTooLarge { .. } => ExecutorError::Capacity,
+        crate::JournalError::PostcardDecodeFailed(source) => ExecutorError::Codec(source),
+        crate::JournalError::ArtifactMalformed => ExecutorError::Corrupt,
+        other => ExecutorError::Artifact(other),
     }
-    let (parts, rest): (WorkflowParts, _) = postcard::take_from_bytes(&artifact.ir)?;
-    if !rest.is_empty() {
-        return Err(ExecutorError::Corrupt);
-    }
-    CompiledWorkflow::try_from_parts(parts).map_err(|source| {
-        ExecutorError::Artifact(crate::JournalError::WorkflowReconstruction(source))
-    })
 }
