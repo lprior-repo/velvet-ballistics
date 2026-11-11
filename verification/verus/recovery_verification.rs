@@ -81,7 +81,7 @@
 //   - `reject_unsupported_live_frame_state_pure`
 //                                       <- extern_recovery_verification.rs
 //                                            (mirror of
-//                                            crates/vb_runtime/src/recovery.rs:109-115
+//                                            crates/vb_runtime/src/recovery.rs:111-117
 //                                            `reject_unsupported_live_frame_state`;
 //                                            production checks the 13-flag
 //                                            cannot-resume witness)
@@ -116,12 +116,12 @@
 //                                            crates/vb_storage/src/recovery/hydrate/mod.rs:72-91
 //                                            `hydrate_run_frame`
 //                                            AND
-//                                            crates/vb_runtime/src/recovery.rs:99-105
+//                                            crates/vb_runtime/src/recovery.rs:101-107
 //                                            `DurableFrameRecoveryBoundary::hydrate_run_frame`)
 //   - `summary_recovery_boundary_hydrate_pure`
 //                                       <- extern_recovery_verification.rs
 //                                            (mirror of
-//                                            crates/vb_runtime/src/recovery.rs:188-190
+//                                            crates/vb_runtime/src/recovery.rs:190-192
 //                                            `SummaryRecoveryBoundary::hydrate_run_frame`;
 //                                            always returns
 //                                            `UnsupportedFullRecoveryHydration`)
@@ -608,7 +608,7 @@ pub fn recover_runtime_summary(has_events: bool, summary_ok: bool) -> bool {
 /// Production-bound exec fn: `hydrate_run_frame` precondition
 /// projection. Mirrors
 /// `crates/vb_storage/src/recovery/hydrate/mod.rs:72-91` AND
-/// `crates/vb_runtime/src/recovery.rs:187-189`.
+/// `crates/vb_runtime/src/recovery.rs:189-191`.
 pub fn hydrate_run_frame_preconditions(
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
@@ -637,7 +637,7 @@ pub fn hydrate_run_frame_preconditions(
 
 /// Production-bound exec fn: `SummaryRecoveryBoundary::hydrate_run_frame`
 /// decision projection. Mirrors
-/// `crates/vb_runtime/src/recovery.rs:230-232`.
+/// `crates/vb_runtime/src/recovery.rs:232-234`.
 pub fn summary_boundary_hydrate() -> bool {
     production::summary_recovery_boundary_hydrate_pure()
 }
@@ -799,7 +799,7 @@ pub assume_specification[ production::recover_runtime_summary_pure ](
 /// Bridge contract: `hydrate_run_frame` precondition decision.
 /// Mirrors production body at
 /// `crates/vb_storage/src/recovery/hydrate/mod.rs:72-91` AND
-/// `crates/vb_runtime/src/recovery.rs:187-189`.
+/// `crates/vb_runtime/src/recovery.rs:189-191`.
 pub assume_specification[ production::hydrate_run_frame_preconditions_pure ](
     snapshot_run_matches: bool,
     tail_events_match_run: bool,
@@ -830,7 +830,7 @@ pub assume_specification[ production::hydrate_run_frame_preconditions_pure ](
 /// Bridge contract: `SummaryRecoveryBoundary::hydrate_run_frame`
 /// always returns false (production always returns
 /// `UnsupportedFullRecoveryHydration`). Mirrors production body at
-/// `crates/vb_runtime/src/recovery.rs:230-232`.
+/// `crates/vb_runtime/src/recovery.rs:232-234`.
 pub assume_specification[ production::summary_recovery_boundary_hydrate_pure ]() -> (result: bool)
     ensures
         result == spec_summary_boundary_never_hydrates(),
@@ -1197,7 +1197,7 @@ pub proof fn proof_recover_runtime_summary_empty_journal_detected(
 
 /// Proof: `SummaryRecoveryBoundary::hydrate_run_frame` never
 /// hydrates (production
-/// `crates/vb_runtime/src/recovery.rs:230-232`).
+/// `crates/vb_runtime/src/recovery.rs:232-234`).
 pub proof fn proof_summary_only_never_hydrates_empty_frame()
     ensures
         !spec_summary_boundary_never_hydrates(),
@@ -1651,7 +1651,7 @@ pub proof fn proof_hydrate_run_frame_all_preconditions_pass(
 /// Returns true iff the production runtime layer would emit
 /// `RuntimeError::InvalidRecoveryHydration` for the given storage
 /// `RecoveryError`. Mirrors the production runtime driver at
-/// `crates/vb_runtime/src/recovery.rs:73-115` (all hydration
+/// `crates/vb_runtime/src/recovery.rs:75-117` (all hydration
 /// failure paths collapse to `InvalidRecoveryHydration`).
 pub open spec fn spec_runtime_collapses_to_invalid_recovery_hydration(
     error: RecoveryError,
@@ -1666,7 +1666,7 @@ pub open spec fn spec_runtime_collapses_to_invalid_recovery_hydration(
 
 /// Proof: the runtime layer always collapses hydration failures to
 /// `RuntimeError::InvalidRecoveryHydration` (D2). Mirrors
-/// `crates/vb_runtime/src/recovery.rs:73-115`.
+/// `crates/vb_runtime/src/recovery.rs:75-117`.
 pub proof fn proof_hydration_runtime_collapse(error: RecoveryError)
     requires
         match error {
