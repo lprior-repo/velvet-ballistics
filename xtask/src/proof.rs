@@ -12,6 +12,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use crate::proof_commands::{crash_lab_command, diff_test_command, nextest_command};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofObligation {
     pub id: String,
@@ -43,6 +45,10 @@ pub struct RequiredProof {
     pub property_tests: Vec<String>,
     #[serde(default)]
     pub differential_tests: Vec<String>,
+    #[serde(default)]
+    pub crash_lab: Vec<String>,
+    #[serde(default)]
+    pub diff_test: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -162,7 +168,13 @@ pub fn commands_for_obligation(obl: &ProofObligation) -> Vec<String> {
         cmds.push(format!("verus {}", verus));
     }
     for test in &obl.required.tests {
-        cmds.push(format!("cargo nextest run -p {} {}", obl.crate_name, test));
+        cmds.push(nextest_command(&obl.crate_name, test));
+    }
+    for test in &obl.required.property_tests {
+        cmds.push(nextest_command(&obl.crate_name, test));
+    }
+    for test in &obl.required.differential_tests {
+        cmds.push(nextest_command(&obl.crate_name, test));
     }
     if let Some(ref fuzz) = obl.required.fuzz {
         match fuzz {
@@ -179,6 +191,12 @@ pub fn commands_for_obligation(obl: &ProofObligation) -> Vec<String> {
     }
     if let Some(ref loom) = obl.required.loom {
         cmds.push(format!("cargo xtask loom --model {}", loom));
+    }
+    for entry in &obl.required.crash_lab {
+        cmds.push(crash_lab_command(entry));
+    }
+    for entry in &obl.required.diff_test {
+        cmds.push(diff_test_command(entry));
     }
 
     cmds
@@ -296,6 +314,8 @@ mod tests {
                 loom: None,
                 property_tests: vec![],
                 differential_tests: vec![],
+                crash_lab: vec![],
+                diff_test: vec![],
             },
             commands: vec![],
         };
