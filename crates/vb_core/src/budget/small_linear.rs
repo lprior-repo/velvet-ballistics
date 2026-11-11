@@ -9,48 +9,59 @@ use super::WholeWorkflowBudget;
 use super::compute::derive_budget_dimensions;
 use super::{find_node_position, node_at_position};
 
-pub(super) fn compute_small_linear_budget(
-    nodes: &[crate::workflow::CompiledNode],
-    entry: StepIdx,
-    contract: &ResourceContract,
-) -> Result<Option<WholeWorkflowBudget>, BudgetTraversalError> {
-    if nodes.len() > 2 || !small_linear_domain(nodes) {
-        return Ok(None);
+pub(super) struct SmallLinearGraph<'a> {
+    nodes: &'a [crate::workflow::CompiledNode],
+}
+
+impl<'a> SmallLinearGraph<'a> {
+    pub(super) fn new(nodes: &'a [crate::workflow::CompiledNode]) -> Option<Self> {
+        if small_linear_domain(nodes) {
+            Some(Self { nodes })
+        } else {
+            None
+        }
     }
-    let metrics = small_linear_metrics(nodes, entry)?;
-    let derived = derive_budget_dimensions(metrics.steps, metrics.actions, contract)?;
-    Ok(Some(WholeWorkflowBudget {
-        max_total_steps: metrics.steps,
-        max_total_slots: u64::from(contract.max_slots),
-        max_fanout: 0,
-        max_nesting_depth: 0,
-        max_steps_executable: WholeWorkflowBudget::MAX_STEPS_EXECUTABLE,
-        max_action_tickets: metrics.actions,
-        max_parallel_in_flight: 0,
-        max_retries_per_action: contract.max_retry_attempts,
-        max_gather_pages: 0,
-        max_gather_items: 0,
-        max_for_each_iterations: 0,
-        max_together_branches: 0,
-        max_repeat_attempts: 0,
-        max_run_time_seconds: metrics.steps,
-        max_result_bytes: contract.max_output_bytes,
-        max_total_slots_written: u32::from(contract.max_slots),
-        max_timer_entries: metrics.timers,
-        max_trace_events: metrics.steps,
-        max_journal_batch_bytes: contract.max_journal_batch_bytes,
-        max_queue_depth: contract.max_queue_depth,
-        max_ipc_payload_bytes: contract.max_ipc_payload_bytes,
-        max_blob_bytes: contract.max_blob_bytes,
-        max_input_bytes: contract.max_input_bytes,
-        max_open_gates: metrics.gates,
-        max_signal_subscriptions: metrics.signals,
-        max_incident_emissions: derived.max_incident_emissions,
-        max_transitions: derived.max_transitions,
-        max_journal_bytes_total: derived.max_journal_bytes_total,
-        max_value_store_entries: derived.max_value_store_entries,
-        max_cost_units: derived.max_cost_units,
-    }))
+
+    pub(super) fn compute(
+        self,
+        entry: StepIdx,
+        contract: &ResourceContract,
+    ) -> Result<WholeWorkflowBudget, BudgetTraversalError> {
+        let metrics = small_linear_metrics(self.nodes, entry)?;
+        let derived = derive_budget_dimensions(metrics.steps, metrics.actions, contract)?;
+        Ok(WholeWorkflowBudget {
+            max_total_steps: metrics.steps,
+            max_total_slots: u64::from(contract.max_slots),
+            max_fanout: 0,
+            max_nesting_depth: 0,
+            max_steps_executable: WholeWorkflowBudget::MAX_STEPS_EXECUTABLE,
+            max_action_tickets: metrics.actions,
+            max_parallel_in_flight: 0,
+            max_retries_per_action: contract.max_retry_attempts,
+            max_gather_pages: 0,
+            max_gather_items: 0,
+            max_for_each_iterations: 0,
+            max_together_branches: 0,
+            max_repeat_attempts: 0,
+            max_run_time_seconds: metrics.steps,
+            max_result_bytes: contract.max_output_bytes,
+            max_total_slots_written: u32::from(contract.max_slots),
+            max_timer_entries: metrics.timers,
+            max_trace_events: metrics.steps,
+            max_journal_batch_bytes: contract.max_journal_batch_bytes,
+            max_queue_depth: contract.max_queue_depth,
+            max_ipc_payload_bytes: contract.max_ipc_payload_bytes,
+            max_blob_bytes: contract.max_blob_bytes,
+            max_input_bytes: contract.max_input_bytes,
+            max_open_gates: metrics.gates,
+            max_signal_subscriptions: metrics.signals,
+            max_incident_emissions: derived.max_incident_emissions,
+            max_transitions: derived.max_transitions,
+            max_journal_bytes_total: derived.max_journal_bytes_total,
+            max_value_store_entries: derived.max_value_store_entries,
+            max_cost_units: derived.max_cost_units,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

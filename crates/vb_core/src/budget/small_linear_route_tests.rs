@@ -248,7 +248,9 @@ fn tiny_path_accepts_raw_ids_and_routes_with_general_error_precedence()
             WholeWorkflowBudget::general_budget_for_tiny_test(graph, StepIdx::new(0), &contract)
                 .map(Some);
         assert_eq!(
-            compute_small_linear_budget(graph, StepIdx::new(0), &contract),
+            SmallLinearGraph::new(graph)
+                .map(|graph| graph.compute(StepIdx::new(0), &contract))
+                .transpose(),
             expected,
             "{graph:?}"
         );
@@ -305,7 +307,9 @@ fn entry_bounds_and_unsupported_shapes_retain_existing_dispatch()
         None,
     )];
     assert_eq!(
-        compute_small_linear_budget(&unsupported, StepIdx::new(0), &contract),
+        SmallLinearGraph::new(&unsupported)
+            .map(|graph| graph.compute(StepIdx::new(0), &contract))
+            .transpose(),
         Ok(None)
     );
     let three = [
@@ -314,7 +318,9 @@ fn entry_bounds_and_unsupported_shapes_retain_existing_dispatch()
         node(2, CompiledNodeKind::Nop, None, None),
     ];
     assert_eq!(
-        compute_small_linear_budget(&three, StepIdx::new(0), &contract),
+        SmallLinearGraph::new(&three)
+            .map(|graph| graph.compute(StepIdx::new(0), &contract))
+            .transpose(),
         Ok(None)
     );
     Ok(())

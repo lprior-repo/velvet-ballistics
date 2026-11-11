@@ -9,7 +9,7 @@ use super::BudgetTraversalError;
 use super::depth::compute_structural_depth;
 use super::loop_body::count_total_steps;
 use super::reachable::compute_reachable_metrics;
-use super::small_linear::compute_small_linear_budget;
+use super::small_linear::SmallLinearGraph;
 use super::successors::bounded_tracking_vec;
 
 /// Computed budget for an entire workflow, derived by walking the IR.
@@ -117,8 +117,8 @@ impl WholeWorkflowBudget {
             return Err(BudgetTraversalError::EntryOutOfBounds { entry });
         }
 
-        if let Some(budget) = compute_small_linear_budget(nodes, entry, contract)? {
-            return Ok(budget);
+        if let Some(graph) = SmallLinearGraph::new(nodes) {
+            return graph.compute(entry, contract);
         }
 
         {
