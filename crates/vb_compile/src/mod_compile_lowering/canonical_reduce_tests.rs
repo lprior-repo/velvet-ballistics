@@ -153,6 +153,41 @@ fn parse_typed_initial_variants() -> Result<(), String> {
 }
 
 #[test]
+fn parse_typed_initial_whitespace_padded_negatives() -> Result<(), String> {
+    let cases = [
+        (" -5", ConstValue::I64(-5), ExprType::I64),
+        ("-5 ", ConstValue::I64(-5), ExprType::I64),
+        (" -5 ", ConstValue::I64(-5), ExprType::I64),
+        ("\t-5", ConstValue::I64(-5), ExprType::I64),
+        ("\t-5\t", ConstValue::I64(-5), ExprType::I64),
+        ("  -5  ", ConstValue::I64(-5), ExprType::I64),
+        (" -0.5", ConstValue::F64(vb_core::FiniteF64::new(-0.5).map_err(|e| e.to_string())?), ExprType::F64),
+        (" -0.5 ", ConstValue::F64(vb_core::FiniteF64::new(-0.5).map_err(|e| e.to_string())?), ExprType::F64),
+    ];
+    for (text, constant, ty) in cases {
+        let parsed = parse_typed_initial(text, 0).map_err(|e| format!("{text:?}: {e:?}"))?;
+        assert_eq!(parsed, (constant, ty), "initial {text:?}");
+    }
+    Ok(())
+}
+
+#[test]
+fn padded_neg_i64_initial_pins_reduce_start_constant() -> Result<(), String> {
+    for initial_text in [" -5", " -5 "] {
+        let workflow = compile(&source(initial_text, IDENTITY))?;
+        let CompiledNodeKind::ReduceStart { initial, .. } = node(&workflow, 1)?.kind else {
+            return Err("missing ReduceStart".to_owned());
+        };
+        assert_eq!(
+            workflow.constant(initial),
+            Some(&ConstValue::I64(-5)),
+            "initial {initial_text:?}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn typed_constants_reach_reduce_start() -> Result<(), String> {
     let flags = [
         ("true", ConstValue::Bool(true)),
@@ -218,7 +253,7 @@ fn nested_container_in_multi_body_compiles() -> Result<(), String> {
     assert_eq!(
         node(&workflow, 2)?.kind,
         CompiledNodeKind::RepeatStart {
-            max_attempts: 1,
+            max_attempts: 1.into(),
             body: StepIdx::new(3),
             done: StepIdx::new(5),
         }
@@ -230,7 +265,7 @@ fn nested_container_in_multi_body_compiles() -> Result<(), String> {
 #[test]
 fn deep_set_output_alias_rejected() -> Result<(), String> {
     rejects(
-        &source("10", "        - id: loop\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: inner\n                set: {output: total, value: '6'}\n        - id: update\n          set: {output: local_value, value: '$total + $steps.loop'}\n"),
+        &source("10", "        - id: loop\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: inner\n                set: {output: total, value: '6'}\n        - id: update\n          set: {output: local_value, value: '$total + $steps.loop'}\n".into()),
         |e| matches!(e, CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "total"),
     )
 }
@@ -274,4 +309,25 @@ fn do_in_multi_body_layout() -> Result<(), String> {
     );
     assert_eq!(output(&workflow, 3)?, output(&workflow, 5)?);
     Ok(())
+}
+
+#[test]
+fn do_last_reduce_result_is_unknown_for_bool_operation() -> Result<(), String> {
+    let text = format!(
+        "{HEADER}steps:\n  - id: folded\n    reduce:\n      variable: total\n      input: '8'\n      initial: '10'\n      steps:\n        - id: tmp_step\n          set: {{output: tmp_value, value: '2'}}\n        - id: update\n          do:\n            action: '0'\n            input: '1'\n  - id: probed\n    set: {{output: probed_value, value: 'not $steps.folded'}}\n  - id: done\n    finish: {{result: '$steps.probed'}}\n"
+    );
+    let workflow = compile(&text)?;
+    let CompiledNodeKind::ReduceStart { initial, .. } = node(&workflow, 1)?.kind else {
+        return Err("missing ReduceStart".to_owned());
+    };
+    assert_eq!(workflow.constant(initial), Some(&ConstValue::I64(10)));
+    Ok(())
+}
+
+#[test]
+fn set_last_reduce_result_is_i64_for_bool_rejection() -> Result<(), String> {
+    let text = format!(
+        "{HEADER}steps:\n  - id: folded\n    reduce:\n      variable: total\n      input: '8'\n      initial: '10'\n      steps:\n{TWO_STEPS}  - id: probed\n    set: {{output: probed_value, value: 'not $steps.folded'}}\n  - id: done\n    finish: {{result: '$steps.probed'}}\n"
+    );
+    rejects(&text, |e| matches!(e, CompileError::TypeMismatch { .. }))
 }

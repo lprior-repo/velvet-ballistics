@@ -184,53 +184,64 @@ fn to_vb_expr_ast(expr: &ParsedExpression) -> Result<ExprAst, CompileError> {
                 expr: Box::new(to_vb_expr_ast(inner)?),
             })
         }
-        ParsedExpression::Binary { op, left, right } => {
-            let vb_op = match op {
-                BinaryOp::Or => vb_expr::lexer::BinaryOp::Or,
-                BinaryOp::And => vb_expr::lexer::BinaryOp::And,
-                BinaryOp::Eq => vb_expr::lexer::BinaryOp::Eq,
-                BinaryOp::NotEq => vb_expr::lexer::BinaryOp::NotEq,
-                BinaryOp::Lt => vb_expr::lexer::BinaryOp::Lt,
-                BinaryOp::Lte => vb_expr::lexer::BinaryOp::Lte,
-                BinaryOp::Gt => vb_expr::lexer::BinaryOp::Gt,
-                BinaryOp::Gte => vb_expr::lexer::BinaryOp::Gte,
-                BinaryOp::Add => vb_expr::lexer::BinaryOp::Add,
-                BinaryOp::Sub => vb_expr::lexer::BinaryOp::Sub,
-                BinaryOp::Mul => vb_expr::lexer::BinaryOp::Mul,
-                BinaryOp::Div => vb_expr::lexer::BinaryOp::Div,
-            };
-            Ok(ExprAst::Binary {
-                op: vb_op,
-                left: Box::new(to_vb_expr_ast(left)?),
-                right: Box::new(to_vb_expr_ast(right)?),
-            })
-        }
-        ParsedExpression::HelperCall { name, args } => {
-            let vb_helper = match name {
-                ExpressionHelper::Contains => ExprHelper::Contains,
-                ExpressionHelper::StartsWith => ExprHelper::StartsWith,
-                ExpressionHelper::EndsWith => ExprHelper::EndsWith,
-                ExpressionHelper::Has => ExprHelper::Has,
-                ExpressionHelper::Exists => ExprHelper::Exists,
-                ExpressionHelper::Length => ExprHelper::Length,
-                ExpressionHelper::Empty => ExprHelper::Empty,
-                ExpressionHelper::Append => ExprHelper::Append,
-                ExpressionHelper::AppendIf => ExprHelper::AppendIf,
-                ExpressionHelper::Merge => ExprHelper::Merge,
-                ExpressionHelper::Sum => ExprHelper::Sum,
-                ExpressionHelper::Count => ExprHelper::Count,
-                ExpressionHelper::Unique => ExprHelper::Unique,
-            };
-            let vb_args = args
-                .iter()
-                .map(to_vb_expr_ast)
-                .collect::<Result<Vec<ExprAst>, CompileError>>()?;
-            Ok(ExprAst::Helper {
-                name: vb_helper,
-                args: vb_args.into_boxed_slice(),
-            })
-        }
+        ParsedExpression::Binary { op, left, right } => to_vb_expr_binary(op, left, right),
+        ParsedExpression::HelperCall { name, args } => to_vb_expr_helper(name, args),
     }
+}
+
+fn to_vb_expr_binary(
+    op: &BinaryOp,
+    left: &ParsedExpression,
+    right: &ParsedExpression,
+) -> Result<ExprAst, CompileError> {
+    let vb_op = match op {
+        BinaryOp::Or => vb_expr::lexer::BinaryOp::Or,
+        BinaryOp::And => vb_expr::lexer::BinaryOp::And,
+        BinaryOp::Eq => vb_expr::lexer::BinaryOp::Eq,
+        BinaryOp::NotEq => vb_expr::lexer::BinaryOp::NotEq,
+        BinaryOp::Lt => vb_expr::lexer::BinaryOp::Lt,
+        BinaryOp::Lte => vb_expr::lexer::BinaryOp::Lte,
+        BinaryOp::Gt => vb_expr::lexer::BinaryOp::Gt,
+        BinaryOp::Gte => vb_expr::lexer::BinaryOp::Gte,
+        BinaryOp::Add => vb_expr::lexer::BinaryOp::Add,
+        BinaryOp::Sub => vb_expr::lexer::BinaryOp::Sub,
+        BinaryOp::Mul => vb_expr::lexer::BinaryOp::Mul,
+        BinaryOp::Div => vb_expr::lexer::BinaryOp::Div,
+    };
+    Ok(ExprAst::Binary {
+        op: vb_op,
+        left: Box::new(to_vb_expr_ast(left)?),
+        right: Box::new(to_vb_expr_ast(right)?),
+    })
+}
+
+fn to_vb_expr_helper(
+    name: &ExpressionHelper,
+    args: &[ParsedExpression],
+) -> Result<ExprAst, CompileError> {
+    let vb_helper = match name {
+        ExpressionHelper::Contains => ExprHelper::Contains,
+        ExpressionHelper::StartsWith => ExprHelper::StartsWith,
+        ExpressionHelper::EndsWith => ExprHelper::EndsWith,
+        ExpressionHelper::Has => ExprHelper::Has,
+        ExpressionHelper::Exists => ExprHelper::Exists,
+        ExpressionHelper::Length => ExprHelper::Length,
+        ExpressionHelper::Empty => ExprHelper::Empty,
+        ExpressionHelper::Append => ExprHelper::Append,
+        ExpressionHelper::AppendIf => ExprHelper::AppendIf,
+        ExpressionHelper::Merge => ExprHelper::Merge,
+        ExpressionHelper::Sum => ExprHelper::Sum,
+        ExpressionHelper::Count => ExprHelper::Count,
+        ExpressionHelper::Unique => ExprHelper::Unique,
+    };
+    let vb_args = args
+        .iter()
+        .map(to_vb_expr_ast)
+        .collect::<Result<Vec<ExprAst>, CompileError>>()?;
+    Ok(ExprAst::Helper {
+        name: vb_helper,
+        args: vb_args.into_boxed_slice(),
+    })
 }
 
 fn to_vb_expr_literal(lit: &ExpressionLiteral) -> Result<ExprLiteral, CompileError> {

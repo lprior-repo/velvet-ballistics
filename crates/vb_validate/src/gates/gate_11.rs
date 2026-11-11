@@ -139,10 +139,10 @@ fn validate_node_pairing(
             require_matching_done_start(parts, index, "ForEachJoin", is_foreach_start_done)
         }
         CompiledNodeKind::TogetherBranch { branch, join, .. } => {
-            require_matching_together_branch(parts, index, *branch, *join)
+            require_matching_together_branch(parts, index, branch.get(), *join)
         }
         CompiledNodeKind::TogetherJoin { branch_count, .. } => {
-            require_matching_together_join(parts, index, *branch_count)
+            require_matching_together_join(parts, index, branch_count.get())
         }
         CompiledNodeKind::CollectPage { body, done, .. }
         | CompiledNodeKind::CollectNext { body, done, .. } => require_matching_body_start(

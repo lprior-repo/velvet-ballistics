@@ -20,7 +20,7 @@ fn internal_recovered_error_routes_are_typed_unsupported() -> TestResult {
     edit(&mut handler, 2)?.kind = CompiledNodeKind::ErrorHandler {
         body: step(3),
         handler: step(5),
-        error_slot: None,
+        error_slot: None.into(),
     };
     reject(
         handler,
@@ -78,7 +78,7 @@ fn unrelated_error_and_suspend_topology_is_not_blanket_rejected() -> TestResult 
     edit(&mut parts, 0)?.kind = CompiledNodeKind::ErrorHandler {
         body: step(1),
         handler: step(2),
-        error_slot: None,
+        error_slot: None.into(),
     };
     let action = edit(&mut parts, 1)?;
     action.kind = CompiledNodeKind::Do {

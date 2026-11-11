@@ -10,6 +10,13 @@ mod part_05_digest_validate;
 
 pub(crate) use part_05_digest_validate::{digest_author_value, validate_branch_counts};
 
+#[path = "part_05_digest_sections.rs"]
+mod part_05_digest_sections;
+
+use part_05_digest_sections::{
+    digest_inputs, digest_result_mapping, digest_secrets, digest_trigger, digest_vars,
+};
+
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use vb_core::WorkflowDigest;
 
@@ -151,60 +158,10 @@ pub fn canonical_digest(source: &crate::WorkflowSource) -> Result<WorkflowDigest
     digest_string(&mut hasher, source.version())?;
     digest_string(&mut hasher, source.name())?;
 
-    // Trigger
-    hasher.update(b"trigger:");
-    match source.trigger() {
-        crate::TriggerAst::Manual => {
-            hasher.update(&[0x01]);
-        }
-        crate::TriggerAst::Schedule { cron } => {
-            hasher.update(&[0x02]);
-            digest_string(&mut hasher, cron)?;
-        }
-        crate::TriggerAst::Event { event_type } => {
-            hasher.update(&[0x03]);
-            digest_string(&mut hasher, event_type)?;
-        }
-        crate::TriggerAst::Webhook => {
-            hasher.update(&[0x04]);
-        }
-        _ => {
-            return Err(digest_error("unknown trigger kind cannot be canonicalized"));
-        }
-    }
-
-    // Inputs (sorted by key for canonical order)
-    hasher.update(b"inputs:");
-    let mut inputs: Vec<&crate::InputField> = source.inputs().iter().collect();
-    inputs.sort_by(|a, b| a.key.cmp(&b.key));
-    digest_len(&mut hasher, inputs.len())?;
-    for field in inputs {
-        digest_string(&mut hasher, &field.key)?;
-        digest_author_value(&mut hasher, &field.value)?;
-    }
-    hasher.update(&[TAG_END]);
-
-    // Vars (sorted by key for canonical order)
-    hasher.update(b"vars:");
-    let mut vars: Vec<&crate::VarField> = source.vars().iter().collect();
-    vars.sort_by(|a, b| a.key.cmp(&b.key));
-    digest_len(&mut hasher, vars.len())?;
-    for field in vars {
-        digest_string(&mut hasher, &field.key)?;
-        digest_author_value(&mut hasher, &field.value)?;
-    }
-    hasher.update(&[TAG_END]);
-
-    // Secrets (sorted by key for canonical order)
-    hasher.update(b"secrets:");
-    let mut secrets: Vec<&crate::SecretField> = source.secrets().iter().collect();
-    secrets.sort_by(|a, b| a.key.cmp(&b.key));
-    digest_len(&mut hasher, secrets.len())?;
-    for field in secrets {
-        digest_string(&mut hasher, &field.key)?;
-        digest_string(&mut hasher, &field.value)?;
-    }
-    hasher.update(&[TAG_END]);
+    digest_trigger(&mut hasher, source.trigger())?;
+    digest_inputs(&mut hasher, source)?;
+    digest_vars(&mut hasher, source)?;
+    digest_secrets(&mut hasher, source)?;
 
     // Steps (order-sensitive)
     hasher.update(b"steps:");
@@ -214,20 +171,7 @@ pub fn canonical_digest(source: &crate::WorkflowSource) -> Result<WorkflowDigest
     }
     hasher.update(&[TAG_END]);
 
-    // Result mapping
-    hasher.update(b"result:");
-    if let Some(result) = source.result() {
-        hasher.update(&[TAG_SOME]);
-        let fields = &result.fields;
-        digest_len(&mut hasher, fields.len())?;
-        for field in fields {
-            digest_string(&mut hasher, &field.key)?;
-            digest_author_value(&mut hasher, &field.value)?;
-        }
-    } else {
-        hasher.update(&[TAG_NONE]);
-    }
-    hasher.update(&[TAG_END]);
+    digest_result_mapping(&mut hasher, source)?;
 
     Ok(WorkflowDigest::from_bytes(hasher.finalize().into()))
 }

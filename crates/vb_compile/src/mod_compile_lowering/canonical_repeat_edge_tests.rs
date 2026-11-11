@@ -3,7 +3,7 @@
 //! with real YAML source and assert exact IR layouts or diagnostics.
 
 use crate::{CompileError, compile_workflow};
-use vb_core::workflow::{NodeContinuation, NodeOutput};
+use vb_core::workflow::{BranchContinuation, NodeContinuation, NodeOutput};
 use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx};
 
 const HEADER: &str = "version: velvet-ballistics/v1\nname: repeat_edge\nwhen: {manual: {}}\n";
@@ -51,7 +51,7 @@ fn nested_repeat_under_for_each_preserves_check_routes() -> Result<(), String> {
     assert_eq!(
         node(&workflow, 2)?.kind,
         CompiledNodeKind::RepeatStart {
-            max_attempts: 2,
+            max_attempts: 2.into(),
             body: StepIdx::new(3),
             done: StepIdx::new(5),
         }
@@ -97,7 +97,7 @@ fn nested_repeat_under_collect_preserves_routes() -> Result<(), String> {
     assert_eq!(
         node(&workflow, 2)?.kind,
         CompiledNodeKind::RepeatStart {
-            max_attempts: 1,
+            max_attempts: 1.into(),
             body: StepIdx::new(3),
             done: StepIdx::new(5),
         }
@@ -134,12 +134,12 @@ fn nested_repeat_inside_choose_branch_preserves_fallthrough() -> Result<(), Stri
     };
     assert_eq!(branches.len(), 1);
     assert_eq!(branches.first().map(|b| b.target), Some(StepIdx::new(3)));
-    assert_eq!(*otherwise, Some(StepIdx::new(7)));
+    assert_eq!(*otherwise, BranchContinuation::Target(StepIdx::new(7)));
     let rep_counter = output(&workflow, 3)?;
     assert_eq!(
         node(&workflow, 3)?.kind,
         CompiledNodeKind::RepeatStart {
-            max_attempts: 2,
+            max_attempts: 2.into(),
             body: StepIdx::new(4),
             done: StepIdx::new(6),
         }
@@ -175,7 +175,7 @@ fn triple_nested_repeat_allocates_distinct_counters() -> Result<(), String> {
     assert_eq!(
         node(&workflow, 3)?.kind,
         CompiledNodeKind::RepeatStart {
-            max_attempts: 1,
+            max_attempts: 1.into(),
             body: StepIdx::new(4),
             done: StepIdx::new(6),
         }

@@ -123,8 +123,8 @@ fn validate_node_slots(
             timeout_slot,
         } => {
             check_slot(*event, node_index, slot_count)?;
-            if let Some(timeout) = timeout_slot {
-                check_slot(*timeout, node_index, slot_count)?;
+            if let Some(timeout) = timeout_slot.slot() {
+                check_slot(timeout, node_index, slot_count)?;
             }
         }
         CompiledNodeKind::Ask {
@@ -132,8 +132,8 @@ fn validate_node_slots(
             timeout_slot,
         } => {
             check_slot(*prompt, node_index, slot_count)?;
-            if let Some(timeout) = timeout_slot {
-                check_slot(*timeout, node_index, slot_count)?;
+            if let Some(timeout) = timeout_slot.slot() {
+                check_slot(timeout, node_index, slot_count)?;
             }
         }
         CompiledNodeKind::AskResume { answer } => {

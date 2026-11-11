@@ -224,8 +224,8 @@ fn node_reads(node: &CompiledNode, expressions: &[ExprProgram]) -> Vec<SlotIdx> 
             timeout_slot,
         } => {
             reads.push(*event);
-            if let Some(timeout) = timeout_slot {
-                reads.push(*timeout);
+            if let Some(timeout) = timeout_slot.slot() {
+                reads.push(timeout);
             }
         }
         CompiledNodeKind::Ask {
@@ -233,8 +233,8 @@ fn node_reads(node: &CompiledNode, expressions: &[ExprProgram]) -> Vec<SlotIdx> 
             timeout_slot,
         } => {
             reads.push(*prompt);
-            if let Some(timeout) = timeout_slot {
-                reads.push(*timeout);
+            if let Some(timeout) = timeout_slot.slot() {
+                reads.push(timeout);
             }
         }
         CompiledNodeKind::AskResume { answer } => {

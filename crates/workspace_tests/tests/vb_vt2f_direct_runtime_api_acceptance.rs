@@ -75,7 +75,7 @@ fn ask_then_finish_workflow() -> Result<CompiledWorkflow, String> {
                 Some(3),
                 CompiledNodeKind::Ask {
                     prompt: SlotIdx::ZERO,
-                    timeout_slot: Some(SlotIdx::new(1)),
+                    timeout_slot: Some(SlotIdx::new(1)).into(),
                 },
             ),
             node(

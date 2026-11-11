@@ -1584,7 +1584,7 @@ fn canonical_primitive_name_returns_correct_names_for_all_variants() {
                     when: "true".into(),
                     steps: vec![],
                 }],
-                otherwise: None,
+                otherwise: None.into(),
             },
             "choose",
         ),
@@ -2004,7 +2004,7 @@ fn test_digest_step_primitive_other_arm_produces_deterministic_digest() {
                     when: "true".into(),
                     steps: vec![],
                 }],
-                otherwise: None,
+                otherwise: None.into(),
             },
         ),
         (

@@ -168,7 +168,7 @@ fn emit_start(
         CompiledNodeKind::ForEachStart {
             input,
             item_slot: item,
-            limit,
+            limit: limit.into(),
             body: edges.body,
             done: edges.done,
         },

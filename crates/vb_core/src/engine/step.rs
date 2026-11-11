@@ -67,11 +67,11 @@ fn execute_node(
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
-        } => choose::choose_slot_branch(run, branches, *otherwise),
+        } => choose::choose_slot_branch(run, branches, otherwise.step()),
         CompiledNodeKind::Choose {
             branches,
             otherwise,
-        } => choose::choose_expr_branch(plan, run, store, branches, *otherwise),
+        } => choose::choose_expr_branch(plan, run, store, branches, otherwise.step()),
         other => execute_boundary_node(run, other),
     }
 }
@@ -101,7 +101,7 @@ fn execute_boundary_node(
             node_helpers::jump_to(run, *body)
         }
         _ => Err(EngineError::UnsupportedPrimitive {
-            primitive: "not_yet_implemented",
+            primitive: "not_yet_implemented".into(),
         }),
     }
 }

@@ -97,7 +97,7 @@ fn wait_event_with_timeout_requires_timer_registration() {
     let wf = make_wf_with_kind(
         CompiledNodeKind::WaitEvent {
             event: SlotIdx::ZERO,
-            timeout_slot: Some(SlotIdx::new(1)),
+            timeout_slot: Some(SlotIdx::new(1)).into(),
         },
         2,
     )
@@ -111,7 +111,7 @@ fn wait_event_without_timeout_does_not_require_timer_registration() {
     let wf = make_wf_with_kind(
         CompiledNodeKind::WaitEvent {
             event: SlotIdx::ZERO,
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
         1,
     )
@@ -127,7 +127,7 @@ fn ask_with_timeout_requires_timer_registration() {
     let wf = make_wf_with_kind(
         CompiledNodeKind::Ask {
             prompt: SlotIdx::ZERO,
-            timeout_slot: Some(SlotIdx::new(1)),
+            timeout_slot: Some(SlotIdx::new(1)).into(),
         },
         2,
     )
@@ -141,7 +141,7 @@ fn ask_without_timeout_does_not_require_timer_registration() {
     let wf = make_wf_with_kind(
         CompiledNodeKind::Ask {
             prompt: SlotIdx::ZERO,
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
         1,
     )

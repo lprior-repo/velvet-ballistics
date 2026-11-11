@@ -20,7 +20,7 @@ fn read_object_fields(
         let (key, slot) = fields
             .get(index)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "build_object field index checked by loop bound",
+                reason: "build_object field index checked by loop bound".into(),
             })?;
         let value = *run.read_slot(*slot)?;
         entries.push(ObjectField {
@@ -31,7 +31,7 @@ fn read_object_fields(
         index = index
             .checked_add(1)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "build_object field index overflow",
+                reason: "build_object field index overflow".into(),
             })?;
     }
     Ok(entries)
@@ -63,7 +63,7 @@ pub(crate) fn build_object_with_taint(
         let (key, slot) = fields
             .get(index)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "build_object field index checked by loop bound",
+                reason: "build_object field index checked by loop bound".into(),
             })?;
         let value = *run.read_slot(*slot)?;
         let slot_taint = run.read_taint(*slot)?;
@@ -76,7 +76,7 @@ pub(crate) fn build_object_with_taint(
         index = index
             .checked_add(1)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "build_object field index overflow",
+                reason: "build_object field index overflow".into(),
             })?;
     }
     let handle = store.insert_object(entries.into_boxed_slice())?;
@@ -97,13 +97,13 @@ fn read_list_items(
         let slot = items
             .get(index)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "build_list item index checked by loop bound",
+                reason: "build_list item index checked by loop bound".into(),
             })?;
         values.push(*run.read_slot(*slot)?);
         index = index
             .checked_add(1)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "build_list item index overflow",
+                reason: "build_list item index overflow".into(),
             })?;
     }
     Ok(values)
@@ -139,7 +139,7 @@ pub(crate) fn build_list_with_taint(
         let slot = items
             .get(index)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "build_list item index checked by loop bound",
+                reason: "build_list item index checked by loop bound".into(),
             })?;
         values.push(*run.read_slot(*slot)?);
         let slot_taint = run.read_taint(*slot)?;
@@ -148,7 +148,7 @@ pub(crate) fn build_list_with_taint(
         index = index
             .checked_add(1)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "build_list item index overflow",
+                reason: "build_list item index overflow".into(),
             })?;
     }
     let handle =

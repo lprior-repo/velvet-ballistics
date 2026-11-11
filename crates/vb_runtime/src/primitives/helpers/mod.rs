@@ -31,7 +31,7 @@ pub(crate) fn build_iterator_state(
     let source_token = i64::from(source_id.get());
     let cursor_token =
         i64::try_from(cursor).map_err(|_| EngineError::InternalInvariantViolation {
-            reason: "iterator state cursor exceeds i64 range",
+            reason: "iterator state cursor exceeds i64 range".into(),
         })?;
     Ok(vec![SlotValue::I64(source_token), SlotValue::I64(cursor_token)].into_boxed_slice())
 }
@@ -41,19 +41,19 @@ pub(crate) fn build_iterator_state(
 pub(crate) fn decode_iterator_state(items: &[SlotValue]) -> Result<(ListId, usize), EngineError> {
     if items.len() != 2 {
         return Err(EngineError::InternalInvariantViolation {
-            reason: "iterator state must be a 2-element list",
+            reason: "iterator state must be a 2-element list".into(),
         });
     }
     let source_token = match items.first().copied() {
         Some(SlotValue::I64(v)) => v,
         Some(_) => {
             return Err(EngineError::InternalInvariantViolation {
-                reason: "iterator state source token must be I64",
+                reason: "iterator state source token must be I64".into(),
             });
         }
         None => {
             return Err(EngineError::InternalInvariantViolation {
-                reason: "iterator state must be a 2-element list",
+                reason: "iterator state must be a 2-element list".into(),
             });
         }
     };
@@ -61,22 +61,22 @@ pub(crate) fn decode_iterator_state(items: &[SlotValue]) -> Result<(ListId, usiz
         Some(SlotValue::I64(v)) => v,
         Some(_) => {
             return Err(EngineError::InternalInvariantViolation {
-                reason: "iterator state cursor must be I64",
+                reason: "iterator state cursor must be I64".into(),
             });
         }
         None => {
             return Err(EngineError::InternalInvariantViolation {
-                reason: "iterator state must be a 2-element list",
+                reason: "iterator state must be a 2-element list".into(),
             });
         }
     };
     let source_id_value =
         u32::try_from(source_token).map_err(|_| EngineError::InternalInvariantViolation {
-            reason: "iterator state source token out of u32 range",
+            reason: "iterator state source token out of u32 range".into(),
         })?;
     let cursor_value =
         usize::try_from(cursor_token).map_err(|_| EngineError::InternalInvariantViolation {
-            reason: "iterator state cursor out of usize range",
+            reason: "iterator state cursor out of usize range".into(),
         })?;
     Ok((ListId::new(source_id_value), cursor_value))
 }

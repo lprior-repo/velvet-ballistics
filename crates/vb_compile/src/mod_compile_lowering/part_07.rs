@@ -27,7 +27,7 @@ pub fn lower_repeat(
         node(
             id,
             CompiledNodeKind::RepeatStart {
-                max_attempts,
+                max_attempts: max_attempts.into(),
                 body,
                 done,
             },
@@ -87,7 +87,7 @@ pub fn lower_wait(id: StepIdx, kind: WaitKind, builder: &mut SlotCompiler) -> Co
             }
             CompiledNodeKind::WaitEvent {
                 event,
-                timeout_slot: timeout,
+                timeout_slot: timeout.into(),
             }
         }
     };
@@ -120,7 +120,7 @@ pub fn lower_ask(
             id,
             CompiledNodeKind::Ask {
                 prompt,
-                timeout_slot,
+                timeout_slot: timeout_slot.into(),
             },
             Some(answer),
             None,

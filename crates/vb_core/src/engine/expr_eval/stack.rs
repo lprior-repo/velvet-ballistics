@@ -54,7 +54,7 @@ impl ExprStack {
             .ok_or(EngineError::ExpressionStackUnderflow)?;
         self.values.get(usize::from(self.len)).copied().ok_or(
             EngineError::InternalInvariantViolation {
-                reason: "expression stack pop index checked by length",
+                reason: "expression stack pop index checked by length".into(),
             },
         )
     }

@@ -183,7 +183,7 @@ fn emit_start(id: StepIdx, plan: &CollectPlan, builder: &mut SlotCompiler) {
         id,
         CompiledNodeKind::CollectStart {
             source: plan.source,
-            limit: plan.limit,
+            limit: plan.limit.into(),
             page_size: plan.page_size,
             body: plan.body_step,
             done: plan.done,

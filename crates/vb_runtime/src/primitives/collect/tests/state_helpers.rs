@@ -341,7 +341,7 @@ fn checked_add_usize_fails_on_overflow() -> Result<(), String> {
     let result = checked_add_usize(usize::MAX, 1, "overflow test");
     match result {
         Err(EngineError::InternalInvariantViolation { reason }) => ensure(
-            reason == "overflow test",
+            reason.as_str() == "overflow test",
             format!("unexpected reason: {reason}"),
         ),
         other => Err(format!(

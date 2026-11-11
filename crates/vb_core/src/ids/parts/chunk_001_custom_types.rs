@@ -100,6 +100,12 @@ impl MaxAttempts {
     }
 }
 
+impl From<u16> for MaxAttempts {
+    fn from(value: u16) -> Self {
+        Self(value)
+    }
+}
+
 /// Current attempt counter within a retry/repeat loop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(transparent)]

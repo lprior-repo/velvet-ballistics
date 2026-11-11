@@ -169,7 +169,7 @@ fn multiple_for_each_accumulates_iterations() -> Result<(), String> {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 5,
+                limit: 5.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
@@ -190,7 +190,7 @@ fn multiple_for_each_accumulates_iterations() -> Result<(), String> {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(3),
                 item_slot: SlotIdx::new(4),
-                limit: 10,
+                limit: 10.into(),
                 body: StepIdx::new(4),
                 done: StepIdx::new(5),
             },
@@ -396,7 +396,7 @@ fn foreach_limit_one_exact_step_count() -> Result<(), String> {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 1,
+                limit: 1.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
@@ -429,7 +429,7 @@ fn repeat_start_zero_attempts_counts_as_one() -> Result<(), String> {
         node(
             StepIdx::new(0),
             CompiledNodeKind::RepeatStart {
-                max_attempts: 0,
+                max_attempts: 0.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
@@ -511,7 +511,7 @@ fn collect_start_zero_limit_counts_as_one() -> Result<(), String> {
             StepIdx::new(0),
             CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
-                limit: 0,
+                limit: 0.into(),
                 page_size: 1,
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
@@ -547,7 +547,7 @@ fn foreach_multi_step_body() -> Result<(), String> {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 3,
+                limit: 3.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(4),
             },
@@ -592,7 +592,7 @@ fn repeat_start_one_attempt() -> Result<(), String> {
         node(
             StepIdx::new(0),
             CompiledNodeKind::RepeatStart {
-                max_attempts: 1,
+                max_attempts: 1.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
@@ -703,7 +703,7 @@ fn error_handler_counts_body_and_handler() -> Result<(), String> {
             CompiledNodeKind::ErrorHandler {
                 body: StepIdx::new(1),
                 handler: StepIdx::new(2),
-                error_slot: None,
+                error_slot: None.into(),
             },
             None,
             None,
@@ -769,7 +769,7 @@ fn repeat_start_max_attempts_tracks_maximum_not_sum() -> Result<(), String> {
         node(
             StepIdx::new(0),
             CompiledNodeKind::RepeatStart {
-                max_attempts: 3,
+                max_attempts: 3.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
@@ -780,7 +780,7 @@ fn repeat_start_max_attempts_tracks_maximum_not_sum() -> Result<(), String> {
         node(
             StepIdx::new(2),
             CompiledNodeKind::RepeatStart {
-                max_attempts: 10,
+                max_attempts: 10.into(),
                 body: StepIdx::new(4),
                 done: StepIdx::new(5),
             },

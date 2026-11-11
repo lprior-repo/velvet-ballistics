@@ -5,7 +5,7 @@
 
 use crate::{CompileError, compile_workflow};
 use vb_core::workflow::{NodeContinuation, NodeOutput};
-use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, SlotIdx, StepIdx};
+use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, FanoutLimit, SlotIdx, StepIdx};
 
 const HEADER: &str = "version: velvet-ballistics/v1\nname: nested_bodies\nwhen: {manual: {}}\n";
 const INPUTS: &str = "inputs:\n  outer_items: {is: list, of: any, max: 4}\n  inner_items: {is: list, of: any, max: 4}\n";
@@ -69,7 +69,7 @@ fn nested_for_each_in_for_each_layout() -> Result<(), String> {
     };
     assert_eq!(
         (*outer_body, *outer_done, *outer_limit),
-        (StepIdx::new(2), StepIdx::new(6), 4)
+        (StepIdx::new(2), StepIdx::new(6), FanoutLimit::new(4))
     );
     let CompiledNodeKind::ForEachStart {
         body: inner_body,
@@ -82,7 +82,7 @@ fn nested_for_each_in_for_each_layout() -> Result<(), String> {
     };
     assert_eq!(
         (*inner_body, *inner_done, *inner_limit),
-        (StepIdx::new(3), StepIdx::new(5), 4)
+        (StepIdx::new(3), StepIdx::new(5), FanoutLimit::new(4))
     );
     assert_eq!(
         node(&workflow, 4)?.kind,
@@ -305,7 +305,7 @@ fn foreach_outer_variable_visible_two_levels() -> Result<(), String> {
     };
     assert_eq!(
         (*outer_body, *outer_done, *outer_limit),
-        (StepIdx::new(2), StepIdx::new(6), 4)
+        (StepIdx::new(2), StepIdx::new(6), FanoutLimit::new(4))
     );
     let CompiledNodeKind::ForEachStart {
         item_slot: inner_item,
@@ -319,7 +319,7 @@ fn foreach_outer_variable_visible_two_levels() -> Result<(), String> {
     };
     assert_eq!(
         (*inner_body, *inner_done, *inner_limit),
-        (StepIdx::new(3), StepIdx::new(5), 4)
+        (StepIdx::new(3), StepIdx::new(5), FanoutLimit::new(4))
     );
     assert_ne!(outer_item, inner_item);
     let CompiledNodeKind::EvalExpr { expr } = &node(&workflow, 3)?.kind else {

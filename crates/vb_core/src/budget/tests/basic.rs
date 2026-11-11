@@ -47,7 +47,7 @@ fn budget_branching_workflow() {
                     },
                 ]
                 .into_boxed_slice(),
-                otherwise: Some(StepIdx::new(3)),
+                otherwise: Some(StepIdx::new(3)).into(),
             },
             None,
             None,
@@ -101,7 +101,7 @@ fn budget_nested_loop_depth() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 10,
+                limit: 10.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(4),
             },
@@ -113,7 +113,7 @@ fn budget_nested_loop_depth() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(2),
                 item_slot: SlotIdx::new(3),
-                limit: 10,
+                limit: 10.into(),
                 body: StepIdx::new(2),
                 done: StepIdx::new(3),
             },
@@ -235,7 +235,7 @@ fn choose_branch_accounts_for_nested_for_each_loop_iterations() -> Result<(), St
             StepIdx::new(0),
             CompiledNodeKind::Choose {
                 branches: vec![compiled_node_kind_expr_branch(0, 1)].into_boxed_slice(),
-                otherwise: Some(StepIdx::new(3)),
+                otherwise: Some(StepIdx::new(3)).into(),
             },
             None,
             None,
@@ -245,7 +245,7 @@ fn choose_branch_accounts_for_nested_for_each_loop_iterations() -> Result<(), St
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 10,
+                limit: 10.into(),
                 body: StepIdx::new(4),
                 done: StepIdx::new(2),
             },
@@ -538,7 +538,7 @@ fn budget_choose_fanout_counted() {
                     },
                 ]
                 .into_boxed_slice(),
-                otherwise: None,
+                otherwise: None.into(),
             },
             None,
             None,

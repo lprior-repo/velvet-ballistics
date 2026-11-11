@@ -19,6 +19,225 @@ pub type CoreResult<T> = Result<T, CoreError>;
 /// Backward-compatible engine error name.
 pub type EngineError = CoreError;
 
+/// Compiler primitive named by [`CoreError::UnsupportedPrimitive`].
+///
+/// Replaces the legacy `primitive: &'static str` payload with a closed
+/// enumeration for the primitives production code can actually hit, plus
+/// an `Unknown` escape hatch for test-only identifiers. The `as_str`
+/// encoding is frozen to the legacy strings so messages and diagnostics
+/// are unchanged.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum CompilePrimitive {
+    /// A node kind this build slice does not implement yet.
+    NotYetImplemented,
+    /// An action failure whose retry policy is non-retryable.
+    ActionFailedNonRetryable,
+    /// Test or otherwise unclassified primitive identifier.
+    Unknown(&'static str),
+}
+
+impl CompilePrimitive {
+    /// Legacy string encoding.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::NotYetImplemented => "not_yet_implemented",
+            Self::ActionFailedNonRetryable => "action_failed_non_retryable",
+            Self::Unknown(name) => name,
+        }
+    }
+}
+
+impl core::fmt::Display for CompilePrimitive {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&'static str> for CompilePrimitive {
+    fn from(name: &'static str) -> Self {
+        match name {
+            "not_yet_implemented" => Self::NotYetImplemented,
+            "action_failed_non_retryable" => Self::ActionFailedNonRetryable,
+            other => Self::Unknown(other),
+        }
+    }
+}
+
+#[cfg(kani)]
+impl kani::Arbitrary for CompilePrimitive {
+    fn any() -> Self {
+        match kani::any::<u8>() % 3 {
+            0 => Self::NotYetImplemented,
+            1 => Self::ActionFailedNonRetryable,
+            _ => Self::Unknown("test"),
+        }
+    }
+}
+
+/// Internal invariant violated, named by [`CoreError::InternalInvariantViolation`].
+///
+/// Replaces the legacy `reason: &'static str` payload with a closed
+/// enumeration for the invariant families production code checks, plus an
+/// `Unknown` escape hatch for the long-tail replay diagnostics and
+/// test-only reasons. The `as_str` encoding is frozen to the legacy
+/// strings so messages and diagnostics are unchanged.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum InvariantKind {
+    /// Parallel-in-flight counter overflowed.
+    ParallelInFlightOverflow,
+    /// Parallel-in-flight counter underflowed.
+    ParallelInFlightUnderflow,
+    /// Slot and taint views diverged.
+    TaintSlotsDiverged,
+    /// Illegal step-state transition.
+    InvalidStateTransition,
+    /// Slot index exceeds the `SlotIdx` range.
+    SlotIndexExceedsRange,
+    /// Frame dimensions disagree.
+    FrameDimensionMismatch,
+    /// A zero step count was used to build a frame.
+    StepCountZero,
+    /// Executed counter overflowed.
+    ExecutedCounterOverflow,
+    /// Maximum attempts cannot be zero.
+    MaxAttemptsCannotBeZero,
+    /// Accessor index out of bounds.
+    AccessorIndexOutOfBounds,
+    /// Accessor path index overflowed.
+    AccessorPathIndexOverflow,
+    /// Accessor path index checked by loop bound.
+    AccessorPathIndexCheckedByLoopBound,
+    /// Expression stack pop index checked by length.
+    ExpressionStackPopIndexCheckedByLength,
+    /// Expression op index overflowed.
+    ExpressionOpIndexOverflow,
+    /// Expression op index checked by loop bound.
+    ExpressionOpIndexCheckedByLoopBound,
+    /// Object field index overflowed.
+    ObjectFieldIndexOverflow,
+    /// Object field index checked by loop bound.
+    ObjectFieldIndexCheckedByLoopBound,
+    /// List item index overflowed.
+    ListItemIndexOverflow,
+    /// List item index checked by loop bound.
+    ListItemIndexCheckedByLoopBound,
+    /// Choose branch index overflowed.
+    ChooseBranchIndexOverflow,
+    /// Choose branch index checked by loop bound.
+    ChooseBranchIndexCheckedByLoopBound,
+    /// Unknown action outcome variant.
+    UnknownActionOutcome,
+    /// Test or otherwise unclassified invariant reason.
+    Unknown(&'static str),
+}
+
+impl InvariantKind {
+    /// Legacy string encoding.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::ParallelInFlightOverflow => "parallel_in_flight overflow",
+            Self::ParallelInFlightUnderflow => "parallel_in_flight underflow",
+            Self::TaintSlotsDiverged => "taint_slots_diverged",
+            Self::InvalidStateTransition => "invalid_state_transition",
+            Self::SlotIndexExceedsRange => "slot index exceeds SlotIdx range",
+            Self::FrameDimensionMismatch => "frame_dimension_mismatch",
+            Self::StepCountZero => "step_count_zero",
+            Self::ExecutedCounterOverflow => "executed counter overflow",
+            Self::MaxAttemptsCannotBeZero => "max_attempts_cannot_be_zero",
+            Self::AccessorIndexOutOfBounds => "accessor index out of bounds",
+            Self::AccessorPathIndexOverflow => "accessor path index overflow",
+            Self::AccessorPathIndexCheckedByLoopBound => {
+                "accessor path index checked by loop bound"
+            }
+            Self::ExpressionStackPopIndexCheckedByLength => {
+                "expression stack pop index checked by length"
+            }
+            Self::ExpressionOpIndexOverflow => "expression op index overflow",
+            Self::ExpressionOpIndexCheckedByLoopBound => {
+                "expression op index checked by loop bound"
+            }
+            Self::ObjectFieldIndexOverflow => "build_object field index overflow",
+            Self::ObjectFieldIndexCheckedByLoopBound => {
+                "build_object field index checked by loop bound"
+            }
+            Self::ListItemIndexOverflow => "build_list item index overflow",
+            Self::ListItemIndexCheckedByLoopBound => {
+                "build_list item index checked by loop bound"
+            }
+            Self::ChooseBranchIndexOverflow => "choose slot branch index overflow",
+            Self::ChooseBranchIndexCheckedByLoopBound => {
+                "choose slot branch index checked by loop bound"
+            }
+            Self::UnknownActionOutcome => "unknown_action_outcome",
+            Self::Unknown(reason) => reason,
+        }
+    }
+}
+
+impl core::fmt::Display for InvariantKind {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl From<&'static str> for InvariantKind {
+    fn from(reason: &'static str) -> Self {
+        match reason {
+            "parallel_in_flight overflow" => Self::ParallelInFlightOverflow,
+            "parallel_in_flight underflow" => Self::ParallelInFlightUnderflow,
+            "taint_slots_diverged" => Self::TaintSlotsDiverged,
+            "invalid_state_transition" => Self::InvalidStateTransition,
+            "slot index exceeds SlotIdx range" => Self::SlotIndexExceedsRange,
+            "frame_dimension_mismatch" => Self::FrameDimensionMismatch,
+            "step_count_zero" => Self::StepCountZero,
+            "executed counter overflow" => Self::ExecutedCounterOverflow,
+            "max_attempts_cannot_be_zero" => Self::MaxAttemptsCannotBeZero,
+            "accessor index out of bounds" => Self::AccessorIndexOutOfBounds,
+            "accessor path index overflow" => Self::AccessorPathIndexOverflow,
+            "accessor path index checked by loop bound" => {
+                Self::AccessorPathIndexCheckedByLoopBound
+            }
+            "expression stack pop index checked by length" => {
+                Self::ExpressionStackPopIndexCheckedByLength
+            }
+            "expression op index overflow" => Self::ExpressionOpIndexOverflow,
+            "expression op index checked by loop bound" => {
+                Self::ExpressionOpIndexCheckedByLoopBound
+            }
+            "build_object field index overflow" => Self::ObjectFieldIndexOverflow,
+            "build_object field index checked by loop bound" => {
+                Self::ObjectFieldIndexCheckedByLoopBound
+            }
+            "build_list item index overflow" => Self::ListItemIndexOverflow,
+            "build_list item index checked by loop bound" => {
+                Self::ListItemIndexCheckedByLoopBound
+            }
+            "choose slot branch index overflow" => Self::ChooseBranchIndexOverflow,
+            "choose slot branch index checked by loop bound" => {
+                Self::ChooseBranchIndexCheckedByLoopBound
+            }
+            "unknown_action_outcome" => Self::UnknownActionOutcome,
+            other => Self::Unknown(other),
+        }
+    }
+}
+
+#[cfg(kani)]
+impl kani::Arbitrary for InvariantKind {
+    fn any() -> Self {
+        match kani::any::<u8>() % 4 {
+            0 => Self::TaintSlotsDiverged,
+            1 => Self::InvalidStateTransition,
+            2 => Self::ParallelInFlightOverflow,
+            _ => Self::Unknown("test"),
+        }
+    }
+}
+
 /// Kind of page-order violation during evidence collection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -269,8 +488,8 @@ pub enum CoreError {
     /// Runtime reached a valid IR primitive not implemented by this build slice.
     #[error("unsupported primitive: {primitive}")]
     UnsupportedPrimitive {
-        /// Primitive name.
-        primitive: &'static str,
+        /// Primitive classification.
+        primitive: CompilePrimitive,
     },
     /// Accessor traversal needs cold arena data unavailable to the hot frame.
     #[error("unsupported accessor traversal: {segment} on {found}")]
@@ -295,8 +514,8 @@ pub enum CoreError {
     /// Internal invariant violation.
     #[error("internal invariant violation: {reason}")]
     InternalInvariantViolation {
-        /// Stable invariant reason.
-        reason: &'static str,
+        /// Stable invariant classification.
+        reason: InvariantKind,
     },
     /// A symbol handle did not resolve in the cold value store.
     #[error("symbol id out of bounds: {symbol:?}")]

@@ -235,7 +235,7 @@ fn invalid_compiled_workflow_returns_correct_code() {
 
 #[test]
 fn unsupported_primitive_returns_correct_code() {
-    let err = CoreError::UnsupportedPrimitive { primitive: "op" };
+    let err = CoreError::UnsupportedPrimitive { primitive: "op".into() };
     assert_eq!(
         err.diagnostic_code(),
         DiagnosticCode::new(0x1308),
@@ -280,7 +280,7 @@ fn list_index_out_of_bounds_returns_correct_code() {
 
 #[test]
 fn internal_invariant_violation_returns_correct_code() {
-    let err = CoreError::InternalInvariantViolation { reason: "test" };
+    let err = CoreError::InternalInvariantViolation { reason: "test".into() };
     assert_eq!(
         err.diagnostic_code(),
         DiagnosticCode::new(0x1309),

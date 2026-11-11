@@ -160,7 +160,7 @@ pub(super) fn ask_workflow(name: &str, digest: [u8; 32]) -> Result<CompiledWorkf
         digest,
         CompiledNodeKind::Ask {
             prompt: SlotIdx::new(0),
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
     )
 }

@@ -23,7 +23,7 @@ fn replay_choose_expr_false_takes_otherwise() -> Result<(), CoreError> {
                         target: StepIdx::new(2),
                     }]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(3)),
+                    otherwise: Some(StepIdx::new(3)).into(),
                 },
                 None,
                 None,
@@ -89,7 +89,7 @@ fn replay_choose_expr_first_true_branch_wins_over_second() -> Result<(), CoreErr
                         },
                     ]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(4)),
+                    otherwise: Some(StepIdx::new(4)).into(),
                 },
                 None,
                 None,
@@ -155,7 +155,7 @@ fn replay_choose_expr_empty_branches_with_otherwise_uses_fallback() -> Result<()
                 StepIdx::new(1),
                 CompiledNodeKind::Choose {
                     branches: vec![].into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(2)),
+                    otherwise: Some(StepIdx::new(2)).into(),
                 },
                 None,
                 None,
@@ -198,7 +198,7 @@ fn replay_choose_expr_empty_branches_no_otherwise_returns_error() -> Result<(), 
                 StepIdx::new(1),
                 CompiledNodeKind::Choose {
                     branches: vec![].into_boxed_slice(),
-                    otherwise: None,
+                    otherwise: None.into(),
                 },
                 None,
                 None,
@@ -221,7 +221,7 @@ fn replay_choose_expr_empty_branches_no_otherwise_returns_error() -> Result<(), 
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "expected InvalidCompiledWorkflow from validation",
+            reason: "expected InvalidCompiledWorkflow from validation".into(),
         }),
     }
 }
@@ -247,7 +247,7 @@ fn replay_choose_expr_all_false_no_otherwise_returns_error() -> Result<(), CoreE
                         target: StepIdx::new(2),
                     }]
                     .into_boxed_slice(),
-                    otherwise: None,
+                    otherwise: None.into(),
                 },
                 None,
                 None,
@@ -277,7 +277,7 @@ fn replay_choose_expr_all_false_no_otherwise_returns_error() -> Result<(), CoreE
         }
         Err(other) => Err(replay_err_to_core(other)),
         Ok(_) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected all-false no-otherwise error",
+            reason: "expected all-false no-otherwise error".into(),
         }),
     }
 }
@@ -302,7 +302,7 @@ fn replay_choose_expr_gt_comparison_true_branch() -> Result<(), CoreError> {
                         target: StepIdx::new(1),
                     }]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(2)),
+                    otherwise: Some(StepIdx::new(2)).into(),
                 },
                 None,
                 None,
@@ -346,7 +346,7 @@ fn replay_choose_expr_gt_comparison_true_branch() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let action =
         super::step::replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
@@ -358,7 +358,7 @@ fn replay_choose_expr_gt_comparison_true_branch() -> Result<(), CoreError> {
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "GT comparison true should take branch to step 1",
+            reason: "GT comparison true should take branch to step 1".into(),
         }),
     }
 }
@@ -383,7 +383,7 @@ fn replay_choose_expr_gt_comparison_false_takes_otherwise() -> Result<(), CoreEr
                         target: StepIdx::new(1),
                     }]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(2)),
+                    otherwise: Some(StepIdx::new(2)).into(),
                 },
                 None,
                 None,
@@ -419,7 +419,7 @@ fn replay_choose_expr_gt_comparison_false_takes_otherwise() -> Result<(), CoreEr
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let action =
         super::step::replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
@@ -430,7 +430,7 @@ fn replay_choose_expr_gt_comparison_false_takes_otherwise() -> Result<(), CoreEr
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "GT comparison false should take otherwise",
+            reason: "GT comparison false should take otherwise".into(),
         }),
     }
 }
@@ -448,7 +448,7 @@ fn replay_choose_expr_non_boolean_condition_returns_error() -> Result<(), CoreEr
                         target: StepIdx::new(1),
                     }]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(2)),
+                    otherwise: Some(StepIdx::new(2)).into(),
                 },
                 None,
                 None,
@@ -482,7 +482,7 @@ fn replay_choose_expr_non_boolean_condition_returns_error() -> Result<(), CoreEr
         }
         Err(other) => Err(replay_err_to_core(other)),
         Ok(_) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected non-bool condition error",
+            reason: "expected non-bool condition error".into(),
         }),
     }
 }
@@ -507,7 +507,7 @@ fn replay_choose_expr_equality_predicate_true() -> Result<(), CoreError> {
                         target: StepIdx::new(1),
                     }]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(2)),
+                    otherwise: Some(StepIdx::new(2)).into(),
                 },
                 None,
                 None,
@@ -551,7 +551,7 @@ fn replay_choose_expr_equality_predicate_true() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let action =
         super::step::replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
@@ -562,7 +562,7 @@ fn replay_choose_expr_equality_predicate_true() -> Result<(), CoreError> {
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "Eq(7,7) should be true, take branch",
+            reason: "Eq(7,7) should be true, take branch".into(),
         }),
     }
 }
@@ -587,7 +587,7 @@ fn replay_choose_expr_and_combinator_both_true_takes_branch() -> Result<(), Core
                         target: StepIdx::new(1),
                     }]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(2)),
+                    otherwise: Some(StepIdx::new(2)).into(),
                 },
                 None,
                 None,
@@ -623,7 +623,7 @@ fn replay_choose_expr_and_combinator_both_true_takes_branch() -> Result<(), Core
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let action =
         super::step::replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
@@ -634,7 +634,7 @@ fn replay_choose_expr_and_combinator_both_true_takes_branch() -> Result<(), Core
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "true && true should take branch",
+            reason: "true && true should take branch".into(),
         }),
     }
 }
@@ -659,7 +659,7 @@ fn replay_choose_expr_or_combinator_one_true_takes_branch() -> Result<(), CoreEr
                         target: StepIdx::new(1),
                     }]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(2)),
+                    otherwise: Some(StepIdx::new(2)).into(),
                 },
                 None,
                 None,
@@ -695,7 +695,7 @@ fn replay_choose_expr_or_combinator_one_true_takes_branch() -> Result<(), CoreEr
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let action =
         super::step::replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
@@ -706,7 +706,7 @@ fn replay_choose_expr_or_combinator_one_true_takes_branch() -> Result<(), CoreEr
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "false || true should take branch",
+            reason: "false || true should take branch".into(),
         }),
     }
 }
@@ -744,7 +744,7 @@ fn replay_choose_expr_three_branches_second_true_wins() -> Result<(), CoreError>
                         },
                     ]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(5)),
+                    otherwise: Some(StepIdx::new(5)).into(),
                 },
                 None,
                 None,

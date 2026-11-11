@@ -65,7 +65,7 @@ fn make_collect_workflow(limit: u32, page_size: u32) -> WorkflowParts {
                 StepIdx::new(0),
                 CompiledNodeKind::CollectStart {
                     source: source_slot,
-                    limit,
+                    limit: limit.into(),
                     page_size,
                     body: body_step,
                     done: done_step,

@@ -47,11 +47,11 @@ fn dispatch_signal(ctx: &mut ActionDispatchContext<'_>) -> RuntimeEngineResult<R
         CompiledNodeKind::WaitEvent {
             event,
             timeout_slot,
-        } => handle_wait_event(ctx.run, *event, *timeout_slot),
+        } => handle_wait_event(ctx.run, *event, timeout_slot.slot()),
         CompiledNodeKind::Ask {
             prompt,
             timeout_slot,
-        } => handle_ask(ctx.run, *prompt, *timeout_slot),
+        } => handle_ask(ctx.run, *prompt, timeout_slot.slot()),
         CompiledNodeKind::AskResume { answer } => handle_ask_resume(
             ctx.run,
             *answer,

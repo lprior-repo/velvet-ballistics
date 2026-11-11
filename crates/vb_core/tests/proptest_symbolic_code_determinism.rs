@@ -63,10 +63,10 @@ fn arb_core_error() -> impl Strategy<Value = CoreError> {
         (any::<u16>()).prop_map(|l| CoreError::ParallelLimitExceeded { limit: l }),
         // &'static str variants — fixed strings, varying numeric params
         Just(CoreError::InvalidCompiledWorkflow { reason: "test" }),
-        Just(CoreError::UnsupportedPrimitive { primitive: "test" }),
+        Just(CoreError::UnsupportedPrimitive { primitive: "test".into() }),
         Just(CoreError::ResourceLimitExceeded { resource: "test" }),
         Just(CoreError::IterationLimitExceeded { resource: "test" }),
-        Just(CoreError::InternalInvariantViolation { reason: "test" }),
+        Just(CoreError::InternalInvariantViolation { reason: "test".into() }),
         Just(CoreError::BudgetParse { reason: "test" }),
         Just(CoreError::TypeMismatch {
             expected: "a",
@@ -183,7 +183,7 @@ fn core_error_all_variants_produce_registered_codes() {
         CoreError::ExpressionStackOverflow { max: 64 },
         CoreError::ExpressionStackUnderflow,
         CoreError::InvalidCompiledWorkflow { reason: "test" },
-        CoreError::UnsupportedPrimitive { primitive: "wait" },
+        CoreError::UnsupportedPrimitive { primitive: "wait".into() },
         CoreError::UnsupportedAccessorTraversal {
             segment: "field",
             found: "map",
@@ -192,7 +192,7 @@ fn core_error_all_variants_produce_registered_codes() {
             field: SymbolId::new(0),
         },
         CoreError::ListIndexOutOfBounds { index: 999 },
-        CoreError::InternalInvariantViolation { reason: "test" },
+        CoreError::InternalInvariantViolation { reason: "test".into() },
         CoreError::SymbolOutOfBounds {
             symbol: SymbolId::new(0),
         },

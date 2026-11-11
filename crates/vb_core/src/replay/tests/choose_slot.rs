@@ -28,7 +28,7 @@ fn replay_choose_slot_first_true_branch_wins() -> Result<(), CoreError> {
                         },
                     ]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(4)),
+                    otherwise: Some(StepIdx::new(4)).into(),
                 },
                 None,
                 None,
@@ -72,7 +72,7 @@ fn replay_choose_slot_first_true_branch_wins() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     let action =
         super::step::replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
@@ -83,7 +83,7 @@ fn replay_choose_slot_first_true_branch_wins() -> Result<(), CoreError> {
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "first true slot branch should win",
+            reason: "first true slot branch should win".into(),
         }),
     }
 }
@@ -114,7 +114,7 @@ fn replay_choose_slot_second_true_first_false() -> Result<(), CoreError> {
                         },
                     ]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(4)),
+                    otherwise: Some(StepIdx::new(4)).into(),
                 },
                 None,
                 None,
@@ -158,7 +158,7 @@ fn replay_choose_slot_second_true_first_false() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     let action =
         super::step::replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
@@ -169,7 +169,7 @@ fn replay_choose_slot_second_true_first_false() -> Result<(), CoreError> {
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "second true slot branch should win after first false",
+            reason: "second true slot branch should win after first false".into(),
         }),
     }
 }
@@ -200,7 +200,7 @@ fn replay_choose_slot_all_false_with_otherwise_fallback() -> Result<(), CoreErro
                         },
                     ]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(4)),
+                    otherwise: Some(StepIdx::new(4)).into(),
                 },
                 None,
                 None,
@@ -244,7 +244,7 @@ fn replay_choose_slot_all_false_with_otherwise_fallback() -> Result<(), CoreErro
     let node = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     let action =
         super::step::replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
@@ -255,7 +255,7 @@ fn replay_choose_slot_all_false_with_otherwise_fallback() -> Result<(), CoreErro
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "all false with otherwise should fallback",
+            reason: "all false with otherwise should fallback".into(),
         }),
     }
 }
@@ -280,7 +280,7 @@ fn replay_choose_slot_all_false_no_otherwise_returns_error() -> Result<(), CoreE
                         target: StepIdx::new(2),
                     }]
                     .into_boxed_slice(),
-                    otherwise: None,
+                    otherwise: None.into(),
                 },
                 None,
                 None,
@@ -307,7 +307,7 @@ fn replay_choose_slot_all_false_no_otherwise_returns_error() -> Result<(), CoreE
     let node = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     match super::step::replay_step(node, &mut run, &mut store, &plan) {
         Err(ReplayError::Internal { reason }) => {
@@ -316,7 +316,7 @@ fn replay_choose_slot_all_false_no_otherwise_returns_error() -> Result<(), CoreE
         }
         Err(other) => Err(replay_err_to_core(other)),
         Ok(_) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected all-false no-otherwise error",
+            reason: "expected all-false no-otherwise error".into(),
         }),
     }
 }
@@ -337,7 +337,7 @@ fn replay_choose_slot_empty_branches_with_otherwise_fallback() -> Result<(), Cor
                 StepIdx::new(1),
                 CompiledNodeKind::ChooseSlot {
                     branches: vec![].into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(2)),
+                    otherwise: Some(StepIdx::new(2)).into(),
                 },
                 None,
                 None,
@@ -380,7 +380,7 @@ fn replay_choose_slot_empty_branches_no_otherwise_error() -> Result<(), CoreErro
                 StepIdx::new(1),
                 CompiledNodeKind::ChooseSlot {
                     branches: vec![].into_boxed_slice(),
-                    otherwise: None,
+                    otherwise: None.into(),
                 },
                 None,
                 None,
@@ -403,7 +403,7 @@ fn replay_choose_slot_empty_branches_no_otherwise_error() -> Result<(), CoreErro
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "expected InvalidCompiledWorkflow from validation",
+            reason: "expected InvalidCompiledWorkflow from validation".into(),
         }),
     }
 }

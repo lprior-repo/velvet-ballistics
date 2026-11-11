@@ -1474,20 +1474,20 @@ fn lower_canonical_choose_otherwise_target_past_body() {
     match &builder.nodes[0].kind {
         vb_core::CompiledNodeKind::ChooseSlot { otherwise, .. } => {
             let target = otherwise
-                .as_ref()
+                .step()
                 .expect("otherwise must be set when label is provided");
             assert_eq!(
-                *target,
+                target,
                 vb_core::ids::StepIdx::new(3),
                 "otherwise must target node at StepIdx(3) past body span, got {target:?}"
             );
             assert_ne!(
-                *target,
+                target,
                 vb_core::ids::StepIdx::new(1),
                 "otherwise must not target first body node"
             );
             assert_ne!(
-                *target,
+                target,
                 vb_core::ids::StepIdx::new(2),
                 "otherwise must not target last body node"
             );

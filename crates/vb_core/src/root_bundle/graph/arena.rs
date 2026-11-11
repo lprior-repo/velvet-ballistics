@@ -195,7 +195,7 @@ pub(in crate::root_bundle) fn node_of(value: SlotValue) -> Option<ArenaNode> {
 /// Create an internal invariant violation error.
 pub(in crate::root_bundle) fn invariant() -> OwnedRootBundleError {
     OwnedRootBundleError::Checkpoint(CoreError::InternalInvariantViolation {
-        reason: "owned_root_graph_shape",
+        reason: "owned_root_graph_shape".into(),
     })
 }
 

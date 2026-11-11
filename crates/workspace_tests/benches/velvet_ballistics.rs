@@ -719,7 +719,7 @@ fn choose_slot_workflow(condition: bool) -> Option<CompiledWorkflow> {
                     condition: SlotIdx::new(0),
                     target: StepIdx::new(2),
                 }]),
-                otherwise: Some(StepIdx::new(3)),
+                otherwise: Some(StepIdx::new(3)).into(),
             },
             None,
             None,
@@ -794,7 +794,7 @@ fn choose_100_workflow() -> Option<CompiledWorkflow> {
         StepIdx::new(1),
         CompiledNodeKind::ChooseSlot {
             branches: branches.into_boxed_slice(),
-            otherwise: Some(StepIdx::new(102)),
+            otherwise: Some(StepIdx::new(102)).into(),
         },
         None,
         None,
@@ -889,7 +889,7 @@ fn for_each_workflow() -> Option<CompiledWorkflow> {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(2),
                 item_slot: SlotIdx::new(3),
-                limit: 2,
+                limit: 2.into(),
                 body: StepIdx::new(4),
                 done: StepIdx::new(5),
             },

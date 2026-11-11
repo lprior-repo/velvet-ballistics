@@ -42,7 +42,7 @@ pub(super) fn choose_node(
         id,
         CompiledNodeKind::Choose {
             branches: expressions.into_boxed_slice(),
-            otherwise,
+            otherwise: otherwise.into(),
         },
         None,
         None,

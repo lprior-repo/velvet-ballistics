@@ -61,7 +61,7 @@ fn emit_choose_node(
         id,
         CompiledNodeKind::Choose {
             branches: Box::from([ExprBranch { condition, target }]),
-            otherwise,
+            otherwise: otherwise.into(),
         },
         None,
         None,

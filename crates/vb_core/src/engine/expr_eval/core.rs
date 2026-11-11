@@ -15,7 +15,7 @@ fn expression_op(ops: &[ExprOp], index: usize) -> Result<ExprOp, EngineError> {
     ops.get(index)
         .copied()
         .ok_or(EngineError::InternalInvariantViolation {
-            reason: "expression op index checked by loop bound",
+            reason: "expression op index checked by loop bound".into(),
         })
 }
 
@@ -23,7 +23,7 @@ fn next_expr_index(index: usize) -> Result<usize, EngineError> {
     index
         .checked_add(1)
         .ok_or(EngineError::InternalInvariantViolation {
-            reason: "expression op index overflow",
+            reason: "expression op index overflow".into(),
         })
 }
 

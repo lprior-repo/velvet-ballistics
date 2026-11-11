@@ -30,7 +30,7 @@ impl Slots {
             let idx = usize::from(input.slot.get());
             let entry = kinds.get_mut(idx).ok_or(Error::Checkpoint(
                 CoreError::InternalInvariantViolation {
-                    reason: "owned_root_slots",
+                    reason: "owned_root_slots".into(),
                 },
             ))?;
             *entry = Some(input.kind);
@@ -60,7 +60,7 @@ fn validate_duplicates(
         let idx = usize::from(slot.get());
         let entry = slots.seen.get_mut(idx).ok_or(Error::Checkpoint(
             CoreError::InternalInvariantViolation {
-                reason: "owned_root_slots",
+                reason: "owned_root_slots".into(),
             },
         ))?;
         if *entry {
@@ -76,7 +76,7 @@ fn validate_extras(roots: &[(SlotIdx, SlotValue, Taint)], slots: &Slots) -> Resu
         let idx = usize::from(slot.get());
         let entry = slots.kinds.get(idx).ok_or(Error::Checkpoint(
             CoreError::InternalInvariantViolation {
-                reason: "owned_root_slots",
+                reason: "owned_root_slots".into(),
             },
         ))?;
         if entry.is_none() {
@@ -91,7 +91,7 @@ fn validate_missing(wf: &CompiledWorkflow, slots: &Slots) -> Result<(), Error> {
         let idx = usize::from(input.slot.get());
         let entry = slots.seen.get(idx).ok_or(Error::Checkpoint(
             CoreError::InternalInvariantViolation {
-                reason: "owned_root_slots",
+                reason: "owned_root_slots".into(),
             },
         ))?;
         if !*entry {
@@ -120,12 +120,12 @@ fn validate_kinds(roots: &[(SlotIdx, SlotValue, Taint)], slots: &Slots) -> Resul
         let idx = usize::from(slot.get());
         let entry = slots.kinds.get(idx).ok_or(Error::Checkpoint(
             CoreError::InternalInvariantViolation {
-                reason: "owned_root_slots",
+                reason: "owned_root_slots".into(),
             },
         ))?;
         let expected =
             (*entry).ok_or(Error::Checkpoint(CoreError::InternalInvariantViolation {
-                reason: "owned_root_slots",
+                reason: "owned_root_slots".into(),
             }))?;
         let actual = ValueKind::of(*value);
         if !kind_matches(expected, actual) {

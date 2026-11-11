@@ -136,7 +136,7 @@ fn repeat_max_attempts_cap_is_preserved() -> Result<(), String> {
     assert_eq!(
         node(&workflow, 1)?.kind,
         CompiledNodeKind::RepeatStart {
-            max_attempts: 65535,
+            max_attempts: 65535.into(),
             body: StepIdx::new(2),
             done: StepIdx::new(4),
         }

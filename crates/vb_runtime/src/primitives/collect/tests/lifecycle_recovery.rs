@@ -550,7 +550,7 @@ fn copy_page_range_start_beyond_length_returns_error() -> Result<(), String> {
     let result = copy_page_range(&items, 5, 1);
     match result {
         Err(EngineError::InternalInvariantViolation { reason }) => ensure(
-            reason == "collect cursor beyond item count",
+            reason.as_str() == "collect cursor beyond item count",
             format!("unexpected: {reason}"),
         ),
         other => Err(format!(

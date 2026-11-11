@@ -4,7 +4,8 @@
 use crate::budget::BudgetDimension;
 use crate::errors::{CoreError, CoreResult};
 use crate::ids::{
-    AccessorIdx, ActionId, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
+    AccessorIdx, ActionId, BranchCount, BranchIdx, ConstIdx, ExprIdx, FanoutLimit, MaxAttempts,
+    RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
 };
 use crate::limits::{
     MAX_ACCESSORS, MAX_BLOB_BYTES, MAX_COLLECT_ITEMS, MAX_CONSTANTS, MAX_EXPRESSION_OPS,
@@ -33,8 +34,7 @@ pub struct CompiledWorkflow {
     resource_contract: ResourceContract,
     step_names: Box<[Box<str>]>,
     input_slots: Box<[CompiledInputSlot]>,
-    loop_regions: Box<[Option<CompiledLoopRegion>]>,
-    nested_activation_entries: Box<[bool]>,
+    loop_slots: Box<[LoopRegionSlot]>,
 }
 
 impl CompiledWorkflow {
@@ -42,7 +42,9 @@ impl CompiledWorkflow {
     pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
         validate_parts(&parts)?;
         let loop_regions = loop_regions::validate(&parts)?;
-        let nested_activation_entries = loop_regions::nested_activation_map(&parts, &loop_regions)?;
+        let nested_activation_entries =
+            loop_regions::nested_activation_map(&parts, &loop_regions)?;
+        let loop_slots = loop_regions::merge_slots(&loop_regions, &nested_activation_entries);
         validate_budget(&parts)?;
         validate_input_slots(&parts)?;
         Ok(Self {
@@ -59,8 +61,7 @@ impl CompiledWorkflow {
             resource_contract: parts.resource_contract,
             step_names: parts.step_names,
             input_slots: parts.input_slots,
-            loop_regions,
-            nested_activation_entries,
+            loop_slots,
         })
     }
 
@@ -84,8 +85,7 @@ impl CompiledWorkflow {
             resource_contract: parts.resource_contract,
             step_names: parts.step_names,
             input_slots: parts.input_slots,
-            loop_regions: Vec::new().into_boxed_slice(),
-            nested_activation_entries: Box::new([]),
+            loop_slots: Box::new([]),
         }
     }
 
@@ -107,8 +107,7 @@ impl CompiledWorkflow {
             resource_contract: parts.resource_contract,
             step_names: parts.step_names,
             input_slots: parts.input_slots,
-            loop_regions: Vec::new().into_boxed_slice(),
-            nested_activation_entries: Box::new([]),
+            loop_slots: Box::new([]),
         }
     }
 
@@ -206,9 +205,7 @@ impl CompiledWorkflow {
     /// was not populated (unchecked constructors).
     #[must_use]
     pub fn loop_region(&self, control: StepIdx) -> Option<&CompiledLoopRegion> {
-        self.loop_regions
-            .get(control.as_usize())
-            .and_then(Option::as_ref)
+        self.loop_slot(control)?.region()
     }
 
     /// Returns whether a step is a nested activation entry point.
@@ -218,7 +215,16 @@ impl CompiledWorkflow {
     /// validated inclusive body/control interval.
     #[must_use]
     pub fn nested_activation_blocked(&self, step: StepIdx) -> Option<bool> {
-        self.nested_activation_entries.get(step.as_usize()).copied()
+        Some(self.loop_slot(step)?.is_nested_entry())
+    }
+
+    /// Returns the total loop cache state for a step.
+    ///
+    /// Returns `None` for out-of-range indices or when the cache was not
+    /// populated (unchecked constructors).
+    #[must_use]
+    pub fn loop_slot(&self, step: StepIdx) -> Option<&LoopRegionSlot> {
+        self.loop_slots.get(step.as_usize())
     }
 
     /// Converts back to the serializable parts representation for artifact emission.
@@ -506,6 +512,350 @@ pub struct CompiledInputSlot {
     pub constraint: CompiledInputConstraint,
 }
 
+/// Presence requirement for a compiled input slot.
+///
+/// Replaces the legacy `optional: bool` flag so the decision is named at
+/// every use. The encoding is frozen: it serializes exactly as the legacy
+/// boolean (`Required` as `false`, `Optional` as `true`) so canonical
+/// digests and artifact bytes are unchanged.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Presence {
+    /// The slot must be supplied (unless a default is declared).
+    Required,
+    /// The slot may be omitted at submission.
+    Optional,
+}
+
+impl Presence {
+    /// Whether the slot may be omitted.
+    #[must_use]
+    pub const fn is_optional(self) -> bool {
+        matches!(self, Self::Optional)
+    }
+
+    /// Whether the slot must be supplied.
+    #[must_use]
+    pub const fn is_required(self) -> bool {
+        matches!(self, Self::Required)
+    }
+
+    /// Legacy boolean encoding (`optional`).
+    #[must_use]
+    pub const fn as_bool(self) -> bool {
+        self.is_optional()
+    }
+
+    /// Decode the legacy `optional` boolean.
+    #[must_use]
+    pub const fn from_bool(optional: bool) -> Self {
+        if optional {
+            Self::Optional
+        } else {
+            Self::Required
+        }
+    }
+}
+
+impl From<bool> for Presence {
+    /// Converts the legacy `optional` boolean flag.
+    fn from(optional: bool) -> Self {
+        Self::from_bool(optional)
+    }
+}
+
+impl Serialize for Presence {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_bool(self.as_bool())
+    }
+}
+
+impl<'de> Deserialize<'de> for Presence {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        bool::deserialize(deserializer).map(Self::from_bool)
+    }
+}
+
+#[cfg(kani)]
+impl kani::Arbitrary for Presence {
+    fn any() -> Self {
+        if kani::any() { Self::Optional } else { Self::Required }
+    }
+}
+
+/// Nullability classification for a compiled input slot.
+///
+/// Replaces the legacy `nullable: bool` flag. The encoding is frozen: it
+/// serializes exactly as the legacy boolean (`NonNullable` as `false`,
+/// `Nullable` as `true`) so canonical digests and artifact bytes are
+/// unchanged.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Nullability {
+    /// Null values are rejected for non-null kinds.
+    NonNullable,
+    /// An explicit null value is accepted for non-null kinds.
+    Nullable,
+}
+
+impl Nullability {
+    /// Whether explicit null is accepted.
+    #[must_use]
+    pub const fn allows_null(self) -> bool {
+        matches!(self, Self::Nullable)
+    }
+
+    /// Legacy boolean encoding (`nullable`).
+    #[must_use]
+    pub const fn as_bool(self) -> bool {
+        self.allows_null()
+    }
+
+    /// Decode the legacy `nullable` boolean.
+    #[must_use]
+    pub const fn from_bool(nullable: bool) -> Self {
+        if nullable {
+            Self::Nullable
+        } else {
+            Self::NonNullable
+        }
+    }
+}
+
+impl From<bool> for Nullability {
+    /// Converts the legacy `nullable` boolean flag.
+    fn from(nullable: bool) -> Self {
+        Self::from_bool(nullable)
+    }
+}
+
+impl Serialize for Nullability {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_bool(self.as_bool())
+    }
+}
+
+impl<'de> Deserialize<'de> for Nullability {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        bool::deserialize(deserializer).map(Self::from_bool)
+    }
+}
+
+#[cfg(kani)]
+impl kani::Arbitrary for Nullability {
+    fn any() -> Self {
+        if kani::any() { Self::Nullable } else { Self::NonNullable }
+    }
+}
+
+/// Inclusive bounded range for integer / length constraints.
+///
+/// Replaces the scattered `min` / `max` / `min_length` / `max_length`
+/// option soup with a single total type whose invariants (ordering,
+/// non-negativity) are checked in one place. `Bound::UNBOUNDED` is the
+/// legacy `(None, None)` pair.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Bound {
+    /// Inclusive lower bound.
+    pub min: Option<i64>,
+    /// Inclusive upper bound.
+    pub max: Option<i64>,
+}
+
+impl Bound {
+    /// Fully unbounded range.
+    pub const UNBOUNDED: Self = Self { min: None, max: None };
+
+    /// Constructs a bounded range.
+    #[must_use]
+    pub const fn new(min: Option<i64>, max: Option<i64>) -> Self {
+        Self { min, max }
+    }
+
+    /// Lower bound, when declared.
+    #[must_use]
+    pub const fn lower(self) -> Option<i64> {
+        self.min
+    }
+
+    /// Upper bound, when declared.
+    #[must_use]
+    pub const fn upper(self) -> Option<i64> {
+        self.max
+    }
+
+    /// Whether no bound is declared on either end.
+    #[must_use]
+    pub const fn is_unbounded(self) -> bool {
+        self.min.is_none() && self.max.is_none()
+    }
+
+    /// Whether `value` satisfies both declared ends.
+    #[must_use]
+    pub const fn contains(self, value: i64) -> bool {
+        match self.min {
+            Some(min) if value < min => return false,
+            _ => {}
+        }
+        match self.max {
+            Some(max) if value > max => return false,
+            _ => {}
+        }
+        true
+    }
+
+    /// Structural inconsistency, when this range cannot hold any value.
+    #[must_use]
+    pub const fn inconsistency(self) -> bool {
+        match (self.min, self.max) {
+            (Some(min), Some(max)) => min > max,
+            _ => false,
+        }
+    }
+}
+
+/// Object `extra` policy for a compiled input slot.
+///
+/// Replaces the legacy `allow_extra: Option<bool>` triple-state. The
+/// encoding is frozen: it serializes exactly as the legacy `Option<bool>`
+/// (`Unspecified` as `None`, `Allow` as `Some(true)`, `Reject` as
+/// `Some(false)`) so canonical digests and artifact bytes are unchanged.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ExtraFields {
+    /// No `extra` policy was declared.
+    Unspecified,
+    /// Additional object fields are allowed.
+    Allow,
+    /// Additional object fields are rejected.
+    Reject,
+}
+
+impl ExtraFields {
+    /// Whether extra fields are explicitly allowed.
+    #[must_use]
+    pub const fn allows_extra(self) -> bool {
+        matches!(self, Self::Allow)
+    }
+
+    /// Whether extra fields are explicitly rejected.
+    #[must_use]
+    pub const fn rejects_extra(self) -> bool {
+        matches!(self, Self::Reject)
+    }
+
+    /// Legacy `Option<bool>` encoding.
+    #[must_use]
+    pub const fn as_option(self) -> Option<bool> {
+        match self {
+            Self::Unspecified => None,
+            Self::Allow => Some(true),
+            Self::Reject => Some(false),
+        }
+    }
+
+    /// Decode the legacy `Option<bool>` encoding.
+    #[must_use]
+    pub const fn from_option(value: Option<bool>) -> Self {
+        match value {
+            None => Self::Unspecified,
+            Some(true) => Self::Allow,
+            Some(false) => Self::Reject,
+        }
+    }
+}
+
+impl From<Option<bool>> for ExtraFields {
+    /// Converts the legacy `allow_extra: Option<bool>` encoding.
+    fn from(value: Option<bool>) -> Self {
+        Self::from_option(value)
+    }
+}
+
+impl Serialize for ExtraFields {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.as_option().serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for ExtraFields {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Option::<bool>::deserialize(deserializer).map(Self::from_option)
+    }
+}
+
+#[cfg(kani)]
+impl kani::Arbitrary for ExtraFields {
+    fn any() -> Self {
+        match kani::any::<u8>() % 3 {
+            0 => Self::Unspecified,
+            1 => Self::Allow,
+            _ => Self::Reject,
+        }
+    }
+}
+
+/// Secrecy classification for a compiled input slot.
+///
+/// Replaces the legacy `secret: bool` flag with a named decision. The
+/// encoding is frozen: it serializes exactly as the legacy boolean
+/// (`NonSecret` as `false`, `Secret` as `true`) so canonical digests and
+/// artifact bytes are unchanged.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Secretness {
+    /// No secrecy marker is declared.
+    NonSecret,
+    /// Author-declared secrecy marker (matches compile-time taint facts).
+    Secret,
+}
+
+impl Secretness {
+    /// Whether the slot is marked secret.
+    #[must_use]
+    pub const fn is_secret(self) -> bool {
+        matches!(self, Self::Secret)
+    }
+
+    /// Legacy boolean encoding (`secret`).
+    #[must_use]
+    pub const fn as_bool(self) -> bool {
+        self.is_secret()
+    }
+
+    /// Decode the legacy `secret` boolean.
+    #[must_use]
+    pub const fn from_bool(secret: bool) -> Self {
+        if secret {
+            Self::Secret
+        } else {
+            Self::NonSecret
+        }
+    }
+}
+
+impl From<bool> for Secretness {
+    /// Converts the legacy `secret` boolean flag.
+    fn from(secret: bool) -> Self {
+        Self::from_bool(secret)
+    }
+}
+
+impl Serialize for Secretness {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_bool(self.as_bool())
+    }
+}
+
+impl<'de> Deserialize<'de> for Secretness {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        bool::deserialize(deserializer).map(Self::from_bool)
+    }
+}
+
+#[cfg(kani)]
+impl kani::Arbitrary for Secretness {
+    fn any() -> Self {
+        if kani::any() { Self::Secret } else { Self::NonSecret }
+    }
+}
+
 /// Retained per-slot input schema constraints as bounded numerics.
 ///
 /// Every field is `Copy` with no heap allocation so input-slot tables stay
@@ -517,10 +867,10 @@ pub struct CompiledInputSlot {
 /// `WorkflowParts::semantic_source_identity` instead.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompiledInputConstraint {
-    /// The slot may be omitted at submission.
-    pub optional: bool,
-    /// An explicit null value is accepted for non-null kinds.
-    pub nullable: bool,
+    /// Presence requirement for this slot.
+    pub presence: Presence,
+    /// Nullability classification for this slot.
+    pub nullability: Nullability,
     /// Scalar default filled when the slot is omitted (`None` when no
     /// materializable default was declared).
     pub default_value: Option<SlotValue>,
@@ -536,10 +886,10 @@ pub struct CompiledInputConstraint {
     pub max_length: Option<i64>,
     /// Declared list element kind (`of`).
     pub element: Option<InputSlotKind>,
-    /// Declared object `extra` policy (`None` when undeclared).
-    pub allow_extra: Option<bool>,
-    /// Author-declared secrecy marker (matches compile-time taint facts).
-    pub secret: bool,
+    /// Declared object `extra` policy.
+    pub extra: ExtraFields,
+    /// Secrecy classification for this slot.
+    pub secretness: Secretness,
 }
 
 impl CompiledInputConstraint {
@@ -550,7 +900,7 @@ impl CompiledInputConstraint {
     #[must_use]
     pub const fn required() -> Self {
         Self {
-            optional: false,
+            presence: Presence::Required,
             ..Self::unconstrained()
         }
     }
@@ -559,16 +909,16 @@ impl CompiledInputConstraint {
     #[must_use]
     pub const fn unconstrained() -> Self {
         Self {
-            optional: true,
-            nullable: false,
+            presence: Presence::Optional,
+            nullability: Nullability::NonNullable,
             default_value: None,
             min: None,
             max: None,
             min_length: None,
             max_length: None,
             element: None,
-            allow_extra: None,
-            secret: false,
+            extra: ExtraFields::Unspecified,
+            secretness: Secretness::NonSecret,
         }
     }
 
@@ -578,7 +928,19 @@ impl CompiledInputConstraint {
     /// that are neither optional nor defaulted require a value.
     #[must_use]
     pub const fn requires_value(&self) -> bool {
-        !self.optional && self.default_value.is_none()
+        self.presence.is_required() && self.default_value.is_none()
+    }
+
+    /// Value bound over `min` / `max`.
+    #[must_use]
+    pub const fn value_bound(&self) -> Bound {
+        Bound::new(self.min, self.max)
+    }
+
+    /// Length bound over `min_length` / `max_length`.
+    #[must_use]
+    pub const fn length_bound(&self) -> Bound {
+        Bound::new(self.min_length, self.max_length)
     }
 }
 
@@ -1216,20 +1578,20 @@ pub enum CompiledNodeKind {
         /// Ordered expression branches.
         branches: Box<[ExprBranch]>,
         /// Target when no branch condition is true.
-        otherwise: Option<StepIdx>,
+        otherwise: BranchContinuation,
     },
     /// Branch using pre-materialized boolean condition slots.
     ChooseSlot {
         /// Ordered slot branches.
         branches: Box<[SlotBranch]>,
         /// Target when no branch condition is true.
-        otherwise: Option<StepIdx>,
+        otherwise: BranchContinuation,
     },
     /// Start a bounded for-each loop.
     ForEachStart {
         input: SlotIdx,
         item_slot: SlotIdx,
-        limit: u32,
+        limit: FanoutLimit,
         body: StepIdx,
         done: StepIdx,
     },
@@ -1248,7 +1610,7 @@ pub enum CompiledNodeKind {
     },
     /// Execute one together branch.
     TogetherBranch {
-        branch: u16,
+        branch: BranchIdx,
         entry: StepIdx,
         join: StepIdx,
         /// Slot holding the accumulator list (shared with TogetherStart).
@@ -1256,14 +1618,14 @@ pub enum CompiledNodeKind {
     },
     /// Join together branches.
     TogetherJoin {
-        branch_count: u16,
+        branch_count: BranchCount,
         /// Slot holding the accumulator list (shared with TogetherStart).
         accumulator: SlotIdx,
     },
     /// Start bounded collection.
     CollectStart {
         source: SlotIdx,
-        limit: u32,
+        limit: FanoutLimit,
         page_size: u32,
         body: StepIdx,
         done: StepIdx,
@@ -1301,7 +1663,7 @@ pub enum CompiledNodeKind {
     ReduceFinish { accumulator: SlotIdx },
     /// Start bounded repeat.
     RepeatStart {
-        max_attempts: u16,
+        max_attempts: MaxAttempts,
         body: StepIdx,
         done: StepIdx,
     },
@@ -1323,12 +1685,12 @@ pub enum CompiledNodeKind {
     /// Wait for an event slot.
     WaitEvent {
         event: SlotIdx,
-        timeout_slot: Option<SlotIdx>,
+        timeout_slot: Deadline,
     },
     /// Ask for external input.
     Ask {
         prompt: SlotIdx,
-        timeout_slot: Option<SlotIdx>,
+        timeout_slot: Deadline,
     },
     /// Resume an ask.
     AskResume { answer: SlotIdx },
@@ -1345,7 +1707,7 @@ pub enum CompiledNodeKind {
         /// Handler step to route to on body failure.
         handler: StepIdx,
         /// Optional slot to write failed step index for handler consumption.
-        error_slot: Option<SlotIdx>,
+        error_slot: ErrorSink,
     },
     /// Jump to a numeric target.
     Jump { target: StepIdx },
@@ -1359,7 +1721,10 @@ pub enum CompiledNodeKind {
 mod repeat_counter_ownership;
 
 mod loop_regions;
-pub use loop_regions::CompiledLoopRegion;
+pub use loop_regions::{CompiledLoopRegion, LoopRegionSlot};
+
+mod route_enums;
+pub use route_enums::{BranchContinuation, Deadline, ErrorSink};
 
 mod node_assembly;
 pub use node_assembly::{node, node_with_handler};
@@ -1430,20 +1795,16 @@ fn validate_input_constraint(
 ) -> Result<(), WorkflowError> {
     let inconsistent =
         |issue: InputConstraintIssue| WorkflowError::InconsistentInputConstraint { slot, issue };
-    if let (Some(min), Some(max)) = (constraint.min, constraint.max)
-        && min > max
-    {
+    if constraint.value_bound().inconsistency() {
         return Err(inconsistent(InputConstraintIssue::MinExceedsMax));
     }
-    if let (Some(min), Some(max)) = (constraint.min_length, constraint.max_length)
-        && min > max
-    {
+    if constraint.length_bound().inconsistency() {
         return Err(inconsistent(
             InputConstraintIssue::MinLengthExceedsMaxLength,
         ));
     }
-    if constraint.min_length.is_some_and(|bound| bound < 0)
-        || constraint.max_length.is_some_and(|bound| bound < 0)
+    if constraint.length_bound().lower().is_some_and(|bound| bound < 0)
+        || constraint.length_bound().upper().is_some_and(|bound| bound < 0)
     {
         return Err(inconsistent(InputConstraintIssue::NegativeLengthBound));
     }
@@ -1761,7 +2122,7 @@ fn validate_node_kind(kind: &CompiledNodeKind, parts: &WorkflowParts) -> Result<
             branch_count,
             accumulator,
         } => {
-            validate_nonzero_u16(*branch_count, ContractResource::BranchCount)?;
+            validate_nonzero_u16(branch_count.get(), ContractResource::BranchCount)?;
             validate_slot(*accumulator, parts.slot_count)
         }
         CompiledNodeKind::CollectStart {
@@ -1804,7 +2165,7 @@ fn validate_node_kind(kind: &CompiledNodeKind, parts: &WorkflowParts) -> Result<
             max_attempts,
             body,
             done,
-        } => validate_repeat_start(*max_attempts, *body, *done, parts),
+        } => validate_repeat_start(max_attempts.get(), *body, *done, parts),
         CompiledNodeKind::RepeatAttempt {
             attempt_slot,
             body,
@@ -1823,14 +2184,14 @@ fn validate_node_kind(kind: &CompiledNodeKind, parts: &WorkflowParts) -> Result<
             timeout_slot,
         } => {
             validate_slot(*event, parts.slot_count)?;
-            validate_optional_slot(*timeout_slot, parts.slot_count)
+            validate_optional_slot(timeout_slot.slot(), parts.slot_count)
         }
         CompiledNodeKind::Ask {
             prompt,
             timeout_slot,
         } => {
             validate_slot(*prompt, parts.slot_count)?;
-            validate_optional_slot(*timeout_slot, parts.slot_count)
+            validate_optional_slot(timeout_slot.slot(), parts.slot_count)
         }
         CompiledNodeKind::AskResume { answer } => validate_slot(*answer, parts.slot_count),
         CompiledNodeKind::RetryCheck {
@@ -1968,30 +2329,37 @@ fn validate_repeat_start(
     validate_two_steps(body, done, parts)
 }
 
+fn validate_optional_step_continuation(
+    continuation: BranchContinuation,
+    node_count: usize,
+) -> Result<(), WorkflowError> {
+    validate_optional_step(continuation.step(), node_count)
+}
+
 fn validate_slot_choose(
     branches: &[SlotBranch],
-    otherwise: Option<StepIdx>,
+    otherwise: BranchContinuation,
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
-    validate_branch_route(branches.len(), otherwise)?;
+    validate_branch_route(branches.len(), otherwise.step())?;
     branches.iter().try_for_each(|branch| {
         validate_slot(branch.condition, parts.slot_count)?;
         validate_step(branch.target, parts.nodes.len())
     })?;
-    validate_optional_step(otherwise, parts.nodes.len())
+    validate_optional_step_continuation(otherwise, parts.nodes.len())
 }
 
 fn validate_expr_choose(
     branches: &[ExprBranch],
-    otherwise: Option<StepIdx>,
+    otherwise: BranchContinuation,
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
-    validate_branch_route(branches.len(), otherwise)?;
+    validate_branch_route(branches.len(), otherwise.step())?;
     branches.iter().try_for_each(|branch| {
         validate_expr(branch.condition, parts.expressions.len())?;
         validate_step(branch.target, parts.nodes.len())
     })?;
-    validate_optional_step(otherwise, parts.nodes.len())
+    validate_optional_step_continuation(otherwise, parts.nodes.len())
 }
 
 fn validate_branch_route(
@@ -2300,26 +2668,26 @@ fn collect_node_targets(kind: &CompiledNodeKind, targets: &mut Vec<StepIdx>) {
 
 fn collect_choose_slot_targets(
     branches: &[SlotBranch],
-    otherwise: Option<StepIdx>,
+    otherwise: BranchContinuation,
     targets: &mut Vec<StepIdx>,
 ) {
     for branch in branches {
         targets.push(branch.target);
     }
-    if let Some(fallback) = otherwise {
+    if let Some(fallback) = otherwise.step() {
         targets.push(fallback);
     }
 }
 
 fn collect_choose_expr_targets(
     branches: &[ExprBranch],
-    otherwise: Option<StepIdx>,
+    otherwise: BranchContinuation,
     targets: &mut Vec<StepIdx>,
 ) {
     for branch in branches {
         targets.push(branch.target);
     }
-    if let Some(fallback) = otherwise {
+    if let Some(fallback) = otherwise.step() {
         targets.push(fallback);
     }
 }
@@ -2427,14 +2795,14 @@ fn validate_kind_edges(
 
 fn validate_choose_slot_edges(
     branches: &[SlotBranch],
-    otherwise: &Option<StepIdx>,
+    otherwise: &BranchContinuation,
     ci: usize,
     cid: StepIdx,
 ) -> Result<(), WorkflowError> {
     for branch in branches {
         validate_forward_target(branch.target, ci, cid)?;
     }
-    if let Some(fallback) = *otherwise {
+    if let Some(fallback) = otherwise.step() {
         validate_forward_target(fallback, ci, cid)?;
     }
     Ok(())
@@ -2442,14 +2810,14 @@ fn validate_choose_slot_edges(
 
 fn validate_choose_expr_edges(
     branches: &[ExprBranch],
-    otherwise: &Option<StepIdx>,
+    otherwise: &BranchContinuation,
     ci: usize,
     cid: StepIdx,
 ) -> Result<(), WorkflowError> {
     for branch in branches {
         validate_forward_target(branch.target, ci, cid)?;
     }
-    if let Some(fallback) = *otherwise {
+    if let Some(fallback) = otherwise.step() {
         validate_forward_target(fallback, ci, cid)?;
     }
     Ok(())

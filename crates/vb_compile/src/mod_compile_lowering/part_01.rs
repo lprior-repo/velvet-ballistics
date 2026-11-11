@@ -25,6 +25,10 @@ mod source_declarations;
 use super::source_slot_reservation::reserve_source_slots;
 use source_declarations::prepare_source_declarations;
 
+#[path = "compile_source_finish.rs"]
+mod compile_source_finish;
+use compile_source_finish::finalize_compiled_workflow;
+
 /// Compile the canonical cold YAML authoring AST into numeric runtime IR.
 pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, CompileErrors> {
     validate_canonical_compile_scope(source)?;
@@ -72,28 +76,14 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
     super::skipped_outputs::PossiblySkippedOutputs::from_source(source)
         .and_then(|outputs| outputs.validate(&builder))
         .map_err(|error| CompileErrors(vec![error]))?;
-    let mut parts = WorkflowParts {
-        name: Box::from(source.name()),
-        digest: WorkflowDigest::from_bytes([0u8; 32]),
-        semantic_source_identity: Some(semantic_source_identity),
-        slot_count: builder.slot_count().map_err(|e| CompileErrors(vec![e]))?,
-        symbols_count: 0,
-        nodes: builder.nodes.into_boxed_slice(),
-        expressions: builder.expressions.into_boxed_slice(),
-        accessors: builder.accessors.into_boxed_slice(),
-        constants: builder.constants.into_boxed_slice(),
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: step_names.into_boxed_slice(),
-        input_slots: builder.input_slots.into_boxed_slice(),
-    };
-    let encoded_parts = postcard::to_allocvec(&parts)
-        .map_err(|error| CompileErrors(vec![CompileError::CompiledIrEncode(error)]))?;
-    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&encoded_parts).into());
-    vb_validate::shared::validate(&parts)
-        .map_err(|e| CompileErrors(vec![named_workflow_error(e.into(), steps, &layout)]))?;
-    CompiledWorkflow::try_from_parts(parts)
-        .map_err(|e| CompileErrors(vec![named_workflow_error(e.into(), steps, &layout)]))
+    finalize_compiled_workflow(
+        source,
+        semantic_source_identity,
+        builder,
+        step_names,
+        steps,
+        &layout,
+    )
 }
 
 #[path = "input_schema.rs"]

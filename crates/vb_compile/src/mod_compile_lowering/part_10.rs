@@ -55,7 +55,7 @@ pub(super) fn compile_slot_choose(
                 target: on_true,
             }]
             .into_boxed_slice(),
-            otherwise: Some(on_false),
+            otherwise: Some(on_false).into(),
         },
         None,
         None,
@@ -150,7 +150,7 @@ pub(super) fn compile_parallel(
         node(
             join,
             CompiledNodeKind::TogetherJoin {
-                branch_count,
+                branch_count: branch_count.into(),
                 accumulator,
             },
             Some(accumulator),

@@ -76,7 +76,7 @@ fn check_value(
     value: SlotValue,
 ) -> Result<(), JournalError> {
     // A nullable slot accepts an explicit null without regard to kind.
-    if !matches!(value, SlotValue::Null) || !declared.constraint.nullable {
+    if !matches!(value, SlotValue::Null) || !declared.constraint.nullability.allows_null() {
         let kind = retained_value_kind(workflow, value)?;
         if declared.kind != InputSlotKind::Any && declared.kind != kind {
             return Err(JournalError::InputSchemaMismatch);

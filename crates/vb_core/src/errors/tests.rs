@@ -181,7 +181,7 @@ fn core_error_diagnostic_code_invalid_compiled_workflow() {
 #[test]
 fn core_error_diagnostic_code_unsupported_primitive() {
     let error = CoreError::UnsupportedPrimitive {
-        primitive: "fancy_op",
+        primitive: "fancy_op".into(),
     };
     assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1308));
     assert_eq!(error.to_string(), "unsupported primitive: fancy_op");
@@ -219,7 +219,7 @@ fn core_error_diagnostic_code_list_index_out_of_bounds() {
 #[test]
 fn core_error_diagnostic_code_internal_invariant_violation() {
     let error = CoreError::InternalInvariantViolation {
-        reason: "impossible",
+        reason: "impossible".into(),
     };
     assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1309));
     assert_eq!(
@@ -372,11 +372,11 @@ fn core_error_runtime_codes_cover_section_17_core_mappings() {
         Some("INVALID_COMPILED_WORKFLOW")
     );
     assert_eq!(
-        CoreError::InternalInvariantViolation { reason: "bad" }.runtime_code(),
+        CoreError::InternalInvariantViolation { reason: "bad".into() }.runtime_code(),
         Some("INTERNAL_INVARIANT_VIOLATION")
     );
     assert_eq!(
-        CoreError::UnsupportedPrimitive { primitive: "op" }.runtime_code(),
+        CoreError::UnsupportedPrimitive { primitive: "op".into() }.runtime_code(),
         Some("UNSUPPORTED_PRIMITIVE")
     );
     assert_eq!(CoreError::QueueFull.runtime_code(), Some("QUEUE_FULL"));
@@ -612,12 +612,12 @@ fn core_error_invalid_compiled_workflow_exact_variant() -> Result<(), String> {
 #[test]
 fn core_error_unsupported_primitive_exact_variant() -> Result<(), String> {
     let error = CoreError::UnsupportedPrimitive {
-        primitive: "async_await",
+        primitive: "async_await".into(),
     };
     let CoreError::UnsupportedPrimitive { primitive } = error else {
         return Err(String::from("expected UnsupportedPrimitive variant"));
     };
-    if primitive != "async_await" {
+    if primitive.as_str() != "async_await" {
         return Err(String::from("unexpected primitive"));
     }
     Ok(())
@@ -669,12 +669,12 @@ fn core_error_list_index_out_of_bounds_exact_variant() -> Result<(), String> {
 #[test]
 fn core_error_internal_invariant_violation_exact_variant() -> Result<(), String> {
     let error = CoreError::InternalInvariantViolation {
-        reason: "corrupted",
+        reason: "corrupted".into(),
     };
     let CoreError::InternalInvariantViolation { reason } = error else {
         return Err(String::from("expected InternalInvariantViolation variant"));
     };
-    if reason != "corrupted" {
+    if reason.as_str() != "corrupted" {
         return Err(String::from("unexpected reason"));
     }
     Ok(())

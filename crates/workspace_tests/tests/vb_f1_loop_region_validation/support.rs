@@ -141,7 +141,7 @@ pub(crate) fn choose(first: u16, otherwise: u16, expressions: bool) -> CompiledN
                 target: step(first),
             }]
             .into_boxed_slice(),
-            otherwise: Some(step(otherwise)),
+            otherwise: Some(step(otherwise)).into(),
         }
     } else {
         CompiledNodeKind::ChooseSlot {
@@ -150,7 +150,7 @@ pub(crate) fn choose(first: u16, otherwise: u16, expressions: bool) -> CompiledN
                 target: step(first),
             }]
             .into_boxed_slice(),
-            otherwise: Some(step(otherwise)),
+            otherwise: Some(step(otherwise)).into(),
         }
     }
 }
