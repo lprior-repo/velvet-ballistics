@@ -4084,7 +4084,7 @@ pub proof fn lemma_forward_edge_repeat_check_exempt(parts: &SpecWorkflowParts)
 {
     assert(spec_repeat_owner(parts, 2, 0, None) == spec_repeat_owner(parts, 2, 1, Some(0)));
     assert(spec_repeat_owner(parts, 2, 1, Some(0)) == spec_repeat_owner(parts, 2, 2, Some(0)));
-    assert(spec_repeat_owner(parts, 2, 2, Some(0)) == Some(0));
+    assert(spec_repeat_owner(parts, 2, 2, Some(0)) == Some(0int));
     assert(spec_repeat_check_error(parts, 2, 1u32) == None::<SpecWorkflowError>);
     assert(spec_forward_node_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_forward_node_error(parts, 1) == None::<SpecWorkflowError>);
@@ -4308,7 +4308,7 @@ pub proof fn lemma_forward_edge_repeat_check_wrong_owner_rejected(parts: &SpecWo
     assert(spec_reachability_error(parts) == None::<SpecWorkflowError>);
     assert(spec_repeat_owner(parts, 2, 0, None) == spec_repeat_owner(parts, 2, 1, Some(0)));
     assert(spec_repeat_owner(parts, 2, 1, Some(0)) == spec_repeat_owner(parts, 2, 2, Some(0)));
-    assert(spec_repeat_owner(parts, 2, 2, Some(0)) == Some(0));
+    assert(spec_repeat_owner(parts, 2, 2, Some(0)) == Some(0int));
     assert(spec_repeat_check_error(parts, 2, 1u32) == Some(SpecWorkflowError::BackwardEdge));
     assert(spec_forward_node_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_forward_node_error(parts, 1) == None::<SpecWorkflowError>);
@@ -6018,7 +6018,7 @@ pub proof fn lemma_expr_binary_first_rejected(program: SpecExprProgram)
     ensures
         spec_expr_error(program, 0) == Some(SpecWorkflowError::ExpressionInvalid),
 {
-    assert(spec_expr_effect(program.ops[0]) == (2, 1));
+    assert(spec_expr_effect(program.ops[0]) == (2int, 1int));
     assert(spec_expr_error(program, 0) == Some(SpecWorkflowError::ExpressionInvalid));
 }
 
