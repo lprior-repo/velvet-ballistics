@@ -6,7 +6,6 @@ parent: velvet-ballistics-MASTER.md
 
 ## 67. Architectural Drift Register
 
-
 This section tracks known architectural defects discovered through adversarial review. Each entry states the defect, the root cause, the resolution contract, and the phase that resolves it. Entries are removed when the resolution phase is complete and evidenced.
 
 ### DRIFT-1: Runtime Taint Tracking — RESOLVED
@@ -25,11 +24,11 @@ This section tracks known architectural defects discovered through adversarial r
 
 **Original defect:** Earlier builds recorded no slot values, no slot taint, and no step lifecycle events (`StepStarted`/`StepSucceeded`) for deterministic steps. After a crash, `UnsupportedRecoveryState` could report `slot_values: true`, `slot_taint: true`, while hydration still proceeded with empty frames. The system was not crash-recoverable for workflows that performed deterministic computation between suspension points.
 
-**Current evidence:** `SlotWrittenEvent` can carry encoded `SlotValue` and taint evidence; `RecoveryFrameSeed` reconstruction applies recovered slots and step states; `DurableFrameRecoveryBoundary::hydrate_run_frame` rejects unsupported live-frame state instead of silently producing a broken frame. Closed beads `vb-x0mt`, `vb-9fy4`, and `vb-vs7k` record Phase 44/recovery hydration work.
+**Current evidence:** `SlotWrittenEvent` carries value and taint evidence, and recovery reconstructs typed frame-seed products. `Runtime::recover_and_resume` restores validated durable pending-action authority when present. Retained scalar and owned inputs bind to the admission receipt; delayed retries restore digest-bound full checkpoints. Bounded scalar Repeat traces can replay across untimed Ask boundaries under the eligibility and capture checks documented in `docs/compiled-ir.md`. These paths do not establish unrestricted live-state recovery.
 
-**Remaining gap:** Pending action hydration remains gated as unsupported when unresolved actions are present, summary-only hydration still returns `UnsupportedFullRecoveryHydration`, and `UnsupportedAsyncStrictAck` still marks strict async acknowledgement limitations. Release acceptance still requires end-to-end crash recovery evidence for all live recovery paths.
+**Remaining gap:** Journal-only recovery rejects missing runtime arena state; initial owned inputs cannot reconstruct later allocations. Summary-only products cannot resume and may return `UnsupportedFullRecoveryHydration`. `UnsupportedAsyncStrictAck` still marks strict async acknowledgement limitations. Release acceptance still requires end-to-end crash recovery evidence for every admitted recovery path.
 
-**Root cause:** Journal events are only emitted at suspension points (action dispatch, wait, ask). Deterministic steps between suspensions are treated as atomic but the journal cannot reconstruct them.
+**Original root cause:** Earlier journals captured suspension points without enough deterministic-step value, taint, and lifecycle evidence to reconstruct intervening execution.
 
 **Resolution contract:**
 1. Every deterministic step must emit `SlotWritten` events (value + taint) to the journal before advancing PC.
@@ -42,7 +41,7 @@ This section tracks known architectural defects discovered through adversarial r
 
 **Coding style:** No async. No channels. Synchronous journal append within the shard's single-threaded drive loop. Bounded writer queue absorbs burst. If queue is full, the step blocks (backpressure), not silently drops.
 
-**Resolves in:** Phase 44 (Recovery Evidence Chain); remaining live pending-action recovery evidence is still a release gate.
+**Resolves in:** Phase 44 (Recovery Evidence Chain); recovery paths outside the documented validated products remain a release gate.
 
 ### DRIFT-3: No Aggregate Resource Budget Across Primitive Composition — RESOLVED
 

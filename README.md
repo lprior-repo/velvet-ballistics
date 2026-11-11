@@ -19,7 +19,7 @@ The current architecture provides:
 | | velvet-ballistics | Temporal | LangGraph |
 |---|---|---|---|
 | Formal resource bounds | Checked arithmetic, bounded frames, slot budgets | Timeouts only | No |
-| Taint tracking | Clean/DerivedFromSecret/Secret lattice | No | No |
+| Taint tracking | Data-flow taint and provenance markers | No | No |
 | IR compilation | `CompiledWorkflow` numeric artifact with exact semantics | Interpreted history/worker model | Interpreted graph model |
 | Runtime boundary | IR interpreter only; no runtime YAML/JSON/HTTP | Service/runtime boundary | Python object graph/runtime |
 | Public authoring | Strict YAML → accepted numeric IR | Workflow source as runtime object | Graph source as runtime object |

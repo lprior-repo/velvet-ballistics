@@ -6,7 +6,6 @@ parent: velvet-ballistics-MASTER.md
 
 ## 18. Fjall Persistence Behavior
 
-
 Fjall is required. Recovery from Fjall is a product requirement, not an optional persistence layer.
 
 Keyspaces:
@@ -90,6 +89,7 @@ Required `record_kind_u16` IDs:
 | 1 | `WorkflowSource` |
 | 2 | `CompiledIr` |
 | 3 | `RunHeader` |
+| 4 | `RunInputs` |
 | 10 | `RunAccepted` |
 | 11 | `StepStarted` |
 | 12 | `SlotWritten` |
@@ -111,19 +111,33 @@ Required `record_kind_u16` IDs:
 | 28 | `RunKilled` |
 | 29 | `AskTimedOut` |
 | 30 | `Snapshot` |
+| 31 | `WaitResolved` |
+| 32 | `ActionAbandoned` |
+| 33 | `StepSucceeded` |
+| 34 | `ActionScheduledTicket` |
+| 35 | `ActionCompletedEnvelope` |
+| 36 | `RunAdmissionBound` |
+| 37 | `RetryCheckpoint` |
+| 38 | `PolicyDecision` |
+| 39 | `RunAdmissionPinned` |
 | 40 | `Blob` |
+| 41 | `RunAdmissionBoundPinned` |
+| 42 | `RunOwnedInputs` |
+| 43 | `RunContinuation` |
+| 44 | `GateDecision` |
+| 45 | `CompatibilityDecision` |
+| 46 | `CapabilityGrant` |
+| 47 | `RunAdmissionBudget` |
+| 48 | `GateOpened` |
+| 49 | `TenantAdmission` |
 | 50 | `IndexUpdate` |
+| 51 | `RetryTimerScheduled` |
 
-The current v1 storage contract includes `AskTimedOut = 29` so ask timeout
-replay is distinguishable from `AskAnswered = 18`. This repository is still at
-workspace crate version `0.1.0`; the table above is the authoritative v1 wire
-contract before a stable compatibility release, so `CURRENT_SCHEMA_VERSION`
-remains `1`. Implementations using an older in-repo draft table that rejected
-kind `29` are not considered compatible v1 decoders. After a stable v1 storage
-compatibility release, adding or repurposing any `record_kind_u16` requires a
-schema-version bump or an explicit named migration with evidence.
+The table includes retained input, admission, continuation, policy, capability, tenant, and retry timer records used by the current implementation. Workspace crate version remains `0.1.0`; this table defines the pre-stable v1 wire contract and `CURRENT_SCHEMA_VERSION` remains `1`. Existing record identifiers and Serde discriminants remain unchanged. Compatibility aliases are narrow and named only: an old `StepSucceeded` payload may decode from `SlotWritten = 12`, an old `ActionScheduledTicket` payload from `ActionScheduled = 13`, and an old `ActionCompletedEnvelope` payload from `ActionCompleted = 14`. New writes use kinds `33`, `34`, and `35`. After a stable v1 storage compatibility release, adding or repurposing any `record_kind_u16` requires a schema-version bump or an explicit named migration with evidence.
 
-Decode order is mandatory: read the 60-byte storage header, validate `magic_u32`, validate supported `schema_version_u16`, validate `record_kind_u16` is allowed for that family, validate `header_len_u32 == 60`, validate `payload_len_u32 <= ResourceContract.max_journal_batch_bytes` for journal batches or the configured family-specific maximum for compiled artifacts, snapshots, and blobs, verify `header_crc32c` over bytes `0..56`, then read exactly `payload_len_u32` bytes, verify `payload_digest_blake3_256`, then Postcard-decode into the typed payload for the record kind. Payload allocation before length validation is forbidden.
+`RetryTimerScheduled = 51` carries `RetryTimerV1` version `1`, the exact failed action ticket, next attempt, generation, UTC scheduling time and deadline, and a digest-bound complete run checkpoint. Recovery validates the admitted workflow, action ABI, policy delay, failed-ticket adjacency, and retained checkpoint before restoring the timer. An old `WaitScheduled` payload cannot authorize delayed retry recovery because it has no durable deadline or ticket authority. `RunOwnedInputs` payload version `2` retains recursive input constraints and defaults; unsupported payload versions fail explicitly.
+
+Decode order is mandatory: read 60-byte header, validate `magic_u32`, validate supported `schema_version_u16`, validate `record_kind_u16` is allowed for that family, validate `header_len_u32 == 60`, validate `payload_len_u32 <= ResourceContract.max_journal_batch_bytes` for journal batches or the configured family-specific maximum for compiled artifacts, snapshots, and blobs, verify `header_crc32c` over bytes `0..56`, then read exactly `payload_len_u32` bytes, verify `payload_digest_blake3_256`, then Postcard-decode into the typed payload for the record kind. Payload allocation before length validation is forbidden.
 
 Typed storage/decode errors must include `BadMagic { found: u32 }`, `UnsupportedSchemaVersion { version: u16 }`, `UnknownRecordKind { kind: u16 }`, `RecordKindFamilyMismatch { magic: u32, kind: u16 }`, `HeaderLengthMismatch { found: u32 }`, `PayloadTooLarge { len: u32, max: u32 }`, `HeaderChecksumMismatch`, `PayloadDigestMismatch`, `UnexpectedEof`, `PostcardDecodeFailed`, and `MigrationRequired { from: u16, to: u16 }`. Schema version migration is never implicit: an older supported version must pass through a named migration function that emits the current version and records migration evidence; unsupported versions fail with `MigrationRequired` or `UnsupportedSchemaVersion` and must not be replayed.
 

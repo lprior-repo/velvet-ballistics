@@ -6,7 +6,6 @@ parent: velvet-ballistics-MASTER.md
 
 ## 45. Normative Runtime Semantics
 
-
 Every `CompiledNodeKind` variant has exact behavior defined here. The current IR interpreter must produce the specified terminal result, typed error variant and fields, final pc, slot values, slot taints, step states, journal event sequence, action tickets, retry counts, wait/ask scheduling, and replay behavior.
 
 ### StepState Transition Contract
@@ -245,8 +244,8 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 | Aspect | Behavior |
 |--------|----------|
 | Inputs read | `input` slot (must be List) |
-| Slots written | `item_slot` with first item; `output` with tail list. If empty: `output` with empty list. |
-| Taint | Clean |
+| Slots written | `item_slot` with first item; `output` with an opaque cursor referencing the source list. If empty: `output` with an empty list. |
+| Taint | The item joins its stored element taint with the input container taint; the cursor retains only the container taint. |
 | StepState | Pending → Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -259,8 +258,8 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 | Aspect | Behavior |
 |--------|----------|
 | Inputs read | `iterator_slot` (must be List) |
-| Slots written | `output` with first item; `iterator_slot` with tail list |
-| Taint | Clean |
+| Slots written | `output` with the next item; `iterator_slot` with the advanced opaque cursor |
+| Taint | The next item joins its own stored element taint with the cursor's container taint; the advanced cursor retains that container taint. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -273,7 +272,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `materialized` slot (must be List) |
 | Slots written | `output` with list value |
-| Taint | Clean |
+| Taint | Propagated from the materialized result slot. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -300,7 +299,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `accumulator` slot (must be List); `output` for previous result |
 | Slots written | `accumulator` with appended result |
-| Taint | Clean |
+| Taint | Accumulator taint joins the previous branch result taint; each appended item retains its branch result taint. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -313,7 +312,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `accumulator` slot (List), `output` for last result |
 | Slots written | `output` with final merged list |
-| Taint | Clean |
+| Taint | Joins accumulator and final branch result taints; preserves ordered per-item taints, including Null and nested lists. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -326,7 +325,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `source` slot (must be List) |
 | Slots written | `collector_slot` with first page; pagination state in global table |
-| Taint | Clean |
+| Taint | Source container taint propagates to the collector, including an empty result; copied page elements retain their stored taints. |
 | StepState | Pending → Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -351,7 +350,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `collector_slot` (List), pagination state |
 | Slots written | `collector_slot` with next page |
-| Taint | Clean |
+| Taint | Preserves the source container taint across pages and retains each copied element's stored taint. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -364,33 +363,34 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `collector_slot` (List) |
 | Slots written | `output` with collector value; pagination state removed |
-| Taint | Clean |
+| Taint | Propagated from the collector slot. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
 | Next pc | `node.next` |
 | Errors | `MissingOutputSlot`, `MissingNextStep` |
 
-#### ReduceStart { input, accumulator, initial, body, done }
+#### ReduceStart { input, accumulator, initial, limit, body, done }
 
 | Aspect | Behavior |
 |--------|----------|
 | Inputs read | Constant pool at `initial`; `input` slot (must be List) |
-| Slots written | `accumulator` with initial value; `output` with first item; `input` with tail list |
-| Taint | Clean |
+| Slots written | `accumulator` with initial value; for a non-empty list, `input` with first item and `output` with an opaque source-list cursor |
+| Taint | Initial constant is Clean; the first item joins its stored element taint with the source container taint, and the cursor retains only the container taint. |
 | StepState | Pending → Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
 | Next pc | Empty → `done`. Non-empty → `body`. |
-| Errors | `ConstOutOfBounds`, `TypeMismatch`, `MissingOutputSlot` |
+| Resource checks | Input item count must not exceed `limit`; cursor allocation succeeds before slot writes. |
+| Errors | `ConstOutOfBounds`, `TypeMismatch`, `MissingOutputSlot`, `IterationLimitExceeded`, allocation refusal |
 
 #### ReduceNext { iterator_slot, accumulator, body, done }
 
 | Aspect | Behavior |
 |--------|----------|
 | Inputs read | `iterator_slot` (must be List) |
-| Slots written | `output` with next item; `iterator_slot` with tail |
-| Taint | Clean |
+| Slots written | `output` with next item; `iterator_slot` with the advanced opaque source-list cursor |
+| Taint | The next item joins its own stored element taint with the cursor's container taint; the advanced cursor retains that container taint. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -403,7 +403,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `accumulator` slot |
 | Slots written | `output` with accumulator value |
-| Taint | Clean |
+| Taint | Propagated from the accumulator slot. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -454,7 +454,7 @@ Same as Choose but reads pre-materialized boolean slots instead of evaluating ex
 |--------|----------|
 | Inputs read | `result` slot |
 | Slots written | `output` with result value |
-| Taint | Clean |
+| Taint | Propagated from the result slot. |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |

@@ -535,7 +535,7 @@ Required types:
 
 | Type | Contract |
 |------|----------|
-| `Taint` | Three-level lattice: `Clean < DerivedFromSecret < Secret`. `#[repr(u8)]` with explicit discriminants. Propagation rules in Section 47. |
+| `Taint` | Single marker with join precedence `Clean < DerivedFromSecret < Secret < Random < TimeDependent`. `#[repr(u8)]` with explicit discriminants. Propagation rules in Section 47. |
 | `FiniteF64` | Newtype over `f64`. Rejects NaN, +inf, -inf in both debug and release builds. Manual `Serialize`/`Deserialize` (not derive) to enforce rejection on decode. |
 | `SlotValue` | Handle-only `Copy` enum: `Null`, `Bool(bool)`, `I64(i64)`, `F64(FiniteF64)`, `Symbol(SymbolId)`, `List(ListId)`, `Object(ObjectId)`, `Blob(BlobId)`. Must provide `type_name()` and `is_true()`. |
 | `ConstValue` | Compile-time constant: `Null`, `Bool(bool)`, `I64(i64)`, `F64(FiniteF64)`, `Symbol(SymbolId)`. Must convert to `SlotValue` via `to_slot_value()` with no silent `Null` fallback. |
@@ -670,7 +670,7 @@ Finish
 
 Current execution is through the IR interpreter only. Generated Rust execution is removed from active master scope.
 
-**`Finish` taint contract:** The `Finish` IR node reads the taint from the result slot and emits `EngineSignal::Finished(SlotValue, Taint)`. Taint is joined from all slots contributing to the result. Runtime preserves `Clean`, `DerivedFromSecret`, and `Secret` result taints; validation does not reject tainted finish results.
+**`Finish` taint contract:** The `Finish` IR node reads the taint from the result slot and emits `EngineSignal::Finished(SlotValue, Taint)`. Taint is joined from all slots contributing to the result. Runtime preserves the result slot's `Taint` marker; validation does not reject tainted finish results.
 
 Final choose contract: `Choose { branches, otherwise }` evaluates `ExprBranch { condition: ExprIdx, target }` in order and jumps to the first true expression; `ChooseSlot { branches, otherwise }` reads `SlotBranch { condition: SlotIdx, target }` in order after those slots have been materialized by prior IR. `ChooseSlot` condition slots must be validated as boolean slots. If no branch matches, `otherwise` is taken; missing `otherwise` with no match is `CoreError::MissingNextStep { step: current }`. Untyped or string-condition choose nodes are migration-only and are not part of final IR.
 
@@ -2468,10 +2468,10 @@ Parenthesized groups reset to minimum binding power. Max nesting depth: 64. Max 
 ### Lattice Ordering
 
 ```text
-Clean < DerivedFromSecret < Secret
+Clean < DerivedFromSecret < Secret < Random < TimeDependent
 ```
 
-`join_taint(a, b)` returns the more restrictive input. Joining Clean with Secret preserves Secret; expression evaluation does not downgrade it to DerivedFromSecret. The propagation rules below apply this ordering to each operation.
+`Taint` is a single enum marker. `join_taint(a, b)` returns the higher-ranked input; it does not preserve independent confidentiality and nondeterminism flags. Joining Clean with Secret preserves Secret; expression evaluation does not downgrade it to DerivedFromSecret. The propagation rules below apply this ordering to each operation.
 
 ### Propagation by Operation
 
@@ -3477,12 +3477,12 @@ This is the Holzmann influence: bounded loops, bounded allocation, no hidden gro
 
 ### Taint Propagation
 
-`Taint` is a three-level lattice: `Clean < DerivedFromSecret < Secret`. Propagation rules:
+`Taint` is a single enum marker with join precedence `Clean < DerivedFromSecret < Secret < Random < TimeDependent`; independent confidentiality and nondeterminism flags are not retained. Propagation rules:
 
 1. `EvalExpr` joins taint from all loaded input slots.
 2. `BuildObject`/`BuildList` join taint from all field/item slots.
 3. `Finish` carries taint in the result signal `(SlotValue, Taint)`.
-4. Validation does not reject tainted finish results; `Clean`, `DerivedFromSecret`, and `Secret` finish taints are preserved in the result signal.
+4. Validation does not reject tainted finish results; the result slot's `Taint` marker is preserved in the result signal.
 5. Action output taint must be at least as restrictive as input taint for `DeterministicPure` and `IdempotentExternal` actions.
 6. `AtLeastOnceExternal` actions propagate conservatively as `DerivedFromSecret` when any input is tainted.
 7. Secret-tainted failure details must not enter public diagnostics without redaction.
