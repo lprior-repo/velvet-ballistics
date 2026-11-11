@@ -25,7 +25,9 @@ pub use vb_expr::{
 #[cfg(kani)]
 pub use vb_yaml::yaml_kani;
 pub use vb_yaml::{yaml_ast, yaml_error, yaml_events, yaml_limits, yaml_profile, yaml_source_map};
+mod compiled_ir;
 mod control_flow;
+pub use compiled_ir::{compute_compiled_ir_digest, encode_compiled_ir};
 pub mod expression;
 mod expression_bytecode;
 mod limits;

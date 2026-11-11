@@ -8,7 +8,7 @@
 //! through the end of compilation.
 
 use super::*;
-use crate::mod_compile_errors::{CompileError, CompileErrors};
+use crate::mod_compile_errors::CompileErrors;
 use vb_core::{CompiledWorkflow, ResourceContract, StepIdx, WorkflowDigest, WorkflowParts};
 
 pub(super) fn finalize_compiled_workflow(
@@ -34,9 +34,9 @@ pub(super) fn finalize_compiled_workflow(
         step_names: step_names.into_boxed_slice(),
         input_slots: builder.input_slots.into_boxed_slice(),
     };
-    let encoded_parts = postcard::to_allocvec(&parts)
-        .map_err(|error| CompileErrors(vec![CompileError::CompiledIrEncode(error)]))?;
-    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&encoded_parts).into());
+    parts.digest = crate::compute_compiled_ir_digest(
+        &vb_core::workflow::VersionedWorkflowParts::V1(parts.clone()),
+    )?;
     vb_validate::shared::validate(&parts)
         .map_err(|e| CompileErrors(vec![named_workflow_error(e.into(), steps, layout)]))?;
     CompiledWorkflow::try_from_parts(parts)
