@@ -1114,12 +1114,12 @@ verus_registry:
     production: crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs
 
   - id: PO-VERUS-026
-    description: "emit_single_body_set error invariants: SpecCompileError::StepFieldShape emission bound to production crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179 (PO-006, PO-009, PO-018)."
+    description: "emit_single_body_set error invariants: SpecCompileError::StepFieldShape emission bound to production crates/vb_compile/src/mod_compile_lowering/part_04.rs:100-183 (PO-006, PO-009, PO-018)."
     verus: verification/verus/emit_single_body_set.rs
     production: crates/vb_compile/src/mod_compile_lowering/part_04.rs
 
   - id: PO-VERUS-027
-    description: "Error parity invariant: emit_single_body_set + lower_set + body_constant_index + integer_error_value error variant parity bound to production crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179 + crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:125-141 (PO-030)."
+    description: "Error parity invariant: emit_single_body_set + lower_set + body_constant_index + integer_error_value error variant parity bound to production crates/vb_compile/src/mod_compile_lowering/part_04.rs:100-183 + crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:125-141 (PO-030)."
     verus: verification/verus/error_parity.rs
     production: crates/vb_compile/src/mod_compile_lowering/part_04.rs
 

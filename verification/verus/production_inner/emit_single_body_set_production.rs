@@ -6,27 +6,27 @@
 //
 // This file is a structural mirror of the production exec fn
 // `emit_single_body_set` at
-// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`.
+// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:100-183`.
 //
-// Production decision shape (from part_04.rs:96-179):
+// Production decision shape (from part_04.rs:100-183):
 //   - body.len() != 1
 //     -> Err(CompileError::StepFieldShape {
 //          step: diagnostic_step,
 //          field: "steps",
 //          expected: "exactly one set step",
 //        })
-//     (part_04.rs:105-111)
+//     (part_04.rs:109-115)
 //   - step.primitive == Set { value, .. }
-//     -> Ok(()) (part_04.rs:120-126)
+//     -> Ok(()) (part_04.rs:124-130)
 //   - step.primitive == Do { action, input }
-//     -> Ok(()) (part_04.rs:127-171; parse errors are not part of the
+//     -> Ok(()) (part_04.rs:131-175; parse errors are not part of the
 //        spec PO)
 //   - step.primitive == other
 //     -> Err(CompileError::UnsupportedStepPrimitive {
 //          step: diagnostic_step,
 //          primitive: canonical_primitive_name(other),
 //        })
-//     (part_04.rs:172-177)
+//     (part_04.rs:176-181)
 //
 // Substitutions (required for `verus --crate-type=lib` standalone):
 //
@@ -37,7 +37,7 @@
 //      flattened to `u8` tags. Field structure (3 payload fields for
 //      `StepFieldShape`, 2 for `UnsupportedStepPrimitive`) is preserved
 //      exactly so any rename or arity change breaks this mirror.
-//   2. `&[crate::StepAst]` (production part_04.rs:97) is collapsed to
+//   2. `&[crate::StepAst]` (production part_04.rs:101) is collapsed to
 //      `(body_len: usize, primitive_tag: u8)` so the projection does
 //      not depend on the production AST type.
 //   3. `id: StepIdx`, `slot: SlotIdx`, `next: Option<StepIdx>`,
@@ -53,7 +53,7 @@
 // contract via `assume_specification`.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`
+// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:100-183`
 // whenever production changes. Each section header cites the
 // originating production line range.
 #![forbid(unsafe_code)]
@@ -206,11 +206,11 @@ pub enum SpecCompileError {
 pub const FIELD_STEPS: u8 = 0;
 
 /// `expected` tag for the literal `"exactly one set step"` (production:
-/// part_04.rs:109).
+/// part_04.rs:113).
 pub const EXPECTED_EXACTLY_ONE_SET_STEP: u8 = 0;
 
 /// `expected` tag for the literal `"one set step"` (production:
-/// part_04.rs:116). Reserved for the unreachable
+/// part_04.rs:120). Reserved for the unreachable
 /// `body.first().ok_or_else(...)` branch; the projection does not
 /// surface it because `body.len() != 1` short-circuits first.
 pub const EXPECTED_ONE_SET_STEP: u8 = 1;
@@ -219,7 +219,7 @@ pub const EXPECTED_ONE_SET_STEP: u8 = 1;
 // Production exec wrapper — `#[verifier::external]` projection
 // ============================================================================
 /// Mirror of the production dispatch in `emit_single_body_set` at
-/// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`.
+/// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:100-183`.
 ///
 /// The body reproduces the production decision shape exactly.
 #[verifier::external]
