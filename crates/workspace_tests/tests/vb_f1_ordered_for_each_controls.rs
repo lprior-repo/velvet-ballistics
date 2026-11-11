@@ -159,7 +159,7 @@ fn named_conditional_outputs_still_require_definite_assignment() -> TestResult {
         );
         let errors = vb_compile::compile_workflow(yaml.as_bytes())
             .err()
-            .ok_or("named skipped output was accepted")?;
+            .ok_or("named conditional output was accepted")?;
         let [
             vb_compile::CompileError::Validation(vb_validate::ValidationError::TypeMismatch {
                 expected,
