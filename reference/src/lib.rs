@@ -8,3 +8,8 @@ pub mod replay_model;
 pub mod resource_model;
 pub mod step_state_model;
 pub mod taint_model;
+
+#[cfg(test)]
+mod engine_vs_reference_tests;
+#[cfg(test)]
+mod taint_vs_reference_tests;
