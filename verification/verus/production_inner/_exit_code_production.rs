@@ -84,7 +84,7 @@ pub struct StepIdx;
 // LOCAL MIRROR: production `vb_core::errors::CoreError` enum
 // ---------------------------------------------------------------------------
 //
-// Production `crates/vb_core/src/errors.rs:167` declares a 24-variant
+// Production `crates/vb_core/src/errors.rs:386` declares a 24-variant
 // `CoreError` enum. The mirror declares a single-variant stub
 // because the production `exit_code.rs` `From<CoreError> impl at
 // exit_code.rs:57-60` ignores the input via `let _ = err;` (it

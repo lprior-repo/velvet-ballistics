@@ -1534,7 +1534,7 @@ pub proof fn proof_hydrate_run_frame_zero_step_count_detected(
 
 /// Proof: `hydrate_run_frame` precondition fails when pc is out of
 /// bounds (production `RunFrame::new` pc check at
-/// `crates/vb_core/src/frame/parts/impl_001_construct.rs:3-31`).
+/// `crates/vb_core/src/frame/parts/impl_001_construct.rs:3-30`).
 pub proof fn proof_hydrate_run_frame_pc_out_of_bounds_detected(
     snapshot_run_matches: bool,
     tail_events_match_run: bool,

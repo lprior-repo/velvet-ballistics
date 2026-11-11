@@ -89,7 +89,7 @@
 //   - `StepIdx` (u16 newtype)                   <- crates/vb_core/src/ids/mod.rs:70-70
 //   - `StepIdx::new(value: u16) -> Self`        <- crates/vb_core/src/ids/mod.rs:36-36
 //   - `StepIdx::get(self) -> u16`               <- crates/vb_core/src/ids/mod.rs:70-70
-//   - `StepIdx::checked_add`                    <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206
+//   - `StepIdx::checked_add`                    <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:207-212
 //                                                  (used at bounded_collect.rs:117-127
 //                                                   via the `checked_step_offset`
 //                                                   wrapper at part_12.rs:199-212)
@@ -223,7 +223,7 @@ impl StepIdx {
     }
 
     /// Mirror of `StepIdx::checked_add(self, rhs: u16) -> Option<Self>`
-    /// at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206`
+    /// at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:207-212`
     /// (the hand-written `impl StepIdx { ... }` block, since the
     /// `numeric_id!` macro at `crates/vb_core/src/ids/mod.rs:24-55` does NOT generate
     /// `checked_add`):

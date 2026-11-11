@@ -9,7 +9,7 @@
 // This file is the production-binding surface for the
 // `step_offset.rs` Verus spec. It binds the spec to the production
 // arithmetic primitive `StepIdx::checked_add` at
-// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206` and to the production
+// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:207-212` and to the production
 // `checked_step_offset` wrapper at
 // `crates/vb_compile/src/mod_compile_lowering/part_12.rs:199-212`,
 // via `#[path]` inclusion of the in-tree production mirror at
@@ -42,7 +42,7 @@
 //                                         crates/vb_core/src/ids/mod.rs:70)
 //   - `StepIdx::checked_add`          <- production_inner/step_offset_production.rs
 //                                        (mirror of
-//                                         crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206)
+//                                         crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:207-212)
 //   - `SpecCompileError`              <- production_inner/step_offset_production.rs
 //                                        (mirror of
 //                                         crates/vb_compile/src/mod_compile_errors/kind.rs:141)
@@ -105,14 +105,14 @@ pub use production::{checked_step_offset, SpecCompileError, StepIdx};
 // The drift check references every production method the spec file
 // attaches an `assume_specification` bridge to:
 //
-//   - StepIdx::checked_add     (production ids/parts/chunk_001_custom_types.rs:201-206)
+//   - StepIdx::checked_add     (production ids/parts/chunk_001_custom_types.rs:207-212)
 //   - checked_step_offset      (production mod_compile_lowering/part_12.rs:199-212)
 //
 // Plus the `SpecCompileError::PrimitiveLoweringLimitExceeded`
 // discriminant with all four payload fields.
 #[verifier::external]
 fn prod_methods_drift_check() {
-    // Reference every StepIdx method (production ids/mod.rs:36-42 for new/get; ids/parts/chunk_001_custom_types.rs:201-206 for checked_add).
+    // Reference every StepIdx method (production ids/mod.rs:36-42 for new/get; ids/parts/chunk_001_custom_types.rs:207-212for checked_add).
     let id = StepIdx::new(0);
     let _ = StepIdx::get(id);
     let _ = id.checked_add(0u16);

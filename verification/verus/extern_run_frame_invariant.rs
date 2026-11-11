@@ -25,18 +25,18 @@
 //   - `RunFrame`                                <- crates/vb_core/src/frame.rs:105-116
 //   - `StepState`                               <- crates/vb_core/src/frame.rs:50-67
 //   - `is_valid_step_state_transition`          <- crates/vb_core/src/frame.rs:71-101
-//   - `RunFrame::new`                           <- crates/vb_core/src/frame/parts/impl_001_construct.rs:3-31
-//   - `RunFrame::reinitialize`                  <- crates/vb_core/src/frame/parts/impl_001_construct.rs:34-71
+//   - `RunFrame::new`                           <- crates/vb_core/src/frame/parts/impl_001_construct.rs:3-30
+//   - `RunFrame::reinitialize`                  <- crates/vb_core/src/frame/parts/impl_001_construct.rs:33-67
 //   - `RunFrame::pc`                            <- crates/vb_core/src/frame/parts/impl_002_accessors.rs:10-12; returns StepIdx
 //   - `RunFrame::step_count`                    <- crates/vb_core/src/frame/parts/impl_002_accessors.rs:22-24
 //   - `RunFrame::slot_count`                    <- crates/vb_core/src/frame/parts/impl_002_accessors.rs:28-30
 //   - `RunFrame::set_pc`                        <- crates/vb_core/src/frame/parts/impl_002_accessors.rs:80-86
-//   - `RunFrame::write_slot_with_taint`         <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:21-37
-//   - `RunFrame::states_snapshot`               <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:72-74
-//   - `RunFrame::slots_snapshot`                <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:51-53
-//   - `RunFrame::taint_snapshot`                <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:66-68
+//   - `RunFrame::write_slot_with_taint`         <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:21-33
+//   - `RunFrame::states_snapshot`               <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:71-73
+//   - `RunFrame::slots_snapshot`                <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:46-51
+//   - `RunFrame::taint_snapshot`                <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:62-67
 //   - `Taint` discriminant set                  <- crates/vb_core/src/value.rs:14-25
-//   - `SlotValue` discriminant set              <- crates/vb_core/src/value.rs:125-142
+//   - `SlotValue` discriminant set              <- crates/vb_core/src/value.rs:184-201
 //   - `CoreError` relevant variants             <- crates/vb_core/src/errors.rs
 //   - `RunId`, `StepIdx`, `SlotIdx`             <- crates/vb_core/src/ids/mod.rs
 //

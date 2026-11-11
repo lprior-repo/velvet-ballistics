@@ -602,7 +602,7 @@ pub exec fn checked_prod_execute_do_deterministic(
 /// TRUST BOUNDARY: this wrapper computes the boolean directly from the
 /// documented `Taint` discriminant (0=Clean, 1..=4 = non-Clean). The
 /// production `propagate_action_taint` is in `vb_core::value::join_taint`
-/// family at crates/vb_core/src/value.rs:27-45. The boolean reduction
+/// family at crates/vb_core/src/value.rs:90-108. The boolean reduction
 /// here (`input_taint_disc != 0` ⇒ tainted, `== 0` ⇒ clean) is the
 /// spec-level summary of the production rule.
 pub exec fn checked_spec_propagate_action_taint(

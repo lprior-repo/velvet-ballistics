@@ -63,7 +63,7 @@
 // ============================================================================
 //   - SpecWorkflowDigest            <- extern_accepted_cli_digest_binding.rs
 //                                       (mirror of vb_core::ids::WorkflowDigest
-//                                       at crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255)
+//                                       at crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:247-261)
 //   - SpecAcceptedArtifact          <- extern_accepted_cli_digest_binding.rs
 //                                       (mirror of
 //                                       vb_storage::admission::AcceptedArtifact

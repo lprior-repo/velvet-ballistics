@@ -140,7 +140,7 @@ fn prod_methods_drift_check() {
 // Companion namespace `crate::errors` — mirror of production CoreError
 // ============================================================================
 //
-// The production `CoreError` enum at `crates/vb_core/src/errors.rs:167-540`
+// The production `CoreError` enum at `crates/vb_core/src/errors.rs:386-759`
 // has 30+ variants. The mirror below restricts to the variants the cap
 // spec references (the `BudgetExceeded` variant used by `check_arena_cap`).
 // This mirror is intentionally restricted; the production enum is
@@ -294,7 +294,7 @@ pub enum MirrorTaint {
 // ============================================================================
 
 /// Mirror of production `CoreError::BudgetExceeded { budget: &'static str,
-/// limit: u64 }` at `crates/vb_core/src/errors.rs:386-393`. This is the
+/// limit: u64 }` at `crates/vb_core/src/errors.rs:605-612`. This is the
 /// only `CoreError` variant the cap-enforcement spec references; the
 /// production source's `check_arena_cap` returns this variant verbatim
 /// (production lines 138-141).

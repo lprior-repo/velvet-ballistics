@@ -9,7 +9,7 @@
 // ============================================================================
 //
 // This file is bound to the production arithmetic primitive
-// `StepIdx::checked_add` at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206`
+// `StepIdx::checked_add` at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:207-212`
 // and to the production wrapper `checked_step_offset` at
 // `crates/vb_compile/src/mod_compile_lowering/part_12.rs:199-212`
 // through the companion extern surface
@@ -53,7 +53,7 @@
 //                                         crates/vb_core/src/ids/mod.rs:70)
 //   - `StepIdx::checked_add`          <- extern_step_offset.rs
 //                                         (mirror of
-//                                         crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206)
+//                                         crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:207-212)
 //   - `SpecCompileError`              <- extern_step_offset.rs
 //                                         (mirror of
 //                                         crates/vb_compile/src/mod_compile_errors/kind.rs:141)
@@ -109,7 +109,7 @@ pub use production::{SpecCompileError, StepIdx, checked_step_offset};
 // ============================================================================
 /// The maximum value of u16 (StepIdx inner type).
 /// This is the bound used in the MachineInt model and matches
-/// `u16::MAX` in `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:197`
+/// `u16::MAX` in `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:203`
 /// (`StepIdx::MAX = Self(u16::MAX)`).
 pub open spec fn u16_max() -> int {
     65535
@@ -122,7 +122,7 @@ pub open spec fn u16_max() -> int {
 // Bridge: `StepIdx::checked_add` matches u16 arithmetic.
 // --------------------------------------------------------------------------
 // Mirrors production `StepIdx::checked_add(self, rhs: u16) -> Option<Self>`
-// at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206`:
+// at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:207-212`:
 //
 //     pub const fn checked_add(self, rhs: u16) -> Option<Self> {
 //         match self.0.checked_add(rhs) {

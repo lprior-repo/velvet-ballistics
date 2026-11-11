@@ -164,7 +164,7 @@ impl SlotIdx {
 // ============================================================================
 //
 // The production `CompiledNodeKind` enum at
-// `crates/vb_core/src/workflow/mod.rs:1191-1357` has 34 variants. The
+// `crates/vb_core/src/workflow/mod.rs:1553-1719` has 34 variants. The
 // mirror below is the spec-side discriminant set the spec proofs reason
 // about. We do NOT mirror every variant because the budget-bounded spec
 // only needs the discriminant shape to refer to node-kind arms in the
@@ -216,7 +216,7 @@ pub enum CompiledNodeKind {
 }
 
 // ============================================================================
-// ResourceContract — mirror of `crates/vb_core/src/workflow/mod.rs:252-289`
+// ResourceContract — mirror of `crates/vb_core/src/workflow/mod.rs:258-295`
 // ============================================================================
 
 /// Mirror of `ResourceContract`. Field names and types match production
@@ -745,7 +745,7 @@ pub mod workflow {
     use super::{SlotIdx, StepIdx};
 
     /// Mirror of production `CompiledNode` at
-    /// `crates/vb_core/src/workflow/mod.rs:995-1004`. Every field name,
+    /// `crates/vb_core/src/workflow/mod.rs:1357-1366`. Every field name,
     /// type, and visibility matches production exactly. Drift in any
     /// field breaks the mirror.
     #[derive(Clone, Copy)]
@@ -757,7 +757,7 @@ pub mod workflow {
     }
 
     /// Mirror of production `NodeOutput` at
-    /// `crates/vb_core/src/workflow/mod.rs:1008-1013`.
+    /// `crates/vb_core/src/workflow/mod.rs:1370-1375`.
     #[derive(Clone, Copy)]
     pub enum NodeOutput {
         Discard,
@@ -774,7 +774,7 @@ pub mod workflow {
     }
 
     /// Mirror of production `NodeRouting` at
-    /// `crates/vb_core/src/workflow/mod.rs:1028-1033`.
+    /// `crates/vb_core/src/workflow/mod.rs:1390-1395`.
     #[derive(Clone, Copy)]
     pub struct NodeRouting {
         pub next: NodeContinuation,
@@ -782,7 +782,7 @@ pub mod workflow {
     }
 
     /// Mirror of production `NodeContinuation` at
-    /// `crates/vb_core/src/workflow/mod.rs:1037-1042`.
+    /// `crates/vb_core/src/workflow/mod.rs:1399-1404`.
     #[derive(Clone, Copy)]
     pub enum NodeContinuation {
         End,
@@ -799,7 +799,7 @@ pub mod workflow {
     }
 
     /// Mirror of production `ErrorRouting` at
-    /// `crates/vb_core/src/workflow/mod.rs:1083-1093`.
+    /// `crates/vb_core/src/workflow/mod.rs:1445-1455`.
     #[derive(Clone, Copy)]
     pub enum ErrorRouting {
         None,
@@ -819,7 +819,7 @@ pub mod workflow {
     }
 
     /// Marker mirror of production `WorkflowError` discriminant set at
-    /// `crates/vb_core/src/workflow/mod.rs:666-880`. Restricted to the
+    /// `crates/vb_core/src/workflow/mod.rs:1028-1242`. Restricted to the
     /// variants referenced by budget.rs.
     #[derive(Clone, Copy)]
     pub enum WorkflowError {

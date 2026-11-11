@@ -12,7 +12,7 @@
 // re-exports. The mirror's `Taint` enum is a verbatim copy of
 // `crates/vb_core/src/value.rs:14-25` (5 variants, discriminants
 // 0..=4, `#[non_exhaustive]`) and its `join_taint` is a verbatim copy
-// of `crates/vb_core/src/value.rs:29-45`. The remaining helpers
+// of `crates/vb_core/src/value.rs:90-108`. The remaining helpers
 // (`taint_rank`, `join_many`, `is_*`, `secret_*`, `derived_*`,
 // `all_lattice_laws`) are spec-side observational helpers modeled on
 // production's higher-rank-wins `join_taint` semantics — they exist
@@ -59,12 +59,12 @@
 //     Random=3, TimeDependent=4)
 //                              <- crates/vb_core/src/value.rs:14-25
 //   - Production `join_taint(a, b) -> Taint`
-//                              <- crates/vb_core/src/value.rs:29-45
+//                              <- crates/vb_core/src/value.rs:90-108
 //   - Mirror `Taint` enum      <- production_inner/taint_lattice_production.rs
 //   - Mirror `taint_rank(self_) -> u8`
 //                              <- production_inner/taint_lattice_production.rs
 //                                 (spec-side observational helper,
-//                                 modeled on value.rs:30-35 / 37-43)
+//                                 modeled on value.rs:90-94/ 37-43)
 //   - Mirror `join_many(taints: &[Taint]) -> Taint`
 //                              <- production_inner/taint_lattice_production.rs
 //                                 (spec-side observational helper)

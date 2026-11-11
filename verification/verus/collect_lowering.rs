@@ -67,7 +67,7 @@
 //                                              crates/vb_core/src/ids/mod.rs:70)
 //   - `StepIdx::checked_add`               <- extern_collect_lowering.rs
 //                                              (mirror of
-//                                              crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206)
+//                                              crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:207-212)
 //   - `SlotIdx` (u16 newtype)              <- extern_collect_lowering.rs
 //                                              (mirror of
 //                                              crates/vb_core/src/ids/mod.rs:71)
@@ -143,7 +143,7 @@ pub use production::{
 /// The maximum value of u16 (StepIdx inner type).
 /// This is the bound used in the MachineInt model and matches
 /// `u16::MAX` in
-/// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:197`
+/// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:203`
 /// (`StepIdx::MAX = Self(u16::MAX)`).
 pub open spec fn u16_max() -> int {
     65535
@@ -156,7 +156,7 @@ pub open spec fn u16_max() -> int {
 // Bridge: `StepIdx::checked_add` matches u16 arithmetic.
 // --------------------------------------------------------------------------
 // Mirrors production `StepIdx::checked_add(self, rhs: u16) -> Option<Self>`
-// at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206`:
+// at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:207-212`:
 //
 //     pub const fn checked_add(self, rhs: u16) -> Option<Self> {
 //         match self.0.checked_add(rhs) {

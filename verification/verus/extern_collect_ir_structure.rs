@@ -94,7 +94,7 @@
 //   - `StepIdx` (u16 newtype)                   <- crates/vb_core/src/ids/mod.rs:70-70
 //   - `StepIdx::new(value: u16) -> Self`        <- crates/vb_core/src/ids/mod.rs:36-36
 //   - `StepIdx::get(self) -> u16`               <- crates/vb_core/src/ids/mod.rs:70-70
-//   - `StepIdx::checked_add`                    <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206
+//   - `StepIdx::checked_add`                    <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:207-212
 //                                                  (used at bounded_collect.rs:117-127
 //                                                   via the `checked_step_offset`
 //                                                   wrapper at part_12.rs:199-212)
@@ -118,7 +118,7 @@
 //                                                  body=id+1, advance=id+body_len+1,
 //                                                  done=id+body_len+2)
 //   - `CollectStart` / `CollectNext` /
-//     `CollectFinish`                           <- crates/vb_core/src/workflow/mod.rs:1264-1284
+//     `CollectFinish`                           <- crates/vb_core/src/workflow/mod.rs:1626-1646
 //                                                  (CollectStart { source, limit, page_size,
 //                                                  body, done }; CollectNext
 //                                                  { collector_slot, body, done };

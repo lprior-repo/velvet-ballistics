@@ -85,7 +85,7 @@ impl StepIdx {
     }
 
     /// Mirror of `StepIdx::checked_add(rhs: u16) -> Option<Self>` at
-    /// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206`.
+    /// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:207-212`.
     pub const fn checked_add(self, n: u16) -> Option<Self> {
         match self.0.checked_add(n) {
             Some(v) => Some(Self(v)),

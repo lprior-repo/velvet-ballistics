@@ -60,7 +60,7 @@ verus! {
 // `serde::Serialize/Deserialize` derives blocked by the same issue as
 // in `extern_budget_bounded.rs`).
 /// Mirror of `SlotValue` discriminant set at
-/// `crates/vb_core/src/value.rs:50+`. Only the variants referenced by
+/// `crates/vb_core/src/value.rs:109+`. Only the variants referenced by
 /// `EngineSignal::Finished` payload are mirrored; the rest are folded
 /// into a single `Other` variant for the purpose of this binding.
 #[derive(Clone)]
@@ -92,7 +92,7 @@ pub enum SpecTaint {
 // ::StepCounterOverflow)`. We mirror only the variants exercised by
 // signals.rs to keep the binding narrow.
 /// Mirror of `EngineError::StepCounterOverflow` and `EngineError
-/// ::BudgetParse { reason }` from `crates/vb_core/src/errors.rs:241` and
+/// ::BudgetParse { reason }` from `crates/vb_core/src/errors.rs:460` and
 /// `:396`.
 #[derive(Clone)]
 pub enum SpecEngineError {

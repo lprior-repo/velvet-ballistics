@@ -323,7 +323,7 @@ pub struct SlotIdx(pub u16);
 pub struct ActionId(pub u16);
 
 /// Mirror of `WorkflowDigest` (newtype over [u8; 32]) at
-/// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241`. We model only the discriminant
+/// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:247`. We model only the discriminant
 /// equality used by the digest comparison decision fns.
 #[derive(Clone, Copy)]
 pub struct WorkflowDigest(pub u64);

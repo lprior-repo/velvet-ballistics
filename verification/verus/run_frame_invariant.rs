@@ -33,9 +33,9 @@
 //
 // BINDING LEDGER:
 //   - `RunFrame::new`                   <- extern::run_frame_new
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:3-31)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:3-30)
 //   - `RunFrame::reinitialize`          <- extern::run_frame_reinitialize
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:34-71)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:33-67)
 //   - `RunFrame::step_count`            <- extern::run_frame_step_count
 //                                          (mirror of crates/vb_core/src/frame/parts/impl_002_accessors.rs:22-24)
 //   - `RunFrame::slot_count`            <- extern::run_frame_slot_count
@@ -45,13 +45,13 @@
 //   - `RunFrame::set_pc`                <- extern::run_frame_set_pc
 //                                          (mirror of crates/vb_core/src/frame/parts/impl_002_accessors.rs:80-86)
 //   - `RunFrame::states_snapshot`       <- extern::run_frame_states_snapshot
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:72-74)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:71-73)
 //   - `RunFrame::slots_snapshot`        <- extern::run_frame_slots_snapshot
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:51-53)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:46-51)
 //   - `RunFrame::taint_snapshot`        <- extern::run_frame_taint_snapshot
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:66-68)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:62-67)
 //   - `RunFrame::write_slot_with_taint` <- extern::run_frame_write_slot_with_taint
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:21-37)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:21-33)
 //   - `is_valid_step_state_transition`  <- extern::is_valid_step_state_transition
 //                                          (mirror of crates/vb_core/src/frame.rs:71-101;
 //                                           pure decision fn, body verified
@@ -63,8 +63,8 @@
 //                                           TimeDependent=4)
 //   - `CoreError` relevant variants     <- extern::CoreError
 //     (InvalidCompiledWorkflow, InvalidProgramCounter)
-//                                          (mirror of crates/vb_core/src/errors.rs:264-268
-//                                          and crates/vb_core/src/errors.rs:169-173)
+//                                          (mirror of crates/vb_core/src/errors.rs:483-487
+//                                          and crates/vb_core/src/errors.rs:388-392)
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -320,7 +320,7 @@ pub open spec fn spec_taint_valid_write(taint: Taint) -> bool {
 // exercise the contracts via the exec wrappers in the
 // "Production-bound exec fns" section.
 // ---------------------------------------------------------------------------
-// Bridge: `RunFrame::new`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:3-31)
+// Bridge: `RunFrame::new`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:3-30)
 // ---------------------------------------------------------------------------
 // Production contract:
 //   - Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" })
@@ -356,7 +356,7 @@ pub assume_specification[ production::run_frame_new ](
 ;
 
 // ---------------------------------------------------------------------------
-// Bridge: `RunFrame::reinitialize`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:34-71)
+// Bridge: `RunFrame::reinitialize`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:33-67)
 // ---------------------------------------------------------------------------
 // Production contract:
 //   - Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" })
@@ -421,7 +421,7 @@ pub assume_specification[ production::run_frame_set_pc ](
 ;
 
 // ---------------------------------------------------------------------------
-// Bridge: `RunFrame::write_slot_with_taint`  (crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:21-37)
+// Bridge: `RunFrame::write_slot_with_taint`  (crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:21-33)
 // ---------------------------------------------------------------------------
 // Production contract:
 //   - Err(CoreError::InvalidCompiledWorkflow { reason: "slot_index_out_of_bounds" })
@@ -453,7 +453,7 @@ pub assume_specification[ production::run_frame_write_slot_with_taint ](
 ;
 
 // ---------------------------------------------------------------------------
-// Bridges: accessor fns (crates/vb_core/src/frame/parts/impl_002_accessors.rs:1-86, crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:1-74)
+// Bridges: accessor fns (crates/vb_core/src/frame/parts/impl_002_accessors.rs:1-86, crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:1-73)
 // ---------------------------------------------------------------------------
 // These are pure accessors — single spec invariant per bridge.
 pub assume_specification[ production::run_frame_pc ](frame: &RunFrame) -> (pc: StepIdx)

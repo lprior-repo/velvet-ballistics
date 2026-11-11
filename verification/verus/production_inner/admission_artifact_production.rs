@@ -12,8 +12,8 @@
 // which is the explicit drift-detection mechanism.
 //
 // Production sources mirrored:
-//   - `vb_core::ids::WorkflowDigest`             (crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255)
-// Production `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255`
+//   - `vb_core::ids::WorkflowDigest`             (crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:247-261)
+// Production `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:247-261`
 //   - `vb_core::ids::ActionId`                   (crates/vb_core/src/ids/mod.rs:73)
 //   - `vb_storage::admission::VerificationWarning`
 //                                                 (crates/vb_storage/src/admission/proof.rs:8-15)
@@ -69,7 +69,7 @@
 // ---------------------------------------------------------------------------
 //
 // Verbatim mirror of `vb_core::ids::WorkflowDigest` at
-// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255`. Production is
+// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:247-261`. Production is
 // `pub struct WorkflowDigest([u8; 32])` with a derived `PartialEq`
 // impl. We model the digest as `pub struct WorkflowDigest(pub u64)`
 // for spec-mode equality reasoning — equality reduces to a u64
@@ -408,7 +408,7 @@ fn evidence_is_verified_at_current_schema(evidence: &ArtifactEvidence) -> bool {
 // ---------------------------------------------------------------------------
 //
 // Mirrors the `PartialEq` impl derived on `vb_core::ids::WorkflowDigest`
-// at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:239`.
+// at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:245`.
 #[verifier::external]
 pub fn digest_eq(a: &WorkflowDigest, b: &WorkflowDigest) -> bool {
     a.0 == b.0

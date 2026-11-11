@@ -6,9 +6,9 @@
 //
 // This file is a structural mirror of the production exec fn
 // `emit_single_body_set` at
-// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`.
+// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:100-141`.
 //
-// Production decision shape (from part_04.rs:96-179):
+// Production decision shape (from part_04.rs:100-141):
 //   - body.len() != 1
 //     -> Err(CompileError::StepFieldShape {
 //          step: diagnostic_step,
@@ -19,14 +19,14 @@
 //   - step.primitive == Set { value, .. }
 //     -> Ok(()) (part_04.rs:120-126)
 //   - step.primitive == Do { action, input }
-//     -> Ok(()) (part_04.rs:127-171; parse errors are not part of the
+//     -> Ok(()) (part_04.rs:143-195; parse errors are not part of the
 //        spec PO)
 //   - step.primitive == other
 //     -> Err(CompileError::UnsupportedStepPrimitive {
 //          step: diagnostic_step,
 //          primitive: canonical_primitive_name(other),
 //        })
-//     (part_04.rs:172-177)
+//     (part_04.rs:134-139)
 //
 // Substitutions (required for `verus --crate-type=lib` standalone):
 //
@@ -53,7 +53,7 @@
 // contract via `assume_specification`.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`
+// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:100-141`
 // whenever production changes. Each section header cites the
 // originating production line range.
 #![forbid(unsafe_code)]
@@ -219,7 +219,7 @@ pub const EXPECTED_ONE_SET_STEP: u8 = 1;
 // Production exec wrapper — `#[verifier::external]` projection
 // ============================================================================
 /// Mirror of the production dispatch in `emit_single_body_set` at
-/// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`.
+/// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:100-141`.
 ///
 /// The body reproduces the production decision shape exactly.
 #[verifier::external]

@@ -10,7 +10,7 @@
 //
 // This file is bound to the production exec fn
 // `emit_single_body_set` at
-// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`
+// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:100-141`
 // through the companion extern surface
 // `verification/verus/extern_emit_single_body_set.rs`.
 //
@@ -61,7 +61,7 @@
 //   - `emit_single_body_set_projection`     <- extern_emit_single_body_set.rs
 //                                               (mirror of
 //                                                emit_single_body_set decision shape
-//                                                at crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179)
+//                                                at crates/vb_compile/src/mod_compile_lowering/part_04.rs:100-141)
 //
 // ============================================================================
 // UPGRADE FROM PREVIOUS SPEC
@@ -130,7 +130,7 @@ pub use production::{
 // ============================================================================
 //
 // Mirrors the production dispatch in `emit_single_body_set` at
-// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`.
+// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:100-141`.
 // The contract characterises every production decision branch in
 // terms of the production error variants (`StepFieldShape`,
 // `UnsupportedStepPrimitive`) and the success discriminant.
