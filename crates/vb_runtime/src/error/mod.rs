@@ -49,6 +49,11 @@ pub enum RuntimeError {
         /// Preserved core error source.
         source: Box<vb_core::errors::CoreError>,
     },
+    /// Bound input symbols could not be prepared without changing the source.
+    InputSymbolBinding {
+        /// Complete typed preparation failure, retained for diagnostics.
+        source: Box<vb_core::value_store::InputSymbolBindingError>,
+    },
     /// Durable storage journal failure propagated through the runtime boundary.
     StorageJournalAppend {
         /// Preserved storage journal source.
@@ -374,6 +379,9 @@ mod conversions;
 mod diagnostics;
 mod display;
 mod equality;
+mod input_symbol_binding;
+#[cfg(test)]
+mod input_symbol_binding_tests;
 
 #[cfg(test)]
 mod tests_basic;

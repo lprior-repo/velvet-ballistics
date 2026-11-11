@@ -1,0 +1,57 @@
+{
+  "status": "corrected_v2_pending_independent_CODE_re_review",
+  "source_baseline": "2cbd7084c9bdd614c5bdebab6d520fa8c85bc71b",
+  "source_facts_rechecked_at": "be64456d5e5deb93e5a12fe7a1252831098a2296",
+  "governing_V3_sha256": "81eb944a02f07359636ad4686d236111b89e36f672f8e6d2de90a54bbcd8a2e8",
+  "original_rejection": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/runtime-bound-symbol-contract-code-review-v1.json",
+    "sha256": "57c575d146fa1ceeff951aac76e4901549050dd196097fe79767a3b516acdaa4",
+    "preserved": true
+  },
+  "before": {
+    "contract": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/evidence/runtime-bound-symbol-contract-v1/contract.md",
+      "sha256": "4f31acd468cadb316d5eb402d00b35c866f1f77a81618de44583718275663cf1"
+    },
+    "test_plan": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/evidence/runtime-bound-symbol-contract-v1/test-plan.md",
+      "sha256": "687b7199b1716d111aa31669c7fbc5ace9a02ceb000d730e98be5201c636dd99"
+    }
+  },
+  "after": {
+    "contract": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/.beads/vb-eirmk.42.2.5/contract.md",
+      "sha256": "54d28cbe2e69ff608ef3adac9da6a4020dea28b3b33f980ab8e7b0c8c9b637ae"
+    },
+    "test_plan": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/.beads/vb-eirmk.42.2.5/test-plan.md",
+      "sha256": "10c897e3a62bb4614c144be0d236af5bb4e54572a2da08b9f3ff429309396bb4"
+    }
+  },
+  "corrections": [
+    "R1: structure/nested -> historical admission -> prefix private factoring; real raw Unverified attached-checkpoint combined fault and paired valid-admission prefix control; earlier structural errors preserved.",
+    "R2: correct existing manual Eq/PartialEq fact, complete boxed structural equality/source chain/Display/code-dispatch scope; explicit exhaustive 11-metadata mapping and direct CoreError delegation with legacy RuntimeError::Core controls unchanged.",
+    "R3: remove false kill promise for idempotent redundant fresh composition; require CODE call-graph zero-preflight/once-per-consuming-route, retain live duplicate-tail full-store negative."
+  ],
+  "source_hashes_unchanged_between_baseline_and_recheck": {
+    "crates/vb_runtime/src/run_checkpoint.rs": "6aafce990bfe548dec38e91e237619019c61a9cb2520c163696a923110f91f1c",
+    "crates/vb_runtime/src/shard/lifecycle/recovered_admission.rs": "055fffb445451a0277a0fddd8ab24481471eb9464bd6bfdaf6d271ca99021e72",
+    "crates/vb_runtime/src/recovery/full/admission.rs": "ea62ed73e761888806e7c953a416e04b40246fb781a77b5fd64db0ff2bc79f4f",
+    "crates/vb_runtime/src/error/equality.rs": "47c20ac0dca4b2a3f873dce46703e49403cca0422c4df6270ef7f162c66f3197",
+    "crates/vb_runtime/src/error/equality/core.rs": "c2260230e0c56c8d68ba51ae4c148d4df293bc25832e16fa165aaa0dd000b733",
+    "crates/vb_runtime/src/error/display.rs": "35dc643411ac1f63d8b933fb8e33933252743187cad464c438076b9726ae0102",
+    "crates/vb_runtime/src/error/diagnostics.rs": "4e9c5a11c1c2bfd6555c9dbbd9a18ca3e462c2eebc6a6948a8f3f187bec0a5e7",
+    "crates/vb_core/src/errors.rs": "1cd6c4a2fa00ad3983ec0803002bb9958f72c2124d6337f324e888bf714edf0f",
+    "crates/vb_core/src/diagnostic.rs": "145586dd0e56dfe0e467da812fef2635346125f4389a80c6a3f6fbd147849f14",
+    "crates/vb_core/src/value_store/symbol_inputs.rs": "fdf73dd6682d2a478bd81092a9353dde6491db7c98117743521994456cc973ca",
+    "crates/vb_core/src/workflow/source_metadata.rs": "ffc4613528c8e555bbdd856cc09148e9731a531006237021138c39e07eb48a30"
+  },
+  "execution": "none; all commands and tests remain planned",
+  "provenance_update": "Future CARGO_TARGET_DIR explicitly unique own target/native-vb-eirmk-42-2-5; both wrappers disabled. Preliminary shared-target mutants are not final evidence.",
+  "limits": [
+    "Author correction only, not independent re-review or implementation authorization bypass.",
+    "No production/test source, BD, gates, dependencies, persisted layouts or execution APIs changed.",
+    "No new agents, builds, native runs, proof or broad CI. Full feature/master acceptance remains open."
+  ],
+  "source_fact_detail": "Verified actual legacy RuntimeError::Core symbolic fallback: unregistered STORAGE_JOURNAL_APPEND lookup yields INTERNAL_INVARIANT_VIOLATION; no new expectation silently relabels it STORAGE_JOURNAL_APPEND_FAILED."
+}

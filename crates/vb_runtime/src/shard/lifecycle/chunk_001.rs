@@ -120,6 +120,7 @@ impl Shard {
             &workflow,
             action_contracts,
         )?;
+        let prepared_store = fresh_inputs::prepare(&workflow, inputs)?;
         self.prepare_run_slots(run)?;
         let mut frame = self.take_frame_for(run, &workflow)?;
         crate::shard::helpers::seed_input_slots(&mut frame, inputs, &workflow)?;
@@ -190,12 +191,16 @@ impl Shard {
         self.counters.inc_submitted();
         let frame_step_count = frame.step_count();
         let max_slots = workflow.resource_contract().max_slots;
+        let store = match prepared_store {
+            Some(store) => store,
+            None => ValueStore::with_max_slots(max_slots),
+        };
         let state = RunState {
             registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
             frame,
             run_attempt: core::num::NonZeroU16::MIN,
             workflow,
-            store: ValueStore::with_max_slots(max_slots),
+            store,
             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
             admission,
             run_started_millis: crate::shard::helpers::wall_clock_millis_since_epoch(),

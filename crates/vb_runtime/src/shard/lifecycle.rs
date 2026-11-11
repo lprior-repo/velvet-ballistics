@@ -3,6 +3,8 @@
 
 #[path = "lifecycle/execution_binding.rs"]
 mod execution_binding;
+#[path = "lifecycle/fresh_inputs.rs"]
+mod fresh_inputs;
 #[path = "lifecycle/owned_activation.rs"]
 pub(crate) mod owned_activation;
 #[path = "lifecycle/recovered_admission.rs"]
@@ -58,6 +60,7 @@ mod tests {
     include!("lifecycle_tests/timer_wheel_snapshot_bounds_regressions.rs");
     include!("lifecycle_tests/timer_wheel_failure_retry_regressions.rs");
     include!("lifecycle_tests/timer_wheel_ask_answer_regressions.rs");
+    include!("lifecycle_tests/bound_inputs_regressions.rs");
 
     mod strict_policy_sequence {
         include!("lifecycle_tests/strict_policy_sequence.rs");

@@ -26,7 +26,6 @@ impl Shard {
     ) -> RuntimeResult<()> {
         self.validate_owned_activation_capacity(run)?;
         let accepted = prefix::load(self, run, source)?;
-        self.prepare_run_slots(run)?;
         let next_seq = accepted.next_seq;
         let state = self.prepare_owned_state(run, accepted)?;
         self.publish_owned_state(run, state, next_seq)?;

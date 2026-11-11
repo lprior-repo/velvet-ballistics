@@ -99,6 +99,9 @@ fn write_runtime_error_dynamic(
             write!(f, "recovery cannot resume: {reason}")
         }
         RuntimeError::Core { source } => write!(f, "runtime core error: {source}"),
+        RuntimeError::InputSymbolBinding { source } => {
+            write!(f, "runtime input symbol binding failed: {source}")
+        }
         RuntimeError::StorageJournalAppend { source } => {
             write!(f, "storage journal append failed: {source}")
         }
@@ -247,6 +250,7 @@ impl std::error::Error for RuntimeError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Core { source } => Some(source.as_ref()),
+            Self::InputSymbolBinding { source } => Some(source.as_ref()),
             Self::GateEvaluationFailed { source } => Some(source),
             Self::StorageJournalAppend { source } => Some(source.as_ref()),
             Self::RollbackFailed { primary, .. } => Some(primary.as_ref()),
