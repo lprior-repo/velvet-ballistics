@@ -1,0 +1,706 @@
+[
+  {
+    "check": "plan_sha256",
+    "pass": true
+  },
+  {
+    "check": "protocol_equal",
+    "pass": true
+  },
+  {
+    "check": "protocol_sha256",
+    "pass": true
+  },
+  {
+    "check": "default_thresholds_3_5_3",
+    "pass": true
+  },
+  {
+    "check": "FROZEN.sha256:BUILD-FROZEN.sha256",
+    "pass": true
+  },
+  {
+    "check": "FROZEN.sha256:BUILD-README.md",
+    "pass": true
+  },
+  {
+    "check": "FROZEN.sha256:build-only.sh",
+    "pass": true
+  },
+  {
+    "check": "FROZEN.sha256:source-pin.rb",
+    "pass": true
+  },
+  {
+    "check": "FROZEN.sha256:preflight.rs",
+    "pass": true
+  },
+  {
+    "check": "FROZEN.sha256:baseline-overlay.patch",
+    "pass": true
+  },
+  {
+    "check": "FROZEN.sha256:protocol.json",
+    "pass": true
+  },
+  {
+    "check": "FROZEN.sha256:build-source-selfcheck.rb",
+    "pass": true
+  },
+  {
+    "check": "FROZEN.sha256:measure.sh",
+    "pass": true
+  },
+  {
+    "check": "FROZEN.sha256:session.rb",
+    "pass": true
+  },
+  {
+    "check": "FROZEN.sha256:run-session.sh",
+    "pass": true
+  },
+  {
+    "check": "FROZEN.sha256:aggregate.rb",
+    "pass": true
+  },
+  {
+    "check": "FROZEN.sha256:aggregation-selfcheck.rb",
+    "pass": true
+  },
+  {
+    "check": "FROZEN.sha256:README.md",
+    "pass": true
+  },
+  {
+    "check": "BUILD-FROZEN.sha256:build-only.sh",
+    "pass": true
+  },
+  {
+    "check": "BUILD-FROZEN.sha256:source-pin.rb",
+    "pass": true
+  },
+  {
+    "check": "BUILD-FROZEN.sha256:preflight.rs",
+    "pass": true
+  },
+  {
+    "check": "BUILD-FROZEN.sha256:baseline-overlay.patch",
+    "pass": true
+  },
+  {
+    "check": "BUILD-FROZEN.sha256:protocol.json",
+    "pass": true
+  },
+  {
+    "check": "BUILD-FROZEN.sha256:build-source-selfcheck.rb",
+    "pass": true
+  },
+  {
+    "check": "BUILD-FROZEN.sha256:BUILD-README.md",
+    "pass": true
+  },
+  {
+    "check": "sequence",
+    "pass": true
+  },
+  {
+    "check": "A1:source-before.json",
+    "pass": true
+  },
+  {
+    "check": "A1:source-after.json",
+    "pass": true
+  },
+  {
+    "check": "A1:exit",
+    "pass": true
+  },
+  {
+    "check": "A1:invocation",
+    "pass": true
+  },
+  {
+    "check": "A1:bench_engine_step_once_save_const_single_transition:one_record",
+    "pass": true
+  },
+  {
+    "check": "A1:bench_engine_step_once_save_const_single_transition:sample_dimensions",
+    "pass": true
+  },
+  {
+    "check": "A1:bench_engine_step_once_save_const_single_transition:positive",
+    "pass": true
+  },
+  {
+    "check": "A1:bench_engine_step_once_save_const_single_transition:reported_mean_matches_samples_float_precision",
+    "pass": true
+  },
+  {
+    "check": "A1:bench_engine_step_once_save_const_single_transition:guard100000",
+    "pass": true
+  },
+  {
+    "check": "B1:source-before.json",
+    "pass": true
+  },
+  {
+    "check": "B1:source-after.json",
+    "pass": true
+  },
+  {
+    "check": "B1:exit",
+    "pass": true
+  },
+  {
+    "check": "B1:invocation",
+    "pass": true
+  },
+  {
+    "check": "B1:bench_engine_step_once_save_const_single_transition:one_record",
+    "pass": true
+  },
+  {
+    "check": "B1:bench_engine_step_once_save_const_single_transition:sample_dimensions",
+    "pass": true
+  },
+  {
+    "check": "B1:bench_engine_step_once_save_const_single_transition:positive",
+    "pass": true
+  },
+  {
+    "check": "B1:bench_engine_step_once_save_const_single_transition:reported_mean_matches_samples_float_precision",
+    "pass": true
+  },
+  {
+    "check": "B1:bench_engine_step_once_save_const_single_transition:guard100000",
+    "pass": true
+  },
+  {
+    "check": "B2:source-before.json",
+    "pass": true
+  },
+  {
+    "check": "B2:source-after.json",
+    "pass": true
+  },
+  {
+    "check": "B2:exit",
+    "pass": true
+  },
+  {
+    "check": "B2:invocation",
+    "pass": true
+  },
+  {
+    "check": "B2:bench_engine_step_once_save_const_single_transition:one_record",
+    "pass": true
+  },
+  {
+    "check": "B2:bench_engine_step_once_save_const_single_transition:sample_dimensions",
+    "pass": true
+  },
+  {
+    "check": "B2:bench_engine_step_once_save_const_single_transition:positive",
+    "pass": true
+  },
+  {
+    "check": "B2:bench_engine_step_once_save_const_single_transition:reported_mean_matches_samples_float_precision",
+    "pass": true
+  },
+  {
+    "check": "B2:bench_engine_step_once_save_const_single_transition:guard100000",
+    "pass": true
+  },
+  {
+    "check": "A2:source-before.json",
+    "pass": true
+  },
+  {
+    "check": "A2:source-after.json",
+    "pass": true
+  },
+  {
+    "check": "A2:exit",
+    "pass": true
+  },
+  {
+    "check": "A2:invocation",
+    "pass": true
+  },
+  {
+    "check": "A2:bench_engine_step_once_save_const_single_transition:one_record",
+    "pass": true
+  },
+  {
+    "check": "A2:bench_engine_step_once_save_const_single_transition:sample_dimensions",
+    "pass": true
+  },
+  {
+    "check": "A2:bench_engine_step_once_save_const_single_transition:positive",
+    "pass": true
+  },
+  {
+    "check": "A2:bench_engine_step_once_save_const_single_transition:reported_mean_matches_samples_float_precision",
+    "pass": true
+  },
+  {
+    "check": "A2:bench_engine_step_once_save_const_single_transition:guard100000",
+    "pass": true
+  },
+  {
+    "check": "bench_engine_step_once_save_const_single_transition:baseline:exact_mean",
+    "pass": true
+  },
+  {
+    "check": "bench_engine_step_once_save_const_single_transition:baseline:single_ps_round",
+    "pass": true
+  },
+  {
+    "check": "bench_engine_step_once_save_const_single_transition:baseline:pooled_200",
+    "pass": true
+  },
+  {
+    "check": "bench_engine_step_once_save_const_single_transition:baseline:quantile50",
+    "pass": true
+  },
+  {
+    "check": "bench_engine_step_once_save_const_single_transition:baseline:quantile95",
+    "pass": true
+  },
+  {
+    "check": "bench_engine_step_once_save_const_single_transition:baseline:quantile99",
+    "pass": true
+  },
+  {
+    "check": "bench_engine_step_once_save_const_single_transition:candidate:exact_mean",
+    "pass": true
+  },
+  {
+    "check": "bench_engine_step_once_save_const_single_transition:candidate:single_ps_round",
+    "pass": true
+  },
+  {
+    "check": "bench_engine_step_once_save_const_single_transition:candidate:pooled_200",
+    "pass": true
+  },
+  {
+    "check": "bench_engine_step_once_save_const_single_transition:candidate:quantile50",
+    "pass": true
+  },
+  {
+    "check": "bench_engine_step_once_save_const_single_transition:candidate:quantile95",
+    "pass": true
+  },
+  {
+    "check": "bench_engine_step_once_save_const_single_transition:candidate:quantile99",
+    "pass": true
+  },
+  {
+    "check": "bench_engine_step_once_save_const_single_transition:delta_percent",
+    "pass": true
+  },
+  {
+    "check": "bench_engine_step_once_save_const_single_transition:threshold",
+    "pass": true
+  },
+  {
+    "check": "A1:source-before.json",
+    "pass": true
+  },
+  {
+    "check": "A1:source-after.json",
+    "pass": true
+  },
+  {
+    "check": "A1:exit",
+    "pass": true
+  },
+  {
+    "check": "A1:invocation",
+    "pass": true
+  },
+  {
+    "check": "A1:ipc_frame_decode:one_record",
+    "pass": true
+  },
+  {
+    "check": "A1:ipc_frame_decode:sample_dimensions",
+    "pass": true
+  },
+  {
+    "check": "A1:ipc_frame_decode:positive",
+    "pass": true
+  },
+  {
+    "check": "A1:ipc_frame_decode:reported_mean_matches_samples_float_precision",
+    "pass": true
+  },
+  {
+    "check": "A1:ipc_frame_decode:guard100000",
+    "pass": true
+  },
+  {
+    "check": "B1:source-before.json",
+    "pass": true
+  },
+  {
+    "check": "B1:source-after.json",
+    "pass": true
+  },
+  {
+    "check": "B1:exit",
+    "pass": true
+  },
+  {
+    "check": "B1:invocation",
+    "pass": true
+  },
+  {
+    "check": "B1:ipc_frame_decode:one_record",
+    "pass": true
+  },
+  {
+    "check": "B1:ipc_frame_decode:sample_dimensions",
+    "pass": true
+  },
+  {
+    "check": "B1:ipc_frame_decode:positive",
+    "pass": true
+  },
+  {
+    "check": "B1:ipc_frame_decode:reported_mean_matches_samples_float_precision",
+    "pass": true
+  },
+  {
+    "check": "B1:ipc_frame_decode:guard100000",
+    "pass": true
+  },
+  {
+    "check": "B2:source-before.json",
+    "pass": true
+  },
+  {
+    "check": "B2:source-after.json",
+    "pass": true
+  },
+  {
+    "check": "B2:exit",
+    "pass": true
+  },
+  {
+    "check": "B2:invocation",
+    "pass": true
+  },
+  {
+    "check": "B2:ipc_frame_decode:one_record",
+    "pass": true
+  },
+  {
+    "check": "B2:ipc_frame_decode:sample_dimensions",
+    "pass": true
+  },
+  {
+    "check": "B2:ipc_frame_decode:positive",
+    "pass": true
+  },
+  {
+    "check": "B2:ipc_frame_decode:reported_mean_matches_samples_float_precision",
+    "pass": true
+  },
+  {
+    "check": "B2:ipc_frame_decode:guard100000",
+    "pass": true
+  },
+  {
+    "check": "A2:source-before.json",
+    "pass": true
+  },
+  {
+    "check": "A2:source-after.json",
+    "pass": true
+  },
+  {
+    "check": "A2:exit",
+    "pass": true
+  },
+  {
+    "check": "A2:invocation",
+    "pass": true
+  },
+  {
+    "check": "A2:ipc_frame_decode:one_record",
+    "pass": true
+  },
+  {
+    "check": "A2:ipc_frame_decode:sample_dimensions",
+    "pass": true
+  },
+  {
+    "check": "A2:ipc_frame_decode:positive",
+    "pass": true
+  },
+  {
+    "check": "A2:ipc_frame_decode:reported_mean_matches_samples_float_precision",
+    "pass": true
+  },
+  {
+    "check": "A2:ipc_frame_decode:guard100000",
+    "pass": true
+  },
+  {
+    "check": "ipc_frame_decode:baseline:exact_mean",
+    "pass": true
+  },
+  {
+    "check": "ipc_frame_decode:baseline:single_ps_round",
+    "pass": true
+  },
+  {
+    "check": "ipc_frame_decode:baseline:pooled_200",
+    "pass": true
+  },
+  {
+    "check": "ipc_frame_decode:baseline:quantile50",
+    "pass": true
+  },
+  {
+    "check": "ipc_frame_decode:baseline:quantile95",
+    "pass": true
+  },
+  {
+    "check": "ipc_frame_decode:baseline:quantile99",
+    "pass": true
+  },
+  {
+    "check": "ipc_frame_decode:candidate:exact_mean",
+    "pass": true
+  },
+  {
+    "check": "ipc_frame_decode:candidate:single_ps_round",
+    "pass": true
+  },
+  {
+    "check": "ipc_frame_decode:candidate:pooled_200",
+    "pass": true
+  },
+  {
+    "check": "ipc_frame_decode:candidate:quantile50",
+    "pass": true
+  },
+  {
+    "check": "ipc_frame_decode:candidate:quantile95",
+    "pass": true
+  },
+  {
+    "check": "ipc_frame_decode:candidate:quantile99",
+    "pass": true
+  },
+  {
+    "check": "ipc_frame_decode:delta_percent",
+    "pass": true
+  },
+  {
+    "check": "ipc_frame_decode:threshold",
+    "pass": true
+  },
+  {
+    "check": "A1:source-before.json",
+    "pass": true
+  },
+  {
+    "check": "A1:source-after.json",
+    "pass": true
+  },
+  {
+    "check": "A1:exit",
+    "pass": true
+  },
+  {
+    "check": "A1:invocation",
+    "pass": true
+  },
+  {
+    "check": "A1:engine_run_until_blocked_budget_10_small_workflow:one_record",
+    "pass": true
+  },
+  {
+    "check": "A1:engine_run_until_blocked_budget_10_small_workflow:sample_dimensions",
+    "pass": true
+  },
+  {
+    "check": "A1:engine_run_until_blocked_budget_10_small_workflow:positive",
+    "pass": true
+  },
+  {
+    "check": "A1:engine_run_until_blocked_budget_10_small_workflow:reported_mean_matches_samples_float_precision",
+    "pass": true
+  },
+  {
+    "check": "A1:engine_run_until_blocked_budget_10_small_workflow:guard100000",
+    "pass": true
+  },
+  {
+    "check": "B1:source-before.json",
+    "pass": true
+  },
+  {
+    "check": "B1:source-after.json",
+    "pass": true
+  },
+  {
+    "check": "B1:exit",
+    "pass": true
+  },
+  {
+    "check": "B1:invocation",
+    "pass": true
+  },
+  {
+    "check": "B1:engine_run_until_blocked_budget_10_small_workflow:one_record",
+    "pass": true
+  },
+  {
+    "check": "B1:engine_run_until_blocked_budget_10_small_workflow:sample_dimensions",
+    "pass": true
+  },
+  {
+    "check": "B1:engine_run_until_blocked_budget_10_small_workflow:positive",
+    "pass": true
+  },
+  {
+    "check": "B1:engine_run_until_blocked_budget_10_small_workflow:reported_mean_matches_samples_float_precision",
+    "pass": true
+  },
+  {
+    "check": "B1:engine_run_until_blocked_budget_10_small_workflow:guard100000",
+    "pass": true
+  },
+  {
+    "check": "B2:source-before.json",
+    "pass": true
+  },
+  {
+    "check": "B2:source-after.json",
+    "pass": true
+  },
+  {
+    "check": "B2:exit",
+    "pass": true
+  },
+  {
+    "check": "B2:invocation",
+    "pass": true
+  },
+  {
+    "check": "B2:engine_run_until_blocked_budget_10_small_workflow:one_record",
+    "pass": true
+  },
+  {
+    "check": "B2:engine_run_until_blocked_budget_10_small_workflow:sample_dimensions",
+    "pass": true
+  },
+  {
+    "check": "B2:engine_run_until_blocked_budget_10_small_workflow:positive",
+    "pass": true
+  },
+  {
+    "check": "B2:engine_run_until_blocked_budget_10_small_workflow:reported_mean_matches_samples_float_precision",
+    "pass": true
+  },
+  {
+    "check": "B2:engine_run_until_blocked_budget_10_small_workflow:guard100000",
+    "pass": true
+  },
+  {
+    "check": "A2:source-before.json",
+    "pass": true
+  },
+  {
+    "check": "A2:source-after.json",
+    "pass": true
+  },
+  {
+    "check": "A2:exit",
+    "pass": true
+  },
+  {
+    "check": "A2:invocation",
+    "pass": true
+  },
+  {
+    "check": "A2:engine_run_until_blocked_budget_10_small_workflow:one_record",
+    "pass": true
+  },
+  {
+    "check": "A2:engine_run_until_blocked_budget_10_small_workflow:sample_dimensions",
+    "pass": true
+  },
+  {
+    "check": "A2:engine_run_until_blocked_budget_10_small_workflow:positive",
+    "pass": true
+  },
+  {
+    "check": "A2:engine_run_until_blocked_budget_10_small_workflow:reported_mean_matches_samples_float_precision",
+    "pass": true
+  },
+  {
+    "check": "A2:engine_run_until_blocked_budget_10_small_workflow:guard100000",
+    "pass": true
+  },
+  {
+    "check": "engine_run_until_blocked_budget_10_small_workflow:baseline:exact_mean",
+    "pass": true
+  },
+  {
+    "check": "engine_run_until_blocked_budget_10_small_workflow:baseline:single_ps_round",
+    "pass": true
+  },
+  {
+    "check": "engine_run_until_blocked_budget_10_small_workflow:baseline:pooled_200",
+    "pass": true
+  },
+  {
+    "check": "engine_run_until_blocked_budget_10_small_workflow:baseline:quantile50",
+    "pass": true
+  },
+  {
+    "check": "engine_run_until_blocked_budget_10_small_workflow:baseline:quantile95",
+    "pass": true
+  },
+  {
+    "check": "engine_run_until_blocked_budget_10_small_workflow:baseline:quantile99",
+    "pass": true
+  },
+  {
+    "check": "engine_run_until_blocked_budget_10_small_workflow:candidate:exact_mean",
+    "pass": true
+  },
+  {
+    "check": "engine_run_until_blocked_budget_10_small_workflow:candidate:single_ps_round",
+    "pass": true
+  },
+  {
+    "check": "engine_run_until_blocked_budget_10_small_workflow:candidate:pooled_200",
+    "pass": true
+  },
+  {
+    "check": "engine_run_until_blocked_budget_10_small_workflow:candidate:quantile50",
+    "pass": true
+  },
+  {
+    "check": "engine_run_until_blocked_budget_10_small_workflow:candidate:quantile95",
+    "pass": true
+  },
+  {
+    "check": "engine_run_until_blocked_budget_10_small_workflow:candidate:quantile99",
+    "pass": true
+  },
+  {
+    "check": "engine_run_until_blocked_budget_10_small_workflow:delta_percent",
+    "pass": true
+  },
+  {
+    "check": "engine_run_until_blocked_budget_10_small_workflow:threshold",
+    "pass": true
+  }
+]

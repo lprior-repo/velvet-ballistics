@@ -1,0 +1,5 @@
+pin=06ae752b84172c5484f09e45386208b794cba954
+cpu=14
+ci_kani_and_other_builds=stopped
+background_activity=normal_desktop_recorded_in_host_logs
+selected_cpu_idle_sample=/home/lewis/tmp/vb-f1f5-bench-idle-r86.json

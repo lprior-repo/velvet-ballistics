@@ -1,0 +1,110 @@
+{
+  "protocol": {
+    "version": 2,
+    "sequence": [
+      "A1",
+      "B1",
+      "B2",
+      "A2"
+    ],
+    "roles": {
+      "A1": "baseline",
+      "B1": "candidate",
+      "B2": "candidate",
+      "A2": "baseline"
+    },
+    "latency": {
+      "sample_size": 100,
+      "warm_up_seconds": 3,
+      "measurement_seconds": 5
+    },
+    "counter_run": {
+      "sample_size": 10,
+      "warm_up_seconds": 1,
+      "measurement_seconds": 1,
+      "tool": "perf instructions:u plus separate heaptrack process"
+    },
+    "aggregation": "per side: arithmetic mean in ns of its two unrounded Criterion mean.point_estimate values; no weighting by iteration count; round only the final side mean to integer ps if subsequently producing approved policy rows",
+    "quantiles": "per side: pool its 200 Criterion sample means (time_ns/iterations); nearest-rank ceil(p*N)-1 for p50/p95/p99; these are not individual-operation tail latencies",
+    "counter_scope": "whole filtered Criterion process, including startup, all suite fixture setup, warmup/calibration and measured work; separate perf and heaptrack invocations; not per-operation counters; profiler timings never enter latency aggregation",
+    "metric_limits_percent": {
+      "bench_engine_step_once_save_const_single_transition": 3,
+      "ipc_frame_decode": 5,
+      "engine_run_until_blocked_budget_10_small_workflow": 3
+    },
+    "failure_policy": "all four complete runs are required; any failed/contaminated run invalidates the session; preserve every attempt and predeclare an entirely new session before any rerun; no best-run selection or threshold edits"
+  },
+  "protocol_sha256": "e010e657398fc253d3106d319853e7da5c7c770d0746b373dab1c27af9dc1ffe",
+  "cpu": 14,
+  "sources": {
+    "baseline": {
+      "build_output": "/home/lewis/tmp/vb-benchmark-baseline-build-r2-20261110-01",
+      "source": {
+        "role": "baseline",
+        "root": "/home/lewis/src/isoloated/velvet-ballistics-bench-fixtures-baseline-jason-20261110",
+        "pin": "7f505d498fa35acb5b70b083ac6f02cd40f3a891",
+        "head": "7f505d498fa35acb5b70b083ac6f02cd40f3a891",
+        "performance_input_sha256": "af0335bf81f5c6c07679fc6a1c34aaaeb6bedc36ca8a36b790223aaa2ca41a7f",
+        "tracked_input_count": 2178,
+        "small_workflow_sha256": "6af18531f9e21a93c1929e44cb7bdd7ca6a78096a5c0af892775a51cd6d81585",
+        "benchmark_preimage_sha256": "1237abe198f53f92f56cc907e6b02c472a5d13c2badb32d1dab9761662a2ce27",
+        "benchmark_guard_default_us": 100000,
+        "benchmark_guard_export_us": 100000,
+        "benchmark_source_sha256": "c936ce3f4dcb2a595ca700601466d4ddf55ed6e15a731704a622772312f05801",
+        "baseline_overlay_sha256": "0175f57b1a63ef7a9a36c67ea0422106c7b4917d124c26944542b9383b968fed",
+        "relevant_git_diff_sha256": "dd17958639d0e8e9ee1d1805653963b5007030cc6d9805e0da8021edd2f9d170",
+        "cargo_lock_sha256": "307cb7e5ecaa002ebe817d6963fab48c681b3d42927081863a2f35d4ea4b37fd",
+        "jj_cached_working_copy": "6d06d19ea3991c640e74d91e019a91285761df26",
+        "jj_cached_parent": "7f505d498fa35acb5b70b083ac6f02cd40f3a891",
+        "snapshot_authority": "actual tracked bytes checked against exact Git blobs plus the single pinned overlay; cached JJ state is recorded, not assumed current"
+      },
+      "build_receipt_sha256": "ae1a78117b48170f420aaae43ad58f06488c7ef006b1885a33666cacd8c817e1"
+    },
+    "candidate": {
+      "build_output": "/home/lewis/tmp/vb-f1f5-candidate-build-r84",
+      "source": {
+        "role": "candidate",
+        "root": "/home/lewis/src/isoloated/velvet-ballistics-f1f5-benchmark-c04d-20261110",
+        "pin": "06ae752b84172c5484f09e45386208b794cba954",
+        "head": "06ae752b84172c5484f09e45386208b794cba954",
+        "performance_input_sha256": "2c34ee20c9cad60c4ea333a4edff135ab1b29ad130acf471d307552537c44083",
+        "tracked_input_count": 2546,
+        "small_workflow_sha256": "6af18531f9e21a93c1929e44cb7bdd7ca6a78096a5c0af892775a51cd6d81585",
+        "benchmark_preimage_sha256": "3dfe73e2f4f514b8a145afa10ca567a5ff7ec8fbe5ec0c34247ac5651e448360",
+        "benchmark_guard_default_us": 100000,
+        "benchmark_guard_export_us": 100000,
+        "benchmark_source_sha256": "3dfe73e2f4f514b8a145afa10ca567a5ff7ec8fbe5ec0c34247ac5651e448360",
+        "baseline_overlay_sha256": null,
+        "relevant_git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cargo_lock_sha256": "307cb7e5ecaa002ebe817d6963fab48c681b3d42927081863a2f35d4ea4b37fd",
+        "jj_cached_working_copy": "635e97bea57323b0dbfb57a55f81c99ff1956ff1",
+        "jj_cached_parent": "06ae752b84172c5484f09e45386208b794cba954",
+        "snapshot_authority": "actual tracked bytes checked against exact Git blobs plus the single pinned overlay; cached JJ state is recorded, not assumed current"
+      },
+      "build_receipt_sha256": "09a82a80c89deaec8adf661089d447d182993251f68e3e53a3a71636252a8b3e"
+    }
+  },
+  "runs": [
+    {
+      "label": "A1",
+      "role": "baseline",
+      "directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/01-A1"
+    },
+    {
+      "label": "B1",
+      "role": "candidate",
+      "directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/02-B1"
+    },
+    {
+      "label": "B2",
+      "role": "candidate",
+      "directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/03-B2"
+    },
+    {
+      "label": "A2",
+      "role": "baseline",
+      "directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/04-A2"
+    }
+  ],
+  "counters_directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/counters-result"
+}

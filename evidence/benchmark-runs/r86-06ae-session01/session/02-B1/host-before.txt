@@ -1,0 +1,187 @@
+2026-11-11T02:37:03+00:00
+Linux omarchy 7.2.11-arch1-1 #1 SMP PREEMPT_DYNAMIC Fri, 16 Oct 2026 00:28:58 +0000 x86_64 GNU/Linux
+Architecture:                            x86_64
+CPU op-mode(s):                          32-bit, 64-bit
+Address sizes:                           48 bits physical, 48 bits virtual
+Byte Order:                              Little Endian
+CPU(s):                                  32
+On-line CPU(s) list:                     0-31
+Vendor ID:                               AuthenticAMD
+Model name:                              AMD Ryzen 9 9950X3D 16-Core Processor
+CPU family:                              26
+Model:                                   68
+Thread(s) per core:                      2
+Core(s) per socket:                      16
+Socket(s):                               1
+Stepping:                                0
+Microcode version:                       0xb404035
+Frequency boost:                         enabled
+CPU(s) scaling MHz:                      70%
+CPU max MHz:                             5756.4521
+CPU min MHz:                             624.1940
+BogoMIPS:                                8599.98
+Flags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good amd_lbr_v2 nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpuid_fault cpb cat_l3 cdp_l3 hw_pstate ssbd mba perfmon_v2 ibrs ibpb stibp ibrs_enhanced vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local user_shstk avx_vnni avx512_bf16 clzero irperf xsaveerptr rdpru wbnoinvd cppc arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif x2avic v_spec_ctrl vnmi avx512vbmi umip pku ospke avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid bus_lock_detect movdiri movdir64b overflow_recov succor smca fsrm avx512_vp2intersect flush_l1d amd_lbr_pmc_freeze
+Virtualization:                          AMD-V
+L1d cache:                               768 KiB (16 instances)
+L1i cache:                               512 KiB (16 instances)
+L2 cache:                                16 MiB (16 instances)
+L3 cache:                                128 MiB (2 instances)
+NUMA node(s):                            1
+NUMA node0 CPU(s):                       0-31
+Vulnerability Gather data sampling:      Not affected
+Vulnerability Ghostwrite:                Not affected
+Vulnerability Indirect target selection: Not affected
+Vulnerability Itlb multihit:             Not affected
+Vulnerability L1tf:                      Not affected
+Vulnerability Mds:                       Not affected
+Vulnerability Meltdown:                  Not affected
+Vulnerability Mmio stale data:           Not affected
+Vulnerability Old microcode:             Not affected
+Vulnerability Reg file data sampling:    Not affected
+Vulnerability Retbleed:                  Not affected
+Vulnerability Spec rstack overflow:      Mitigation; IBPB on VMEXIT only
+Vulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl
+Vulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+Vulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; STIBP always-on; PBRSB-eIBRS Not affected; BHI Not affected
+Vulnerability Srbds:                     Not affected
+Vulnerability Tsa:                       Not affected
+Vulnerability Tsx async abort:           Not affected
+Vulnerability Vmscape:                   Mitigation; IBPB on VMEXIT
+CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE    MAXMHZ   MINMHZ       MHZ
+  0    0      0    0 0:0:0:0          yes 5756.4521 624.1940 5498.1768
+  1    0      0    1 1:1:1:0          yes 5756.4521 624.1940 5535.5400
+  2    0      0    2 2:2:2:0          yes 5756.4521 624.1940 5517.9009
+  3    0      0    3 3:3:3:0          yes 5756.4521 624.1940 5497.8750
+  4    0      0    4 4:4:4:0          yes 5756.4521 624.1940 5488.4038
+  5    0      0    5 5:5:5:0          yes 5756.4521 624.1940 5539.1611
+  6    0      0    6 6:6:6:0          yes 5756.4521 624.1940 5505.3828
+  7    0      0    7 7:7:7:0          yes 5756.4521 624.1940 5540.4741
+  8    0      0    8 8:8:8:1          yes 5756.4521 624.1940 5600.2632
+  9    0      0    9 9:9:9:1          yes 5756.4521 624.1940  624.1940
+ 10    0      0   10 10:10:10:1       yes 5756.4521 624.1940 5551.0962
+ 11    0      0   11 11:11:11:1       yes 5756.4521 624.1940 5584.4839
+ 12    0      0   12 12:12:12:1       yes 5756.4521 624.1940 5585.1880
+ 13    0      0   13 13:13:13:1       yes 5756.4521 624.1940  624.1940
+ 14    0      0   14 14:14:14:1       yes 5756.4521 624.1940  624.1940
+ 15    0      0   15 15:15:15:1       yes 5756.4521 624.1940  624.1940
+ 16    0      0    0 0:0:0:0          yes 5756.4521 624.1940 5498.7339
+ 17    0      0    1 1:1:1:0          yes 5756.4521 624.1940  624.1940
+ 18    0      0    2 2:2:2:0          yes 5756.4521 624.1940  624.1940
+ 19    0      0    3 3:3:3:0          yes 5756.4521 624.1940 5529.8271
+ 20    0      0    4 4:4:4:0          yes 5756.4521 624.1940  624.1940
+ 21    0      0    5 5:5:5:0          yes 5756.4521 624.1940  624.1940
+ 22    0      0    6 6:6:6:0          yes 5756.4521 624.1940 5495.4741
+ 23    0      0    7 7:7:7:0          yes 5756.4521 624.1940  624.1940
+ 24    0      0    8 8:8:8:1          yes 5756.4521 624.1940 5606.8838
+ 25    0      0    9 9:9:9:1          yes 5756.4521 624.1940 5470.8179
+ 26    0      0   10 10:10:10:1       yes 5756.4521 624.1940 5530.1309
+ 27    0      0   11 11:11:11:1       yes 5756.4521 624.1940 5566.4219
+ 28    0      0   12 12:12:12:1       yes 5756.4521 624.1940 5535.1099
+ 29    0      0   13 13:13:13:1       yes 5756.4521 624.1940 5440.6411
+ 30    0      0   14 14:14:14:1       yes 5756.4521 624.1940  624.1940
+ 31    0      0   15 15:15:15:1       yes 5756.4521 624.1940 5576.1001
+pid 1576412's current affinity list: 0-31
+2.49 2.36 3.82 2/4514 1576543
+some avg10=0.00 avg60=0.12 avg300=0.24 total=14220525859
+full avg10=0.00 avg60=0.00 avg300=0.00 total=0
+    PID    PPID COMMAND         %CPU
+1500972    1532 ninfer-serve    24.4
+1500970    1532 llama-server    21.5
+1576024 1490533 ChatGPT         20.4
+3437721 1495476 chromium         8.4
+1575853 1490533 ChatGPT          6.7
+1491440 1490533 ChatGPT          5.1
+1597831    1532 localsearch-3    4.6
+1495711 1495476 chromium         3.6
+  12901   12892 Hyprland         3.2
+3438977 3330419 omp              2.1
+1494887 1494029 omp              2.0
+1490504 2443054 ChatGPT          1.9
+2382518 1495476 chromium         1.5
+2384305 1495476 chromium         1.2
+1495457    1532 chromium         1.1
+1506309 1505395 codex            1.0
+1506433 1506309 codex            1.0
+1495659 1495476 chromium         1.0
+1491165 1490504 codex            0.9
+1495660 1495476 chromium         0.7
+1495502 1495473 chromium         0.6
+ 230823  193121 steam            0.6
+1490563 1490524 ChatGPT          0.5
+    243       2 kswapd0          0.5
+ 858294       2 kworker/u130:14  0.4
+ 523863       2 kworker/u130:21  0.4
+ 562010       2 kworker/u130:30  0.4
+ 510164       2 kworker/u129:2-  0.3
+ 517666       2 kworker/u129:24  0.3
+ 508538       2 kworker/u130:12  0.3
+3381281       2 kworker/u130:25  0.3
+ 468549       2 kworker/u129:1-  0.3
+ 856135       2 kworker/u129:11  0.3
+ 510347       2 kworker/u129:15  0.3
+/sys/devices/system/cpu/cpu14/topology/core_id=14
+/sys/devices/system/cpu/cpu14/topology/physical_package_id=0
+/sys/devices/system/cpu/cpu14/topology/thread_siblings_list=14,30
+/sys/devices/system/cpu/cpu14/cpufreq/scaling_governor=performance
+/sys/devices/system/cpu/cpu14/cpufreq/scaling_driver=amd-pstate-epp
+/sys/devices/system/cpu/cpu14/cpufreq/scaling_min_freq=624194
+/sys/devices/system/cpu/cpu14/cpufreq/scaling_max_freq=5756452
+/sys/devices/system/cpu/cpu14/cache/index3/size=32768K
+/sys/devices/system/cpu/cpu14/cache/index3/shared_cpu_list=8-15,24-31
+/sys/devices/system/cpu/cpufreq/boost=1
+/proc/sys/kernel/perf_event_paranoid=2
+/sys/class/hwmon/hwmon0/name=nvme
+/sys/class/hwmon/hwmon1/name=nvme
+/sys/class/hwmon/hwmon10/name=corsaircpro
+/sys/class/hwmon/hwmon11/name=corsaircpro
+/sys/class/hwmon/hwmon12/name=mt7925_phy0
+/sys/class/hwmon/hwmon13/name=hidpp_battery_0
+/sys/class/hwmon/hwmon2/name=nvme
+/sys/class/hwmon/hwmon3/name=amdgpu
+/sys/class/hwmon/hwmon4/name=prom21_xhci
+/sys/class/hwmon/hwmon5/name=prom21_xhci
+/sys/class/hwmon/hwmon6/name=k10temp
+/sys/class/hwmon/hwmon7/name=r8169_0_900:00
+/sys/class/hwmon/hwmon8/name=spd5118
+/sys/class/hwmon/hwmon9/name=spd5118
+/sys/class/hwmon/hwmon0/temp1_input=44850
+/sys/class/hwmon/hwmon1/temp1_input=46850
+/sys/class/hwmon/hwmon1/temp2_input=46850
+/sys/class/hwmon/hwmon1/temp3_input=50850
+/sys/class/hwmon/hwmon12/temp1_input=29000
+/sys/class/hwmon/hwmon2/temp1_input=40850
+/sys/class/hwmon/hwmon2/temp2_input=58850
+/sys/class/hwmon/hwmon2/temp3_input=39850
+/sys/class/hwmon/hwmon3/temp1_input=41000
+/sys/class/hwmon/hwmon4/temp1_input=71872
+/sys/class/hwmon/hwmon5/temp1_input=67339
+/sys/class/hwmon/hwmon6/temp1_input=61875
+/sys/class/hwmon/hwmon6/temp3_input=35500
+/sys/class/hwmon/hwmon6/temp4_input=62500
+/sys/class/hwmon/hwmon7/temp1_input=54000
+/sys/class/hwmon/hwmon8/temp1_input=37250
+/sys/class/hwmon/hwmon9/temp1_input=37000
+/sys/class/hwmon/hwmon0/temp1_label=Composite
+/sys/class/hwmon/hwmon1/temp1_label=Composite
+/sys/class/hwmon/hwmon1/temp2_label=Sensor 1
+/sys/class/hwmon/hwmon1/temp3_label=Sensor 2
+/sys/class/hwmon/hwmon2/temp1_label=Composite
+/sys/class/hwmon/hwmon2/temp2_label=Sensor 1
+/sys/class/hwmon/hwmon2/temp3_label=Sensor 2
+/sys/class/hwmon/hwmon3/temp1_label=edge
+/sys/class/hwmon/hwmon6/temp1_label=Tctl
+/sys/class/hwmon/hwmon6/temp3_label=Tccd1
+/sys/class/hwmon/hwmon6/temp4_label=Tccd2
+rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+binary: rustc
+commit-hash: 52b6e2c208b73276ccb36ec0b68456913a801c96
+commit-date: 2026-04-27
+host: x86_64-unknown-linux-gnu
+release: 1.97.0-nightly
+LLVM version: 22.1.2
+cargo 1.97.0-nightly (eb9b60f1f 2026-04-24)
+heaptrack 1.5.0
+perf version 7.2.11-1
+profile=bench rustflags=-Dwarnings cpu=14
+hostname=omarchy
+4bf7e63167e2121f153e9a7f5c7308f64d10872137a5f23307ab7fd473cd0a43  /etc/machine-id

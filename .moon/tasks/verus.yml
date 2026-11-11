@@ -25,6 +25,11 @@ tasks:
       - 'rust-toolchain.toml'
       - 'contracts/proof_obligations.yaml'
       - 'scripts/verify-verus.sh'
+      - 'scripts/verus-native-bindings.sh'
+      - 'Cargo.lock'
+      - '.cargo/config.toml'
+      - 'crates/**/*.rs'
+      - 'crates/**/Cargo.toml'
     options:
       runInCI: true
       cache: false

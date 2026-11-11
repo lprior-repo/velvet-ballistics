@@ -1114,14 +1114,16 @@ verus_registry:
     production: crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs
 
   - id: PO-VERUS-026
-    description: "emit_single_body_set error invariants: SpecCompileError::StepFieldShape emission bound to production crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179 (PO-006, PO-009, PO-018)."
+    description: "Live F1 generic-body shared calculations: keep_last retains the complete supplied slot/type pair on Some and the previous pair on None; checked_sum returns the exact usize sum or None precisely on overflow, with no input-domain restriction. Direct executable-source verification; native differential tests cover integration."
     verus: verification/verus/emit_single_body_set.rs
-    production: crates/vb_compile/src/mod_compile_lowering/part_04.rs
+    production: crates/vb_compile/src/mod_compile_lowering/generic_body_values.rs
+    note: "F1 explicitly permits multi-step bodies. The obsolete cfg(test) emit_single_body_set singleton-rejection invariant is superseded, not imposed on live compilation. Layout/names, width derivation, control preparation/completion, primitive lowering, type inference and complete builder-state semantics are native-tested here, not mathematically proved by these leaf contracts."
 
   - id: PO-VERUS-027
-    description: "Error parity invariant: emit_single_body_set + lower_set + body_constant_index + integer_error_value error variant parity bound to production crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179 + crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:125-141 (PO-030)."
+    description: "Live F1 typed-to-flat result parity: strip_type preserves arbitrary E exactly on Err, preserves Ok(None), and maps Ok(Some((slot,type))) to Ok(Some(slot)). Direct executable-source verification; native differential tests compare actual error variants/payloads and every SlotCompiler field against the original generic emitter."
     verus: verification/verus/error_parity.rs
-    production: crates/vb_compile/src/mod_compile_lowering/part_04.rs
+    production: crates/vb_compile/src/mod_compile_lowering/generic_body_values.rs
+    note: "The proof covers result projection and supplied-pair retention, not compiler error emission, Display/category mapping or callee implementations. Native integration tests cover first propagated errors, prepass precedence, failed-step allocations, other partial builder effects and multi-step public YAML compilation. Legacy cfg(test) singleton-emitter tests remain unchanged and are not live proof closure."
 
   - id: PO-VERUS-028
     description: "v1 primitive source lowering: lower_set, lower_do, lower_choose, lower_for_each, lower_together, lower_collect, lower_reduce, lower_repeat, lower_wait, lower_ask, lower_finish spec/production parity (PRE-007, POST-003..005, POST-006-VERUS..012-VERUS, INV-001, INV-003..005). lower_collect is bound to lower_bounded_collect at bounded_collect.rs:257-277, not part_06.rs."

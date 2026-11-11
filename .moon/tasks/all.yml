@@ -967,6 +967,13 @@ tasks:
     inputs:
       - 'verification/verus/production_inner/**/*.rs'
       - 'scripts/check-production-inner-drift.sh'
+      - 'scripts/verus-native-bindings.sh'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.cargo/config.toml'
+      - 'crates/**/*.rs'
+      - 'crates/**/Cargo.toml'
       - '.moon/tasks/all.yml'
     outputs:
       - 'target/verus-drift/drift.log'
