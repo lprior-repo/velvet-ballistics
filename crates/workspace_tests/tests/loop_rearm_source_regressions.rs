@@ -249,6 +249,57 @@ fn inflight_body_rejects_rearm_source() -> TestResult {
 }
 
 #[test]
+fn mid_repeat_budget_exhaustion_suspends_and_resumes() -> TestResult {
+    let wf = compile(&repeat_source(3))?;
+    let (control, body, _) = control_body(&wf)?;
+    let mut run = frame(&wf)?;
+    let mut store = ValueStore::new();
+    let mut ev = EvidenceCollector::new();
+    let mut cs = CollectStates::new();
+    // Budget covers the two outer sets plus the repeat start, then exhausts
+    // inside the repeat body (pc lands within body..=control).
+    let sig = drive_deterministic_full(
+        &wf,
+        &mut run,
+        &mut StepBudget::new(3),
+        &mut store,
+        &[],
+        RetryPolicy::NEVER,
+        &mut ev,
+        &mut cs,
+        &CapabilitySet::empty(),
+        1,
+    )
+    .map_err(|e| format!("drive: {e:?}"))?;
+    assert_eq!(sig, RuntimeSignal::StepBudgetExhausted);
+    let pc = run.pc();
+    assert!(
+        pc.get() >= body.get() && pc.get() <= control.get(),
+        "exhaustion must land mid-repeat: pc={pc:?} body={body:?} control={control:?}"
+    );
+    // Resume with a fresh budget on the same frame: all three attempts run
+    // and the run finishes deterministically.
+    let mut ev2 = EvidenceCollector::new();
+    let mut cs2 = CollectStates::new();
+    let sig = drive_deterministic_full(
+        &wf,
+        &mut run,
+        &mut StepBudget::new(128),
+        &mut store,
+        &[],
+        RetryPolicy::NEVER,
+        &mut ev2,
+        &mut cs2,
+        &CapabilitySet::empty(),
+        1,
+    )
+    .map_err(|e| format!("resume: {e:?}"))?;
+    assert_eq!(sig, RuntimeSignal::Finished(SlotValue::I64(42)));
+    assert_eq!(body_values(&wf, &ev2.drain()), vec![7, 11, 7, 11, 7, 11]);
+    Ok(())
+}
+
+#[test]
 fn no_global_relaxation_preserved() -> TestResult {
     assert!(is_valid_step_state_transition(
         StepState::Succeeded,

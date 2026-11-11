@@ -46,7 +46,7 @@ steps:
         return Err("node 2 should be Ask".into());
     };
     assert_eq!(*prompt, SlotIdx::new(0));
-    assert_eq!(*timeout_slot, Some(SlotIdx::new(1)));
+    assert_eq!(*timeout_slot, Deadline::Slot(SlotIdx::new(1)));
 
     let node_resume = compiled.node(StepIdx::new(3)).ok_or("node 3 missing")?;
     assert_eq!(node_resume.id, StepIdx::new(3));

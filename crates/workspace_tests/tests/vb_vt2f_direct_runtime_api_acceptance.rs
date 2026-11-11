@@ -16,7 +16,9 @@ use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
-use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, NodeContinuation, NodeOutput};
+use vb_core::workflow::{
+    CompiledNodeKind, CompiledWorkflow, Deadline, NodeContinuation, NodeOutput,
+};
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{AskAnswer, AskTicket, InspectResponse, ShardConfig};

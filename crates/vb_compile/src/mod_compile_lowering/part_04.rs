@@ -18,7 +18,19 @@ use vb_core::{
 
 #[path = "canonical_reduce.rs"]
 mod canonical_reduce;
-pub(super) use canonical_reduce::{ReduceLowering, lower_canonical_aggregate};
+pub(super) use canonical_reduce::{ReduceLowering, checked_width_n, lower_canonical_aggregate};
+
+pub(super) fn field_error(
+    step: usize,
+    field: &'static str,
+    expected: &'static str,
+) -> CompileErrors {
+    CompileErrors(vec![CompileError::StepFieldShape {
+        step,
+        field,
+        expected,
+    }])
+}
 
 #[path = "canonical_reduce_initial.rs"]
 mod canonical_reduce_initial;

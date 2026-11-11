@@ -424,3 +424,37 @@ fn foreach_nested_input_stays_bounded() -> Result<(), String> {
         )
     })
 }
+
+#[test]
+fn foreach_variable_step_rejected() -> Result<(), String> {
+    let text = source(
+        "  - id: seed\n    set: {output: base, value: '1'}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: step\n      steps:\n        - id: leaf\n          set: {output: picked, value: '$entry'}\n",
+    ) + finish_tail();
+    rejects(&text, |e| {
+        matches!(
+            e,
+            CompileError::InvalidName {
+                field: "for_each.variable",
+                value,
+            } if value.as_ref() == "step"
+        )
+    })
+}
+
+#[test]
+fn aggregate_inside_foreach_capture_rejected() -> Result<(), String> {
+    // A nested reduce is not dispatchable inside a for_each body; the scope
+    // dispatcher rejects the nested aggregate before capture can walk it.
+    let text = source(
+        "  - id: seed\n    set: {output: base, value: '1'}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: entry\n      steps:\n        - id: fold\n          reduce:\n            variable: entry\n            input: '\"8\"'\n            initial: '\"0\"'\n            steps:\n              - id: update\n                set: {output: local_value, value: '$entry'}\n",
+    ) + finish_tail();
+    rejects(&text, |e| {
+        matches!(
+            e,
+            CompileError::UnsupportedStepPrimitive {
+                primitive: "reduce",
+                ..
+            }
+        )
+    })
+}

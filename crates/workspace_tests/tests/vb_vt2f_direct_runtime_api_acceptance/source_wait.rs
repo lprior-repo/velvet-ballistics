@@ -51,7 +51,7 @@ fn run_named_wait(event: bool) -> Result<(), String> {
             return Err("node 2 should be WaitEvent".into());
         };
         assert_eq!(*event, SlotIdx::new(0));
-        assert_eq!(*timeout_slot, Some(SlotIdx::new(1)));
+        assert_eq!(*timeout_slot, Deadline::Slot(SlotIdx::new(1)));
     } else {
         let CompiledNodeKind::WaitUntil { deadline_slot } = &node.kind else {
             return Err("node 2 should be WaitUntil".into());

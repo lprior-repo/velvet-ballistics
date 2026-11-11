@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use super::super::part_01::ForEachInputs;
 use super::super::part_14::BodyCtx;
 use super::{CanonicalScope, resolve_slot_reference, validate_output_alias};
@@ -229,16 +231,13 @@ pub(in crate::mod_compile_lowering) fn lower_bounded_for_each(
     config: ForEachLowering<'_>,
     builder: &mut SlotCompiler,
 ) -> Result<Option<SlotIdx>, CompileErrors> {
-    if config.body.is_empty() {
-        return Err(empty_error(index));
-    }
+    validate_body(index, &config)?;
+    validate_parameters(index, &config)?;
+
     let width = super::super::body_width(config.body, 0).map_err(|e| CompileErrors(vec![e]))?;
     let edges = body_edges(id, width, config.next)?;
 
     let (input, limit) = resolve_input(index, &config)?;
-
-    validate_parameters(index, &config)?;
-    validate_body(index, &config)?;
 
     let iterator = builder
         .allocate_slot()

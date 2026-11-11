@@ -43,7 +43,9 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_aggregate(
     emit_reduce(index, id, &config, &edges, initial_value, initial_type, builder)
 }
 
-fn checked_width_n(width: usize) -> Result<u16, CompileErrors> {
+pub(in crate::mod_compile_lowering) fn checked_width_n(
+    width: usize,
+) -> Result<u16, CompileErrors> {
     u16::try_from(width)
         .map_err(|_| CompileErrors(vec![CompileError::StepIndexOutOfRange { value: width }]))
 }
