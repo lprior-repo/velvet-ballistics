@@ -142,6 +142,7 @@ proptest! {
                 inputs: &inputs,
                 step_names: &[],
                 index: 0,
+                depth: 0,
             },
         };
         let result = lower_canonical_collect(0, id, collect, &mut builder);
@@ -186,6 +187,7 @@ proptest! {
                 inputs: &inputs,
                 step_names: &[],
                 index: 0,
+                depth: 0,
             },
         };
         let result = lower_canonical_collect(0, StepIdx::new(id), collect, &mut builder);

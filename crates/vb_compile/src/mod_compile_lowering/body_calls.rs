@@ -29,6 +29,7 @@ impl<'a> BranchBindings<'a> {
                 scope: self.view(),
                 inputs: self.ctx.inputs,
                 step_names: self.ctx.step_names,
+                depth: self.ctx.depth,
             },
             builder,
         )
@@ -52,6 +53,7 @@ impl<'a> BranchBindings<'a> {
                 names: self.ctx.step_names,
                 bindings: self.view(),
                 inputs: self.ctx.inputs,
+                depth: self.ctx.depth,
             },
             builder,
         )

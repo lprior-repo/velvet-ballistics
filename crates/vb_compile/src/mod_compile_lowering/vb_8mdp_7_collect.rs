@@ -123,6 +123,7 @@ fn scoped_collect<'a>(
             inputs: &maps.inputs,
             step_names: &[],
             index: 0,
+            depth: 0,
         },
     }
 }

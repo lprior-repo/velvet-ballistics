@@ -7,7 +7,9 @@ use vb_core::{
 
 #[path = "canonical_branch_body.rs"]
 mod canonical_branch_body;
-pub(super) use canonical_branch_body::{BodyCtx, emit_scoped_branch_body, emit_scoped_flat_body};
+pub(super) use canonical_branch_body::{
+    BodyCtx, MAX_BODY_NESTING_DEPTH, emit_scoped_branch_body, emit_scoped_flat_body,
+};
 #[path = "canonical_choose_conditions.rs"]
 mod canonical_choose_conditions;
 use canonical_choose_conditions::choose_node;
@@ -17,6 +19,9 @@ pub(super) struct ChooseScope<'a> {
     pub names: &'a [Box<str>],
     pub bindings: CanonicalScope<'a>,
     pub inputs: &'a ForEachInputs,
+    /// Depth at which this choose's branch bodies are emitted (0 at top
+    /// level), keeping nested bodies inside the body nesting budget.
+    pub depth: u16,
 }
 
 /// Test-only choose lowering with empty declared inputs.
@@ -52,6 +57,7 @@ pub(crate) fn lower_canonical_choose(
                 slot_types: &types,
             },
             inputs: &inputs,
+            depth: 0,
         },
         builder,
     )
@@ -83,6 +89,7 @@ pub(super) fn lower_canonical_choose_in_scope(
         inputs: scope.inputs,
         step_names: scope.names,
         index: scope.index,
+        depth: scope.depth,
     };
     for (branch, target) in branches.iter().zip(targets) {
         emit_scoped_branch_body(
@@ -242,6 +249,7 @@ pub(crate) fn emit_choose_branch_body(
             inputs: &inputs,
             step_names: &[],
             index: diagnostic_step,
+            depth: 0,
         },
         builder,
     )
