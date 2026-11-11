@@ -147,14 +147,13 @@ fn assert_due_run_finished(shard: &Shard, due_run: RunId) {
     assert_eq!(shard.pending_timer_get(due_run), None);
 }
 
-fn assert_future_timer_retained(
-    shard: &Shard,
-    future_run: RunId,
-    future_before: &crate::shard::RunState,
-    future_timer: crate::shard::types::PendingTimer,
-    future_sequence: Option<vb_storage::EventSeq>,
-    future_deadline: std::time::Instant,
-) {
+fn assert_future_timer_retained(fixture: &IdleDueFixture) {
+    let shard = &fixture.shard;
+    let future_run = fixture.future_run;
+    let future_before = &fixture.future_state;
+    let future_timer = fixture.future_timer;
+    let future_sequence = fixture.future_sequence;
+    let future_deadline = fixture.future_deadline;
     assert_eq!(shard.run_state_get(future_run), Some(future_before));
     assert_eq!(shard.pending_timer_get(future_run), Some(future_timer));
     assert_eq!(shard.journal_seq_get(future_run), future_sequence);
@@ -208,26 +207,19 @@ fn assert_due_resolution_then_idle_tick(
 
 #[test]
 fn idle_tick_resolves_only_due_owned_timer_once() -> Result<(), String> {
+    let mut fixture = setup_idle_due_fixture()?;
+    assert_eq!(fixture.shard.tick(), Ok(true));
+    assert_due_run_finished(&fixture.shard, fixture.due_run);
+    assert_future_timer_retained(&fixture);
     let IdleDueFixture {
         mut shard,
         journal,
         future_run,
         due_run,
-        future_deadline,
         future_timer,
         future_state: future_before,
-        future_sequence,
-    } = setup_idle_due_fixture()?;
-    assert_eq!(shard.tick(), Ok(true));
-    assert_due_run_finished(&shard, due_run);
-    assert_future_timer_retained(
-        &shard,
-        future_run,
-        &future_before,
-        future_timer,
-        future_sequence,
-        future_deadline,
-    );
+        ..
+    } = fixture;
     assert_due_resolution_then_idle_tick(&mut shard, &journal, due_run, future_run)?;
     assert_eq!(shard.pending_timer_get(future_run), Some(future_timer));
     assert_eq!(shard.run_state_get(future_run), Some(&future_before));

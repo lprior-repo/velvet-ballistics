@@ -43,11 +43,20 @@ fn bound_symbol_runtime_composition_failure_has_no_publication() -> TestResult {
 }
 
 fn binding_capacity_error() -> RuntimeError {
-    vb_core::value_store::InputSymbolBindingError::Core(CoreError::BudgetExceeded {
-        budget: "max_slots",
-        limit: 3,
-    })
-    .into()
+    RuntimeError::InputSymbolBinding {
+        source: Box::new(vb_core::value_store::InputSymbolBindingError::Core(
+            CoreError::BudgetExceeded {
+                budget: "max_slots",
+                limit: 3,
+            },
+        )),
+    }
+}
+
+fn poisoned_header_error() -> RuntimeError {
+    RuntimeError::StorageJournalAppend {
+        source: std::sync::Arc::new(JournalError::OwnedInputs(OwnedInputError::IdentityMismatch)),
+    }
 }
 
 #[test]
@@ -129,9 +138,7 @@ fn bound_symbol_runtime_source_binding_has_no_reparse_fallback() -> TestResult {
     let poisoned = snapshot(&case, &actor, &journal)?;
     assert_eq!(
         actor.activate_owned_submission(case.run, case.source.digest),
-        Err(RuntimeError::from(JournalError::OwnedInputs(
-            OwnedInputError::IdentityMismatch
-        )))
+        Err(poisoned_header_error())
     );
     assert_eq!(snapshot(&case, &actor, &journal)?, poisoned);
     assert_eq!(journal.run_header(case.run)?, Some(header));

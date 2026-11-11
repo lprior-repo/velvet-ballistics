@@ -75,8 +75,10 @@ fn make_case(
     run: RunId,
 ) -> TestResult<Case> {
     let directory = tempfile::tempdir()?;
-    let input_digest = commit_owned(&directory, &workflow, &source, &artifact, &original, run)?;
-    Ok(Case {
+    let record =
+        OwnedRunInputsRecordV1::new(run, artifact.digest, source.digest, &original, &workflow)?;
+    let input_digest = record.input_digest();
+    let case = Case {
         directory,
         workflow,
         source,
@@ -84,29 +86,21 @@ fn make_case(
         original,
         input_digest,
         run,
-    })
+    };
+    commit_owned(&case, record)?;
+    Ok(case)
 }
 
-fn commit_owned(
-    directory: &tempfile::TempDir,
-    workflow: &CompiledWorkflow,
-    source: &WorkflowSourceRecord,
-    artifact: &AcceptedArtifact,
-    original: &OwnedRootBundle,
-    run: RunId,
-) -> TestResult<WorkflowDigest> {
-    let record =
-        OwnedRunInputsRecordV1::new(run, artifact.digest, source.digest, original, workflow)?;
-    let digest = record.input_digest();
+fn commit_owned(case: &Case, record: OwnedRunInputsRecordV1) -> TestResult<()> {
     let submission = RunSubmission::owned(
-        source.clone(),
-        artifact.clone(),
+        case.source.clone(),
+        case.artifact.clone(),
         record,
-        header(run, workflow),
+        header(case.run, &case.workflow),
     )?;
-    let journal = FjallJournal::open(directory.path(), None)?;
+    let journal = FjallJournal::open(case.directory.path(), None)?;
     journal.commit_run_submission(&submission, RuntimePolicy::Strict)?;
-    Ok(digest)
+    Ok(())
 }
 
 fn header(run: RunId, workflow: &CompiledWorkflow) -> RunHeaderRecord {
