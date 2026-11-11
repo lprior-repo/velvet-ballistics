@@ -242,7 +242,3 @@ fn repeat_body_width_overflow_is_rejected() -> Result<(), String> {
         Err(format!("wrong diagnostic: {errors:?}"))
     }
 }
-
-// Foreign counter writes: nested repeat must allocate a fresh attempt slot;
-// the inner body's outputs must not alias either counter. Validator owns the
-// packed counter; compile must not alias.

@@ -18,8 +18,31 @@ pub(in crate::mod_compile_lowering) fn parse_typed_initial(
     if let Ok(value) = text.parse::<i64>() {
         return Ok((ConstValue::I64(value), ExprType::I64));
     }
-    let parsed = parse_expression(text).map_err(|e| CompileErrors(vec![e]))?;
+    let parsed = parse_expression(text).map_err(|e| map_initial_error(e, index))?;
     literal_constant(&parsed, index)
+}
+
+fn map_initial_error(error: CompileError, index: usize) -> CompileErrors {
+    if is_expression_error(&error) {
+        initial_error(index)
+    } else {
+        CompileErrors(vec![error])
+    }
+}
+
+fn is_expression_error(error: &CompileError) -> bool {
+    matches!(
+        error,
+        CompileError::ExpressionUnexpectedChar { .. }
+            | CompileError::ExpressionUnterminatedString { .. }
+            | CompileError::ExpressionIntegerOutOfRange { .. }
+            | CompileError::ExpressionFloatOutOfRange { .. }
+            | CompileError::ExpressionLimitExceeded { .. }
+            | CompileError::ExpressionUnexpectedToken { .. }
+            | CompileError::ExpressionUnknownIdentifier { .. }
+            | CompileError::ExpressionLoweringUnsupported { .. }
+            | CompileError::ExpressionHelperArity { .. }
+    )
 }
 
 fn literal_constant(
