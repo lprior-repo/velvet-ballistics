@@ -5,6 +5,42 @@ use super::super::budget_workflow_inputs;
 use super::witness::Witness;
 use super::{domain, sampling};
 
+#[kani::proof]
+#[kani::unwind(6)]
+fn kani_harness_whole_workflow_budget_compute_domain_original_to_case() {
+    let inputs = budget_workflow_inputs();
+    let original = Witness::decode(inputs.nodes(), inputs.entry(), inputs.contract());
+    let before = (
+        inputs.node_count(),
+        inputs.covers_nop(),
+        inputs.covers_do(),
+        inputs.covers_wait_until(),
+        inputs.covers_finish(),
+    );
+    let mut visited = false;
+    inputs.with_nodes(|nodes, entry, contract| {
+        assert!(!visited, "original visitor must execute once");
+        visited = true;
+        assert!(domain::original_projection(nodes, entry));
+        assert_eq!(observations(nodes), before);
+        let decoded = Witness::decode(nodes, entry, contract);
+        assert_eq!(
+            decoded, original,
+            "original visitor must preserve every field"
+        );
+        match decoded {
+            Some(witness) => witness.with_nodes(|rebuilt, rebuilt_entry, rebuilt_contract| {
+                assert!(super::node_equality::focused_nodes_equal(rebuilt, nodes));
+                assert_eq!(rebuilt_entry, entry);
+                assert_eq!(rebuilt_contract, contract);
+                assert_eq!(observations(rebuilt), before);
+            }),
+            None => assert!(false, "original producer must decode completely"),
+        }
+    });
+    assert!(visited, "original visitor must execute once");
+}
+
 fn observations(nodes: &[CompiledNode]) -> (usize, bool, bool, bool, bool) {
     (
         nodes.len(),
@@ -45,59 +81,13 @@ fn kani_harness_whole_workflow_budget_compute_domain_original_words_covered() {
             assert!(index <= 42);
             assert!(super::word::matches(nodes, index));
         }
+        original_word_covers::cover_original_words(nodes);
     });
     assert!(visited, "original visitor must execute once");
-}
-
-fn check_original(expected_word: u8) -> bool {
-    let inputs = budget_workflow_inputs();
-    kani::assume(super::word::matches(inputs.nodes(), expected_word));
-    let original = Witness::decode(inputs.nodes(), inputs.entry(), inputs.contract());
-    let before = (
-        inputs.node_count(),
-        inputs.covers_nop(),
-        inputs.covers_do(),
-        inputs.covers_wait_until(),
-        inputs.covers_finish(),
-    );
-    let mut visited = false;
-    inputs.with_nodes(|nodes, entry, contract| {
-        assert!(!visited, "original visitor must execute once");
-        visited = true;
-        assert!(domain::original_projection(nodes, entry));
-        assert_eq!(observations(nodes), before);
-        let decoded = Witness::decode(nodes, entry, contract);
-        assert_eq!(
-            decoded, original,
-            "original visitor must preserve every field"
-        );
-        match decoded {
-            Some(witness) => witness.with_nodes(|rebuilt, rebuilt_entry, rebuilt_contract| {
-                assert!(super::node_equality::focused_nodes_equal(rebuilt, nodes));
-                assert_eq!(rebuilt_entry, entry);
-                assert_eq!(rebuilt_contract, contract);
-                assert_eq!(observations(rebuilt), before);
-            }),
-            None => assert!(false, "original producer must decode completely"),
-        }
-    });
-    assert!(visited, "original visitor must execute once");
-    visited
-}
-
-macro_rules! original_case {
-    ($name:ident, $index:literal, $label:literal) => {
-        #[kani::proof]
-        #[kani::unwind(6)]
-        fn $name() {
-            let visited = super::check_original($index);
-            kani::cover!(visited, $label);
-        }
-    };
 }
 
 #[path = "bridge_old_cases.rs"]
-mod old_cases;
+mod original_word_covers;
 
 #[kani::proof]
 #[kani::unwind(6)]

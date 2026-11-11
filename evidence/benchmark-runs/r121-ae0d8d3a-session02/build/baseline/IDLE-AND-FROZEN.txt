@@ -1,0 +1,3 @@
+pin=7f505d498fa35acb5b70b083ac6f02cd40f3a891
+cpu=14
+ci_kani_and_other_builds=stopped

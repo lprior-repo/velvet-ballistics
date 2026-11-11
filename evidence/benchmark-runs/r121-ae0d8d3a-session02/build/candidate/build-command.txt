@@ -1,0 +1,1 @@
+rustup run nightly-2026-04-28 cargo bench --locked --offline -p velvet-ballistics-workspace-tests --bench velvet_ballistics --all-features --no-run --message-format=json

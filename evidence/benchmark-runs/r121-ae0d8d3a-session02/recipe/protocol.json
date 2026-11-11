@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "sequence": ["A1", "B1", "B2", "A2"],
+  "roles": {"A1": "baseline", "B1": "candidate", "B2": "candidate", "A2": "baseline"},
+  "latency": {"sample_size": 100, "warm_up_seconds": 3, "measurement_seconds": 5},
+  "counter_run": {"sample_size": 10, "warm_up_seconds": 1, "measurement_seconds": 1, "tool": "perf instructions:u plus separate heaptrack process"},
+  "aggregation": "per side: arithmetic mean in ns of its two unrounded Criterion mean.point_estimate values; no weighting by iteration count; round only the final side mean to integer ps if subsequently producing approved policy rows",
+  "quantiles": "per side: pool its 200 Criterion sample means (time_ns/iterations); nearest-rank ceil(p*N)-1 for p50/p95/p99; these are not individual-operation tail latencies",
+  "counter_scope": "whole filtered Criterion process, including startup, all suite fixture setup, warmup/calibration and measured work; separate perf and heaptrack invocations; not per-operation counters; profiler timings never enter latency aggregation",
+  "metric_limits_percent": {"bench_engine_step_once_save_const_single_transition": 3, "ipc_frame_decode": 5, "engine_run_until_blocked_budget_10_small_workflow": 3},
+  "failure_policy": "all four complete runs are required; any failed/contaminated run invalidates the session; preserve every attempt and predeclare an entirely new session before any rerun; no best-run selection or threshold edits"
+}

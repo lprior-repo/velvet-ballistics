@@ -1,0 +1,665 @@
+{
+  "scope": "Recorded before/after host snapshots and vmstat only; guard checked process names immediately before each phase. No continuous CPU14/SMT30 per-process trace; no proof of absent transient interference or throttling. Desktop/LLM processes remain. Counters have higher CPU pressure from profiling.",
+  "phases": {
+    "01-A1": {
+      "snapshots": {
+        "host-before.txt": {
+          "at": "2026-11-11T07:01:43+00:00",
+          "selected_cpu": 14,
+          "smt_siblings": "14,30",
+          "governor": "performance",
+          "cpu_pressure": [
+            "some avg10=0.00 avg60=0.08 avg300=0.29 total=14340677275",
+            "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+          ],
+          "cpu_temperatures_millicelsius": [
+            "/sys/class/hwmon/hwmon6/temp1_input=49500",
+            "/sys/class/hwmon/hwmon6/temp3_input=58500",
+            "/sys/class/hwmon/hwmon6/temp4_input=32125"
+          ],
+          "recorded_process_rows": [
+            "1500972    1532 ninfer-serve    25.8",
+            "1500970    1532 llama-server    21.3",
+            "2362039 2335197 muse             6.9",
+            "1597831    1532 localsearch-3    4.7",
+            "1491440 1490533 ChatGPT          4.7",
+            "3412156 3392678 chromium         4.6",
+            "3454836 3392678 chromium         3.7",
+            "12901   12892 Hyprland         3.2",
+            "1494887 1494029 omp              2.3",
+            "3438977 3330419 omp              2.1",
+            "1490563 1490524 ChatGPT          2.1",
+            "3392765 3392678 chromium         2.0",
+            "1490504 2443054 ChatGPT          1.8",
+            "1202448 1490533 ChatGPT          1.6",
+            "3392657    1532 chromium         1.4",
+            "1506309 1505395 codex            1.2",
+            "1202308 3392678 chromium         1.2",
+            "1491165 1490504 codex            0.8",
+            "3514658 3392678 chromium         0.8",
+            "3392772 3392678 chromium         0.7",
+            "3392706 3392673 chromium         0.6",
+            "460297 1506561 codex            0.6",
+            "230823  193121 steam            0.6",
+            "243       2 kswapd0          0.5",
+            "2585188       2 kworker/u130:3-  0.3",
+            "752810  752801 quickshell       0.2",
+            "232330  232278 steamwebhelper   0.2",
+            "2147634       2 kworker/u130:25  0.2",
+            "2585332       2 kworker/u129:3-  0.2",
+            "1597911 1597832 voxtype-osd-gtk  0.2",
+            "3981125       2 kworker/u130:30  0.2",
+            "3796268       2 kworker/u129:8-  0.1",
+            "13003   12901 Xwayland         0.1",
+            "224       2 kcompactd0       0.1"
+          ],
+          "competing_build_or_proof_in_recorded_top_processes": [],
+          "source": {
+            "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/01-A1/host-before.txt",
+            "bytes": 10749,
+            "sha256": "5ecc7b7221a58632e37ed5d3d2d001561a31ef1d576a0da0a0030b83a09c7371"
+          }
+        },
+        "host-after.txt": {
+          "at": "2026-11-11T07:02:16+00:00",
+          "selected_cpu": 14,
+          "smt_siblings": "14,30",
+          "governor": "performance",
+          "cpu_pressure": [
+            "some avg10=0.00 avg60=0.04 avg300=0.26 total=14340701924",
+            "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+          ],
+          "cpu_temperatures_millicelsius": [
+            "/sys/class/hwmon/hwmon6/temp1_input=55125",
+            "/sys/class/hwmon/hwmon6/temp3_input=31000",
+            "/sys/class/hwmon/hwmon6/temp4_input=56625"
+          ],
+          "recorded_process_rows": [
+            "1500972    1532 ninfer-serve    25.8",
+            "1500970    1532 llama-server    21.3",
+            "1204454 3392678 chromium        14.2",
+            "2362039 2335197 muse             6.9",
+            "1597831    1532 localsearch-3    4.7",
+            "1491440 1490533 ChatGPT          4.7",
+            "3412156 3392678 chromium         4.6",
+            "3454836 3392678 chromium         3.7",
+            "12901   12892 Hyprland         3.2",
+            "1204241 1490533 ChatGPT          3.0",
+            "1494887 1494029 omp              2.3",
+            "1204111 1490533 ChatGPT          2.2",
+            "3438977 3330419 omp              2.1",
+            "1490563 1490524 ChatGPT          2.1",
+            "3392765 3392678 chromium         2.0",
+            "1490504 2443054 ChatGPT          1.8",
+            "3392657    1532 chromium         1.4",
+            "1506309 1505395 codex            1.2",
+            "1491165 1490504 codex            0.8",
+            "3514658 3392678 chromium         0.8",
+            "3392772 3392678 chromium         0.7",
+            "3392706 3392673 chromium         0.6",
+            "460297 1506561 codex            0.6",
+            "230823  193121 steam            0.6",
+            "243       2 kswapd0          0.5",
+            "2585188       2 kworker/u130:3-  0.3",
+            "752810  752801 quickshell       0.2",
+            "232330  232278 steamwebhelper   0.2",
+            "2147634       2 kworker/u130:25  0.2",
+            "1597911 1597832 voxtype-osd-gtk  0.2",
+            "2585332       2 kworker/u129:3-  0.2",
+            "3981125       2 kworker/u130:30  0.2",
+            "3796268       2 kworker/u129:8-  0.1",
+            "13003   12901 Xwayland         0.1"
+          ],
+          "competing_build_or_proof_in_recorded_top_processes": [],
+          "source": {
+            "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/01-A1/host-after.txt",
+            "bytes": 10749,
+            "sha256": "73de374feff9d944251e8a5cdd9aaa9f8da2d2dbe5adedea7c3ebb1012a1ec49"
+          }
+        }
+      },
+      "vmstat": {
+        "interval_count": 32,
+        "host_idle_percent_minmax": [
+          92,
+          97
+        ],
+        "runnable_minmax": [
+          0,
+          9
+        ],
+        "sum_interval_swapin_kib_per_second": 296,
+        "sum_interval_swapout_kib_per_second": 0,
+        "caveat": "First since-boot row excluded. Interval sums are sums of reported rates, not exact byte-accounting. Existing swapped pages and small swap-in remain; no clean isolated-host claim."
+      }
+    },
+    "02-B1": {
+      "snapshots": {
+        "host-before.txt": {
+          "at": "2026-11-11T07:02:16+00:00",
+          "selected_cpu": 14,
+          "smt_siblings": "14,30",
+          "governor": "performance",
+          "cpu_pressure": [
+            "some avg10=0.00 avg60=0.04 avg300=0.26 total=14340703877",
+            "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+          ],
+          "cpu_temperatures_millicelsius": [
+            "/sys/class/hwmon/hwmon6/temp1_input=57250",
+            "/sys/class/hwmon/hwmon6/temp3_input=32375",
+            "/sys/class/hwmon/hwmon6/temp4_input=52000"
+          ],
+          "recorded_process_rows": [
+            "1500972    1532 ninfer-serve    25.8",
+            "1500970    1532 llama-server    21.3",
+            "1204454 3392678 chromium        12.0",
+            "2362039 2335197 muse             6.9",
+            "1597831    1532 localsearch-3    4.7",
+            "1491440 1490533 ChatGPT          4.7",
+            "3412156 3392678 chromium         4.6",
+            "3454836 3392678 chromium         3.7",
+            "12901   12892 Hyprland         3.2",
+            "1204241 1490533 ChatGPT          2.9",
+            "1494887 1494029 omp              2.3",
+            "1204111 1490533 ChatGPT          2.2",
+            "3438977 3330419 omp              2.1",
+            "1490563 1490524 ChatGPT          2.1",
+            "3392765 3392678 chromium         2.0",
+            "1490504 2443054 ChatGPT          1.8",
+            "3392657    1532 chromium         1.4",
+            "1506309 1505395 codex            1.2",
+            "1491165 1490504 codex            0.8",
+            "3514658 3392678 chromium         0.8",
+            "3392772 3392678 chromium         0.7",
+            "3392706 3392673 chromium         0.6",
+            "460297 1506561 codex            0.6",
+            "230823  193121 steam            0.6",
+            "1204568 1597831 localsearch-ext  0.5",
+            "243       2 kswapd0          0.5",
+            "2585188       2 kworker/u130:3-  0.3",
+            "752810  752801 quickshell       0.2",
+            "232330  232278 steamwebhelper   0.2",
+            "2147634       2 kworker/u130:25  0.2",
+            "1597911 1597832 voxtype-osd-gtk  0.2",
+            "2585332       2 kworker/u129:3-  0.2",
+            "3981125       2 kworker/u130:30  0.2",
+            "3796268       2 kworker/u129:8-  0.1"
+          ],
+          "competing_build_or_proof_in_recorded_top_processes": [],
+          "source": {
+            "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/02-B1/host-before.txt",
+            "bytes": 10749,
+            "sha256": "7ef185b04ea1a0a4540cc048c1eb5988c6123b86eebac92922d646803c8a4f90"
+          }
+        },
+        "host-after.txt": {
+          "at": "2026-11-11T07:02:48+00:00",
+          "selected_cpu": 14,
+          "smt_siblings": "14,30",
+          "governor": "performance",
+          "cpu_pressure": [
+            "some avg10=0.00 avg60=0.02 avg300=0.22 total=14340730651",
+            "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+          ],
+          "cpu_temperatures_millicelsius": [
+            "/sys/class/hwmon/hwmon6/temp1_input=54625",
+            "/sys/class/hwmon/hwmon6/temp3_input=31375",
+            "/sys/class/hwmon/hwmon6/temp4_input=55500"
+          ],
+          "recorded_process_rows": [
+            "1500972    1532 ninfer-serve    25.8",
+            "1500970    1532 llama-server    21.3",
+            "2362039 2335197 muse             6.9",
+            "1597831    1532 localsearch-3    4.7",
+            "1491440 1490533 ChatGPT          4.7",
+            "3412156 3392678 chromium         4.6",
+            "3454836 3392678 chromium         3.7",
+            "12901   12892 Hyprland         3.2",
+            "1494887 1494029 omp              2.3",
+            "3438977 3330419 omp              2.1",
+            "1490563 1490524 ChatGPT          2.1",
+            "3392765 3392678 chromium         2.0",
+            "1490504 2443054 ChatGPT          1.8",
+            "3392657    1532 chromium         1.4",
+            "1506309 1505395 codex            1.2",
+            "1205080 1490533 ChatGPT          1.2",
+            "1491165 1490504 codex            0.8",
+            "3514658 3392678 chromium         0.8",
+            "3392772 3392678 chromium         0.7",
+            "3392706 3392673 chromium         0.6",
+            "460297 1506561 codex            0.6",
+            "230823  193121 steam            0.6",
+            "243       2 kswapd0          0.5",
+            "2585188       2 kworker/u130:3-  0.3",
+            "752810  752801 quickshell       0.2",
+            "232330  232278 steamwebhelper   0.2",
+            "2147634       2 kworker/u130:25  0.2",
+            "1597911 1597832 voxtype-osd-gtk  0.2",
+            "2585332       2 kworker/u129:3-  0.2",
+            "3981125       2 kworker/u130:30  0.2",
+            "13003   12901 Xwayland         0.1",
+            "3796268       2 kworker/u129:8-  0.1",
+            "224       2 kcompactd0       0.1",
+            "3127381       2 kworker/u130:7-  0.1"
+          ],
+          "competing_build_or_proof_in_recorded_top_processes": [],
+          "source": {
+            "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/02-B1/host-after.txt",
+            "bytes": 10749,
+            "sha256": "ddaf0bd524f599f373694942952ae5678e44fdc4ae547b74c547c437d01d8a92"
+          }
+        }
+      },
+      "vmstat": {
+        "interval_count": 32,
+        "host_idle_percent_minmax": [
+          88,
+          97
+        ],
+        "runnable_minmax": [
+          0,
+          9
+        ],
+        "sum_interval_swapin_kib_per_second": 204,
+        "sum_interval_swapout_kib_per_second": 0,
+        "caveat": "First since-boot row excluded. Interval sums are sums of reported rates, not exact byte-accounting. Existing swapped pages and small swap-in remain; no clean isolated-host claim."
+      }
+    },
+    "03-B2": {
+      "snapshots": {
+        "host-before.txt": {
+          "at": "2026-11-11T07:02:49+00:00",
+          "selected_cpu": 14,
+          "smt_siblings": "14,30",
+          "governor": "performance",
+          "cpu_pressure": [
+            "some avg10=0.00 avg60=0.02 avg300=0.22 total=14340731952",
+            "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+          ],
+          "cpu_temperatures_millicelsius": [
+            "/sys/class/hwmon/hwmon6/temp1_input=57125",
+            "/sys/class/hwmon/hwmon6/temp3_input=32250",
+            "/sys/class/hwmon/hwmon6/temp4_input=62000"
+          ],
+          "recorded_process_rows": [
+            "1500972    1532 ninfer-serve    25.8",
+            "1500970    1532 llama-server    21.3",
+            "2362039 2335197 muse             6.9",
+            "1597831    1532 localsearch-3    4.7",
+            "1491440 1490533 ChatGPT          4.7",
+            "3412156 3392678 chromium         4.6",
+            "3454836 3392678 chromium         3.7",
+            "12901   12892 Hyprland         3.2",
+            "1494887 1494029 omp              2.3",
+            "3438977 3330419 omp              2.1",
+            "1490563 1490524 ChatGPT          2.1",
+            "3392765 3392678 chromium         2.0",
+            "1490504 2443054 ChatGPT          1.8",
+            "3392657    1532 chromium         1.4",
+            "1506309 1505395 codex            1.2",
+            "1205080 1490533 ChatGPT          1.2",
+            "1491165 1490504 codex            0.8",
+            "3514658 3392678 chromium         0.8",
+            "3392772 3392678 chromium         0.7",
+            "3392706 3392673 chromium         0.6",
+            "460297 1506561 codex            0.6",
+            "230823  193121 steam            0.6",
+            "243       2 kswapd0          0.5",
+            "2585188       2 kworker/u130:3-  0.3",
+            "752810  752801 quickshell       0.2",
+            "232330  232278 steamwebhelper   0.2",
+            "2147634       2 kworker/u130:25  0.2",
+            "1597911 1597832 voxtype-osd-gtk  0.2",
+            "2585332       2 kworker/u129:3-  0.2",
+            "3981125       2 kworker/u130:30  0.2",
+            "13003   12901 Xwayland         0.1",
+            "3796268       2 kworker/u129:8-  0.1",
+            "224       2 kcompactd0       0.1",
+            "3127381       2 kworker/u130:7-  0.1"
+          ],
+          "competing_build_or_proof_in_recorded_top_processes": [],
+          "source": {
+            "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/03-B2/host-before.txt",
+            "bytes": 10749,
+            "sha256": "b6b51b0043b60f313f4d39beaa0277f15167b086e288165a0ce10661655492ed"
+          }
+        },
+        "host-after.txt": {
+          "at": "2026-11-11T07:03:21+00:00",
+          "selected_cpu": 14,
+          "smt_siblings": "14,30",
+          "governor": "performance",
+          "cpu_pressure": [
+            "some avg10=0.00 avg60=0.01 avg300=0.20 total=14340757202",
+            "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+          ],
+          "cpu_temperatures_millicelsius": [
+            "/sys/class/hwmon/hwmon6/temp1_input=55125",
+            "/sys/class/hwmon/hwmon6/temp3_input=32375",
+            "/sys/class/hwmon/hwmon6/temp4_input=38250"
+          ],
+          "recorded_process_rows": [
+            "1500972    1532 ninfer-serve    25.8",
+            "1500970    1532 llama-server    21.3",
+            "2362039 2335197 muse             6.9",
+            "1206796 3392678 chromium         4.9",
+            "1597831    1532 localsearch-3    4.7",
+            "1491440 1490533 ChatGPT          4.7",
+            "3412156 3392678 chromium         4.5",
+            "3454836 3392678 chromium         3.6",
+            "12901   12892 Hyprland         3.2",
+            "1494887 1494029 omp              2.3",
+            "1206516 1490533 ChatGPT          2.2",
+            "3438977 3330419 omp              2.1",
+            "1490563 1490524 ChatGPT          2.1",
+            "3392765 3392678 chromium         2.0",
+            "1490504 2443054 ChatGPT          1.8",
+            "1206384 1490533 ChatGPT          1.8",
+            "3392657    1532 chromium         1.4",
+            "1506309 1505395 codex            1.2",
+            "1491165 1490504 codex            0.8",
+            "3514658 3392678 chromium         0.8",
+            "3392772 3392678 chromium         0.7",
+            "3392706 3392673 chromium         0.6",
+            "460297 1506561 codex            0.6",
+            "230823  193121 steam            0.6",
+            "243       2 kswapd0          0.5",
+            "2585188       2 kworker/u130:3-  0.2",
+            "752810  752801 quickshell       0.2",
+            "232330  232278 steamwebhelper   0.2",
+            "2147634       2 kworker/u130:25  0.2",
+            "1597911 1597832 voxtype-osd-gtk  0.2",
+            "2585332       2 kworker/u129:3-  0.2",
+            "3981125       2 kworker/u130:30  0.2",
+            "13003   12901 Xwayland         0.1",
+            "3796268       2 kworker/u129:8-  0.1"
+          ],
+          "competing_build_or_proof_in_recorded_top_processes": [],
+          "source": {
+            "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/03-B2/host-after.txt",
+            "bytes": 10749,
+            "sha256": "397a2e7b9d1d7753a19e00ee53e216a718b541fbd9f2c2c5f211b2d0419a5391"
+          }
+        }
+      },
+      "vmstat": {
+        "interval_count": 31,
+        "host_idle_percent_minmax": [
+          94,
+          97
+        ],
+        "runnable_minmax": [
+          0,
+          2
+        ],
+        "sum_interval_swapin_kib_per_second": 940,
+        "sum_interval_swapout_kib_per_second": 0,
+        "caveat": "First since-boot row excluded. Interval sums are sums of reported rates, not exact byte-accounting. Existing swapped pages and small swap-in remain; no clean isolated-host claim."
+      }
+    },
+    "04-A2": {
+      "snapshots": {
+        "host-before.txt": {
+          "at": "2026-11-11T07:03:21+00:00",
+          "selected_cpu": 14,
+          "smt_siblings": "14,30",
+          "governor": "performance",
+          "cpu_pressure": [
+            "some avg10=0.00 avg60=0.01 avg300=0.20 total=14340759100",
+            "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+          ],
+          "cpu_temperatures_millicelsius": [
+            "/sys/class/hwmon/hwmon6/temp1_input=56500",
+            "/sys/class/hwmon/hwmon6/temp3_input=33375",
+            "/sys/class/hwmon/hwmon6/temp4_input=60375"
+          ],
+          "recorded_process_rows": [
+            "1500972    1532 ninfer-serve    25.8",
+            "1500970    1532 llama-server    21.3",
+            "2362039 2335197 muse             6.9",
+            "1597831    1532 localsearch-3    4.7",
+            "1491440 1490533 ChatGPT          4.7",
+            "1206796 3392678 chromium         4.6",
+            "3412156 3392678 chromium         4.5",
+            "3454836 3392678 chromium         3.6",
+            "12901   12892 Hyprland         3.2",
+            "1494887 1494029 omp              2.3",
+            "1206968 1597831 localsearch-ext  2.3",
+            "1206516 1490533 ChatGPT          2.1",
+            "3438977 3330419 omp              2.1",
+            "1490563 1490524 ChatGPT          2.1",
+            "3392765 3392678 chromium         2.0",
+            "1490504 2443054 ChatGPT          1.8",
+            "1206384 1490533 ChatGPT          1.7",
+            "3392657    1532 chromium         1.4",
+            "1506309 1505395 codex            1.2",
+            "1491165 1490504 codex            0.8",
+            "3514658 3392678 chromium         0.8",
+            "3392772 3392678 chromium         0.7",
+            "3392706 3392673 chromium         0.6",
+            "460297 1506561 codex            0.6",
+            "230823  193121 steam            0.6",
+            "243       2 kswapd0          0.5",
+            "2585188       2 kworker/u130:3-  0.2",
+            "752810  752801 quickshell       0.2",
+            "232330  232278 steamwebhelper   0.2",
+            "2147634       2 kworker/u130:25  0.2",
+            "1597911 1597832 voxtype-osd-gtk  0.2",
+            "2585332       2 kworker/u129:3-  0.2",
+            "3981125       2 kworker/u130:30  0.2",
+            "13003   12901 Xwayland         0.1"
+          ],
+          "competing_build_or_proof_in_recorded_top_processes": [],
+          "source": {
+            "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/04-A2/host-before.txt",
+            "bytes": 10749,
+            "sha256": "c68365c2b35d16daebdfd285b089a1cf439b15deb3c01b44954c2417543ddb35"
+          }
+        },
+        "host-after.txt": {
+          "at": "2026-11-11T07:03:54+00:00",
+          "selected_cpu": 14,
+          "smt_siblings": "14,30",
+          "governor": "performance",
+          "cpu_pressure": [
+            "some avg10=0.00 avg60=0.00 avg300=0.17 total=14340783930",
+            "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+          ],
+          "cpu_temperatures_millicelsius": [
+            "/sys/class/hwmon/hwmon6/temp1_input=54750",
+            "/sys/class/hwmon/hwmon6/temp3_input=32000",
+            "/sys/class/hwmon/hwmon6/temp4_input=52500"
+          ],
+          "recorded_process_rows": [
+            "1500972    1532 ninfer-serve    25.8",
+            "1500970    1532 llama-server    21.3",
+            "2362039 2335197 muse             6.9",
+            "1597831    1532 localsearch-3    4.7",
+            "1491440 1490533 ChatGPT          4.7",
+            "3412156 3392678 chromium         4.5",
+            "3454836 3392678 chromium         3.6",
+            "12901   12892 Hyprland         3.2",
+            "1494887 1494029 omp              2.3",
+            "3438977 3330419 omp              2.1",
+            "1490563 1490524 ChatGPT          2.1",
+            "3392765 3392678 chromium         2.0",
+            "1490504 2443054 ChatGPT          1.8",
+            "3392657    1532 chromium         1.4",
+            "1506309 1505395 codex            1.2",
+            "1491165 1490504 codex            0.8",
+            "3514658 3392678 chromium         0.8",
+            "3392772 3392678 chromium         0.7",
+            "3392706 3392673 chromium         0.6",
+            "460297 1506561 codex            0.6",
+            "230823  193121 steam            0.6",
+            "243       2 kswapd0          0.5",
+            "2585188       2 kworker/u130:3-  0.2",
+            "752810  752801 quickshell       0.2",
+            "232330  232278 steamwebhelper   0.2",
+            "2147634       2 kworker/u130:25  0.2",
+            "1597911 1597832 voxtype-osd-gtk  0.2",
+            "2585332       2 kworker/u129:3-  0.2",
+            "3981125       2 kworker/u130:30  0.2",
+            "13003   12901 Xwayland         0.1",
+            "3796268       2 kworker/u129:8-  0.1",
+            "224       2 kcompactd0       0.1",
+            "3127381       2 kworker/u130:7-  0.1",
+            "1626791    1532 opencode.exe     0.1"
+          ],
+          "competing_build_or_proof_in_recorded_top_processes": [],
+          "source": {
+            "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/04-A2/host-after.txt",
+            "bytes": 10749,
+            "sha256": "9989eda767a93ee3668d0fc33172dd6ab532b0fb3856b7d20e7225b2412b3d38"
+          }
+        }
+      },
+      "vmstat": {
+        "interval_count": 32,
+        "host_idle_percent_minmax": [
+          93,
+          97
+        ],
+        "runnable_minmax": [
+          0,
+          2
+        ],
+        "sum_interval_swapin_kib_per_second": 136,
+        "sum_interval_swapout_kib_per_second": 0,
+        "caveat": "First since-boot row excluded. Interval sums are sums of reported rates, not exact byte-accounting. Existing swapped pages and small swap-in remain; no clean isolated-host claim."
+      }
+    },
+    "counters-result": {
+      "snapshots": {
+        "host-before.txt": {
+          "at": "2026-11-11T07:04:18+00:00",
+          "selected_cpu": 14,
+          "smt_siblings": "14,30",
+          "governor": "performance",
+          "cpu_pressure": [
+            "some avg10=0.00 avg60=0.00 avg300=0.16 total=14340802304",
+            "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+          ],
+          "cpu_temperatures_millicelsius": [
+            "/sys/class/hwmon/hwmon6/temp1_input=47000",
+            "/sys/class/hwmon/hwmon6/temp3_input=30375",
+            "/sys/class/hwmon/hwmon6/temp4_input=39125"
+          ],
+          "recorded_process_rows": [
+            "1500972    1532 ninfer-serve    25.8",
+            "1500970    1532 llama-server    21.3",
+            "1208272 3392678 chromium         7.3",
+            "2362039 2335197 muse             6.9",
+            "1597831    1532 localsearch-3    4.7",
+            "1491440 1490533 ChatGPT          4.7",
+            "3412156 3392678 chromium         4.5",
+            "3454836 3392678 chromium         3.6",
+            "12901   12892 Hyprland         3.2",
+            "1208043 1490533 ChatGPT          2.6",
+            "1494887 1494029 omp              2.3",
+            "3438977 3330419 omp              2.1",
+            "1490563 1490524 ChatGPT          2.1",
+            "1207918 1490533 ChatGPT          2.0",
+            "3392765 3392678 chromium         2.0",
+            "1490504 2443054 ChatGPT          1.8",
+            "3392657    1532 chromium         1.4",
+            "1506309 1505395 codex            1.2",
+            "1491165 1490504 codex            0.8",
+            "3514658 3392678 chromium         0.8",
+            "3392772 3392678 chromium         0.7",
+            "3392706 3392673 chromium         0.6",
+            "460297 1506561 codex            0.6",
+            "230823  193121 steam            0.6",
+            "243       2 kswapd0          0.5",
+            "752810  752801 quickshell       0.2",
+            "2585188       2 kworker/u130:3-  0.2",
+            "232330  232278 steamwebhelper   0.2",
+            "2147634       2 kworker/u130:25  0.2",
+            "1597911 1597832 voxtype-osd-gtk  0.2",
+            "2585332       2 kworker/u129:3-  0.2",
+            "3981125       2 kworker/u130:30  0.2",
+            "13003   12901 Xwayland         0.1",
+            "3796268       2 kworker/u129:8-  0.1"
+          ],
+          "competing_build_or_proof_in_recorded_top_processes": [],
+          "source": {
+            "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/counters-result/host-before.txt",
+            "bytes": 10749,
+            "sha256": "6fa8b172ff77f6b556fc457712610b38e86e7a3c76feb755860b4845240bb4ff"
+          }
+        },
+        "host-after.txt": {
+          "at": "2026-11-11T07:04:46+00:00",
+          "selected_cpu": 14,
+          "smt_siblings": "14,30",
+          "governor": "performance",
+          "cpu_pressure": [
+            "some avg10=19.82 avg60=6.14 avg300=1.58 total=14345340605",
+            "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+          ],
+          "cpu_temperatures_millicelsius": [
+            "/sys/class/hwmon/hwmon6/temp1_input=60750",
+            "/sys/class/hwmon/hwmon6/temp3_input=32500",
+            "/sys/class/hwmon/hwmon6/temp4_input=54375"
+          ],
+          "recorded_process_rows": [
+            "1500972    1532 ninfer-serve    25.8",
+            "1500970    1532 llama-server    21.3",
+            "2362039 2335197 muse             6.8",
+            "1597831    1532 localsearch-3    4.7",
+            "1491440 1490533 ChatGPT          4.7",
+            "3412156 3392678 chromium         4.5",
+            "3454836 3392678 chromium         3.6",
+            "12901   12892 Hyprland         3.2",
+            "1494887 1494029 omp              2.3",
+            "3438977 3330419 omp              2.1",
+            "1490563 1490524 ChatGPT          2.1",
+            "3392765 3392678 chromium         2.0",
+            "1490504 2443054 ChatGPT          1.8",
+            "1208677 1490533 ChatGPT          1.4",
+            "3392657    1532 chromium         1.4",
+            "1506309 1505395 codex            1.2",
+            "1491165 1490504 codex            0.8",
+            "3514658 3392678 chromium         0.8",
+            "3392772 3392678 chromium         0.7",
+            "3392706 3392673 chromium         0.6",
+            "460297 1506561 codex            0.6",
+            "230823  193121 steam            0.6",
+            "243       2 kswapd0          0.5",
+            "752810  752801 quickshell       0.2",
+            "2585188       2 kworker/u130:3-  0.2",
+            "232330  232278 steamwebhelper   0.2",
+            "2147634       2 kworker/u130:25  0.2",
+            "1597911 1597832 voxtype-osd-gtk  0.2",
+            "2585332       2 kworker/u129:3-  0.2",
+            "3981125       2 kworker/u130:30  0.2",
+            "13003   12901 Xwayland         0.1",
+            "224       2 kcompactd0       0.1",
+            "3796268       2 kworker/u129:8-  0.1",
+            "3127381       2 kworker/u130:7-  0.1"
+          ],
+          "competing_build_or_proof_in_recorded_top_processes": [],
+          "source": {
+            "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/counters-result/host-after.txt",
+            "bytes": 10750,
+            "sha256": "d868ad5f40f3c5dd44a63d9609a292e086d40379594fa28ba4ca4063e685c8e0"
+          }
+        }
+      },
+      "vmstat": {
+        "interval_count": 27,
+        "host_idle_percent_minmax": [
+          93,
+          97
+        ],
+        "runnable_minmax": [
+          0,
+          4
+        ],
+        "sum_interval_swapin_kib_per_second": 52,
+        "sum_interval_swapout_kib_per_second": 0,
+        "caveat": "First since-boot row excluded. Interval sums are sums of reported rates, not exact byte-accounting. Existing swapped pages and small swap-in remain; no clean isolated-host claim."
+      }
+    }
+  }
+}

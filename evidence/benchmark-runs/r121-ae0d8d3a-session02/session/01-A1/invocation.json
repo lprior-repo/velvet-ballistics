@@ -1,0 +1,8 @@
+{
+  "role": "baseline",
+  "root": "/home/lewis/src/isoloated/velvet-ballistics-bench-fixtures-baseline-jason-20261110",
+  "pin": "7f505d498fa35acb5b70b083ac6f02cd40f3a891",
+  "build_output": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-baseline",
+  "cpu": 14,
+  "phase": "latency"
+}

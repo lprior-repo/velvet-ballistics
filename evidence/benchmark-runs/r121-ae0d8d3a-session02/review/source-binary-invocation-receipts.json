@@ -1,0 +1,352 @@
+{
+  "sources": {
+    "baseline": {
+      "source": {
+        "role": "baseline",
+        "root": "/home/lewis/src/isoloated/velvet-ballistics-bench-fixtures-baseline-jason-20261110",
+        "pin": "7f505d498fa35acb5b70b083ac6f02cd40f3a891",
+        "head": "7f505d498fa35acb5b70b083ac6f02cd40f3a891",
+        "performance_input_sha256": "af0335bf81f5c6c07679fc6a1c34aaaeb6bedc36ca8a36b790223aaa2ca41a7f",
+        "tracked_input_count": 2178,
+        "small_workflow_sha256": "6af18531f9e21a93c1929e44cb7bdd7ca6a78096a5c0af892775a51cd6d81585",
+        "benchmark_preimage_sha256": "1237abe198f53f92f56cc907e6b02c472a5d13c2badb32d1dab9761662a2ce27",
+        "benchmark_guard_default_us": 100000,
+        "benchmark_guard_export_us": 100000,
+        "benchmark_source_sha256": "c936ce3f4dcb2a595ca700601466d4ddf55ed6e15a731704a622772312f05801",
+        "baseline_overlay_sha256": "0175f57b1a63ef7a9a36c67ea0422106c7b4917d124c26944542b9383b968fed",
+        "relevant_git_diff_sha256": "dd17958639d0e8e9ee1d1805653963b5007030cc6d9805e0da8021edd2f9d170",
+        "cargo_lock_sha256": "307cb7e5ecaa002ebe817d6963fab48c681b3d42927081863a2f35d4ea4b37fd",
+        "jj_cached_working_copy": "6d06d19ea3991c640e74d91e019a91285761df26",
+        "jj_cached_parent": "7f505d498fa35acb5b70b083ac6f02cd40f3a891",
+        "snapshot_authority": "actual tracked bytes checked against exact Git blobs plus the single pinned overlay; cached JJ state is recorded, not assumed current"
+      },
+      "actual_tracked_bytes_verified_against_git": true,
+      "tracked_byte_check_method": "Independent git ls-tree/cat-file scan; all files equal pin except baseline approved benchmark postimage; recomputed path/mode/content fingerprint equals source receipts.",
+      "binary": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-baseline/target/release/deps/velvet_ballistics-3ab5658af4672291",
+        "bytes": 7244680,
+        "sha256": "fee943bc0ee70b3d59fc9593844f793ace6e25e6b90f31f18dfdd1e659205496"
+      },
+      "cargo_benchmark_artifact": {
+        "reason": "compiler-artifact",
+        "package_id": "path+file:///home/lewis/src/isoloated/velvet-ballistics-bench-fixtures-baseline-jason-20261110/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+        "manifest_path": "/home/lewis/src/isoloated/velvet-ballistics-bench-fixtures-baseline-jason-20261110/crates/workspace_tests/Cargo.toml",
+        "target": {
+          "kind": [
+            "bench"
+          ],
+          "crate_types": [
+            "bin"
+          ],
+          "name": "velvet_ballistics",
+          "src_path": "/home/lewis/src/isoloated/velvet-ballistics-bench-fixtures-baseline-jason-20261110/crates/workspace_tests/benches/velvet_ballistics.rs",
+          "edition": "2024",
+          "doc": false,
+          "doctest": false,
+          "test": false
+        },
+        "profile": {
+          "opt_level": "3",
+          "debuginfo": 2,
+          "debug_assertions": false,
+          "overflow_checks": false,
+          "test": true
+        },
+        "features": [],
+        "filenames": [
+          "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-baseline/target/release/deps/velvet_ballistics-3ab5658af4672291"
+        ],
+        "executable": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-baseline/target/release/deps/velvet_ballistics-3ab5658af4672291",
+        "fresh": false
+      },
+      "build_receipt": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-baseline/build.sha256",
+        "bytes": 463,
+        "sha256": "a064a0feed11e0dd130175c786b7690a54147e3970001fe6e8301b438c0b4704"
+      },
+      "preflight": "ENGINE_PREFLIGHT_OK step=Continue slot=I64(1) pc=1 run=Finished(I64(1))\nIPC_PREFLIGHT_OK SubmitRun run=5 input=[1,2,3,4]\n",
+      "fixture": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-baseline/SMALL_WORKFLOW.yaml",
+        "bytes": 187,
+        "sha256": "6af18531f9e21a93c1929e44cb7bdd7ca6a78096a5c0af892775a51cd6d81585"
+      },
+      "ipc_fixture": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-baseline/IPC_FRAME.bin",
+        "bytes": 63,
+        "sha256": "286dbb280df79e3f3e74a66ed62273098cb227c7b3b54de1e0889091b9b900df"
+      }
+    },
+    "candidate": {
+      "source": {
+        "role": "candidate",
+        "root": "/home/lewis/src/isoloated/velvet-ballistics-f1f5-benchmark-c04d-20261110",
+        "pin": "ae0d8d3afcd2be6a75776a706577902f47f47027",
+        "head": "ae0d8d3afcd2be6a75776a706577902f47f47027",
+        "performance_input_sha256": "4f671804bda19735129a1bc8ccbaa8c1107da508bbf041c27506d867c08140a3",
+        "tracked_input_count": 2573,
+        "small_workflow_sha256": "6af18531f9e21a93c1929e44cb7bdd7ca6a78096a5c0af892775a51cd6d81585",
+        "benchmark_preimage_sha256": "3dfe73e2f4f514b8a145afa10ca567a5ff7ec8fbe5ec0c34247ac5651e448360",
+        "benchmark_guard_default_us": 100000,
+        "benchmark_guard_export_us": 100000,
+        "benchmark_source_sha256": "3dfe73e2f4f514b8a145afa10ca567a5ff7ec8fbe5ec0c34247ac5651e448360",
+        "baseline_overlay_sha256": null,
+        "relevant_git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cargo_lock_sha256": "307cb7e5ecaa002ebe817d6963fab48c681b3d42927081863a2f35d4ea4b37fd",
+        "jj_cached_working_copy": "8a0371c1e0e72160fc72baf27cb1b7054f6118d5",
+        "jj_cached_parent": "ae0d8d3afcd2be6a75776a706577902f47f47027",
+        "snapshot_authority": "actual tracked bytes checked against exact Git blobs plus the single pinned overlay; cached JJ state is recorded, not assumed current"
+      },
+      "actual_tracked_bytes_verified_against_git": true,
+      "tracked_byte_check_method": "Independent git ls-tree/cat-file scan; all files equal pin except baseline approved benchmark postimage; recomputed path/mode/content fingerprint equals source receipts.",
+      "binary": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/target/release/deps/velvet_ballistics-3ab5658af4672291",
+        "bytes": 7493808,
+        "sha256": "91a68884bb01b3a2c100dfd8af41798dd894094a25aba1355d32321e21365fd1"
+      },
+      "cargo_benchmark_artifact": {
+        "reason": "compiler-artifact",
+        "package_id": "path+file:///home/lewis/src/isoloated/velvet-ballistics-f1f5-benchmark-c04d-20261110/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+        "manifest_path": "/home/lewis/src/isoloated/velvet-ballistics-f1f5-benchmark-c04d-20261110/crates/workspace_tests/Cargo.toml",
+        "target": {
+          "kind": [
+            "bench"
+          ],
+          "crate_types": [
+            "bin"
+          ],
+          "name": "velvet_ballistics",
+          "src_path": "/home/lewis/src/isoloated/velvet-ballistics-f1f5-benchmark-c04d-20261110/crates/workspace_tests/benches/velvet_ballistics.rs",
+          "edition": "2024",
+          "doc": false,
+          "doctest": false,
+          "test": false
+        },
+        "profile": {
+          "opt_level": "3",
+          "debuginfo": 2,
+          "debug_assertions": false,
+          "overflow_checks": false,
+          "test": true
+        },
+        "features": [],
+        "filenames": [
+          "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/target/release/deps/velvet_ballistics-3ab5658af4672291"
+        ],
+        "executable": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/target/release/deps/velvet_ballistics-3ab5658af4672291",
+        "fresh": false
+      },
+      "build_receipt": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/build.sha256",
+        "bytes": 466,
+        "sha256": "5c319b2957fbff72d74bb90390839585016c9cd76793dff07216f37820bbaef6"
+      },
+      "preflight": "ENGINE_PREFLIGHT_OK step=Continue slot=I64(1) pc=1 run=Finished(I64(1))\nIPC_PREFLIGHT_OK SubmitRun run=5 input=[1,2,3,4]\n",
+      "fixture": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/SMALL_WORKFLOW.yaml",
+        "bytes": 187,
+        "sha256": "6af18531f9e21a93c1929e44cb7bdd7ca6a78096a5c0af892775a51cd6d81585"
+      },
+      "ipc_fixture": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/IPC_FRAME.bin",
+        "bytes": 63,
+        "sha256": "286dbb280df79e3f3e74a66ed62273098cb227c7b3b54de1e0889091b9b900df"
+      }
+    }
+  },
+  "invocations": [
+    {
+      "phase": "01-A1",
+      "invocation": {
+        "role": "baseline",
+        "root": "/home/lewis/src/isoloated/velvet-ballistics-bench-fixtures-baseline-jason-20261110",
+        "pin": "7f505d498fa35acb5b70b083ac6f02cd40f3a891",
+        "build_output": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-baseline",
+        "cpu": 14,
+        "phase": "latency"
+      },
+      "exit": 0,
+      "commands": [
+        "taskset -c 14 /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-baseline/target/release/deps/velvet_ballistics-3ab5658af4672291 bench_engine_step_once_save_const_single_transition\\; --bench --noplot --sample-size 100 --warm-up-time 3 --measurement-time 5",
+        "taskset -c 14 /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-baseline/target/release/deps/velvet_ballistics-3ab5658af4672291 ipc_frame_decode\\; --bench --noplot --sample-size 100 --warm-up-time 3 --measurement-time 5",
+        "taskset -c 14 /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-baseline/target/release/deps/velvet_ballistics-3ab5658af4672291 engine_run_until_blocked_budget_10_small_workflow\\; --bench --noplot --sample-size 100 --warm-up-time 3 --measurement-time 5"
+      ],
+      "source_before": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/01-A1/source-before.json",
+        "bytes": 1312,
+        "sha256": "2378827881195bb87590f6d69eefddaacf5b9aec4d1bd7b834abe6c9c77207c5"
+      },
+      "source_after": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/01-A1/source-after.json",
+        "bytes": 1312,
+        "sha256": "2378827881195bb87590f6d69eefddaacf5b9aec4d1bd7b834abe6c9c77207c5"
+      }
+    },
+    {
+      "phase": "02-B1",
+      "invocation": {
+        "role": "candidate",
+        "root": "/home/lewis/src/isoloated/velvet-ballistics-f1f5-benchmark-c04d-20261110",
+        "pin": "ae0d8d3afcd2be6a75776a706577902f47f47027",
+        "build_output": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate",
+        "cpu": 14,
+        "phase": "latency"
+      },
+      "exit": 0,
+      "commands": [
+        "taskset -c 14 /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/target/release/deps/velvet_ballistics-3ab5658af4672291 bench_engine_step_once_save_const_single_transition\\; --bench --noplot --sample-size 100 --warm-up-time 3 --measurement-time 5",
+        "taskset -c 14 /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/target/release/deps/velvet_ballistics-3ab5658af4672291 ipc_frame_decode\\; --bench --noplot --sample-size 100 --warm-up-time 3 --measurement-time 5",
+        "taskset -c 14 /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/target/release/deps/velvet_ballistics-3ab5658af4672291 engine_run_until_blocked_budget_10_small_workflow\\; --bench --noplot --sample-size 100 --warm-up-time 3 --measurement-time 5"
+      ],
+      "source_before": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/02-B1/source-before.json",
+        "bytes": 1241,
+        "sha256": "c9a2ea593ddc9fc0ccb9bbbd1964024783bc666fc6ca76d2c5212ed43694da2e"
+      },
+      "source_after": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/02-B1/source-after.json",
+        "bytes": 1241,
+        "sha256": "c9a2ea593ddc9fc0ccb9bbbd1964024783bc666fc6ca76d2c5212ed43694da2e"
+      }
+    },
+    {
+      "phase": "03-B2",
+      "invocation": {
+        "role": "candidate",
+        "root": "/home/lewis/src/isoloated/velvet-ballistics-f1f5-benchmark-c04d-20261110",
+        "pin": "ae0d8d3afcd2be6a75776a706577902f47f47027",
+        "build_output": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate",
+        "cpu": 14,
+        "phase": "latency"
+      },
+      "exit": 0,
+      "commands": [
+        "taskset -c 14 /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/target/release/deps/velvet_ballistics-3ab5658af4672291 bench_engine_step_once_save_const_single_transition\\; --bench --noplot --sample-size 100 --warm-up-time 3 --measurement-time 5",
+        "taskset -c 14 /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/target/release/deps/velvet_ballistics-3ab5658af4672291 ipc_frame_decode\\; --bench --noplot --sample-size 100 --warm-up-time 3 --measurement-time 5",
+        "taskset -c 14 /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/target/release/deps/velvet_ballistics-3ab5658af4672291 engine_run_until_blocked_budget_10_small_workflow\\; --bench --noplot --sample-size 100 --warm-up-time 3 --measurement-time 5"
+      ],
+      "source_before": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/03-B2/source-before.json",
+        "bytes": 1241,
+        "sha256": "c9a2ea593ddc9fc0ccb9bbbd1964024783bc666fc6ca76d2c5212ed43694da2e"
+      },
+      "source_after": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/03-B2/source-after.json",
+        "bytes": 1241,
+        "sha256": "c9a2ea593ddc9fc0ccb9bbbd1964024783bc666fc6ca76d2c5212ed43694da2e"
+      }
+    },
+    {
+      "phase": "04-A2",
+      "invocation": {
+        "role": "baseline",
+        "root": "/home/lewis/src/isoloated/velvet-ballistics-bench-fixtures-baseline-jason-20261110",
+        "pin": "7f505d498fa35acb5b70b083ac6f02cd40f3a891",
+        "build_output": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-baseline",
+        "cpu": 14,
+        "phase": "latency"
+      },
+      "exit": 0,
+      "commands": [
+        "taskset -c 14 /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-baseline/target/release/deps/velvet_ballistics-3ab5658af4672291 bench_engine_step_once_save_const_single_transition\\; --bench --noplot --sample-size 100 --warm-up-time 3 --measurement-time 5",
+        "taskset -c 14 /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-baseline/target/release/deps/velvet_ballistics-3ab5658af4672291 ipc_frame_decode\\; --bench --noplot --sample-size 100 --warm-up-time 3 --measurement-time 5",
+        "taskset -c 14 /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-baseline/target/release/deps/velvet_ballistics-3ab5658af4672291 engine_run_until_blocked_budget_10_small_workflow\\; --bench --noplot --sample-size 100 --warm-up-time 3 --measurement-time 5"
+      ],
+      "source_before": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/04-A2/source-before.json",
+        "bytes": 1312,
+        "sha256": "2378827881195bb87590f6d69eefddaacf5b9aec4d1bd7b834abe6c9c77207c5"
+      },
+      "source_after": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/04-A2/source-after.json",
+        "bytes": 1312,
+        "sha256": "2378827881195bb87590f6d69eefddaacf5b9aec4d1bd7b834abe6c9c77207c5"
+      }
+    },
+    {
+      "phase": "counters-result",
+      "invocation": {
+        "role": "candidate",
+        "root": "/home/lewis/src/isoloated/velvet-ballistics-f1f5-benchmark-c04d-20261110",
+        "pin": "ae0d8d3afcd2be6a75776a706577902f47f47027",
+        "build_output": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate",
+        "cpu": 14,
+        "phase": "counters"
+      },
+      "exit": 0,
+      "commands": [
+        "taskset -c 14 perf stat --no-big-num -x \\; -o /home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/counters-result/bench_engine_step_once_save_const_single_transition/perf.csv -e instructions:u -- /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/target/release/deps/velvet_ballistics-3ab5658af4672291 bench_engine_step_once_save_const_single_transition\\; --bench --noplot --sample-size 10 --warm-up-time 1 --measurement-time 1",
+        "taskset -c 14 heaptrack --record-only --output /home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/counters-result/bench_engine_step_once_save_const_single_transition/heaptrack.data /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/target/release/deps/velvet_ballistics-3ab5658af4672291 bench_engine_step_once_save_const_single_transition\\; --bench --noplot --sample-size 10 --warm-up-time 1 --measurement-time 1",
+        "heaptrack_print --disable-builtin-suppressions --disable-embedded-suppressions --file /home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/counters-result/bench_engine_step_once_save_const_single_transition/heaptrack.data.zst --print-peaks=0 --print-allocators=0 --print-temporary=0 --print-histogram /home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/counters-result/bench_engine_step_once_save_const_single_transition/allocations.tsv",
+        "taskset -c 14 perf stat --no-big-num -x \\; -o /home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/counters-result/ipc_frame_decode/perf.csv -e instructions:u -- /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/target/release/deps/velvet_ballistics-3ab5658af4672291 ipc_frame_decode\\; --bench --noplot --sample-size 10 --warm-up-time 1 --measurement-time 1",
+        "taskset -c 14 heaptrack --record-only --output /home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/counters-result/ipc_frame_decode/heaptrack.data /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/target/release/deps/velvet_ballistics-3ab5658af4672291 ipc_frame_decode\\; --bench --noplot --sample-size 10 --warm-up-time 1 --measurement-time 1",
+        "heaptrack_print --disable-builtin-suppressions --disable-embedded-suppressions --file /home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/counters-result/ipc_frame_decode/heaptrack.data.zst --print-peaks=0 --print-allocators=0 --print-temporary=0 --print-histogram /home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/counters-result/ipc_frame_decode/allocations.tsv",
+        "taskset -c 14 perf stat --no-big-num -x \\; -o /home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/counters-result/engine_run_until_blocked_budget_10_small_workflow/perf.csv -e instructions:u -- /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/target/release/deps/velvet_ballistics-3ab5658af4672291 engine_run_until_blocked_budget_10_small_workflow\\; --bench --noplot --sample-size 10 --warm-up-time 1 --measurement-time 1",
+        "taskset -c 14 heaptrack --record-only --output /home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/counters-result/engine_run_until_blocked_budget_10_small_workflow/heaptrack.data /home/lewis/tmp/vb-f1f5-final-benchmark-r121/build-candidate/target/release/deps/velvet_ballistics-3ab5658af4672291 engine_run_until_blocked_budget_10_small_workflow\\; --bench --noplot --sample-size 10 --warm-up-time 1 --measurement-time 1",
+        "heaptrack_print --disable-builtin-suppressions --disable-embedded-suppressions --file /home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/counters-result/engine_run_until_blocked_budget_10_small_workflow/heaptrack.data.zst --print-peaks=0 --print-allocators=0 --print-temporary=0 --print-histogram /home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/counters-result/engine_run_until_blocked_budget_10_small_workflow/allocations.tsv"
+      ],
+      "source_before": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/counters-result/source-before.json",
+        "bytes": 1241,
+        "sha256": "c9a2ea593ddc9fc0ccb9bbbd1964024783bc666fc6ca76d2c5212ed43694da2e"
+      },
+      "source_after": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/counters-result/source-after.json",
+        "bytes": 1241,
+        "sha256": "c9a2ea593ddc9fc0ccb9bbbd1964024783bc666fc6ca76d2c5212ed43694da2e"
+      }
+    }
+  ],
+  "protocol": {
+    "version": 2,
+    "sequence": [
+      "A1",
+      "B1",
+      "B2",
+      "A2"
+    ],
+    "roles": {
+      "A1": "baseline",
+      "B1": "candidate",
+      "B2": "candidate",
+      "A2": "baseline"
+    },
+    "latency": {
+      "sample_size": 100,
+      "warm_up_seconds": 3,
+      "measurement_seconds": 5
+    },
+    "counter_run": {
+      "sample_size": 10,
+      "warm_up_seconds": 1,
+      "measurement_seconds": 1,
+      "tool": "perf instructions:u plus separate heaptrack process"
+    },
+    "aggregation": "per side: arithmetic mean in ns of its two unrounded Criterion mean.point_estimate values; no weighting by iteration count; round only the final side mean to integer ps if subsequently producing approved policy rows",
+    "quantiles": "per side: pool its 200 Criterion sample means (time_ns/iterations); nearest-rank ceil(p*N)-1 for p50/p95/p99; these are not individual-operation tail latencies",
+    "counter_scope": "whole filtered Criterion process, including startup, all suite fixture setup, warmup/calibration and measured work; separate perf and heaptrack invocations; not per-operation counters; profiler timings never enter latency aggregation",
+    "metric_limits_percent": {
+      "bench_engine_step_once_save_const_single_transition": 3,
+      "ipc_frame_decode": 5,
+      "engine_run_until_blocked_budget_10_small_workflow": 3
+    },
+    "failure_policy": "all four complete runs are required; any failed/contaminated run invalidates the session; preserve every attempt and predeclare an entirely new session before any rerun; no best-run selection or threshold edits"
+  },
+  "cpu": 14,
+  "baseline_overlay": {
+    "path": "/home/lewis/tmp/vb-benchmark-recipe-r2-20261110/baseline-overlay.patch",
+    "bytes": 4493,
+    "sha256": "0175f57b1a63ef7a9a36c67ea0422106c7b4917d124c26944542b9383b968fed"
+  },
+  "frozen_recipe_manifests": [
+    {
+      "path": "/home/lewis/tmp/vb-benchmark-recipe-r2-20261110/FROZEN.sha256",
+      "bytes": 1149,
+      "sha256": "c5e0245ece8246a16c2af227c3a6e837ff484ce000765dc372daffea314595b3"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-benchmark-recipe-r2-20261110/BUILD-FROZEN.sha256",
+      "bytes": 582,
+      "sha256": "5aff0c46f5e83c7fc6f6c19a0e7f50705b2e904f48acc860ef3948fccd5bc227"
+    }
+  ]
+}

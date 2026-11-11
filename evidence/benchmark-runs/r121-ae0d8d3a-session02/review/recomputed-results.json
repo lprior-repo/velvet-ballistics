@@ -1,0 +1,410 @@
+{
+  "status": "INDEPENDENT_RAW_RECOMPUTATION_MATCHES_SESSION02_AGGREGATE",
+  "arithmetic": "Rational parsing of original JSON decimal tokens; two original Criterion mean.point_estimate values weighted equally; final side mean rounded once to ps. Quantiles from all 200 raw time/iteration ratios at nearest ranks 100/190/198.",
+  "metrics": {
+    "bench_engine_step_once_save_const_single_transition": {
+      "sides": {
+        "baseline": {
+          "mean_ns": "43.245615637849504000",
+          "mean_exact": {
+            "numerator": 1351425488682797,
+            "denominator": 31250000000000
+          },
+          "mean_ps_rounded_once": 43246,
+          "sample_count": 200,
+          "quantile_rank": {
+            "p50": 100,
+            "p95": 190,
+            "p99": 198
+          },
+          "pooled_sample_mean_quantiles_ns": {
+            "p50": "43.203799913055252674",
+            "p95": "43.631541906589891235",
+            "p99": "44.008106187008135182"
+          },
+          "runs": [
+            {
+              "label": "A1",
+              "source_directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/01-A1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new",
+              "samples": 100,
+              "mean_ns": "43.209754540924294000",
+              "mean_exact": {
+                "numerator": 21604877270462147,
+                "denominator": 500000000000000
+              },
+              "sample_mean_p99_ns": "44.967541053529537215",
+              "measured_iterations": 78931500,
+              "benchmark_full_id": "runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_step;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7"
+            },
+            {
+              "label": "A2",
+              "source_directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/04-A2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new",
+              "samples": 100,
+              "mean_ns": "43.281476734774714000",
+              "mean_exact": {
+                "numerator": 21640738367387357,
+                "denominator": 500000000000000
+              },
+              "sample_mean_p99_ns": "43.905322771082269384",
+              "measured_iterations": 78734550,
+              "benchmark_full_id": "runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_step;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7"
+            }
+          ]
+        },
+        "candidate": {
+          "mean_ns": "37.889624168449807000",
+          "mean_exact": {
+            "numerator": 37889624168449807,
+            "denominator": 1000000000000000
+          },
+          "mean_ps_rounded_once": 37890,
+          "sample_count": 200,
+          "quantile_rank": {
+            "p50": 100,
+            "p95": 190,
+            "p99": 198
+          },
+          "pooled_sample_mean_quantiles_ns": {
+            "p50": "37.834381673119793500",
+            "p95": "38.536793127201362083",
+            "p99": "38.757683245518080002"
+          },
+          "runs": [
+            {
+              "label": "B1",
+              "source_directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/02-B1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new",
+              "samples": 100,
+              "mean_ns": "37.774198858972640000",
+              "mean_exact": {
+                "numerator": 236088742868579,
+                "denominator": 6250000000000
+              },
+              "sample_mean_p99_ns": "38.753783878915874692",
+              "measured_iterations": 86082300,
+              "benchmark_full_id": "runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_step;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7"
+            },
+            {
+              "label": "B2",
+              "source_directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/03-B2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new",
+              "samples": 100,
+              "mean_ns": "38.005049477926974000",
+              "mean_exact": {
+                "numerator": 19002524738963487,
+                "denominator": 500000000000000
+              },
+              "sample_mean_p99_ns": "38.757683245518080002",
+              "measured_iterations": 86344900,
+              "benchmark_full_id": "runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_step;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7"
+            }
+          ]
+        }
+      },
+      "mean_delta_percent": "-12.385050808970370394",
+      "threshold_percent": 3,
+      "mean_limit_pass": true,
+      "all_four_cross_pairings": [
+        {
+          "baseline": "A1",
+          "candidate": "B1",
+          "mean_delta_percent": "-12.579464381829794966",
+          "sample_mean_p99_delta_percent": "-13.818316565757468513"
+        },
+        {
+          "baseline": "A1",
+          "candidate": "B2",
+          "mean_delta_percent": "-12.045208583788420798",
+          "sample_mean_p99_delta_percent": "-13.809645051792398712"
+        },
+        {
+          "baseline": "A2",
+          "candidate": "B1",
+          "mean_delta_percent": "-12.724329877998882318",
+          "sample_mean_p99_delta_percent": "-11.733290104769246605"
+        },
+        {
+          "baseline": "A2",
+          "candidate": "B2",
+          "mean_delta_percent": "-12.190959400903178367",
+          "sample_mean_p99_delta_percent": "-11.724408797547030756"
+        }
+      ],
+      "candidate_whole_process_counters": {
+        "instruction_count": 48924198810,
+        "allocation_count": 11301238,
+        "bytes_allocated": 135806697
+      },
+      "counter_scope": "whole filtered Criterion process, including startup, all suite fixture setup, warmup/calibration and measured work; separate perf and heaptrack invocations; not per-operation counters; profiler timings never enter latency aggregation"
+    },
+    "ipc_frame_decode": {
+      "sides": {
+        "baseline": {
+          "mean_ns": "70.885624201924845000",
+          "mean_exact": {
+            "numerator": 14177124840384969,
+            "denominator": 200000000000000
+          },
+          "mean_ps_rounded_once": 70886,
+          "sample_count": 200,
+          "quantile_rank": {
+            "p50": 100,
+            "p95": 190,
+            "p99": 198
+          },
+          "pooled_sample_mean_quantiles_ns": {
+            "p50": "70.669445689435877557",
+            "p95": "72.230799898561821205",
+            "p99": "72.744105564387917329"
+          },
+          "runs": [
+            {
+              "label": "A1",
+              "source_directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/01-A1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new",
+              "samples": 100,
+              "mean_ns": "70.863724253661000000",
+              "mean_exact": {
+                "numerator": 70863724253661,
+                "denominator": 1000000000000
+              },
+              "sample_mean_p99_ns": "72.744105564387917329",
+              "measured_iterations": 53656250,
+              "benchmark_full_id": "storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=submit_run_payload;surface=ipc_decode;fixture_bytes=63;fixture_digest=d1c47e658c7b6305990fd0ba79ec63c24378db7a1b90427ca4fe733358c9dc53"
+            },
+            {
+              "label": "A2",
+              "source_directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/04-A2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new",
+              "samples": 100,
+              "mean_ns": "70.907524150188690000",
+              "mean_exact": {
+                "numerator": 7090752415018869,
+                "denominator": 100000000000000
+              },
+              "sample_mean_p99_ns": "72.485821686325546942",
+              "measured_iterations": 53792600,
+              "benchmark_full_id": "storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=submit_run_payload;surface=ipc_decode;fixture_bytes=63;fixture_digest=d1c47e658c7b6305990fd0ba79ec63c24378db7a1b90427ca4fe733358c9dc53"
+            }
+          ]
+        },
+        "candidate": {
+          "mean_ns": "71.233222656597905000",
+          "mean_exact": {
+            "numerator": 14246644531319581,
+            "denominator": 200000000000000
+          },
+          "mean_ps_rounded_once": 71233,
+          "sample_count": 200,
+          "quantile_rank": {
+            "p50": 100,
+            "p95": 190,
+            "p99": 198
+          },
+          "pooled_sample_mean_quantiles_ns": {
+            "p50": "71.219438707044872307",
+            "p95": "71.921478241240337393",
+            "p99": "72.098925496068888057"
+          },
+          "runs": [
+            {
+              "label": "B1",
+              "source_directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/02-B1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new",
+              "samples": 100,
+              "mean_ns": "71.396749404849070000",
+              "mean_exact": {
+                "numerator": 7139674940484907,
+                "denominator": 100000000000000
+              },
+              "sample_mean_p99_ns": "72.110535303601036071",
+              "measured_iterations": 53954200,
+              "benchmark_full_id": "storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=submit_run_payload;surface=ipc_decode;fixture_bytes=63;fixture_digest=d1c47e658c7b6305990fd0ba79ec63c24378db7a1b90427ca4fe733358c9dc53"
+            },
+            {
+              "label": "B2",
+              "source_directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/03-B2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new",
+              "samples": 100,
+              "mean_ns": "71.069695908346740000",
+              "mean_exact": {
+                "numerator": 3553484795417337,
+                "denominator": 50000000000000
+              },
+              "sample_mean_p99_ns": "71.834980363105516306",
+              "measured_iterations": 54534950,
+              "benchmark_full_id": "storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=submit_run_payload;surface=ipc_decode;fixture_bytes=63;fixture_digest=d1c47e658c7b6305990fd0ba79ec63c24378db7a1b90427ca4fe733358c9dc53"
+            }
+          ]
+        }
+      },
+      "mean_delta_percent": "0.490365230731256267",
+      "threshold_percent": 5,
+      "mean_limit_pass": true,
+      "all_four_cross_pairings": [
+        {
+          "baseline": "A1",
+          "candidate": "B1",
+          "mean_delta_percent": "0.752183372807325416",
+          "sample_mean_p99_delta_percent": "-0.870957524147561134"
+        },
+        {
+          "baseline": "A1",
+          "candidate": "B2",
+          "mean_delta_percent": "0.290658805834776573",
+          "sample_mean_p99_delta_percent": "-1.249757893411319690"
+        },
+        {
+          "baseline": "A2",
+          "candidate": "B1",
+          "mean_delta_percent": "0.689948296071028644",
+          "sample_mean_p99_delta_percent": "-0.517737640263666434"
+        },
+        {
+          "baseline": "A2",
+          "candidate": "B2",
+          "mean_delta_percent": "0.228708814898903009",
+          "sample_mean_p99_delta_percent": "-0.897887763535985241"
+        }
+      ],
+      "candidate_whole_process_counters": {
+        "instruction_count": 31839651974,
+        "allocation_count": 8476841,
+        "bytes_allocated": 241075397
+      },
+      "counter_scope": "whole filtered Criterion process, including startup, all suite fixture setup, warmup/calibration and measured work; separate perf and heaptrack invocations; not per-operation counters; profiler timings never enter latency aggregation"
+    },
+    "engine_run_until_blocked_budget_10_small_workflow": {
+      "sides": {
+        "baseline": {
+          "mean_ns": "67.744470889449050000",
+          "mean_exact": {
+            "numerator": 1354889417788981,
+            "denominator": 20000000000000
+          },
+          "mean_ps_rounded_once": 67744,
+          "sample_count": 200,
+          "quantile_rank": {
+            "p50": 100,
+            "p95": 190,
+            "p99": 198
+          },
+          "pooled_sample_mean_quantiles_ns": {
+            "p50": "67.109022233668126019",
+            "p95": "74.288685381718589524",
+            "p99": "74.352317158867727346"
+          },
+          "runs": [
+            {
+              "label": "A1",
+              "source_directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/01-A1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new",
+              "samples": 100,
+              "mean_ns": "67.379720543085330000",
+              "mean_exact": {
+                "numerator": 6737972054308533,
+                "denominator": 100000000000000
+              },
+              "sample_mean_p99_ns": "69.156532272679581461",
+              "measured_iterations": 58827450,
+              "benchmark_full_id": "runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_run;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7"
+            },
+            {
+              "label": "A2",
+              "source_directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/04-A2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new",
+              "samples": 100,
+              "mean_ns": "68.109221235812770000",
+              "mean_exact": {
+                "numerator": 6810922123581277,
+                "denominator": 100000000000000
+              },
+              "sample_mean_p99_ns": "74.377531160054268579",
+              "measured_iterations": 59004200,
+              "benchmark_full_id": "runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_run;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7"
+            }
+          ]
+        },
+        "candidate": {
+          "mean_ns": "58.124206589036912000",
+          "mean_exact": {
+            "numerator": 3632762911814807,
+            "denominator": 62500000000000
+          },
+          "mean_ps_rounded_once": 58124,
+          "sample_count": 200,
+          "quantile_rank": {
+            "p50": 100,
+            "p95": 190,
+            "p99": 198
+          },
+          "pooled_sample_mean_quantiles_ns": {
+            "p50": "57.384926383190500704",
+            "p95": "61.660817540793238438",
+            "p99": "62.341958208462859431"
+          },
+          "runs": [
+            {
+              "label": "B1",
+              "source_directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/02-B1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new",
+              "samples": 100,
+              "mean_ns": "57.544358374295590000",
+              "mean_exact": {
+                "numerator": 5754435837429559,
+                "denominator": 100000000000000
+              },
+              "sample_mean_p99_ns": "59.689327352905642141",
+              "measured_iterations": 64720800,
+              "benchmark_full_id": "runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_run;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7"
+            },
+            {
+              "label": "B2",
+              "source_directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r121/session02/03-B2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new",
+              "samples": 100,
+              "mean_ns": "58.704054803778234000",
+              "mean_exact": {
+                "numerator": 29352027401889117,
+                "denominator": 500000000000000
+              },
+              "sample_mean_p99_ns": "62.409833938414210525",
+              "measured_iterations": 60261650,
+              "benchmark_full_id": "runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_run;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7"
+            }
+          ]
+        }
+      },
+      "mean_delta_percent": "-14.200811039045931160",
+      "threshold_percent": 3,
+      "mean_limit_pass": true,
+      "all_four_cross_pairings": [
+        {
+          "baseline": "A1",
+          "candidate": "B1",
+          "mean_delta_percent": "-14.596917424880992134",
+          "sample_mean_p99_delta_percent": "-13.689530993898571291"
+        },
+        {
+          "baseline": "A1",
+          "candidate": "B2",
+          "mean_delta_percent": "-12.875781717971838362",
+          "sample_mean_p99_delta_percent": "-9.755692069208430859"
+        },
+        {
+          "baseline": "A2",
+          "candidate": "B1",
+          "mean_delta_percent": "-15.511648305210732712",
+          "sample_mean_p99_delta_percent": "-19.748173377173318621"
+        },
+        {
+          "baseline": "A2",
+          "candidate": "B2",
+          "mean_delta_percent": "-13.808947248818592397",
+          "sample_mean_p99_delta_percent": "-16.090473876965030984"
+        }
+      ],
+      "candidate_whole_process_counters": {
+        "instruction_count": 39971538932,
+        "allocation_count": 11303542,
+        "bytes_allocated": 135820613
+      },
+      "counter_scope": "whole filtered Criterion process, including startup, all suite fixture setup, warmup/calibration and measured work; separate perf and heaptrack invocations; not per-operation counters; profiler timings never enter latency aggregation"
+    }
+  },
+  "raw_latency_dataset_count": 12,
+  "total_latency_samples": 1200,
+  "profiler_dataset_count": 6,
+  "profiler_timings_excluded": true,
+  "failed_session01_used": false
+}
