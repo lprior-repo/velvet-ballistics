@@ -130,20 +130,31 @@ impl Runtime {
         recovered: RecoveryArtifactWorkflow,
         retained_inputs: crate::recovery::RecoveredRetainedInputs,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
-        let expected = crate::recovery::action_abi_digests_from_contracts(
-            &recovered.artifact.action_contracts,
-        )?;
-        let seed = Self::recover_seed_for_loaded_workflow(&prefix.events, &recovered.workflow)?;
-        let boundary = Self::recovered_boundary_from_events(
-            &seed,
-            &prefix.events,
-            &recovered.workflow,
-            &expected,
-        )?;
+        let (seed, boundary) =
+            Self::recover_seed_and_boundary(&prefix, &recovered, &retained_inputs)?;
         // Enforce receipt-only reconciliation for recovered registered actions:
         // a pending registered action must be reconciliable from the durable
         // receipt before the run is allowed to resume (no live re-execution).
         self.validate_registered_recovery(&recovered.artifact, boundary)?;
         Self::product_from_recovered_seed(run, prefix, seed, boundary, retained_inputs)
+    }
+
+    fn recover_seed_and_boundary(
+        prefix: &RecoveryPrefixEvidence,
+        recovered: &RecoveryArtifactWorkflow,
+        inputs: &crate::recovery::RecoveredRetainedInputs,
+    ) -> RuntimeResult<(RecoveredWorkflowSeed, crate::recovery::RecoveredRunBoundary)> {
+        let expected = crate::recovery::action_abi_digests_from_contracts(
+            &recovered.artifact.action_contracts,
+        )?;
+        let seed =
+            Self::recover_seed_for_loaded_workflow(&prefix.events, &recovered.workflow, inputs)?;
+        let boundary = Self::recovered_boundary_from_events(
+            &seed.seed,
+            &prefix.events,
+            &recovered.workflow,
+            &expected,
+        )?;
+        Ok((seed, boundary))
     }
 }

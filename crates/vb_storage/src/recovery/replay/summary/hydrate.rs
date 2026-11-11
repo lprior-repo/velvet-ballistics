@@ -10,14 +10,14 @@
 //! `RecoveredSlotTaint` helpers, and the `FrameSeedAccumulator` slot
 //! recorders.
 
-use vb_core::replay::{ReplayEngine, ReplayError};
-use vb_core::value_store::ValueStore;
+use vb_core::replay::ReplayError;
 use vb_core::{CompiledWorkflow, SlotIdx, SlotValue, StepIdx, Taint};
 
 use crate::recovery::types::{RecoveredSlotEntry, RecoveryError, RecoveryResult};
 use crate::slot_extra::DecodedSlotWrittenExtra;
 
 use super::accumulator::FrameSeedAccumulator;
+use super::input_context::{ReplayInputContext, recover_slots_through_step};
 
 /// Step-index maximum combiner used by the accumulator's step recorders.
 pub(super) fn max_step(current: Option<StepIdx>, candidate: StepIdx) -> Option<StepIdx> {
@@ -43,19 +43,27 @@ pub(super) struct RecoveredSlots {
 pub(super) fn recover_slots(
     accumulator: &FrameSeedAccumulator,
     workflow: Option<&CompiledWorkflow>,
-) -> RecoveryResult<RecoveredSlots> {
+    inputs: Option<ReplayInputContext<'_>>,
+) -> RecoveryResult<(RecoveredSlots, Option<(StepIdx, u64)>)> {
     match (workflow, accumulator.last_succeeded_step) {
-        (Some(plan), Some(target)) => Ok(merge_recovered_slots(
-            recover_slots_through_step(plan, target)?,
-            recovered_event_slots(accumulator),
+        (Some(plan), Some(target)) => {
+            let (slots, cursor) = recover_slots_through_step(plan, target, inputs)?;
+            Ok((
+                merge_recovered_slots(slots, recovered_event_slots(accumulator)),
+                cursor,
+            ))
+        }
+        (Some(_), None) => Ok((
+            RecoveredSlots::supported(recovered_event_slots(accumulator)),
+            None,
         )),
-        (Some(_), None) => Ok(RecoveredSlots::supported(recovered_event_slots(
-            accumulator,
-        ))),
-        (None, _) if accumulator.slot_values.is_empty() => Ok(RecoveredSlots::unsupported()),
-        (None, _) => Ok(RecoveredSlots::supported(recovered_event_slots(
-            accumulator,
-        ))),
+        (None, _) if accumulator.slot_values.is_empty() => {
+            Ok((RecoveredSlots::unsupported(), None))
+        }
+        (None, _) => Ok((
+            RecoveredSlots::supported(recovered_event_slots(accumulator)),
+            None,
+        )),
     }
 }
 
@@ -92,27 +100,7 @@ fn recovered_event_slots(accumulator: &FrameSeedAccumulator) -> Vec<RecoveredSlo
         .collect()
 }
 
-fn recover_slots_through_step(
-    plan: &CompiledWorkflow,
-    target: StepIdx,
-) -> RecoveryResult<RecoveredSlots> {
-    let mut store = ValueStore::new();
-    let engine = ReplayEngine::new(plan);
-    let frame = match engine.replay_frame_through(target, &mut store) {
-        Ok(frame) => frame,
-        Err(ReplayError::NonDeterministicStep { step, .. }) if step == target => {
-            let mut store = ValueStore::new();
-            engine
-                .replay_frame_up_to(target, &mut store)
-                .map_err(replay_error_to_recovery)?
-        }
-        Err(error) => return Err(replay_error_to_recovery(error)),
-    };
-    let slots = initialized_recovered_slots(&frame, target)?;
-    Ok(RecoveredSlots::from_replayed(slots))
-}
-
-fn initialized_recovered_slots(
+pub(super) fn initialized_recovered_slots(
     frame: &vb_core::RunFrame,
     target: StepIdx,
 ) -> RecoveryResult<Vec<RecoveredSlotEntry>> {
