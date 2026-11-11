@@ -8,9 +8,9 @@ use vb_core::action::{
 use vb_core::{ObjectField, ObjectId, RunId, SlotIdx, SlotValue, StepIdx, SymbolId, Taint};
 use vb_storage::{EventSeq, FjallJournal, JournalEvent};
 
-#[path = "bound_symbol_duplicate_retry_assertions.rs"]
+#[path = "bound_symbol_duplicate_retry_assertions_tests.rs"]
 mod assertions;
-#[path = "bound_symbol_duplicate_retry_fixture.rs"]
+#[path = "bound_symbol_duplicate_retry_fixture_tests.rs"]
 mod fixture;
 use assertions::*;
 use fixture::*;
