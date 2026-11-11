@@ -29,8 +29,16 @@ pub(in crate::mod_compile_lowering) fn emit_scoped_branch_body(
     ctx: BodyCtx<'_>,
     builder: &mut SlotCompiler,
 ) -> Result<usize, CompileErrors> {
-    let _ =
-        emit_scoped_flat_body(body, start, common_next, scope, ctx, builder, "choose", None)?;
+    let _ = emit_scoped_flat_body(
+        body,
+        start,
+        common_next,
+        scope,
+        ctx,
+        builder,
+        "choose",
+        None,
+    )?;
     Ok(body.len())
 }
 

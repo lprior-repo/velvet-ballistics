@@ -334,11 +334,15 @@ fn runtime_signal_awaiting_action_differs_for_different_ticket() {
 
 #[test]
 fn runtime_engine_error_from_engine_error() {
-    let core = EngineError::UnsupportedPrimitive { primitive: "test".into() };
+    let core = EngineError::UnsupportedPrimitive {
+        primitive: "test".into(),
+    };
     let engine_err: RuntimeEngineError = core.into();
     assert_eq!(
         engine_err,
-        RuntimeEngineError::Core(EngineError::UnsupportedPrimitive { primitive: "test".into() })
+        RuntimeEngineError::Core(EngineError::UnsupportedPrimitive {
+            primitive: "test".into()
+        })
     );
 }
 

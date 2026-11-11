@@ -7,7 +7,7 @@
 // In-tree production-source mirror for the `Taint` enum and taint lattice
 // helper fns consumed by `verification/verus/taint_lattice.rs`.
 //
-// The `Taint` enum below is a VERBATIM copy of lines 14-25 of
+// The `Taint` enum below is a VERBATIM copy of lines 14-29 of
 // `crates/vb_core/src/value.rs`:
 //
 //   - Variant set:        Clean, DerivedFromSecret, Secret, Random,
@@ -17,7 +17,7 @@
 //   - Attributes:         #[non_exhaustive]
 //
 // `join_taint(a, b)` is a VERBATIM copy of `crates/vb_core/src/value.rs`
-// lines 29-45 (the production free fn that picks the higher-ranked
+// lines 34-52 (the production free fn that picks the higher-ranked
 // variant). The verbatim copy preserves the inline discriminant-match
 // style production uses — production does NOT extract `rank` as a
 // method on `Taint`.
@@ -37,13 +37,13 @@
 // `impl Enum { fn }` blocks inside spec-mode `verus!` modules.
 // Production `value.rs` does not export a method form either; the
 // discriminant pattern is inlined inside `join_taint` (see lines
-// 30-35 and 37-43 of value.rs).
+// the two complete matches in join_taint).
 //
 // ============================================================================
 // DRIFT POLICY
 // ============================================================================
-// This file MUST be reviewed against `crates/vb_core/src/value.rs:14-25`
-// (Taint enum) and `crates/vb_core/src/value.rs:27-45` (`join_taint`)
+// This file MUST be reviewed against `crates/vb_core/src/value.rs:14-29`
+// (Taint enum) and `crates/vb_core/src/value.rs:34-52` (`join_taint`)
 // whenever production taint semantics change. Drift in either block
 // breaks the Verus binding (variant renames surface as
 // "no variant named X" errors; discriminant changes surface as
@@ -52,8 +52,8 @@
 // Field NAMES and DISCRIMINANT RANKS are preserved byte-for-byte from
 // production. Any drift breaks the verification build.
 //
-// Production `crates/vb_core/src/value.rs:14-25`
-// Production `crates/vb_core/src/value.rs:27-45`
+// Production `crates/vb_core/src/value.rs:14-29`
+// Production `crates/vb_core/src/value.rs:34-52`
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -76,7 +76,7 @@
 #![allow(dead_code)]
 
 // ----------------------------------------------------------------------------
-// Verbatim copy of crates/vb_core/src/value.rs:14-25
+// Verbatim copy of crates/vb_core/src/value.rs:14-29
 // ----------------------------------------------------------------------------
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -95,7 +95,7 @@ pub enum Taint {
 }
 
 /// Free-fn form of the inline discriminant pattern that production's
-/// `value.rs:30-35` and `value.rs:37-43` use inside `join_taint`.
+/// the two complete matches in `join_taint` use inside `join_taint`.
 /// Kept as a free fn (not `impl Taint::rank(&self)`) because Verus
 /// 0.2026.05.05 panics on `impl Enum { fn }` inside spec-mode `verus!`.
 /// Models the production discriminant mapping byte-for-byte.
@@ -110,7 +110,7 @@ pub fn taint_rank(self_: Taint) -> u8 {
 }
 
 // ----------------------------------------------------------------------------
-// Verbatim copy of crates/vb_core/src/value.rs:29-45 (`join_taint`)
+// Verbatim copy of crates/vb_core/src/value.rs:34-52 (`join_taint`)
 // ----------------------------------------------------------------------------
 /// Joins two taint levels, returning the more restrictive one.
 #[must_use]

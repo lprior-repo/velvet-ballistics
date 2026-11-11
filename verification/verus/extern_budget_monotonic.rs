@@ -29,7 +29,7 @@
 //   - `WholeWorkflowBudget`        <- crates/vb_core/src/budget/compute.rs:17-93
 //   - `WholeWorkflowBudget::compute` <- crates/vb_core/src/budget/compute.rs:100-106
 //   - `BudgetTraversalError`       <- crates/vb_core/src/budget/traversal_error.rs:13-37
-//   - `WorkflowError`              <- crates/vb_core/src/workflow/mod.rs:666-880
+//   - `WorkflowError`              <- crates/vb_core/src/workflow/mod.rs:1034-1257
 //   - `ResourceContract`           <- crates/vb_core/src/workflow/mod.rs:252-289
 //   - `CompiledNode`, `CompiledNodeKind`
 //                                   <- crates/vb_core/src/workflow/mod.rs:995-1357

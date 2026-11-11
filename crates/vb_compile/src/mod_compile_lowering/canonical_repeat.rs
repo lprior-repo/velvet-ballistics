@@ -66,7 +66,8 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_repeat(
         "repeat",
         None,
     )?;
-    let result = result.ok_or_else(|| field_error(index, "steps", "at least one set or do step"))?;
+    let result =
+        result.ok_or_else(|| field_error(index, "steps", "at least one set or do step"))?;
     push_repeat_continuations(layout, attempt_slot, result, config.next, builder);
     Ok(result)
 }

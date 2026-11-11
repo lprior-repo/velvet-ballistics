@@ -51,7 +51,10 @@ fn literal_constant(
 ) -> Result<(ConstValue, ExprType), CompileErrors> {
     match expr {
         ParsedExpression::Literal(literal) => literal_value(literal, index),
-        ParsedExpression::Unary { op: UnaryOp::Neg, expr } => negate_literal(expr, index),
+        ParsedExpression::Unary {
+            op: UnaryOp::Neg,
+            expr,
+        } => negate_literal(expr, index),
         _ => Err(initial_error(index)),
     }
 }

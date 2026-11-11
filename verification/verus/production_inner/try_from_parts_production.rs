@@ -4,7 +4,7 @@
 // IN-TREE PRODUCTION-SOURCE MIRROR for `CompiledWorkflow::try_from_parts`
 // ============================================================================
 //
-// This file is a VERBATIM copy of the production `try_from_parts` exec
+// This file retains declared structural projections of the production `try_from_parts` exec
 // method body and the `WorkflowParts` / `ResourceContract` struct
 // declarations from `crates/vb_core/src/workflow/mod.rs`, with minimal
 // substitutions required to compile under `verus --crate-type=lib`
@@ -59,6 +59,15 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 #![allow(unused_imports)]
+
+#[path = "try_from_parts_production_input_constraint.rs"]
+mod input_constraint;
+#[path = "try_from_parts_production_input_types.rs"]
+mod input_types;
+pub use input_constraint::CompiledInputConstraint;
+use input_constraint::{validate_input_constraint, validate_input_slot_order};
+#[path = "try_from_parts_production_source_metadata.rs"]
+mod source_metadata;
 
 // ---------------------------------------------------------------------------
 // Numeric-id and scalar mirrors: `production_inner/`
@@ -324,7 +333,7 @@ pub struct SlotBranch {
 // ---------------------------------------------------------------------------
 //
 // Production `InputSlotKind` at workflow/mod.rs:301-320 (9-variant enum)
-// and `CompiledInputSlot` at workflow/mod.rs:328-335. Mirror preserves
+// and `CompiledInputSlot` at workflow/mod.rs:505-522. Mirror preserves
 // the variant NAMES and field NAMES/TYPES exactly.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -344,13 +353,13 @@ pub enum InputSlotKind {
 pub struct CompiledInputSlot {
     pub slot: SlotIdx,
     pub kind: InputSlotKind,
+    pub constraint: CompiledInputConstraint,
 }
-
 // ===========================================================================
 // VERBATIM PRODUCTION: `WorkflowParts` struct declaration
 // ===========================================================================
 //
-// Source: crates/vb_core/src/workflow/mod.rs:609-642
+// Source: crates/vb_core/src/workflow/mod.rs:978-1013
 // Drift policy: any change to the field NAMES or TYPES in production
 // MUST be mirrored here. The `Box<[T]>` production fields are replaced
 // with `Vec<T>` because `Box<[T]>` requires the `alloc` crate to be
@@ -377,7 +386,7 @@ pub struct WorkflowParts {
 // VERBATIM PRODUCTION: `CompiledWorkflow::try_from_parts` method body
 // ===========================================================================
 //
-// Source: crates/vb_core/src/workflow/mod.rs:42-65
+// Source: crates/vb_core/src/workflow/mod.rs:46-72
 // Drift policy: any change to this function in production MUST be
 // mirrored here. The spec proofs reason about the structural
 // invariants the production `try_from_parts` enforces (entry in
@@ -388,7 +397,7 @@ pub struct WorkflowParts {
 // `validate_input_slots`, `parts.name`, or any field breaks this mirror
 // at compile time.
 
-/// Production `CompiledWorkflow` at workflow/mod.rs:22-38. The mirror
+/// Production `CompiledWorkflow` at workflow/mod.rs:25-43. The mirror
 /// preserves the field NAMES exactly; the field VISIBILITY is `pub` so
 /// the verification surface can read the fields.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -406,24 +415,25 @@ pub struct CompiledWorkflow {
     pub resource_contract: ResourceContract,
     pub step_names: Vec<Box<str>>,
     pub input_slots: Vec<CompiledInputSlot>,
-    pub loop_regions: Vec<Option<CompiledLoopRegion>>,
-    pub nested_activation_entries: Vec<bool>,
+    pub loop_slots: Vec<LoopRegionSlot>,
+    pub source_symbols: Option<source_metadata::WorkflowSourceMetadata>,
 }
 
 impl CompiledWorkflow {
     /// Verbatim copy of production `CompiledWorkflow::try_from_parts`
-    /// at crates/vb_core/src/workflow/mod.rs:42-65. The body delegates
+    /// at crates/vb_core/src/workflow/mod.rs:46-72. The body delegates
     /// to production `validate_parts`, `loop_regions::validate`,
     /// `loop_regions::nested_activation_map`, `validate_budget`, and
     /// `validate_input_slots`. `validate_parts`, `validate_budget`,
     /// `loop_regions::validate`, and `loop_regions::nested_activation_map`
     /// are stub bodies (return Ok) because the spec proofs reason
     /// about the postcondition contracts. `validate_input_slots` is
-    /// a faithful body matching production.
+    /// a faithful body matching production, including constraint validation; merge_slots has the real four-way body.
     pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
         validate_parts(&parts)?;
         let loop_regions = loop_regions::validate(&parts)?;
         let nested_activation_entries = loop_regions::nested_activation_map(&parts, &loop_regions)?;
+        let loop_slots = loop_regions::merge_slots(&loop_regions, &nested_activation_entries);
         validate_budget(&parts)?;
         validate_input_slots(&parts)?;
         Ok(Self {
@@ -440,8 +450,8 @@ impl CompiledWorkflow {
             resource_contract: parts.resource_contract,
             step_names: parts.step_names,
             input_slots: parts.input_slots,
-            loop_regions,
-            nested_activation_entries,
+            loop_slots,
+            source_symbols: None,
         })
     }
 }
@@ -450,7 +460,7 @@ impl CompiledWorkflow {
 // VERBATIM PRODUCTION: `WorkflowError` enum declaration
 // ===========================================================================
 //
-// Source: crates/vb_core/src/workflow/mod.rs:666-880
+// Source: crates/vb_core/src/workflow/mod.rs:1034-1257
 // Drift policy: any change to the `WorkflowError` discriminant set in
 // production MUST be mirrored here. The mirror preserves the variant
 // NAMES and FIELD STRUCTURES verbatim; the `thiserror::Error` derive
@@ -460,6 +470,9 @@ impl CompiledWorkflow {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorkflowError {
+    InvalidSymbolMetadata {
+        source: source_metadata::SourceMetadataError,
+    },
     RepeatCounterForeignWrite {
         owner: StepIdx,
         writer: StepIdx,
@@ -641,7 +654,7 @@ pub fn validate_parts(_parts: &WorkflowParts) -> Result<(), WorkflowError> {
 pub fn validate_budget(_parts: &WorkflowParts) -> Result<(), WorkflowError> {
     Ok(())
 }
-// Production crates/vb_core/src/workflow/mod.rs:1394-1425
+// Production crates/vb_core/src/workflow/mod.rs:1774-1805
 // Drift policy: any change to this function body in production MUST be
 // mirrored here. The spec proofs depend on the faithful implementation.
 
@@ -649,7 +662,7 @@ pub fn validate_input_slots(parts: &WorkflowParts) -> Result<(), WorkflowError> 
     let slot_count = parts.slot_count;
     let mut prev_slot: Option<SlotIdx> = None;
     for input_slot in parts.input_slots.iter() {
-        let current: SlotIdx = input_slot.slot;
+        let current = input_slot.slot;
         let current_value = current.get();
         if current_value >= slot_count {
             return Err(WorkflowError::InputSlotOutOfBounds {
@@ -657,69 +670,13 @@ pub fn validate_input_slots(parts: &WorkflowParts) -> Result<(), WorkflowError> 
                 kind: input_slot.kind,
             });
         }
-        if let Some(prev) = prev_slot {
-            let prev_value = prev.get();
-            if current_value == prev_value {
-                return Err(WorkflowError::DuplicateInputSlot {
-                    slot: current,
-                    kind: input_slot.kind,
-                });
-            }
-            if current_value < prev_value {
-                return Err(WorkflowError::NonCanonicalInputSlotOrder {
-                    prev_slot: prev,
-                    curr_slot: current,
-                });
-            }
-        }
+        validate_input_slot_order(input_slot, prev_slot)?;
+        validate_input_constraint(current, &input_slot.constraint)?;
         prev_slot = Some(current);
     }
     Ok(())
 }
 
-// ===========================================================================
-// PRODUCTION MIRROR: loop-region ownership cache stubs
-// ===========================================================================
-//
-// Production `CompiledLoopRegion` at
-// `crates/vb_core/src/workflow/loop_regions.rs:14-19`, `validate` at
-// `crates/vb_core/src/workflow/loop_regions.rs:59-72`, and
-// `nested_activation_map` at
-// `crates/vb_core/src/workflow/loop_regions.rs:78-83`. The mirror bodies
-// return `Ok` with empty collections because the spec proofs reason about
-// the postcondition contracts, not about the validation implementation
-// details. Drift in the struct FIELDS or function SIGNATURES breaks this
-// mirror at compile time. The production `Box<[...]>` return types are
-// mirrored as `Vec<...>` per the file header substitution rule.
-
-/// Mirror of production `CompiledLoopRegion`: immutable,
-/// constructor-validated ownership of one loop backedge. Field names and
-/// types match production; visibility is `pub` per this file's convention.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CompiledLoopRegion {
-    pub start: StepIdx,
-    pub body: StepIdx,
-    pub control: StepIdx,
-    pub done: StepIdx,
-}
-
-pub mod loop_regions {
-    use super::{CompiledLoopRegion, WorkflowError, WorkflowParts};
-
-    /// Stub for production `loop_regions::validate`: builds a
-    /// control-indexed cache without changing serialized workflow parts.
-    pub fn validate(
-        _parts: &WorkflowParts,
-    ) -> Result<Vec<Option<CompiledLoopRegion>>, WorkflowError> {
-        Ok(Vec::new())
-    }
-
-    /// Stub for production `loop_regions::nested_activation_map`: derives
-    /// the nested activation entry map from validated loop regions.
-    pub fn nested_activation_map(
-        _parts: &WorkflowParts,
-        _regions: &[Option<CompiledLoopRegion>],
-    ) -> Result<Vec<bool>, WorkflowError> {
-        Ok(Vec::new())
-    }
-}
+#[path = "try_from_parts_production_loop_cache.rs"]
+pub mod loop_regions;
+pub use loop_regions::{CompiledLoopRegion, LoopRegionSlot};

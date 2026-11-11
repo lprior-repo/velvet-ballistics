@@ -245,13 +245,19 @@ fn core_error_diagnostic_codes_are_unique() {
         CoreError::ExpressionStackOverflow { max: 1 }.diagnostic_code(),
         CoreError::ExpressionStackUnderflow.diagnostic_code(),
         CoreError::InvalidCompiledWorkflow { reason: "test" }.diagnostic_code(),
-        CoreError::UnsupportedPrimitive { primitive: "test".into() }.diagnostic_code(),
+        CoreError::UnsupportedPrimitive {
+            primitive: "test".into(),
+        }
+        .diagnostic_code(),
         CoreError::UnsupportedAccessorTraversal {
             segment: "field",
             found: "object",
         }
         .diagnostic_code(),
-        CoreError::InternalInvariantViolation { reason: "test".into() }.diagnostic_code(),
+        CoreError::InternalInvariantViolation {
+            reason: "test".into(),
+        }
+        .diagnostic_code(),
         CoreError::SymbolOutOfBounds {
             symbol: SymbolId::new(0),
         }

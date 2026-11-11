@@ -7,7 +7,7 @@
 // ============================================================================
 // This file binds the try_from_parts.rs Verus spec to the production
 // `CompiledWorkflow::try_from_parts` validation entry point in
-// `crates/vb_core/src/workflow/mod.rs:42-65`. The binding is structural +
+// `crates/vb_core/src/workflow/mod.rs:46-72`. The binding is structural +
 // contract: each production type is mirrored with the SAME name (where
 // practical), SAME discriminant shape, and SAME field types, and the
 // production exec validation has a `#[verifier::external]` wrapper that
@@ -52,13 +52,13 @@
 // BINDING LEDGER
 // ============================================================================
 //   - `CompiledWorkflow::try_from_parts` exec signature
-//     <- crates/vb_core/src/workflow/mod.rs:42-65
+//     <- crates/vb_core/src/workflow/mod.rs:46-72
 //   - `validate_parts` structural validation
-//     <- crates/vb_core/src/workflow/mod.rs:1367-1392
+//     <- crates/vb_core/src/workflow/mod.rs:1747-1772
 //   - `validate_budget` budget policy validation
-//     <- crates/vb_core/src/workflow/mod.rs:1453-1459
+//     <- crates/vb_core/src/workflow/mod.rs:1829-1835
 //   - `validate_budget_result` budget error collapse
-//     <- crates/vb_core/src/workflow/mod.rs:1461-1470
+//     <- crates/vb_core/src/workflow/mod.rs:1837-1846
 //   - `WholeWorkflowBudget` field set
 //     <- crates/vb_core/src/budget/compute.rs:17-93
 //   - `WholeWorkflowBudget::compute`
@@ -82,84 +82,84 @@
 //   - `BudgetDimension`
 //     <- crates/vb_core/src/budget/validate_error.rs:100-147
 //   - `validate_resource_contract`
-//     <- crates/vb_core/src/workflow/mod.rs:1587-1593
+//     <- crates/vb_core/src/workflow/mod.rs:1963-1969
 //   - `validate_entry`
-//     <- crates/vb_core/src/workflow/mod.rs:1673-1675
+//     <- crates/vb_core/src/workflow/mod.rs:2049-2051
 //   - `validate_node` / `validate_node_common` / `validate_node_kind`
 //     <- crates/vb_core/src/workflow/mod.rs:1677-1847
 //   - `validate_slots`
-//     <- crates/vb_core/src/workflow/mod.rs:1853-1858
+//     <- crates/vb_core/src/workflow/mod.rs:2229-2234
 //   - `validate_build_list`
-//     <- crates/vb_core/src/workflow/mod.rs:1860-1867
+//     <- crates/vb_core/src/workflow/mod.rs:2236-2243
 //   - `validate_build_object`
-//     <- crates/vb_core/src/workflow/mod.rs:1869-1882
+//     <- crates/vb_core/src/workflow/mod.rs:2245-2258
 //   - `validate_for_each_start`
-//     <- crates/vb_core/src/workflow/mod.rs:1884-1894
+//     <- crates/vb_core/src/workflow/mod.rs:2260-2270
 //   - `validate_slot_and_steps`
-//     <- crates/vb_core/src/workflow/mod.rs:1896-1904
+//     <- crates/vb_core/src/workflow/mod.rs:2272-2280
 //   - `validate_two_steps`
-//     <- crates/vb_core/src/workflow/mod.rs:1906-1913
+//     <- crates/vb_core/src/workflow/mod.rs:2282-2289
 //   - `validate_together`
-//     <- crates/vb_core/src/workflow/mod.rs:1915-1925
+//     <- crates/vb_core/src/workflow/mod.rs:2291-2301
 //   - `validate_nonzero_u16`
-//     <- crates/vb_core/src/workflow/mod.rs:1927-1933
+//     <- crates/vb_core/src/workflow/mod.rs:2303-2309
 //   - `validate_reduce_start`
-//     <- crates/vb_core/src/workflow/mod.rs:1935-1947
+//     <- crates/vb_core/src/workflow/mod.rs:2311-2323
 //   - `validate_reduce_next`
-//     <- crates/vb_core/src/workflow/mod.rs:1949-1959
+//     <- crates/vb_core/src/workflow/mod.rs:2325-2335
 //   - `validate_repeat_start`
-//     <- crates/vb_core/src/workflow/mod.rs:1961-1969
+//     <- crates/vb_core/src/workflow/mod.rs:2337-2345
 //   - `validate_slot_choose`
-//     <- crates/vb_core/src/workflow/mod.rs:1971-1982
+//     <- crates/vb_core/src/workflow/mod.rs:2354-2365
 //   - `validate_expr_choose`
-//     <- crates/vb_core/src/workflow/mod.rs:1984-1995
+//     <- crates/vb_core/src/workflow/mod.rs:2367-2378
 //   - `validate_branch_route`
-//     <- crates/vb_core/src/workflow/mod.rs:1997-2006
+//     <- crates/vb_core/src/workflow/mod.rs:2380-2389
 //   - `MAX_LIST_ITEMS_PER_VALUE` / `MAX_OBJECT_FIELDS_PER_VALUE`
 //     <- crates/vb_core/src/limits.rs:71-75
 //   - `validate_reduce_branch_targets`
-//     <- crates/vb_core/src/workflow/mod.rs:1684-1697
+//     <- crates/vb_core/src/workflow/mod.rs:2060-2073
 //   - `validate_for_each_next_targets`
-//     <- crates/vb_core/src/workflow/mod.rs:1699-1709
+//     <- crates/vb_core/src/workflow/mod.rs:2075-2085
 //   - `validate_input_constraint`
-//     <- crates/vb_core/src/workflow/mod.rs:1427-1451
+//     <- crates/vb_core/src/workflow/mod.rs:1807-1827
 //   - `CompiledInputConstraint` field set
-//     <- crates/vb_core/src/workflow/mod.rs:519-543
+//     <- crates/vb_core/src/workflow/mod.rs:868-902
 //   - `validate_step`, `validate_slot`, `validate_const`, `validate_expr`,
 //     `validate_accessor`, `validate_symbol`
 //     <- crates/vb_core/src/workflow/mod.rs:2012-2156
 //   - `validate_accessor_paths`
-//     <- crates/vb_core/src/workflow/mod.rs:2089-2119
+//     <- crates/vb_core/src/workflow/mod.rs:2471-2502
 //   - `validate_constants_symbols`
-//     <- crates/vb_core/src/workflow/mod.rs:2122-2132
+//     <- crates/vb_core/src/workflow/mod.rs:2504-2515
 //   - `validate_build_object_symbols`
-//     <- crates/vb_core/src/workflow/mod.rs:2135-2147
+//     <- crates/vb_core/src/workflow/mod.rs:2517-2530
 //   - `MAX_PATH_DEPTH`
 //     <- crates/vb_core/src/limits.rs:59
 //   - `validate_reachability`
-//     <- crates/vb_core/src/workflow/mod.rs:2160-2229
+//     <- crates/vb_core/src/workflow/mod.rs:2541-2612
 //   - `validate_forward_edges`
-//     <- crates/vb_core/src/workflow/mod.rs:2336-2364
+//     <- crates/vb_core/src/workflow/mod.rs:2717-2747
 //   - `validate_kind_edges`
-//     <- crates/vb_core/src/workflow/mod.rs:2367-2426
+//     <- crates/vb_core/src/workflow/mod.rs:2749-2809
 //   - `validate_choose_slot_edges`
-//     <- crates/vb_core/src/workflow/mod.rs:2428-2441
+//     <- crates/vb_core/src/workflow/mod.rs:2811-2824
 //   - `validate_choose_expr_edges`
-//     <- crates/vb_core/src/workflow/mod.rs:2443-2456
+//     <- crates/vb_core/src/workflow/mod.rs:2826-2839
 //   - `validate_loop_done_only`
-//     <- crates/vb_core/src/workflow/mod.rs:2458-2460
+//     <- crates/vb_core/src/workflow/mod.rs:2841-2843
 //   - `repeat_check_validate` (`nearest_active_owner`)
-//     <- crates/vb_core/src/workflow/mod.rs:2465-2582
+//     <- crates/vb_core/src/workflow/mod.rs:2845-2965
 //   - `validate_loop_start_edges`
-//     <- crates/vb_core/src/workflow/mod.rs:2588-2596
+//     <- crates/vb_core/src/workflow/mod.rs:2967-2979
 //   - `validate_together_start_edges`
-//     <- crates/vb_core/src/workflow/mod.rs:2598-2608
+//     <- crates/vb_core/src/workflow/mod.rs:2981-2991
 //   - `validate_together_branch_edges`
-//     <- crates/vb_core/src/workflow/mod.rs:2610-2618
+//     <- crates/vb_core/src/workflow/mod.rs:2993-3001
 //   - `validate_forward_target`
-//     <- crates/vb_core/src/workflow/mod.rs:2621-2630
+//     <- crates/vb_core/src/workflow/mod.rs:3003-3013
 //   - `push_loop_span`
-//     <- crates/vb_core/src/workflow/mod.rs:2633-2680
+//     <- crates/vb_core/src/workflow/mod.rs:3015-3063
 //   - `validate_no_nested_together` (moved out of workflow/mod.rs)
 //     <- crates/vb_core/src/engine/validate.rs:119-172
 //   - `walk_contains_together_start`
@@ -177,7 +177,7 @@
 //   - `writes_slot`
 //     <- crates/vb_core/src/workflow/repeat_counter_ownership.rs:111-137
 //   - `validate` (loop_regions pairing step)
-//     <- crates/vb_core/src/workflow/loop_regions.rs:59-72
+//     <- crates/vb_core/src/workflow/loop_regions.rs:93-109
 //   - `cache_control`
 //     <- crates/vb_core/src/workflow/loop_regions/pairing.rs:8-31
 //   - `unique_owner`
@@ -199,25 +199,25 @@
 //   - `is_finish`
 //     <- crates/vb_core/src/workflow/loop_regions/edges.rs:130-135
 //   - `collect_node_targets`
-//     <- crates/vb_core/src/workflow/mod.rs:2233-2299
+//     <- crates/vb_core/src/workflow/mod.rs:2614-2682
 //   - `crossing` (LoopRegionCrossing constructor)
-//     <- crates/vb_core/src/workflow/loop_regions.rs:100-106
+//     <- crates/vb_core/src/workflow/loop_regions.rs:157-163
 //   - `control_shape`
 //     <- crates/vb_core/src/workflow/loop_regions/shapes.rs:21-34
 //   - `start_shape`
 //     <- crates/vb_core/src/workflow/loop_regions/shapes.rs:54-67
 //   - `WorkflowError` discriminant set
-//     <- crates/vb_core/src/workflow/mod.rs:666-880
+//     <- crates/vb_core/src/workflow/mod.rs:1034-1257
 //   - `WorkflowParts` field set
-//     <- crates/vb_core/src/workflow/mod.rs:609-642
+//     <- crates/vb_core/src/workflow/mod.rs:978-1013
 //   - `ResourceContract` field set
 //     <- crates/vb_core/src/workflow/mod.rs:252-289
 //   - `CompiledNode` / `CompiledNodeKind` discriminant set
 //     <- crates/vb_core/src/workflow/mod.rs:995-1357
 //   - `ExprProgram` / `ExprOp` discriminant set
-//     <- crates/vb_core/src/workflow/mod.rs:884-973
+//     <- crates/vb_core/src/workflow/mod.rs:1259-1350
 //   - `AccessorProgram` / `PathSegment`
-//     <- crates/vb_core/src/workflow/mod.rs:646-661
+//     <- crates/vb_core/src/workflow/mod.rs:1015-1032
 //   - `ExprBranch` / `SlotBranch`
 //     <- crates/vb_core/src/workflow/mod.rs:450-464
 //
@@ -232,7 +232,7 @@
 // Direct `#[path]` inclusion of the in-tree production mirror at
 // `production_inner/try_from_parts_production.rs`. The mirror is a
 // verbatim copy of the production `CompiledWorkflow::try_from_parts`
-// function body (workflow/mod.rs:42-65), the `WorkflowParts` struct
+// function body (workflow/mod.rs:46-72), the `WorkflowParts` struct
 // declaration (workflow/mod.rs:609-642), the `ResourceContract`
 // struct + DEFAULT constant (workflow/mod.rs:252-289), and the
 // `WorkflowError` discriminant set (workflow/mod.rs:666-880), with
@@ -605,8 +605,8 @@ pub struct SpecAccessor {
 /// `CompiledInputConstraint` at
 /// `crates/vb_core/src/workflow/mod.rs:519-543`. Only the bounds
 /// `validate_input_constraint` (workflow/mod.rs:1427-1451) reads are
-/// mirrored; `optional`, `nullable`, `default_value`, `element`,
-/// `allow_extra`, and `secret` are out of scope for the validation
+/// mirrored; `presence`, `nullability`, `default_value`, `element`,
+/// `extra`, and `secretness` are out of scope for the validation
 /// decision. Flattened `has_` / value pairs follow the `SpecNodeMeta`
 /// convention so the spec layer reads them without `Option`.
 #[derive(Clone, Copy)]
@@ -620,6 +620,30 @@ pub struct SpecInputConstraint {
     pub has_max_length: u8,
     pub max_length: i64,
 }
+
+/// Projects exactly the numeric accessors read by the production validator.
+/// Presence, defaults and element policy remain outside this decision projection.
+fn project_production_input_constraint(
+    constraint: &production_try_from_parts::CompiledInputConstraint,
+) -> SpecInputConstraint {
+    let value = constraint.value_bound();
+    let length = constraint.length_bound();
+    let (has_min, min) = value.lower().map_or((0, 0), |value| (1, value));
+    let (has_max, max) = value.upper().map_or((0, 0), |value| (1, value));
+    let (has_min_length, min_length) = length.lower().map_or((0, 0), |value| (1, value));
+    let (has_max_length, max_length) = length.upper().map_or((0, 0), |value| (1, value));
+    SpecInputConstraint {
+        has_min,
+        min,
+        has_max,
+        max,
+        has_min_length,
+        min_length,
+        has_max_length,
+        max_length,
+    }
+}
+
 /// One ordered validation operation of production
 /// `validate_node_kind` (`crates/vb_core/src/workflow/mod.rs:1718-1847`)
 /// for a single node. The per-node `kind_refs` inventory lists these
@@ -2425,7 +2449,7 @@ pub fn nested_together_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowEr
 // Pure decision fn: top-level try_from_parts validation
 // ============================================================================
 /// Pure projection of `CompiledWorkflow::try_from_parts` validation
-/// at `crates/vb_core/src/workflow/mod.rs:42-65`. The production
+/// at `crates/vb_core/src/workflow/mod.rs:46-72`. The production
 /// body short-circuits via `?`-propagation in this order:
 ///
 ///   1. `validate_parts(&parts)?` — structural validation

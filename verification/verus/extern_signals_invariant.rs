@@ -46,7 +46,7 @@
 //   - `StepBudget::try_take`                <- crates/vb_core/src/engine/signals.rs:50-60
 //   - `StepBudget::remaining`               <- crates/vb_core/src/engine/signals.rs:64-66
 //   - `StepBudget::from_env`                <- crates/vb_core/src/engine/signals.rs:81-94
-//   - `EngineError::StepCounterOverflow`    <- crates/vb_core/src/errors.rs:241
+//   - `EngineError::StepCounterOverflow`    <- crates/vb_core/src/errors.rs:458-460
 //   - `MAX_STEP_BUDGET = 10_000`            <- crates/vb_core/src/limits.rs:94
 //   - `EngineSignal`                        <- crates/vb_core/src/engine/signals.rs:100-115
 //                                             (7 variants, all production discriminants

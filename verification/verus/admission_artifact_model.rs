@@ -1197,7 +1197,7 @@ pub fn exec_witness_nonempty_warnings_denied() -> (result: bool)
         warnings:
             vec![production::VerificationWarning {
             code: 1,
-            message: String::from("gate warning"),
+            message: String::from_str("gate warning"),
             gate: 1,
         }],
         evidence: prepared_evidence(),

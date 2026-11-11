@@ -5,7 +5,9 @@
 
 use crate::{CompileError, compile_workflow};
 use vb_core::workflow::{NodeContinuation, NodeOutput};
-use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, FanoutLimit, SlotIdx, StepIdx};
+use vb_core::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, FanoutLimit, SlotIdx, StepIdx,
+};
 
 const HEADER: &str = "version: velvet-ballistics/v1\nname: nested_bodies\nwhen: {manual: {}}\n";
 const INPUTS: &str = "inputs:\n  outer_items: {is: list, of: any, max: 4}\n  inner_items: {is: list, of: any, max: 4}\n";

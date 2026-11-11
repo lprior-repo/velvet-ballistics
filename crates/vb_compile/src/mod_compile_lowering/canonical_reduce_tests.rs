@@ -14,8 +14,10 @@ use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, Slot
 use vb_expr::expr_typecheck::ExprType;
 
 const HEADER: &str = "version: velvet-ballistics/v1\nname: reduce_multi\nwhen: {manual: {}}\n";
-const SINGLE_STEP: &str = "        - id: update\n          set: {output: local_value, value: '$total + 1'}\n";
-const IDENTITY: &str = "        - id: update\n          set: {output: local_value, value: '$total'}\n";
+const SINGLE_STEP: &str =
+    "        - id: update\n          set: {output: local_value, value: '$total + 1'}\n";
+const IDENTITY: &str =
+    "        - id: update\n          set: {output: local_value, value: '$total'}\n";
 const TWO_STEPS: &str = "        - id: tmp_step\n          set: {output: tmp_value, value: '2'}\n        - id: update\n          set: {output: local_value, value: '$total + $tmp_value'}\n";
 
 fn source(initial: &str, body: &str) -> String {
@@ -79,10 +81,7 @@ fn multi_step_reduce_layout_writes_final_step_into_accumulator() -> Result<(), S
         }
     );
     assert_eq!(input, output(&workflow, 0)?);
-    assert_eq!(
-        workflow.constant(initial),
-        Some(&ConstValue::I64(10))
-    );
+    assert_eq!(workflow.constant(initial), Some(&ConstValue::I64(10)));
     assert_eq!(body, StepIdx::new(2));
     assert_eq!(done, StepIdx::new(5));
     assert_eq!(output(&workflow, 3)?, accumulator);
@@ -131,14 +130,28 @@ fn parse_typed_initial_variants() -> Result<(), String> {
         ("true", ConstValue::Bool(true), ExprType::Bool),
         ("false", ConstValue::Bool(false), ExprType::Bool),
         ("null", ConstValue::Null, ExprType::Null),
-        ("0.5", ConstValue::F64(vb_core::FiniteF64::new(0.5).map_err(|e| e.to_string())?), ExprType::F64),
-        ("-0.5", ConstValue::F64(vb_core::FiniteF64::new(-0.5).map_err(|e| e.to_string())?), ExprType::F64),
+        (
+            "0.5",
+            ConstValue::F64(vb_core::FiniteF64::new(0.5).map_err(|e| e.to_string())?),
+            ExprType::F64,
+        ),
+        (
+            "-0.5",
+            ConstValue::F64(vb_core::FiniteF64::new(-0.5).map_err(|e| e.to_string())?),
+            ExprType::F64,
+        ),
     ];
     for (text, constant, ty) in cases {
         let parsed = parse_typed_initial(text, 0).map_err(|e| format!("{text}: {e:?}"))?;
         assert_eq!(parsed, (constant, ty), "initial {text}");
     }
-    for text in ["$increment", "\"text\"", "1 + 2", "sum($total)", "9223372036854775808"] {
+    for text in [
+        "$increment",
+        "\"text\"",
+        "1 + 2",
+        "sum($total)",
+        "9223372036854775808",
+    ] {
         let rejected = parse_typed_initial(text, 0);
         let ok = matches!(
             &rejected,
@@ -161,8 +174,16 @@ fn parse_typed_initial_whitespace_padded_negatives() -> Result<(), String> {
         ("\t-5", ConstValue::I64(-5), ExprType::I64),
         ("\t-5\t", ConstValue::I64(-5), ExprType::I64),
         ("  -5  ", ConstValue::I64(-5), ExprType::I64),
-        (" -0.5", ConstValue::F64(vb_core::FiniteF64::new(-0.5).map_err(|e| e.to_string())?), ExprType::F64),
-        (" -0.5 ", ConstValue::F64(vb_core::FiniteF64::new(-0.5).map_err(|e| e.to_string())?), ExprType::F64),
+        (
+            " -0.5",
+            ConstValue::F64(vb_core::FiniteF64::new(-0.5).map_err(|e| e.to_string())?),
+            ExprType::F64,
+        ),
+        (
+            " -0.5 ",
+            ConstValue::F64(vb_core::FiniteF64::new(-0.5).map_err(|e| e.to_string())?),
+            ExprType::F64,
+        ),
     ];
     for (text, constant, ty) in cases {
         let parsed = parse_typed_initial(text, 0).map_err(|e| format!("{text:?}: {e:?}"))?;
@@ -189,10 +210,7 @@ fn padded_neg_i64_initial_pins_reduce_start_constant() -> Result<(), String> {
 
 #[test]
 fn typed_constants_reach_reduce_start() -> Result<(), String> {
-    let flags = [
-        ("true", ConstValue::Bool(true)),
-        ("null", ConstValue::Null),
-    ];
+    let flags = [("true", ConstValue::Bool(true)), ("null", ConstValue::Null)];
     for (text, constant) in flags {
         let workflow = compile(&source(text, IDENTITY))?;
         let CompiledNodeKind::ReduceStart { initial, .. } = node(&workflow, 1)?.kind else {
@@ -206,7 +224,9 @@ fn typed_constants_reach_reduce_start() -> Result<(), String> {
     };
     assert_eq!(
         workflow.constant(initial),
-        Some(&ConstValue::F64(vb_core::FiniteF64::new(0.5).map_err(|e| e.to_string())?))
+        Some(&ConstValue::F64(
+            vb_core::FiniteF64::new(0.5).map_err(|e| e.to_string())?
+        ))
     );
     Ok(())
 }
@@ -214,8 +234,19 @@ fn typed_constants_reach_reduce_start() -> Result<(), String> {
 #[test]
 fn type_mismatched_multi_body_rejected() -> Result<(), String> {
     rejects(
-        &source("10", "        - id: tmp_step\n          set: {output: tmp_value, value: '2'}\n        - id: update\n          set: {output: local_value, value: '$total == 10'}\n"),
-        |e| matches!(e, CompileError::StepFieldShape { field: "reduce.steps", .. }),
+        &source(
+            "10",
+            "        - id: tmp_step\n          set: {output: tmp_value, value: '2'}\n        - id: update\n          set: {output: local_value, value: '$total == 10'}\n",
+        ),
+        |e| {
+            matches!(
+                e,
+                CompileError::StepFieldShape {
+                    field: "reduce.steps",
+                    ..
+                }
+            )
+        },
     )
 }
 
@@ -232,7 +263,10 @@ fn empty_body_rejected() -> Result<(), String> {
 #[test]
 fn body_output_alias_rejected() -> Result<(), String> {
     rejects(
-        &source("10", "        - id: tmp_step\n          set: {output: tmp_value, value: '2'}\n        - id: update\n          set: {output: total, value: '$tmp_value'}\n"),
+        &source(
+            "10",
+            "        - id: tmp_step\n          set: {output: tmp_value, value: '2'}\n        - id: update\n          set: {output: total, value: '$tmp_value'}\n",
+        ),
         |e| matches!(e, CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "total"),
     )
 }
@@ -240,7 +274,10 @@ fn body_output_alias_rejected() -> Result<(), String> {
 #[test]
 fn step_id_alias_rejected() -> Result<(), String> {
     rejects(
-        &source("10", "        - id: total\n          set: {output: tmp_value, value: '2'}\n        - id: update\n          set: {output: local_value, value: '$total'}\n"),
+        &source(
+            "10",
+            "        - id: total\n          set: {output: tmp_value, value: '2'}\n        - id: update\n          set: {output: local_value, value: '$total'}\n",
+        ),
         |e| matches!(e, CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "total"),
     )
 }
@@ -273,7 +310,10 @@ fn deep_set_output_alias_rejected() -> Result<(), String> {
 #[test]
 fn deep_step_id_alias_rejected() -> Result<(), String> {
     rejects(
-        &source("10", "        - id: loop\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: total\n                set: {output: tmp_value, value: '6'}\n        - id: update\n          set: {output: local_value, value: '$total + $steps.loop'}\n"),
+        &source(
+            "10",
+            "        - id: loop\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: total\n                set: {output: tmp_value, value: '6'}\n        - id: update\n          set: {output: local_value, value: '$total + $steps.loop'}\n",
+        ),
         |e| matches!(e, CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "total"),
     )
 }
@@ -283,11 +323,15 @@ fn width_overflow_pins_exact_step_index() {
     assert_eq!(checked_width_n(65535), Ok(65535));
     assert_eq!(
         checked_width_n(65536),
-        Err(CompileErrors(vec![CompileError::StepIndexOutOfRange { value: 65536 }]))
+        Err(CompileErrors(vec![CompileError::StepIndexOutOfRange {
+            value: 65536
+        }]))
     );
     assert_eq!(
         checked_width_n(usize::MAX),
-        Err(CompileErrors(vec![CompileError::StepIndexOutOfRange { value: usize::MAX }]))
+        Err(CompileErrors(vec![CompileError::StepIndexOutOfRange {
+            value: usize::MAX
+        }]))
     );
 }
 

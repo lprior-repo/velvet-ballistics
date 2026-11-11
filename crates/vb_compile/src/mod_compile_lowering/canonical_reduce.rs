@@ -1,9 +1,9 @@
 #![forbid(unsafe_code)]
 
-use crate::mod_compile_lowering::part_02::for_each_capture;
 use super::canonical_reduce_initial::parse_typed_initial;
 use super::emit_single_body_set;
 use crate::mod_compile_errors::{CompileError, CompileErrors};
+use crate::mod_compile_lowering::part_02::for_each_capture;
 use crate::mod_compile_lowering::part_14::{BodyCtx, emit_scoped_flat_body};
 use crate::mod_compile_lowering::{
     CanonicalScope, SlotCompiler, body_width, checked_step_offset,
@@ -40,7 +40,15 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_aggregate(
     validate_body(index, &config)?;
     let (initial_value, initial_type) = parse_typed_initial(config.initial, index)?;
     let edges = plan_edges(id, config.body)?;
-    emit_reduce(index, id, &config, &edges, initial_value, initial_type, builder)
+    emit_reduce(
+        index,
+        id,
+        &config,
+        &edges,
+        initial_value,
+        initial_type,
+        builder,
+    )
 }
 
 fn checked_width_n(width: usize) -> Result<u16, CompileErrors> {
@@ -53,8 +61,8 @@ fn plan_edges(id: StepIdx, body: &[crate::StepAst]) -> Result<ReduceEdges, Compi
         checked_step_offset(id, 2, "aggregate", "body").map_err(|e| CompileErrors(vec![e]))?;
     let width = body_width(body, 0).map_err(|e| CompileErrors(vec![e]))?;
     let width_n = checked_width_n(width)?;
-    let next =
-        checked_step_offset(body_edge, width_n, "aggregate", "next").map_err(|e| CompileErrors(vec![e]))?;
+    let next = checked_step_offset(body_edge, width_n, "aggregate", "next")
+        .map_err(|e| CompileErrors(vec![e]))?;
     let done =
         checked_step_offset(next, 1, "aggregate", "done").map_err(|e| CompileErrors(vec![e]))?;
     Ok(ReduceEdges {
@@ -114,9 +122,24 @@ fn emit_reduce(
     let inferred = if config.body.len() >= 2 {
         lower_multi_body(config, index, edges, accumulator, initial_type, builder)?
     } else {
-        lower_body(config, index, edges.body, accumulator, edges.next, initial_type, builder)?
+        lower_body(
+            config,
+            index,
+            edges.body,
+            accumulator,
+            edges.next,
+            initial_type,
+            builder,
+        )?
     };
-    emit_reduce_tail(config, edges, iterator_slot, accumulator, next_item, builder);
+    emit_reduce_tail(
+        config,
+        edges,
+        iterator_slot,
+        accumulator,
+        next_item,
+        builder,
+    );
     Ok((accumulator, inferred))
 }
 
@@ -163,10 +186,12 @@ fn lower_multi_body(
         last.primitive,
         crate::StepPrimitive::Set { .. } | crate::StepPrimitive::Do { .. }
     ) {
-        return Err(CompileErrors(vec![CompileError::UnsupportedStepPrimitive {
-            step: index,
-            primitive: super::super::canonical_primitive_name(&last.primitive),
-        }]));
+        return Err(CompileErrors(vec![
+            CompileError::UnsupportedStepPrimitive {
+                step: index,
+                primitive: super::super::canonical_primitive_name(&last.primitive),
+            },
+        ]));
     }
     let mut local_outputs = config.scope.outputs.clone();
     let mut local_types = config.scope.slot_types.clone();
