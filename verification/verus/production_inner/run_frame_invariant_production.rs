@@ -145,7 +145,7 @@ pub enum Taint {
     TimeDependent = 4,
 }
 
-/// Mirror of `SlotValue` at `crates/vb_core/src/value.rs:125-142`. The
+/// Mirror of `SlotValue` at `crates/vb_core/src/value.rs:185-205`. The
 /// runtime arena handles (Symbol/List/Object/Blob) are mirrored as their
 /// underlying integer ids because the spec never inspects their payload.
 ///
@@ -293,7 +293,7 @@ pub fn run_frame_new(
 }
 
 /// Mirror of `RunFrame::reinitialize` at
-/// `crates/vb_core/src/frame/parts/impl_001_construct.rs:34-71`.
+/// `crates/vb_core/src/frame/parts/impl_001_construct.rs:33-67`.
 ///
 /// Production contract:
 ///   - Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" })
@@ -409,7 +409,7 @@ pub fn run_frame_states_snapshot(frame: &RunFrame) -> Vec<StepState> {
 }
 
 /// Mirror of `RunFrame::slots_snapshot` at
-/// `crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:51-53`.
+/// `crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:46-51`.
 #[verifier::external]
 pub fn run_frame_slots_snapshot(frame: &RunFrame) -> Vec<Option<SlotValue>> {
     frame.slots.to_vec()

@@ -447,7 +447,7 @@ pub struct CompileErrors(pub Vec<CompileError>);
 // cannot observe them.
 
 /// Mirror of production `CompiledNode` at
-/// `crates/vb_core/src/workflow/mod.rs:995-1004`. Every field name,
+/// `crates/vb_core/src/workflow/mod.rs:1357-1366`. Every field name,
 /// type, and visibility matches production exactly. Drift in any
 /// field breaks the mirror.
 pub struct CompiledNode {
@@ -520,7 +520,7 @@ impl ErrorRouting {
 }
 
 /// Mirror of production `CompiledNodeKind` at
-/// `crates/vb_core/src/workflow/mod.rs:1191-1357`. Restricted to the
+/// `crates/vb_core/src/workflow/mod.rs:1553-1719`. Restricted to the
 /// `SetConst` and `Do` arms `emit_single_body_set` constructs.
 pub enum CompiledNodeKind {
     SetConst {

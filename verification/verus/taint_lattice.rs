@@ -6,7 +6,7 @@
 // This spec file is BOUND to the in-tree production mirror at
 // `verification/verus/production_inner/taint_lattice_production.rs`,
 // which itself mirrors `crates/vb_core/src/value.rs:14-25` (the
-// production `Taint` enum) and `crates/vb_core/src/value.rs:29-45`
+// production `Taint` enum) and `crates/vb_core/src/value.rs:92-108`
 // (the production `join_taint` free fn). The binding is the combined
 // effect of:
 //
@@ -262,7 +262,7 @@ pub assume_specification[ production::all_lattice_laws ](
 // Each wrapper below actually calls the mirror exec fn (the body
 // at `production::join_taint`, etc., in
 // `verification/verus/production_inner/taint_lattice_production.rs`,
-// which mirrors `crates/vb_core/src/value.rs:29-45`)
+// which mirrors `crates/vb_core/src/value.rs:92-108`)
 // and asserts the spec contract from the corresponding
 // `assume_specification` above. The wrapper proves that the bound
 // contract IS used (not just declared) and that calling the mirror
@@ -589,7 +589,7 @@ pub proof fn lemma_all_lattice_laws(
 // `wrapper_*` exec fns above: each one actually invokes the mirror
 // exec fn (e.g., `production::join_taint` in
 // `verification/verus/production_inner/taint_lattice_production.rs`,
-// mirroring `crates/vb_core/src/value.rs:29-45`) and asserts the spec
+// mirroring `crates/vb_core/src/value.rs:92-108`) and asserts the spec
 // contract from the corresponding `assume_specification`. If the
 // mirror signature drifts, the wrapper fails to compile; if the
 // mirror body drifts from its contract, the wrapper's `assert`

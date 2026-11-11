@@ -35,7 +35,7 @@
 //   - `RunFrame::new`                   <- extern::run_frame_new
 //                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:3-31)
 //   - `RunFrame::reinitialize`          <- extern::run_frame_reinitialize
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:34-71)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:33-67)
 //   - `RunFrame::step_count`            <- extern::run_frame_step_count
 //                                          (mirror of crates/vb_core/src/frame/parts/impl_002_accessors.rs:22-24)
 //   - `RunFrame::slot_count`            <- extern::run_frame_slot_count
@@ -47,9 +47,9 @@
 //   - `RunFrame::states_snapshot`       <- extern::run_frame_states_snapshot
 //                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:72-74)
 //   - `RunFrame::slots_snapshot`        <- extern::run_frame_slots_snapshot
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:51-53)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:46-51)
 //   - `RunFrame::taint_snapshot`        <- extern::run_frame_taint_snapshot
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:66-68)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:62-67)
 //   - `RunFrame::write_slot_with_taint` <- extern::run_frame_write_slot_with_taint
 //                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:21-37)
 //   - `is_valid_step_state_transition`  <- extern::is_valid_step_state_transition
@@ -63,8 +63,8 @@
 //                                           TimeDependent=4)
 //   - `CoreError` relevant variants     <- extern::CoreError
 //     (InvalidCompiledWorkflow, InvalidProgramCounter)
-//                                          (mirror of crates/vb_core/src/errors.rs:264-268
-//                                          and crates/vb_core/src/errors.rs:169-173)
+//                                          (mirror of crates/vb_core/src/errors.rs:483-487
+//                                          and crates/vb_core/src/errors.rs:388-392)
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -356,7 +356,7 @@ pub assume_specification[ production::run_frame_new ](
 ;
 
 // ---------------------------------------------------------------------------
-// Bridge: `RunFrame::reinitialize`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:34-71)
+// Bridge: `RunFrame::reinitialize`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:33-67)
 // ---------------------------------------------------------------------------
 // Production contract:
 //   - Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" })

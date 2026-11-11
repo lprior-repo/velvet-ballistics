@@ -94,7 +94,7 @@ pub mod production_inner;
 // mirror types.
 #[verifier::external]
 fn prod_methods_drift_check() {
-    // Reference every field of ResourceContract (workflow/mod.rs:252-289)
+    // Reference every field of ResourceContract (workflow/mod.rs:258-295)
     // to surface any rename.
     let _contract = production_inner::ResourceContract {
         max_steps: 0,
@@ -119,7 +119,7 @@ fn prod_methods_drift_check() {
 
     // Reference every variant of CompiledNodeKind used by the spec:
     // ForEachStart, CollectStart, RepeatStart (production
-    // workflow/mod.rs:1191-1357). CollectNext is referenced too, to
+    // workflow/mod.rs:1553-1719). CollectNext is referenced too, to
     // pin its collector_slot field, even though the spec never
     // constructs it.
     let entry = production_inner::StepIdx::new(0);
@@ -168,9 +168,9 @@ fn prod_methods_drift_check() {
     let _err = production_inner::BudgetError::TotalStepsExceeded { actual: 0, limit: 0 };
 
     // Reference the workflow::CompiledNode and workflow::WorkflowError
-    // mirror types so a rename in workflow/mod.rs:666-880 breaks the build.
+    // mirror types so a rename in workflow/mod.rs:1028-1242 breaks the build.
     // The CompiledNode constructions pin the struct shape
-    // (workflow/mod.rs:995-1004) and both routing shapes of the
+    // (workflow/mod.rs:1357-1366) and both routing shapes of the
     // NodeOutput / NodeContinuation / ErrorRouting mirrors.
     let node_slot = production_inner::SlotIdx::new(0);
     let _node = production_inner::CompiledNode {

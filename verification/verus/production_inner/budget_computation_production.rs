@@ -183,12 +183,12 @@ impl ConstIdx {
 // ResourceContract — restricted mirror
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/workflow/mod.rs:252-289`. Field names
+// Mirror of `crates/vb_core/src/workflow/mod.rs:258-295`. Field names
 // and types match production line-by-line so any drift in budget.rs
 // use sites breaks the mirror.
 
 /// Mirror of production `ResourceContract` at
-/// `crates/vb_core/src/workflow/mod.rs:252-289`. Field-by-field copy
+/// `crates/vb_core/src/workflow/mod.rs:258-295`. Field-by-field copy
 /// of the production struct.
 #[derive(Clone, Copy)]
 pub struct ResourceContract {
@@ -276,7 +276,7 @@ pub enum CompiledNodeKind {
 }
 
 /// Mirror of production `CompiledNode` at
-/// `crates/vb_core/src/workflow/mod.rs:995-1004`. Every field name,
+/// `crates/vb_core/src/workflow/mod.rs:1357-1366`. Every field name,
 /// type, and visibility matches production exactly. Drift in any
 /// field breaks the mirror.
 #[derive(Clone, Copy)]
@@ -397,7 +397,7 @@ pub mod workflow {
     pub use super::CompiledNodeKind as CompiledNodeKindT;
 
     /// Marker mirror of production `WorkflowError` at
-    /// `crates/vb_core/src/workflow/mod.rs:666-880`. Restricted to the
+    /// `crates/vb_core/src/workflow/mod.rs:1028-1242`. Restricted to the
     /// variants referenced by budget.rs.
     #[derive(Clone, Copy)]
     pub enum WorkflowError {

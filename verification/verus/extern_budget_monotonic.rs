@@ -29,10 +29,10 @@
 //   - `WholeWorkflowBudget`        <- crates/vb_core/src/budget/compute.rs:17-93
 //   - `WholeWorkflowBudget::compute` <- crates/vb_core/src/budget/compute.rs:100-106
 //   - `BudgetTraversalError`       <- crates/vb_core/src/budget/traversal_error.rs:13-37
-//   - `WorkflowError`              <- crates/vb_core/src/workflow/mod.rs:666-880
-//   - `ResourceContract`           <- crates/vb_core/src/workflow/mod.rs:252-289
+//   - `WorkflowError`              <- crates/vb_core/src/workflow/mod.rs:1028-1242
+//   - `ResourceContract`           <- crates/vb_core/src/workflow/mod.rs:258-295
 //   - `CompiledNode`, `CompiledNodeKind`
-//                                   <- crates/vb_core/src/workflow/mod.rs:995-1357
+//                                   <- crates/vb_core/src/workflow/mod.rs:1357-1719
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -128,7 +128,7 @@ fn prod_methods_drift_check(
     let _err = production_inner::BudgetTraversalError::JumpCycle { step, target: step };
 
     // Reference every CompiledNodeKind variant whose fields this
-    // mirror aligns with production (workflow/mod.rs:1191-1357).
+    // mirror aligns with production (workflow/mod.rs:1553-1719).
     // Constructing them with the production fields pins the mirror
     // against field drift even though the spec never constructs them.
     let slot = production_inner::SlotIdx::new(0);
@@ -217,7 +217,7 @@ fn prod_methods_drift_check(
     let _ = production_inner::WholeWorkflowBudget::compute(nodes, entry, &contract);
 
     // Reference the workflow::CompiledNode struct shape
-    // (workflow/mod.rs:995-1004) so a field drift breaks the build.
+    // (workflow/mod.rs:1357-1366) so a field drift breaks the build.
     // Constructing both routing shapes pins every variant of the
     // NodeOutput / NodeContinuation / ErrorRouting mirrors.
     let node_slot = production_inner::SlotIdx::new(0);

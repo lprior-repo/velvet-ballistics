@@ -37,13 +37,13 @@
 // `impl Enum { fn }` blocks inside spec-mode `verus!` modules.
 // Production `value.rs` does not export a method form either; the
 // discriminant pattern is inlined inside `join_taint` (see lines
-// 30-35 and 37-43 of value.rs).
+// 89-94 and 96-102 of value.rs).
 //
 // ============================================================================
 // DRIFT POLICY
 // ============================================================================
 // This file MUST be reviewed against `crates/vb_core/src/value.rs:14-25`
-// (Taint enum) and `crates/vb_core/src/value.rs:27-45` (`join_taint`)
+// (Taint enum) and `crates/vb_core/src/value.rs:92-108` (`join_taint`)
 // whenever production taint semantics change. Drift in either block
 // breaks the Verus binding (variant renames surface as
 // "no variant named X" errors; discriminant changes surface as
@@ -53,7 +53,7 @@
 // production. Any drift breaks the verification build.
 //
 // Production `crates/vb_core/src/value.rs:14-25`
-// Production `crates/vb_core/src/value.rs:27-45`
+// Production `crates/vb_core/src/value.rs:92-108`
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -95,7 +95,7 @@ pub enum Taint {
 }
 
 /// Free-fn form of the inline discriminant pattern that production's
-/// `value.rs:30-35` and `value.rs:37-43` use inside `join_taint`.
+/// `value.rs:89-94` and `value.rs:96-102` use inside `join_taint`.
 /// Kept as a free fn (not `impl Taint::rank(&self)`) because Verus
 /// 0.2026.05.05 panics on `impl Enum { fn }` inside spec-mode `verus!`.
 /// Models the production discriminant mapping byte-for-byte.
@@ -110,7 +110,7 @@ pub fn taint_rank(self_: Taint) -> u8 {
 }
 
 // ----------------------------------------------------------------------------
-// Verbatim copy of crates/vb_core/src/value.rs:29-45 (`join_taint`)
+// Verbatim copy of crates/vb_core/src/value.rs:92-108 (`join_taint`)
 // ----------------------------------------------------------------------------
 /// Joins two taint levels, returning the more restrictive one.
 #[must_use]
