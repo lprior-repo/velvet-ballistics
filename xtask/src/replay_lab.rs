@@ -4,7 +4,8 @@
 //! `cargo xtask replay-lab` runs the differential replay tests: the legs
 //! that compare two replay paths or pin replay-after-crash behavior
 //! (snapshot + tail matches full journal, journal committed before
-//! dispatch, recovery reads partial events written before a crash).
+//! dispatch, recovery reads partial events written before a crash,
+//! production engine and taint lattice match the reference models).
 //! The package and test filter each leg runs come from a fixed table,
 //! never from user input; the command takes no arguments.
 
@@ -21,6 +22,8 @@ pub fn replay_legs() -> &'static [(&'static str, &'static str)] {
         ("vb_runtime", "journal_before_dispatch"),
         ("vb_runtime", "crash_recovery"),
         ("vb_storage", "snapshot_tail_matches_full_journal"),
+        ("reference", "engine_vs_reference"),
+        ("reference", "taint_vs_reference"),
     ]
 }
 
@@ -66,6 +69,8 @@ mod tests {
                 ("vb_runtime", "journal_before_dispatch"),
                 ("vb_runtime", "crash_recovery"),
                 ("vb_storage", "snapshot_tail_matches_full_journal"),
+                ("reference", "engine_vs_reference"),
+                ("reference", "taint_vs_reference"),
             ]
         );
     }

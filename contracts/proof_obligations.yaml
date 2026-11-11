@@ -866,7 +866,7 @@ obligations:
     required:
       differential_tests: [engine_vs_reference]
     commands:
-      - cargo nextest run reference engine_vs_reference
+      - cargo nextest run -p reference engine_vs_reference
 
   - id: VB-REF-002
     section: [47]
@@ -879,7 +879,7 @@ obligations:
     required:
       differential_tests: [taint_vs_reference]
     commands:
-      - cargo nextest run reference taint_vs_reference
+      - cargo nextest run -p reference taint_vs_reference
 
   # ============================================================
   # CONCURRENCY SEAMS (Loom)
