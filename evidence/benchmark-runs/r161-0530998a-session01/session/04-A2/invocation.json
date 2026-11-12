@@ -1,0 +1,8 @@
+{
+  "role": "baseline",
+  "root": "/home/lewis/src/isoloated/velvet-ballistics-f1f5-benchmark-baseline-r139-20261112",
+  "pin": "7f505d498fa35acb5b70b083ac6f02cd40f3a891",
+  "build_output": "/home/lewis/tmp/vb-f1f5-landing-benchmark-r134/build-baseline-r139",
+  "cpu": 14,
+  "phase": "latency"
+}
