@@ -122,6 +122,4 @@ pub use vb_yaml::{
 #[cfg(test)]
 mod tests_target_identity;
 
-mod source_symbols;
-
 pub use mod_compile_lowering::author_value_to_owned;
