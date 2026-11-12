@@ -35,6 +35,7 @@ pub(super) fn parts(count: u32) -> WorkflowParts {
         name: "encode-test".into(),
         digest: WorkflowDigest::from_bytes([7; 32]),
         semantic_source_identity: Some(WorkflowDigest::from_bytes([9; 32])),
+        source_metadata: None,
         nodes: vec![set_node(), finish_node()].into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),

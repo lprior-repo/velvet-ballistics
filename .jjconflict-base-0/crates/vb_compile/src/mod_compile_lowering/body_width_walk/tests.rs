@@ -122,6 +122,7 @@ fn private_cursor_get_precedes_checked_increment() {
         steps: &steps,
         index: usize::MAX,
         width: usize::MAX,
+        track: false,
     };
     assert!(matches!(frame.advance(), Ok(Action::Fold)));
     assert!(matches!(

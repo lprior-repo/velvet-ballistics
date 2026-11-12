@@ -27,7 +27,8 @@ fn assert_contains_ast(ast: &WorkflowAst) -> Result<(), String> {
             args: vec![
                 ParsedExpression::Reference("$input.receiver".into()),
                 ParsedExpression::Reference("$input.needle".into()),
-            ],
+            ]
+            .into_boxed_slice(),
         })),
     );
     Ok(())

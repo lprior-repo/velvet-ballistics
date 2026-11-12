@@ -1,5 +1,5 @@
 use super::*;
-use vb_core::{CompiledInputConstraint, InputSlotKind};
+use vb_core::{CompiledInputConstraint, ConstValue, InputSlotKind};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 

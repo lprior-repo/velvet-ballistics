@@ -75,7 +75,11 @@ fn assert_builder_eq(left: SlotCompiler, right: SlotCompiler) {
     assert_eq!(left.input_slots, right.input_slots);
     assert_eq!(left.display_names, right.display_names);
     assert_eq!(left.secret_requirements, right.secret_requirements);
-    assert_eq!(left.symbols.finish(), right.symbols.finish());
+    let left_symbols = left.source_symbols.finish();
+    let right_symbols = right.source_symbols.finish();
+    assert_eq!(left_symbols.as_ref().map(|_| ()), Ok(()));
+    assert_eq!(right_symbols.as_ref().map(|_| ()), Ok(()));
+    assert_eq!(left_symbols, right_symbols);
 }
 
 struct ObservedBuilder {
