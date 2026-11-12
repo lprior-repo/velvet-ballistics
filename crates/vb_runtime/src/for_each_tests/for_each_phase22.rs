@@ -230,9 +230,11 @@ fn phase22_for_each_start_validates_all_items_before_binding() {
     let item_slot = SlotIdx::new(1);
     let output_slot = SlotIdx::new(2);
     // Pre-set item_slot to a sentinel value to verify it's not overwritten
-    run.write_slot(item_slot, SlotValue::I64(999))
-        .ok()
-        .unwrap_or_else(|| panic!("write must succeed"));
+    assert_eq!(
+        run.write_slot(item_slot, SlotValue::I64(999)),
+        Ok(()),
+        "write must succeed"
+    );
     let items: Vec<SlotValue> = (0..5).map(SlotValue::I64).collect();
     list_in_slot(&mut run, &mut store, input, items);
 
@@ -832,4 +834,3 @@ fn phase22_for_each_iteration_drains_all_items_sequentially() {
 
     assert_eq!(seen, original);
 }
-

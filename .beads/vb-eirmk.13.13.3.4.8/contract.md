@@ -1,0 +1,17 @@
+# ForEach fixture setup results
+
+Base is exact parent 79930f73e7f39b1677cb4886b83efc0638574301, retaining the CCC ForEach split and all prior reviewed ancestors. Work is a new isolated JJ child; preserve frozen driver and Together repair packets unchanged.
+
+Exclusive write fence is this contract and crates/vb_runtime/src/for_each_tests/for_each_core.rs plus crates/vb_runtime/src/for_each_tests/for_each_phase22.rs. No production logic, gate scripts, settings, suppression, test skips, dependencies, schemas, APIs or proof changes.
+
+Authoritative parent foreach-setup-discard-findings-r99.json binds seven DISCARD-003 findings to this base: six core sites at gate lines 183/391/421/821/842/874 and one phase22 site at gate line 234. Replace each original run.write_slot expression followed by .ok().unwrap_or_else panic with assert_eq!(the identical Result expression, Ok(()), the identical failure message). A failed setup must fail the case; any intentionally erroneous setup requires actual diagnosis before changing the expected result.
+
+Preserve all prior assertions, error payloads, fixture values and domains, test identities, helper signatures, call ordering and registration. No helper extraction is needed; add no helpers or parameters and do not refactor inherited long test files or functions beyond the seven setup expressions. Verify exact canonical source equality after only those seven replacements and pinned formatting.
+
+Registration is crates/vb_runtime/src/primitives/for_each.rs cfg(test) mod tests, whose path is ../for_each_tests.rs; that aggregator lexically includes core, phase22 and RP-016 files. Native selection must use registered prefix primitives::for_each::tests:: and execute the independently inventoried complete case list across all three includes, including unchanged RP-016; a zero-case run is not evidence.
+
+Use pinned nightly-2026-04-28, edition/style 2024 file-only rustfmt, RUSTFLAGS=-Dwarnings, wrappers off, jobs two, an explicit own target/native-vb-eirmk.13.13.3.4.8 and a 24 GiB memory scope with the existing ten-minute timeout. Run only the scoped vb_runtime library ForEach unit family with all features; no full suite, broad Clippy or solvers.
+
+Run actual bash scripts/check-ignored-fallible-results.sh unchanged over the entire current own candidate, with a unique owned TMPDIR below /run/user/1000/vbs to avoid shared report collisions. Require actual exit zero and zero production findings; record and name any other findings rather than waive or exclude them. Parent r99 and actual lint-src-r97 log hash supply the source-bound seven-finding baseline.
+
+Save source/contract hashes, exact registered cases, per-site old calls/messages, unchanged gate/production/include hashes, pinned fmt result and raw native/gate argv/log/exits under this workspace target/core-build-20261110/evidence. Freeze source and an empty successor for independent CODE and TEST; no bead closure, full parent CI or feature acceptance is inferred from this bounded packet.
