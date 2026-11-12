@@ -239,7 +239,7 @@
             input_slots: Box::from([]),
         };
         let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts);
-        assert!(workflow.is_ok(), "workflow fixture rejected: {workflow:?}");
+        assert_eq!(workflow.as_ref().map(|_| ()), Ok(()));
         workflow.ok()
     }
 
