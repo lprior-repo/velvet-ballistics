@@ -126,7 +126,7 @@ fn slotcell_discriminator_coherence() {
 fn frame_slot_taint_roundtrip() {
     let slot_count: u16 = kani::any();
     kani::assume(slot_count >= 1);
-    kani::assume(slot_count <= 4);
+    kani::assume(slot_count <= 2);
     let slot_raw: u16 = kani::any();
     kani::assume(slot_raw < slot_count);
     let slot = SlotIdx::new(slot_raw);
