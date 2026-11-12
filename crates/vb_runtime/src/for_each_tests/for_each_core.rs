@@ -174,14 +174,7 @@ fn for_each_join_materializes_ordered_results() {
 #[test]
 fn for_each_start_returns_error_when_input_is_not_list() {
     // Given a frame with a non-list value in input slot
-    let mut run = fresh_frame();
-    let mut store = ValueStore::new();
-    let input = SlotIdx::new(0);
-    let item_slot = SlotIdx::new(1);
-    let output_slot = SlotIdx::new(2);
-    run.write_slot(input, SlotValue::I64(42))
-        .ok()
-        .unwrap_or_else(|| panic!("write must succeed"));
+    let (mut run, mut store, input, item_slot, output_slot) = for_each_non_list_input_fixture();
     // When calling for_each_start
     let result = for_each_start(
         &mut run,
@@ -371,25 +364,10 @@ fn for_each_next_returns_done_when_tail_empty() {
 }
 
 #[test]
-fn for_each_next_returns_error_when_output_missing() {
+fn for_each_next_returns_error_when_output_missing() -> Result<(), String> {
     // Given a frame with a real iterator state (source_id, cursor=0) but
     // no output slot.
-    let mut run = fresh_frame();
-    let mut store = ValueStore::new();
-    let iterator_slot = SlotIdx::new(0);
-    let source_id = store
-        .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
-        .ok()
-        .unwrap_or_else(|| panic!("insert source"));
-    let state_id = store
-        .insert_list(
-            vec![SlotValue::I64(source_id.get() as i64), SlotValue::I64(0)].into_boxed_slice(),
-        )
-        .ok()
-        .unwrap_or_else(|| panic!("insert state"));
-    run.write_slot(iterator_slot, SlotValue::List(state_id))
-        .ok()
-        .unwrap_or_else(|| panic!("write state"));
+    let (mut run, mut store, iterator_slot) = for_each_missing_output_fixture()?;
     // When calling for_each_next with output=None
     let result = for_each_next(
         &mut run,
@@ -408,18 +386,13 @@ fn for_each_next_returns_error_when_output_missing() {
             assert_eq!(other, Ok(vb_core::EngineSignal::Continue));
         }
     }
+    Ok(())
 }
 
 #[test]
 fn for_each_next_returns_error_when_iterator_is_not_list() {
     // Given a frame with a non-list in iterator slot
-    let mut run = fresh_frame();
-    let mut store = ValueStore::new();
-    let iterator_slot = SlotIdx::new(0);
-    let output_slot = SlotIdx::new(1);
-    run.write_slot(iterator_slot, SlotValue::Bool(true))
-        .ok()
-        .unwrap_or_else(|| panic!("write must succeed"));
+    let (mut run, mut store, iterator_slot, output_slot) = for_each_non_list_iterator_fixture();
     // When calling for_each_next
     let result = for_each_next(
         &mut run,
@@ -785,29 +758,9 @@ fn for_each_start_limit_exceeded_by_one_rejects() {
 #[test]
 fn for_each_start_item_slot_corruption_after_bind() {
     // Given a frame where item_slot is overwritten after for_each_start
-    let mut run = fresh_frame();
-    let mut store = ValueStore::new();
-    let input = SlotIdx::new(0);
-    let item_slot = SlotIdx::new(1);
-    let output_slot = SlotIdx::new(2);
-    let body = StepIdx::new(1);
-    list_in_slot(
-        &mut run,
-        &mut store,
-        input,
-        vec![SlotValue::I64(10), SlotValue::I64(20)],
-    );
+    let (mut run, mut store, item_slot) = for_each_two_item_fixture();
     // When calling for_each_start
-    let result = for_each_start(
-        &mut run,
-        &mut store,
-        input,
-        item_slot,
-        100,
-        body,
-        StepIdx::new(2),
-        Some(output_slot),
-    );
+    let result = start_for_each_two_item_fixture(&mut run, &mut store);
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
     // Then item_slot has the first item
     assert_eq!(
@@ -817,9 +770,11 @@ fn for_each_start_item_slot_corruption_after_bind() {
         SlotValue::I64(10)
     );
     // When the item_slot is externally corrupted
-    run.write_slot(item_slot, SlotValue::I64(999))
-        .ok()
-        .unwrap_or_else(|| panic!("must write"));
+    assert_eq!(
+        run.write_slot(item_slot, SlotValue::I64(999)),
+        Ok(()),
+        "must write"
+    );
     // Then the corruption persists (item_slot no longer has original value)
     assert_eq!(
         *run.read_slot(item_slot)
@@ -832,16 +787,7 @@ fn for_each_start_item_slot_corruption_after_bind() {
 #[test]
 fn for_each_start_empty_list_does_not_modify_item_slot() {
     // Given a frame with a pre-set item_slot and empty input list
-    let mut run = fresh_frame();
-    let mut store = ValueStore::new();
-    let input = SlotIdx::new(0);
-    let item_slot = SlotIdx::new(1);
-    let output_slot = SlotIdx::new(2);
-    let done = StepIdx::new(3);
-    run.write_slot(item_slot, SlotValue::I64(999))
-        .ok()
-        .unwrap_or_else(|| panic!("must write"));
-    list_in_slot(&mut run, &mut store, input, vec![]);
+    let (mut run, mut store, input, item_slot, output_slot, done) = for_each_empty_input_fixture();
     // When calling for_each_start
     let result = for_each_start(
         &mut run,
@@ -870,9 +816,7 @@ fn for_each_start_null_input_returns_type_mismatch() {
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
     let input = SlotIdx::new(0);
-    run.write_slot(input, SlotValue::Null)
-        .ok()
-        .unwrap_or_else(|| panic!("must write"));
+    assert_eq!(run.write_slot(input, SlotValue::Null), Ok(()), "must write");
     // When calling for_each_start
     let result = for_each_start(
         &mut run,
@@ -1083,3 +1027,99 @@ fn for_each_next_on_two_item_list_exhausts_after_one_call() {
     assert_eq!(run.pc(), done);
 }
 
+fn for_each_non_list_input_fixture() -> (RunFrame, ValueStore, SlotIdx, SlotIdx, SlotIdx) {
+    let mut run = fresh_frame();
+    let store = ValueStore::new();
+    let input = SlotIdx::new(0);
+    let item_slot = SlotIdx::new(1);
+    let output_slot = SlotIdx::new(2);
+    assert_eq!(
+        run.write_slot(input, SlotValue::I64(42)),
+        Ok(()),
+        "write must succeed"
+    );
+    (run, store, input, item_slot, output_slot)
+}
+
+fn for_each_missing_output_fixture() -> Result<(RunFrame, ValueStore, SlotIdx), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let iterator_slot = SlotIdx::new(0);
+    let source_id = store
+        .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
+        .map_err(|_| "insert source".to_owned())?;
+    let state_id = store
+        .insert_list(
+            vec![
+                SlotValue::I64(i64::from(source_id.get())),
+                SlotValue::I64(0),
+            ]
+            .into_boxed_slice(),
+        )
+        .map_err(|_| "insert state".to_owned())?;
+    assert_eq!(
+        run.write_slot(iterator_slot, SlotValue::List(state_id)),
+        Ok(()),
+        "write state"
+    );
+    Ok((run, store, iterator_slot))
+}
+
+fn for_each_non_list_iterator_fixture() -> (RunFrame, ValueStore, SlotIdx, SlotIdx) {
+    let mut run = fresh_frame();
+    let store = ValueStore::new();
+    let iterator_slot = SlotIdx::new(0);
+    let output_slot = SlotIdx::new(1);
+    assert_eq!(
+        run.write_slot(iterator_slot, SlotValue::Bool(true)),
+        Ok(()),
+        "write must succeed"
+    );
+    (run, store, iterator_slot, output_slot)
+}
+
+fn for_each_two_item_fixture() -> (RunFrame, ValueStore, SlotIdx) {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let input = SlotIdx::new(0);
+    let item_slot = SlotIdx::new(1);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        input,
+        vec![SlotValue::I64(10), SlotValue::I64(20)],
+    );
+    (run, store, item_slot)
+}
+
+fn start_for_each_two_item_fixture(
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+) -> Result<vb_core::EngineSignal, EngineError> {
+    for_each_start(
+        run,
+        store,
+        SlotIdx::new(0),
+        SlotIdx::new(1),
+        100,
+        StepIdx::new(1),
+        StepIdx::new(2),
+        Some(SlotIdx::new(2)),
+    )
+}
+
+fn for_each_empty_input_fixture() -> (RunFrame, ValueStore, SlotIdx, SlotIdx, SlotIdx, StepIdx) {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let input = SlotIdx::new(0);
+    let item_slot = SlotIdx::new(1);
+    let output_slot = SlotIdx::new(2);
+    let done = StepIdx::new(3);
+    assert_eq!(
+        run.write_slot(item_slot, SlotValue::I64(999)),
+        Ok(()),
+        "must write"
+    );
+    list_in_slot(&mut run, &mut store, input, vec![]);
+    (run, store, input, item_slot, output_slot, done)
+}
