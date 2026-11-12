@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-4qog3-local5090-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--test",
+    "vb_4qog3_independent_review"
+  ],
+  "exit_code": 0,
+  "seconds": 0.989,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-4qog3/evidence/cargo_test_independent_review",
+  "coordinator_message": "Coordinator: All verification must use /tmp/vb-run-gate.py with full stdout/stderr/json true exit, no cargo pipelines. Your first custom probe invented unsupported APIs; reuse actual helper shapes from durable_retry_boundary.rs, real CompiledNode struct and WorkflowDigest::from_bytes; compiler error is real, not a review failure. No production edits. Final report must cite actual successful logs and scoped BCD verdict, no zero-test/filter claims or assertion weakening."
+}

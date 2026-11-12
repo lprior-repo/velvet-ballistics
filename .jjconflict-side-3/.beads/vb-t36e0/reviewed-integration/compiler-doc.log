@@ -1,0 +1,10 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.18s
+   Doc-tests vb_compile
+
+running 1 test
+test crates/vb_compile/src/lib.rs - (line 11) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.12s; merged doctests compilation took 0.12s

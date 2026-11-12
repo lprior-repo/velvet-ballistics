@@ -1,0 +1,20 @@
+[
+  {
+    "path": "crates/workspace_tests/tests/support/prebuilt_cli_path.rs",
+    "revision": "0d866b09bed9a97b3d9a7562e6f816c0001b747d",
+    "before_sha256": null,
+    "after_sha256": "d6c6b22643ca8b7cf1b2a1af027cd9fd7b503c14e1bbe825a8bddd110c9dd167"
+  },
+  {
+    "path": "crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs",
+    "revision": "0d866b09bed9a97b3d9a7562e6f816c0001b747d",
+    "before_sha256": "6aefedd0b4a5865bdaa7234f0dbf31eaa5e84fced47f87f03d52b85fd3b5008f",
+    "after_sha256": "33e920b699859da3f49070d5084d0de38ed3df601ab61a2207fc7d8d26a7d788"
+  },
+  {
+    "path": "crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs",
+    "revision": "0d866b09bed9a97b3d9a7562e6f816c0001b747d",
+    "before_sha256": "1501e28f3dc656ed58cb6c336ffdf2534de223039df915bc9a2fd0edd23a1f07",
+    "after_sha256": "a018f597b91c1bb6d05198c5665e055c2e61b94984a55d0634aa623b54006dc8"
+  }
+]

@@ -1,0 +1,2539 @@
+1: #![forbid(unsafe_code)]
+2: //! Single-threaded shard owning mutable run state directly.
+3: 
+4: use core::num::NonZeroU16;
+5: use crossbeam_queue::ArrayQueue;
+6: use indexmap::{IndexMap, IndexSet};
+7: use std::time::Instant;
+8: use vb_core::action::{ActionContract, ActionTicket};
+9: use vb_core::capability::CapabilitySet;
+10: use vb_core::frame::{RunFrame, RunFrameCheckpointV1};
+11: use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+12: use vb_core::value::{SlotValue, Taint};
+13: use vb_core::value_store::ValueStore;
+14: use vb_core::workflow::CompiledWorkflow;
+15: use vb_storage::EventSeq;
+16: 
+17: use crate::RuntimeResult;
+18: use crate::counters::ShardCounters;
+19: use crate::frame_pool::FramePool;
+20: use crate::journal::SharedRuntimeJournal;
+21: use crate::primitives::collect::{CollectStates, CollectStatesCheckpointV1};
+22: 
+23: use crate::trace::TraceRing;
+24: 
+25: // Aggregate resource model touchpoints for vb-qi37.2.1:
+26: // ShardConfig aggregate_capacity, Shard active_usage, Shard reservations,
+27: // RunState AggregateReservation, ShardStatus active_usage aggregate_capacity.
+28: 
+29: type FramePoolKey = (u16, u16);
+30: 
+31: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+32: #[non_exhaustive]
+33: pub enum PendingTimerKind {
+34:     Wait,
+35:     Ask,
+36: }
+37: 
+38: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+39: pub struct PendingTimer {
+40:     pub step: StepIdx,
+41:     pub kind: PendingTimerKind,
+42:     pub generation: u64,
+43:     pub deadline: Instant,
+44: }
+45: 
+46: impl PendingTimer {
+47:     #[must_use]
+48:     pub fn matches_authority(
+49:         self,
+50:         generation: u64,
+51:         deadline: Instant,
+52:         kind: PendingTimerKind,
+53:     ) -> bool {
+54:         self.generation == generation && self.deadline == deadline && self.kind == kind
+55:     }
+56: }
+57: 
+58: /// Bounded command processed by a shard.
+59: #[derive(Debug, Clone, PartialEq, Eq)]
+60: #[non_exhaustive]
+61: pub enum ShardCommand {
+62:     /// Submit a new run for execution.
+63:     Submit {
+64:         /// Run identifier chosen by the caller.
+65:         run: RunId,
+66:         /// Compiled workflow to execute.
+67:         workflow: CompiledWorkflow,
+68:         /// Capabilities granted to this run.
+69:         caps: CapabilitySet,
+70:     },
+71:     /// Submit a run whose durable header was already persisted by the runtime shell.
+72:     SubmitPrePersisted {
+73:         /// Run identifier chosen by the caller.
+74:         run: RunId,
+75:         /// Compiled workflow to execute.
+76:         workflow: CompiledWorkflow,
+77:         /// Capabilities granted to this run.
+78:         caps: CapabilitySet,
+79:     },
+80:     /// Submit a new run with runtime input slots already mapped by the caller.
+81:     SubmitWithInputs {
+82:         /// Run identifier chosen by the caller.
+83:         run: RunId,
+84:         /// Compiled workflow to execute.
+85:         workflow: CompiledWorkflow,
+86:         /// Initial slot values written before deterministic execution starts.
+87:         inputs: Box<[(SlotIdx, SlotValue)]>,
+88:         /// Capabilities granted to this run.
+89:         caps: CapabilitySet,
+90:     },
+91:     /// Submit a new run with validated action contracts already bound.
+92:     SubmitWithContracts {
+93:         /// Run identifier chosen by the caller.
+94:         run: RunId,
+95:         /// Compiled workflow to execute.
+96:         workflow: CompiledWorkflow,
+97:         /// Capabilities granted to this run.
+98:         caps: CapabilitySet,
+99:         /// Validated action contracts for Do execution.
+100:         action_contracts: Box<[ActionContract]>,
+101:     },
+102:     /// Submit a new run with input slots and validated action contracts already bound.
+103:     SubmitWithInputsAndContracts {
+104:         /// Run identifier chosen by the caller.
+105:         run: RunId,
+106:         /// Compiled workflow to execute.
+107:         workflow: CompiledWorkflow,
+108:         /// Initial slot values written before deterministic execution starts.
+109:         inputs: Box<[(SlotIdx, SlotValue)]>,
+110:         /// Capabilities granted to this run.
+111:         caps: CapabilitySet,
+112:         /// Validated action contracts for Do execution.
+113:         action_contracts: Box<[ActionContract]>,
+114:     },
+115:     /// Resume a suspended run from its current program counter.
+116:     Resume {
+117:         /// Run identifier.
+118:         run: RunId,
+119:     },
+120:     /// An external action completed.
+121:     ActionCompleted {
+122:         /// Ticket emitted by the suspended Do step.
+123:         ticket: vb_core::action::ActionTicket,
+124:         /// Typed action output payload.
+125:         output: vb_core::action::ActionOutputReady,
+126:     },
+127:     /// A registered adapter produced an opaque checked durable receipt.
+128:     RegisteredActionCompleted {
+129:         /// Canonical pending action ticket.
+130:         ticket: vb_core::action::ActionTicket,
+131:         /// Receipt can only be produced by the concrete registered adapter.
+132:         receipt: vb_storage::executor::RegisterReceipt,
+133:         /// Runtime output derived from the adapter receipt.
+134:         output: vb_core::action::ActionOutputReady,
+135:     },
+136:     /// An external action completed without a typed output payload.
+137:     ActionCompletedLegacy {
+138:         /// Run identifier.
+139:         run: RunId,
+140:         /// Step that was waiting for this action.
+141:         step: StepIdx,
+142:     },
+143:     /// An external action failed.
+144:     ActionFailed {
+145:         /// Ticket for the action being failed.
+146:         ticket: vb_core::action::ActionTicket,
+147:         /// Typed failure payload.
+148:         failure: vb_core::action::ActionFailure,
+149:     },
+150:     /// Public runtime facade action failure.
+151:     RuntimeActionFailed {
+152:         /// Ticket for the action being failed.
+153:         ticket: vb_core::action::ActionTicket,
+154:         /// Typed failure payload.
+155:         failure: vb_core::action::ActionFailure,
+156:     },
+157:     /// An external ask was answered.
+158:     AskAnswered {
+159:         /// Typed ask answer payload.
+160:         answer: AskAnswer,
+161:     },
+162:     /// A timer fired for a suspended run.
+163:     TimerFired {
+164:         /// Run identifier.
+165:         run: RunId,
+166:         /// Freshness generation captured when the timer was emitted.
+167:         generation: u64,
+168:         /// Deadline captured when the timer was emitted.
+169:         deadline: Instant,
+170:         /// Timer kind captured when the timer was emitted.
+171:         kind: PendingTimerKind,
+172:     },
+173:     /// Cancel an active run.
+174:     Cancel {
+175:         /// Run identifier.
+176:         run: RunId,
+177:         /// Optional cancellation reason.
+178:         reason: Option<String>,
+179:     },
+180:     /// Kill an active run unconditionally.
+181:     Kill {
+182:         /// Run identifier.
+183:         run: RunId,
+184:         /// Optional kill reason.
+185:         reason: Option<String>,
+186:     },
+187:     /// Inspect run state for diagnostic purposes.
+188:     Inspect {
+189:         /// Run identifier.
+190:         run: RunId,
+191:         /// Caller correlation identifier echoed in the response.
+192:         correlation: u64,
+193:     },
+194:     /// Shut down the shard gracefully.
+195:     Shutdown,
+196:     /// Recover a run from durable Fjall journal evidence.
+197:     ///
+198:     /// The runtime has already reconstructed a `RunFrame` from the journal
+199:     /// replay and validated full recovery context. The typed
+200:     /// `RecoverRunCommand` carries artifact verification, journal sequencing,
+201:     /// collect pagination, and boundary classification in a single value.
+202:     Recover { command: Box<RecoverRunCommand> },
+203: }
+204: 
+205: /// Typed recovery command carrying full recovery context from journal replay.
+206: ///
+207: /// Constructed by recovery machinery after validating journal evidence
+208: /// and before enqueueing a Recover shard command.
+209: /// Distinguishes a recovered historical admission from an absence
+210: /// of durable admission evidence (legacy raw recovery path).
+211: #[derive(Debug, Clone, PartialEq, Eq)]
+212: pub(crate) enum RecoveredAdmissionKind {
+213:     /// No durable admission record exists. Legacy/raw recovery path.
+214:     /// Carries only run identity for validation.
+215:     Unverified {
+216:         run_id: RunId,
+217:         artifact_digest: WorkflowDigest,
+218:     },
+219:     /// Historical admission recovered from durable storage or checkpoint.
+220:     Historical(crate::admission::RunAdmission),
+221: }
+222: 
+223: #[derive(Debug, Clone, PartialEq, Eq)]
+224: pub struct RecoverRunCommand {
+225:     /// Run identifier being recovered.
+226:     pub run: RunId,
+227:     /// Hydrated run frame from journal replay.
+228:     pub frame: RunFrame,
+229:     /// Artifact digest for artifact store verification.
+230:     pub artifact_digest: WorkflowDigest,
+231:     /// Workflow digest for artifact store lookup during recovery.
+232:     pub workflow_digest: WorkflowDigest,
+233:     /// Next durable journal sequence for this run.
+234:     pub next_seq: EventSeq,
+235:     /// Collect pagination states to resume after recovery.
+236:     pub collect_states: CollectStates,
+237:     /// Validated full state to restore for a durable retry, when present.
+238:     pub retry_checkpoint: Option<crate::run_checkpoint::RunCheckpointV1>,
+239:     /// Recovery boundary classification.
+240:     pub boundary: crate::recovery::RecoveredRunBoundary,
+241:     /// Admission evidence carried by the recovery command. The Unverified
+242:     /// variant represents missing historical evidence rather than a fabricated
+243:     /// verified pin. Callers on the raw command path cannot gain verified
+244:     /// authority from the current artifact; that requires the validated
+245:     /// recovery product path.
+246:     pub(crate) admission: RecoveredAdmissionKind,
+247: }
+248: 
+249: impl RecoverRunCommand {
+250:     /// Constructs a legacy recovery command with no historical admission evidence.
+251:     ///
+252:     /// The command carries an Unverified admission record by default, representing
+253:     /// missing historical evidence rather than a fabricated verified pin. Callers
+254:     /// on the raw command path cannot gain verified authority from the current
+255:     /// artifact; that requires the validated recovery product path.
+256:     #[must_use]
+257:     pub fn new(
+258:         run: RunId,
+259:         frame: RunFrame,
+260:         artifact_digest: WorkflowDigest,
+261:         workflow_digest: WorkflowDigest,
+262:         next_seq: EventSeq,
+263:         collect_states: CollectStates,
+264:         boundary: crate::recovery::RecoveredRunBoundary,
+265:     ) -> Self {
+266:         Self {
+267:             run,
+268:             frame,
+269:             artifact_digest,
+270:             workflow_digest,
+271:             next_seq,
+272:             collect_states,
+273:             retry_checkpoint: None,
+274:             boundary,
+275:             admission: RecoveredAdmissionKind::Unverified {
+276:                 run_id: run,
+277:                 artifact_digest,
+278:             },
+279:         }
+280:     }
+281: 
+282:     /// Attaches a validated historical admission from a recovery product.
+283:     ///
+284:     /// Crate-private: only the validated recovery prefix flow should call this,
+285:     /// after `validate_recovered_admission_evidence` has checked the admission
+286:     /// against the run, artifact, workflow, and policy.
+287:     #[must_use]
+288:     pub(crate) fn with_validated_admission(
+289:         mut self,
+290:         admission: crate::admission::RunAdmission,
+291:     ) -> Self {
+292:         self.admission = RecoveredAdmissionKind::Historical(admission);
+293:         self
+294:     }
+295: 
+296:     /// Attaches full retry state whose identity is checked against the loaded accepted artifact.
+297:     #[must_use]
+298:     pub fn with_retry_checkpoint(
+299:         mut self,
+300:         checkpoint: crate::run_checkpoint::RunCheckpointV1,
+301:     ) -> Self {
+302:         self.retry_checkpoint = Some(checkpoint);
+303:         self
+304:     }
+305: 
+306:     /// Restores a RunFrame from checkpoint data.
+307:     fn restore_retry_frame(frame_data: RunFrameCheckpointV1) -> RuntimeResult<RunFrame> {
+308:         RunFrame::from_checkpoint_v1(frame_data).map_err(|error| crate::RuntimeError::Recovery {
+309:             error: format!("retry checkpoint frame restore failed: {error:?}"),
+310:         })
+311:     }
+312: 
+313:     /// Restores CollectStates from checkpoint data.
+314:     fn restore_retry_collect_states(
+315:         data: CollectStatesCheckpointV1,
+316:     ) -> RuntimeResult<CollectStates> {
+317:         CollectStates::from_checkpoint_v1(data).map_err(|error| crate::RuntimeError::Recovery {
+318:             error: format!("retry checkpoint collect restore failed: {error:?}"),
+319:         })
+320:     }
+321: 
+322:     fn retry_admission(
+323:         checkpoint: &crate::run_checkpoint::RunCheckpointV1,
+324:     ) -> RecoveredAdmissionKind {
+325:         checkpoint.admission.clone().map_or(
+326:             RecoveredAdmissionKind::Unverified {
+327:                 run_id: checkpoint.run_id,
+328:                 artifact_digest: checkpoint.artifact_digest,
+329:             },
+330:             RecoveredAdmissionKind::Historical,
+331:         )
+332:     }
+333: 
+334:     /// Builds a recovery command that restores a full retry checkpoint instead of the
+335:     /// legacy resumable frame seed. The checkpoint's own frame, value store, collect
+336:     /// states, and admission are authoritative; the independently loaded accepted
+337:     /// artifact is still validated by `handle_recover` before any mutation.
+338:     ///
+339:     /// Checkpoints without a recorded admission retain Unverified authority,
+340:     /// preserving legacy checkpoint semantics.
+341:     pub fn for_retry(
+342:         checkpoint: crate::run_checkpoint::RunCheckpointV1,
+343:         next_seq: EventSeq,
+344:     ) -> RuntimeResult<Self> {
+345:         let frame = Self::restore_retry_frame(checkpoint.frame.clone())?;
+346:         let collect_states = Self::restore_retry_collect_states(checkpoint.collect_states.clone())?;
+347:         let admission = Self::retry_admission(&checkpoint);
+348:         Ok(Self {
+349:             run: checkpoint.run_id,
+350:             frame,
+351:             artifact_digest: checkpoint.artifact_digest,
+352:             workflow_digest: checkpoint.workflow_digest,
+353:             next_seq,
+354:             collect_states,
+355:             retry_checkpoint: Some(checkpoint),
+356:             boundary: crate::recovery::RecoveredRunBoundary::none(),
+357:             admission,
+358:         })
+359:     }
+360: }
+361: 
+362: /// Ticket identifying where an ask answer must resume execution.
+363: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+364: pub struct AskTicket {
+365:     /// Owning run.
+366:     pub(crate) run: RunId,
+367:     /// Step that issued the ask and is currently marked asking.
+368:     pub(crate) ask_step: StepIdx,
+369:     /// Step that consumes the answer slot, usually an AskResume node.
+370:     pub(crate) resume_step: StepIdx,
+371:     /// Slot authorized by the compiled AskResume node.
+372:     pub(crate) answer_slot: SlotIdx,
+373:     /// Durable per-run sequence identifying this exact AskScheduled boundary.
+374:     pub(crate) boundary_seq: EventSeq,
+375: }
+376: 
+377: impl AskTicket {
+378:     /// Returns the owning run.
+379:     #[must_use]
+380:     pub const fn run(self) -> RunId {
+381:         self.run
+382:     }
+383: 
+384:     /// Returns the step that issued the ask.
+385:     #[must_use]
+386:     pub const fn ask_step(self) -> StepIdx {
+387:         self.ask_step
+388:     }
+389: 
+390:     /// Returns the step that consumes the answer.
+391:     #[must_use]
+392:     pub const fn resume_step(self) -> StepIdx {
+393:         self.resume_step
+394:     }
+395: 
+396:     /// Returns the authorized answer slot.
+397:     #[must_use]
+398:     pub const fn answer_slot(self) -> SlotIdx {
+399:         self.answer_slot
+400:     }
+401: 
+402:     pub(crate) const fn issued(
+403:         run: RunId,
+404:         ask_step: StepIdx,
+405:         resume_step: StepIdx,
+406:         answer_slot: SlotIdx,
+407:         boundary_seq: EventSeq,
+408:     ) -> Self {
+409:         Self {
+410:             run,
+411:             ask_step,
+412:             resume_step,
+413:             answer_slot,
+414:             boundary_seq,
+415:         }
+416:     }
+417: }
+418: 
+419: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+420: pub(crate) struct PendingAskAuthority {
+421:     pub(crate) step: StepIdx,
+422:     pub(crate) boundary_seq: EventSeq,
+423: }
+424: 
+425: /// Explicit ask answer contract. The requested slot must match the AskTicket authority.
+426: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+427: pub struct AskAnswer {
+428:     /// Ask ticket proving the intended resume point.
+429:     pub ticket: AskTicket,
+430:     /// Slot that receives the answer before resuming.
+431:     pub answer_slot: SlotIdx,
+432:     /// Answer payload.
+433:     pub value: SlotValue,
+434:     /// Answer taint marker.
+435:     pub taint: Taint,
+436:     /// Encoded length of the answer payload in bytes.
+437:     pub encoded_len: u32,
+438: }
+439: 
+440: impl AskAnswer {
+441:     /// Creates an answer when the caller has not precomputed encoded size.
+442:     #[must_use]
+443:     pub fn new(ticket: AskTicket, answer_slot: SlotIdx, value: SlotValue, taint: Taint) -> Self {
+444:         Self {
+445:             ticket,
+446:             answer_slot,
+447:             value,
+448:             taint,
+449:             encoded_len: 0,
+450:         }
+451:     }
+452: 
+453:     /// Creates an answer with explicit encoded payload length.
+454:     #[must_use]
+455:     pub fn with_encoded_len(
+456:         ticket: AskTicket,
+457:         answer_slot: SlotIdx,
+458:         value: SlotValue,
+459:         taint: Taint,
+460:         encoded_len: u32,
+461:     ) -> Self {
+462:         Self {
+463:             ticket,
+464:             answer_slot,
+465:             value,
+466:             taint,
+467:             encoded_len,
+468:         }
+469:     }
+470: }
+471: 
+472: /// Origin determines whether registered production effects may execute.
+473: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+474: pub enum RegisteredExecutionMode {
+475:     /// A newly admitted live run can execute with an exact issued grant.
+476:     Live,
+477:     /// Replayed runs may only reconcile existing receipts.
+478:     ReconcileOnly,
+479: }
+480: 
+481: /// Mutable run state owned directly by the shard.
+482: #[derive(Debug, Clone, PartialEq, Eq)]
+483: pub struct RunState {
+484:     /// Replayed state never authorizes a new registered production effect.
+485:     pub registered_execution: RegisteredExecutionMode,
+486:     /// Active run frame.
+487:     pub frame: RunFrame,
+488:     /// Current durable run attempt. Attempt one is used only for newly admitted runs.
+489:     pub run_attempt: NonZeroU16,
+490:     /// Compiled workflow for this run.
+491:     pub workflow: CompiledWorkflow,
+492:     /// Cold value store for list, object, and blob handles.
+493:     pub store: ValueStore,
+494:     /// Per-Do-step attempt counters owned with the live frame.
+495:     pub action_attempts: Box<[u16]>,
+496:     /// Admission record for this run, if admission gating was performed.
+497:     pub admission: Option<crate::admission::RunAdmission>,
+498:     /// Per-run collect pagination state side table.
+499:     pub collect_states: CollectStates,
+500:     /// Validated action contracts used by Do execution.
+501:     pub action_contracts: Box<[ActionContract]>,
+502: }
+503: 
+504: /// Diagnostic snapshot returned by the Inspect command.
+505: #[derive(Debug, Clone, PartialEq, Eq)]
+506: pub struct InspectSnapshot {
+507:     /// Run identifier.
+508:     pub run: RunId,
+509:     /// Caller correlation identifier.
+510:     pub correlation: u64,
+511:     /// Current program counter.
+512:     pub pc: StepIdx,
+513:     /// Number of executed transitions.
+514:     pub executed: u64,
+515: }
+516: 
+517: /// Bounded response produced by an inspect command.
+518: #[derive(Debug, Clone, PartialEq, Eq)]
+519: #[non_exhaustive]
+520: pub enum InspectResponse {
+521:     /// The run was active and a snapshot was captured.
+522:     Found(InspectSnapshot),
+523:     /// The run was not active on this shard.
+524:     NotFound {
+525:         /// Run identifier.
+526:         run: RunId,
+527:         /// Caller correlation identifier.
+528:         correlation: u64,
+529:     },
+530: }
+531: 
+532: // ============================================================================
+533: // RAII Introspection Registry
+534: // ============================================================================
+535: 
+536: /// Outcome of an unregister operation.
+537: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+538: pub enum UnregisterOutcome {
+539:     /// The handle was successfully unregistered.
+540:     Unregistered,
+541:     /// The handle was not found (no-op).
+542:     Missing,
+543: }
+544: 
+545: /// Outcome of a register operation when overlap is detected.
+546: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+547: pub enum RegisterOverlapOutcome {
+548:     /// Registration was rejected due to conflict with existing registration.
+549:     Conflict,
+550:     /// Registration replaced the existing one with a new epoch.
+551:     Replaced {
+552:         /// The epoch of the replaced registration.
+553:         old_epoch: u64,
+554:         /// The epoch of the new registration.
+555:         new_epoch: u64,
+556:     },
+557: }
+558: 
+559: /// Epoch-based handle for an introspection registration.
+560: ///
+561: /// When dropped, the handle is automatically unregistered from the registry.
+562: #[derive(Debug)]
+563: pub struct InspectHandle {
+564:     run: RunId,
+565:     epoch: u64,
+566:     registry: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<RunId, u64>>>,
+567: }
+568: 
+569: impl InspectHandle {
+570:     /// Returns the run identifier associated with this handle.
+571:     #[must_use]
+572:     pub fn run(&self) -> RunId {
+573:         self.run
+574:     }
+575: 
+576:     /// Returns the epoch of this handle.
+577:     #[must_use]
+578:     pub fn epoch(&self) -> u64 {
+579:         self.epoch
+580:     }
+581: }
+582: 
+583: impl Drop for InspectHandle {
+584:     fn drop(&mut self) {
+585:         if let Ok(mut guard) = self.registry.lock() {
+586:             // Only remove if the epoch matches (handles stale drops correctly)
+587:             if let Some(current_epoch) = guard.get(&self.run)
+588:                 && *current_epoch == self.epoch
+589:             {
+590:                 guard.remove(&self.run);
+591:             }
+592:         }
+593:     }
+594: }
+595: 
+596: /// Registry for RAII-based introspection handles.
+597: ///
+598: /// Provides epoch-based registration with automatic cleanup on guard drop.
+599: /// Does NOT create global mutable run state - each registry instance is independent.
+600: #[derive(Default)]
+601: pub struct IntrospectionRegistry {
+602:     inner: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<RunId, u64>>>,
+603:     next_epoch: u64,
+604: }
+605: 
+606: impl IntrospectionRegistry {
+607:     /// Creates a new empty registry.
+608:     #[must_use]
+609:     pub fn new() -> Self {
+610:         Self::default()
+611:     }
+612: 
+613:     /// Acquires the registry's inner mutex, recovering from any prior
+614:     /// poison state. The standard `Mutex::lock` returns `PoisonError`
+615:     /// forever once a holder panics; this helper mirrors the recovery
+616:     /// pattern already used by `action_queue` so the admission gate does
+617:     /// not stay permanently disabled after a panic.
+618:     fn lock_or_recover(
+619:         inner: &std::sync::Arc<std::sync::Mutex<std::collections::HashMap<RunId, u64>>>,
+620:     ) -> std::sync::MutexGuard<'_, std::collections::HashMap<RunId, u64>> {
+621:         match inner.lock() {
+622:             Ok(guard) => guard,
+623:             Err(poisoned) => poisoned.into_inner(),
+624:         }
+625:     }
+626: 
+627:     /// Registers a handle for the given run.
+628:     ///
+629:     /// Returns the handle guard on success. Recovers transparently from
+630:     /// a poisoned mutex so a single panicking holder cannot permanently
+631:     /// disable the admission gate (RA-014).
+632:     pub fn register(&mut self, run: RunId) -> RuntimeResult<InspectHandle> {
+633:         let mut guard = Self::lock_or_recover(&self.inner);
+634: 
+635:         // Check if already registered
+636:         if guard.contains_key(&run) {
+637:             return Err(crate::RuntimeError::RunAlreadyExists);
+638:         }
+639: 
+640:         let epoch = self.next_epoch;
+641:         self.next_epoch = self
+642:             .next_epoch
+643:             .checked_add(1)
+644:             .ok_or(crate::RuntimeError::IntrospectionEpochExhausted)?;
+645:         guard.insert(run, epoch);
+646: 
+647:         Ok(InspectHandle {
+648:             run,
+649:             epoch,
+650:             registry: self.inner.clone(),
+651:         })
+652:     }
+653: 
+654:     /// Registers a handle for the given run, allowing epoch replacement on conflict.
+655:     ///
+656:     /// Returns outcome indicating whether registration succeeded, conflicted, or was replaced.
+657:     pub fn register_with_overlap_policy(
+658:         &mut self,
+659:         run: RunId,
+660:     ) -> RuntimeResult<(InspectHandle, Result<(), RegisterOverlapOutcome>)> {
+661:         let mut guard = Self::lock_or_recover(&self.inner);
+662: 
+663:         let (outcome, epoch) = if let Some(&old_epoch) = guard.get(&run) {
+664:             // Overlap detected - replace with new epoch
+665:             let new_epoch = self.next_epoch;
+666:             self.next_epoch = self
+667:                 .next_epoch
+668:                 .checked_add(1)
+669:                 .ok_or(crate::RuntimeError::IntrospectionEpochExhausted)?;
+670:             guard.insert(run, new_epoch);
+671:             (
+672:                 Err(RegisterOverlapOutcome::Replaced {
+673:                     old_epoch,
+674:                     new_epoch,
+675:                 }),
+676:                 new_epoch,
+677:             )
+678:         } else {
+679:             // No overlap - insert with new epoch
+680:             let epoch = self.next_epoch;
+681:             self.next_epoch = self
+682:                 .next_epoch
+683:                 .checked_add(1)
+684:                 .ok_or(crate::RuntimeError::IntrospectionEpochExhausted)?;
+685:             guard.insert(run, epoch);
+686:             (Ok(()), epoch)
+687:         };
+688: 
+689:         Ok((
+690:             InspectHandle {
+691:                 run,
+692:                 epoch,
+693:                 registry: self.inner.clone(),
+694:             },
+695:             outcome,
+696:         ))
+697:     }
+698: 
+699:     /// Unregisters a handle for the given run.
+700:     ///
+701:     /// Returns whether the handle was found and unregistered.
+702:     pub fn unregister(&mut self, run: RunId) -> RuntimeResult<UnregisterOutcome> {
+703:         let mut guard = Self::lock_or_recover(&self.inner);
+704: 
+705:         if guard.remove(&run).is_some() {
+706:             Ok(UnregisterOutcome::Unregistered)
+707:         } else {
+708:             Ok(UnregisterOutcome::Missing)
+709:         }
+710:     }
+711: 
+712:     /// Unregisters all handles.
+713:     ///
+714:     /// Returns the count of handles removed.
+715:     pub fn unregister_all(&mut self) -> RuntimeResult<usize> {
+716:         let mut guard = Self::lock_or_recover(&self.inner);
+717:         let count = guard.len();
+718:         guard.clear();
+719:         Ok(count)
+720:     }
+721: 
+722:     /// Returns whether a run is currently visible to introspection.
+723:     #[must_use]
+724:     pub fn is_visible(&self, run: RunId) -> bool {
+725:         match self.inner.lock() {
+726:             Ok(guard) => guard.contains_key(&run),
+727:             Err(poisoned) => poisoned.into_inner().contains_key(&run),
+728:         }
+729:     }
+730: }
+731: 
+732: #[cfg(test)]
+733: impl IntrospectionRegistry {
+734:     /// Returns a clone of the inner `Arc<Mutex<...>>` for tests that need
+735:     /// to poison the registry from another thread. Production code MUST
+736:     /// NOT use this — it is compiled out of release builds.
+737:     pub(crate) fn inner_arc_for_test(
+738:         &self,
+739:     ) -> std::sync::Arc<std::sync::Mutex<std::collections::HashMap<RunId, u64>>> {
+740:         self.inner.clone()
+741:     }
+742: }
+743: 
+744: /// Snapshot formatting stays cold path (no computation on hot path).
+745: pub struct InspectSnapshotFormatter;
+746: 
+747: impl InspectSnapshotFormatter {
+748:     /// Formats a snapshot response into a string representation.
+749:     ///
+750:     /// This is a cold-path operation - called only when formatting output,
+751:     /// not during the hot path of inspect operations.
+752:     #[must_use]
+753:     pub fn format_snapshot(response: &InspectResponse) -> String {
+754:         match response {
+755:             InspectResponse::Found(snap) => {
+756:                 format!(
+757:                     "InspectSnapshot {{ run: {:?}, correlation: {}, pc: {:?}, executed: {} }}",
+758:                     snap.run, snap.correlation, snap.pc, snap.executed
+759:                 )
+760:             }
+761:             InspectResponse::NotFound { run, correlation } => {
+762:                 format!(
+763:                     "NotFound {{ run: {:?}, correlation: {} }}",
+764:                     run, correlation
+765:                 )
+766:             }
+767:         }
+768:     }
+769: }
+770: 
+771: /// Maximum bounded command queue capacity per shard.
+772: pub const MAX_COMMAND_QUEUE_CAPACITY: usize = 65_536;
+773: 
+774: /// Returns true when a command queue capacity is inside the supported domain.
+775: #[must_use]
+776: pub const fn is_valid_command_queue_capacity(capacity: usize) -> bool {
+777:     capacity > 0 && capacity <= MAX_COMMAND_QUEUE_CAPACITY
+778: }
+779: 
+780: // ============================================================================
+781: // ShardCommandQueue — domain wrapper around ArrayQueue<ShardCommand>
+782: // ============================================================================
+783: 
+784: /// Domain-named wrapper around `crossbeam_queue::ArrayQueue<ShardCommand>`.
+785: ///
+786: /// Provides a bounded, non-blocking command queue with domain-specific terminology
+787: /// (`enqueue`, `pop`, `is_full`, `remaining_capacity`) and proper error taxonomy
+788: /// (`RuntimeError::QueueFull`). This wrapper establishes the `ShardCommand` queue
+789: /// as a first-class domain boundary rather than a raw field.
+790: pub struct ShardCommandQueue {
+791:     inner: ArrayQueue<ShardCommand>,
+792:     /// Stored capacity to satisfy POST-001 and INV-001 invariants.
+793:     capacity: usize,
+794: }
+795: 
+796: impl ShardCommandQueue {
+797:     /// Creates a new `ShardCommandQueue` with the given capacity.
+798:     ///
+799:     /// # Errors
+800:     /// Returns `RuntimeError::CommandQueueCapacityExceeded` if `capacity` is 0
+801:     /// or exceeds `MAX_COMMAND_QUEUE_CAPACITY`.
+802:     pub fn new(capacity: usize) -> RuntimeResult<Self> {
+803:         if !is_valid_command_queue_capacity(capacity) {
+804:             return Err(crate::RuntimeError::CommandQueueCapacityExceeded {
+805:                 capacity,
+806:                 max: MAX_COMMAND_QUEUE_CAPACITY,
+807:             });
+808:         }
+809:         Ok(Self {
+810:             inner: ArrayQueue::new(capacity),
+811:             capacity,
+812:         })
+813:     }
+814: 
+815:     /// Creates a command queue from an already-accepted shard configuration.
+816:     ///
+817:     /// `Shard::new` has historically been infallible and accepted `ShardConfig`
+818:     /// by value. The validated constructor for externally supplied capacity is
+819:     /// `ShardConfig::new`; this helper preserves `Shard::new`'s existing shape
+820:     /// while placing the raw queue construction behind the domain wrapper.
+821:     pub(crate) fn from_config(config: ShardConfig) -> Self {
+822:         Self {
+823:             inner: ArrayQueue::new(config.command_queue_capacity),
+824:             capacity: config.command_queue_capacity,
+825:         }
+826:     }
+827: 
+828:     /// Enqueues a command. Returns `Ok(())` if the command was enqueued, or
+829:     /// `Err(RuntimeError::QueueFull)` if the queue is at capacity.
+830:     ///
+831:     /// This operation is non-blocking and never allocates on failure.
+832:     pub fn enqueue(&self, cmd: ShardCommand) -> RuntimeResult<()> {
+833:         self.inner
+834:             .push(cmd)
+835:             .map_err(|_| crate::RuntimeError::QueueFull)
+836:     }
+837: 
+838:     /// Dequeues the frontmost command, if any.
+839:     ///
+840:     /// Returns `Some(cmd)` in FIFO order, or `None` if the queue is empty.
+841:     pub fn pop(&self) -> Option<ShardCommand> {
+842:         self.inner.pop()
+843:     }
+844: 
+845:     /// Returns the number of commands currently in the queue.
+846:     #[must_use]
+847:     pub fn len(&self) -> usize {
+848:         self.inner.len()
+849:     }
+850: 
+851:     /// Returns `true` if the queue contains no commands.
+852:     #[must_use]
+853:     pub fn is_empty(&self) -> bool {
+854:         self.inner.is_empty()
+855:     }
+856: 
+857:     /// Returns the capacity of this queue (set at construction).
+858:     #[must_use]
+859:     pub fn capacity(&self) -> usize {
+860:         self.capacity
+861:     }
+862: 
+863:     /// Returns the number of remaining free slots in the queue.
+864:     #[must_use]
+865:     pub fn remaining_capacity(&self) -> usize {
+866:         self.capacity.saturating_sub(self.inner.len())
+867:     }
+868: 
+869:     /// Returns `true` if the queue is at capacity.
+870:     #[must_use]
+871:     pub fn is_full(&self) -> bool {
+872:         self.inner.len() == self.capacity
+873:     }
+874: 
+875:     /// Returns the compile-time bounded capacity limit (65536).
+876:     ///
+877:     /// This is the maximum capacity any `ShardCommandQueue` can be configured with.
+878:     #[must_use]
+879:     pub const fn bounded_capacity() -> usize {
+880:         MAX_COMMAND_QUEUE_CAPACITY
+881:     }
+882: }
+883: 
+884: /// Private aggregate for run membership side data. Runtime lifecycle state and
+885: /// terminal membership are co-owned here so terminal identity cannot coexist
+886: /// with stale resumability state.
+887: pub(crate) struct RunAggregate {
+888:     runtime_states: IndexMap<RunId, RuntimeState>,
+889:     checked_out_runs: IndexSet<RunId>,
+890:     terminal_runs: IndexSet<RunId>,
+891:     pending_timers: IndexMap<RunId, PendingTimer>,
+892:     pending_actions: IndexMap<RunId, ActionTicket>,
+893: }
+894: 
+895: impl RunAggregate {
+896:     pub(crate) fn new() -> Self {
+897:         Self {
+898:             runtime_states: IndexMap::new(),
+899:             checked_out_runs: IndexSet::new(),
+900:             terminal_runs: IndexSet::new(),
+901:             pending_timers: IndexMap::new(),
+902:             pending_actions: IndexMap::new(),
+903:         }
+904:     }
+905: 
+906:     pub(crate) fn reserve_runtime_state_slot(
+907:         &mut self,
+908:         run: RunId,
+909:         capacity: usize,
+910:     ) -> RuntimeResult<()> {
+911:         if self.runtime_states.contains_key(&run) {
+912:             return Ok(());
+913:         }
+914:         if self.runtime_states.len() >= capacity {
+915:             return Err(crate::RuntimeError::ActiveRunCapacityExceeded { capacity });
+916:         }
+917:         self.runtime_states
+918:             .try_reserve(1)
+919:             .map_err(|_| crate::RuntimeError::ActiveRunCapacityExceeded { capacity })
+920:     }
+921: 
+922:     pub(crate) fn runtime_state_get(&self, run: RunId) -> Option<RuntimeState> {
+923:         self.runtime_states.get(&run).copied()
+924:     }
+925: 
+926:     /// Inserts a non-terminal runtime state only when the run is not retained
+927:     /// as terminal. Terminal failures are represented by `terminal_runs`, not a
+928:     /// stale `RuntimeState::Failed` entry.
+929:     pub(crate) fn runtime_state_insert(
+930:         &mut self,
+931:         runs: &IndexMap<RunId, RunState>,
+932:         run: RunId,
+933:         state: RuntimeState,
+934:         capacity: usize,
+935:     ) -> RuntimeResult<Option<RuntimeState>> {
+936:         if state == RuntimeState::Failed {
+937:             return Err(crate::RuntimeError::UnsupportedOperation {
+938:                 operation: "runtime_state_failed_terminal_split",
+939:             });
+940:         }
+941:         if self.terminal_contains(run) {
+942:             return Err(crate::RuntimeError::RunAlreadyExists);
+943:         }
+944:         if !runs.contains_key(&run) && !self.checked_out_contains(run) {
+945:             return Err(crate::RuntimeError::RunNotFound);
+946:         }
+947:         self.reserve_runtime_state_slot(run, capacity)?;
+948:         Ok(self.runtime_states.insert(run, state))
+949:     }
+950: 
+951:     pub(crate) fn runtime_state_remove(&mut self, run: RunId) {
+952:         let _removed = self.runtime_states.swap_remove(&run);
+953:     }
+954: 
+955:     /// Clears only runtime lifecycle state for terminal `RuntimeEvent` apply.
+956:     /// Checked-out ownership and pending boundaries are cleaned by terminal
+957:     /// lifecycle paths, not by this state-machine transition.
+958:     pub(crate) fn runtime_state_terminal_clear(&mut self, run: RunId) {
+959:         self.runtime_state_remove(run);
+960:     }
+961: 
+962:     pub(crate) fn checked_out_len(&self) -> usize {
+963:         self.checked_out_runs.len()
+964:     }
+965: 
+966:     pub(crate) fn checked_out_contains(&self, run: RunId) -> bool {
+967:         self.checked_out_runs.contains(&run)
+968:     }
+969: 
+970:     pub(crate) fn checked_out_iter(&self) -> impl Iterator<Item = &RunId> {
+971:         self.checked_out_runs.iter()
+972:     }
+973: 
+974:     pub(crate) fn reserve_checked_out_slot(
+975:         &mut self,
+976:         run: RunId,
+977:         capacity: usize,
+978:     ) -> RuntimeResult<()> {
+979:         if self.checked_out_contains(run) {
+980:             return Ok(());
+981:         }
+982:         if self.checked_out_runs.len() >= capacity {
+983:             return Err(crate::RuntimeError::ActiveRunCapacityExceeded { capacity });
+984:         }
+985:         self.checked_out_runs
+986:             .try_reserve(1)
+987:             .map_err(|_| crate::RuntimeError::ActiveRunCapacityExceeded { capacity })
+988:     }
+989: 
+990:     pub(crate) fn checked_out_insert(&mut self, run: RunId, capacity: usize) -> RuntimeResult<()> {
+991:         self.reserve_checked_out_slot(run, capacity)?;
+992:         if self.checked_out_runs.insert(run) {
+993:             Ok(())
+994:         } else {
+995:             Err(crate::RuntimeError::RunAlreadyExists)
+996:         }
+997:     }
+998: 
+999:     pub(crate) fn checked_out_remove(&mut self, run: RunId) {
+1000:         let _removed = self.checked_out_runs.swap_remove(&run);
+1001:     }
+1002: 
+1003:     pub(crate) fn terminal_contains(&self, run: RunId) -> bool {
+1004:         self.terminal_runs.contains(&run)
+1005:     }
+1006: 
+1007:     /// Retains terminal identity only after active run-state ownership has
+1008:     /// left `Shard::runs`, and clears runtime plus active-boundary side data
+1009:     /// for that run.
+1010:     pub(crate) fn terminal_insert(
+1011:         &mut self,
+1012:         runs: &IndexMap<RunId, RunState>,
+1013:         run: RunId,
+1014:         capacity: usize,
+1015:     ) -> RuntimeResult<bool> {
+1016:         if self.terminal_contains(run) {
+1017:             return Ok(false);
+1018:         }
+1019:         if runs.contains_key(&run) {
+1020:             return Err(crate::RuntimeError::RunAlreadyExists);
+1021:         }
+1022:         if !self.checked_out_contains(run) {
+1023:             return Err(crate::RuntimeError::RunNotFound);
+1024:         }
+1025:         self.reserve_terminal_slot(run, capacity)?;
+1026:         self.runtime_state_remove(run);
+1027:         self.checked_out_remove(run);
+1028:         let _removed_timer = self.pending_timers.swap_remove(&run);
+1029:         let _removed_action = self.pending_actions.swap_remove(&run);
+1030:         Ok(self.terminal_runs.insert(run))
+1031:     }
+1032: 
+1033:     pub(crate) fn terminal_remove(&mut self, run: RunId) {
+1034:         let _removed = self.terminal_runs.swap_remove(&run);
+1035:     }
+1036: 
+1037:     pub(crate) fn reserve_terminal_insert_slot(
+1038:         &mut self,
+1039:         run: RunId,
+1040:         capacity: usize,
+1041:     ) -> RuntimeResult<()> {
+1042:         if self.terminal_runs.contains(&run) {
+1043:             return Ok(());
+1044:         }
+1045:         if capacity == 0 {
+1046:             return Err(crate::RuntimeError::ActiveRunCapacityExceeded { capacity });
+1047:         }
+1048:         if self.terminal_runs.len() >= capacity {
+1049:             return Ok(());
+1050:         }
+1051:         self.terminal_runs
+1052:             .try_reserve(1)
+1053:             .map_err(|_| crate::RuntimeError::ActiveRunCapacityExceeded { capacity })
+1054:     }
+1055: 
+1056:     fn reserve_terminal_slot(&mut self, run: RunId, capacity: usize) -> RuntimeResult<()> {
+1057:         if self.terminal_runs.contains(&run) {
+1058:             return Ok(());
+1059:         }
+1060:         if capacity == 0 {
+1061:             return Err(crate::RuntimeError::ActiveRunCapacityExceeded { capacity });
+1062:         }
+1063:         if self.terminal_runs.len() >= capacity {
+1064:             let evicted = self.terminal_runs.iter().next().copied();
+1065:             if let Some(evicted) = evicted {
+1066:                 let _removed = self.terminal_runs.shift_remove(&evicted);
+1067:             }
+1068:         }
+1069:         self.terminal_runs
+1070:             .try_reserve(1)
+1071:             .map_err(|_| crate::RuntimeError::ActiveRunCapacityExceeded { capacity })
+1072:     }
+1073: 
+1074:     pub(crate) fn run_is_live_for_boundary(
+1075:         &self,
+1076:         runs: &IndexMap<RunId, RunState>,
+1077:         run: RunId,
+1078:     ) -> bool {
+1079:         !self.terminal_contains(run) && (runs.contains_key(&run) || self.checked_out_contains(run))
+1080:     }
+1081: 
+1082:     pub(crate) fn pending_timer_len(&self) -> usize {
+1083:         self.pending_timers.len()
+1084:     }
+1085: 
+1086:     pub(crate) fn reserve_pending_timer_slot(
+1087:         &mut self,
+1088:         run: RunId,
+1089:         capacity: usize,
+1090:     ) -> RuntimeResult<()> {
+1091:         if self.pending_timers.contains_key(&run) {
+1092:             return Ok(());
+1093:         }
+1094:         if self.pending_timers.len() >= capacity {
+1095:             return Err(crate::RuntimeError::ActiveRunCapacityExceeded { capacity });
+1096:         }
+1097:         self.pending_timers
+1098:             .try_reserve(1)
+1099:             .map_err(|_| crate::RuntimeError::ActiveRunCapacityExceeded { capacity })
+1100:     }
+1101: 
+1102:     pub(crate) fn pending_timer_insert(
+1103:         &mut self,
+1104:         runs: &IndexMap<RunId, RunState>,
+1105:         capacity: usize,
+1106:         run: RunId,
+1107:         timer: PendingTimer,
+1108:     ) -> RuntimeResult<Option<PendingTimer>> {
+1109:         if !self.run_is_live_for_boundary(runs, run) {
+1110:             return Err(crate::RuntimeError::RunNotFound);
+1111:         }
+1112:         self.reserve_pending_timer_slot(run, capacity)?;
+1113:         Ok(self.pending_timers.insert(run, timer))
+1114:     }
+1115: 
+1116:     pub(crate) fn pending_timer_get(&self, run: RunId) -> Option<PendingTimer> {
+1117:         self.pending_timers.get(&run).copied()
+1118:     }
+1119: 
+1120:     pub(crate) fn pending_timer_clone(&self) -> IndexMap<RunId, PendingTimer> {
+1121:         self.pending_timers.clone()
+1122:     }
+1123: 
+1124:     pub(crate) fn pending_timer_remove(&mut self, run: RunId) -> Option<PendingTimer> {
+1125:         self.pending_timers.swap_remove(&run)
+1126:     }
+1127: 
+1128:     pub(crate) fn pending_timer_contains(&self, run: RunId) -> bool {
+1129:         self.pending_timers.contains_key(&run)
+1130:     }
+1131: 
+1132:     pub(crate) fn pending_timer_iter(&self) -> impl Iterator<Item = (&RunId, &PendingTimer)> {
+1133:         self.pending_timers.iter()
+1134:     }
+1135: 
+1136:     pub(crate) fn pending_timer_clear(&mut self) {
+1137:         self.pending_timers.clear();
+1138:     }
+1139: 
+1140:     pub(crate) fn pending_action_len(&self) -> usize {
+1141:         self.pending_actions.len()
+1142:     }
+1143: 
+1144:     pub(crate) fn reserve_pending_action_slot(
+1145:         &mut self,
+1146:         run: RunId,
+1147:         capacity: usize,
+1148:     ) -> RuntimeResult<()> {
+1149:         if self.pending_actions.contains_key(&run) {
+1150:             return Ok(());
+1151:         }
+1152:         if self.pending_actions.len() >= capacity {
+1153:             return Err(crate::RuntimeError::ActiveRunCapacityExceeded { capacity });
+1154:         }
+1155:         self.pending_actions
+1156:             .try_reserve(1)
+1157:             .map_err(|_| crate::RuntimeError::ActiveRunCapacityExceeded { capacity })
+1158:     }
+1159: 
+1160:     pub(crate) fn pending_action_insert(
+1161:         &mut self,
+1162:         runs: &IndexMap<RunId, RunState>,
+1163:         capacity: usize,
+1164:         run: RunId,
+1165:         ticket: ActionTicket,
+1166:     ) -> RuntimeResult<Option<ActionTicket>> {
+1167:         if !self.run_is_live_for_boundary(runs, run) {
+1168:             return Err(crate::RuntimeError::RunNotFound);
+1169:         }
+1170:         self.reserve_pending_action_slot(run, capacity)?;
+1171:         Ok(self.pending_actions.insert(run, ticket))
+1172:     }
+1173: 
+1174:     pub(crate) fn pending_action_get(&self, run: RunId) -> Option<ActionTicket> {
+1175:         self.pending_actions.get(&run).copied()
+1176:     }
+1177: 
+1178:     pub(crate) fn pending_action_clone(&self) -> IndexMap<RunId, ActionTicket> {
+1179:         self.pending_actions.clone()
+1180:     }
+1181: 
+1182:     pub(crate) fn pending_action_remove(&mut self, run: RunId) -> Option<ActionTicket> {
+1183:         self.pending_actions.swap_remove(&run)
+1184:     }
+1185: 
+1186:     pub(crate) fn pending_action_iter(&self) -> impl Iterator<Item = (&RunId, &ActionTicket)> {
+1187:         self.pending_actions.iter()
+1188:     }
+1189: }
+1190: 
+1191: /// Single-threaded shard owning all mutable run state.
+1192: pub struct Shard {
+1193:     pub(crate) command_queue: ShardCommandQueue,
+1194:     pub(super) runs: IndexMap<RunId, RunState>,
+1195:     pub(super) run_aggregate: RunAggregate,
+1196:     /// Next durable journal sequence by run, owned by this shard.
+1197:     pub(crate) journal_sequences: IndexMap<RunId, EventSeq>,
+1198:     /// Current runtime-issued ask boundary generation by run.
+1199:     pub(crate) pending_ask_authorities: IndexMap<RunId, PendingAskAuthority>,
+1200:     /// Last frame executed count already reflected in shard counters by run.
+1201:     pub(crate) accounted_executed_steps: IndexMap<RunId, u64>,
+1202:     pub(crate) frame_pools: IndexMap<FramePoolKey, FramePool>,
+1203:     pub(crate) trace_ring: TraceRing,
+1204:     pub(crate) counters: ShardCounters,
+1205:     pub(crate) step_budget_per_tick: u64,
+1206:     pub(crate) max_active_runs: usize,
+1207:     pub(crate) policy: vb_core::policy::RuntimePolicy,
+1208:     pub(crate) artifact_store: crate::admission::SharedAcceptedArtifactStore,
+1209:     pub(crate) inspect_response: Option<InspectResponse>,
+1210:     pub(crate) shutting_down: bool,
+1211:     pub(crate) current_tick: TimerTick,
+1212:     pub(crate) journal: SharedRuntimeJournal,
+1213: }
+1214: 
+1215: /// Read-only shard health snapshot for operator status reporting.
+1216: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+1217: pub struct ShardStatus {
+1218:     /// Human-readable health label.
+1219:     pub health: ShardHealth,
+1220:     /// True when the shard can continue processing ticks.
+1221:     pub running: bool,
+1222:     /// True after graceful shutdown begins.
+1223:     pub shutting_down: bool,
+1224:     /// Current command queue depth.
+1225:     pub command_queue_depth: usize,
+1226:     /// Total command queue capacity.
+1227:     pub command_queue_capacity: usize,
+1228:     /// Number of active runs owned by the shard.
+1229:     pub active_runs: usize,
+1230:     /// Configured active-run ceiling.
+1231:     pub max_active_runs: usize,
+1232:     /// Configured trace ring capacity.
+1233:     pub trace_capacity: usize,
+1234:     /// Count of trace events dropped due to ring overflow.
+1235:     pub trace_dropped: u64,
+1236:     /// Maximum execution steps attempted per tick.
+1237:     pub step_budget_per_tick: u64,
+1238:     /// Runtime admission policy.
+1239:     pub runtime_policy: vb_core::policy::RuntimePolicy,
+1240: }
+1241: 
+1242: /// Coarse health label for a shard.
+1243: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+1244: #[non_exhaustive]
+1245: pub enum ShardHealth {
+1246:     /// Shard is accepting ticks.
+1247:     Running,
+1248:     /// Shard has begun graceful shutdown.
+1249:     ShuttingDown,
+1250: }
+1251: 
+1252: /// Shard configuration.
+1253: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+1254: pub struct ShardConfig {
+1255:     /// Bounded capacity for the command queue.
+1256:     pub command_queue_capacity: usize,
+1257:     /// Bounded capacity for the trace ring.
+1258:     pub trace_capacity: usize,
+1259:     /// Maximum steps to execute per tick.
+1260:     pub step_budget_per_tick: u64,
+1261:     /// Maximum active runs admitted to this shard.
+1262:     pub max_active_runs: usize,
+1263:     /// Admission policy governing artifact verification.
+1264:     pub policy: vb_core::policy::RuntimePolicy,
+1265: }
+1266: 
+1267: /// Returns true when a trace ring capacity can retain at least one trace event.
+1268: #[must_use]
+1269: pub const fn is_valid_trace_capacity(capacity: usize) -> bool {
+1270:     capacity > 0
+1271: }
+1272: 
+1273: /// Returns true when a shard tick can attempt at least one deterministic step.
+1274: #[must_use]
+1275: pub const fn is_valid_step_budget_per_tick(budget: u64) -> bool {
+1276:     budget > 0
+1277: }
+1278: 
+1279: impl Default for ShardConfig {
+1280:     fn default() -> Self {
+1281:         Self {
+1282:             command_queue_capacity: 1024,
+1283:             trace_capacity: 4096,
+1284:             step_budget_per_tick: 1000,
+1285:             max_active_runs: 1024,
+1286:             policy: vb_core::policy::RuntimePolicy::Strict,
+1287:         }
+1288:     }
+1289: }
+1290: 
+1291: /// Lifecycle state of a run tracked by the runtime for resume eligibility.
+1292: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+1293: #[non_exhaustive]
+1294: pub enum RuntimeState {
+1295:     /// Run was created but has not yet been started.
+1296:     Initial,
+1297:     /// Run is actively executing.
+1298:     Running,
+1299:     /// Run suspended and can be resumed.
+1300:     Resumable,
+1301:     /// Resume is in flight for this run.
+1302:     Resuming,
+1303:     /// Run terminated with a failure.
+1304:     Failed,
+1305: }
+1306: 
+1307: impl RuntimeState {
+1308:     /// Returns true if this state is a valid target for resume.
+1309:     #[must_use]
+1310:     pub fn is_resumable(&self) -> bool {
+1311:         matches!(self, Self::Resumable)
+1312:     }
+1313: }
+1314: 
+1315: /// Runtime events that drive state transitions in the RuntimeStateMachine.
+1316: /// Each variant corresponds to a distinct operational event in the shard lifecycle.
+1317: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+1318: #[non_exhaustive]
+1319: pub enum RuntimeEvent {
+1320:     /// A new run has been submitted and inserted into the shard.
+1321:     Submit,
+1322:     /// An existing run is being resumed from a suspended state.
+1323:     Resume,
+1324:     /// A pre-commit resume or drive append failed; revert to retryable state.
+1325:     ResumeRollback,
+1326:     /// A run's deterministic execution is continuing after a drive tick.
+1327:     DriveContinue,
+1328:     /// A run has reached a terminal finished state.
+1329:     DriveFinished,
+1330:     /// A run is awaiting an external action response.
+1331:     AwaitAction,
+1332:     /// A run is awaiting a timer (wait or ask timeout).
+1333:     AwaitTimer,
+1334:     /// A run has reached a terminal failed state.
+1335:     Fail,
+1336:     /// Remove run from runtime_states tracking (terminal).
+1337:     TerminalRemove,
+1338: }
+1339: 
+1340: impl RuntimeEvent {
+1341:     /// Returns true if this event produces a terminal state (run is removed from runtime_states).
+1342:     #[must_use]
+1343:     pub fn is_terminal(&self) -> bool {
+1344:         matches!(
+1345:             self,
+1346:             Self::Fail | Self::TerminalRemove | Self::DriveFinished
+1347:         )
+1348:     }
+1349: 
+1350:     /// Returns true if this event sets a Resumable state.
+1351:     #[must_use]
+1352:     pub fn is_resumable(&self) -> bool {
+1353:         matches!(
+1354:             self,
+1355:             Self::AwaitAction | Self::AwaitTimer | Self::ResumeRollback
+1356:         )
+1357:     }
+1358: }
+1359: 
+1360: /// Status of a resume operation.
+1361: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+1362: #[non_exhaustive]
+1363: pub enum ResumeStatus {
+1364:     /// Resume was accepted and the run was driven once.
+1365:     ///
+1366:     /// The post-drive lifecycle may be `Running`, `Resumable`, or terminal,
+1367:     /// depending on the deterministic engine signal emitted by that drive.
+1368:     Resumed,
+1369:     /// Run was already running when resume was attempted.
+1370:     AlreadyRunning,
+1371: }
+1372: 
+1373: /// Result of a successful resume operation.
+1374: #[derive(Debug, Clone, PartialEq, Eq)]
+1375: pub struct ResumeResult {
+1376:     /// The run identifier that was resumed.
+1377:     pub run_id: RunId,
+1378:     /// The status of the resume operation.
+1379:     pub status: ResumeStatus,
+1380:     /// Monotonic timestamp when the resume occurred.
+1381:     pub timestamp: u64,
+1382: }
+1383: 
+1384: /// Errors that can occur during a resume operation.
+1385: #[derive(Debug, Clone, PartialEq, Eq)]
+1386: #[non_exhaustive]
+1387: pub enum ResumeError {
+1388:     /// The run identifier was not found in the journal.
+1389:     RunIdNotFound {
+1390:         /// The run identifier that was not found.
+1391:         run_id: RunId,
+1392:     },
+1393:     /// The run is not in a resumable state.
+1394:     NotResumable {
+1395:         /// The run identifier.
+1396:         run_id: RunId,
+1397:         /// The current state of the run.
+1398:         current_state: RuntimeState,
+1399:     },
+1400:     /// Journal hydration is incomplete for this run.
+1401:     IncompleteHydration {
+1402:         /// The run identifier.
+1403:         run_id: RunId,
+1404:     },
+1405:     /// Failed to append the Resumed event to the journal.
+1406:     JournalAppendFailed,
+1407:     /// Failed to append the Resumed event with a preserved runtime source.
+1408:     JournalAppendFailedWithSource {
+1409:         /// Runtime failure that caused the journal append failure.
+1410:         source: Box<crate::RuntimeError>,
+1411:     },
+1412:     /// Failed to produce structured output.
+1413:     StructuredOutputFailed,
+1414: }
+1415: 
+1416: impl ResumeError {
+1417:     pub(crate) fn journal_append_failed_with_source(source: crate::RuntimeError) -> Self {
+1418:         Self::JournalAppendFailedWithSource {
+1419:             source: Box::new(source),
+1420:         }
+1421:     }
+1422: 
+1423:     /// Returns the runtime source bound to this resume journal failure on this thread.
+1424:     #[must_use]
+1425:     pub fn source_runtime_error(&self) -> Option<crate::RuntimeError> {
+1426:         match self {
+1427:             Self::JournalAppendFailedWithSource { source } => Some(source.as_ref().clone()),
+1428:             // NOTE: #[non_exhaustive] - new ResumeError variants return None for source_runtime_error.
+1429:             // Implementations should add explicit variant handling.
+1430:             _ => None,
+1431:         }
+1432:     }
+1433: }
+1434: 
+1435: // ============================================================================
+1436: // Numeric Timer Seam Types
+1437: // ============================================================================
+1438: 
+1439: /// A monotonically increasing timer tick value, counting logical time units.
+1440: ///
+1441: /// Wraps a `u64` to provide type safety and checked arithmetic for deterministic
+1442: /// clock control. One tick represents one logical time unit in the deterministic
+1443: /// timer seam, operating alongside the existing wall-clock `Instant`-based timers.
+1444: #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+1445: pub struct TimerTick(u64);
+1446: 
+1447: impl TimerTick {
+1448:     /// Creates a new timer tick at the given value.
+1449:     #[must_use]
+1450:     pub const fn new(value: u64) -> Self {
+1451:         Self(value)
+1452:     }
+1453: 
+1454:     /// Returns the inner `u64` value.
+1455:     #[must_use]
+1456:     pub const fn get(self) -> u64 {
+1457:         self.0
+1458:     }
+1459: 
+1460:     /// Advances the tick by a duration, returning the resulting tick.
+1461:     ///
+1462:     /// Returns `None` on overflow.
+1463:     #[must_use]
+1464:     pub fn checked_add(self, duration: TimerDuration) -> Option<Self> {
+1465:         self.0.checked_add(duration.get()).map(Self)
+1466:     }
+1467: 
+1468:     /// Returns `true` if this tick is at or past the given deadline.
+1469:     #[must_use]
+1470:     pub fn has_elapsed(self, deadline: TimerDeadline) -> bool {
+1471:         self.0 >= deadline.get()
+1472:     }
+1473: }
+1474: 
+1475: /// A timer duration measured in ticks, representing a span of logical time.
+1476: #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+1477: pub struct TimerDuration(u64);
+1478: 
+1479: impl TimerDuration {
+1480:     /// Creates a new duration with the given number of ticks.
+1481:     #[must_use]
+1482:     pub const fn new(ticks: u64) -> Self {
+1483:         Self(ticks)
+1484:     }
+1485: 
+1486:     /// Returns the inner `u64` value.
+1487:     #[must_use]
+1488:     pub const fn get(self) -> u64 {
+1489:         self.0
+1490:     }
+1491: 
+1492:     /// Returns the duration as a tick count.
+1493:     #[must_use]
+1494:     pub const fn as_ticks(self) -> u64 {
+1495:         self.0
+1496:     }
+1497: 
+1498:     /// Returns a zero-length duration.
+1499:     #[must_use]
+1500:     pub const fn zero() -> Self {
+1501:         Self(0)
+1502:     }
+1503: }
+1504: 
+1505: /// An absolute deadline in ticks, representing when a timer expires.
+1506: #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+1507: pub struct TimerDeadline(u64);
+1508: 
+1509: impl TimerDeadline {
+1510:     /// Creates a new deadline at the given tick value.
+1511:     #[must_use]
+1512:     pub const fn new(tick: u64) -> Self {
+1513:         Self(tick)
+1514:     }
+1515: 
+1516:     /// Returns the inner `u64` value.
+1517:     #[must_use]
+1518:     pub const fn get(self) -> u64 {
+1519:         self.0
+1520:     }
+1521: 
+1522:     /// Creates a deadline by adding a duration to a tick.
+1523:     ///
+1524:     /// Returns `None` on overflow.
+1525:     #[must_use]
+1526:     pub fn from_tick_and_duration(tick: TimerTick, duration: TimerDuration) -> Option<Self> {
+1527:         tick.get().checked_add(duration.get()).map(Self)
+1528:     }
+1529: 
+1530:     /// Returns `true` if this deadline has passed relative to the given tick.
+1531:     #[must_use]
+1532:     pub fn is_past(self, current: TimerTick) -> bool {
+1533:         current.has_elapsed(self)
+1534:     }
+1535: }
+1536: 
+1537: /// Kind of timer managed by the numeric timer seam.
+1538: ///
+1539: /// Used alongside the existing `PendingTimerKind` to provide a richer
+1540: /// timer taxonomy for deterministic execution control.
+1541: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+1542: #[non_exhaustive]
+1543: pub enum TimerKind {
+1544:     /// Retry timer — combined wait/ask semantics for deterministic execution.
+1545:     Retry,
+1546:     /// Delayed action bound to a specific action identifier.
+1547:     DelayedAction(ActionId),
+1548: }
+1549: 
+1550: #[cfg(test)]
+1551: mod tests {
+1552:     use super::*;
+1553:     use crate::RuntimeError;
+1554:     use std::time::Instant;
+1555: 
+1556:     // ---- PendingTimer ----
+1557: 
+1558:     #[test]
+1559:     fn pending_timer_constructor_sets_fields_correctly() {
+1560:         let deadline = Instant::now();
+1561:         let timer = PendingTimer {
+1562:             step: vb_core::ids::StepIdx::new(3),
+1563:             kind: PendingTimerKind::Ask,
+1564:             generation: 42,
+1565:             deadline,
+1566:         };
+1567:         assert_eq!(timer.step, vb_core::ids::StepIdx::new(3));
+1568:         assert_eq!(timer.kind, PendingTimerKind::Ask);
+1569:         assert_eq!(timer.generation, 42);
+1570:         assert_eq!(timer.deadline, deadline);
+1571:     }
+1572: 
+1573:     #[test]
+1574:     fn pending_timer_matches_authority_when_all_fields_match() {
+1575:         let deadline = Instant::now();
+1576:         let timer = PendingTimer {
+1577:             step: vb_core::ids::StepIdx::ZERO,
+1578:             kind: PendingTimerKind::Wait,
+1579:             generation: 5,
+1580:             deadline,
+1581:         };
+1582:         assert!(timer.matches_authority(5, deadline, PendingTimerKind::Wait));
+1583:     }
+1584: 
+1585:     #[test]
+1586:     fn pending_timer_matches_authority_rejects_wrong_generation() {
+1587:         let timer = PendingTimer {
+1588:             step: vb_core::ids::StepIdx::ZERO,
+1589:             kind: PendingTimerKind::Wait,
+1590:             generation: 5,
+1591:             deadline: Instant::now(),
+1592:         };
+1593:         assert!(!timer.matches_authority(6, timer.deadline, PendingTimerKind::Wait));
+1594:     }
+1595: 
+1596:     #[test]
+1597:     fn pending_timer_matches_authority_rejects_wrong_kind() {
+1598:         let timer = PendingTimer {
+1599:             step: vb_core::ids::StepIdx::ZERO,
+1600:             kind: PendingTimerKind::Wait,
+1601:             generation: 3,
+1602:             deadline: Instant::now(),
+1603:         };
+1604:         assert!(!timer.matches_authority(3, timer.deadline, PendingTimerKind::Ask));
+1605:     }
+1606: 
+1607:     #[test]
+1608:     fn pending_timer_is_copy() {
+1609:         let t1 = PendingTimer {
+1610:             step: vb_core::ids::StepIdx::new(1),
+1611:             kind: PendingTimerKind::Ask,
+1612:             generation: 7,
+1613:             deadline: Instant::now(),
+1614:         };
+1615:         let t2 = t1;
+1616:         assert_eq!(t1.generation, t2.generation);
+1617:         assert_eq!(t1.step, t2.step);
+1618:         assert_eq!(t1.kind, t2.kind);
+1619:     }
+1620: 
+1621:     // ---- PendingTimerKind ----
+1622: 
+1623:     #[test]
+1624:     fn pending_timer_kind_wait_and_ask_are_distinct() {
+1625:         assert_ne!(PendingTimerKind::Wait, PendingTimerKind::Ask);
+1626:         assert_eq!(PendingTimerKind::Wait, PendingTimerKind::Wait);
+1627:         assert_eq!(PendingTimerKind::Ask, PendingTimerKind::Ask);
+1628:     }
+1629: 
+1630:     // ---- is_valid_command_queue_capacity ----
+1631: 
+1632:     #[test]
+1633:     fn is_valid_capacity_accepts_one() {
+1634:         assert!(is_valid_command_queue_capacity(1));
+1635:     }
+1636: 
+1637:     #[test]
+1638:     fn is_valid_capacity_accepts_max() {
+1639:         assert!(is_valid_command_queue_capacity(MAX_COMMAND_QUEUE_CAPACITY));
+1640:     }
+1641: 
+1642:     #[test]
+1643:     fn is_valid_capacity_rejects_zero() {
+1644:         assert!(!is_valid_command_queue_capacity(0));
+1645:     }
+1646: 
+1647:     #[test]
+1648:     fn is_valid_capacity_rejects_exceeding_max() {
+1649:         assert!(!is_valid_command_queue_capacity(
+1650:             MAX_COMMAND_QUEUE_CAPACITY + 1
+1651:         ));
+1652:     }
+1653: 
+1654:     // ---- ShardCommandQueue ----
+1655: 
+1656:     #[test]
+1657:     fn command_queue_new_accepts_valid_capacity() {
+1658:         let result = ShardCommandQueue::new(64);
+1659:         match result {
+1660:             Ok(q) => {
+1661:                 assert_eq!(q.capacity(), 64);
+1662:                 assert!(q.is_empty());
+1663:                 assert!(!q.is_full());
+1664:             }
+1665:             Err(_e) => panic!("unexpected error constructing queue"),
+1666:         }
+1667:     }
+1668: 
+1669:     #[test]
+1670:     fn command_queue_new_rejects_zero_capacity() {
+1671:         let result = ShardCommandQueue::new(0);
+1672:         match result {
+1673:             Err(RuntimeError::CommandQueueCapacityExceeded { capacity, max }) => {
+1674:                 assert_eq!(capacity, 0);
+1675:                 assert_eq!(max, MAX_COMMAND_QUEUE_CAPACITY);
+1676:             }
+1677:             _other => panic!("unexpected result constructing queue"),
+1678:         }
+1679:     }
+1680: 
+1681:     #[test]
+1682:     fn command_queue_new_rejects_exceeding_max() {
+1683:         let result = ShardCommandQueue::new(MAX_COMMAND_QUEUE_CAPACITY + 1);
+1684:         assert!(result.is_err());
+1685:         match result {
+1686:             Err(RuntimeError::CommandQueueCapacityExceeded { .. }) => {}
+1687:             _other => panic!("unexpected result constructing queue"),
+1688:         }
+1689:     }
+1690: 
+1691:     #[test]
+1692:     fn command_queue_remaining_capacity_decreases_after_enqueue() {
+1693:         let q = ShardCommandQueue::new(2).unwrap();
+1694:         assert_eq!(q.remaining_capacity(), 2);
+1695:         let cmd = ShardCommand::Shutdown;
+1696:         assert_eq!(q.enqueue(cmd), Ok(()));
+1697:         assert_eq!(q.remaining_capacity(), 1);
+1698:     }
+1699: 
+1700:     #[test]
+1701:     fn command_queue_is_full_after_filling_to_capacity() {
+1702:         let q = ShardCommandQueue::new(1).unwrap();
+1703:         assert!(!q.is_full());
+1704:         assert_eq!(q.enqueue(ShardCommand::Shutdown), Ok(()));
+1705:         assert!(q.is_full());
+1706:     }
+1707: 
+1708:     #[test]
+1709:     fn command_queue_enqueue_rejects_when_full() {
+1710:         let q = ShardCommandQueue::new(1).unwrap();
+1711:         assert_eq!(q.enqueue(ShardCommand::Shutdown), Ok(()));
+1712:         let result = q.enqueue(ShardCommand::Shutdown);
+1713:         assert_eq!(result, Err(RuntimeError::QueueFull));
+1714:     }
+1715: 
+1716:     #[test]
+1717:     fn command_queue_pop_returns_fifo_order() {
+1718:         let q = ShardCommandQueue::new(2).unwrap();
+1719:         let cmd1 = ShardCommand::Shutdown;
+1720:         let cmd2 = ShardCommand::Cancel {
+1721:             run: vb_core::ids::RunId::new(1),
+1722:             reason: None,
+1723:         };
+1724:         assert_eq!(q.enqueue(cmd1.clone()), Ok(()));
+1725:         assert_eq!(q.enqueue(cmd2.clone()), Ok(()));
+1726:         assert_eq!(q.pop(), Some(cmd1));
+1727:         assert_eq!(q.pop(), Some(cmd2));
+1728:         assert!(q.is_empty());
+1729:     }
+1730: 
+1731:     #[test]
+1732:     fn command_queue_len_accurately_reports_count() {
+1733:         let q = ShardCommandQueue::new(8).unwrap();
+1734:         assert_eq!(q.len(), 0);
+1735:         assert_eq!(q.enqueue(ShardCommand::Shutdown), Ok(()));
+1736:         assert_eq!(q.len(), 1);
+1737:         assert_eq!(q.enqueue(ShardCommand::Shutdown), Ok(()));
+1738:         assert_eq!(q.len(), 2);
+1739:         q.pop();
+1740:         assert_eq!(q.len(), 1);
+1741:     }
+1742: 
+1743:     // ---- ShardConfig ----
+1744: 
+1745:     #[test]
+1746:     fn shard_config_default_has_valid_capacity() {
+1747:         let config = ShardConfig::default();
+1748:         assert!(config.command_queue_capacity > 0);
+1749:         assert!(is_valid_command_queue_capacity(
+1750:             config.command_queue_capacity
+1751:         ));
+1752:     }
+1753: 
+1754:     // ---- RuntimeState ----
+1755: 
+1756:     #[test]
+1757:     fn runtime_state_resumable_is_resumable() {
+1758:         assert!(RuntimeState::Resumable.is_resumable());
+1759:     }
+1760: 
+1761:     #[test]
+1762:     fn runtime_state_running_is_not_resumable() {
+1763:         assert!(!RuntimeState::Running.is_resumable());
+1764:     }
+1765: 
+1766:     #[test]
+1767:     fn runtime_state_failed_is_not_resumable() {
+1768:         assert!(!RuntimeState::Failed.is_resumable());
+1769:     }
+1770: 
+1771:     #[test]
+1772:     fn runtime_state_initial_is_not_resumable() {
+1773:         assert!(!RuntimeState::Initial.is_resumable());
+1774:     }
+1775: 
+1776:     // ---- RuntimeEvent ----
+1777: 
+1778:     #[test]
+1779:     fn runtime_event_await_action_is_resumable() {
+1780:         assert!(RuntimeEvent::AwaitAction.is_resumable());
+1781:     }
+1782: 
+1783:     #[test]
+1784:     fn runtime_event_await_timer_is_resumable() {
+1785:         assert!(RuntimeEvent::AwaitTimer.is_resumable());
+1786:     }
+1787: 
+1788:     #[test]
+1789:     fn runtime_event_fail_is_terminal() {
+1790:         assert!(RuntimeEvent::Fail.is_terminal());
+1791:     }
+1792: 
+1793:     #[test]
+1794:     fn runtime_event_drive_finished_is_terminal() {
+1795:         assert!(RuntimeEvent::DriveFinished.is_terminal());
+1796:     }
+1797: 
+1798:     // ---- Numeric Timer Types ----
+1799: 
+1800:     #[test]
+1801:     fn timer_tick_new_returns_expected_value() {
+1802:         let tick = TimerTick::new(42);
+1803:         assert_eq!(tick.get(), 42);
+1804:     }
+1805: 
+1806:     #[test]
+1807:     fn timer_tick_checked_add_succeeds() {
+1808:         let tick = TimerTick::new(10);
+1809:         let dur = TimerDuration::new(5);
+1810:         let result = tick.checked_add(dur);
+1811:         assert_eq!(result, Some(TimerTick::new(15)));
+1812:     }
+1813: 
+1814:     #[test]
+1815:     fn timer_tick_checked_add_returns_none_on_overflow() {
+1816:         let tick = TimerTick::new(u64::MAX);
+1817:         let dur = TimerDuration::new(1);
+1818:         assert_eq!(tick.checked_add(dur), None);
+1819:     }
+1820: 
+1821:     #[test]
+1822:     fn timer_tick_has_elapsed_when_tick_eq_deadline() {
+1823:         let tick = TimerTick::new(100);
+1824:         let deadline = TimerDeadline::new(100);
+1825:         assert!(tick.has_elapsed(deadline));
+1826:     }
+1827: 
+1828:     #[test]
+1829:     fn timer_tick_has_elapsed_when_tick_past_deadline() {
+1830:         let tick = TimerTick::new(101);
+1831:         let deadline = TimerDeadline::new(100);
+1832:         assert!(tick.has_elapsed(deadline));
+1833:     }
+1834: 
+1835:     #[test]
+1836:     fn timer_tick_has_not_elapsed_when_before_deadline() {
+1837:         let tick = TimerTick::new(99);
+1838:         let deadline = TimerDeadline::new(100);
+1839:         assert!(!tick.has_elapsed(deadline));
+1840:     }
+1841: 
+1842:     #[test]
+1843:     fn timer_tick_ord_sorts_correctly() {
+1844:         let a = TimerTick::new(10);
+1845:         let b = TimerTick::new(20);
+1846:         assert!(a < b);
+1847:         assert_eq!(a, TimerTick::new(10));
+1848:     }
+1849: 
+1850:     #[test]
+1851:     fn timer_duration_new_and_get() {
+1852:         let dur = TimerDuration::new(30);
+1853:         assert_eq!(dur.get(), 30);
+1854:         assert_eq!(dur.as_ticks(), 30);
+1855:     }
+1856: 
+1857:     #[test]
+1858:     fn timer_duration_zero_is_zero() {
+1859:         let dur = TimerDuration::zero();
+1860:         assert_eq!(dur.get(), 0);
+1861:     }
+1862: 
+1863:     #[test]
+1864:     fn timer_duration_ord_sorts_correctly() {
+1865:         let a = TimerDuration::new(5);
+1866:         let b = TimerDuration::new(10);
+1867:         assert!(a < b);
+1868:     }
+1869: 
+1870:     #[test]
+1871:     fn timer_deadline_new_and_get() {
+1872:         let dl = TimerDeadline::new(77);
+1873:         assert_eq!(dl.get(), 77);
+1874:     }
+1875: 
+1876:     #[test]
+1877:     fn timer_deadline_from_tick_and_duration_succeeds() {
+1878:         let tick = TimerTick::new(10);
+1879:         let dur = TimerDuration::new(20);
+1880:         let deadline = TimerDeadline::from_tick_and_duration(tick, dur);
+1881:         assert_eq!(deadline, Some(TimerDeadline::new(30)));
+1882:     }
+1883: 
+1884:     #[test]
+1885:     fn timer_deadline_from_tick_and_duration_returns_none_on_overflow() {
+1886:         let tick = TimerTick::new(u64::MAX);
+1887:         let dur = TimerDuration::new(1);
+1888:         assert_eq!(TimerDeadline::from_tick_and_duration(tick, dur), None);
+1889:     }
+1890: 
+1891:     #[test]
+1892:     fn timer_deadline_is_past_when_current_tick_is_equal() {
+1893:         let current = TimerTick::new(50);
+1894:         let deadline = TimerDeadline::new(50);
+1895:         assert!(deadline.is_past(current));
+1896:     }
+1897: 
+1898:     #[test]
+1899:     fn timer_deadline_is_past_when_current_tick_exceeds() {
+1900:         let current = TimerTick::new(51);
+1901:         let deadline = TimerDeadline::new(50);
+1902:         assert!(deadline.is_past(current));
+1903:     }
+1904: 
+1905:     #[test]
+1906:     fn timer_deadline_is_not_past_when_current_tick_before() {
+1907:         let current = TimerTick::new(49);
+1908:         let deadline = TimerDeadline::new(50);
+1909:         assert!(!deadline.is_past(current));
+1910:     }
+1911: 
+1912:     #[test]
+1913:     fn timer_deadline_ord_sorts_correctly() {
+1914:         let a = TimerDeadline::new(15);
+1915:         let b = TimerDeadline::new(25);
+1916:         assert!(a < b);
+1917:     }
+1918: 
+1919:     #[test]
+1920:     fn timer_kind_retry_and_delayed_action_are_distinct() {
+1921:         let kind1 = TimerKind::Retry;
+1922:         let kind2 = TimerKind::DelayedAction(ActionId::new(1));
+1923:         assert_ne!(kind1, kind2);
+1924:     }
+1925: 
+1926:     #[test]
+1927:     fn timer_kind_delayed_action_preserves_action_id() {
+1928:         let action = ActionId::new(42);
+1929:         let kind = TimerKind::DelayedAction(action);
+1930:         match kind {
+1931:             TimerKind::DelayedAction(aid) => assert_eq!(aid, ActionId::new(42)),
+1932:             _ => panic!("expected DelayedAction variant"),
+1933:         }
+1934:     }
+1935: 
+1936:     #[test]
+1937:     fn timer_tick_copy_and_eq_preserves_value() {
+1938:         let t1 = TimerTick::new(5);
+1939:         let t2 = t1;
+1940:         assert_eq!(t1, t2);
+1941:     }
+1942: 
+1943:     #[test]
+1944:     fn timer_duration_copy_and_eq_preserves_value() {
+1945:         let d1 = TimerDuration::new(10);
+1946:         let d2 = d1;
+1947:         assert_eq!(d1, d2);
+1948:     }
+1949: 
+1950:     #[test]
+1951:     fn timer_deadline_copy_and_eq_preserves_value() {
+1952:         let dl1 = TimerDeadline::new(20);
+1953:         let dl2 = dl1;
+1954:         assert_eq!(dl1, dl2);
+1955:     }
+1956: 
+1957:     // ---- Numeric Timer Boundary Coverage ----
+1958: 
+1959:     #[test]
+1960:     fn timer_tick_zero_get_returns_zero() {
+1961:         assert_eq!(TimerTick::new(0).get(), 0);
+1962:     }
+1963: 
+1964:     #[test]
+1965:     fn timer_tick_max_get_returns_max() {
+1966:         assert_eq!(TimerTick::new(u64::MAX).get(), u64::MAX);
+1967:     }
+1968: 
+1969:     #[test]
+1970:     fn timer_tick_checked_add_zero_returns_self() {
+1971:         let tick = TimerTick::new(7);
+1972:         assert_eq!(tick.checked_add(TimerDuration::zero()), Some(tick));
+1973:     }
+1974: 
+1975:     #[test]
+1976:     fn timer_tick_checked_add_zero_to_zero_returns_zero() {
+1977:         let tick = TimerTick::new(0);
+1978:         assert_eq!(
+1979:             tick.checked_add(TimerDuration::zero()),
+1980:             Some(TimerTick::new(0))
+1981:         );
+1982:     }
+1983: 
+1984:     #[test]
+1985:     fn timer_tick_checked_add_max_minus_one_plus_one_returns_max() {
+1986:         let tick = TimerTick::new(u64::MAX - 1);
+1987:         let dur = TimerDuration::new(1);
+1988:         assert_eq!(tick.checked_add(dur), Some(TimerTick::new(u64::MAX)));
+1989:     }
+1990: 
+1991:     #[test]
+1992:     fn timer_tick_checked_add_max_plus_zero_returns_max() {
+1993:         let tick = TimerTick::new(u64::MAX);
+1994:         assert_eq!(
+1995:             tick.checked_add(TimerDuration::zero()),
+1996:             Some(TimerTick::new(u64::MAX))
+1997:         );
+1998:     }
+1999: 
+2000:     #[test]
+2001:     fn timer_tick_checked_add_zero_plus_max_overflows() {
+2002:         // 0 + u64::MAX = u64::MAX (no overflow)
+2003:         let tick = TimerTick::new(0);
+2004:         let dur = TimerDuration::new(u64::MAX);
+2005:         assert_eq!(tick.checked_add(dur), Some(TimerTick::new(u64::MAX)));
+2006:     }
+2007: 
+2008:     #[test]
+2009:     fn timer_tick_has_elapsed_zero_vs_zero_is_true() {
+2010:         assert!(TimerTick::new(0).has_elapsed(TimerDeadline::new(0)));
+2011:     }
+2012: 
+2013:     #[test]
+2014:     fn timer_tick_has_elapsed_zero_vs_one_is_false() {
+2015:         assert!(!TimerTick::new(0).has_elapsed(TimerDeadline::new(1)));
+2016:     }
+2017: 
+2018:     #[test]
+2019:     fn timer_tick_has_elapsed_max_vs_max_is_true() {
+2020:         assert!(TimerTick::new(u64::MAX).has_elapsed(TimerDeadline::new(u64::MAX)));
+2021:     }
+2022: 
+2023:     #[test]
+2024:     fn timer_tick_has_elapsed_max_vs_max_minus_one_is_true() {
+2025:         assert!(TimerTick::new(u64::MAX).has_elapsed(TimerDeadline::new(u64::MAX - 1)));
+2026:     }
+2027: 
+2028:     #[test]
+2029:     fn timer_tick_has_elapsed_max_minus_one_vs_max_is_false() {
+2030:         assert!(!TimerTick::new(u64::MAX - 1).has_elapsed(TimerDeadline::new(u64::MAX)));
+2031:     }
+2032: 
+2033:     #[test]
+2034:     fn timer_tick_partial_cmp_is_consistent_with_ord() {
+2035:         let a = TimerTick::new(5);
+2036:         let b = TimerTick::new(10);
+2037:         assert_eq!(a.partial_cmp(&b), Some(std::cmp::Ordering::Less));
+2038:         assert_eq!(b.partial_cmp(&a), Some(std::cmp::Ordering::Greater));
+2039:         assert_eq!(a.partial_cmp(&a), Some(std::cmp::Ordering::Equal));
+2040:         // partial_cmp of equal values
+2041:         assert_eq!(
+2042:             TimerTick::new(3).partial_cmp(&TimerTick::new(3)),
+2043:             Some(std::cmp::Ordering::Equal)
+2044:         );
+2045:     }
+2046: 
+2047:     #[test]
+2048:     fn timer_tick_hash_is_consistent_with_eq() {
+2049:         use std::hash::{Hash, Hasher};
+2050:         // Two equal values should have the same hash
+2051:         let t1 = TimerTick::new(42);
+2052:         let t2 = TimerTick::new(42);
+2053:         let mut h1 = std::collections::hash_map::DefaultHasher::new();
+2054:         let mut h2 = std::collections::hash_map::DefaultHasher::new();
+2055:         t1.hash(&mut h1);
+2056:         t2.hash(&mut h2);
+2057:         assert_eq!(h1.finish(), h2.finish());
+2058:     }
+2059: 
+2060:     #[test]
+2061:     fn timer_duration_max_get_returns_max() {
+2062:         assert_eq!(TimerDuration::new(u64::MAX).get(), u64::MAX);
+2063:     }
+2064: 
+2065:     #[test]
+2066:     fn timer_duration_one_get_returns_one() {
+2067:         assert_eq!(TimerDuration::new(1).get(), 1);
+2068:     }
+2069: 
+2070:     #[test]
+2071:     fn timer_duration_partial_cmp_is_consistent_with_ord() {
+2072:         let a = TimerDuration::new(3);
+2073:         let b = TimerDuration::new(7);
+2074:         assert_eq!(a.partial_cmp(&b), Some(std::cmp::Ordering::Less));
+2075:         assert_eq!(b.partial_cmp(&a), Some(std::cmp::Ordering::Greater));
+2076:     }
+2077: 
+2078:     #[test]
+2079:     fn timer_duration_hash_is_consistent_with_eq() {
+2080:         use std::hash::{Hash, Hasher};
+2081:         let d1 = TimerDuration::new(10);
+2082:         let d2 = TimerDuration::new(10);
+2083:         let mut h1 = std::collections::hash_map::DefaultHasher::new();
+2084:         let mut h2 = std::collections::hash_map::DefaultHasher::new();
+2085:         d1.hash(&mut h1);
+2086:         d2.hash(&mut h2);
+2087:         assert_eq!(h1.finish(), h2.finish());
+2088:     }
+2089: 
+2090:     #[test]
+2091:     fn timer_deadline_max_get_returns_max() {
+2092:         assert_eq!(TimerDeadline::new(u64::MAX).get(), u64::MAX);
+2093:     }
+2094: 
+2095:     #[test]
+2096:     fn timer_deadline_zero_get_returns_zero() {
+2097:         assert_eq!(TimerDeadline::new(0).get(), 0);
+2098:     }
+2099: 
+2100:     #[test]
+2101:     fn timer_deadline_from_tick_and_duration_zero_plus_zero() {
+2102:         let tick = TimerTick::new(0);
+2103:         let dur = TimerDuration::new(0);
+2104:         assert_eq!(
+2105:             TimerDeadline::from_tick_and_duration(tick, dur),
+2106:             Some(TimerDeadline::new(0))
+2107:         );
+2108:     }
+2109: 
+2110:     #[test]
+2111:     fn timer_deadline_from_tick_and_duration_one_plus_max_overflows() {
+2112:         let tick = TimerTick::new(1);
+2113:         let dur = TimerDuration::new(u64::MAX);
+2114:         assert_eq!(TimerDeadline::from_tick_and_duration(tick, dur), None);
+2115:     }
+2116: 
+2117:     #[test]
+2118:     fn timer_deadline_from_tick_and_duration_max_plus_max_overflows() {
+2119:         let tick = TimerTick::new(u64::MAX);
+2120:         let dur = TimerDuration::new(u64::MAX);
+2121:         assert_eq!(TimerDeadline::from_tick_and_duration(tick, dur), None);
+2122:     }
+2123: 
+2124:     #[test]
+2125:     fn timer_deadline_from_tick_and_duration_max_minus_two_plus_one() {
+2126:         let tick = TimerTick::new(u64::MAX - 2);
+2127:         let dur = TimerDuration::new(1);
+2128:         assert_eq!(
+2129:             TimerDeadline::from_tick_and_duration(tick, dur),
+2130:             Some(TimerDeadline::new(u64::MAX - 1))
+2131:         );
+2132:     }
+2133: 
+2134:     #[test]
+2135:     fn timer_deadline_is_past_zero_vs_zero_is_true() {
+2136:         assert!(TimerDeadline::new(0).is_past(TimerTick::new(0)));
+2137:     }
+2138: 
+2139:     #[test]
+2140:     fn timer_deadline_is_past_max_vs_max_is_true() {
+2141:         assert!(TimerDeadline::new(u64::MAX).is_past(TimerTick::new(u64::MAX)));
+2142:     }
+2143: 
+2144:     #[test]
+2145:     fn timer_deadline_is_past_one_vs_zero_is_false() {
+2146:         assert!(!TimerDeadline::new(1).is_past(TimerTick::new(0)));
+2147:     }
+2148: 
+2149:     #[test]
+2150:     fn timer_deadline_partial_cmp_is_consistent_with_ord() {
+2151:         let a = TimerDeadline::new(5);
+2152:         let b = TimerDeadline::new(10);
+2153:         assert_eq!(a.partial_cmp(&b), Some(std::cmp::Ordering::Less));
+2154:     }
+2155: 
+2156:     #[test]
+2157:     fn timer_deadline_hash_is_consistent_with_eq() {
+2158:         use std::hash::{Hash, Hasher};
+2159:         let dl1 = TimerDeadline::new(15);
+2160:         let dl2 = TimerDeadline::new(15);
+2161:         let mut h1 = std::collections::hash_map::DefaultHasher::new();
+2162:         let mut h2 = std::collections::hash_map::DefaultHasher::new();
+2163:         dl1.hash(&mut h1);
+2164:         dl2.hash(&mut h2);
+2165:         assert_eq!(h1.finish(), h2.finish());
+2166:     }
+2167: 
+2168:     // ---- TimerKind variant coverage ----
+2169: 
+2170:     #[test]
+2171:     fn timer_kind_retry_equals_retry() {
+2172:         assert_eq!(TimerKind::Retry, TimerKind::Retry);
+2173:     }
+2174: 
+2175:     #[test]
+2176:     fn timer_kind_delayed_action_equals_same_action_id() {
+2177:         assert_eq!(
+2178:             TimerKind::DelayedAction(ActionId::new(7)),
+2179:             TimerKind::DelayedAction(ActionId::new(7))
+2180:         );
+2181:     }
+2182: 
+2183:     #[test]
+2184:     fn timer_kind_delayed_action_differs_with_different_action_id() {
+2185:         assert_ne!(
+2186:             TimerKind::DelayedAction(ActionId::new(1)),
+2187:             TimerKind::DelayedAction(ActionId::new(2))
+2188:         );
+2189:     }
+2190: 
+2191:     #[test]
+2192:     fn timer_kind_clone_preserves_value() {
+2193:         let k1 = TimerKind::DelayedAction(ActionId::new(99));
+2194:         let k2 = k1;
+2195:         assert_eq!(k1, k2);
+2196:     }
+2197: 
+2198:     // ---- Debug format does not panic ----
+2199: 
+2200:     #[test]
+2201:     fn timer_tick_debug_format() {
+2202:         let tick = TimerTick::new(42);
+2203:         let s = format!("{:?}", tick);
+2204:         assert!(s.contains("42"));
+2205:     }
+2206: 
+2207:     #[test]
+2208:     fn timer_duration_debug_format() {
+2209:         let dur = TimerDuration::new(10);
+2210:         let s = format!("{:?}", dur);
+2211:         assert!(s.contains("10"));
+2212:     }
+2213: 
+2214:     #[test]
+2215:     fn timer_deadline_debug_format() {
+2216:         let dl = TimerDeadline::new(7);
+2217:         let s = format!("{:?}", dl);
+2218:         assert!(s.contains("7"));
+2219:     }
+2220: 
+2221:     #[test]
+2222:     fn timer_kind_debug_format() {
+2223:         let k = TimerKind::Retry;
+2224:         let s = format!("{:?}", k);
+2225:         assert!(!s.is_empty());
+2226: 
+2227:         let k2 = TimerKind::DelayedAction(ActionId::new(42));
+2228:         let s2 = format!("{:?}", k2);
+2229:         assert!(s2.contains("42"));
+2230:     }
+2231: 
+2232:     // ---- IntrospectionRegistry epoch saturation (RS-214) ----
+2233: 
+2234:     /// Constructs an `IntrospectionRegistry` whose internal `next_epoch` is
+2235:     /// pre-seeded to a chosen value. Used to exercise the saturation boundary
+2236:     /// without simulating 2^64 register calls.
+2237:     fn registry_with_next_epoch(next_epoch: u64) -> IntrospectionRegistry {
+2238:         IntrospectionRegistry {
+2239:             inner: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+2240:             next_epoch,
+2241:         }
+2242:     }
+2243: 
+2244:     /// RS-214: `register` must return `IntrospectionEpochExhausted` (typed)
+2245:     /// once `next_epoch == u64::MAX`, instead of silently reusing the same
+2246:     /// epoch for the new handle.
+2247:     #[test]
+2248:     fn introspection_register_returns_typed_error_when_next_epoch_is_max() {
+2249:         let mut registry = registry_with_next_epoch(u64::MAX);
+2250:         let run = vb_core::ids::RunId::new(9101);
+2251: 
+2252:         let result = registry.register(run);
+2253: 
+2254:         match result {
+2255:             Err(RuntimeError::IntrospectionEpochExhausted) => {}
+2256:             Err(other) => panic!("expected IntrospectionEpochExhausted, got {other:?}"),
+2257:             Ok(handle) => panic!(
+2258:                 "expected IntrospectionEpochExhausted, got Ok handle with epoch {}",
+2259:                 handle.epoch()
+2260:             ),
+2261:         }
+2262: 
+2263:         // The exhausted sentinel must persist: subsequent registers must keep
+2264:         // failing rather than silently reusing u64::MAX.
+2265:         let again = registry.register(vb_core::ids::RunId::new(9102));
+2266:         assert!(
+2267:             matches!(again, Err(RuntimeError::IntrospectionEpochExhausted)),
+2268:             "post-exhaustion registers must also return IntrospectionEpochExhausted, got {again:?}"
+2269:         );
+2270: 
+2271:         // No handle should have been inserted into the registry.
+2272:         assert!(!registry.is_visible(run));
+2273:     }
+2274: 
+2275:     /// RS-214: `register_with_overlap_policy` (no overlap branch) must return
+2276:     /// `IntrospectionEpochExhausted` at the saturation boundary.
+2277:     #[test]
+2278:     fn introspection_register_with_overlap_policy_returns_typed_error_on_saturation() {
+2279:         let mut registry = registry_with_next_epoch(u64::MAX);
+2280:         let run = vb_core::ids::RunId::new(9201);
+2281: 
+2282:         let result = registry.register_with_overlap_policy(run);
+2283: 
+2284:         match result {
+2285:             Err(RuntimeError::IntrospectionEpochExhausted) => {}
+2286:             Err(other) => panic!("expected IntrospectionEpochExhausted, got {other:?}"),
+2287:             Ok(_) => panic!("expected IntrospectionEpochExhausted, got Ok(_) at saturation"),
+2288:         }
+2289: 
+2290:         assert!(!registry.is_visible(run));
+2291:     }
+2292: 
+2293:     /// RS-214: `register_with_overlap_policy` (overlap branch) must return
+2294:     /// `IntrospectionEpochExhausted` at the saturation boundary even when the
+2295:     /// caller supplies an existing registration. This is the precise path that
+2296:     /// would have aliased the live handle's epoch under saturating arithmetic.
+2297:     #[test]
+2298:     fn introspection_register_with_overlap_policy_overlap_branch_returns_typed_error_on_saturation()
+2299:     {
+2300:         let mut registry = registry_with_next_epoch(u64::MAX - 1);
+2301:         let run = vb_core::ids::RunId::new(9301);
+2302: 
+2303:         // First register succeeds and advances next_epoch to u64::MAX.
+2304:         let _first = registry
+2305:             .register(run)
+2306:             .expect("first register at u64::MAX - 1 must succeed");
+2307:         assert_eq!(registry.next_epoch_for_test(), u64::MAX);
+2308: 
+2309:         // Second call (overlap branch) must fail with the typed exhaustion error
+2310:         // instead of reusing u64::MAX as the new epoch for the replacement handle.
+2311:         let result = registry.register_with_overlap_policy(run);
+2312:         match result {
+2313:             Err(RuntimeError::IntrospectionEpochExhausted) => {}
+2314:             Err(other) => {
+2315:                 panic!("expected IntrospectionEpochExhausted on overlap branch, got {other:?}")
+2316:             }
+2317:             Ok(_) => panic!("expected IntrospectionEpochExhausted on overlap branch, got Ok(_)"),
+2318:         }
+2319: 
+2320:         // The original handle's epoch must remain unchanged.
+2321:         assert_eq!(_first.epoch(), u64::MAX - 1);
+2322:     }
+2323: 
+2324:     impl IntrospectionRegistry {
+2325:         #[cfg(test)]
+2326:         fn next_epoch_for_test(&self) -> u64 {
+2327:             self.next_epoch
+2328:         }
+2329:     }
+2330: }
+2331: 
+2332: // ============================================================================
+2333: // Regression tests for RA-014: lock_admission permanently bricks shard
+2334: // admission on mutex poison.
+2335: //
+2336: // Before the fix, `IntrospectionRegistry::register` / `unregister` /
+2337: // `unregister_all` / `register_with_overlap_policy` all used the pattern
+2338: //   `self.inner.lock().map_err(|_| RuntimeError::JournalPoisoned)?`
+2339: // which discards the poisoned guard. Once poisoned, every subsequent call
+2340: // hits a still-poisoned mutex and returns `Err(JournalPoisoned)` forever,
+2341: // permanently disabling the admission gate for that shard.
+2342: //
+2343: // After the fix, the registry recovers the inner data via
+2344: // `PoisonError::into_inner()` and continues accepting admissions. The
+2345: // follow-up tests pin down that behavior.
+2346: // ============================================================================
+2347: #[cfg(test)]
+2348: mod introspection_poison_regression_tests {
+2349:     use super::*;
+2350:     use crate::RuntimeError;
+2351:     use std::panic::AssertUnwindSafe;
+2352:     use std::sync::Arc;
+2353:     use std::thread;
+2354: 
+2355:     /// Spawns a thread that locks the shared mutex and panics, leaving the
+2356:     /// mutex poisoned. `catch_unwind` swallows the panic so the test thread
+2357:     /// is not poisoned. The function returns once the spawned thread has
+2358:     /// finished and the mutex is verifiably poisoned.
+2359:     fn poison_arc_mutex<T: Send + 'static>(mutex: Arc<std::sync::Mutex<T>>) {
+2360:         let handle = thread::spawn(move || {
+2361:             // Lock and immediately panic to poison the mutex. The panic
+2362:             // itself is the source of the poison; we use `catch_unwind` to
+2363:             // keep the test process alive.
+2364:             let _guard = mutex.lock().expect("acquire lock to poison");
+2365:             panic!("intentional poison for RA-014 regression test");
+2366:         });
+2367:         let result = std::panic::catch_unwind(AssertUnwindSafe(move || {
+2368:             // Wait for the spawner to finish panicking.
+2369:             let _ = handle.join();
+2370:         }));
+2371:         // The spawned thread panicked; that is the intended outcome.
+2372:         let _ = result;
+2373:     }
+2374: 
+2375:     #[test]
+2376:     fn register_recovers_after_mutex_poison() {
+2377:         // Given: a fresh registry whose inner mutex is poisoned.
+2378:         let mut registry = IntrospectionRegistry::new();
+2379:         poison_arc_mutex(registry.inner_arc_for_test());
+2380: 
+2381:         // When: register is called after the poison.
+2382:         let result = registry.register(RunId::new(1));
+2383: 
+2384:         // Then: registration succeeds because the registry recovers
+2385:         // the poisoned guard rather than returning JournalPoisoned.
+2386:         assert!(
+2387:             result.is_ok(),
+2388:             "register must recover from mutex poison, got {result:?}"
+2389:         );
+2390:         assert!(registry.is_visible(RunId::new(1)));
+2391:     }
+2392: 
+2393:     #[test]
+2394:     fn register_with_overlap_recovers_after_mutex_poison() {
+2395:         let mut registry = IntrospectionRegistry::new();
+2396:         poison_arc_mutex(registry.inner_arc_for_test());
+2397: 
+2398:         let result = registry.register_with_overlap_policy(RunId::new(7));
+2399:         assert!(
+2400:             result.is_ok(),
+2401:             "register_with_overlap_policy must recover, got {result:?}"
+2402:         );
+2403:     }
+2404: 
+2405:     #[test]
+2406:     fn unregister_recovers_after_mutex_poison() {
+2407:         let mut registry = IntrospectionRegistry::new();
+2408:         poison_arc_mutex(registry.inner_arc_for_test());
+2409: 
+2410:         let result = registry.unregister(RunId::new(3));
+2411:         assert!(result.is_ok(), "unregister must recover, got {result:?}");
+2412:     }
+2413: 
+2414:     #[test]
+2415:     fn unregister_all_recovers_after_mutex_poison() {
+2416:         let mut registry = IntrospectionRegistry::new();
+2417:         poison_arc_mutex(registry.inner_arc_for_test());
+2418: 
+2419:         let result = registry.unregister_all();
+2420:         assert!(
+2421:             result.is_ok(),
+2422:             "unregister_all must recover, got {result:?}"
+2423:         );
+2424:     }
+2425: 
+2426:     #[test]
+2427:     fn admission_continues_after_poison_recovery() {
+2428:         // Given: a registry with one registered run, then a poison event.
+2429:         let mut registry = IntrospectionRegistry::new();
+2430:         let initial = registry.register(RunId::new(100));
+2431:         assert!(initial.is_ok(), "initial register must succeed");
+2432: 
+2433:         // Drop the handle so the run state can be re-registered later.
+2434:         drop(initial);
+2435: 
+2436:         poison_arc_mutex(registry.inner_arc_for_test());
+2437: 
+2438:         // When: we register again after the poison.
+2439:         let after_poison = registry.register(RunId::new(101));
+2440: 
+2441:         // Then: registration succeeds and the second run is visible.
+2442:         assert!(
+2443:             after_poison.is_ok(),
+2444:             "post-poison register must succeed, got {after_poison:?}"
+2445:         );
+2446:         assert!(registry.is_visible(RunId::new(101)));
+2447:     }
+2448: 
+2449:     #[test]
+2450:     fn register_rejects_run_already_exists_after_poison_recovery() {
+2451:         // Given: a registry with an actively-held registration, poisoned,
+2452:         // then we try to register the same run again. The handle stays
+2453:         // alive so the registry still holds the prior mapping.
+2454:         let mut registry = IntrospectionRegistry::new();
+2455:         let first = registry.register(RunId::new(42));
+2456:         assert!(first.is_ok(), "first register must succeed");
+2457: 
+2458:         poison_arc_mutex(registry.inner_arc_for_test());
+2459: 
+2460:         // When: we attempt to register the same run again post-recovery.
+2461:         let dup = registry.register(RunId::new(42));
+2462: 
+2463:         // Then: recovery exposes the actual state, so the duplicate
+2464:         // detection still rejects the second registration with the typed
+2465:         // RunAlreadyExists error rather than a misleading JournalPoisoned.
+2466:         assert!(
+2467:             matches!(dup, Err(RuntimeError::RunAlreadyExists)),
+2468:             "post-recovery duplicate must surface RunAlreadyExists, got {dup:?}"
+2469:         );
+2470: 
+2471:         // Keep `first` alive until the assertions are done so the handle's
+2472:         // RAII Drop does not race with the recovery test.
+2473:         drop(first);
+2474:     }
+2475: }
+2476: // ============================================================================
+2477: // Regression test for vb-8ilqu: InspectSnapshotFormatter::format_snapshot
+2478: // must source the `run` from the snapshot in the Found branch, never from
+2479: // a separately-supplied external parameter.
+2480: // ============================================================================
+2481: #[cfg(test)]
+2482: mod format_snapshot_uses_snap_run {
+2483:     use super::*;
+2484: 
+2485:     /// The Found branch must cite the snapshot's own `run`, not an external
+2486:     /// value. Construct a snapshot whose `snap.run` is `B` and verify the
+2487:     /// formatted output contains `B` rather than any other value the
+2488:     /// previous external-parameter signature would have shadowed.
+2489:     #[test]
+2490:     fn found_branch_uses_snap_run_not_external() {
+2491:         let snap = InspectSnapshot {
+2492:             run: RunId::new(7777),
+2493:             correlation: 99,
+2494:             pc: StepIdx::new(3),
+2495:             executed: 5,
+2496:         };
+2497:         let response = InspectResponse::Found(snap);
+2498: 
+2499:         let formatted = InspectSnapshotFormatter::format_snapshot(&response);
+2500: 
+2501:         assert!(
+2502:             formatted.contains("7777"),
+2503:             "formatted output must cite snap.run (7777), got: {formatted}"
+2504:         );
+2505:         assert!(
+2506:             formatted.contains("InspectSnapshot"),
+2507:             "formatted output should be the Found-branch shape, got: {formatted}"
+2508:         );
+2509:     }
+2510: 
+2511:     /// Two snapshots with different `snap.run` values must format to
+2512:     /// different strings — proves the formatter does not collapse to a
+2513:     /// single fixed value.
+2514:     #[test]
+2515:     fn found_branch_distinguishes_distinct_snap_runs() {
+2516:         let response_a = InspectResponse::Found(InspectSnapshot {
+2517:             run: RunId::new(1),
+2518:             correlation: 0,
+2519:             pc: StepIdx::ZERO,
+2520:             executed: 0,
+2521:         });
+2522:         let response_b = InspectResponse::Found(InspectSnapshot {
+2523:             run: RunId::new(2),
+2524:             correlation: 0,
+2525:             pc: StepIdx::ZERO,
+2526:             executed: 0,
+2527:         });
+2528: 
+2529:         let formatted_a = InspectSnapshotFormatter::format_snapshot(&response_a);
+2530:         let formatted_b = InspectSnapshotFormatter::format_snapshot(&response_b);
+2531: 
+2532:         assert_ne!(
+2533:             formatted_a, formatted_b,
+2534:             "two snapshots with distinct snap.run must format differently"
+2535:         );
+2536:         assert!(formatted_a.contains("RunId(1)"));
+2537:         assert!(formatted_b.contains("RunId(2)"));
+2538:     }
+2539: }

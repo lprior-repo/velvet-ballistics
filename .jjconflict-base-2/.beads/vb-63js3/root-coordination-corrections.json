@@ -1,0 +1,14 @@
+{
+  "original_lines": 201,
+  "execute_lane_return": "anyhow::Result<LaneResult>",
+  "xtask_targets": "library exports pub mod lanes; binary imports xtask::lanes; tests selected with --manifest-path --lib",
+  "root_incorrect_draft_instructions_withdrawn": [
+    "224-ish original lines",
+    "execute_lane Result<String>",
+    "xtask binary-only",
+    "--bin xtask as lane unit-test selector"
+  ],
+  "contract_root_edits": "Correct existing lane routing wording and actual library test selector; no Rust authored by root.",
+  "source_author": "local3090 v2/v3; rustfmt root mechanical",
+  "acceptance": "actual focused tests and independent CODE+TEST reviews pending"
+}

@@ -1,0 +1,2 @@
+[verus] verus --crate-type=lib verification/verus/ipc_strict_admission.rs
+verification results:: 8 verified, 0 errors

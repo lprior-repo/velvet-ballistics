@@ -1,0 +1,14 @@
+APPROVE with limits.
+
+**Judged:** Cargo dev dep key `vb_cli` → `velvet_ballistics` wiring fix only.
+
+**Evidence:**
+- All four targets compile and execute.
+- 141 tests pass across three targets (18 + 13 + 48 + 62).
+- The 14 failures are confined to `vb_37lc_canonical_spelling_red`, a pre-existing red suite tracking canonical-spelling fixture/source defects (vb-0hzo1). None are caused by the dep-key rename; the failures assert `vb_cli` as canonical or expect legacy classification of `velvet_ballistics`, both independent of the Cargo manifest key.
+- Zero `vb_cli::` import consumers exist; the rename aligns the manifest with actual usage.
+
+**Limits:**
+- No whole-CI green claim. The `vb_37lc_canonical_spelling_red` suite remains red (14 failures) and must be disclosed as such.
+- Approval is scoped to the prerequisite wiring fix. Publishing is not blocked by the separate fixture-source defects tracked in vb-0hzo1.
+- Do not merge vb-0hzo1 fixes into this change; keep them distinct.

@@ -1,0 +1,23 @@
+{
+  "scope": "final foundation tests only; no parent/v1 approval",
+  "candidate": "8e84f79b4a878ddc4989646e4f092245b1c24b84",
+  "all_rust_sha256_match": true,
+  "actual_specific_test_counts": {
+    "crates/vb_core/src/policy/new_tests.rs": 10,
+    "crates/vb_core/src/policy/original_tests.rs": 7,
+    "crates/vb_runtime/src/policy/emergency_and_admission_tests.rs": 4,
+    "crates/vb_runtime/src/policy/taint_tests.rs": 6,
+    "crates/vb_runtime/src/policy/tests.rs": 12,
+    "crates/vb_runtime/src/policy/ticket_field_variation_tests.rs": 9
+  },
+  "raw_gate_totals": {
+    "core": 51,
+    "runtime": 93
+  },
+  "prose_corrections": [
+    "Review headings incorrectly count new core13 and runtime main14; exact attribute counts in this manifest supersede. Raw executed totals51+93 are correct.",
+    "Not every taint-specific test checks nonzero; allfive retain taint and pairwise-distinct digests, clean also nonzero.",
+    "Full current-live identity asserted in dedicated identity test; explicit_permit checks outcome/layer, not all identity fields.",
+    "Canonical integrity gate later detects original7 relocation; bead vb-tjnjt will restore exact bodies inline without modifying gate. This review remains scoped to actual frozen source/tests."
+  ]
+}

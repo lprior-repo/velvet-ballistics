@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 10,
+  "sublane": "implementation",
+  "delegate": "holzman-rust",
+  "attempt": 1,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "State 9 approved repaired test plan and suite; implement direct runtime API behaviors without weakening tests/proofs",
+  "input_artifacts": [".beads/vb-vt2f/contract.md", ".beads/vb-vt2f/proof-review.md", ".beads/vb-vt2f/contract-verification-review.md", ".beads/vb-vt2f/test-plan.md", ".beads/vb-vt2f/test-plan-review.md", ".beads/vb-vt2f/test-suite-review.md", ".beads/vb-vt2f/test-writer-report.md"],
+  "output_artifacts": [".beads/vb-vt2f/implementation.md", "production code changes"],
+  "status": "QUEUED"
+}

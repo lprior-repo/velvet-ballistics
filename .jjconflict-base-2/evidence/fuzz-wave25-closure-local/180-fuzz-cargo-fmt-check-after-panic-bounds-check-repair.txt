@@ -1,0 +1,9 @@
+=== cargo fmt --check (fuzz) ===
+Working dir: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+Git toplevel: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+JJ root: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+Date: 2026-07-10T12:35:19Z
+
+Command: cargo fmt --manifest-path=fuzz/Cargo.toml --check
+
+exit_status=0

@@ -1,0 +1,42 @@
+[
+  {
+    "file": "crates/workspace_tests/tests/cancel_kill_lattice_tests.rs",
+    "line": 304,
+    "source": "// HP-3 and HP-4 tests require runtime fix that was reverted - skip for now\n#[test]\n#[ignore]\nfn hp3_cancel_action_suspended_run_removes_pending_action() -> Result<(), String> {\n    let journal = Arc::new(VolatileRuntimeJournal::new());\n    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());\n    let run = RunId::new(20003);"
+  },
+  {
+    "file": "crates/workspace_tests/tests/cancel_kill_lattice_tests.rs",
+    "line": 341,
+    "source": "/// HP-4: Action completion after cancel returns error.\n#[test]\n#[ignore]\nfn hp4_action_after_cancel_returns_error() -> Result<(), String> {\n    let journal = Arc::new(VolatileRuntimeJournal::new());\n    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());\n    let run = RunId::new(20004);"
+  },
+  {
+    "file": "crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs",
+    "line": 445,
+    "source": "// KNOWN ISSUE: Returns InvalidActionCompletion - pre-existing bug\n#[test]\n#[ignore]\nfn action_completion_resumes_at_correct_step_when_valid_ticket() -> Result<(), String> {\n    let journal = Arc::new(VolatileRuntimeJournal::new());\n    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal);\n    let run = RunId::new(3001);"
+  },
+  {
+    "file": "crates/workspace_tests/tests/vb_test_runtime_lifecycle_state_behavior.rs",
+    "line": 287,
+    "source": "// Pre-existing issue: test fails with assertion on step state\n#[test]\n#[ignore]\nfn action_suspension_transitions_run_to_resumable() -> Result<(), String> {\n    let journal = Arc::new(VolatileRuntimeJournal::new());\n    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());\n    let run = RunId::new(10002);"
+  },
+  {
+    "file": "crates/workspace_tests/tests/vb_test_runtime_lifecycle_state_behavior.rs",
+    "line": 325,
+    "source": "// Pre-existing issue: test fails with InvalidActionCompletion\n#[test]\n#[ignore]\nfn action_completion_transitions_run_from_resumable_to_finished() -> Result<(), String> {\n    let journal = Arc::new(VolatileRuntimeJournal::new());\n    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());\n    let run = RunId::new(10003);"
+  },
+  {
+    "file": "crates/workspace_tests/tests/vb_test_runtime_lifecycle_state_behavior.rs",
+    "line": 526,
+    "source": "// Pre-existing issue: test fails with ActionScheduled not journaled\n#[test]\n#[ignore]\nfn action_scheduled_lifecycle_event_recorded() -> Result<(), String> {\n    let journal = Arc::new(VolatileRuntimeJournal::new());\n    let mut runtime = Runtime::new(shard_count(1)?, test_config(), journal.clone());\n    let run = RunId::new(20002);"
+  },
+  {
+    "file": "crates/workspace_tests/tests/vb_test_validate_yaml_parsing_behavior.rs",
+    "line": 756,
+    "source": "\n#[test]\n#[ignore]\nfn validate_trigger_accepts_event_trigger_with_name() {\n    // Given a workflow doc with event trigger containing name\n    let doc = make_workflow(vec![(\n        \"when\","
+  },
+  {
+    "file": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+    "line": 458,
+    "source": "\n#[test]\n#[ignore]\nfn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String> {\n    // Given: SCN-VT2F-004 two suspended runs and a public action ticket for one run.\n    let journal = Arc::new(VolatileRuntimeJournal::new());\n    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());"
+  }
+]

@@ -1,0 +1,52 @@
+
+running 47 tests
+test compile_workflow_choose_rejects_unknown_otherwise_label ... ok
+test compile_workflow_choose_branch_body_emits_dense_order ... ok
+test compile_source_returns_exact_error_variants_for_contract_taxonomy ... ok
+test lower_choose_accepts_empty_branches_with_otherwise ... ok
+test lower_choose_rejects_empty_branches_without_otherwise ... ok
+test lower_choose_accepts_valid_otherwise_target ... ok
+test lower_choose_rejects_more_than_64_branches ... ok
+test compile_workflow_emits_exact_wait_until_shape_when_wait_has_deadline_only ... ok
+test compile_workflow_returns_unsupported_step_primitive_only_for_out_of_scope_primitives ... ok
+test compile_workflow_rejects_multi_step_together_branch ... ok
+test compile_workflow_rejects_non_set_body_in_collect ... ok
+test compile_workflow_choose_two_branches_with_otherwise ... ok
+test compile_workflow_rejects_multi_step_body_at_non_zero_step ... ok
+test compile_workflow_returns_step_field_shape_when_each_scoped_primitive_required_field_is_empty ... ok
+test compile_source_emits_supported_ir_when_each_scoped_primitive_is_valid ... ok
+test compile_workflow_rejects_non_set_body_in_all_scoped_primitives ... ok
+test compile_workflow_choose_64_branches_accepted ... ok
+test compile_workflow_rejects_empty_body_in_scoped_primitives ... ok
+test compile_workflow_rejects_multi_step_body_in_scoped_primitives ... ok
+test public_helpers_return_exact_step_index_slot_index_limit_and_workflow_error_variants ... ok
+test public_lowering_helpers_return_exact_range_and_workflow_errors ... ok
+test wait_digest_is_deterministic_through_compile_source_when_same_source_compiled_thrice ... ok
+test wait_event_no_timeout_vs_with_timeout_produce_distinct_digests_through_compile_source_when_timeout_absent ... ok
+test wait_event_sensitivity_to_event_field_change_through_compile_source_when_event_differs ... ok
+test wait_invalid_shape_event_none_timeout_none_rejected_with_step_field_shape_when_both_fields_absent ... ok
+test wait_event_sensitivity_to_timeout_field_change_through_compile_source_when_timeout_differs ... ok
+test public_compile_apis_return_unsupported_step_primitive_for_save_do_choose_only ... ok
+test compile_workflow_choose_rejects_65_branches ... ok
+test wait_workflow_with_mixed_steps_digests_differ_from_non_wait_workflow_when_wait_added ... ok
+test yaml_compiler_compile_returns_canonical_yaml_when_source_parse_fails ... ok
+test wait_workflow_digest_roundtrips_through_parts_after_compile_source_when_wait_steps_present ... ok
+test compile_workflow_emits_supported_ir_when_each_scoped_primitive_is_valid ... ok
+test wait_until_vs_wait_event_produce_distinct_digests_through_compile_source_when_shapes_differ ... ok
+test wait_until_timeout_change_produces_distinct_digest_through_compile_source_when_timeout_differs ... ok
+test public_compile_apis_preserve_set_and_terminal_finish_regression ... ok
+test proptest_non_wait_workflows_digests_are_deterministic_after_wait_fix ... ok
+test yaml_compiler_compile_emits_supported_ir_when_each_scoped_primitive_is_valid ... ok
+test public_compile_apis_return_exact_error_variants_for_contract_taxonomy ... ok
+test proptest_wait_pairwise_distinct_digests ... ok
+test proptest_wait_until_vs_wait_event ... ok
+test proptest_wait_field_sensitivity ... ok
+test proptest_wait_sentinel_unambiguous ... ok
+test cross_path_wait_digest_equivalence ... ok
+test proptest_scoped_primitives_never_return_unsupported_step_primitive ... ok
+test proptest_repeat_different_params_different_digest ... ok
+test proptest_repeat_different_body_different_digest ... ok
+test proptest_equal_primitive_sources_compile_to_equal_digest_and_ir ... ok
+
+test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+

@@ -1,0 +1,15 @@
+
+running 1 test
+test runtime::shutdown_tests::failed_shutdown_preserves_actual_pending_timer_authority ... FAILED
+
+failures:
+
+---- runtime::shutdown_tests::failed_shutdown_preserves_actual_pending_timer_authority stdout ----
+Error: "missing admission"
+
+
+failures:
+    runtime::shutdown_tests::failed_shutdown_preserves_actual_pending_timer_authority
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1914 filtered out; finished in 0.01s
+

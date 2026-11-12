@@ -1,0 +1,181 @@
+ACTUALCURRENT crates/vb_storage/src/lib.rs
+1: #![forbid(unsafe_code)]
+2: // Pedantic allows: documentation-only lints that would require pervasive changes
+3: // with no functional impact on correctness or safety.
+4: #![allow(clippy::missing_errors_doc)]
+5: #![allow(clippy::must_use_candidate)]
+6: #![allow(clippy::doc_markdown)]
+7: #![allow(clippy::return_self_not_must_use)]
+8: #![allow(clippy::comparison_chain)]
+9: //! Fjall append-only journal boundary with full recovery support.
+10: //!
+11: //! Provides digest-mismatch detection, full primitive replay (all node kinds),
+12: //! non-idempotent action blocking during recovery, replay divergence detection,
+13: //! snapshot-plus-tail journal recovery, and full journal recovery when no
+14: //! snapshot is available.
+15: 
+16: // ============================================================================
+17: // Submodules
+18: // ============================================================================
+19: 
+20: pub mod admission;
+21: pub mod artifacts;
+22: pub mod batch;
+23: pub mod binary;
+24: pub mod blobs;
+25: pub mod codec;
+26: #[cfg(miri)]
+27: pub mod codec_miri_tests;
+28: pub mod constants;
+29: pub mod error;
+30: pub mod events;
+31: pub mod executor;
+32: pub mod headers;
+33: pub mod indexes;
+34: pub mod inputs;
+35: pub mod journal;
+36: #[cfg(all(kani, feature = "legacy-kani"))]
+37: pub mod kani_codec;
+38: 
+39: #[cfg(all(kani, feature = "legacy-kani"))]
+40: pub mod kani_record_magic;
+41: 
+42: #[cfg(all(kani, feature = "legacy-kani"))]
+43: pub mod kani_record_schema;
+44: 
+45: #[cfg(all(kani, feature = "legacy-kani"))]
+46: pub mod kani_record_kind;
+47: 
+48: #[cfg(all(kani, feature = "legacy-kani"))]
+49: pub mod kani_record_payload_len;
+50: 
+51: #[cfg(all(kani, feature = "legacy-kani"))]
+52: pub mod kani_record_crc;
+53: 
+54: #[cfg(all(kani, feature = "legacy-kani"))]
+55: pub mod kani_digest_checks_vb_2bzz;
+56: 
+57: #[cfg(all(kani, feature = "legacy-kani"))]
+58: pub mod kani_hydrate_proofs;
+59: 
+60: #[cfg(all(kani, feature = "legacy-kani"))]
+61: pub mod kani_admission;
+62: 
+63: #[cfg(all(kani, feature = "legacy-kani"))]
+64: pub mod kani_postcard_envelope_wire;
+65: 
+66: #[cfg(all(kani, feature = "kani-typed-partitioned-ids"))]
+67: pub mod kani_typed_partitioned_ids;
+68: 
+69: #[cfg(all(kani, feature = "kani-vb-u8gi-decode-taxonomy"))]
+70: pub mod kani_vb_u8gi_storage_decode_order;
+71: 
+72: #[cfg(all(kani, feature = "kani-vb-u8gi-decode-taxonomy"))]
+73: pub mod kani_vb_u8gi_storage_numeric_fields;
+74: 
+75: #[cfg(all(kani, feature = "kani-vb-u8gi-decode-taxonomy"))]
+76: pub mod kani_vb_u8gi_storage_payload_bounds;
+77: 
+78: // --- vb-vzcuf Kani harnesses (PS-001 through PS-009) ---
+79: #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+80: pub mod kani_vb_vzcuf_ps001;
+81: #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+82: pub mod kani_vb_vzcuf_ps002;
+83: #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+84: pub mod kani_vb_vzcuf_ps003;
+85: #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+86: pub mod kani_vb_vzcuf_ps004;
+87: #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+88: pub mod kani_vb_vzcuf_ps005;
+89: #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+90: pub mod kani_vb_vzcuf_ps006;
+91: #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+92: pub mod kani_vb_vzcuf_ps007;
+93: #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+94: pub mod kani_vb_vzcuf_ps008;
+95: #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
+96: pub mod kani_vb_vzcuf_ps009;
+97: 
+98: #[cfg(kani)]
+99: pub mod kani_vbjpq733_proofs;
+100: 
+101: pub mod keys;
+102: pub mod preview;
+103: pub mod process_lock;
+104: mod public_api;
+105: 
+106: // PO-010: register the deterministic replay proptest module for `cargo test --lib`
+107: // evidence collection. This is test-only verification wiring and does not alter
+108: // production runtime behavior.
+109: #[cfg(test)]
+110: #[path = "po010_proptests.rs"]
+111: mod proptests;
+112: 
+113: // vb-b8i8f: proptest_storage.rs disabled — proptest 1.11.0 block-form
+114: // incompatibility. File requires rewrite to single-test form.
+115: // Will be fixed in follow-up bead. See LANDING-NOTE-001.
+116: // #[cfg(test)]
+117: // #[path = "proptest_storage.rs"]
+118: // mod proptest_storage;
+119: 
+120: #[cfg(test)]
+121: #[path = "proptests.rs"]
+122: mod proptest_integration;
+123: 
+124: #[cfg(test)]
+125: #[path = "error_tests.rs"]
+126: mod error_tests;
+127: 
+128: #[cfg(test)]
+129: #[path = "error_code_tests.rs"]
+130: mod error_code_tests;
+131: 
+132: #[cfg(test)]
+133: #[path = "edge_case_tests.rs"]
+134: mod edge_case_tests;
+135: 
+136: #[cfg(test)]
+137: #[path = "type_tests.rs"]
+138: mod type_tests;
+139: 
+140: #[cfg(test)]
+141: #[path = "index_tests.rs"]
+142: mod index_tests;
+143: 
+144: // vb-3wn7x: pending action index maintenance contract tests.
+145: #[cfg(test)]
+146: #[path = "index_maintenance_tests.rs"]
+147: mod index_maintenance_tests;
+148: 
+149: #[cfg(test)]
+150: #[path = "artifact_tests.rs"]
+151: mod artifact_tests;
+152: 
+153: #[cfg(test)]
+154: #[path = "blob_tests.rs"]
+155: mod blob_tests;
+156: 
+157: #[cfg(test)]
+158: #[path = "header_tests.rs"]
+159: mod header_tests;
+160: 
+161: #[cfg(test)]
+162: #[path = "hydrate_tests.rs"]
+163: mod hydrate_tests;
+164: 
+165: #[cfg(test)]
+166: #[path = "process_lock_tests.rs"]
+167: mod process_lock_tests;
+168: 
+169: #[cfg(test)]
+170: #[path = "record_tests.rs"]
+171: mod record_tests;
+172: 
+173: #[cfg(test)]
+174: #[path = "recover_tests.rs"]
+175: mod recover_tests;
+176: 
+177: #[cfg(test)]
+178: #[path = "recovery_type_tests.rs"]
+179: mod recovery_type_tests;
+180: 

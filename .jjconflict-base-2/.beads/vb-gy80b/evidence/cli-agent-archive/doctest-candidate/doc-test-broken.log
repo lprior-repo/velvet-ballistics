@@ -1,0 +1,28 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-gy80b-module-guard-5090/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.65s
+   Doc-tests vb_compile
+
+running 1 test
+test crates/vb_compile/src/lib.rs - (line 11) ... FAILED
+
+failures:
+
+---- crates/vb_compile/src/lib.rs - (line 11) stdout ----
+error[E0432]: unresolved import `vb_compile::expr_proofs_broken`
+  --> crates/vb_compile/src/lib.rs:14:5
+   |
+14 | use vb_compile::expr_proofs_broken;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `expr_proofs_broken` in the root
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.
+Couldn't compile the test.
+
+failures:
+    crates/vb_compile/src/lib.rs - (line 11)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+all doctests ran in 0.07s; merged doctests compilation took 0.03s
+error: doctest failed, to rerun pass `-p vb_compile --doc`

@@ -1,0 +1,60 @@
+```rust
+fn source(schema: &str) -> String {
+    format!(
+        "version: 1\nname: test\ntrigger: manual\ninputs:\n  value: {schema}\n  constant42: number\nsteps:\n  - id: save\n    type: save\n  - id: finish\n    type: finish\n"
+    )
+}
+
+#[test]
+fn test_input_slot_ordering() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = source("number").replace("  value: number", "  zulu: boolean\n  alpha: number");
+    let compiled = vb_compile::compile_workflow(yaml.as_bytes())?;
+    let kinds: Vec<vb_compile::SlotKind> = compiled.input_slots().iter().map(|s| s.kind).collect();
+    assert_eq!(kinds, vec![vb_compile::SlotKind::Bool, vb_compile::SlotKind::I64]);
+    let slots = compiled.input_slots();
+    for pair in slots.windows(2) {
+        let [a, b] = pair else { return Err("pair".into()); };
+        assert!(a.slot.get() < b.slot.get());
+    }
+    Ok(())
+}
+
+#[test]
+fn test_invalid_input_schemas() -> Result<(), Box<dyn std::error::Error>> {
+    let base = vb_compile::parse_workflow_source(&source("number"))?;
+    let invalid_schemas = vec![
+        vb_compile::AuthorValue::Text("list<garbage>".into()),
+        vb_compile::AuthorValue::Text("unknown".into()),
+        vb_compile::AuthorValue::Mapping(vec![]),
+        vb_compile::AuthorValue::Mapping(vec![vb_compile::AuthorEntry {
+            key: "is".into(),
+            value: vb_compile::AuthorValue::Text("unknown".into()),
+        }]),
+    ];
+    for invalid in invalid_schemas {
+        let modified = vb_compile::WorkflowSource::new(vb_compile::WorkflowSourceParts {
+            version: base.version().into(),
+            name: base.name().into(),
+            trigger: base.trigger().clone(),
+            inputs: vec![vb_compile::InputField {
+                key: "value".into(),
+                value: invalid,
+            }],
+            vars: vec![],
+            secrets: vec![],
+            steps: base.steps().to_vec(),
+            result: None,
+            examples: vec![],
+        });
+        let result = vb_compile::compile_source(&modified);
+        assert_eq!(
+            result,
+            Err(vb_compile::CompileErrors(vec![vb_compile::CompileError::InvalidInputSchema {
+                field: "inputs".into(),
+                expected: "an allowed input schema".into(),
+            }]))
+        );
+    }
+    Ok(())
+}
+```

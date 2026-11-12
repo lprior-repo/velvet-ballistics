@@ -1,0 +1,7 @@
+<tool_call>
+<function=read_file>
+<parameter=path>
+/home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-fuzz-5090/crates/vb_ipc/src/error.rs
+</parameter>
+</function>
+</tool_call>

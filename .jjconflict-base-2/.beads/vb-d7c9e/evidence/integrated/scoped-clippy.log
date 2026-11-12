@@ -1,0 +1,11 @@
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_core)
+    Checking vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_validate)
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_storage)
+    Checking vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_expr)
+    Checking vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_yaml)
+    Checking vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_compile)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_runtime)
+    Checking xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/xtask)
+    Checking vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_ipc)
+    Checking velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/fuzz)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.62s

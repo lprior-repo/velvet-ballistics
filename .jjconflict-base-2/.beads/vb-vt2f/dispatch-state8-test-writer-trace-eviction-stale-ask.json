@@ -1,0 +1,23 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 8,
+  "sublane": "test-repair-stale-ask-trace-eviction-after-black-hat",
+  "delegate": "test-writer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/black-hat-review.md",
+    ".beads/vb-vt2f/defects.md",
+    ".beads/vb-vt2f/contract.md",
+    ".beads/vb-vt2f/test-plan-review.md",
+    ".beads/vb-vt2f/test-suite-review.md",
+    "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+    "crates/vb_runtime/src/runtime.rs",
+    "crates/vb_runtime/src/trace.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/test-writer-report.md"
+  ],
+  "attempt": 3,
+  "repair_route": "State 8 test repair after State 12 black-hat LETHAL-001 trace-retention stale ask defect"
+}

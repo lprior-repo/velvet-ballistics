@@ -1,0 +1,6 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol/crates/vb_runtime)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol/crates/vb_ipc)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.75s
+     Running unittests src/lib.rs (target/debug/deps/vb_ipc-4b13d7044b1ea48d)
+error: test failed, to rerun pass `-p vb_ipc --lib`

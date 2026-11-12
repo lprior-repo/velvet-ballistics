@@ -1,0 +1,49 @@
+   Compiling zerocopy v0.8.48
+   Compiling zerocopy-derive v0.8.48
+   Compiling rayon-core v1.13.0
+   Compiling either v1.16.0
+   Compiling serde_json v1.0.150
+   Compiling crossbeam-deque v0.8.6
+   Compiling alloca v0.4.0
+   Compiling plotters-backend v0.3.7
+   Compiling ciborium-io v0.2.2
+   Compiling clap_lex v1.1.0
+   Compiling anstyle v1.0.14
+   Compiling clap_builder v4.6.0
+   Compiling half v2.7.1
+   Compiling ciborium-ll v0.2.2
+   Compiling ppv-lite86 v0.2.21
+   Compiling plotters-svg v0.3.7
+   Compiling itertools v0.13.0
+   Compiling regex-automata v0.4.14
+   Compiling same-file v1.0.6
+   Compiling cast v0.3.0
+   Compiling criterion-plot v0.8.2
+   Compiling walkdir v2.5.0
+   Compiling rayon v1.12.0
+   Compiling regex v1.12.3
+   Compiling plotters v0.3.7
+   Compiling rand_chacha v0.9.0
+   Compiling clap v4.6.1
+   Compiling ciborium v0.2.2
+   Compiling tinytemplate v1.2.1
+   Compiling page_size v0.6.0
+   Compiling anes v0.1.6
+   Compiling oorandom v11.1.5
+   Compiling criterion v0.8.2
+   Compiling proptest v1.11.0
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_core)
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_expr)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 9.81s
+     Running unittests src/lib.rs (target/debug/deps/vb_expr-c4d450150d345082)
+
+running 6 tests
+test core_error_conversion_tests::core_error_division_by_zero_maps_to_expr_division_by_zero ... ok
+test core_error_conversion_tests::core_error_expression_stack_overflow_maps_to_expr_stack_overflow ... ok
+test core_error_conversion_tests::core_error_expression_stack_underflow_maps_to_expr_stack_underflow ... ok
+test core_error_conversion_tests::core_error_non_finite_number_maps_to_expr_non_finite_float ... ok
+test core_error_conversion_tests::core_error_fallback_maps_to_expr_unexpected_eof ... ok
+test core_error_conversion_tests::core_error_type_mismatch_maps_to_expr_type_mismatch ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 851 filtered out; finished in 0.00s
+

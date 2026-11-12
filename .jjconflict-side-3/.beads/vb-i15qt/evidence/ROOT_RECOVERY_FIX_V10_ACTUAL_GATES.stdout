@@ -1,0 +1,1081 @@
+▮▮▮▮ Loading changed files
+Base revision: N/A
+Head revision: HEAD
+Changed files:
+	.beads/vb-0xm95/code-review-v1.md
+	.beads/vb-0xm95/code-review-v2.md
+	.beads/vb-0xm95/findings-v2.json
+	.beads/vb-0xm95/review-source-applicability-v2.json
+	.beads/vb-0xm95/review-source-applicability-v3.json
+	.beads/vb-0xm95/source-manifest-v1.json
+	.beads/vb-88a03/test-manifest-v1.json
+	.beads/vb-c4hzw/contract.md
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V1_COMPILE.json
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V1_COMPILE.stderr
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V1_COMPILE.stdout
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V2_REPAIR.json
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V2_REPAIR.stderr
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V2_REPAIR.stdout
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V3_TYPES.json
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V3_TYPES.stderr
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V3_TYPES.stdout
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V4_FULL_SNAPSHOT.json
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V4_FULL_SNAPSHOT.stderr
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V4_FULL_SNAPSHOT.stdout
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V5_VISIBILITY.json
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V5_VISIBILITY.stderr
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V5_VISIBILITY.stdout
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V6_CAPABILITY.json
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V6_CAPABILITY.stderr
+	.beads/vb-c4hzw/evidence/ROOT_LEGACY_TESTS_V6_CAPABILITY.stdout
+	.beads/vb-fyktj/contract.md
+	.beads/vb-fyktj/exact-source-patch-audit-v1.json
+	.beads/vb-fyktj/independent-ref-frontier-v1.json
+	.beads/vb-fyktj/source-candidates-manifest-v1.json
+	.beads/vb-fyktj/source-candidates-v1.json.gz
+	.beads/vb-i15qt/bounded-recovery-phase-v8.json
+	.beads/vb-i15qt/contract.md
+	.beads/vb-i15qt/evidence/ROOT_LEGACY_FIX_V1_PRODUCTION.json
+	.beads/vb-i15qt/evidence/ROOT_LEGACY_FIX_V1_PRODUCTION.stderr
+	.beads/vb-i15qt/evidence/ROOT_LEGACY_FIX_V1_PRODUCTION.stdout
+	.beads/vb-i15qt/evidence/ROOT_LEGACY_FIX_V5_PRODUCTION.json
+	.beads/vb-i15qt/evidence/ROOT_LEGACY_FIX_V5_PRODUCTION.stderr
+	.beads/vb-i15qt/evidence/ROOT_LEGACY_FIX_V5_PRODUCTION.stdout
+	.beads/vb-i15qt/evidence/ROOT_LEGACY_FIX_V6_FORMATTED.json
+	.beads/vb-i15qt/evidence/ROOT_LEGACY_FIX_V6_FORMATTED.stderr
+	.beads/vb-i15qt/evidence/ROOT_LEGACY_FIX_V6_FORMATTED.stdout
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V2_RUNTIME_LIBRARY.json
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V2_RUNTIME_LIBRARY.stderr
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V2_RUNTIME_LIBRARY.stdout
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V3_RUNTIME_LIBRARY.json
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V3_RUNTIME_LIBRARY.stderr
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V3_RUNTIME_LIBRARY.stdout
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V4_RUNTIME_LIBRARY.json
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V4_RUNTIME_LIBRARY.stderr
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V4_RUNTIME_LIBRARY.stdout
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V5_RUNTIME_LIBRARY.json
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V5_RUNTIME_LIBRARY.stderr
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V5_RUNTIME_LIBRARY.stdout
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V6_FORMATTED_LIBRARY.json
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V6_FORMATTED_LIBRARY.stderr
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V6_FORMATTED_LIBRARY.stdout
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V7_PHASE_LIBRARY.json
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V7_PHASE_LIBRARY.stderr
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V7_PHASE_LIBRARY.stdout
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V8_IDENTITY_LEGACY.json
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V8_IDENTITY_LEGACY.stderr
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V8_IDENTITY_LEGACY.stdout
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V8_IDENTITY_LIBRARY.json
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V8_IDENTITY_LIBRARY.stderr
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V8_IDENTITY_LIBRARY.stdout
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V9_FORMATTED.json
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V9_FORMATTED.stderr
+	.beads/vb-i15qt/evidence/ROOT_RECOVERY_FIX_V9_FORMATTED.stdout
+	.beads/vb-i15qt/review-v1-rejection.json
+	.beads/vb-i15qt/review-v2-rejection.json
+	.beads/vb-l5ru0/compiler-repair-v3.md
+	.beads/vb-l5ru0/contract.md
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V10_VECTOR.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V10_VECTOR.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V10_VECTOR.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V11_CALLS.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V11_CALLS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V11_CALLS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V12_EVENTSEQ.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V12_EVENTSEQ.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V12_EVENTSEQ.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V13_FULL_CALLS.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V13_FULL_CALLS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V13_FULL_CALLS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V14_SPLIT.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V14_SPLIT.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V14_SPLIT.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V15_SUSPENDED_BOUNDS.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V15_SUSPENDED_BOUNDS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V15_SUSPENDED_BOUNDS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V16_SUSPENDED_TYPES.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V16_SUSPENDED_TYPES.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V16_SUSPENDED_TYPES.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V17_SUSPENDED_AUTHORITY.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V17_SUSPENDED_AUTHORITY.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V17_SUSPENDED_AUTHORITY.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V18_SUSPENDED_BOUNDS.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V18_SUSPENDED_BOUNDS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V18_SUSPENDED_BOUNDS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V19_SUSPENDED_RESULTS.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V19_SUSPENDED_RESULTS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V19_SUSPENDED_RESULTS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V1_COMPILE.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V1_COMPILE.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V1_COMPILE.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V20_SUSPENDED_FINAL_BOUNDS.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V20_SUSPENDED_FINAL_BOUNDS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V20_SUSPENDED_FINAL_BOUNDS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V21_EMERGENCY_BOUNDS.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V21_EMERGENCY_BOUNDS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V21_EMERGENCY_BOUNDS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V22_EMERGENCY_PHASES.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V22_EMERGENCY_PHASES.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V22_EMERGENCY_PHASES.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V23_EMERGENCY_FORMATTED.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V23_EMERGENCY_FORMATTED.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V23_EMERGENCY_FORMATTED.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V2_COMPILE.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V2_COMPILE.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V2_COMPILE.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V3_COMPILE.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V3_COMPILE.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V3_COMPILE.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V4_COMPILE.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V4_COMPILE.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V4_COMPILE.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V5_ACCESS.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V5_ACCESS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V5_ACCESS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V6_BORROW.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V6_BORROW.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V6_BORROW.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V7_VISIBILITY.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V7_VISIBILITY.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V7_VISIBILITY.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V8_COMPAT.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V8_COMPAT.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V8_COMPAT.stdout
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V9_ORACLES.json
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V9_ORACLES.stderr
+	.beads/vb-l5ru0/evidence/ROOT_FAILURE_TESTS_V9_ORACLES.stdout
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V11_COMBINED_SPLIT.json
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V11_COMBINED_SPLIT.stderr
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V11_COMBINED_SPLIT.stdout
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V12_UNCONFIGURED_BOUNDS.json
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V12_UNCONFIGURED_BOUNDS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V12_UNCONFIGURED_BOUNDS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V14_UNCONFIGURED_IMPORTS.json
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V14_UNCONFIGURED_IMPORTS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V14_UNCONFIGURED_IMPORTS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V15_ALLOWED_BOUNDS.json
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V15_ALLOWED_BOUNDS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V15_ALLOWED_BOUNDS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V17_ALLOWED_REPAIR.json
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V17_ALLOWED_REPAIR.stderr
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V17_ALLOWED_REPAIR.stdout
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V18_ALLOWED_MUTABLE.json
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V18_ALLOWED_MUTABLE.stderr
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V18_ALLOWED_MUTABLE.stdout
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V19_ALLOWED_FORMATTED.json
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V19_ALLOWED_FORMATTED.stderr
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V19_ALLOWED_FORMATTED.stdout
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V5_BEHAVIOR.json
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V5_BEHAVIOR.stderr
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V5_BEHAVIOR.stdout
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V8_ORACLES.json
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V8_ORACLES.stderr
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V8_ORACLES.stdout
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V9_SAFE_ACCESS.json
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V9_SAFE_ACCESS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_TESTS_V9_SAFE_ACCESS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_V14_COMBINED_RUNTIME_TESTS.json
+	.beads/vb-l5ru0/evidence/ROOT_V14_COMBINED_RUNTIME_TESTS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_V14_COMBINED_RUNTIME_TESTS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_V15_COMBINED_RUNTIME_TESTS.json
+	.beads/vb-l5ru0/evidence/ROOT_V15_COMBINED_RUNTIME_TESTS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_V15_COMBINED_RUNTIME_TESTS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_V15_RUNTIME_LIBRARY_TESTS.json
+	.beads/vb-l5ru0/evidence/ROOT_V15_RUNTIME_LIBRARY_TESTS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_V15_RUNTIME_LIBRARY_TESTS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_V16_COMBINED_RUNTIME_TESTS.json
+	.beads/vb-l5ru0/evidence/ROOT_V16_COMBINED_RUNTIME_TESTS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_V16_COMBINED_RUNTIME_TESTS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_V17_COMBINED_RUNTIME_TESTS.json
+	.beads/vb-l5ru0/evidence/ROOT_V17_COMBINED_RUNTIME_TESTS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_V17_COMBINED_RUNTIME_TESTS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_V19_COMBINED_RUNTIME_TESTS.json
+	.beads/vb-l5ru0/evidence/ROOT_V19_COMBINED_RUNTIME_TESTS.stderr
+	.beads/vb-l5ru0/evidence/ROOT_V19_COMBINED_RUNTIME_TESTS.stdout
+	.beads/vb-l5ru0/evidence/ROOT_V2_COMBINED_CHECK.json
+	.beads/vb-l5ru0/evidence/ROOT_V2_COMBINED_CHECK.stderr
+	.beads/vb-l5ru0/evidence/ROOT_V2_COMBINED_CHECK.stdout
+	.beads/vb-l5ru0/evidence/ROOT_V3_CLIPPY.json
+	.beads/vb-l5ru0/evidence/ROOT_V3_CLIPPY.stderr
+	.beads/vb-l5ru0/evidence/ROOT_V3_CLIPPY.stdout
+	.beads/vb-l5ru0/evidence/ROOT_V3_COMBINED_CHECK.json
+	.beads/vb-l5ru0/evidence/ROOT_V3_COMBINED_CHECK.stderr
+	.beads/vb-l5ru0/evidence/ROOT_V3_COMBINED_CHECK.stdout
+	.beads/vb-l5ru0/evidence/ROOT_V9_CLIPPY.json
+	.beads/vb-l5ru0/evidence/ROOT_V9_CLIPPY.stderr
+	.beads/vb-l5ru0/evidence/ROOT_V9_CLIPPY.stdout
+	.beads/vb-l5ru0/evidence/ROOT_V9_COMBINED_CHECK.json
+	.beads/vb-l5ru0/evidence/ROOT_V9_COMBINED_CHECK.stderr
+	.beads/vb-l5ru0/evidence/ROOT_V9_COMBINED_CHECK.stdout
+	.beads/vb-l5ru0/evidence/ROOT_V9_SOURCE_LENGTH.json
+	.beads/vb-l5ru0/evidence/ROOT_V9_SOURCE_LENGTH.stderr
+	.beads/vb-l5ru0/evidence/ROOT_V9_SOURCE_LENGTH.stdout
+	.beads/vb-l5ru0/implementation-v2.md
+	.beads/vb-ny068/evidence/all-ref-disposition-input-v1.json
+	.beads/vb-ny068/evidence/all-ref-preservation-main-v4.json
+	.beads/vb-ny068/evidence/session-preservation-main-refresh-v3.json
+	.beads/vb-z7ky4/contract.md
+	.beads/vb-z7ky4/evidence/ROOT_V10_COMBINED_PORT_TESTS.json
+	.beads/vb-z7ky4/evidence/ROOT_V10_COMBINED_PORT_TESTS.stderr
+	.beads/vb-z7ky4/evidence/ROOT_V10_COMBINED_PORT_TESTS.stdout
+	.beads/vb-z7ky4/evidence/ROOT_V4_JOURNAL_TESTS.json
+	.beads/vb-z7ky4/evidence/ROOT_V4_JOURNAL_TESTS.stderr
+	.beads/vb-z7ky4/evidence/ROOT_V4_JOURNAL_TESTS.stdout
+	.beads/vb-z7ky4/evidence/ROOT_V5_JOURNAL_TESTS.json
+	.beads/vb-z7ky4/evidence/ROOT_V5_JOURNAL_TESTS.stderr
+	.beads/vb-z7ky4/evidence/ROOT_V5_JOURNAL_TESTS.stdout
+	.beads/vb-z7ky4/evidence/ROOT_V9_COMBINED_PORT_TESTS.json
+	.beads/vb-z7ky4/evidence/ROOT_V9_COMBINED_PORT_TESTS.stderr
+	.beads/vb-z7ky4/evidence/ROOT_V9_COMBINED_PORT_TESTS.stdout
+	.beads/vb-z7ky4/implementation-v3.md
+	.beads/vb-z7ky4/journal-tests-v3.md
+	.beads/vb-z7ky4/journal-tests-v4.md
+	.beads/vb-z7ky4/shard-tests-v3.md
+	crates/vb_runtime/cargo_test_strict.py
+	crates/vb_runtime/run_cargo.py
+	crates/vb_runtime/src/journal.rs
+	crates/vb_runtime/src/journal/chunk_001.rs
+	crates/vb_runtime/src/journal/chunk_002.rs
+	crates/vb_runtime/src/journal/chunk_003.rs
+	crates/vb_runtime/src/journal/tests/strict_policy_port.rs
+	crates/vb_runtime/src/recovery/full/product.rs
+	crates/vb_runtime/src/runtime.rs
+	crates/vb_runtime/src/runtime/live_policy_dispatch.rs
+	crates/vb_runtime/src/runtime/registered_executor.rs
+	crates/vb_runtime/src/shard/impl_.rs
+	crates/vb_runtime/src/shard/impl_parts/policy_decision.rs
+	crates/vb_runtime/src/shard/lifecycle.rs
+	crates/vb_runtime/src/shard/lifecycle/chunk_001.rs
+	crates/vb_runtime/src/shard/lifecycle/chunk_004.rs
+	crates/vb_runtime/src/shard/lifecycle/recovered_admission.rs
+	crates/vb_runtime/src/shard/lifecycle/registered_completion.rs
+	crates/vb_runtime/src/shard/lifecycle/registered_completion_context.rs
+	crates/vb_runtime/src/shard/lifecycle/registered_context_helpers.rs
+	crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs
+	crates/vb_runtime/src/shard/types.rs
+	crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs
+	crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch.rs
+	crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/allowed.rs
+	crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/changed_policy.rs
+	crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/reconcile.rs
+	crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs
+	crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs
+	crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs
+	crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs
+	crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs
+	crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs
+	crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/emergency.rs
+	crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/fixtures.rs
+	crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/strict_failure.rs
+	crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs
+	crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/test_journal.rs
+▮▮▮▮ Building action graph
+Action count: 16
+Requested targets: 4
+	:fmt
+	:source-length
+	:lint-src
+	:check
+Resolved targets: 4
+	velvet-ballistics:check
+	velvet-ballistics:source-length
+	velvet-ballistics:lint-src
+	velvet-ballistics:fmt
+▮▮▮▮ Executing action pipeline
+▮▮▮▮ velvet-ballistics:panic-surface (f47db813)
+▮▮▮▮ velvet-ballistics:fmt (6874de8e)
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/vb-i15qt-recovery-pin-fix-v1/crates/vb_runtime/src/shard/lifecycle/registered_context_helpers.rs:6:
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt |  use crate::shard::types::RunState;
+          velvet-ballistics:fmt |  use crate::{RuntimeError, RuntimeResult};
+          velvet-ballistics:fmt | -use vb_core::action::{ActionOutputReady, ActionTicket};
+          velvet-ballistics:fmt |  use vb_core::CompiledNodeKind;
+          velvet-ballistics:fmt | +use vb_core::action::{ActionOutputReady, ActionTicket};
+          velvet-ballistics:fmt |  use vb_core::{SlotIdx, SlotValue, Taint};
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt |  /// Validate the action node, matching action ID, and Clean input taint.
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/vb-i15qt-recovery-pin-fix-v1/crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:68:
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt |  fn open_journal(path: &std::path::Path) -> Result<Arc<FjallJournal>, String> {
+          velvet-ballistics:fmt |      Ok(Arc::new(
+          velvet-ballistics:fmt | -        FjallJournal::open(path, Some(FjallConfig::default()))
+          velvet-ballistics:fmt | -            .map_err(|err| err.to_string())?,
+          velvet-ballistics:fmt | +        FjallJournal::open(path, Some(FjallConfig::default())).map_err(|err| err.to_string())?,
+          velvet-ballistics:fmt |      ))
+          velvet-ballistics:fmt |  }
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/vb-i15qt-recovery-pin-fix-v1/crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:102:
+          velvet-ballistics:fmt |          &[contract],
+          velvet-ballistics:fmt |          &[pack],
+          velvet-ballistics:fmt |      )?;
+          velvet-ballistics:fmt | -    let parts: vb_core::workflow::WorkflowParts =
+          velvet-ballistics:fmt | -        postcard::from_bytes(&artifact.ir)?;
+          velvet-ballistics:fmt | +    let parts: vb_core::workflow::WorkflowParts = postcard::from_bytes(&artifact.ir)?;
+          velvet-ballistics:fmt |      assert_eq!(parts.digest, workflow.digest());
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt |      let legacy_events = [
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/vb-i15qt-recovery-pin-fix-v1/crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:216:
+          velvet-ballistics:fmt |      assert_eq!(decision.ticket.run, run);
+          velvet-ballistics:fmt |      assert_eq!(decision.ticket.step, StepIdx::new(2));
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt | -    let expected_digest = compute_expected_input_digest(99, vb_core::value::Taint::Clean, &action_ticket)?;
+          velvet-ballistics:fmt | +    let expected_digest =
+          velvet-ballistics:fmt | +        compute_expected_input_digest(99, vb_core::value::Taint::Clean, &action_ticket)?;
+          velvet-ballistics:fmt |      assert_eq!(decision.input_digest, expected_digest);
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt |      let expected_decision = make_expected_decision(
+▮▮▮▮ velvet-ballistics:fmt (1s 520ms, 6874de8e)
+▮▮▮▮ velvet-ballistics:workspace-assertions (80ae4217)
+▮▮▮▮ velvet-ballistics:workspace-assertions (102ms, 80ae4217)
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (15669203)
+velvet-ballistics:panic-surface | CWD: /home/lewis/src/isoloated/vb-i15qt-recovery-pin-fix-v1
+velvet-ballistics:panic-surface | CommitSHA: 20aabbc6ad681b0ab01e8a48423f1e13e1451fe4
+velvet-ballistics:panic-surface | Toolchain: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+velvet-ballistics:panic-surface | Command: bash scripts/check-panic-surface.sh
+velvet-ballistics:panic-surface | ScanDomain: crates/*/src
+velvet-ballistics:panic-surface | NonProductionPathExcluded: tests benches examples fuzz target .beads fixtures build.rs path-scoped tests.rs *_tests.rs kani harnesses loom models
+velvet-ballistics:panic-surface | NoViolationFound
+velvet-ballistics:panic-surface | ExitCode: 0
+▮▮▮▮ velvet-ballistics:panic-surface (3s 478ms, f47db813)
+▮▮▮▮ velvet-ballistics:unsafe-audit (deb24fad)
+▮▮▮▮ velvet-ballistics:unsafe-audit (11ms, deb24fad)
+▮▮▮▮ velvet-ballistics:test-integrity (49e15a41)
+velvet-ballistics:test-integrity | test integrity: PASS base=58a1f9580ca8beb32f80118ce08df521688a249a
+▮▮▮▮ velvet-ballistics:test-integrity (766ms, 49e15a41)
+▮▮▮▮ velvet-ballistics:agent-cli-contract (f40b4779)
+▮▮▮▮ velvet-ballistics:agent-cli-contract (39ms, f40b4779)
+▮▮▮▮ velvet-ballistics:hot-cold-forbidden-apis (3f9dedd9)
+velvet-ballistics:hot-cold-forbidden-apis | FixturePass: hot/cold forbidden API scanner
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/contract.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/error.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/journal.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/action/journal_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/lifecycle_error.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/name.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/payload.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/registry.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/action/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/ticket.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action/validation.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/action_pack.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/artifact.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/budget.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/budget/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/budget/tests_and_verification.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/budget/vb_qi37_2_4_state8_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/budget_vb_8mdp_7_prop_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/capability.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/contract_encoding.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/contract_encoding/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/diagnostic.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/diagnostic/tests_and_verification.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/choose.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/error_routing.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/expr_eval/accessors.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/expr_eval/core.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/expr_eval/kani_div_zero.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/expr_eval/kani_stack.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/expr_eval/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/expr_eval/ops.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/expr_eval/ops_text_list.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/expr_eval/stack.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/expr_eval/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/node_helpers.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/object_list.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/run_loop.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/signals.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/step.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/step/action_lifecycle.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/step/test_support.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/step/tests_action_resume.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/step/tests_action_resume_tickets.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/step/tests_actions.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/step/tests_basic.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/step/tests_state.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/step/tests_value_nodes.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_accessor.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_basic.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_budget.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_capability_behavior.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_choose.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_error_routing_behavior.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_eval.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_frame_behavior.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_object_list_behavior.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_run_loop_behavior.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_signals_behavior.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_step_behavior.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_taint_propagation.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/integration_workflow.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/tests/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/engine/validate.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/validate/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/engine/validate/tests/red_phase_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/error.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/errors.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/errors/action_lifecycle_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/errors/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/frame.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/frame/checkpoint.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/frame/parts/impl_001_construct.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/frame/parts/impl_002_accessors.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/frame/parts/impl_003_slots_taints.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/frame/parts/impl_004_state_machines.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/frame/parts/initialized_slot_entry.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/frame/parts/kani_f1_exhaustive.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/frame/parts/kani_f2345_transitions.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/frame/parts/kani_helpers.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/frame/parts/kani_parallel.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/frame/parts/kani_pc_proofs.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/frame/parts/kani_slot_proofs.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/frame/tests_and_verification.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/ids/kani_id_arbitrary.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/ids/kani_id_bounds.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/ids/kani_shard_index_bounds.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/ids/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/ids/parts/chunk_001_custom_types.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/ids/tests_and_verification.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_determinism.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_diagnostic_constructor.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_from_str_compat.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_is_supported_code.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_registry_bijection.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_registry_category.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_reverse_lookup.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_serde_roundtrip.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_span_try_new.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_symbolic_code_validation.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/kani_zero_alloc.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_budget_arithmetic_refinement.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_capability_harnesses.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_expr_bound.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_idempotency_gates.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_index_access.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_resource_budget_bounded.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_step_budget.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_step_budget_one.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_step_budget_try_take_arbitrary.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_step_budget_zero.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_step_harnesses.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_step_state_transition.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_taint.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_taint_propagation.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_vbjpq733_proofs.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_workflow_arbitrary.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_workflow_budget_generators.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/kani_workflow_budget_harnesses.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/lib.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/limits.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/limits/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/policy.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/policy/new_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/envelope_header.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/envelope_header/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/resource_budget.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/resource_budget/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/step_state.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/step_state/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/taint.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/taint/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/vb_kyyf_normalization.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/vb_kyyf_normalization/cargo_kernel.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/vb_kyyf_normalization/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/proof_kernels/vb_kyyf_normalization/verus_kernel.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/replay/choose/kani/kani_choose_bool_condition.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/replay/choose/kani/kani_choose_no_otherwise.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/replay/choose/kani/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/replay/choose/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/replay/kani_harnesses.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/replay/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/replay/ops.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/replay/ops/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/replay/step.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/replay/step_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/replay/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/shard/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/shard/partition/kani_key_range_properties.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/shard/partition/kani_partition_plan_safety.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/shard/partition/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/span.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/span/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/time.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/value.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/value/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/value_store.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/value_store/blobs.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/value_store/checkpoint.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/value_store/extended_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/value_store/lists.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/value_store/objects.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/value_store/symbols.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/value_store/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/value_store/tests_and_verification.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/verification/kani/kani_choose_replay.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/verification/kani/kani_parallel_in_flight.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/verification/kani/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/verification/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_core/src/workflow/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/workflow/proptest_collect_budget.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/workflow/proptest_collect_traversal.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_core/src/workflow/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/action.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/action/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/action_queue.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/admission.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/admission/artifact_envelope_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/admission/evidence_test_support.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/admission/parts/chunk_002_records.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/admission/parts/chunk_003_stores.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/admission/parts/chunk_004_validation.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/admission/parts/chunk_006_admit_budget.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/admission/registered_verification.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/admission/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/counters.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/counters/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/durability_matrix.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/durability_matrix/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/action.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/drive/actions.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/drive/loop_step.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/drive/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/drive/recovery.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/cat_advanced.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/cat_basics.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/cat_branch.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/cat_dwa.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/cat_evidence.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/cat_extras.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/cat_regression.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/common.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/drive/tests/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/drive/timers.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/drive/transitions.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/budget.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/dispatch.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/dispatch/action_signal.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/dispatch/compound.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/handlers.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/handlers_compound.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/handlers_suspend.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/execute/signals.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/execute_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/helpers.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/property_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/retry_math.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/retry_math/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/signal.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/engine/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/engine/types.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/error/conversions.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/error/diagnostics.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/error/display.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/error/equality.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/error/equality/admission.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/error/equality/core.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/error/equality/unit.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/error/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/error/tests_basic.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/error/tests_conversion_refinement.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/error/tests_diagnostics.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/error/tests_diagnostics/proptest_vb_edvbj_diagnostic_code.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/error/tests_equality.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/for_each_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/frame_pool.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/frame_pool/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/idempotency.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/idempotency/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/ipc_refinement.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/journal.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/journal/chunk_001.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/journal/chunk_002.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/journal/chunk_003.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/journal/tests/chunk_001.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/journal/tests/chunk_002.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/journal/tests/chunk_003.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/journal/tests/chunk_004.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/journal/tests/proptest_vb_edvbj_all_21_variants.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/journal/tests/proptest_vb_edvbj_resumed_replay.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/journal/tests/strict_policy_port.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_admission_store.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_capability_harnesses.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_engine_yaml_admission.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_shard_command_queue.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_trace_ring.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_vb_edvbj_propagation_strict_gate.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_vb_edvbj_storage_event_no_fabricate.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_vt2f_runtime_facade.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/kani_vt2f_shard_lower_semantics.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/lib.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/models/loom/action_completion_cancel.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/models/loom/bounded_queue.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/models/loom/idempotency_retry_eviction.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/models/loom/journal_writer_queue.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/models/loom/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/models/loom/shutdown_drain.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/models/loom/timer_fired_cancel.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/models/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/models/sync.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/policy.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/policy/emergency_and_admission_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/policy/taint_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/policy/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/policy/ticket_field_variation_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/collect.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/collect/checkpoint.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/primitives/collect/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/for_each.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/primitives/for_each/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/helpers.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/reduce.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/primitives/reduce/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/reentry_proofs.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/primitives/reentry_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/repeat.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/primitives/repeat/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/retry.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/primitives/retry/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/together.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/primitives/wait_ask.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery/frame.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery/full.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery/full/admission.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery/full/full_ask_schedule.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery/full/pending.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery/full/product.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery/input_binding.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/recovery/product.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/recovery/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/retry.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/retry/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/run_checkpoint.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/run_checkpoint_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/runtime.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/runtime/live_policy_dispatch.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/runtime/registered_executor.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/runtime/shutdown.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/runtime/shutdown_failure_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/runtime/shutdown_fixtures.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/runtime/shutdown_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/runtime_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/ask_authority.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/completion_watermark.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/contract_validation.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/directive.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/helpers.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/helpers/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/impl_.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/impl_parts/chunk_001.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/impl_parts/chunk_002.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/impl_parts/chunk_003.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/impl_parts/chunk_004.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/impl_parts/policy_decision.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/impl_tests/chunk_001.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/impl_tests/chunk_002.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_001.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_002.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_002_drive_apply.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_002_parts/chunk_000_ask_answer.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_002_parts/chunk_001_boundary_control.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_002_parts/chunk_002_drive_core.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_002_parts/chunk_003_drive_apply.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_003.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_003_chunks/chunk_001_preflight_completion.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_003_chunks/chunk_002_failure_preflight.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_004.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_005.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_005_drive_apply.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/chunk_005_prepare.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/execution_binding.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/flux_cancel_kill.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/registered_completion.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/registered_completion_context.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/registered_context_helpers.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/lifecycle/recovered_admission.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_002.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_003.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_004.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_005.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_006.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_007.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_008.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_009.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/chunk_010.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/recovery_context_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/snapshot.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/snapshot_chunks/chunk_001_boundary_types.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/snapshot_chunks/chunk_002_shard_impl.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_001.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_002.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_003.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_004.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_005.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_006.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_007.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_008.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_009.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_010.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_011.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_012.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_013.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_014.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_015.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_016.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_017.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_018.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_019.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_020.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_021.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_022.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_023.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_024.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_025.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_026.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_027.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_028.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_029.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_030.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/chunk_031.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/submission_parity.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/test_fixtures.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/shard/tests/tick_shard_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/timer_wheel.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/transitions.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/transitions_cleanup.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/shard/types.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/taint.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/test_harness.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/together_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/trace.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/trace/event.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/trace/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/flux/vb_edvbj_diagnostic_code_refinement.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/flux/vb_sxkz6_shard_for_run.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/flux/vb_y9d3v_action_ticket_refinements.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_admission_ordering.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_ask_answer_lifecycle.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_engine_signals.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_for_each_ordering.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_resume_state_machine.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_retry_math.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_sxkz6_shard_for_run.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_together_ordering.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/kani/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/proptest/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/proptest/proptest_attempt_fence.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/proptest/sxkz6_proptest.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/verus/vb_sxkz6_shard_for_run.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_runtime/src/yaml_e2e_admission_matrix.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/admission.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/admission/evidence_test_support.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/admission/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/admission/verification.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/admission/verification/executor_profile.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/artifact_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/artifacts.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/action_index.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/append_event.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/commit.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/emergency_deny.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/inputs.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/putters.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_append_event.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_byte_accounting_part1.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_byte_accounting_part2.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_byte_accounting_part3.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_byte_accounting_part4.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_construction.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_putters_a.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_putters_b.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/t_strict.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/batch/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/types.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/batch/writer_queue.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/binary.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/binary/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/blob_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/blobs.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/codec/envelope.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/codec/flux_validation.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/codec/header.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/codec/kind_parity.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/codec/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/codec/payload.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/codec/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/codec/tests/admission_receipt.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/codec/tests/kill_kind_admission.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/codec/tests/replay_integrity.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/codec/validation.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/codec_miri_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/constants.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/edge_case_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/error/artifact.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/error/codes.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/error/conversions.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/error/key_decode.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/error/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/error/warnings.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/error_code_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/error_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/event.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_category.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_compat.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_deserialize.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_deserialize_action.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_deserialize_policy.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_deserialize_run.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_deserialize_step.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_deserialize_wait_ask.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_legacy.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_legacy_current.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_legacy_current_action.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_legacy_current_run.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_legacy_current_step.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_legacy_current_wait.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_legacy_defaults.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_serialize.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_serialize_action.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_serialize_admission.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_serialize_policy.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_serialize_run.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_serialize_step.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_serialize_wait_ask.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/events/wire_tags.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/executor/authority.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/executor/catalog.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/executor/conformance.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/executor/error.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/executor/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/executor/packed.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/executor/receipt.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/executor/register.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/header_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/headers.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/hydrate_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/index_maintenance_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/index_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/indexes.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/inputs/digest.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/inputs/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/inputs/receipt_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/inputs/submission.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/inputs/submission_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/inputs/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/inputs/validation.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/admission.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/append.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/batch.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/core.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/emergency_deny.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/journal/emergency_deny_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/incident.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/injection.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/internal.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/journal/journal_event_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/parse.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/readonly.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/journal/regression_tests_vb_1rqz7.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/journal/regression_tests_vb_xsu4g.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/replay.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/journal/source.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/journal/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_admission.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_codec.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_digest_checks_vb_2bzz.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_hydrate_proofs.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_postcard_envelope_wire.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_record_crc.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_record_kind.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_record_magic.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_record_payload_len.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_record_schema.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_typed_partitioned_ids.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_u8gi_storage_decode_order.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_u8gi_storage_numeric_fields.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_u8gi_storage_payload_bounds.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps001.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps002.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps003.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps004.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps005.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps006.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps007.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps008.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vb_vzcuf_ps009.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/kani_vbjpq733_proofs.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/keys.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/keys/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/lib.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/po010_proptests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/preview.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/preview/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/process_lock.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/process_lock_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/proptest_storage.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/proptests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/public_api.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/queue/batch.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/queue/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/queue/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/queue/writer.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/queue/writer/flush.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/queue/writer/flush_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/queue/writer/group.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/queue/writer/shutdown.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/queue/writer/stage.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/record_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/records.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/recover_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/flux_replay.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/hydrate.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/recovery/hydrate_support.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/recovery/kani.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/recover.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/recovery/recovery_unit_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/attempt.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/core.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/core/full.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/observation/normalize.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/summary/accumulator.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/summary/apply.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/summary/apply/envelope.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/summary/derive.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/summary/dimensions.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/summary/hydrate.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/replay/summary/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/recovery/replay/summary/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/recovery/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/recovery/types.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/recovery/vb_h6ix_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/recovery_type_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/replay_core_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/security_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/slot_extra.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/snapshot_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/snapshots.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/test_helpers.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/trimming/helpers.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/trimming/logic.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/trimming/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/trimming/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/type_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/types.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_storage/src/types/flux_sequence.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/types/flux_sequence/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_storage/src/vb_2bok_durability_gate_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/action_output.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/bounded.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/client.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/client/connection.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/client/error.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/client/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/codec.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/commands.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/constants.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/error.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/frame.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/frame/codec.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/frame/io.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/frame/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/frame/validate.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/frame_types.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/frame_types/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/ids.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/ids/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/ingress.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/ingress/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/kani_flag_validation.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/kani_ipc_decode_order.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/kani_ipc_header.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/kani_ipc_header_rejects_oversize.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/lib.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/metrics.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/metrics/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/payloads.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/payloads/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/queue/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/queue/tests/array_queue_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/connection_io.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/dispatch.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/error.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/handlers.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/handlers/command.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/handlers/event.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/handlers/session.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/server/handlers/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/server/handlers_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/helpers.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/impl_.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/server/impl_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/mod.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/reactor.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/server/reactor_tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/response_io.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/ticket.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|hot|crates/vb_ipc/src/server/trace.rs
+velvet-ballistics:hot-cold-forbidden-apis | ClassifiedPath|cold|crates/vb_ipc/src/tests.rs
+velvet-ballistics:hot-cold-forbidden-apis | ScanSummary|hot_crates=vb_core,vb_runtime,vb_storage,vb_ipc|classified=699|violations=0|justified=0
+▮▮▮▮ velvet-ballistics:hot-cold-forbidden-apis (227ms, 3f9dedd9)
+▮▮▮▮ velvet-ballistics:beads-server-mode (b9261487)
+velvet-ballistics:beads-server-mode | beads server-mode check passed
+▮▮▮▮ velvet-ballistics:beads-server-mode (5ms, b9261487)
+▮▮▮▮ velvet-ballistics:nightly-feature-gate (8930a0fc)
+▮▮▮▮ velvet-ballistics:nightly-feature-gate (5s 302ms, 8930a0fc)
+▮▮▮▮ velvet-ballistics:check (e9115312)
+▮▮▮▮ velvet-ballistics:check (7s 961ms, e9115312)
+velvet-ballistics:ignored-fallible-results | FixturePass: clean production-like fixture exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-001 bare fallible call exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-002 let underscore exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 ok err lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 embedded ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 split ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-004 swallowed Err exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-005 drop fallible exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-006 undocumented allow marker exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: path-bound justified exception exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: overbroad exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | FixturePass: malformed exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | ScanDomain: crates/*/src xtask/src
+velvet-ballistics:ignored-fallible-results | NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+velvet-ballistics:ignored-fallible-results | NoViolationFound
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (26s 79ms, 15669203)
+▮▮▮▮ velvet-ballistics:lint-src (9fd211e7)
+▮▮▮▮ velvet-ballistics:banned-token-gates (no op, ad8e419c)
+▮▮▮▮ velvet-ballistics:source-length (39204d1d)
+▮▮▮▮ velvet-ballistics:source-length (4s 448ms, 39204d1d)
+▮▮▮▮ velvet-ballistics:lint-src (5s 289ms, 9fd211e7)
+
+Tasks: 10 completed, 4 failed
+ Time: 33s 628ms
+

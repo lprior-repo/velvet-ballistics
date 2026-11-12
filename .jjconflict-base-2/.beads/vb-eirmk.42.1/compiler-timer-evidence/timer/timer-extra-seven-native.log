@@ -1,0 +1,13 @@
+Running as unit: vb-timer-extra-seven-20261110.scope; invocation ID: 4494c515adc342e9bde04fccc9bcc012
+────────────
+ Nextest run ID 05bfe628-c6c7-4cc1-a9af-5bdd00e2592f with nextest profile: default
+    Starting 7 tests across 41 binaries (3015 tests skipped)
+        PASS [   0.003s] (1/7) vb_runtime shard::lifecycle::tests::timer_wheel_capacity_two_replaces_one_timer_and_preserves_survivor
+        PASS [   0.003s] (2/7) vb_runtime shard::lifecycle::tests::timer_wheel_authority_max_generation_blocks_recovery_atomically
+        PASS [   0.003s] (3/7) vb_runtime shard::lifecycle::tests::timer_wheel_capacity_two_admits_and_sorts_two_pending_timers
+        PASS [   0.003s] (4/7) vb_runtime shard::lifecycle::tests::timer_wheel_authority_step_replacement_preserves_old_token
+        PASS [   0.003s] (5/7) vb_runtime shard::lifecycle::tests::timer_wheel_authority_stale_token_preserves_whole_shard_state
+        PASS [   0.003s] (6/7) vb_runtime shard::lifecycle::tests::timer_wheel_authority_current_due_token_resolves_wait
+        PASS [   0.003s] (7/7) vb_runtime shard::lifecycle::tests::timer_wheel_capacity_two_rejects_third_submit_atomically
+────────────
+     Summary [   0.018s] 7 tests run: 7 passed, 3015 skipped

@@ -1,0 +1,44 @@
+error[E0282]: type annotations needed
+   --> verification/verus/try_from_parts.rs:572:25
+    |
+572 |         if (slot_err != None) {
+    |                         ^^^^ cannot infer type of the type parameter `T` declared on the enum `Option`
+    |
+help: consider specifying the generic argument
+    |
+572 |         if (slot_err != None::<T>) {
+    |                             +++++
+
+error[E0308]: mismatched types
+   --> verification/verus/try_from_parts.rs:597:54
+    |
+597 |             check_input_slots(parts, index + 1, Some(current))
+    |                                                 ---- ^^^^^^^ expected `int`, found `u32`
+    |                                                 |
+    |                                                 arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `u32` due to the type of the argument passed
+   --> verification/verus/try_from_parts.rs:597:49
+    |
+597 |             check_input_slots(parts, index + 1, Some(current))
+    |                                                 ^^^^^-------^
+    |                                                      |
+    |                                                      this argument influences the type of `Some`
+note: tuple variant defined here
+   --> /rustc/59807616e1fa2540724bfbac14d7976d7e4a3860/library/core/src/option.rs:608:4
+
+error[E0282]: type annotations needed
+   --> verification/verus/try_from_parts.rs:691:37
+    |
+691 |         input_slots_valid(parts) == None,
+    |                                     ^^^^ cannot infer type of the type parameter `T` declared on the enum `Option`
+    |
+help: consider specifying the generic argument
+    |
+691 |         input_slots_valid(parts) == None::<T>,
+    |                                         +++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0282, E0308.
+For more information about an error, try `rustc --explain E0282`.

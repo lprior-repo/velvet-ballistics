@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-e7rjr-local5090-gate-policy",
+  "argv": [
+    "env",
+    "-u",
+    "CI",
+    "moon",
+    "run",
+    "velvet-ballistics:benchmark-proof",
+    "--force"
+  ],
+  "exit_code": 0,
+  "seconds": 11.634,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-xgj4v/evidence/coordinator-actual-moon-benchmark",
+  "coordinator_message": "V2 coordinator update: one-real-target benchmark now actually passes, keep that command. Earlier v1 rejection notice is historical and superseded once its exact fixes are complete. Finish synthetic per-status capture regression matrix using actual extracted Moon script, no fullgeigerreruns. Store ALL new runner logs under .beads/vb-e7rjr/evidence or .beads/vb-xgj4v/evidence; bench-one-real-target-v2.* currently written repositoryroot must be MOVED (mv -f) into .beads/vb-xgj4v/evidence preserving JSON bytes; document move inhandoff. No new production rootfiles. Ensure restored Cargo.toml matches1cf345exact; truthfullimitedhandoff thenend."
+}

@@ -1,0 +1,173 @@
++ cargo test -p vb_compile --test v1_primitive_lowering yaml_compiler_compile_rejects_phase_zero_empty_wait_shape
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.50s
+     Running tests/v1_primitive_lowering.rs (target/debug/deps/v1_primitive_lowering-023c6c6c5cd417b3)
+
+running 1 test
+test yaml_compiler_compile_rejects_phase_zero_empty_wait_shape ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 47 filtered out; finished in 0.00s
+
++ cargo test -p vb_compile --test v1_primitive_lowering
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running tests/v1_primitive_lowering.rs (target/debug/deps/v1_primitive_lowering-023c6c6c5cd417b3)
+
+running 48 tests
+test lower_choose_accepts_empty_branches_with_otherwise ... ok
+test lower_choose_accepts_valid_otherwise_target ... ok
+test lower_choose_rejects_empty_branches_without_otherwise ... ok
+test lower_choose_rejects_more_than_64_branches ... ok
+test compile_workflow_choose_rejects_unknown_otherwise_label ... ok
+test compile_workflow_emits_exact_wait_until_shape_when_wait_has_deadline_only ... ok
+test compile_workflow_returns_unsupported_step_primitive_only_for_out_of_scope_primitives ... ok
+test compile_workflow_rejects_multi_step_body_at_non_zero_step ... ok
+test compile_workflow_choose_two_branches_with_otherwise ... ok
+test compile_workflow_rejects_non_set_body_in_collect ... ok
+test compile_workflow_choose_branch_body_emits_dense_order ... ok
+test public_helpers_return_exact_step_index_slot_index_limit_and_workflow_error_variants ... ok
+test compile_workflow_rejects_multi_step_together_branch ... ok
+test wait_event_sensitivity_to_event_field_change_through_compile_source_when_event_differs ... ok
+test public_compile_apis_return_unsupported_step_primitive_for_save_do_choose_only ... ok
+test wait_digest_is_deterministic_through_compile_source_when_same_source_compiled_thrice ... ok
+test compile_workflow_rejects_empty_body_in_scoped_primitives ... ok
+test compile_source_returns_exact_error_variants_for_contract_taxonomy ... ok
+test compile_workflow_rejects_non_set_body_in_all_scoped_primitives ... ok
+test public_lowering_helpers_return_exact_range_and_workflow_errors ... ok
+test compile_workflow_returns_step_field_shape_when_each_scoped_primitive_required_field_is_empty ... ok
+test wait_event_no_timeout_vs_with_timeout_produce_distinct_digests_through_compile_source_when_timeout_absent ... ok
+test yaml_compiler_compile_returns_canonical_yaml_when_source_parse_fails ... ok
+test wait_event_sensitivity_to_timeout_field_change_through_compile_source_when_timeout_differs ... ok
+test wait_workflow_with_mixed_steps_digests_differ_from_non_wait_workflow_when_wait_added ... ok
+test yaml_compiler_compile_rejects_phase_zero_empty_wait_shape ... ok
+test public_compile_apis_preserve_set_and_terminal_finish_regression ... ok
+test wait_until_timeout_change_produces_distinct_digest_through_compile_source_when_timeout_differs ... ok
+test compile_source_emits_supported_ir_when_each_scoped_primitive_is_valid ... ok
+test wait_until_vs_wait_event_produce_distinct_digests_through_compile_source_when_shapes_differ ... ok
+test wait_invalid_shape_event_none_timeout_none_rejected_with_step_field_shape_when_both_fields_absent ... ok
+test wait_workflow_digest_roundtrips_through_parts_after_compile_source_when_wait_steps_present ... ok
+test compile_workflow_rejects_multi_step_body_in_scoped_primitives ... ok
+test compile_workflow_choose_64_branches_accepted ... ok
+test compile_workflow_emits_supported_ir_when_each_scoped_primitive_is_valid ... ok
+test compile_workflow_choose_rejects_65_branches ... ok
+test yaml_compiler_compile_emits_supported_ir_when_each_scoped_primitive_is_valid ... ok
+test proptest_non_wait_workflows_digests_are_deterministic_after_wait_fix ... ok
+test public_compile_apis_return_exact_error_variants_for_contract_taxonomy ... ok
+test proptest_wait_pairwise_distinct_digests ... ok
+test proptest_wait_until_vs_wait_event ... ok
+test proptest_wait_sentinel_unambiguous ... ok
+test proptest_scoped_primitives_never_return_unsupported_step_primitive ... ok
+test cross_path_wait_digest_equivalence ... ok
+test proptest_wait_field_sensitivity ... ok
+test proptest_repeat_different_params_different_digest ... ok
+test proptest_equal_primitive_sources_compile_to_equal_digest_and_ir ... ok
+test proptest_repeat_different_body_different_digest ... ok
+
+test result: ok. 48 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
++ cargo test -p vb_compile --test vb_xi2f_compile_source_proptest
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.15s
+     Running tests/vb_xi2f_compile_source_proptest.rs (target/debug/deps/vb_xi2f_compile_source_proptest-a2f35f3f9e05867d)
+
+running 3 tests
+test no_unchecked_construction_in_public_compile_apis ... ok
+test yaml_compiler_compile_never_panics ... ok
+test compile_source_never_panics ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.11s
+
++ cargo test -p velvet-ballistics-workspace-tests --test vb_test_compile_parse_validate_behavior --test vb_test_compile_error_quality_behavior
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_cli)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.49s
+     Running tests/vb_test_compile_error_quality_behavior.rs (target/debug/deps/vb_test_compile_error_quality_behavior-ee5cc0dd15ad3f53)
+
+running 35 tests
+test compile_error_code_alias_forbidden ... ok
+test compile_error_code_empty_source ... ok
+test compile_error_code_duplicate_key ... ok
+test all_error_variants_display_non_empty ... ok
+test compile_error_code_tag_forbidden ... ok
+test compile_error_code_invalid_version ... ok
+test compile_error_code_empty_steps ... ok
+test compile_error_code_missing_step_id ... ok
+test compile_error_code_step_shape_not_mapping ... ok
+test compile_error_code_duplicate_step_id ... ok
+test compile_errors_diagnostic_codes_iterates_all ... ok
+test compile_error_code_non_string_key ... ok
+test compile_error_code_merge_key_forbidden ... ok
+test backward_branch_target_message_mentions_step_info ... ok
+test compile_error_code_multiple_step_primitives ... ok
+test diagnostic_code_alias_for_code ... ok
+test compile_error_code_unknown_step_field ... ok
+test compile_errors_len_is_accurate ... ok
+test duplicate_key_message_includes_key_name ... ok
+test error_codes_are_string_constants ... ok
+test document_count_message_includes_count ... ok
+test compile_error_code_unknown_toplevel_field ... ok
+test compile_error_code_missing_step_primitive ... ok
+test expression_error_includes_byte_index_and_char ... ok
+test compile_errors_first_gives_primary_error ... ok
+test expression_error_integer_out_of_range_includes_index ... ok
+test expression_error_unterminated_string_includes_index ... ok
+test compile_errors_display_format ... ok
+test error_messages_have_specific_content ... ok
+test duplicate_step_id_message_includes_id ... ok
+test source_too_large_message_includes_actual_and_limit ... ok
+test field_shape_message_mentions_field_and_expected ... ok
+test invalid_name_message_includes_field_and_value ... ok
+test unknown_step_field_message_includes_step_index_and_field ... ok
+test unknown_trigger_kind_message_contains_trigger_value ... ok
+
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/vb_test_compile_parse_validate_behavior.rs (target/debug/deps/vb_test_compile_parse_validate_behavior-a9a6b4254f9fca49)
+
+running 43 tests
+test error_message_for_duplicate_key_contains_key_name ... ok
+test compile_workflow_rejects_missing_version ... ok
+test error_message_for_non_string_key_is_descriptive ... ok
+test error_message_for_empty_steps_is_descriptive ... ok
+test compile_workflow_rejects_unknown_step_field ... ok
+test compile_produces_valid_workflow_with_webhook_trigger ... ok
+test compile_produces_valid_workflow_for_minimal_manual_trigger ... ok
+test compile_workflow_rejects_invalid_finish_not_last ... ok
+test error_message_for_invalid_name_contains_field_and_value ... ok
+test error_message_for_step_shape_not_mapping_contains_step_index ... ok
+test compile_produces_valid_workflow_for_set_and_finish ... ok
+test error_message_for_unknown_step_field_contains_field_name ... ok
+test compile_produces_valid_workflow_with_schedule_trigger ... ok
+test compile_workflow_rejects_empty_steps ... ok
+test parse_rejects_empty_wait_event ... ok
+test parse_rejects_duplicate_top_level_key ... ok
+test parse_rejects_duplicate_key_in_nested_mapping ... ok
+test parse_rejects_empty_steps ... ok
+test parse_rejects_missing_step_id ... ok
+test parse_rejects_multiple_documents ... ok
+test parse_rejects_invalid_yaml_syntax ... ok
+test parse_rejects_source_too_large ... ok
+test parse_rejects_missing_version ... ok
+test parse_rejects_multiple_triggers ... ok
+test parse_rejects_name_with_spaces ... ok
+test parse_rejects_top_level_scalar ... ok
+test parse_rejects_totally_empty_source ... ok
+test parse_rejects_whitespace_only_source ... ok
+test parse_rejects_reserved_name_step_id ... ok
+test parse_rejects_finish_missing_result ... ok
+test parse_rejects_name_with_special_chars ... ok
+test parse_rejects_non_mapping_step ... ok
+test strict_yaml_rejects_anchor ... ok
+test parse_rejects_step_without_primitive ... ok
+test strict_yaml_rejects_alias ... ok
+test strict_yaml_rejects_tag ... ok
+test parse_rejects_name_starting_with_uppercase ... ok
+test parse_rejects_step_with_multiple_primitives ... ok
+test error_message_for_unknown_trigger_kind_contains_trigger_value ... ok
+test parse_rejects_duplicate_step_id ... ok
+test parse_rejects_unknown_trigger_kind ... ok
+test parse_rejects_unknown_step_field ... ok
+test parse_rejects_finish_not_last ... ok
+
+test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

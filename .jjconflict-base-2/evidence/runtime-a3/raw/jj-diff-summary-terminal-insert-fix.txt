@@ -1,0 +1,149 @@
+# command: jj diff --summary && jj diff --stat
+# workdir: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+M .config/source-length-exceptions.txt
+M .evidence/kani-list/vb_runtime.json
+M crates/vb_runtime/Cargo.toml
+M crates/vb_runtime/src/runtime.rs
+M crates/vb_runtime/src/runtime_tests.rs
+M crates/vb_runtime/src/shard/impl_parts/chunk_001.rs
+M crates/vb_runtime/src/shard/impl_parts/chunk_002.rs
+M crates/vb_runtime/src/shard/impl_parts/chunk_004.rs
+M crates/vb_runtime/src/shard/lifecycle/chunk_001.rs
+M crates/vb_runtime/src/shard/lifecycle/chunk_002.rs
+A crates/vb_runtime/src/shard/lifecycle/chunk_005.rs
+M crates/vb_runtime/src/shard/lifecycle.rs
+M crates/vb_runtime/src/shard/lifecycle_tests/chunk_004.rs
+A crates/vb_runtime/src/shard/lifecycle_tests/chunk_009.rs
+M crates/vb_runtime/src/shard/snapshot_chunks/chunk_002_shard_impl.rs
+M crates/vb_runtime/src/shard/tests/chunk_001.rs
+M crates/vb_runtime/src/shard/tests/chunk_003.rs
+M crates/vb_runtime/src/shard/tests/chunk_005.rs
+M crates/vb_runtime/src/shard/tests/chunk_013.rs
+M crates/vb_runtime/src/shard/tests/chunk_015.rs
+M crates/vb_runtime/src/shard/tests/chunk_016.rs
+M crates/vb_runtime/src/shard/tests/chunk_020.rs
+M crates/vb_runtime/src/shard/tests/chunk_024.rs
+M crates/vb_runtime/src/shard/tests/chunk_025.rs
+M crates/vb_runtime/src/shard/tests/chunk_026.rs
+M crates/vb_runtime/src/shard/tests/chunk_027.rs
+M crates/vb_runtime/src/shard/tests/chunk_029.rs
+M crates/vb_runtime/src/shard/tests/chunk_031.rs
+M crates/vb_runtime/src/shard/transitions.rs
+M crates/vb_runtime/src/shard/types.rs
+M crates/vb_runtime/src/verification/kani/kani_ask_answer_lifecycle.rs
+M crates/vb_runtime/src/verification/kani/kani_resume_state_machine.rs
+A crates/vb_runtime/src/verification/kani/kani_vb4969v_aggregate_invariant.rs
+M crates/vb_runtime/src/verification/mod.rs
+A evidence/runtime-a3/formal-verification-report.md
+A evidence/runtime-a3/kani-status.md
+A evidence/runtime-a3/raw/check-terminal-insert-fix.txt
+A evidence/runtime-a3/raw/check.txt
+A evidence/runtime-a3/raw/fmt-apply-terminal-insert-fix.txt
+A evidence/runtime-a3/raw/fmt-terminal-insert-fix.txt
+A evidence/runtime-a3/raw/fmt.txt
+A evidence/runtime-a3/raw/jj-diff-summary-terminal-insert-fix.txt
+A evidence/runtime-a3/raw/kani-god-rule1-aggregate-scan.txt
+A evidence/runtime-a3/raw/kani-god-rule1-scan.txt
+A evidence/runtime-a3/raw/kani-list-vb_runtime-aggregate-invariant.txt
+A evidence/runtime-a3/raw/kani-list-vb_runtime.txt
+A evidence/runtime-a3/raw/kani-targeted-aggregate-invariant-cgroup-drop-elided.part1.txt
+A evidence/runtime-a3/raw/kani-targeted-aggregate-invariant-cgroup-drop-elided.part2.txt
+A evidence/runtime-a3/raw/kani-targeted-aggregate-invariant-cgroup-drop-elided.part3.txt
+A evidence/runtime-a3/raw/kani-targeted-aggregate-invariant-cgroup.txt
+A evidence/runtime-a3/raw/kani-targeted-aggregate-invariant.txt
+A evidence/runtime-a3/raw/kani-targeted-resume-initial-guard-timeout.txt
+A evidence/runtime-a3/raw/kani-targeted-resume-non-resumable.txt
+A evidence/runtime-a3/raw/kani-targeted-terminal-membership-timeout.txt
+A evidence/runtime-a3/raw/lint-src-clippy.txt
+A evidence/runtime-a3/raw/lint-src-terminal-insert-fix.txt
+A evidence/runtime-a3/raw/root-checks.txt
+A evidence/runtime-a3/raw/root-jj-checks-terminal-insert-fix.txt
+A evidence/runtime-a3/raw/source-length-terminal-insert-fix.txt
+A evidence/runtime-a3/raw/source-length.txt
+A evidence/runtime-a3/raw/targeted-cancel-cleanup.txt
+A evidence/runtime-a3/raw/targeted-kill-cleanup.txt
+A evidence/runtime-a3/raw/targeted-provenance-tests.txt
+A evidence/runtime-a3/raw/targeted-terminal-membership.txt
+A evidence/runtime-a3/raw/targeted-terminal-never-admitted.txt
+A evidence/runtime-a3/raw/targeted-terminal-suite.txt
+A evidence/runtime-a3/raw/vb_runtime-lib-tests-terminal-insert-fix.txt
+A evidence/runtime-a3/raw/vb_runtime-lib-tests.txt
+A evidence/runtime-a3/raw/vb_storage-lib-recovery-terminal-insert-fix.txt
+A evidence/runtime-a3/terminal-insert-fix-status.md
+A evidence/runtime-a3/verification-ledger.jsonl
+M evidence/trusted-base-ledger.jsonl
+.config/source-length-exceptions.txt               |    1 -
+.evidence/kani-list/vb_runtime.json                |   17 +-
+crates/vb_runtime/Cargo.toml                       |    4 +
+crates/vb_runtime/src/runtime.rs                   |    2 +-
+crates/vb_runtime/src/runtime_tests.rs             |   95 +-
+...es/vb_runtime/src/shard/impl_parts/chunk_001.rs |  224 +-
+...es/vb_runtime/src/shard/impl_parts/chunk_002.rs |   58 +-
+...es/vb_runtime/src/shard/impl_parts/chunk_004.rs |    2 +-
+crates/vb_runtime/src/shard/lifecycle/chunk_001.rs |    6 +-
+crates/vb_runtime/src/shard/lifecycle/chunk_002.rs |  302 +-
+crates/vb_runtime/src/shard/lifecycle/chunk_005.rs |  267 +
+crates/vb_runtime/src/shard/lifecycle.rs           |    2 +
+..._runtime/src/shard/lifecycle_tests/chunk_004.rs |   64 +-
+..._runtime/src/shard/lifecycle_tests/chunk_009.rs |  521 ++
+...c/shard/snapshot_chunks/chunk_002_shard_impl.rs |   41 +-
+crates/vb_runtime/src/shard/tests/chunk_001.rs     |   11 +
+crates/vb_runtime/src/shard/tests/chunk_003.rs     |   12 +-
+crates/vb_runtime/src/shard/tests/chunk_005.rs     |    4 +-
+crates/vb_runtime/src/shard/tests/chunk_013.rs     |    2 +-
+crates/vb_runtime/src/shard/tests/chunk_015.rs     |   28 +-
+crates/vb_runtime/src/shard/tests/chunk_016.rs     |    2 +-
+crates/vb_runtime/src/shard/tests/chunk_020.rs     |    2 +-
+crates/vb_runtime/src/shard/tests/chunk_024.rs     |    4 +-
+crates/vb_runtime/src/shard/tests/chunk_025.rs     |    6 +-
+crates/vb_runtime/src/shard/tests/chunk_026.rs     |   30 +-
+crates/vb_runtime/src/shard/tests/chunk_027.rs     |    4 +-
+crates/vb_runtime/src/shard/tests/chunk_029.rs     |   15 +-
+crates/vb_runtime/src/shard/tests/chunk_031.rs     |   32 +-
+crates/vb_runtime/src/shard/transitions.rs         |   11 +-
+crates/vb_runtime/src/shard/types.rs               |  302 +-
+.../verification/kani/kani_ask_answer_lifecycle.rs |   51 +-
+.../verification/kani/kani_resume_state_machine.rs |  615 ++-
+...cation/kani/kani_vb4969v_aggregate_invariant.rs |  161 +
+crates/vb_runtime/src/verification/mod.rs          |   10 +
+evidence/runtime-a3/formal-verification-report.md  |   50 +
+evidence/runtime-a3/kani-status.md                 |   31 +
+...ce/runtime-a3/raw/check-terminal-insert-fix.txt |  600 +++
+evidence/runtime-a3/raw/check.txt                  |  597 +++
+...untime-a3/raw/fmt-apply-terminal-insert-fix.txt |    4 +
+...ence/runtime-a3/raw/fmt-terminal-insert-fix.txt |   11 +
+evidence/runtime-a3/raw/fmt.txt                    |   10 +
+...-a3/raw/jj-diff-summary-terminal-insert-fix.txt |   74 +
+...untime-a3/raw/kani-god-rule1-aggregate-scan.txt |   34 +
+evidence/runtime-a3/raw/kani-god-rule1-scan.txt    |   16 +
+...aw/kani-list-vb_runtime-aggregate-invariant.txt |  118 +
+evidence/runtime-a3/raw/kani-list-vb_runtime.txt   |  125 +
+...ggregate-invariant-cgroup-drop-elided.part1.txt | 4131 ++++++++++++++++++++++
+...ggregate-invariant-cgroup-drop-elided.part2.txt | 4019 +++++++++++++++++++++
+...ggregate-invariant-cgroup-drop-elided.part3.txt |  826 ++++
+...aw/kani-targeted-aggregate-invariant-cgroup.txt | 2726 ++++++++++++++
+...me-a3/raw/kani-targeted-aggregate-invariant.txt |    3 +
+.../kani-targeted-resume-initial-guard-timeout.txt | 2368 ++++++++++++
+...e-a3/raw/kani-targeted-resume-non-resumable.txt | 2560 +++++++++++++
+...w/kani-targeted-terminal-membership-timeout.txt |   48 +
+evidence/runtime-a3/raw/lint-src-clippy.txt        |   39 +
+...runtime-a3/raw/lint-src-terminal-insert-fix.txt |   43 +
+evidence/runtime-a3/raw/root-checks.txt            |   58 +
+...e-a3/raw/root-jj-checks-terminal-insert-fix.txt |   80 +
+...me-a3/raw/source-length-terminal-insert-fix.txt |   59 +
+evidence/runtime-a3/raw/source-length.txt          |   57 +
+...ence/runtime-a3/raw/targeted-cancel-cleanup.txt |   76 +
+evidence/runtime-a3/raw/targeted-kill-cleanup.txt  |   13 +
+...ce/runtime-a3/raw/targeted-provenance-tests.txt |  827 ++++
+...runtime-a3/raw/targeted-terminal-membership.txt |   15 +
+...ime-a3/raw/targeted-terminal-never-admitted.txt |   13 +
+...ence/runtime-a3/raw/targeted-terminal-suite.txt |   39 +
+...aw/vb_runtime-lib-tests-terminal-insert-fix.txt | 1863 +++++++++
+evidence/runtime-a3/raw/vb_runtime-lib-tests.txt   | 1860 +++++++++
+...vb_storage-lib-recovery-terminal-insert-fix.txt |  261 +
+evidence/runtime-a3/terminal-insert-fix-status.md  |   39 +
+evidence/runtime-a3/verification-ledger.jsonl      |   29 +
+evidence/trusted-base-ledger.jsonl                 |    2 +
+72 files changed, 25965 insertions(+), 667 deletions(-)
+
+# exit_status=0

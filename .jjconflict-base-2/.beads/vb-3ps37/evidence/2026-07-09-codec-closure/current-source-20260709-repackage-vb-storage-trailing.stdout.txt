@@ -1,0 +1,13 @@
+
+running 8 tests
+test codec::tests::decode_rejects_trailing_bytes_beyond_declared_payload ... ok
+test codec::envelope::tests::decode_envelope_only_rejects_trailing_physical_bytes ... ok
+test codec::tests::forged_payload_trailing_postcard_bytes_are_rejected_exactly ... ok
+test codec::tests::schema_one_fixture_unchanged_envelope_rejects_trailing_postcard_bytes ... ok
+test codec::tests::workflow_source_payload_rejects_digest_valid_trailing_postcard_bytes ... ok
+test codec::tests::schema_one_fixture_shared_envelope_rejects_trailing_postcard_bytes ... ok
+test security_tests::tests::zero_payload_len_with_bytes_rejects_trailing_bytes ... ok
+test codec::tests::schema_one_missing_default_field_payloads_reject_trailing_postcard_bytes ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1585 filtered out; finished in 0.00s
+

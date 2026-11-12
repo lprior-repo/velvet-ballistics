@@ -1,0 +1,3 @@
+=== compile evidence: vb_f04l_yaml_compiler_compile ===
+-rwxr-xr-x 2 lewis lewis 7466168 Oct 22 17:17 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile
+OK: binary present

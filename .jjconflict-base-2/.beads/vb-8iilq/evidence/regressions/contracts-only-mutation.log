@@ -1,0 +1,160 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090/crates/vb_runtime)
+error[E0433]: cannot find type `ActionId` in this scope
+  --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:13:68
+   |
+13 |             &crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
+   |                                                                    ^^^^^^^^ use of undeclared type `ActionId`
+   |
+   = note: struct `crate::shard::types::format_snapshot_uses_snap_run::ActionId` exists but is inaccessible
+help: consider importing this struct
+  --> crates/vb_runtime/src/shard/lifecycle/chunk_003_chunks/chunk_001_preflight_completion.rs:1:1
+   |
+ 1 + use vb_core::ActionId;
+   |
+
+error[E0433]: cannot find type `ActionId` in this scope
+  --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:46:68
+   |
+46 |             &crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
+   |                                                                    ^^^^^^^^ use of undeclared type `ActionId`
+   |
+   = note: struct `crate::shard::types::format_snapshot_uses_snap_run::ActionId` exists but is inaccessible
+help: consider importing this struct
+  --> crates/vb_runtime/src/shard/lifecycle/chunk_003_chunks/chunk_001_preflight_completion.rs:1:1
+   |
+ 1 + use vb_core::ActionId;
+   |
+
+warning: unused variable: `snap`
+   --> crates/vb_runtime/src/runtime_tests.rs:767:13
+    |
+767 |         let snap = runtime.counters_snapshot();
+    |             ^^^^ help: if this is intentional, prefix it with an underscore: `_snap`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:346:13
+    |
+346 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:394:13
+    |
+394 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:163:9
+    |
+163 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:182:9
+    |
+182 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:203:9
+    |
+203 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:224:9
+    |
+224 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:259:9
+    |
+259 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:291:9
+    |
+291 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:349:9
+    |
+349 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:367:9
+    |
+367 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:442:9
+    |
+442 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:462:9
+    |
+462 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:484:9
+    |
+484 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:505:9
+    |
+505 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:530:9
+    |
+530 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+For more information about this error, try `rustc --explain E0433`.
+warning: `vb_runtime` (lib test) generated 16 warnings
+error: could not compile `vb_runtime` (lib test) due to 2 previous errors; 16 warnings emitted

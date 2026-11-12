@@ -1,0 +1,37 @@
+crates/vb_storage/src/inputs/submission_tests.rs:101:     for policy in [
+crates/vb_storage/src/inputs/submission_tests.rs:102:         RuntimePolicy::Relaxed,
+crates/vb_storage/src/inputs/submission_tests.rs:103:         RuntimePolicy::Journaled,
+crates/vb_storage/src/inputs/submission_tests.rs:104:         RuntimePolicy::Strict,
+crates/vb_storage/src/inputs/submission_tests.rs:105:     ] {
+crates/vb_storage/src/inputs/submission_tests.rs:106:         let directory = tempfile::tempdir()?;
+crates/vb_storage/src/inputs/submission_tests.rs:107:         let journal = FjallJournal::open(directory.path(), None)?;
+crates/vb_storage/src/inputs/submission_tests.rs:108:         journal.commit_run_submission(&submission(policy, 19)?, policy)?;
+crates/vb_storage/src/inputs/submission_tests.rs:109:         let before = journal.run_inputs(RunId::new(7))?;
+crates/vb_storage/src/inputs/submission_tests.rs:110:         let events_before = journal.events_for_run(RunId::new(7))?;
+crates/vb_storage/src/inputs/submission_tests.rs:111:         assert!(matches!(
+crates/vb_storage/src/inputs/submission_tests.rs:112:             journal.commit_run_submission(&submission(policy, 99)?, policy),
+crates/vb_storage/src/inputs/submission_tests.rs:113:             Err(JournalError::RunAlreadyExists)
+crates/vb_storage/src/inputs/submission_tests.rs:114:         ));
+crates/vb_storage/src/inputs/submission_tests.rs:115:         assert_eq!(journal.run_inputs(RunId::new(7))?, before);
+crates/vb_storage/src/inputs/submission_tests.rs:116:         assert_eq!(journal.events_for_run(RunId::new(7))?, events_before);
+crates/vb_storage/src/inputs/submission_tests.rs:117:     }
+crates/vb_storage/src/inputs/submission_tests.rs:118:     Ok(())
+crates/vb_storage/src/inputs/submission_tests.rs:119: }
+crates/vb_storage/src/inputs/submission_tests.rs:120: 
+crates/vb_storage/src/inputs/submission_tests.rs:121: #[test]
+crates/vb_storage/src/inputs/submission_tests.rs:122: fn journaled_artifact_cannot_be_committed_as_strict_or_relaxed() -> TestResult {
+crates/vb_storage/src/inputs/submission_tests.rs:123:     let directory = tempfile::tempdir()?;
+crates/vb_storage/src/inputs/submission_tests.rs:124:     let journal = FjallJournal::open(directory.path(), None)?;
+crates/vb_storage/src/inputs/submission_tests.rs:125:     let submission = submission(RuntimePolicy::Journaled, 1)?;
+crates/vb_storage/src/inputs/submission_tests.rs:126:     assert!(matches!(
+crates/vb_storage/src/inputs/submission_tests.rs:127:         journal.commit_run_submission(&submission, RuntimePolicy::Strict),
+crates/vb_storage/src/inputs/submission_tests.rs:128:         Err(JournalError::ArtifactMalformed)
+crates/vb_storage/src/inputs/submission_tests.rs:129:     ));
+crates/vb_storage/src/inputs/submission_tests.rs:130:     assert_empty(&journal)?;
+crates/vb_storage/src/inputs/submission_tests.rs:131:     assert!(matches!(
+crates/vb_storage/src/inputs/submission_tests.rs:132:         journal.commit_run_submission(&submission, RuntimePolicy::Relaxed),
+crates/vb_storage/src/inputs/submission_tests.rs:133:         Err(JournalError::ArtifactMalformed)
+crates/vb_storage/src/inputs/submission_tests.rs:134:     ));
+crates/vb_storage/src/inputs/submission_tests.rs:135:     assert_empty(&journal)?;
+crates/vb_storage/src/inputs/submission_tests.rs:136:     Ok(())
+crates/vb_storage/src/inputs/submission_tests.rs:137: }

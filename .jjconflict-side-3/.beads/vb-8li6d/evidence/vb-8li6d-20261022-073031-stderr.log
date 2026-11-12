@@ -1,0 +1,17 @@
+warning: unused variable: `test_dir_str`
+   --> crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:739:13
+    |
+739 |         let test_dir_str = test_dir.to_string_lossy();
+    |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_test_dir_str`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `artifact_path`
+   --> crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:759:17
+    |
+759 |             let artifact_path = db_path.with_extension("");
+    |                 ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_artifact_path`
+
+warning: `velvet-ballistics-workspace-tests` (test "vb_test_cli_run_lifecycle_behavior") generated 2 warnings (run `cargo fix --test "vb_test_cli_run_lifecycle_behavior" -p velvet-ballistics-workspace-tests` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/vb_test_cli_run_lifecycle_behavior.rs (target/debug/deps/vb_test_cli_run_lifecycle_behavior-050672b0334ff7b3)

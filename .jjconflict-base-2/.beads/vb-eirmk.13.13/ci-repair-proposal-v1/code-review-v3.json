@@ -1,0 +1,194 @@
+{
+  "artifact": "protected-landing-patches-code-review/v3",
+  "verdict": "PASS",
+  "scope": "Fresh bounded CODE review of complete-tree ledger V5 and unchanged exact nightly/panic proposal bytes. Three scoped proposal verdicts PASS; not live application, user permission, native acceptance or main landing.",
+  "workspace": {
+    "git_root": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+    "jj_root": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol"
+  },
+  "ledger": {
+    "verdict": "PASS",
+    "artifact_path": "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/target/core-build-20261110/evidence/test-integrity-current-proposal-v5-2e674.json",
+    "artifact_sha256": "daa308ebe2c32b67f2cba827cb05e459b96898667be2a2ccf37b6d49d404d090",
+    "source_pin": "2e67416679b4c8f6fd4abe93c365841a8370cfdb",
+    "base_pin": "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178",
+    "preview_working_copy_pin": "a975a09b55fc0ca424a833d5218af5b1aaeaedd8",
+    "source_tree": "2f33b164ffbbf94e249eef9801cae119beca3488",
+    "preview_tree_equal_to_source": true,
+    "base_is_real_ancestor": true,
+    "tsv_sha256": "9cec042ed6830352329401448fd397067619c88814a897663b408639b0c62ce3",
+    "justification": {
+      "relative_path": ".beads/vb-eirmk.13.3/replay-test-relocation-justification-v4.md",
+      "git_blob": "be5acdfb8520dc666747986cbc3d7379adc72805",
+      "sha256": "793f54a027b054f6b4cb504532d14a538d4f7843f4bf2d595ee499ade2ba5bea",
+      "tracked_at_complete_source": true,
+      "role": "Author rationale whose contents are independently CODE-reviewed here; not its own review approval. Separate exact-hash TEST and explicit user permission remain required."
+    },
+    "findings": [],
+    "resolved_finding": {
+      "id": "V4-L1",
+      "status": "RESOLVED",
+      "evidence": "Historical V4 count omissions are explicitly corrected. Fresh complete-tree controls independently counted across all emitted kinds, yielding0/1/1/2total findings with zero duplicate emissions, not the old132subtotal."
+    },
+    "provenance_notes": [
+      {
+        "severity": "LOW",
+        "json_pointer": "/source_context/checker_preview/original_checker_source_sha256",
+        "note": "This field holds the40-character Git blob d2a64ab1a4d8ded0bf005dc0704a8dbe815a2721, not SHA256. Correct top-level checker_source_sha256 and actual bytes independently match461cf1a5bab360748745cfad9a59a6a9ea5f7d3dcfb696aad91e956a187b0c1e; exact copy reversal also verified. Do not consume the mislabelled field as SHA256 in an executor."
+      },
+      {
+        "severity": "LOW",
+        "json_pointer": "/normative_contract_references/2/sha256",
+        "note": "fc0282bb... is the historical master hash cited by the unchanged V4 rationale, not current complete-tree master. Actual2e674/main69bc master SHA256 is6a1dd5dac5a1afd8268d21ef68dea9379fc26b0a0c1e44fa3663392d008166ee. Independently inspected five-line diff only corrects unrelated source paths; Contains/Has rows2448/2451 are unchanged. This report records the current normative authority rather than claiming the old hash matches current bytes."
+      }
+    ],
+    "verified_bindings": [
+      "Actual merge-base equals full69bc. Preview a975 and source2e674 Git tree IDs are identical, not merely matching selected test files.",
+      "All seven declared source blob IDs match source2e674: five replay test files,checker and57-row live ledger. Both normative contract docs and the portable rationale are tracked with exact declared blobs/hashes. Current master signature rows independently verified.",
+      "Two eleven-field TSV rows match proposal exactly and retain prior9cec hash. Old/new/replacement blobs remain frozen;90test IDs and100functions retained with88identical bodies/two named normative changes. All four exact oracles remain in the same functions. These source file blobs equal the independently inspected V4 source, so no registration-only inference.",
+      "Copied checker source SHA5e4a57cbc98579088ca34159ff374a534542255a93a853b528e30774e5815cb3 matches bytes; reversing its sole JUSTIFICATIONS_REL substitution equals original source. Binary SHA600983909809c29cb7e590c06429734643719b1f2026f6f2f2e2db9e187313e4 independently matches.",
+      "Live ledger remains57rows SHA096df4425e06980160297b3fcdb126532d1f015af2329c37f4c475d5e507cafb,Git blob89a24a525bb583d7b0025bf3adbe7585b1b6ac3f. Two rows added only to copied scratch ledger, not live."
+    ],
+    "corrected_receipts": {
+      "path": "target/core-build-20261110/evidence/test-integrity-v5-2e674/case-results-corrected.json",
+      "sha256": "c0f400e793e0c1b3e82fdf29ab7951174e57532cc52434c837f1dc05722de277",
+      "method": "Read actual hash-bound stdout/stderr; count every kind|path|detail finding line, exact unique rows, duplicates and per-kind tally; compare independently with corrected receipts and embedded four_controls.",
+      "argv": [
+        "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/target/core-build-20261110/evidence/test-integrity-v5-2e674/check-test-integrity-v5",
+        "--base",
+        "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178"
+      ],
+      "both_rows": {
+        "recorded_exit": 0,
+        "emitted": 0,
+        "distinct": 0,
+        "duplicates": 0,
+        "justified": 2,
+        "raw_marker": "test integrity: PASS base=69bcabd8fba0250d2f6dbd3953fb2604a8ba1178"
+      },
+      "omit_declaration": {
+        "recorded_exit": 1,
+        "emitted": 1,
+        "distinct": 1,
+        "duplicates": 0,
+        "finding": "DeletedTestDeclaration|crates/vb_core/src/replay/ops/tests.rs|removed_declarations=90 added_declarations=0"
+      },
+      "omit_assertion": {
+        "recorded_exit": 1,
+        "emitted": 1,
+        "distinct": 1,
+        "duplicates": 0,
+        "finding": "WeakenedAssertion|crates/vb_core/src/replay/ops/tests.rs|removed_exact=4 added_exact=0 added_weak=0"
+      },
+      "omit_both": {
+        "recorded_exit": 1,
+        "emitted": 2,
+        "distinct": 2,
+        "duplicates": 0
+      },
+      "execution_limit": "Reviewer read saved process receipts/logs, did not execute copied checker. Corrected result supersedes explicitly disclosed buggy preliminary parser summary."
+    },
+    "limits": [
+      "This is a complete-tree copied-checker PASS at2e674/69bc, not live protected-gate application or fullCI/native acceptance.",
+      "The frozen rationale includes historicalce664context; current complete-tree source equivalence and tracked bindings are separately established above.",
+      "Independent TEST and explicit user permission still required; any later source/base/blob change requires guard refresh and targeted preview."
+    ]
+  },
+  "nightly_probe": {
+    "verdict": "PASS",
+    "proposal_path": "/home/lewis/src/isoloated/velvet-ballistics-core-main-landing/target/core-build-20261110/evidence/protected-probe-proposal/proposal.json",
+    "proposal_sha256": "6e5036d29ebea5431c1bcdc62d527d79bb21269f7ef5aaf7a98db52eee74ca36",
+    "protected_path": ".moon/tasks/all.yml",
+    "before_sha256": "6c98ccc7d9def0de1979dc910098f32c34062aa21520ee4fdf1aff8489ad04df",
+    "after_sha256": "e8b95ae162515e1a392a25652da4f168ac2b216b34f0c63322ecbfc17a19077f",
+    "patch_sha256": "6bdd72fa26ae056fbf2d9a98885d609488aa4c96a0bdc94294bb1452914ee8a4",
+    "script_sha256": "bc6f600708018acb7fcd4f0b111ee62e829739cde8c6c690342e4feb72c93fc2",
+    "log_sha256": "9f3e8dd428e685924ec4c689b522c6c80dc2b4c28a12d8af03c936e1687ee6d9",
+    "exit_sha256": "0d24825a529022e30387b8ec5c2d39bbcea8f87df53da96baec6235d41299739",
+    "findings": [],
+    "verified": [
+      "Before/after/patch digests match provided exact bindings. Reconstructing after from before with precisely mkdir insertion and two output-path replacements equals after byte-for-byte; all other config untouched.",
+      "Copied probe.sh is exact contiguous proposed script body. Pinned nightly Cargo tree/metadata commands,all-features/e features/package/format flags,set-euo,toolchains/inputs/runInCI and final marker unchanged.",
+      "New directory/outputs are fixed relative target/nightly-feature-cargo-probe paths in project context; mkdir-p is noninteractive. No root scratch redirect remains in this task. No gate logic/coverage/timeout/limits/suppressions changed.",
+      "Read actual PROBE_EXIT=0 and completion marker. Both redirected output files exist in landing workspace:51601-byte tree output and1379651-byte parseable metadata with264packages. No reviewer probe execution.",
+      "Live .moon/tasks/all.yml independently equals before bytes. PASS is exact bounded path-only proposal review, not permission to apply."
+    ]
+  },
+  "required_before_permission_or_application": [
+    "Obtain fresh independent TEST disposition for exact ledgerV5hash and preserve exact nightly/panic reviewed bytes; do not substitute author self-approval.",
+    "Present these concrete three protected changes and bound review receipts for explicit user permission before applying any live TSV/config/checker change.",
+    "Immediately before approved application, recheck all live before hashes, source/base and exact rows/rationale; preserve existing57ledger rows and every unrelated config/checker byte.",
+    "Current native Contains AST-versus-bytecode mismatch is separate real work. Do not drop/weaken its test or describe this three-proposal CODE PASS as a native/fullCI/landing PASS.",
+    "After authorized application and any source repair, run required gates on the actual final complete integrated tree. Recheck copied checker source/base/blob guards if anything affecting findings changes."
+  ],
+  "operations_and_limits": [
+    "Read-only Git/source/artifact inspection and independently parsed saved raw receipts; no BD/source/gate/config mutation, copied-checker/probe execution, Rust build, commit or push. Only own report written.",
+    "Three exact protected proposals have bounded CODE PASS; independent TEST, explicit permission, final source guards and full verification remain separate. Prior V4 rejection retained."
+  ],
+  "previous_report_preserved": "protected-landing-patches-code-review-v2.json",
+  "panic_surface": {
+    "verdict": "PASS",
+    "proposal_path": "/home/lewis/src/isoloated/velvet-ballistics-core-main-landing/target/core-build-20261110/evidence/protected-panic-proposal/proposal.json",
+    "proposal_sha256": "0540c4bbd9c83f5dbc177b5e3f3f4b2595aa5602edd9077adf2cadca37b948ef",
+    "protected_path": "scripts/check-panic-surface.sh",
+    "before_sha256": "d1ba5ced1fd50066c312d9b2a895df530b8b60b82860379271c859ddb6c5a88a",
+    "after_sha256": "fa0478eb4090aff3c0c88fe77d8137a40be4cbc2c94321fc0e3c4b59e5046369",
+    "patch_sha256": "6d16a7b92eaaf68f21cf0571d5d893078732c26584500977e6c0e69675c153f5",
+    "findings": [],
+    "verified": [
+      "Frozen before/after/patch hashes match. Removing exactly the new awk/continue block restores before bytes, preserving all existing production scan patterns/filters/outer-test/Kani/comment handling.",
+      "Predicate skips blank and line-comment-only prefixes, examines exactly the first other line, and requires the complete standalone #![cfg(test)] attribute. END returns failure when no such first line was found. No grep-anywhere acceptance.",
+      "An accepted first meaningful exact inner cfg(test) excludes the file from non-test Rust compilation. A fake guard inside an ordinary/raw string or block/doc comment requires a preceding non-comment opener, which stops this predicate with failure; conditional feature guards are not accepted.",
+      "Actual motivating file is crates/vb_runtime/src/error/tests_diagnostics/proptest_vb_edvbj_diagnostic_code.rs: exact upstream69bc bytes,Git blob16d2646bcd8228c3cf89dcf3b84568b3e14e0b4d,three assert macro lines and first meaningful #![cfg(test)]. No source rename/deletion/marker edit used."
+    ],
+    "author_control_receipts": {
+      "source_hashes_checked": true,
+      "scan_eligible_path": "fixtures/<case>/crates/probe/src/lib.rs; not excluded filename/path",
+      "case_exits": {
+        "file_test_guard": 0,
+        "production_assert": 2,
+        "line_comment_fake": 2,
+        "block_comment_fake": 2,
+        "raw_string_fake": 2,
+        "conditional_feature_guard": 2,
+        "production_without_assert": 0
+      },
+      "method": "Read each actual fixture, verified its SHA256 against proposal and inspected its raw checker output. Exit values are supplied per-case structured receipts plus checker ExitCode markers; reviewer did not rerun the full shell checker."
+    },
+    "independent_predicate_controls": {
+      "execution": "Extracted the exact four-line awk program and invoked awk in memory via stdin, without creating source files or running Rust/native builds.",
+      "results": {
+        "ordinary_multiline_string": 1,
+        "raw_doc": 1,
+        "block_decoy_after_comments": 1,
+        "quoted_slash_line": 1,
+        "late_inner_guard": 1,
+        "exact_guard_crlf": 0,
+        "empty": 1,
+        "only_comments": 1,
+        "guard_with_trailing_comment": 1
+      },
+      "meaning": "0 means eligible exact file-level test guard;1 means no skip. All expected results observed. These are lexical predicate checks, not compiled Rust fixtures."
+    },
+    "copied_full_preview": {
+      "log_sha256": "12b564164a3cb77d63fbf1663e830f1098f3799d0149fd4da824671edf861898",
+      "exit_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "actual_exit": 0,
+      "observed": "NoViolationFound/ExitCode0,working directory core-main-landing,log GitHEADbdf6f7880b80bf897824008bd8b2625d80744dd1,rustc1.97.0-nightly52b6e2c20.",
+      "binding_limit": "Git HEAD alone is not a complete working-tree/JJ source hash. This older copied preview does not replace running final gates on the new complete landing workspace."
+    },
+    "conservative_limits": [
+      "Not a general Rust lexer/parser. A block-comment/doc prologue, an earlier different attribute, alternate spacing, BOM or trailing comment may leave a truly test-only file unrecognized and produce false positives.",
+      "Existing outer-test and other exclusions remain byte-unchanged; this review does not certify their general soundness.",
+      "Predicate runs once per flagged line as before-count processing does; no performance claim or large-file resource benchmark made.",
+      "Exact protected proposal approval only; independent TEST and explicit user permission still required before applying the live checker."
+    ]
+  },
+  "fresh_live_hashes": {
+    ".moon/tasks/all.yml": "6c98ccc7d9def0de1979dc910098f32c34062aa21520ee4fdf1aff8489ad04df",
+    "scripts/check-panic-surface.sh": "d1ba5ced1fd50066c312d9b2a895df530b8b60b82860379271c859ddb6c5a88a",
+    "scripts/test-integrity-justifications.tsv": "096df4425e06980160297b3fcdb126532d1f015af2329c37f4c475d5e507cafb"
+  },
+  "unchanged_other_proposals": "Nightly and panic proposal/patch hashes independently rechecked equal V2; their bounded CODE PASS verdicts stand for identical bytes. Existing older full panic copied preview is not promoted to current2e674native/full-gate evidence.",
+  "native_status": "User reports full main-native run found a real Contains AST/bytecode mismatch. This review did not audit that native receipt or repair; no native green or whole-feature acceptance claimed."
+}

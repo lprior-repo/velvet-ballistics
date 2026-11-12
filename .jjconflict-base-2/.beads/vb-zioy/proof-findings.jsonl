@@ -1,0 +1,1 @@
+{"schema_version":"finding/v1","id":"F-001","severity":"low","artifact":"proof-evidence.md","message":"Proptest modules unlinked in lib.rs — pre-existing configuration debt, not bead-specific"}

@@ -1,0 +1,111 @@
+{
+  "protocol": {
+    "version": 4,
+    "sequence": [
+      "A1",
+      "B1",
+      "B2",
+      "A2"
+    ],
+    "roles": {
+      "A1": "baseline",
+      "B1": "candidate",
+      "B2": "candidate",
+      "A2": "baseline"
+    },
+    "latency": {
+      "sample_size": 100,
+      "warm_up_seconds": 3,
+      "measurement_seconds": 5
+    },
+    "counter_run": {
+      "sample_size": 10,
+      "warm_up_seconds": 1,
+      "measurement_seconds": 1,
+      "tool": "perf instructions:u plus separate heaptrack process"
+    },
+    "aggregation": "per side: arithmetic mean in ns of its two unrounded Criterion mean.point_estimate values; no weighting by iteration count; round only the final side mean to integer ps if subsequently producing approved policy rows",
+    "quantiles": "per side: pool its 200 Criterion sample means (time_ns/iterations); nearest-rank ceil(p*N)-1 for p50/p95/p99; these are not individual-operation tail latencies",
+    "counter_scope": "whole filtered Criterion process, including startup, all suite fixture setup, warmup/calibration and measured work; separate perf and heaptrack invocations; not per-operation counters; profiler timings never enter latency aggregation",
+    "metric_limits_percent": {
+      "bench_engine_step_once_save_const_single_transition": 3,
+      "ipc_frame_decode": 5,
+      "engine_run_until_blocked_budget_10_small_workflow": 3
+    },
+    "failure_policy": "all four complete runs are required; any failed/contaminated run invalidates the session; preserve every attempt and predeclare an entirely new session before any rerun; no best-run selection or threshold edits",
+    "dependency_lock_policy": "Candidate Cargo.lock must equal baseline byte-for-byte after removing exactly one reference workspace package 0.1.0 stanza with dependencies proptest, vb_core, vb_expr, vb_storage, and exactly one quoted reference dependency line within the velvet-ballistics-workspace-tests 0.1.0 dependency list. No reference edge elsewhere or any other byte difference is permitted. Both actual lockfiles must match frozen source receipts; all existing package versions, features and checksums remain exact. No new third-party dependency is allowed. Protocol metadata changes the build freeze: fresh baseline and candidate builds using this R5 recipe are required; no compatibility attestation or prior-build reuse."
+  },
+  "protocol_sha256": "10dd7751ee2067caaae8e533a24035383376a08705f7431b9696e64b5e77cfda",
+  "cpu": 14,
+  "sources": {
+    "baseline": {
+      "build_output": "/home/lewis/tmp/vb-f1f5-final-landing-r163-20261112/build-baseline",
+      "source": {
+        "role": "baseline",
+        "root": "/home/lewis/src/isoloated/velvet-ballistics-f1f5-benchmark-baseline-r139-20261112",
+        "pin": "7f505d498fa35acb5b70b083ac6f02cd40f3a891",
+        "head": "7f505d498fa35acb5b70b083ac6f02cd40f3a891",
+        "performance_input_sha256": "af0335bf81f5c6c07679fc6a1c34aaaeb6bedc36ca8a36b790223aaa2ca41a7f",
+        "tracked_input_count": 2178,
+        "small_workflow_sha256": "6af18531f9e21a93c1929e44cb7bdd7ca6a78096a5c0af892775a51cd6d81585",
+        "benchmark_preimage_sha256": "1237abe198f53f92f56cc907e6b02c472a5d13c2badb32d1dab9761662a2ce27",
+        "benchmark_guard_default_us": 100000,
+        "benchmark_guard_export_us": 100000,
+        "benchmark_source_sha256": "c936ce3f4dcb2a595ca700601466d4ddf55ed6e15a731704a622772312f05801",
+        "baseline_overlay_sha256": "0175f57b1a63ef7a9a36c67ea0422106c7b4917d124c26944542b9383b968fed",
+        "relevant_git_diff_sha256": "dd17958639d0e8e9ee1d1805653963b5007030cc6d9805e0da8021edd2f9d170",
+        "cargo_lock_sha256": "307cb7e5ecaa002ebe817d6963fab48c681b3d42927081863a2f35d4ea4b37fd",
+        "jj_cached_working_copy": "85caff09d1c05d4f0a3c29ad87e608410895767a",
+        "jj_cached_parent": "7f505d498fa35acb5b70b083ac6f02cd40f3a891",
+        "snapshot_authority": "actual tracked bytes checked against exact Git blobs plus the single pinned overlay; cached JJ state is recorded, not assumed current"
+      },
+      "build_receipt_sha256": "6fa35c2a74bc923ea3c23a52fd4334f3932b82ef41faf3def28c93ed59d306a1"
+    },
+    "candidate": {
+      "build_output": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/build-candidate",
+      "source": {
+        "role": "candidate",
+        "root": "/home/lewis/src/isoloated/velvet-ballistics-f1f5-landing-20261111",
+        "pin": "6d29f95138ff2a646da740f772995f8fb927c9f5",
+        "head": "6d29f95138ff2a646da740f772995f8fb927c9f5",
+        "performance_input_sha256": "625b07d8ad07e9823fe87ac6c9e9f183600e354a591c0f12906ca4ef5994bfe9",
+        "tracked_input_count": 2841,
+        "small_workflow_sha256": "6af18531f9e21a93c1929e44cb7bdd7ca6a78096a5c0af892775a51cd6d81585",
+        "benchmark_preimage_sha256": "1df54a81bd34b742765897507bb6736805f6cbf1184800f523d5e07f0cb74cfc",
+        "benchmark_guard_default_us": 100000,
+        "benchmark_guard_export_us": 100000,
+        "benchmark_source_sha256": "1df54a81bd34b742765897507bb6736805f6cbf1184800f523d5e07f0cb74cfc",
+        "baseline_overlay_sha256": null,
+        "relevant_git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cargo_lock_sha256": "8104a4446a1d774954b38bea75f8fb3c7071316c6e89d9ef6791ebc904ac0bd3",
+        "jj_cached_working_copy": "21f7313db8d97f93673c2a7d2b1d7b5ca9a5b359",
+        "jj_cached_parent": "6d29f95138ff2a646da740f772995f8fb927c9f5",
+        "snapshot_authority": "actual tracked bytes checked against exact Git blobs plus the single pinned overlay; cached JJ state is recorded, not assumed current"
+      },
+      "build_receipt_sha256": "4ba0ba0abea7cbda284e5e36ec3c9be3fda7061a45617a75d5cd24b91f9df281"
+    }
+  },
+  "runs": [
+    {
+      "label": "A1",
+      "role": "baseline",
+      "directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1"
+    },
+    {
+      "label": "B1",
+      "role": "candidate",
+      "directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1"
+    },
+    {
+      "label": "B2",
+      "role": "candidate",
+      "directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2"
+    },
+    {
+      "label": "A2",
+      "role": "baseline",
+      "directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2"
+    }
+  ],
+  "counters_directory": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result"
+}

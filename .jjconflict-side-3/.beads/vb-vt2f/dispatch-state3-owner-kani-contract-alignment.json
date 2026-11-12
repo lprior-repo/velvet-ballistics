@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 3,
+  "sublane": "owner-kani-proof-kernel-contract-alignment",
+  "delegate": "rust-contract",
+  "attempt": 5,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "Contract-verification rejected because obligations still require concrete Runtime/shard execution while owner-authorized Kani proof kernels prove projected model",
+  "input_artifacts": [".beads/vb-vt2f/contract-verification-review.md", ".beads/vb-vt2f/proof-review.md", ".beads/vb-vt2f/proof-architecture-report.md", ".beads/vb-vt2f/proof-evidence.md", ".beads/vb-vt2f/contract.md", ".beads/vb-vt2f/verification-layers.md", ".beads/vb-vt2f/proof-obligations.jsonl", ".beads/vb-vt2f/proof-obligations.planned.jsonl", ".beads/vb-vt2f/traceability-matrix.jsonl", ".beads/vb-vt2f/tla-spec.md", ".beads/vb-vt2f/lean-contract.md"],
+  "output_artifacts": [".beads/vb-vt2f/contract.md", ".beads/vb-vt2f/verification-layers.md", ".beads/vb-vt2f/proof-obligations.jsonl", ".beads/vb-vt2f/traceability-matrix.jsonl", ".beads/vb-vt2f/tla-spec.md", ".beads/vb-vt2f/lean-contract.md"],
+  "status": "QUEUED"
+}

@@ -1,0 +1,2 @@
+{"id":"PO-vb-ybi5-001","command":"scripts/check-ignored-fallible-results.sh","required":true,"owner_state":11,"rerun_from":10,"expected":"NoViolationFound"}
+{"id":"PO-vb-ybi5-002","command":"moon run :verify-standard","required":true,"owner_state":11,"rerun_from":10,"expected":"All standard checks passed"}

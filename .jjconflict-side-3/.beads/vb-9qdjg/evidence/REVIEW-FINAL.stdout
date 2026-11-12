@@ -1,0 +1,113 @@
+=== Loading evidence records ===
+
+=== Loading heaptrack manifest ===
+
+=== Check 1: Commit SHA validation ===
+
+=== Check 1b: Commit ancestry (git merge-base) ===
+
+=== Check 2: Criterion measurements ===
+
+  bench_engine_step_once_save_const_single_transition:
+
+  ipc_frame_decode:
+
+  engine_run_until_blocked_budget_10_small_workflow:
+
+=== Check 3: Perf instruction counts ===
+
+  bench_engine_step_once_save_const_single_transition:
+
+  ipc_frame_decode:
+
+  engine_run_until_blocked_budget_10_small_workflow:
+
+=== Check 4: Heaptrack SHA validation ===
+
+=== Check 5: Heaptrack content validation ===
+
+  bench_engine_step_once_save_const_single_transition:
+
+  ipc_frame_decode:
+
+  engine_run_until_blocked_budget_10_small_workflow:
+
+=== Check 6: Threshold validation ===
+
+=== Check 7: Baseline = result (intentional) ===
+
+=== Check 8: Hardware metadata ===
+
+============================================================
+Total checks: 66
+Errors: 0
+
+Summary:
+  ✓ evidence record count
+  ✓ heaptrack manifest entry count
+  ✓ bench_engine_step_once_save_const_single_transition commit SHA length
+  ✓ bench_engine_step_once_save_const_single_transition commit SHA value
+  ✓ ipc_frame_decode commit SHA length
+  ✓ ipc_frame_decode commit SHA value
+  ✓ engine_run_until_blocked_budget_10_small_workflow commit SHA length
+  ✓ engine_run_until_blocked_budget_10_small_workflow commit SHA value
+  ✓ measured commit 2fea0dce is ancestor of HEAD ebf64b4b
+  ✓ bench_engine_step_once_save_const_single_transition sample count
+  ✓ bench_engine_step_once_save_const_single_transition mean vs computed
+  ✓ bench_engine_step_once_save_const_single_transition result_value picoseconds
+  ✓ bench_engine_step_once_save_const_single_transition baseline_value = result (intentional)
+  ✓ bench_engine_step_once_save_const_single_transition p50_latency
+  ✓ bench_engine_step_once_save_const_single_transition p95_latency
+  ✓ bench_engine_step_once_save_const_single_transition p99_latency
+  ✓ bench_engine_step_once_save_const_single_transition metric name present in full_id
+  ✓ ipc_frame_decode sample count
+  ✓ ipc_frame_decode mean vs computed
+  ✓ ipc_frame_decode result_value picoseconds
+  ✓ ipc_frame_decode baseline_value = result (intentional)
+  ✓ ipc_frame_decode p50_latency
+  ✓ ipc_frame_decode p95_latency
+  ✓ ipc_frame_decode p99_latency
+  ✓ ipc_frame_decode metric name present in full_id
+  ✓ engine_run_until_blocked_budget_10_small_workflow sample count
+  ✓ engine_run_until_blocked_budget_10_small_workflow mean vs computed
+  ✓ engine_run_until_blocked_budget_10_small_workflow result_value picoseconds
+  ✓ engine_run_until_blocked_budget_10_small_workflow baseline_value = result (intentional)
+  ✓ engine_run_until_blocked_budget_10_small_workflow p50_latency
+  ✓ engine_run_until_blocked_budget_10_small_workflow p95_latency
+  ✓ engine_run_until_blocked_budget_10_small_workflow p99_latency
+  ✓ engine_run_until_blocked_budget_10_small_workflow metric name present in full_id
+  ✓ bench_engine_step_once_save_const_single_transition instruction_count
+  ✓ ipc_frame_decode instruction_count
+  ✓ engine_run_until_blocked_budget_10_small_workflow instruction_count
+  ✓ ht-bench_engine_step_once_save_const_single_transition.zst SHA256
+  ✓ ht-ipc_frame_decode.zst SHA256
+  ✓ ht-engine_run_until_blocked_budget_10_small_workflow.zst SHA256
+  ✓ bench_engine_step_once_save_const_single_transition allocation_count vs manifest
+  ✓ bench_engine_step_once_save_const_single_transition bytes_allocated vs manifest
+  ✓ bench_engine_step_once_save_const_single_transition allocation_count vs record
+  ✓ bench_engine_step_once_save_const_single_transition bytes_allocated vs record
+  ✓ ipc_frame_decode allocation_count vs manifest
+  ✓ ipc_frame_decode bytes_allocated vs manifest
+  ✓ ipc_frame_decode allocation_count vs record
+  ✓ ipc_frame_decode bytes_allocated vs record
+  ✓ engine_run_until_blocked_budget_10_small_workflow allocation_count vs manifest
+  ✓ engine_run_until_blocked_budget_10_small_workflow bytes_allocated vs manifest
+  ✓ engine_run_until_blocked_budget_10_small_workflow allocation_count vs record
+  ✓ engine_run_until_blocked_budget_10_small_workflow bytes_allocated vs record
+  ✓ bench_engine_step_once_save_const_single_transition threshold
+  ✓ ipc_frame_decode threshold
+  ✓ engine_run_until_blocked_budget_10_small_workflow threshold
+  ✓ bench_engine_step_once_save_const_single_transition baseline = result
+  ✓ ipc_frame_decode baseline = result
+  ✓ engine_run_until_blocked_budget_10_small_workflow baseline = result
+  ✓ bench_engine_step_once_save_const_single_transition cpu_model
+  ✓ bench_engine_step_once_save_const_single_transition kernel_version
+  ✓ bench_engine_step_once_save_const_single_transition rustc_version
+  ✓ ipc_frame_decode cpu_model
+  ✓ ipc_frame_decode kernel_version
+  ✓ ipc_frame_decode rustc_version
+  ✓ engine_run_until_blocked_budget_10_small_workflow cpu_model
+  ✓ engine_run_until_blocked_budget_10_small_workflow kernel_version
+  ✓ engine_run_until_blocked_budget_10_small_workflow rustc_version
+
+ALL CHECKS PASSED

@@ -1,0 +1,100 @@
+crates/vb_storage/src/admission.rs:201: pub struct AcceptedArtifact {
+crates/vb_storage/src/admission.rs:202:     /// The compiled artifact's content hash (matches `source_digest` when
+crates/vb_storage/src/admission.rs:203:     /// artifact is produced directly from compilation without separate source).
+crates/vb_storage/src/admission.rs:204:     pub digest: vb_core::WorkflowDigest,
+crates/vb_storage/src/admission.rs:205:     /// Digest of the original workflow source that was compiled to produce this artifact.
+crates/vb_storage/src/admission.rs:206:     /// For directly compiled workflows, this equals `digest`.
+crates/vb_storage/src/admission.rs:207:     pub source_digest: vb_core::WorkflowDigest,
+crates/vb_storage/src/admission.rs:208:     /// Digest of the resource/policy contract that governed this artifact's admission.
+crates/vb_storage/src/admission.rs:209:     /// Derived from the `resource_contract` field of the compiled workflow.
+crates/vb_storage/src/admission.rs:210:     pub policy_digest: vb_core::WorkflowDigest,
+crates/vb_storage/src/admission.rs:211:     /// Serialized compiled IR (postcard).
+crates/vb_storage/src/admission.rs:212:     pub ir: Vec<u8>,
+crates/vb_storage/src/admission.rs:213:     /// Proof that verification passed.
+crates/vb_storage/src/admission.rs:214:     pub verification: VerificationProof,
+crates/vb_storage/src/admission.rs:215:     /// Journal sequence when accepted.
+crates/vb_storage/src/admission.rs:216:     ///
+crates/vb_storage/src/admission.rs:217:     /// GAP-007 FIX: This field is currently always set to `EventSeq::new(0)`
+crates/vb_storage/src/admission.rs:218:     /// because actual sequence tracking is not implemented. The field is retained
+crates/vb_storage/src/admission.rs:219:     /// as a placeholder for future implementation of proper sequence tracking.
+crates/vb_storage/src/admission.rs:220:     /// When actual tracking is implemented, replace the placeholder with the real
+crates/vb_storage/src/admission.rs:221:     /// sequence number from the journal at admission time.
+crates/vb_storage/src/admission.rs:222:     pub accepted_at_seq: EventSeq,
+crates/vb_storage/src/admission.rs:223:     /// Required capabilities for actions in this artifact.
+crates/vb_storage/src/admission.rs:224:     pub required_capabilities: Box<[vb_core::capability::Capability]>,
+crates/vb_storage/src/admission.rs:225:     /// Validated action contracts bound into this accepted artifact.
+crates/vb_storage/src/admission.rs:226:     ///
+crates/vb_storage/src/admission.rs:227:     /// The runtime needs these contracts after crash recovery to validate
+crates/vb_storage/src/admission.rs:228:     /// action completion size, taint, idempotency, and output-slot authority.
+crates/vb_storage/src/admission.rs:229:     /// Keeping them inside the accepted artifact makes the artifact the unit of
+crates/vb_storage/src/admission.rs:230:     /// trust described by the master contract instead of relying on ephemeral
+crates/vb_storage/src/admission.rs:231:     /// process memory.
+crates/vb_storage/src/admission.rs:232:     #[serde(default)]
+crates/vb_storage/src/admission.rs:233:     pub action_contracts: Box<[ActionContract]>,
+crates/vb_storage/src/admission.rs:234: }
+crates/vb_storage/src/admission.rs:235: 
+crates/vb_storage/src/admission.rs:236: /// Computes the policy digest from a workflow's resource contract.
+crates/vb_storage/src/admission.rs:237: ///
+crates/vb_storage/src/admission.rs:238: /// GAP-003 FIX: Added per review finding that `AcceptedArtifact` must bind
+crates/vb_storage/src/admission.rs:239: /// to the policy digest that governed admission. The policy digest is derived
+crates/vb_storage/src/admission.rs:240: /// from the resource contract by hashing its canonical serialization.
+crates/vb_storage/src/admission.rs:241: ///
+crates/vb_storage/src/admission.rs:242: /// YAGNI FIX: the serialization buffer is pre-sized to
+crates/vb_storage/src/admission.rs:243: /// `resource_contract_policy_bytes_bound` (115 bytes) as a single
+crates/vb_storage/src/admission.rs:244: /// `vec![0u8; bound]` allocation. `postcard::to_slice` honors the slice
+crates/vb_storage/src/admission.rs:245: /// length it is given, so the Vec must be initialized to its full bound
+crates/vb_storage/src/admission.rs:246: /// length (not just capacity) before the call. The bound is derived from
+crates/vb_storage/src/admission.rs:247: /// postcard's per-field upper bounds on `ResourceContract` and is verified
+crates/vb_storage/src/admission.rs:248: /// by `policy_buffer_fits_canonical_resource_contract` in `admission::tests`.
+crates/vb_storage/src/admission.rs:249: /// After `to_slice` returns, the Vec is truncated to the used prefix and
+crates/vb_storage/src/admission.rs:250: /// the prefix is BLAKE3-hashed. The BLAKE3 output is byte-identical to a
+crates/vb_storage/src/admission.rs:251: /// `to_allocvec` implementation for any given `ResourceContract` because
+crates/vb_storage/src/admission.rs:252: /// postcard's varint encoding is deterministic. The pre-sized bound
+crates/vb_storage/src/admission.rs:253: /// guarantees no reallocation occurs and the buffer is bounded to the
+crates/vb_storage/src/admission.rs:254: /// policy bound (no dynamic growth).
+crates/vb_storage/src/admission.rs:255: pub fn compute_policy_digest(
+crates/vb_storage/src/admission.rs:256:     workflow: &vb_core::CompiledWorkflow,
+crates/vb_storage/src/admission.rs:257: ) -> Result<vb_core::WorkflowDigest, JournalError> {
+crates/vb_storage/src/admission.rs:258:     let bound = resource_contract_policy_bytes_bound();
+crates/vb_storage/src/admission.rs:259:     let mut contract_bytes: Vec<u8> = vec![0u8; bound];
+crates/vb_storage/src/admission.rs:260:     let used_len = match postcard::to_slice(&workflow.resource_contract(), &mut contract_bytes)
+crates/vb_storage/src/admission.rs:261:         .map_err(JournalError::Encode)
+crates/vb_storage/src/admission.rs:262:     {
+crates/vb_storage/src/admission.rs:263:         Ok(used) => used.len(),
+crates/vb_storage/src/admission.rs:264:         Err(_) => {
+crates/vb_storage/src/admission.rs:265:             // Fallback: serialize the entire workflow parts and extract resource_contract field.
+crates/vb_storage/src/admission.rs:266:             let parts = workflow.to_parts();
+crates/vb_storage/src/admission.rs:267:             postcard::to_slice(&parts.resource_contract, &mut contract_bytes)
+crates/vb_storage/src/admission.rs:268:                 .map_err(JournalError::Encode)?
+crates/vb_storage/src/admission.rs:269:                 .len()
+crates/vb_storage/src/admission.rs:270:         }
+crates/vb_storage/src/admission.rs:271:     };
+crates/vb_storage/src/admission.rs:272:     contract_bytes.truncate(used_len);
+crates/vb_storage/src/admission.rs:273:     let hash = blake3::hash(&contract_bytes);
+crates/vb_storage/src/admission.rs:274:     Ok(vb_core::WorkflowDigest::from_bytes(*hash.as_bytes()))
+crates/vb_storage/src/admission.rs:275: }
+crates/vb_storage/src/admission.rs:276: 
+crates/vb_storage/src/admission.rs:277: /// Returns the maximum serialized size of a `ResourceContract` in bytes.
+crates/vb_storage/src/admission.rs:278: ///
+crates/vb_storage/src/admission.rs:279: /// This is the policy-buffer upper bound used by admission: any canonical
+crates/vb_storage/src/admission.rs:280: /// `ResourceContract` (postcard-encoded) must fit in this bound so that
+crates/vb_storage/src/admission.rs:281: /// strict-durability admission paths can compute the policy digest without
+crates/vb_storage/src/admission.rs:282: /// dynamic allocation.
+crates/vb_storage/src/admission.rs:283: ///
+crates/vb_storage/src/admission.rs:284: /// The bound is derived from field-by-field postcard upper bounds on the
+crates/vb_storage/src/admission.rs:285: /// `ResourceContract` struct fields (see `vb_core::workflow::ResourceContract`).
+crates/vb_storage/src/admission.rs:286: /// Postcard's encoding (postcard 1.1.x):
+crates/vb_storage/src/admission.rs:287: ///
+crates/vb_storage/src/admission.rs:288: /// - `u8` is NOT varint-encoded; `serialize_u8` writes a single raw byte
+crates/vb_storage/src/admission.rs:289: ///   (`postcard-1.1.3/src/ser/serializer.rs:130-134`). So `u8::MAX = 1 byte`.
+crates/vb_storage/src/admission.rs:290: /// - `u16` is varint (LEB128); `u16::MAX` needs 3 bytes (`varint_max::<u16>()`).
+crates/vb_storage/src/admission.rs:291: /// - `u32` is varint; `u32::MAX` needs 5 bytes (`varint_max::<u32>()`).
+crates/vb_storage/src/admission.rs:292: /// - `u64` is varint; `u64::MAX` needs 10 bytes (LEB128: `ceil(64/7) = 10`,
+crates/vb_storage/src/admission.rs:293: ///   `varint_max::<u64>() = (64 + 7 - 1) / 7 = 10`).
+crates/vb_storage/src/admission.rs:294: /// - `bool` is 1 byte (true=1, false=0).
+crates/vb_storage/src/admission.rs:295: ///
+crates/vb_storage/src/admission.rs:296: /// Field-by-field upper bounds for `ResourceContract`:
+crates/vb_storage/src/admission.rs:297: ///
+crates/vb_storage/src/admission.rs:298: /// - 7 × `u16::MAX`  → 7 × 3 bytes
+crates/vb_storage/src/admission.rs:299: /// - 1 × `u8::MAX`   → 1 × 1 byte  (raw, not varint)
+crates/vb_storage/src/admission.rs:300: /// - 3 × `u64::MAX`  → 3 × 10 bytes

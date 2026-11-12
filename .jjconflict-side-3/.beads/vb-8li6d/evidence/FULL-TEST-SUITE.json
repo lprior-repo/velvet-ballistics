@@ -1,0 +1,19 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-8li6d-local5090-impl",
+  "argv": [
+    "cargo",
+    "test",
+    "--manifest-path",
+    "crates/workspace_tests/Cargo.toml",
+    "--test",
+    "vb_test_cli_run_lifecycle_behavior"
+  ],
+  "exit_code": 0,
+  "seconds": 0.226,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-8li6d/evidence/FULL-TEST-SUITE"
+}

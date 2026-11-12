@@ -1,0 +1,9 @@
+=== Checking fuzz harness error exhaustiveness ===
+  OK JournalError in fuzz/src/journal_target/errors.rs::assert_typed_journal_error: 60 variants
+  OK JournalError in fuzz/fuzz_targets/decode_record.rs::assert_typed_journal_error: 60 variants
+  OK JournalError in fuzz/fuzz_targets/journal_decode.rs::assert_typed_journal_error: 60 variants
+  OK JournalError in fuzz/tests/proptest_journal_error_exhaustiveness.rs::assert_known_journal_error: 60 variants
+  OK IpcError in fuzz/src/ipc_target.rs::assert_typed_ipc_error: 14 variants
+  OK IpcError in fuzz/tests/proptest_ipc_error_exhaustiveness.rs::assert_known_ipc_error: 14 variants
+  OK ValidationError in fuzz/src/validation_target/verifier.rs::assert_typed_validation_error: 58 variants
+=== All error exhaustiveness checks passed ===

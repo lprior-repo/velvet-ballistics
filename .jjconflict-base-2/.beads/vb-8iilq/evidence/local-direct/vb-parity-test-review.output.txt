@@ -1,0 +1,24 @@
+STATUS: APPROVED
+
+The test suite adequately validates the VB-8IILQ contract. Key findings:
+
+**Strengths:**
+- `submit_empty_caps_no_fabrication` and `submit_with_inputs_empty_caps_no_fabrication` verify the core regression: empty caps remain empty through admission, not replaced by synthetic `__contract_required__` caps. Exact assertion on `CapabilitySet::empty()` is correct.
+- `submit_with_contracts_empty_caps_denied` validates negative admission is preserved: contracts without matching caps produce `AdmissionCapabilityDenied`, not silent success. The test also verifies no partial admission (empty events, zero active runs, zero submitted counter).
+- All tests use explicit fixture calls (`contracts_through`, `contract_capability_for`) rather than hidden substitutions. No all-in-one wrapper overrides grants.
+- Production parity confirmed: tests call the same `handle_submit`/`handle_submit_with_inputs`/`handle_submit_with_inputs_and_contracts` paths as production, with no `#[cfg(test)]` alternative implementations in chunk_001.rs.
+
+**Implementation alignment:**
+- chunk_001.rs shows a single delegation chain to `handle_submit_with_inputs_contracts_and_header_mode` with no test-only branches.
+- `build_admission` calls real `admit_artifact_run` policy evaluation, not fabricated grants.
+- `validate_submit_admission_with_contracts` performs genuine contract validation (IDs, capabilities, workflow binding).
+
+**Minor coverage gap (not blocking):**
+- Tests verify cap non-fabrication but do not explicitly assert that no input slots are seeded when inputs are empty, nor that no action contracts are associated with runs submitted without contracts. The implementation is correct on both fronts (`&[]` passed explicitly), but a future regression fabricating inputs or contracts would not be caught. Consider adding assertions on `frame` slot contents or `state.action_contracts` length for completeness.
+
+**Failure sensitivity:**
+- Reintroducing the old `#[cfg(test)]` handlers would cause test 1 and 2 to fail (non-empty caps in admission).
+- Reintroducing silent contract satisfaction would cause test 3 to fail (no error returned).
+- The suite is sensitive to the specific regressions this change addresses.
+
+No fabricated waivers. All acceptance criteria met.

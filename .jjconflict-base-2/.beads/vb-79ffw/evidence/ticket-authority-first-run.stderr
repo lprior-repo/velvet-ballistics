@@ -1,0 +1,29 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local3090-authority-review/crates/workspace_tests)
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:112:17
+    |
+112 |         detail: Box::from("non-retryable failure"),
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Option<BlobId>`, found `Box<_, _>`
+    |
+    = note: expected enum `Option<BlobId>`
+             found struct `Box<_, _>`
+help: consider unboxing the value
+    |
+112 |         detail: *Box::from("non-retryable failure"),
+    |                 +
+
+error[E0026]: variant `vb_storage::JournalEvent::RetryCheckpoint` does not have a field named `checkpoint`
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:144:45
+    |
+144 |             JournalEvent::RetryCheckpoint { checkpoint, .. } => Some(checkpoint.clone()),
+    |                                             ^^^^^^^^^^ variant `vb_storage::JournalEvent::RetryCheckpoint` does not have this field
+
+error[E0599]: no method named `ok_or` found for struct `vb_storage::EventSeq` in the current scope
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:154:32
+    |
+154 |     EventSeq::new(max_seq + 1).ok_or("sequence overflow".to_string())
+    |                                ^^^^^ method not found in `vb_storage::EventSeq`
+
+Some errors have detailed explanations: E0026, E0308, E0599.
+For more information about an error, try `rustc --explain E0026`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_79ffw_ticket_authority_probe") due to 3 previous errors

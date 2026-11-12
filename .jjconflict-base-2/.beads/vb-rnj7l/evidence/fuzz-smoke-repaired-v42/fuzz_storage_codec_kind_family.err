@@ -1,0 +1,21 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 3909283862
+INFO: Loaded 1 modules   (2016 inline 8-bit counters): 2016 [0x5560f8747703, 0x5560f8747ee3), 
+INFO: Loaded 1 PC tables (2016 PCs): 2016 [0x5560f8747ee8,0x5560f874fce8), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/fuzz_storage_codec_kind_family
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 158 ft: 159 corp: 1/1b exec/s: 0 rss: 40Mb
+#3	NEW    cov: 159 ft: 163 corp: 2/3b lim: 4 exec/s: 0 rss: 40Mb L: 2/2 MS: 1 InsertByte-
+#10	NEW    cov: 159 ft: 167 corp: 3/6b lim: 4 exec/s: 0 rss: 40Mb L: 3/3 MS: 2 ShuffleBytes-InsertByte-
+#16	NEW    cov: 159 ft: 171 corp: 4/10b lim: 4 exec/s: 0 rss: 40Mb L: 4/4 MS: 1 CopyPart-
+#230	NEW    cov: 159 ft: 172 corp: 5/15b lim: 6 exec/s: 0 rss: 43Mb L: 5/5 MS: 4 ChangeByte-InsertByte-CopyPart-InsertRepeatedBytes-
+#446	NEW    cov: 160 ft: 175 corp: 6/23b lim: 8 exec/s: 0 rss: 44Mb L: 8/8 MS: 1 CopyPart-
+#761	NEW    cov: 160 ft: 176 corp: 7/32b lim: 11 exec/s: 0 rss: 44Mb L: 9/9 MS: 5 ChangeBinInt-InsertByte-ChangeBit-ChangeBinInt-CrossOver-
+#1383	NEW    cov: 160 ft: 180 corp: 8/49b lim: 17 exec/s: 0 rss: 45Mb L: 17/17 MS: 2 ChangeBit-InsertRepeatedBytes-
+#3013	NEW    cov: 169 ft: 193 corp: 9/82b lim: 33 exec/s: 0 rss: 47Mb L: 33/33 MS: 5 EraseBytes-CopyPart-ShuffleBytes-ChangeBinInt-InsertRepeatedBytes-
+#9598	NEW    cov: 170 ft: 202 corp: 10/180b lim: 98 exec/s: 0 rss: 51Mb L: 98/98 MS: 5 ChangeBinInt-EraseBytes-InsertRepeatedBytes-ShuffleBytes-CopyPart-
+#12007	REDUCE cov: 170 ft: 202 corp: 10/179b lim: 116 exec/s: 0 rss: 53Mb L: 97/97 MS: 4 InsertByte-InsertByte-InsertRepeatedBytes-EraseBytes-
+#14829	REDUCE cov: 170 ft: 202 corp: 10/178b lim: 142 exec/s: 0 rss: 56Mb L: 96/96 MS: 2 CopyPart-EraseBytes-
+#524769	DONE   cov: 170 ft: 202 corp: 10/178b lim: 4096 exec/s: 262384 rss: 479Mb
+Done 524769 runs in 2 second(s)

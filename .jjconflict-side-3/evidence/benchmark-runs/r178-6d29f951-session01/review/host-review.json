@@ -1,0 +1,6033 @@
+{
+  "scope": "All phase host snapshots/whole-host intervals and120 consecutive one-second CPU14/30 samples during latency. No direct continuous GPU or per-thread attribution.",
+  "phases": {
+    "A1": {
+      "before": {
+        "file": {
+          "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/host-before.txt",
+          "bytes": 10747,
+          "sha256": "55d71038beb26f3a2da8e288bac318f50ebba288840fe6460b254c3e733ee688"
+        },
+        "timestamp": "2026-11-12T17:27:48+00:00",
+        "uname": "Linux omarchy 7.2.11-arch1-1 #1 SMP PREEMPT_DYNAMIC Fri, 16 Oct 2026 00:28:58 +0000 x86_64 GNU/Linux",
+        "processes": [
+          {
+            "pid": 1500972,
+            "ppid": 1532,
+            "command": "ninfer-serve",
+            "lifetime_percent_cpu": "16.8"
+          },
+          {
+            "pid": 1500970,
+            "ppid": 1532,
+            "command": "llama-server",
+            "lifetime_percent_cpu": "11.6"
+          },
+          {
+            "pid": 2235544,
+            "ppid": 2235508,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "11.1"
+          },
+          {
+            "pid": 1597831,
+            "ppid": 1532,
+            "command": "localsearch-3",
+            "lifetime_percent_cpu": "3.2"
+          },
+          {
+            "pid": 12901,
+            "ppid": 12892,
+            "command": "Hyprland",
+            "lifetime_percent_cpu": "2.9"
+          },
+          {
+            "pid": 1494887,
+            "ppid": 1494029,
+            "command": "omp",
+            "lifetime_percent_cpu": "2.6"
+          },
+          {
+            "pid": 3522692,
+            "ppid": 2,
+            "command": "kworker/u130:23",
+            "lifetime_percent_cpu": "2.3"
+          },
+          {
+            "pid": 2362039,
+            "ppid": 2335197,
+            "command": "muse",
+            "lifetime_percent_cpu": "2.2"
+          },
+          {
+            "pid": 3438977,
+            "ppid": 3330419,
+            "command": "omp",
+            "lifetime_percent_cpu": "1.8"
+          },
+          {
+            "pid": 3412156,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 2235498,
+            "ppid": 2235373,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 460299,
+            "ppid": 460212,
+            "command": "python",
+            "lifetime_percent_cpu": "1.4"
+          },
+          {
+            "pid": 3445390,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 2067866,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 460017,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 3392657,
+            "ppid": 1532,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 2236000,
+            "ppid": 2235498,
+            "command": "codex",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 3514658,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.0"
+          },
+          {
+            "pid": 3392765,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.9"
+          },
+          {
+            "pid": 2236189,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "0.8"
+          },
+          {
+            "pid": 2127268,
+            "ppid": 2125885,
+            "command": "omp",
+            "lifetime_percent_cpu": "0.7"
+          },
+          {
+            "pid": 3092394,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 230823,
+            "ppid": 193121,
+            "command": "steam",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 460291,
+            "ppid": 1597831,
+            "command": "localsearch-ext",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 243,
+            "ppid": 2,
+            "command": "kswapd0",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 3392706,
+            "ppid": 3392673,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.5"
+          },
+          {
+            "pid": 2188100,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.4"
+          },
+          {
+            "pid": 1791238,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 224,
+            "ppid": 2,
+            "command": "kcompactd0",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3758782,
+            "ppid": 2,
+            "command": "kworker/u130:7-",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 232330,
+            "ppid": 232278,
+            "command": "steamwebhelper",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3898228,
+            "ppid": 2,
+            "command": "kworker/u130:34",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 3869287,
+            "ppid": 2,
+            "command": "kworker/u129:2-",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 4078684,
+            "ppid": 2,
+            "command": "kworker/u130:15",
+            "lifetime_percent_cpu": "0.2"
+          }
+        ],
+        "load_and_cpu_pressure": [
+          "3.71 4.76 4.97 3/5185 460667",
+          "some avg10=0.00 avg60=0.76 avg300=0.97 total=14990741844",
+          "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+        ],
+        "cpu14_and_sibling30_snapshot_rows": [
+          " 14    0      0   14 14:14:14:1       yes 5756.4521 624.1940 5376.9141",
+          " 30    0      0   14 14:14:14:1       yes 5756.4521 624.1940  624.1940"
+        ],
+        "sysfs": {
+          "/sys/devices/system/cpu/cpu14/topology/core_id": "14",
+          "/sys/devices/system/cpu/cpu14/topology/physical_package_id": "0",
+          "/sys/devices/system/cpu/cpu14/topology/thread_siblings_list": "14,30",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_governor": "performance",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_driver": "amd-pstate-epp",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_min_freq": "624194",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_max_freq": "5756452",
+          "/sys/devices/system/cpu/cpu14/cache/index3/size": "32768K",
+          "/sys/devices/system/cpu/cpu14/cache/index3/shared_cpu_list": "8-15,24-31",
+          "/sys/devices/system/cpu/cpufreq/boost": "1",
+          "/sys/class/hwmon/hwmon0/name": "nvme",
+          "/sys/class/hwmon/hwmon1/name": "nvme",
+          "/sys/class/hwmon/hwmon10/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon11/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon12/name": "mt7925_phy0",
+          "/sys/class/hwmon/hwmon13/name": "hidpp_battery_0",
+          "/sys/class/hwmon/hwmon2/name": "nvme",
+          "/sys/class/hwmon/hwmon3/name": "amdgpu",
+          "/sys/class/hwmon/hwmon4/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon5/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon6/name": "k10temp",
+          "/sys/class/hwmon/hwmon7/name": "r8169_0_900:00",
+          "/sys/class/hwmon/hwmon8/name": "spd5118",
+          "/sys/class/hwmon/hwmon9/name": "spd5118",
+          "/sys/class/hwmon/hwmon0/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp1_input": "48850",
+          "/sys/class/hwmon/hwmon1/temp2_input": "48850",
+          "/sys/class/hwmon/hwmon1/temp3_input": "54850",
+          "/sys/class/hwmon/hwmon12/temp1_input": "38000",
+          "/sys/class/hwmon/hwmon2/temp1_input": "42850",
+          "/sys/class/hwmon/hwmon2/temp2_input": "61850",
+          "/sys/class/hwmon/hwmon2/temp3_input": "42850",
+          "/sys/class/hwmon/hwmon3/temp1_input": "53000",
+          "/sys/class/hwmon/hwmon4/temp1_input": "70965",
+          "/sys/class/hwmon/hwmon5/temp1_input": "66432",
+          "/sys/class/hwmon/hwmon6/temp1_input": "68875",
+          "/sys/class/hwmon/hwmon6/temp3_input": "47125",
+          "/sys/class/hwmon/hwmon6/temp4_input": "74250",
+          "/sys/class/hwmon/hwmon7/temp1_input": "54500",
+          "/sys/class/hwmon/hwmon8/temp1_input": "48250",
+          "/sys/class/hwmon/hwmon9/temp1_input": "47750",
+          "/sys/class/hwmon/hwmon0/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon1/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon2/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon2/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon2/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon3/temp1_label": "edge",
+          "/sys/class/hwmon/hwmon6/temp1_label": "Tctl",
+          "/sys/class/hwmon/hwmon6/temp3_label": "Tccd1",
+          "/sys/class/hwmon/hwmon6/temp4_label": "Tccd2"
+        },
+        "machine_id_receipt": "4bf7e63167e2121f153e9a7f5c7308f64d10872137a5f23307ab7fd473cd0a43  /etc/machine-id",
+        "hostname": "hostname=omarchy"
+      },
+      "after": {
+        "file": {
+          "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/host-after.txt",
+          "bytes": 10747,
+          "sha256": "7f447b91edd6a35b1de3fa94ac5b57418ada4243183eb6864183998a6c627bc9"
+        },
+        "timestamp": "2026-11-12T17:28:14+00:00",
+        "uname": "Linux omarchy 7.2.11-arch1-1 #1 SMP PREEMPT_DYNAMIC Fri, 16 Oct 2026 00:28:58 +0000 x86_64 GNU/Linux",
+        "processes": [
+          {
+            "pid": 461101,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "30.8"
+          },
+          {
+            "pid": 1500972,
+            "ppid": 1532,
+            "command": "ninfer-serve",
+            "lifetime_percent_cpu": "16.8"
+          },
+          {
+            "pid": 1500970,
+            "ppid": 1532,
+            "command": "llama-server",
+            "lifetime_percent_cpu": "11.6"
+          },
+          {
+            "pid": 2235544,
+            "ppid": 2235508,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "11.1"
+          },
+          {
+            "pid": 460932,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "3.3"
+          },
+          {
+            "pid": 1597831,
+            "ppid": 1532,
+            "command": "localsearch-3",
+            "lifetime_percent_cpu": "3.2"
+          },
+          {
+            "pid": 12901,
+            "ppid": 12892,
+            "command": "Hyprland",
+            "lifetime_percent_cpu": "2.9"
+          },
+          {
+            "pid": 1494887,
+            "ppid": 1494029,
+            "command": "omp",
+            "lifetime_percent_cpu": "2.6"
+          },
+          {
+            "pid": 3522692,
+            "ppid": 2,
+            "command": "kworker/u130:23",
+            "lifetime_percent_cpu": "2.3"
+          },
+          {
+            "pid": 2362039,
+            "ppid": 2335197,
+            "command": "muse",
+            "lifetime_percent_cpu": "2.2"
+          },
+          {
+            "pid": 460792,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.8"
+          },
+          {
+            "pid": 3438977,
+            "ppid": 3330419,
+            "command": "omp",
+            "lifetime_percent_cpu": "1.8"
+          },
+          {
+            "pid": 3412156,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 2235498,
+            "ppid": 2235373,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 3445390,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 2067866,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 3392657,
+            "ppid": 1532,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 2236000,
+            "ppid": 2235498,
+            "command": "codex",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 3514658,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.0"
+          },
+          {
+            "pid": 3392765,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.9"
+          },
+          {
+            "pid": 2236189,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "0.8"
+          },
+          {
+            "pid": 2127268,
+            "ppid": 2125885,
+            "command": "omp",
+            "lifetime_percent_cpu": "0.7"
+          },
+          {
+            "pid": 3092394,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 230823,
+            "ppid": 193121,
+            "command": "steam",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 243,
+            "ppid": 2,
+            "command": "kswapd0",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 3392706,
+            "ppid": 3392673,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.5"
+          },
+          {
+            "pid": 2188100,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.4"
+          },
+          {
+            "pid": 1791238,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 224,
+            "ppid": 2,
+            "command": "kcompactd0",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3758782,
+            "ppid": 2,
+            "command": "kworker/u130:7-",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 232330,
+            "ppid": 232278,
+            "command": "steamwebhelper",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3898228,
+            "ppid": 2,
+            "command": "kworker/u130:34",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 3869287,
+            "ppid": 2,
+            "command": "kworker/u129:2-",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 4078684,
+            "ppid": 2,
+            "command": "kworker/u130:15",
+            "lifetime_percent_cpu": "0.2"
+          }
+        ],
+        "load_and_cpu_pressure": [
+          "2.72 4.42 4.85 3/5255 461222",
+          "some avg10=0.00 avg60=0.49 avg300=0.88 total=14990762521",
+          "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+        ],
+        "cpu14_and_sibling30_snapshot_rows": [
+          " 14    0      0   14 14:14:14:1       yes 5756.4521 624.1940 5485.2622",
+          " 30    0      0   14 14:14:14:1       yes 5756.4521 624.1940  624.1940"
+        ],
+        "sysfs": {
+          "/sys/devices/system/cpu/cpu14/topology/core_id": "14",
+          "/sys/devices/system/cpu/cpu14/topology/physical_package_id": "0",
+          "/sys/devices/system/cpu/cpu14/topology/thread_siblings_list": "14,30",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_governor": "performance",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_driver": "amd-pstate-epp",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_min_freq": "624194",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_max_freq": "5756452",
+          "/sys/devices/system/cpu/cpu14/cache/index3/size": "32768K",
+          "/sys/devices/system/cpu/cpu14/cache/index3/shared_cpu_list": "8-15,24-31",
+          "/sys/devices/system/cpu/cpufreq/boost": "1",
+          "/sys/class/hwmon/hwmon0/name": "nvme",
+          "/sys/class/hwmon/hwmon1/name": "nvme",
+          "/sys/class/hwmon/hwmon10/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon11/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon12/name": "mt7925_phy0",
+          "/sys/class/hwmon/hwmon13/name": "hidpp_battery_0",
+          "/sys/class/hwmon/hwmon2/name": "nvme",
+          "/sys/class/hwmon/hwmon3/name": "amdgpu",
+          "/sys/class/hwmon/hwmon4/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon5/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon6/name": "k10temp",
+          "/sys/class/hwmon/hwmon7/name": "r8169_0_900:00",
+          "/sys/class/hwmon/hwmon8/name": "spd5118",
+          "/sys/class/hwmon/hwmon9/name": "spd5118",
+          "/sys/class/hwmon/hwmon0/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp2_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp3_input": "54850",
+          "/sys/class/hwmon/hwmon12/temp1_input": "40000",
+          "/sys/class/hwmon/hwmon2/temp1_input": "42850",
+          "/sys/class/hwmon/hwmon2/temp2_input": "61850",
+          "/sys/class/hwmon/hwmon2/temp3_input": "43850",
+          "/sys/class/hwmon/hwmon3/temp1_input": "51000",
+          "/sys/class/hwmon/hwmon4/temp1_input": "71872",
+          "/sys/class/hwmon/hwmon5/temp1_input": "66432",
+          "/sys/class/hwmon/hwmon6/temp1_input": "70875",
+          "/sys/class/hwmon/hwmon6/temp3_input": "44000",
+          "/sys/class/hwmon/hwmon6/temp4_input": "68125",
+          "/sys/class/hwmon/hwmon7/temp1_input": "56000",
+          "/sys/class/hwmon/hwmon8/temp1_input": "48000",
+          "/sys/class/hwmon/hwmon9/temp1_input": "48000",
+          "/sys/class/hwmon/hwmon0/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon1/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon2/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon2/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon2/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon3/temp1_label": "edge",
+          "/sys/class/hwmon/hwmon6/temp1_label": "Tctl",
+          "/sys/class/hwmon/hwmon6/temp3_label": "Tccd1",
+          "/sys/class/hwmon/hwmon6/temp4_label": "Tccd2"
+        },
+        "machine_id_receipt": "4bf7e63167e2121f153e9a7f5c7308f64d10872137a5f23307ab7fd473cd0a43  /etc/machine-id",
+        "hostname": "hostname=omarchy"
+      },
+      "vmstat": {
+        "file": {
+          "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/vmstat.log",
+          "bytes": 3658,
+          "sha256": "bc08e56ac82c48e61ca49742be340f3d13ee5faee00c96bec0fe0c783c24a1b6"
+        },
+        "first_boot_average_row_excluded": [
+          3,
+          0,
+          54029940,
+          8752708,
+          32,
+          82511588,
+          699,
+          1743,
+          13166,
+          12169,
+          41881,
+          9,
+          5,
+          1,
+          94,
+          0,
+          0,
+          0
+        ],
+        "interval_count": 26,
+        "interval_summary": {
+          "r": {
+            "min": 1,
+            "max": 3
+          },
+          "b": {
+            "min": 0,
+            "max": 0
+          },
+          "swpd": {
+            "min": 54028828,
+            "max": 54029872
+          },
+          "free": {
+            "min": 8539116,
+            "max": 8826480
+          },
+          "buff": {
+            "min": 32,
+            "max": 32
+          },
+          "cache": {
+            "min": 82519676,
+            "max": 82579356
+          },
+          "si": {
+            "min": 0,
+            "max": 100
+          },
+          "so": {
+            "min": 0,
+            "max": 0
+          },
+          "bi": {
+            "min": 0,
+            "max": 520
+          },
+          "bo": {
+            "min": 0,
+            "max": 84496
+          },
+          "in": {
+            "min": 6309,
+            "max": 26964
+          },
+          "cs": {
+            "min": 5681,
+            "max": 58878
+          },
+          "us": {
+            "min": 3,
+            "max": 6
+          },
+          "sy": {
+            "min": 0,
+            "max": 1
+          },
+          "id": {
+            "min": 93,
+            "max": 97
+          },
+          "wa": {
+            "min": 0,
+            "max": 0
+          },
+          "st": {
+            "min": 0,
+            "max": 0
+          },
+          "gu": {
+            "min": 0,
+            "max": 0
+          }
+        },
+        "all_interval_rows": [
+          [
+            3,
+            0,
+            54029872,
+            8742504,
+            32,
+            82519676,
+            68,
+            0,
+            460,
+            2560,
+            13419,
+            17383,
+            6,
+            1,
+            93,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029872,
+            8742504,
+            32,
+            82519784,
+            0,
+            0,
+            8,
+            0,
+            6660,
+            6258,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029872,
+            8742252,
+            32,
+            82519868,
+            0,
+            0,
+            0,
+            0,
+            6672,
+            8601,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029872,
+            8742252,
+            32,
+            82519980,
+            0,
+            0,
+            0,
+            16,
+            6740,
+            6128,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029840,
+            8742252,
+            32,
+            82520320,
+            32,
+            0,
+            32,
+            1120,
+            8480,
+            8083,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029840,
+            8826480,
+            32,
+            82520724,
+            0,
+            0,
+            48,
+            508,
+            8629,
+            7279,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029840,
+            8826480,
+            32,
+            82520832,
+            0,
+            0,
+            0,
+            276,
+            6369,
+            6139,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029836,
+            8790520,
+            32,
+            82522308,
+            0,
+            0,
+            0,
+            824,
+            21764,
+            23339,
+            5,
+            1,
+            95,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029736,
+            8790768,
+            32,
+            82523288,
+            100,
+            0,
+            296,
+            0,
+            12420,
+            58878,
+            5,
+            0,
+            95,
+            0,
+            0,
+            0
+          ],
+          [
+            3,
+            0,
+            54029732,
+            8749220,
+            32,
+            82565444,
+            0,
+            0,
+            16,
+            84496,
+            26964,
+            41996,
+            4,
+            1,
+            94,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029732,
+            8746220,
+            32,
+            82566024,
+            0,
+            0,
+            16,
+            0,
+            8147,
+            8306,
+            4,
+            0,
+            95,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54029732,
+            8745504,
+            32,
+            82566052,
+            0,
+            0,
+            0,
+            12,
+            6959,
+            6804,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029728,
+            8702228,
+            32,
+            82566212,
+            0,
+            0,
+            0,
+            644,
+            26516,
+            17945,
+            5,
+            1,
+            94,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54029728,
+            8695640,
+            32,
+            82566896,
+            0,
+            0,
+            0,
+            0,
+            7456,
+            7015,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029724,
+            8695076,
+            32,
+            82566924,
+            0,
+            0,
+            0,
+            0,
+            7151,
+            6627,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029724,
+            8698004,
+            32,
+            82566924,
+            0,
+            0,
+            0,
+            0,
+            6332,
+            5825,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029716,
+            8698004,
+            32,
+            82566924,
+            4,
+            0,
+            4,
+            0,
+            6541,
+            5954,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54029708,
+            8694252,
+            32,
+            82567768,
+            4,
+            0,
+            4,
+            1180,
+            7739,
+            7711,
+            4,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029700,
+            8691500,
+            32,
+            82569744,
+            8,
+            0,
+            520,
+            8868,
+            10752,
+            10430,
+            5,
+            1,
+            94,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029696,
+            8691244,
+            32,
+            82572056,
+            0,
+            0,
+            0,
+            0,
+            6309,
+            5806,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029692,
+            8691244,
+            32,
+            82572056,
+            0,
+            0,
+            0,
+            0,
+            6414,
+            5681,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029684,
+            8691496,
+            32,
+            82572064,
+            8,
+            0,
+            8,
+            0,
+            6878,
+            6419,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029684,
+            8678544,
+            32,
+            82572328,
+            0,
+            0,
+            0,
+            25332,
+            10496,
+            14770,
+            4,
+            0,
+            95,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029680,
+            8678228,
+            32,
+            82572612,
+            4,
+            0,
+            4,
+            44,
+            6542,
+            5903,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54029680,
+            8672556,
+            32,
+            82573412,
+            0,
+            0,
+            48,
+            1464,
+            7629,
+            7902,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54028828,
+            8539116,
+            32,
+            82579356,
+            0,
+            0,
+            0,
+            148,
+            25438,
+            30093,
+            5,
+            1,
+            95,
+            0,
+            0,
+            0
+          ]
+        ]
+      }
+    },
+    "B1": {
+      "before": {
+        "file": {
+          "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/host-before.txt",
+          "bytes": 10747,
+          "sha256": "fda713a1d61a8158ce482a9841398f14f69784f29bc43f09e506b9e233fefaac"
+        },
+        "timestamp": "2026-11-12T17:28:15+00:00",
+        "uname": "Linux omarchy 7.2.11-arch1-1 #1 SMP PREEMPT_DYNAMIC Fri, 16 Oct 2026 00:28:58 +0000 x86_64 GNU/Linux",
+        "processes": [
+          {
+            "pid": 461101,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "22.0"
+          },
+          {
+            "pid": 1500972,
+            "ppid": 1532,
+            "command": "ninfer-serve",
+            "lifetime_percent_cpu": "16.8"
+          },
+          {
+            "pid": 1500970,
+            "ppid": 1532,
+            "command": "llama-server",
+            "lifetime_percent_cpu": "11.6"
+          },
+          {
+            "pid": 2235544,
+            "ppid": 2235508,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "11.1"
+          },
+          {
+            "pid": 460932,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "3.2"
+          },
+          {
+            "pid": 1597831,
+            "ppid": 1532,
+            "command": "localsearch-3",
+            "lifetime_percent_cpu": "3.2"
+          },
+          {
+            "pid": 12901,
+            "ppid": 12892,
+            "command": "Hyprland",
+            "lifetime_percent_cpu": "2.9"
+          },
+          {
+            "pid": 1494887,
+            "ppid": 1494029,
+            "command": "omp",
+            "lifetime_percent_cpu": "2.6"
+          },
+          {
+            "pid": 3522692,
+            "ppid": 2,
+            "command": "kworker/u130:23",
+            "lifetime_percent_cpu": "2.3"
+          },
+          {
+            "pid": 2362039,
+            "ppid": 2335197,
+            "command": "muse",
+            "lifetime_percent_cpu": "2.2"
+          },
+          {
+            "pid": 3438977,
+            "ppid": 3330419,
+            "command": "omp",
+            "lifetime_percent_cpu": "1.8"
+          },
+          {
+            "pid": 460792,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.8"
+          },
+          {
+            "pid": 3412156,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 2235498,
+            "ppid": 2235373,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 3445390,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 2067866,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 3392657,
+            "ppid": 1532,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 2236000,
+            "ppid": 2235498,
+            "command": "codex",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 3514658,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.0"
+          },
+          {
+            "pid": 3392765,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.9"
+          },
+          {
+            "pid": 2236189,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "0.8"
+          },
+          {
+            "pid": 2127268,
+            "ppid": 2125885,
+            "command": "omp",
+            "lifetime_percent_cpu": "0.7"
+          },
+          {
+            "pid": 3092394,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 230823,
+            "ppid": 193121,
+            "command": "steam",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 243,
+            "ppid": 2,
+            "command": "kswapd0",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 3392706,
+            "ppid": 3392673,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.5"
+          },
+          {
+            "pid": 2188100,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.4"
+          },
+          {
+            "pid": 1791238,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 224,
+            "ppid": 2,
+            "command": "kcompactd0",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3758782,
+            "ppid": 2,
+            "command": "kworker/u130:7-",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 232330,
+            "ppid": 232278,
+            "command": "steamwebhelper",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3898228,
+            "ppid": 2,
+            "command": "kworker/u130:34",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 3869287,
+            "ppid": 2,
+            "command": "kworker/u129:2-",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 4078684,
+            "ppid": 2,
+            "command": "kworker/u130:15",
+            "lifetime_percent_cpu": "0.2"
+          }
+        ],
+        "load_and_cpu_pressure": [
+          "2.72 4.42 4.85 2/5262 461542",
+          "some avg10=0.00 avg60=0.47 avg300=0.88 total=14990763387",
+          "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+        ],
+        "cpu14_and_sibling30_snapshot_rows": [
+          " 14    0      0   14 14:14:14:1       yes 5756.4521 624.1940 5446.0322",
+          " 30    0      0   14 14:14:14:1       yes 5756.4521 624.1940 5380.0591"
+        ],
+        "sysfs": {
+          "/sys/devices/system/cpu/cpu14/topology/core_id": "14",
+          "/sys/devices/system/cpu/cpu14/topology/physical_package_id": "0",
+          "/sys/devices/system/cpu/cpu14/topology/thread_siblings_list": "14,30",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_governor": "performance",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_driver": "amd-pstate-epp",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_min_freq": "624194",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_max_freq": "5756452",
+          "/sys/devices/system/cpu/cpu14/cache/index3/size": "32768K",
+          "/sys/devices/system/cpu/cpu14/cache/index3/shared_cpu_list": "8-15,24-31",
+          "/sys/devices/system/cpu/cpufreq/boost": "1",
+          "/sys/class/hwmon/hwmon0/name": "nvme",
+          "/sys/class/hwmon/hwmon1/name": "nvme",
+          "/sys/class/hwmon/hwmon10/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon11/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon12/name": "mt7925_phy0",
+          "/sys/class/hwmon/hwmon13/name": "hidpp_battery_0",
+          "/sys/class/hwmon/hwmon2/name": "nvme",
+          "/sys/class/hwmon/hwmon3/name": "amdgpu",
+          "/sys/class/hwmon/hwmon4/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon5/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon6/name": "k10temp",
+          "/sys/class/hwmon/hwmon7/name": "r8169_0_900:00",
+          "/sys/class/hwmon/hwmon8/name": "spd5118",
+          "/sys/class/hwmon/hwmon9/name": "spd5118",
+          "/sys/class/hwmon/hwmon0/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp2_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp3_input": "54850",
+          "/sys/class/hwmon/hwmon12/temp1_input": "40000",
+          "/sys/class/hwmon/hwmon2/temp1_input": "43850",
+          "/sys/class/hwmon/hwmon2/temp2_input": "61850",
+          "/sys/class/hwmon/hwmon2/temp3_input": "43850",
+          "/sys/class/hwmon/hwmon3/temp1_input": "51000",
+          "/sys/class/hwmon/hwmon4/temp1_input": "71872",
+          "/sys/class/hwmon/hwmon5/temp1_input": "66432",
+          "/sys/class/hwmon/hwmon6/temp1_input": "71500",
+          "/sys/class/hwmon/hwmon6/temp3_input": "45875",
+          "/sys/class/hwmon/hwmon6/temp4_input": "71875",
+          "/sys/class/hwmon/hwmon7/temp1_input": "56000",
+          "/sys/class/hwmon/hwmon8/temp1_input": "48000",
+          "/sys/class/hwmon/hwmon9/temp1_input": "48000",
+          "/sys/class/hwmon/hwmon0/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon1/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon2/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon2/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon2/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon3/temp1_label": "edge",
+          "/sys/class/hwmon/hwmon6/temp1_label": "Tctl",
+          "/sys/class/hwmon/hwmon6/temp3_label": "Tccd1",
+          "/sys/class/hwmon/hwmon6/temp4_label": "Tccd2"
+        },
+        "machine_id_receipt": "4bf7e63167e2121f153e9a7f5c7308f64d10872137a5f23307ab7fd473cd0a43  /etc/machine-id",
+        "hostname": "hostname=omarchy"
+      },
+      "after": {
+        "file": {
+          "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/host-after.txt",
+          "bytes": 10747,
+          "sha256": "d45cd3a371ea70ee24fc5d093de161a025e4f25d558c7d917fce77e8f53d6bc0"
+        },
+        "timestamp": "2026-11-12T17:28:46+00:00",
+        "uname": "Linux omarchy 7.2.11-arch1-1 #1 SMP PREEMPT_DYNAMIC Fri, 16 Oct 2026 00:28:58 +0000 x86_64 GNU/Linux",
+        "processes": [
+          {
+            "pid": 1500972,
+            "ppid": 1532,
+            "command": "ninfer-serve",
+            "lifetime_percent_cpu": "16.8"
+          },
+          {
+            "pid": 1500970,
+            "ppid": 1532,
+            "command": "llama-server",
+            "lifetime_percent_cpu": "11.6"
+          },
+          {
+            "pid": 2235544,
+            "ppid": 2235508,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "11.1"
+          },
+          {
+            "pid": 1597831,
+            "ppid": 1532,
+            "command": "localsearch-3",
+            "lifetime_percent_cpu": "3.2"
+          },
+          {
+            "pid": 12901,
+            "ppid": 12892,
+            "command": "Hyprland",
+            "lifetime_percent_cpu": "2.9"
+          },
+          {
+            "pid": 1494887,
+            "ppid": 1494029,
+            "command": "omp",
+            "lifetime_percent_cpu": "2.6"
+          },
+          {
+            "pid": 3522692,
+            "ppid": 2,
+            "command": "kworker/u130:23",
+            "lifetime_percent_cpu": "2.3"
+          },
+          {
+            "pid": 2362039,
+            "ppid": 2335197,
+            "command": "muse",
+            "lifetime_percent_cpu": "2.2"
+          },
+          {
+            "pid": 3438977,
+            "ppid": 3330419,
+            "command": "omp",
+            "lifetime_percent_cpu": "1.8"
+          },
+          {
+            "pid": 3412156,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 2235498,
+            "ppid": 2235373,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 461669,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.4"
+          },
+          {
+            "pid": 3445390,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 2067866,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 3392657,
+            "ppid": 1532,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 2236000,
+            "ppid": 2235498,
+            "command": "codex",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 3514658,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.0"
+          },
+          {
+            "pid": 3392765,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.9"
+          },
+          {
+            "pid": 2236189,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "0.8"
+          },
+          {
+            "pid": 2127268,
+            "ppid": 2125885,
+            "command": "omp",
+            "lifetime_percent_cpu": "0.7"
+          },
+          {
+            "pid": 3092394,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 230823,
+            "ppid": 193121,
+            "command": "steam",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 243,
+            "ppid": 2,
+            "command": "kswapd0",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 3392706,
+            "ppid": 3392673,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.5"
+          },
+          {
+            "pid": 2188100,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.4"
+          },
+          {
+            "pid": 1791238,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 224,
+            "ppid": 2,
+            "command": "kcompactd0",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3758782,
+            "ppid": 2,
+            "command": "kworker/u130:7-",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 232330,
+            "ppid": 232278,
+            "command": "steamwebhelper",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3898228,
+            "ppid": 2,
+            "command": "kworker/u130:34",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 3869287,
+            "ppid": 2,
+            "command": "kworker/u129:2-",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 4078684,
+            "ppid": 2,
+            "command": "kworker/u130:15",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 3134231,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 4130904,
+            "ppid": 2,
+            "command": "kworker/u130:16",
+            "lifetime_percent_cpu": "0.2"
+          }
+        ],
+        "load_and_cpu_pressure": [
+          "2.16 4.12 4.74 2/5185 461897",
+          "some avg10=0.00 avg60=0.28 avg300=0.79 total=14990783865",
+          "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+        ],
+        "cpu14_and_sibling30_snapshot_rows": [
+          " 14    0      0   14 14:14:14:1       yes 5756.4521 624.1940 5486.0830",
+          " 30    0      0   14 14:14:14:1       yes 5756.4521 624.1940 5495.2100"
+        ],
+        "sysfs": {
+          "/sys/devices/system/cpu/cpu14/topology/core_id": "14",
+          "/sys/devices/system/cpu/cpu14/topology/physical_package_id": "0",
+          "/sys/devices/system/cpu/cpu14/topology/thread_siblings_list": "14,30",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_governor": "performance",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_driver": "amd-pstate-epp",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_min_freq": "624194",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_max_freq": "5756452",
+          "/sys/devices/system/cpu/cpu14/cache/index3/size": "32768K",
+          "/sys/devices/system/cpu/cpu14/cache/index3/shared_cpu_list": "8-15,24-31",
+          "/sys/devices/system/cpu/cpufreq/boost": "1",
+          "/sys/class/hwmon/hwmon0/name": "nvme",
+          "/sys/class/hwmon/hwmon1/name": "nvme",
+          "/sys/class/hwmon/hwmon10/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon11/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon12/name": "mt7925_phy0",
+          "/sys/class/hwmon/hwmon13/name": "hidpp_battery_0",
+          "/sys/class/hwmon/hwmon2/name": "nvme",
+          "/sys/class/hwmon/hwmon3/name": "amdgpu",
+          "/sys/class/hwmon/hwmon4/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon5/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon6/name": "k10temp",
+          "/sys/class/hwmon/hwmon7/name": "r8169_0_900:00",
+          "/sys/class/hwmon/hwmon8/name": "spd5118",
+          "/sys/class/hwmon/hwmon9/name": "spd5118",
+          "/sys/class/hwmon/hwmon0/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp2_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp3_input": "54850",
+          "/sys/class/hwmon/hwmon12/temp1_input": "38000",
+          "/sys/class/hwmon/hwmon2/temp1_input": "43850",
+          "/sys/class/hwmon/hwmon2/temp2_input": "61850",
+          "/sys/class/hwmon/hwmon2/temp3_input": "43850",
+          "/sys/class/hwmon/hwmon3/temp1_input": "49000",
+          "/sys/class/hwmon/hwmon4/temp1_input": "71872",
+          "/sys/class/hwmon/hwmon5/temp1_input": "67339",
+          "/sys/class/hwmon/hwmon6/temp1_input": "68625",
+          "/sys/class/hwmon/hwmon6/temp3_input": "44875",
+          "/sys/class/hwmon/hwmon6/temp4_input": "70000",
+          "/sys/class/hwmon/hwmon7/temp1_input": "56500",
+          "/sys/class/hwmon/hwmon8/temp1_input": "48000",
+          "/sys/class/hwmon/hwmon9/temp1_input": "47750",
+          "/sys/class/hwmon/hwmon0/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon1/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon2/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon2/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon2/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon3/temp1_label": "edge",
+          "/sys/class/hwmon/hwmon6/temp1_label": "Tctl",
+          "/sys/class/hwmon/hwmon6/temp3_label": "Tccd1",
+          "/sys/class/hwmon/hwmon6/temp4_label": "Tccd2"
+        },
+        "machine_id_receipt": "4bf7e63167e2121f153e9a7f5c7308f64d10872137a5f23307ab7fd473cd0a43  /etc/machine-id",
+        "hostname": "hostname=omarchy"
+      },
+      "vmstat": {
+        "file": {
+          "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/vmstat.log",
+          "bytes": 4248,
+          "sha256": "a9314c7ef580547970e2f28d522d97ab177966236112eb4577f904a2527c1520"
+        },
+        "first_boot_average_row_excluded": [
+          2,
+          0,
+          54028828,
+          8470656,
+          32,
+          82593012,
+          699,
+          1743,
+          13165,
+          12169,
+          41880,
+          9,
+          5,
+          1,
+          94,
+          0,
+          0,
+          0
+        ],
+        "interval_count": 31,
+        "interval_summary": {
+          "r": {
+            "min": 1,
+            "max": 2
+          },
+          "b": {
+            "min": 0,
+            "max": 1
+          },
+          "swpd": {
+            "min": 54028316,
+            "max": 54028816
+          },
+          "free": {
+            "min": 8358964,
+            "max": 8659316
+          },
+          "buff": {
+            "min": 32,
+            "max": 32
+          },
+          "cache": {
+            "min": 82593836,
+            "max": 82638640
+          },
+          "si": {
+            "min": 0,
+            "max": 364
+          },
+          "so": {
+            "min": 0,
+            "max": 0
+          },
+          "bi": {
+            "min": 0,
+            "max": 764
+          },
+          "bo": {
+            "min": 0,
+            "max": 84300
+          },
+          "in": {
+            "min": 6443,
+            "max": 29668
+          },
+          "cs": {
+            "min": 5800,
+            "max": 42585
+          },
+          "us": {
+            "min": 3,
+            "max": 7
+          },
+          "sy": {
+            "min": 0,
+            "max": 1
+          },
+          "id": {
+            "min": 93,
+            "max": 97
+          },
+          "wa": {
+            "min": 0,
+            "max": 1
+          },
+          "st": {
+            "min": 0,
+            "max": 0
+          },
+          "gu": {
+            "min": 0,
+            "max": 0
+          }
+        },
+        "all_interval_rows": [
+          [
+            1,
+            0,
+            54028816,
+            8456224,
+            32,
+            82594044,
+            12,
+            0,
+            156,
+            1016,
+            11213,
+            14216,
+            5,
+            0,
+            95,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028816,
+            8456588,
+            32,
+            82593836,
+            0,
+            0,
+            20,
+            2900,
+            7428,
+            6971,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028816,
+            8456204,
+            32,
+            82593840,
+            0,
+            0,
+            0,
+            108,
+            6456,
+            6272,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028812,
+            8437652,
+            32,
+            82622516,
+            4,
+            0,
+            516,
+            69804,
+            10633,
+            22413,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028812,
+            8437524,
+            32,
+            82623160,
+            0,
+            0,
+            764,
+            12,
+            7527,
+            6508,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028812,
+            8439324,
+            32,
+            82623300,
+            0,
+            0,
+            0,
+            0,
+            7020,
+            7840,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028812,
+            8439324,
+            32,
+            82623308,
+            0,
+            0,
+            0,
+            0,
+            6604,
+            6213,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028812,
+            8439324,
+            32,
+            82623380,
+            0,
+            0,
+            0,
+            0,
+            6666,
+            6803,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54028812,
+            8367180,
+            32,
+            82623880,
+            0,
+            0,
+            32,
+            496,
+            22492,
+            23115,
+            5,
+            1,
+            94,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028448,
+            8358964,
+            32,
+            82631232,
+            364,
+            0,
+            444,
+            84300,
+            27986,
+            42585,
+            5,
+            1,
+            93,
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028424,
+            8419884,
+            32,
+            82631024,
+            24,
+            0,
+            40,
+            1252,
+            10849,
+            9479,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028424,
+            8419644,
+            32,
+            82630944,
+            0,
+            0,
+            0,
+            564,
+            8280,
+            7300,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028424,
+            8415864,
+            32,
+            82631028,
+            0,
+            0,
+            0,
+            76,
+            7424,
+            6703,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028424,
+            8412588,
+            32,
+            82632940,
+            0,
+            0,
+            728,
+            8,
+            7722,
+            7420,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028416,
+            8408808,
+            32,
+            82632944,
+            8,
+            0,
+            8,
+            0,
+            6628,
+            6381,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028416,
+            8494724,
+            32,
+            82632680,
+            0,
+            0,
+            0,
+            512,
+            9271,
+            6907,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028400,
+            8520948,
+            32,
+            82632620,
+            16,
+            0,
+            48,
+            1156,
+            9570,
+            10315,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028400,
+            8519360,
+            32,
+            82632644,
+            0,
+            0,
+            0,
+            264,
+            7910,
+            7065,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028396,
+            8519360,
+            32,
+            82632656,
+            4,
+            0,
+            4,
+            8,
+            7192,
+            7887,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54028396,
+            8519360,
+            32,
+            82632728,
+            0,
+            0,
+            0,
+            0,
+            6611,
+            6288,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54028396,
+            8514524,
+            32,
+            82632032,
+            0,
+            0,
+            0,
+            388,
+            9528,
+            7284,
+            6,
+            1,
+            94,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028396,
+            8514524,
+            32,
+            82632032,
+            0,
+            0,
+            0,
+            0,
+            7269,
+            6139,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028392,
+            8514524,
+            32,
+            82632032,
+            4,
+            0,
+            4,
+            0,
+            6605,
+            6934,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028388,
+            8514524,
+            32,
+            82632032,
+            4,
+            0,
+            4,
+            0,
+            6443,
+            5800,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028332,
+            8503916,
+            32,
+            82632060,
+            56,
+            0,
+            56,
+            776,
+            29668,
+            17930,
+            7,
+            0,
+            93,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028332,
+            8504536,
+            32,
+            82632368,
+            0,
+            0,
+            0,
+            0,
+            6542,
+            5989,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028332,
+            8518640,
+            32,
+            82632376,
+            0,
+            0,
+            0,
+            18068,
+            8068,
+            10695,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028328,
+            8530736,
+            32,
+            82632376,
+            4,
+            0,
+            4,
+            0,
+            15325,
+            7395,
+            6,
+            0,
+            94,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028328,
+            8562548,
+            32,
+            82627908,
+            0,
+            0,
+            48,
+            1148,
+            7340,
+            6961,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028328,
+            8644752,
+            32,
+            82627480,
+            0,
+            0,
+            0,
+            0,
+            8643,
+            8112,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            54028316,
+            8659316,
+            32,
+            82638640,
+            12,
+            0,
+            12,
+            25480,
+            12567,
+            16752,
+            4,
+            0,
+            95,
+            0,
+            0,
+            0
+          ]
+        ]
+      }
+    },
+    "B2": {
+      "before": {
+        "file": {
+          "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/host-before.txt",
+          "bytes": 10747,
+          "sha256": "a1aa9e6901adc8ba4481ddbc26efc314baf9554113139674783a51dd746eac67"
+        },
+        "timestamp": "2026-11-12T17:28:46+00:00",
+        "uname": "Linux omarchy 7.2.11-arch1-1 #1 SMP PREEMPT_DYNAMIC Fri, 16 Oct 2026 00:28:58 +0000 x86_64 GNU/Linux",
+        "processes": [
+          {
+            "pid": 1500972,
+            "ppid": 1532,
+            "command": "ninfer-serve",
+            "lifetime_percent_cpu": "16.8"
+          },
+          {
+            "pid": 1500970,
+            "ppid": 1532,
+            "command": "llama-server",
+            "lifetime_percent_cpu": "11.6"
+          },
+          {
+            "pid": 2235544,
+            "ppid": 2235508,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "11.1"
+          },
+          {
+            "pid": 1597831,
+            "ppid": 1532,
+            "command": "localsearch-3",
+            "lifetime_percent_cpu": "3.2"
+          },
+          {
+            "pid": 12901,
+            "ppid": 12892,
+            "command": "Hyprland",
+            "lifetime_percent_cpu": "2.9"
+          },
+          {
+            "pid": 1494887,
+            "ppid": 1494029,
+            "command": "omp",
+            "lifetime_percent_cpu": "2.6"
+          },
+          {
+            "pid": 3522692,
+            "ppid": 2,
+            "command": "kworker/u130:23",
+            "lifetime_percent_cpu": "2.3"
+          },
+          {
+            "pid": 2362039,
+            "ppid": 2335197,
+            "command": "muse",
+            "lifetime_percent_cpu": "2.2"
+          },
+          {
+            "pid": 3438977,
+            "ppid": 3330419,
+            "command": "omp",
+            "lifetime_percent_cpu": "1.8"
+          },
+          {
+            "pid": 3412156,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 2235498,
+            "ppid": 2235373,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 461669,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.4"
+          },
+          {
+            "pid": 3445390,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 2067866,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 3392657,
+            "ppid": 1532,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 2236000,
+            "ppid": 2235498,
+            "command": "codex",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 3514658,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.0"
+          },
+          {
+            "pid": 3392765,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.9"
+          },
+          {
+            "pid": 2236189,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "0.8"
+          },
+          {
+            "pid": 2127268,
+            "ppid": 2125885,
+            "command": "omp",
+            "lifetime_percent_cpu": "0.7"
+          },
+          {
+            "pid": 3092394,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 230823,
+            "ppid": 193121,
+            "command": "steam",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 243,
+            "ppid": 2,
+            "command": "kswapd0",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 3392706,
+            "ppid": 3392673,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.5"
+          },
+          {
+            "pid": 2188100,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.4"
+          },
+          {
+            "pid": 1791238,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 224,
+            "ppid": 2,
+            "command": "kcompactd0",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3758782,
+            "ppid": 2,
+            "command": "kworker/u130:7-",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 232330,
+            "ppid": 232278,
+            "command": "steamwebhelper",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3898228,
+            "ppid": 2,
+            "command": "kworker/u130:34",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 3869287,
+            "ppid": 2,
+            "command": "kworker/u129:2-",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 4078684,
+            "ppid": 2,
+            "command": "kworker/u130:15",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 3134231,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 4130904,
+            "ppid": 2,
+            "command": "kworker/u130:16",
+            "lifetime_percent_cpu": "0.2"
+          }
+        ],
+        "load_and_cpu_pressure": [
+          "2.16 4.12 4.74 2/5183 462214",
+          "some avg10=0.00 avg60=0.28 avg300=0.79 total=14990784877",
+          "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+        ],
+        "cpu14_and_sibling30_snapshot_rows": [
+          " 14    0      0   14 14:14:14:1       yes 5756.4521 624.1940  624.1940",
+          " 30    0      0   14 14:14:14:1       yes 5756.4521 624.1940 5420.6689"
+        ],
+        "sysfs": {
+          "/sys/devices/system/cpu/cpu14/topology/core_id": "14",
+          "/sys/devices/system/cpu/cpu14/topology/physical_package_id": "0",
+          "/sys/devices/system/cpu/cpu14/topology/thread_siblings_list": "14,30",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_governor": "performance",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_driver": "amd-pstate-epp",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_min_freq": "624194",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_max_freq": "5756452",
+          "/sys/devices/system/cpu/cpu14/cache/index3/size": "32768K",
+          "/sys/devices/system/cpu/cpu14/cache/index3/shared_cpu_list": "8-15,24-31",
+          "/sys/devices/system/cpu/cpufreq/boost": "1",
+          "/sys/class/hwmon/hwmon0/name": "nvme",
+          "/sys/class/hwmon/hwmon1/name": "nvme",
+          "/sys/class/hwmon/hwmon10/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon11/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon12/name": "mt7925_phy0",
+          "/sys/class/hwmon/hwmon13/name": "hidpp_battery_0",
+          "/sys/class/hwmon/hwmon2/name": "nvme",
+          "/sys/class/hwmon/hwmon3/name": "amdgpu",
+          "/sys/class/hwmon/hwmon4/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon5/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon6/name": "k10temp",
+          "/sys/class/hwmon/hwmon7/name": "r8169_0_900:00",
+          "/sys/class/hwmon/hwmon8/name": "spd5118",
+          "/sys/class/hwmon/hwmon9/name": "spd5118",
+          "/sys/class/hwmon/hwmon0/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp2_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp3_input": "54850",
+          "/sys/class/hwmon/hwmon12/temp1_input": "38000",
+          "/sys/class/hwmon/hwmon2/temp1_input": "43850",
+          "/sys/class/hwmon/hwmon2/temp2_input": "61850",
+          "/sys/class/hwmon/hwmon2/temp3_input": "43850",
+          "/sys/class/hwmon/hwmon3/temp1_input": "49000",
+          "/sys/class/hwmon/hwmon4/temp1_input": "71872",
+          "/sys/class/hwmon/hwmon5/temp1_input": "67339",
+          "/sys/class/hwmon/hwmon6/temp1_input": "69750",
+          "/sys/class/hwmon/hwmon6/temp3_input": "43125",
+          "/sys/class/hwmon/hwmon6/temp4_input": "71000",
+          "/sys/class/hwmon/hwmon7/temp1_input": "56500",
+          "/sys/class/hwmon/hwmon8/temp1_input": "48000",
+          "/sys/class/hwmon/hwmon9/temp1_input": "47750",
+          "/sys/class/hwmon/hwmon0/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon1/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon2/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon2/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon2/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon3/temp1_label": "edge",
+          "/sys/class/hwmon/hwmon6/temp1_label": "Tctl",
+          "/sys/class/hwmon/hwmon6/temp3_label": "Tccd1",
+          "/sys/class/hwmon/hwmon6/temp4_label": "Tccd2"
+        },
+        "machine_id_receipt": "4bf7e63167e2121f153e9a7f5c7308f64d10872137a5f23307ab7fd473cd0a43  /etc/machine-id",
+        "hostname": "hostname=omarchy"
+      },
+      "after": {
+        "file": {
+          "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/host-after.txt",
+          "bytes": 10747,
+          "sha256": "6f11f7c95dc44294519d40f517022db234f596f5af1010861b17c9261b40f100"
+        },
+        "timestamp": "2026-11-12T17:29:17+00:00",
+        "uname": "Linux omarchy 7.2.11-arch1-1 #1 SMP PREEMPT_DYNAMIC Fri, 16 Oct 2026 00:28:58 +0000 x86_64 GNU/Linux",
+        "processes": [
+          {
+            "pid": 1500972,
+            "ppid": 1532,
+            "command": "ninfer-serve",
+            "lifetime_percent_cpu": "16.8"
+          },
+          {
+            "pid": 1500970,
+            "ppid": 1532,
+            "command": "llama-server",
+            "lifetime_percent_cpu": "11.6"
+          },
+          {
+            "pid": 2235544,
+            "ppid": 2235508,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "11.1"
+          },
+          {
+            "pid": 462694,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "8.4"
+          },
+          {
+            "pid": 1597831,
+            "ppid": 1532,
+            "command": "localsearch-3",
+            "lifetime_percent_cpu": "3.2"
+          },
+          {
+            "pid": 12901,
+            "ppid": 12892,
+            "command": "Hyprland",
+            "lifetime_percent_cpu": "2.9"
+          },
+          {
+            "pid": 462492,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "2.7"
+          },
+          {
+            "pid": 1494887,
+            "ppid": 1494029,
+            "command": "omp",
+            "lifetime_percent_cpu": "2.6"
+          },
+          {
+            "pid": 3522692,
+            "ppid": 2,
+            "command": "kworker/u130:23",
+            "lifetime_percent_cpu": "2.3"
+          },
+          {
+            "pid": 2362039,
+            "ppid": 2335197,
+            "command": "muse",
+            "lifetime_percent_cpu": "2.2"
+          },
+          {
+            "pid": 3438977,
+            "ppid": 3330419,
+            "command": "omp",
+            "lifetime_percent_cpu": "1.8"
+          },
+          {
+            "pid": 3412156,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 2235498,
+            "ppid": 2235373,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 462349,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.5"
+          },
+          {
+            "pid": 3445390,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 2067866,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 3392657,
+            "ppid": 1532,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 2236000,
+            "ppid": 2235498,
+            "command": "codex",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 3514658,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.0"
+          },
+          {
+            "pid": 3392765,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.9"
+          },
+          {
+            "pid": 2236189,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "0.8"
+          },
+          {
+            "pid": 2127268,
+            "ppid": 2125885,
+            "command": "omp",
+            "lifetime_percent_cpu": "0.7"
+          },
+          {
+            "pid": 3092394,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 230823,
+            "ppid": 193121,
+            "command": "steam",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 243,
+            "ppid": 2,
+            "command": "kswapd0",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 3392706,
+            "ppid": 3392673,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.5"
+          },
+          {
+            "pid": 2188100,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.4"
+          },
+          {
+            "pid": 1791238,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 224,
+            "ppid": 2,
+            "command": "kcompactd0",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3758782,
+            "ppid": 2,
+            "command": "kworker/u130:7-",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 232330,
+            "ppid": 232278,
+            "command": "steamwebhelper",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3898228,
+            "ppid": 2,
+            "command": "kworker/u130:34",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 3869287,
+            "ppid": 2,
+            "command": "kworker/u129:2-",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 4078684,
+            "ppid": 2,
+            "command": "kworker/u130:15",
+            "lifetime_percent_cpu": "0.2"
+          }
+        ],
+        "load_and_cpu_pressure": [
+          "2.21 3.93 4.65 2/5247 462819",
+          "some avg10=0.00 avg60=0.16 avg300=0.70 total=14990811866",
+          "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+        ],
+        "cpu14_and_sibling30_snapshot_rows": [
+          " 14    0      0   14 14:14:14:1       yes 5756.4521 624.1940 5524.1689",
+          " 30    0      0   14 14:14:14:1       yes 5756.4521 624.1940 5520.9868"
+        ],
+        "sysfs": {
+          "/sys/devices/system/cpu/cpu14/topology/core_id": "14",
+          "/sys/devices/system/cpu/cpu14/topology/physical_package_id": "0",
+          "/sys/devices/system/cpu/cpu14/topology/thread_siblings_list": "14,30",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_governor": "performance",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_driver": "amd-pstate-epp",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_min_freq": "624194",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_max_freq": "5756452",
+          "/sys/devices/system/cpu/cpu14/cache/index3/size": "32768K",
+          "/sys/devices/system/cpu/cpu14/cache/index3/shared_cpu_list": "8-15,24-31",
+          "/sys/devices/system/cpu/cpufreq/boost": "1",
+          "/sys/class/hwmon/hwmon0/name": "nvme",
+          "/sys/class/hwmon/hwmon1/name": "nvme",
+          "/sys/class/hwmon/hwmon10/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon11/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon12/name": "mt7925_phy0",
+          "/sys/class/hwmon/hwmon13/name": "hidpp_battery_0",
+          "/sys/class/hwmon/hwmon2/name": "nvme",
+          "/sys/class/hwmon/hwmon3/name": "amdgpu",
+          "/sys/class/hwmon/hwmon4/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon5/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon6/name": "k10temp",
+          "/sys/class/hwmon/hwmon7/name": "r8169_0_900:00",
+          "/sys/class/hwmon/hwmon8/name": "spd5118",
+          "/sys/class/hwmon/hwmon9/name": "spd5118",
+          "/sys/class/hwmon/hwmon0/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp2_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp3_input": "54850",
+          "/sys/class/hwmon/hwmon12/temp1_input": "38000",
+          "/sys/class/hwmon/hwmon2/temp1_input": "43850",
+          "/sys/class/hwmon/hwmon2/temp2_input": "61850",
+          "/sys/class/hwmon/hwmon2/temp3_input": "43850",
+          "/sys/class/hwmon/hwmon3/temp1_input": "48000",
+          "/sys/class/hwmon/hwmon4/temp1_input": "72778",
+          "/sys/class/hwmon/hwmon5/temp1_input": "67339",
+          "/sys/class/hwmon/hwmon6/temp1_input": "67000",
+          "/sys/class/hwmon/hwmon6/temp3_input": "41375",
+          "/sys/class/hwmon/hwmon6/temp4_input": "66750",
+          "/sys/class/hwmon/hwmon7/temp1_input": "57000",
+          "/sys/class/hwmon/hwmon8/temp1_input": "47500",
+          "/sys/class/hwmon/hwmon9/temp1_input": "47500",
+          "/sys/class/hwmon/hwmon0/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon1/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon2/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon2/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon2/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon3/temp1_label": "edge",
+          "/sys/class/hwmon/hwmon6/temp1_label": "Tctl",
+          "/sys/class/hwmon/hwmon6/temp3_label": "Tccd1",
+          "/sys/class/hwmon/hwmon6/temp4_label": "Tccd2"
+        },
+        "machine_id_receipt": "4bf7e63167e2121f153e9a7f5c7308f64d10872137a5f23307ab7fd473cd0a43  /etc/machine-id",
+        "hostname": "hostname=omarchy"
+      },
+      "vmstat": {
+        "file": {
+          "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/vmstat.log",
+          "bytes": 4130,
+          "sha256": "84bd4c14eb1500cf72fa5a134252a01ba970a704d1dec663320155f3de19ccd8"
+        },
+        "first_boot_average_row_excluded": [
+          2,
+          0,
+          54028316,
+          8649120,
+          32,
+          82647684,
+          699,
+          1743,
+          13165,
+          12169,
+          41879,
+          9,
+          5,
+          1,
+          94,
+          0,
+          0,
+          0
+        ],
+        "interval_count": 30,
+        "interval_summary": {
+          "r": {
+            "min": 1,
+            "max": 3
+          },
+          "b": {
+            "min": 0,
+            "max": 0
+          },
+          "swpd": {
+            "min": 54028140,
+            "max": 54028316
+          },
+          "free": {
+            "min": 8440248,
+            "max": 8694032
+          },
+          "buff": {
+            "min": 32,
+            "max": 32
+          },
+          "cache": {
+            "min": 82647744,
+            "max": 82722912
+          },
+          "si": {
+            "min": 0,
+            "max": 76
+          },
+          "so": {
+            "min": 0,
+            "max": 0
+          },
+          "bi": {
+            "min": 0,
+            "max": 240
+          },
+          "bo": {
+            "min": 0,
+            "max": 81880
+          },
+          "in": {
+            "min": 6307,
+            "max": 43163
+          },
+          "cs": {
+            "min": 5686,
+            "max": 62587
+          },
+          "us": {
+            "min": 3,
+            "max": 7
+          },
+          "sy": {
+            "min": 0,
+            "max": 2
+          },
+          "id": {
+            "min": 91,
+            "max": 97
+          },
+          "wa": {
+            "min": 0,
+            "max": 1
+          },
+          "st": {
+            "min": 0,
+            "max": 0
+          },
+          "gu": {
+            "min": 0,
+            "max": 0
+          }
+        },
+        "all_interval_rows": [
+          [
+            1,
+            0,
+            54028316,
+            8646852,
+            32,
+            82647744,
+            0,
+            0,
+            0,
+            8,
+            8219,
+            8088,
+            4,
+            0,
+            95,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028316,
+            8644620,
+            32,
+            82668356,
+            0,
+            0,
+            240,
+            47628,
+            10531,
+            20499,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54028316,
+            8644620,
+            32,
+            82668356,
+            0,
+            0,
+            0,
+            0,
+            6725,
+            7101,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028316,
+            8646744,
+            32,
+            82668360,
+            0,
+            0,
+            0,
+            0,
+            6637,
+            6796,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54028312,
+            8640380,
+            32,
+            82668368,
+            0,
+            0,
+            0,
+            0,
+            7291,
+            7594,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028304,
+            8636864,
+            32,
+            82668536,
+            0,
+            0,
+            0,
+            12,
+            7355,
+            7567,
+            4,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028304,
+            8694032,
+            32,
+            82668748,
+            0,
+            0,
+            0,
+            288,
+            8783,
+            7686,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028296,
+            8693300,
+            32,
+            82668400,
+            4,
+            0,
+            4,
+            0,
+            6318,
+            5686,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            3,
+            0,
+            54028296,
+            8660600,
+            32,
+            82668020,
+            0,
+            0,
+            0,
+            0,
+            7491,
+            6925,
+            4,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54028220,
+            8590012,
+            32,
+            82707596,
+            76,
+            0,
+            124,
+            81880,
+            43163,
+            62587,
+            7,
+            2,
+            91,
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028180,
+            8585228,
+            32,
+            82707920,
+            40,
+            0,
+            40,
+            136,
+            7838,
+            7133,
+            4,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028168,
+            8584988,
+            32,
+            82707672,
+            8,
+            0,
+            8,
+            528,
+            7050,
+            6297,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028164,
+            8581460,
+            32,
+            82707820,
+            0,
+            0,
+            32,
+            60,
+            7553,
+            7246,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54028164,
+            8559788,
+            32,
+            82708344,
+            0,
+            0,
+            0,
+            136,
+            7961,
+            7310,
+            4,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028160,
+            8503808,
+            32,
+            82709168,
+            4,
+            0,
+            4,
+            648,
+            24958,
+            17306,
+            5,
+            0,
+            95,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028160,
+            8503808,
+            32,
+            82709388,
+            0,
+            0,
+            0,
+            528,
+            7416,
+            7001,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028160,
+            8503808,
+            32,
+            82709644,
+            0,
+            0,
+            48,
+            3472,
+            7271,
+            6561,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028160,
+            8509612,
+            32,
+            82709660,
+            0,
+            0,
+            0,
+            0,
+            6307,
+            5848,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028160,
+            8509108,
+            32,
+            82709660,
+            0,
+            0,
+            0,
+            0,
+            6498,
+            6363,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54028160,
+            8511528,
+            32,
+            82709704,
+            0,
+            0,
+            0,
+            0,
+            7157,
+            6539,
+            4,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54028160,
+            8503588,
+            32,
+            82713412,
+            0,
+            0,
+            96,
+            2844,
+            9998,
+            9148,
+            5,
+            1,
+            94,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028160,
+            8503716,
+            32,
+            82714000,
+            0,
+            0,
+            0,
+            760,
+            6986,
+            6270,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028156,
+            8503476,
+            32,
+            82714368,
+            4,
+            0,
+            4,
+            552,
+            7092,
+            6852,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028152,
+            8502984,
+            32,
+            82714372,
+            4,
+            0,
+            4,
+            0,
+            6626,
+            7929,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028152,
+            8502984,
+            32,
+            82714372,
+            0,
+            0,
+            0,
+            0,
+            6561,
+            5969,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028144,
+            8490132,
+            32,
+            82714984,
+            8,
+            0,
+            8,
+            448,
+            11054,
+            19151,
+            4,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028140,
+            8440248,
+            32,
+            82720920,
+            4,
+            0,
+            36,
+            16828,
+            25290,
+            34155,
+            5,
+            1,
+            95,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028140,
+            8440676,
+            32,
+            82722808,
+            0,
+            0,
+            32,
+            1432,
+            9337,
+            7929,
+            4,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028140,
+            8440676,
+            32,
+            82722808,
+            0,
+            0,
+            0,
+            0,
+            6709,
+            6141,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54028140,
+            8440676,
+            32,
+            82722912,
+            0,
+            0,
+            0,
+            0,
+            6846,
+            6221,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ]
+        ]
+      }
+    },
+    "A2": {
+      "before": {
+        "file": {
+          "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/host-before.txt",
+          "bytes": 10747,
+          "sha256": "8e1ee4a17d66db5f8c4fd76695050ed2abf0d2eef9e609e432ffd22052ad3344"
+        },
+        "timestamp": "2026-11-12T17:29:18+00:00",
+        "uname": "Linux omarchy 7.2.11-arch1-1 #1 SMP PREEMPT_DYNAMIC Fri, 16 Oct 2026 00:28:58 +0000 x86_64 GNU/Linux",
+        "processes": [
+          {
+            "pid": 1500972,
+            "ppid": 1532,
+            "command": "ninfer-serve",
+            "lifetime_percent_cpu": "16.8"
+          },
+          {
+            "pid": 1500970,
+            "ppid": 1532,
+            "command": "llama-server",
+            "lifetime_percent_cpu": "11.6"
+          },
+          {
+            "pid": 2235544,
+            "ppid": 2235508,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "11.1"
+          },
+          {
+            "pid": 462694,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "7.6"
+          },
+          {
+            "pid": 1597831,
+            "ppid": 1532,
+            "command": "localsearch-3",
+            "lifetime_percent_cpu": "3.2"
+          },
+          {
+            "pid": 12901,
+            "ppid": 12892,
+            "command": "Hyprland",
+            "lifetime_percent_cpu": "2.9"
+          },
+          {
+            "pid": 462492,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "2.6"
+          },
+          {
+            "pid": 1494887,
+            "ppid": 1494029,
+            "command": "omp",
+            "lifetime_percent_cpu": "2.6"
+          },
+          {
+            "pid": 3522692,
+            "ppid": 2,
+            "command": "kworker/u130:23",
+            "lifetime_percent_cpu": "2.3"
+          },
+          {
+            "pid": 2362039,
+            "ppid": 2335197,
+            "command": "muse",
+            "lifetime_percent_cpu": "2.2"
+          },
+          {
+            "pid": 3438977,
+            "ppid": 3330419,
+            "command": "omp",
+            "lifetime_percent_cpu": "1.8"
+          },
+          {
+            "pid": 3412156,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 2235498,
+            "ppid": 2235373,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 462349,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.5"
+          },
+          {
+            "pid": 3445390,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 2067866,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 3392657,
+            "ppid": 1532,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 2236000,
+            "ppid": 2235498,
+            "command": "codex",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 3514658,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.0"
+          },
+          {
+            "pid": 3392765,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.9"
+          },
+          {
+            "pid": 2236189,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "0.8"
+          },
+          {
+            "pid": 2127268,
+            "ppid": 2125885,
+            "command": "omp",
+            "lifetime_percent_cpu": "0.7"
+          },
+          {
+            "pid": 3092394,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 230823,
+            "ppid": 193121,
+            "command": "steam",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 243,
+            "ppid": 2,
+            "command": "kswapd0",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 3392706,
+            "ppid": 3392673,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.5"
+          },
+          {
+            "pid": 2188100,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.4"
+          },
+          {
+            "pid": 1791238,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 224,
+            "ppid": 2,
+            "command": "kcompactd0",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3758782,
+            "ppid": 2,
+            "command": "kworker/u130:7-",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 232330,
+            "ppid": 232278,
+            "command": "steamwebhelper",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3898228,
+            "ppid": 2,
+            "command": "kworker/u130:34",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 3869287,
+            "ppid": 2,
+            "command": "kworker/u129:2-",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 4078684,
+            "ppid": 2,
+            "command": "kworker/u130:15",
+            "lifetime_percent_cpu": "0.2"
+          }
+        ],
+        "load_and_cpu_pressure": [
+          "2.21 3.93 4.65 2/5259 463144",
+          "some avg10=0.00 avg60=0.16 avg300=0.70 total=14990812876",
+          "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+        ],
+        "cpu14_and_sibling30_snapshot_rows": [
+          " 14    0      0   14 14:14:14:1       yes 5756.4521 624.1940  624.1940",
+          " 30    0      0   14 14:14:14:1       yes 5756.4521 624.1940 5501.6670"
+        ],
+        "sysfs": {
+          "/sys/devices/system/cpu/cpu14/topology/core_id": "14",
+          "/sys/devices/system/cpu/cpu14/topology/physical_package_id": "0",
+          "/sys/devices/system/cpu/cpu14/topology/thread_siblings_list": "14,30",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_governor": "performance",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_driver": "amd-pstate-epp",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_min_freq": "624194",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_max_freq": "5756452",
+          "/sys/devices/system/cpu/cpu14/cache/index3/size": "32768K",
+          "/sys/devices/system/cpu/cpu14/cache/index3/shared_cpu_list": "8-15,24-31",
+          "/sys/devices/system/cpu/cpufreq/boost": "1",
+          "/sys/class/hwmon/hwmon0/name": "nvme",
+          "/sys/class/hwmon/hwmon1/name": "nvme",
+          "/sys/class/hwmon/hwmon10/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon11/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon12/name": "mt7925_phy0",
+          "/sys/class/hwmon/hwmon13/name": "hidpp_battery_0",
+          "/sys/class/hwmon/hwmon2/name": "nvme",
+          "/sys/class/hwmon/hwmon3/name": "amdgpu",
+          "/sys/class/hwmon/hwmon4/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon5/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon6/name": "k10temp",
+          "/sys/class/hwmon/hwmon7/name": "r8169_0_900:00",
+          "/sys/class/hwmon/hwmon8/name": "spd5118",
+          "/sys/class/hwmon/hwmon9/name": "spd5118",
+          "/sys/class/hwmon/hwmon0/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp2_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp3_input": "54850",
+          "/sys/class/hwmon/hwmon12/temp1_input": "38000",
+          "/sys/class/hwmon/hwmon2/temp1_input": "43850",
+          "/sys/class/hwmon/hwmon2/temp2_input": "61850",
+          "/sys/class/hwmon/hwmon2/temp3_input": "43850",
+          "/sys/class/hwmon/hwmon3/temp1_input": "48000",
+          "/sys/class/hwmon/hwmon4/temp1_input": "72778",
+          "/sys/class/hwmon/hwmon5/temp1_input": "67339",
+          "/sys/class/hwmon/hwmon6/temp1_input": "68250",
+          "/sys/class/hwmon/hwmon6/temp3_input": "42500",
+          "/sys/class/hwmon/hwmon6/temp4_input": "70500",
+          "/sys/class/hwmon/hwmon7/temp1_input": "57000",
+          "/sys/class/hwmon/hwmon8/temp1_input": "47500",
+          "/sys/class/hwmon/hwmon9/temp1_input": "47500",
+          "/sys/class/hwmon/hwmon0/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon1/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon2/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon2/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon2/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon3/temp1_label": "edge",
+          "/sys/class/hwmon/hwmon6/temp1_label": "Tctl",
+          "/sys/class/hwmon/hwmon6/temp3_label": "Tccd1",
+          "/sys/class/hwmon/hwmon6/temp4_label": "Tccd2"
+        },
+        "machine_id_receipt": "4bf7e63167e2121f153e9a7f5c7308f64d10872137a5f23307ab7fd473cd0a43  /etc/machine-id",
+        "hostname": "hostname=omarchy"
+      },
+      "after": {
+        "file": {
+          "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/host-after.txt",
+          "bytes": 10747,
+          "sha256": "7e2fc2a7d8145b88deaf9fd3fd6ecf310f64f7422204ba64f40a20175a62a431"
+        },
+        "timestamp": "2026-11-12T17:29:47+00:00",
+        "uname": "Linux omarchy 7.2.11-arch1-1 #1 SMP PREEMPT_DYNAMIC Fri, 16 Oct 2026 00:28:58 +0000 x86_64 GNU/Linux",
+        "processes": [
+          {
+            "pid": 1500972,
+            "ppid": 1532,
+            "command": "ninfer-serve",
+            "lifetime_percent_cpu": "16.8"
+          },
+          {
+            "pid": 1500970,
+            "ppid": 1532,
+            "command": "llama-server",
+            "lifetime_percent_cpu": "11.6"
+          },
+          {
+            "pid": 2235544,
+            "ppid": 2235508,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "11.1"
+          },
+          {
+            "pid": 1597831,
+            "ppid": 1532,
+            "command": "localsearch-3",
+            "lifetime_percent_cpu": "3.2"
+          },
+          {
+            "pid": 12901,
+            "ppid": 12892,
+            "command": "Hyprland",
+            "lifetime_percent_cpu": "2.9"
+          },
+          {
+            "pid": 1494887,
+            "ppid": 1494029,
+            "command": "omp",
+            "lifetime_percent_cpu": "2.6"
+          },
+          {
+            "pid": 3522692,
+            "ppid": 2,
+            "command": "kworker/u130:23",
+            "lifetime_percent_cpu": "2.3"
+          },
+          {
+            "pid": 2362039,
+            "ppid": 2335197,
+            "command": "muse",
+            "lifetime_percent_cpu": "2.2"
+          },
+          {
+            "pid": 3438977,
+            "ppid": 3330419,
+            "command": "omp",
+            "lifetime_percent_cpu": "1.8"
+          },
+          {
+            "pid": 3412156,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 2235498,
+            "ppid": 2235373,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 463270,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 3445390,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 2067866,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 3392657,
+            "ppid": 1532,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 2236000,
+            "ppid": 2235498,
+            "command": "codex",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 3514658,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.0"
+          },
+          {
+            "pid": 3392765,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.9"
+          },
+          {
+            "pid": 2236189,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "0.8"
+          },
+          {
+            "pid": 2127268,
+            "ppid": 2125885,
+            "command": "omp",
+            "lifetime_percent_cpu": "0.7"
+          },
+          {
+            "pid": 3092394,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 230823,
+            "ppid": 193121,
+            "command": "steam",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 243,
+            "ppid": 2,
+            "command": "kswapd0",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 3392706,
+            "ppid": 3392673,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.5"
+          },
+          {
+            "pid": 2188100,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.4"
+          },
+          {
+            "pid": 1791238,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 224,
+            "ppid": 2,
+            "command": "kcompactd0",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3758782,
+            "ppid": 2,
+            "command": "kworker/u130:7-",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 232330,
+            "ppid": 232278,
+            "command": "steamwebhelper",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3898228,
+            "ppid": 2,
+            "command": "kworker/u130:34",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 3869287,
+            "ppid": 2,
+            "command": "kworker/u129:2-",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 4078684,
+            "ppid": 2,
+            "command": "kworker/u130:15",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 3134231,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 4130904,
+            "ppid": 2,
+            "command": "kworker/u130:16",
+            "lifetime_percent_cpu": "0.2"
+          }
+        ],
+        "load_and_cpu_pressure": [
+          "1.73 3.65 4.54 3/5166 463485",
+          "some avg10=0.00 avg60=0.09 avg300=0.63 total=14990833647",
+          "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+        ],
+        "cpu14_and_sibling30_snapshot_rows": [
+          " 14    0      0   14 14:14:14:1       yes 5756.4521 624.1940 5540.1240",
+          " 30    0      0   14 14:14:14:1       yes 5756.4521 624.1940 5531.1499"
+        ],
+        "sysfs": {
+          "/sys/devices/system/cpu/cpu14/topology/core_id": "14",
+          "/sys/devices/system/cpu/cpu14/topology/physical_package_id": "0",
+          "/sys/devices/system/cpu/cpu14/topology/thread_siblings_list": "14,30",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_governor": "performance",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_driver": "amd-pstate-epp",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_min_freq": "624194",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_max_freq": "5756452",
+          "/sys/devices/system/cpu/cpu14/cache/index3/size": "32768K",
+          "/sys/devices/system/cpu/cpu14/cache/index3/shared_cpu_list": "8-15,24-31",
+          "/sys/devices/system/cpu/cpufreq/boost": "1",
+          "/sys/class/hwmon/hwmon0/name": "nvme",
+          "/sys/class/hwmon/hwmon1/name": "nvme",
+          "/sys/class/hwmon/hwmon10/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon11/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon12/name": "mt7925_phy0",
+          "/sys/class/hwmon/hwmon13/name": "hidpp_battery_0",
+          "/sys/class/hwmon/hwmon2/name": "nvme",
+          "/sys/class/hwmon/hwmon3/name": "amdgpu",
+          "/sys/class/hwmon/hwmon4/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon5/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon6/name": "k10temp",
+          "/sys/class/hwmon/hwmon7/name": "r8169_0_900:00",
+          "/sys/class/hwmon/hwmon8/name": "spd5118",
+          "/sys/class/hwmon/hwmon9/name": "spd5118",
+          "/sys/class/hwmon/hwmon0/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp2_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp3_input": "55850",
+          "/sys/class/hwmon/hwmon12/temp1_input": "38000",
+          "/sys/class/hwmon/hwmon2/temp1_input": "43850",
+          "/sys/class/hwmon/hwmon2/temp2_input": "61850",
+          "/sys/class/hwmon/hwmon2/temp3_input": "43850",
+          "/sys/class/hwmon/hwmon3/temp1_input": "46000",
+          "/sys/class/hwmon/hwmon4/temp1_input": "72778",
+          "/sys/class/hwmon/hwmon5/temp1_input": "68245",
+          "/sys/class/hwmon/hwmon6/temp1_input": "66750",
+          "/sys/class/hwmon/hwmon6/temp3_input": "41375",
+          "/sys/class/hwmon/hwmon6/temp4_input": "62250",
+          "/sys/class/hwmon/hwmon7/temp1_input": "57500",
+          "/sys/class/hwmon/hwmon8/temp1_input": "47250",
+          "/sys/class/hwmon/hwmon9/temp1_input": "47250",
+          "/sys/class/hwmon/hwmon0/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon1/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon2/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon2/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon2/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon3/temp1_label": "edge",
+          "/sys/class/hwmon/hwmon6/temp1_label": "Tctl",
+          "/sys/class/hwmon/hwmon6/temp3_label": "Tccd1",
+          "/sys/class/hwmon/hwmon6/temp4_label": "Tccd2"
+        },
+        "machine_id_receipt": "4bf7e63167e2121f153e9a7f5c7308f64d10872137a5f23307ab7fd473cd0a43  /etc/machine-id",
+        "hostname": "hostname=omarchy"
+      },
+      "vmstat": {
+        "file": {
+          "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/vmstat.log",
+          "bytes": 4012,
+          "sha256": "63901851c18a590470343cc25ad4774a52b35de518f2551b9bfb14372d56e93b"
+        },
+        "first_boot_average_row_excluded": [
+          2,
+          0,
+          54028140,
+          8344592,
+          32,
+          82738884,
+          699,
+          1742,
+          13165,
+          12168,
+          41878,
+          9,
+          5,
+          1,
+          94,
+          0,
+          0,
+          0
+        ],
+        "interval_count": 29,
+        "interval_summary": {
+          "r": {
+            "min": 1,
+            "max": 3
+          },
+          "b": {
+            "min": 0,
+            "max": 1
+          },
+          "swpd": {
+            "min": 54027732,
+            "max": 54028136
+          },
+          "free": {
+            "min": 8242864,
+            "max": 8402108
+          },
+          "buff": {
+            "min": 32,
+            "max": 32
+          },
+          "cache": {
+            "min": 82739828,
+            "max": 82833656
+          },
+          "si": {
+            "min": 0,
+            "max": 164
+          },
+          "so": {
+            "min": 0,
+            "max": 0
+          },
+          "bi": {
+            "min": 0,
+            "max": 1816
+          },
+          "bo": {
+            "min": 0,
+            "max": 84332
+          },
+          "in": {
+            "min": 6297,
+            "max": 25940
+          },
+          "cs": {
+            "min": 5764,
+            "max": 41741
+          },
+          "us": {
+            "min": 3,
+            "max": 5
+          },
+          "sy": {
+            "min": 0,
+            "max": 1
+          },
+          "id": {
+            "min": 94,
+            "max": 97
+          },
+          "wa": {
+            "min": 0,
+            "max": 0
+          },
+          "st": {
+            "min": 0,
+            "max": 0
+          },
+          "gu": {
+            "min": 0,
+            "max": 0
+          }
+        },
+        "all_interval_rows": [
+          [
+            2,
+            0,
+            54028136,
+            8344072,
+            32,
+            82739828,
+            4,
+            0,
+            4,
+            4,
+            9537,
+            9144,
+            4,
+            1,
+            95,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028120,
+            8342628,
+            32,
+            82747740,
+            4,
+            0,
+            1816,
+            3892,
+            10403,
+            13829,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028052,
+            8317184,
+            32,
+            82778256,
+            64,
+            0,
+            408,
+            79052,
+            14654,
+            32759,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028016,
+            8313092,
+            32,
+            82778612,
+            20,
+            0,
+            80,
+            88,
+            10485,
+            13096,
+            5,
+            0,
+            95,
+            0,
+            0,
+            0
+          ],
+          [
+            3,
+            0,
+            54028016,
+            8311240,
+            32,
+            82778876,
+            0,
+            0,
+            4,
+            0,
+            7694,
+            8661,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028016,
+            8253740,
+            32,
+            82779756,
+            0,
+            0,
+            0,
+            360,
+            20369,
+            21942,
+            5,
+            1,
+            95,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54028008,
+            8254428,
+            32,
+            82779712,
+            4,
+            0,
+            4,
+            0,
+            6431,
+            5810,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027812,
+            8310424,
+            32,
+            82781800,
+            164,
+            0,
+            244,
+            900,
+            9530,
+            9003,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027796,
+            8310492,
+            32,
+            82782168,
+            12,
+            0,
+            12,
+            72,
+            9474,
+            8904,
+            4,
+            0,
+            95,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54027796,
+            8249220,
+            32,
+            82823376,
+            0,
+            0,
+            0,
+            84332,
+            25940,
+            41741,
+            5,
+            1,
+            94,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027792,
+            8247068,
+            32,
+            82832616,
+            4,
+            0,
+            820,
+            12328,
+            9002,
+            11200,
+            4,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027792,
+            8242864,
+            32,
+            82832888,
+            0,
+            0,
+            48,
+            456,
+            7216,
+            6790,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027792,
+            8314204,
+            32,
+            82832680,
+            0,
+            0,
+            0,
+            12,
+            9219,
+            6907,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027788,
+            8305772,
+            32,
+            82833188,
+            4,
+            0,
+            4,
+            616,
+            7680,
+            7124,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027788,
+            8304532,
+            32,
+            82833276,
+            0,
+            0,
+            0,
+            528,
+            7717,
+            7211,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027788,
+            8304532,
+            32,
+            82833588,
+            0,
+            0,
+            0,
+            8,
+            6605,
+            5929,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027788,
+            8301004,
+            32,
+            82833636,
+            0,
+            0,
+            0,
+            0,
+            6297,
+            5764,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            54027788,
+            8296720,
+            32,
+            82833656,
+            0,
+            0,
+            0,
+            4,
+            7160,
+            6434,
+            4,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027788,
+            8292864,
+            32,
+            82830296,
+            0,
+            0,
+            80,
+            7308,
+            10361,
+            9327,
+            5,
+            1,
+            94,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027784,
+            8291224,
+            32,
+            82830616,
+            4,
+            0,
+            4,
+            992,
+            6728,
+            6036,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027784,
+            8291112,
+            32,
+            82830968,
+            0,
+            0,
+            0,
+            592,
+            6686,
+            6128,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027752,
+            8284716,
+            32,
+            82830804,
+            32,
+            0,
+            32,
+            0,
+            20812,
+            12430,
+            5,
+            0,
+            94,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027744,
+            8284084,
+            32,
+            82831224,
+            8,
+            0,
+            8,
+            0,
+            7769,
+            7979,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027744,
+            8284084,
+            32,
+            82831232,
+            0,
+            0,
+            0,
+            0,
+            6667,
+            6060,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027744,
+            8283088,
+            32,
+            82831416,
+            0,
+            0,
+            0,
+            184,
+            6610,
+            6526,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027744,
+            8316696,
+            32,
+            82827136,
+            0,
+            0,
+            0,
+            21248,
+            9113,
+            12331,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027740,
+            8402108,
+            32,
+            82826716,
+            4,
+            0,
+            4,
+            1484,
+            8223,
+            7898,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027740,
+            8400872,
+            32,
+            82829088,
+            0,
+            0,
+            0,
+            648,
+            6966,
+            6176,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027732,
+            8399864,
+            32,
+            82829452,
+            8,
+            0,
+            8,
+            0,
+            7171,
+            9016,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ]
+        ]
+      }
+    },
+    "counters-result": {
+      "before": {
+        "file": {
+          "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/host-before.txt",
+          "bytes": 10747,
+          "sha256": "275c2271177057b03abf97f0ced8c4a8cf1e41e07ffd45ca2ebdc24de73725f3"
+        },
+        "timestamp": "2026-11-12T17:29:48+00:00",
+        "uname": "Linux omarchy 7.2.11-arch1-1 #1 SMP PREEMPT_DYNAMIC Fri, 16 Oct 2026 00:28:58 +0000 x86_64 GNU/Linux",
+        "processes": [
+          {
+            "pid": 1500972,
+            "ppid": 1532,
+            "command": "ninfer-serve",
+            "lifetime_percent_cpu": "16.8"
+          },
+          {
+            "pid": 1500970,
+            "ppid": 1532,
+            "command": "llama-server",
+            "lifetime_percent_cpu": "11.6"
+          },
+          {
+            "pid": 2235544,
+            "ppid": 2235508,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "11.1"
+          },
+          {
+            "pid": 1597831,
+            "ppid": 1532,
+            "command": "localsearch-3",
+            "lifetime_percent_cpu": "3.2"
+          },
+          {
+            "pid": 12901,
+            "ppid": 12892,
+            "command": "Hyprland",
+            "lifetime_percent_cpu": "2.9"
+          },
+          {
+            "pid": 1494887,
+            "ppid": 1494029,
+            "command": "omp",
+            "lifetime_percent_cpu": "2.6"
+          },
+          {
+            "pid": 3522692,
+            "ppid": 2,
+            "command": "kworker/u130:23",
+            "lifetime_percent_cpu": "2.3"
+          },
+          {
+            "pid": 2362039,
+            "ppid": 2335197,
+            "command": "muse",
+            "lifetime_percent_cpu": "2.2"
+          },
+          {
+            "pid": 3438977,
+            "ppid": 3330419,
+            "command": "omp",
+            "lifetime_percent_cpu": "1.8"
+          },
+          {
+            "pid": 3412156,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 2235498,
+            "ppid": 2235373,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 3445390,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 2067866,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 463270,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 3392657,
+            "ppid": 1532,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 2236000,
+            "ppid": 2235498,
+            "command": "codex",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 3514658,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.0"
+          },
+          {
+            "pid": 3392765,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.9"
+          },
+          {
+            "pid": 2236189,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "0.8"
+          },
+          {
+            "pid": 2127268,
+            "ppid": 2125885,
+            "command": "omp",
+            "lifetime_percent_cpu": "0.7"
+          },
+          {
+            "pid": 3092394,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 230823,
+            "ppid": 193121,
+            "command": "steam",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 243,
+            "ppid": 2,
+            "command": "kswapd0",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 3392706,
+            "ppid": 3392673,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.5"
+          },
+          {
+            "pid": 2188100,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.4"
+          },
+          {
+            "pid": 1791238,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 224,
+            "ppid": 2,
+            "command": "kcompactd0",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3758782,
+            "ppid": 2,
+            "command": "kworker/u130:7-",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 232330,
+            "ppid": 232278,
+            "command": "steamwebhelper",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3898228,
+            "ppid": 2,
+            "command": "kworker/u130:34",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 3869287,
+            "ppid": 2,
+            "command": "kworker/u129:2-",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 4078684,
+            "ppid": 2,
+            "command": "kworker/u130:15",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 3134231,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 4130904,
+            "ppid": 2,
+            "command": "kworker/u130:16",
+            "lifetime_percent_cpu": "0.2"
+          }
+        ],
+        "load_and_cpu_pressure": [
+          "1.73 3.65 4.54 2/5175 463823",
+          "some avg10=0.00 avg60=0.09 avg300=0.63 total=14990835354",
+          "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+        ],
+        "cpu14_and_sibling30_snapshot_rows": [
+          " 14    0      0   14 14:14:14:1       yes 5756.4521 624.1940  624.1940",
+          " 30    0      0   14 14:14:14:1       yes 5756.4521 624.1940  624.1940"
+        ],
+        "sysfs": {
+          "/sys/devices/system/cpu/cpu14/topology/core_id": "14",
+          "/sys/devices/system/cpu/cpu14/topology/physical_package_id": "0",
+          "/sys/devices/system/cpu/cpu14/topology/thread_siblings_list": "14,30",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_governor": "performance",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_driver": "amd-pstate-epp",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_min_freq": "624194",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_max_freq": "5756452",
+          "/sys/devices/system/cpu/cpu14/cache/index3/size": "32768K",
+          "/sys/devices/system/cpu/cpu14/cache/index3/shared_cpu_list": "8-15,24-31",
+          "/sys/devices/system/cpu/cpufreq/boost": "1",
+          "/sys/class/hwmon/hwmon0/name": "nvme",
+          "/sys/class/hwmon/hwmon1/name": "nvme",
+          "/sys/class/hwmon/hwmon10/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon11/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon12/name": "mt7925_phy0",
+          "/sys/class/hwmon/hwmon13/name": "hidpp_battery_0",
+          "/sys/class/hwmon/hwmon2/name": "nvme",
+          "/sys/class/hwmon/hwmon3/name": "amdgpu",
+          "/sys/class/hwmon/hwmon4/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon5/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon6/name": "k10temp",
+          "/sys/class/hwmon/hwmon7/name": "r8169_0_900:00",
+          "/sys/class/hwmon/hwmon8/name": "spd5118",
+          "/sys/class/hwmon/hwmon9/name": "spd5118",
+          "/sys/class/hwmon/hwmon0/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp2_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp3_input": "54850",
+          "/sys/class/hwmon/hwmon12/temp1_input": "38000",
+          "/sys/class/hwmon/hwmon2/temp1_input": "43850",
+          "/sys/class/hwmon/hwmon2/temp2_input": "61850",
+          "/sys/class/hwmon/hwmon2/temp3_input": "43850",
+          "/sys/class/hwmon/hwmon3/temp1_input": "47000",
+          "/sys/class/hwmon/hwmon4/temp1_input": "72778",
+          "/sys/class/hwmon/hwmon5/temp1_input": "68245",
+          "/sys/class/hwmon/hwmon6/temp1_input": "67500",
+          "/sys/class/hwmon/hwmon6/temp3_input": "41375",
+          "/sys/class/hwmon/hwmon6/temp4_input": "69500",
+          "/sys/class/hwmon/hwmon7/temp1_input": "57500",
+          "/sys/class/hwmon/hwmon8/temp1_input": "47250",
+          "/sys/class/hwmon/hwmon9/temp1_input": "47250",
+          "/sys/class/hwmon/hwmon0/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon1/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon2/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon2/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon2/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon3/temp1_label": "edge",
+          "/sys/class/hwmon/hwmon6/temp1_label": "Tctl",
+          "/sys/class/hwmon/hwmon6/temp3_label": "Tccd1",
+          "/sys/class/hwmon/hwmon6/temp4_label": "Tccd2"
+        },
+        "machine_id_receipt": "4bf7e63167e2121f153e9a7f5c7308f64d10872137a5f23307ab7fd473cd0a43  /etc/machine-id",
+        "hostname": "hostname=omarchy"
+      },
+      "after": {
+        "file": {
+          "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/host-after.txt",
+          "bytes": 10748,
+          "sha256": "b6fd4cfbbfabddf1ead5482af935405af85c86316c0c85c766b5230bf5cb9c56"
+        },
+        "timestamp": "2026-11-12T17:30:07+00:00",
+        "uname": "Linux omarchy 7.2.11-arch1-1 #1 SMP PREEMPT_DYNAMIC Fri, 16 Oct 2026 00:28:58 +0000 x86_64 GNU/Linux",
+        "processes": [
+          {
+            "pid": 1500972,
+            "ppid": 1532,
+            "command": "ninfer-serve",
+            "lifetime_percent_cpu": "16.8"
+          },
+          {
+            "pid": 1500970,
+            "ppid": 1532,
+            "command": "llama-server",
+            "lifetime_percent_cpu": "11.6"
+          },
+          {
+            "pid": 2235544,
+            "ppid": 2235508,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "11.1"
+          },
+          {
+            "pid": 464162,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "7.0"
+          },
+          {
+            "pid": 1597831,
+            "ppid": 1532,
+            "command": "localsearch-3",
+            "lifetime_percent_cpu": "3.2"
+          },
+          {
+            "pid": 463994,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "2.9"
+          },
+          {
+            "pid": 12901,
+            "ppid": 12892,
+            "command": "Hyprland",
+            "lifetime_percent_cpu": "2.9"
+          },
+          {
+            "pid": 1494887,
+            "ppid": 1494029,
+            "command": "omp",
+            "lifetime_percent_cpu": "2.6"
+          },
+          {
+            "pid": 3522692,
+            "ppid": 2,
+            "command": "kworker/u130:23",
+            "lifetime_percent_cpu": "2.3"
+          },
+          {
+            "pid": 2362039,
+            "ppid": 2335197,
+            "command": "muse",
+            "lifetime_percent_cpu": "2.2"
+          },
+          {
+            "pid": 3438977,
+            "ppid": 3330419,
+            "command": "omp",
+            "lifetime_percent_cpu": "1.8"
+          },
+          {
+            "pid": 3412156,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 2235498,
+            "ppid": 2235373,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "1.6"
+          },
+          {
+            "pid": 3445390,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 2067866,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.3"
+          },
+          {
+            "pid": 3392657,
+            "ppid": 1532,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 2236000,
+            "ppid": 2235498,
+            "command": "codex",
+            "lifetime_percent_cpu": "1.1"
+          },
+          {
+            "pid": 3514658,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "1.0"
+          },
+          {
+            "pid": 3392765,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.9"
+          },
+          {
+            "pid": 2236189,
+            "ppid": 2235516,
+            "command": "ChatGPT",
+            "lifetime_percent_cpu": "0.8"
+          },
+          {
+            "pid": 2127268,
+            "ppid": 2125885,
+            "command": "omp",
+            "lifetime_percent_cpu": "0.7"
+          },
+          {
+            "pid": 3092394,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 230823,
+            "ppid": 193121,
+            "command": "steam",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 243,
+            "ppid": 2,
+            "command": "kswapd0",
+            "lifetime_percent_cpu": "0.6"
+          },
+          {
+            "pid": 3392706,
+            "ppid": 3392673,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.5"
+          },
+          {
+            "pid": 2188100,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.4"
+          },
+          {
+            "pid": 1791238,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 224,
+            "ppid": 2,
+            "command": "kcompactd0",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3758782,
+            "ppid": 2,
+            "command": "kworker/u130:7-",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 232330,
+            "ppid": 232278,
+            "command": "steamwebhelper",
+            "lifetime_percent_cpu": "0.3"
+          },
+          {
+            "pid": 3898228,
+            "ppid": 2,
+            "command": "kworker/u130:34",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 3869287,
+            "ppid": 2,
+            "command": "kworker/u129:2-",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 4078684,
+            "ppid": 2,
+            "command": "kworker/u130:15",
+            "lifetime_percent_cpu": "0.2"
+          },
+          {
+            "pid": 3134231,
+            "ppid": 3392678,
+            "command": "chromium",
+            "lifetime_percent_cpu": "0.2"
+          }
+        ],
+        "load_and_cpu_pressure": [
+          "1.73 3.53 4.48 3/5228 464362",
+          "some avg10=19.40 avg60=5.86 avg300=1.92 total=14994887034",
+          "full avg10=0.00 avg60=0.00 avg300=0.00 total=0"
+        ],
+        "cpu14_and_sibling30_snapshot_rows": [
+          " 14    0      0   14 14:14:14:1       yes 5756.4521 624.1940  624.1940",
+          " 30    0      0   14 14:14:14:1       yes 5756.4521 624.1940  624.1940"
+        ],
+        "sysfs": {
+          "/sys/devices/system/cpu/cpu14/topology/core_id": "14",
+          "/sys/devices/system/cpu/cpu14/topology/physical_package_id": "0",
+          "/sys/devices/system/cpu/cpu14/topology/thread_siblings_list": "14,30",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_governor": "performance",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_driver": "amd-pstate-epp",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_min_freq": "624194",
+          "/sys/devices/system/cpu/cpu14/cpufreq/scaling_max_freq": "5756452",
+          "/sys/devices/system/cpu/cpu14/cache/index3/size": "32768K",
+          "/sys/devices/system/cpu/cpu14/cache/index3/shared_cpu_list": "8-15,24-31",
+          "/sys/devices/system/cpu/cpufreq/boost": "1",
+          "/sys/class/hwmon/hwmon0/name": "nvme",
+          "/sys/class/hwmon/hwmon1/name": "nvme",
+          "/sys/class/hwmon/hwmon10/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon11/name": "corsaircpro",
+          "/sys/class/hwmon/hwmon12/name": "mt7925_phy0",
+          "/sys/class/hwmon/hwmon13/name": "hidpp_battery_0",
+          "/sys/class/hwmon/hwmon2/name": "nvme",
+          "/sys/class/hwmon/hwmon3/name": "amdgpu",
+          "/sys/class/hwmon/hwmon4/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon5/name": "prom21_xhci",
+          "/sys/class/hwmon/hwmon6/name": "k10temp",
+          "/sys/class/hwmon/hwmon7/name": "r8169_0_900:00",
+          "/sys/class/hwmon/hwmon8/name": "spd5118",
+          "/sys/class/hwmon/hwmon9/name": "spd5118",
+          "/sys/class/hwmon/hwmon0/temp1_input": "49850",
+          "/sys/class/hwmon/hwmon1/temp1_input": "50850",
+          "/sys/class/hwmon/hwmon1/temp2_input": "50850",
+          "/sys/class/hwmon/hwmon1/temp3_input": "55850",
+          "/sys/class/hwmon/hwmon12/temp1_input": "38000",
+          "/sys/class/hwmon/hwmon2/temp1_input": "44850",
+          "/sys/class/hwmon/hwmon2/temp2_input": "62850",
+          "/sys/class/hwmon/hwmon2/temp3_input": "44850",
+          "/sys/class/hwmon/hwmon3/temp1_input": "45000",
+          "/sys/class/hwmon/hwmon4/temp1_input": "72778",
+          "/sys/class/hwmon/hwmon5/temp1_input": "68245",
+          "/sys/class/hwmon/hwmon6/temp1_input": "68250",
+          "/sys/class/hwmon/hwmon6/temp3_input": "40875",
+          "/sys/class/hwmon/hwmon6/temp4_input": "60875",
+          "/sys/class/hwmon/hwmon7/temp1_input": "57500",
+          "/sys/class/hwmon/hwmon8/temp1_input": "47000",
+          "/sys/class/hwmon/hwmon9/temp1_input": "47000",
+          "/sys/class/hwmon/hwmon0/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon1/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon1/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon2/temp1_label": "Composite",
+          "/sys/class/hwmon/hwmon2/temp2_label": "Sensor 1",
+          "/sys/class/hwmon/hwmon2/temp3_label": "Sensor 2",
+          "/sys/class/hwmon/hwmon3/temp1_label": "edge",
+          "/sys/class/hwmon/hwmon6/temp1_label": "Tctl",
+          "/sys/class/hwmon/hwmon6/temp3_label": "Tccd1",
+          "/sys/class/hwmon/hwmon6/temp4_label": "Tccd2"
+        },
+        "machine_id_receipt": "4bf7e63167e2121f153e9a7f5c7308f64d10872137a5f23307ab7fd473cd0a43  /etc/machine-id",
+        "hostname": "hostname=omarchy"
+      },
+      "vmstat": {
+        "file": {
+          "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/vmstat.log",
+          "bytes": 2478,
+          "sha256": "b0a4c68bf61f705d179b262c5121e639e652e11e9070a37ea8deb317944bf104"
+        },
+        "first_boot_average_row_excluded": [
+          2,
+          0,
+          54027732,
+          8356320,
+          32,
+          82851188,
+          699,
+          1742,
+          13164,
+          12168,
+          41878,
+          9,
+          5,
+          1,
+          94,
+          0,
+          0,
+          0
+        ],
+        "interval_count": 18,
+        "interval_summary": {
+          "r": {
+            "min": 1,
+            "max": 3
+          },
+          "b": {
+            "min": 0,
+            "max": 1
+          },
+          "swpd": {
+            "min": 54027448,
+            "max": 54027724
+          },
+          "free": {
+            "min": 8142964,
+            "max": 8355576
+          },
+          "buff": {
+            "min": 32,
+            "max": 32
+          },
+          "cache": {
+            "min": 82851384,
+            "max": 82991904
+          },
+          "si": {
+            "min": 0,
+            "max": 224
+          },
+          "so": {
+            "min": 0,
+            "max": 0
+          },
+          "bi": {
+            "min": 0,
+            "max": 1504
+          },
+          "bo": {
+            "min": 0,
+            "max": 61772
+          },
+          "in": {
+            "min": 6241,
+            "max": 30513
+          },
+          "cs": {
+            "min": 5907,
+            "max": 51808
+          },
+          "us": {
+            "min": 3,
+            "max": 6
+          },
+          "sy": {
+            "min": 0,
+            "max": 1
+          },
+          "id": {
+            "min": 93,
+            "max": 97
+          },
+          "wa": {
+            "min": 0,
+            "max": 1
+          },
+          "st": {
+            "min": 0,
+            "max": 0
+          },
+          "gu": {
+            "min": 0,
+            "max": 0
+          }
+        },
+        "all_interval_rows": [
+          [
+            1,
+            0,
+            54027724,
+            8351244,
+            32,
+            82851384,
+            8,
+            0,
+            8,
+            4,
+            8735,
+            7385,
+            4,
+            0,
+            95,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027724,
+            8351244,
+            32,
+            82851416,
+            0,
+            0,
+            0,
+            0,
+            6241,
+            5907,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54027724,
+            8355576,
+            32,
+            82877648,
+            0,
+            0,
+            416,
+            61772,
+            11995,
+            25129,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54027500,
+            8218676,
+            32,
+            82896268,
+            224,
+            0,
+            556,
+            39648,
+            20370,
+            51808,
+            5,
+            1,
+            94,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54027500,
+            8206200,
+            32,
+            82896324,
+            0,
+            0,
+            0,
+            0,
+            7469,
+            38051,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54027488,
+            8269200,
+            32,
+            82896344,
+            12,
+            0,
+            28,
+            608,
+            9715,
+            38331,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027488,
+            8312548,
+            32,
+            82922044,
+            0,
+            0,
+            328,
+            47832,
+            19017,
+            33352,
+            4,
+            1,
+            94,
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027488,
+            8308384,
+            32,
+            82942780,
+            0,
+            0,
+            20,
+            42976,
+            30408,
+            37349,
+            5,
+            1,
+            93,
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027488,
+            8301500,
+            32,
+            82944300,
+            0,
+            0,
+            0,
+            0,
+            7442,
+            7469,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54027488,
+            8269364,
+            32,
+            82944428,
+            0,
+            0,
+            16,
+            624,
+            7055,
+            6694,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54027488,
+            8195148,
+            32,
+            82965916,
+            0,
+            0,
+            16,
+            42288,
+            18897,
+            50277,
+            4,
+            1,
+            95,
+            1,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54027480,
+            8201080,
+            32,
+            82966044,
+            0,
+            0,
+            0,
+            480,
+            8304,
+            38134,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027468,
+            8178664,
+            32,
+            82966440,
+            12,
+            0,
+            1504,
+            796,
+            30513,
+            32705,
+            6,
+            1,
+            93,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027456,
+            8228616,
+            32,
+            82966872,
+            12,
+            0,
+            44,
+            12,
+            9750,
+            8183,
+            5,
+            1,
+            95,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            54027448,
+            8228364,
+            32,
+            82968016,
+            4,
+            0,
+            1128,
+            0,
+            7039,
+            6615,
+            3,
+            0,
+            97,
+            0,
+            0,
+            0
+          ],
+          [
+            3,
+            0,
+            54027448,
+            8199564,
+            32,
+            82987184,
+            0,
+            0,
+            64,
+            49972,
+            19557,
+            33899,
+            4,
+            1,
+            95,
+            1,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            54027448,
+            8153820,
+            32,
+            82987736,
+            0,
+            0,
+            0,
+            0,
+            7394,
+            35904,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            54027448,
+            8142964,
+            32,
+            82991904,
+            0,
+            0,
+            0,
+            8896,
+            9494,
+            37999,
+            3,
+            0,
+            96,
+            0,
+            0,
+            0
+          ]
+        ]
+      }
+    }
+  },
+  "idle_attestations": {
+    "baseline": "pin=7f505d498fa35acb5b70b083ac6f02cd40f3a891\ncpu=14\nci_kani_and_other_builds=stopped\n",
+    "candidate": "pin=6d29f95138ff2a646da740f772995f8fb927c9f5\ncpu=14\nci_kani_and_other_builds=stopped\n"
+  },
+  "host_identity_consistent": true,
+  "continuous_idle_or_throttle_absence_proved": false,
+  "observed_reserved_cpu_contamination": false,
+  "limits": "No recorded task placement proves a competitor ran on CPU14/30. Lifetime ps CPU values and host-wide pressure cannot establish that; no exemption is inferred. CPU pressure rises during counters after latency.",
+  "limitations": [
+    "top-process snapshots are not complete scheduler traces",
+    "CPU frequency snapshots and temperature sensors do not rule out throttling",
+    "whole-host vmstat cannot locate activity on the benchmark core",
+    "valid recorded regression is not causal attribution to changed IPC instructions"
+  ],
+  "cpu_monitor_summary": "cpu-monitor-review.json",
+  "gpu_timeline_qualification": "gpu-timeline-qualification.json",
+  "host_idle_disposition": "No identified sustained competing workload/saturation in historical process/CPU evidence. Invalid initial quiet claim excluded; raw zero GPU reading4.738s before A1 independently recovered. Brief sibling activity and lack of continuous GPU/task traces remain qualified.",
+  "universal_idle_claim": false
+}

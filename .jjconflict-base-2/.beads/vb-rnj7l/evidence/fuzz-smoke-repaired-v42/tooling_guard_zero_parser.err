@@ -1,0 +1,22 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 1195055942
+INFO: Loaded 1 modules   (1453 inline 8-bit counters): 1453 [0x55ca49fe0f23, 0x55ca49fe14d0), 
+INFO: Loaded 1 PC tables (1453 PCs): 1453 [0x55ca49fe14d0,0x55ca49fe6fa0), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/tooling_guard_zero_parser
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 139 ft: 140 corp: 1/1b exec/s: 0 rss: 32Mb
+#3	NEW    cov: 140 ft: 141 corp: 2/3b lim: 4 exec/s: 0 rss: 32Mb L: 2/2 MS: 1 InsertByte-
+#6	NEW    cov: 140 ft: 142 corp: 3/6b lim: 4 exec/s: 0 rss: 32Mb L: 3/3 MS: 3 CopyPart-ChangeBit-InsertByte-
+#19	NEW    cov: 140 ft: 143 corp: 4/10b lim: 4 exec/s: 0 rss: 32Mb L: 4/4 MS: 3 ChangeBit-CopyPart-CopyPart-
+#22	NEW    cov: 140 ft: 145 corp: 5/13b lim: 4 exec/s: 0 rss: 32Mb L: 3/4 MS: 3 EraseBytes-ChangeBit-CrossOver-
+#124	REDUCE cov: 140 ft: 145 corp: 5/12b lim: 4 exec/s: 0 rss: 33Mb L: 2/4 MS: 2 CMP-EraseBytes- DE: "\001\000"-
+#187	REDUCE cov: 140 ft: 145 corp: 5/11b lim: 4 exec/s: 0 rss: 33Mb L: 1/4 MS: 3 CopyPart-ChangeByte-EraseBytes-
+#201	REDUCE cov: 140 ft: 145 corp: 5/10b lim: 4 exec/s: 0 rss: 33Mb L: 3/3 MS: 4 ShuffleBytes-ChangeBinInt-CMP-EraseBytes- DE: "\000\000"-
+#231	REDUCE cov: 140 ft: 145 corp: 5/9b lim: 4 exec/s: 0 rss: 34Mb L: 1/3 MS: 5 InsertByte-InsertByte-ChangeBit-EraseBytes-EraseBytes-
+#676	DONE   cov: 140 ft: 145 corp: 5/9b lim: 8 exec/s: 338 rss: 39Mb
+###### Recommended dictionary. ######
+"\001\000" # Uses: 33
+"\000\000" # Uses: 17
+###### End of recommended dictionary. ######
+Done 676 runs in 2 second(s)

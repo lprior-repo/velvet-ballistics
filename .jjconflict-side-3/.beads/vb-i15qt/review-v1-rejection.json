@@ -1,0 +1,10 @@
+{
+  "status": "REJECTED",
+  "regression_test": "actual legacy test now GREEN1; does not establish raw-command authority safety",
+  "blockers": [
+    "RecoverRunCommand.admission is public, caller can supply fabricated historical admission without Runtime prefixvalidation.",
+    "new() now8parameters breaks2existing callsites; preserve7parameter legacy constructor safely.",
+    "for_retry nowrejectscheckpointadmissionNone withoutprovingexisting contract allowsremoval."
+  ],
+  "required": "Private historical admission route only for validated Runtime products; raw legacy commands remainUnverified and cannotgainpin; full run/artifact/workflow/caps/pin validation before mutation."
+}

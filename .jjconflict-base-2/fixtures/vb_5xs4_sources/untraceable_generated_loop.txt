@@ -1,0 +1,2 @@
+// vb-5xs4-fixture:untraceable_generated_loop
+include!(concat!(env!("OUT_DIR"), "/generated_loop.rs"));

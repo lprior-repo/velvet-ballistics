@@ -4934,14 +4934,14 @@ This prevents blanket rules from blocking useful code in cold paths.
 
 ### 76.25 Golden Internal Models
 
-Executable reference models live in `xtask/reference/src/`:
+Executable reference models live in `crates/reference/src/`:
 
 | File | Purpose |
 |------|---------|
-| `xtask/reference/src/engine_model.rs` | Slow but clearly correct engine semantics |
-| `xtask/reference/src/taint_model.rs` | Taint propagation reference |
-| `xtask/reference/src/replay_model.rs` | Replay/recovery reference |
-| `xtask/reference/src/resource_model.rs` | Resource bound reference |
+| `crates/reference/src/engine_model.rs` | Slow but clearly correct engine semantics |
+| `crates/reference/src/taint_model.rs` | Taint propagation reference |
+| `crates/reference/src/replay_model.rs` | Replay/recovery reference |
+| `crates/reference/src/resource_model.rs` | Resource bound reference |
 
 Differential tests assert: optimized runtime == reference model.
 

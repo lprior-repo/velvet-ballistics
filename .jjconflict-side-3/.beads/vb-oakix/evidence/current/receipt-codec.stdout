@@ -1,0 +1,8 @@
+
+running 3 tests
+test codec::tests::admission_receipt::bound_admission_cannot_be_labeled_as_historical_envelope ... ok
+test codec::tests::admission_receipt::schema_one_ordinal_admission_decodes_explicitly_unbound ... ok
+test codec::tests::admission_receipt::bound_and_historical_admission_receipts_have_distinct_stable_wire_tags ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 1609 filtered out; finished in 0.00s
+

@@ -1,0 +1,15 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-gucyr-local5090-governance-review",
+  "argv": [
+    "bash",
+    "scripts/check-source-length.sh"
+  ],
+  "exit_code": 0,
+  "seconds": 4.004,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-gucyr/evidence/source-length-gate"
+}

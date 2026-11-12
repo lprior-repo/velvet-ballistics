@@ -1,0 +1,12 @@
+Running as unit: vb-has-static-six-20261110.scope; invocation ID: ec159bd59187480bb4586f02fc03fcb5
+────────────
+ Nextest run ID 49caea8c-6ff1-46b5-ae8d-41c33f4e44a1 with nextest profile: default
+    Starting 6 tests across 1 binary (949 tests skipped)
+        PASS [   0.002s] (1/6) vb_expr expr_typecheck::tests::has_argument_types::has_unknown_both_returns_bool
+        PASS [   0.002s] (2/6) vb_expr expr_typecheck::tests::has_argument_types::has_both_wrong_types_report_receiver_first
+        PASS [   0.002s] (3/6) vb_expr expr_typecheck::tests::has_argument_types::has_unknown_receiver_text_key_returns_bool
+        PASS [   0.002s] (4/6) vb_expr expr_typecheck::tests::has_argument_types::has_zero_args_rejected
+        PASS [   0.002s] (5/6) vb_expr expr_typecheck::tests::has_argument_types::has_object_receiver_unknown_key_returns_bool
+        PASS [   0.002s] (6/6) vb_expr expr_typecheck::tests::has_argument_types::has_three_args_rejected
+────────────
+     Summary [   0.003s] 6 tests run: 6 passed, 949 skipped

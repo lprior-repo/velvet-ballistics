@@ -1,0 +1,5 @@
+# Contract review
+
+STATUS: REJECTED
+
+The proposed contract cannot authorize implementation yet. Master sections 27 and 44 require existing runs to recover from stored numeric IR without YAML recompilation. The draft explicitly omits IR and permits recompiling source. It also rejects every nonempty encoding for a zero-input workflow, including the legitimate postcard encoding of an empty list, instead of decoding first and distinguishing malformed payload from excess values. It invents an indexed wire format although the actual CLI decodes positional SlotValue arrays, and invents nonexistent error variants/files. A separate RunInputRecord is only a proposal, not an existing API. Finally, the draft claims acceptance atomicity while permitting partial accepted run state on write failure, and says None writes nothing despite the current CLI always opening storage. These decisions require correction against actual master and code; no owner waiver exists. No implementation based on this draft is accepted.

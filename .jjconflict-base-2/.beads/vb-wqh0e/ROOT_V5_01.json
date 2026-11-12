@@ -1,0 +1,25 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-ct31x-v4",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "-p",
+    "vb_storage",
+    "--lib",
+    "emergency_deny",
+    "--all-features"
+  ],
+  "exit_code": 0,
+  "seconds": 0.116,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ct31x/evidence/ROOT_V5_01"
+}

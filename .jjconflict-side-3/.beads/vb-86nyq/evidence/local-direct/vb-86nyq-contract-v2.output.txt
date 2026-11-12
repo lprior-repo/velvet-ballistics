@@ -1,0 +1,15 @@
+# Domain
+
+Compiler fingerprinting for numeric intermediate representation.
+
+# Invariant
+
+The fingerprint binds the complete emitted numeric intermediate representation, including declared input kinds. It is calculated from deterministic binary bytes with the fingerprint field zeroed, then stored in that field.
+
+# Errors
+
+A typed encoding error is returned on calculation or storage failure.
+
+# Acceptance
+
+Independent tests recalculate the fingerprint and verify it changes when an input kind or constant is altered. Strict storage admission accepts only real compiler output. The legacy authoring fingerprint helper remains separate. No release completion or mathematical proof is claimed.

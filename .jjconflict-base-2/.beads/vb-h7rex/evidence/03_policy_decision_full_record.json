@@ -1,0 +1,10 @@
+{
+  "gate": "03-policy-decision-full-record",
+  "command": "cargo test -p vb_storage --test policy_decision_full_record --all-features",
+  "status": "PASS",
+  "exit_code": 0,
+  "elapsed_seconds": 2.23,
+  "timestamp": "2026-10-22 16:14:50 UTC",
+  "stdout_length": 781,
+  "stderr_length": 286
+}

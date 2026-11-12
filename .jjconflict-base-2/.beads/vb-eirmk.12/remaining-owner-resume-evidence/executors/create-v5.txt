@@ -1,0 +1,589 @@
+#!/usr/bin/env ruby
+require 'digest'
+require 'fileutils'
+require 'json'
+require 'open3'
+require 'strscan'
+
+ROOT = '/home/lewis/src/isoloated/velvet-ballistics-core-current-review'
+OUT = 'target/core-build-20261110/evidence/remaining-owner-creation-v5'
+V7_PATH = '/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/remaining-owner-proposals/normalized-v7.json'
+V7_SHA = '9cef921c994a6bd6bbf706d597b3a244580970eba3a1d14139c566f9e011c155'
+DESIGN_SHA = '0af85ed146ed27fbe169a400ccd02d484f018db94f60c891d52052d17bbe2dd1'
+MASTER_SHA = 'fc0282bb901030dd1b195ebbce964d560fbf409c9f5e49c8c6e5203da3a46536'
+REUSE_RECEIPT = '/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/phase-owner-creation-v2/creation-receipts.json'
+REUSE_RECEIPT_SHA = '2ba8a64cdc4827c3d99afe2208ddd46b6ba18548e16247adec77fa448a01a347'
+CODE_REVIEW = '/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/remaining-owner-planning-code-review-v7.json'
+TEST_REVIEW = '/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/core-build-20261110/evidence/remaining-owner-planning-test-review-v7.json'
+TMP_RUN = '/run/user/1000/vbs'
+BD_ENV = {
+  'BEADS_DOLT_SERVER_PORT' => '37225',
+  'BD_DOLT_SERVER_PORT' => '37225',
+  'TMPDIR' => TMP_RUN
+}.freeze
+
+abort('future application requires explicit --apply') unless ARGV == ['--apply']
+abort('run only from the parent core-current-review workspace') unless File.realpath(Dir.pwd) == ROOT
+abort('configured run scratch directory is unavailable') unless File.directory?(TMP_RUN)
+abort('V5 output directory already exists; preserve it and do not retry') if File.exist?(File.join(ROOT, OUT))
+
+def bytes_sha(bytes)
+  Digest::SHA256.hexdigest(bytes)
+end
+
+def read_hashed(path, expected)
+  bytes = File.binread(path)
+  abort("SHA-256 mismatch: #{path}") unless bytes_sha(bytes) == expected
+  bytes
+end
+
+v7_bytes = read_hashed(V7_PATH, V7_SHA)
+v7 = JSON.parse(v7_bytes)
+abort('unexpected V7 proposal identity or verdict') unless
+  v7['schema_version'] == 1 &&
+  v7['artifact_kind'] == 'normalized_remaining_owner_qualification_proposals' &&
+  v7['bead'] == 'vb-eirmk.12' &&
+  v7['verdict'] == 'NORMALIZED_V7_FULL_NESTED_BEFORE_ROWS_PROPOSAL_ONLY_NOT_APPLIED'
+
+def review_receipt(path, v7_sha, binding_field)
+  data = JSON.parse(File.binread(path))
+  abort("review is not PASS: #{path}") unless data.fetch('verdict') == 'PASS'
+  abort("review does not bind exact V7 bytes: #{path}") unless data.fetch(binding_field) == v7_sha
+  { 'path' => path, 'sha256' => bytes_sha(File.binread(path)), 'verdict' => data.fetch('verdict'),
+    'binding_field' => binding_field, 'bound_sha256' => data.fetch(binding_field) }
+end
+
+reviews = [
+  review_receipt(CODE_REVIEW, V7_SHA, 'artifact_sha256'),
+  review_receipt(TEST_REVIEW, V7_SHA, 'proposal_sha256')
+]
+
+summary = v7.fetch('scope_summary')
+abort('V7 scope counts differ from approved input') unless
+  summary == {
+    'normalized_requirement_rows' => 9,
+    'owned_unresolved_checks' => 13,
+    'function_rows' => 6,
+    'nonphase_rows' => 3,
+    'completion_verified_true' => 0,
+    'implementation_missing_nonnull' => 0
+  }
+abort('V7 creation payload count is not four') unless v7.fetch('task_create_payloads').size == 4
+proposals = v7.fetch('proposals')
+abort('V7 proposal row count or requirement uniqueness drift') unless
+  proposals.size == 9 && proposals.map { |p| p.fetch('requirement_id') }.uniq.size == 9
+abort('V7 has unexpected check count') unless
+  proposals.sum { |p| p.fetch('unresolved_checks_by_id').size } == 13
+
+allowlist = v7.dig('global_controls', 'metadata_allowlist')
+abort('V7 row allowlist drift') unless allowlist.fetch('row_fields').sort ==
+  %w[canonical_qualification_owner_id current_owner_status resolved_from_proposal_key].sort
+abort('V7 check allowlist drift') unless allowlist.fetch('check_fields').sort ==
+  %w[accountable_bead_id proposal_key].sort
+
+payloads = v7.fetch('task_create_payloads').to_h do |entry|
+  [entry.fetch('proposal_key'), entry.fetch('payload')]
+end
+create_keys = proposals.select { |p| %w[new_task new_group_task].include?(p.fetch('disposition')) }
+  .map { |p| p.fetch('proposal_key') }.uniq.sort
+abort('V7 create group keys do not match four payloads') unless create_keys == payloads.keys.sort
+reuse_ids = proposals.select { |p| p.fetch('disposition') == 'reuse_existing_open_target' }
+  .map { |p| p.fetch('actual_existing_task_id') }.uniq.sort
+abort('V7 reuse targets must be exactly vb-eirmk.24 and vb-eirmk.53') unless
+  reuse_ids == %w[vb-eirmk.24 vb-eirmk.53]
+
+reuse_bytes = read_hashed(REUSE_RECEIPT, REUSE_RECEIPT_SHA)
+reuse_receipts = JSON.parse(reuse_bytes)
+phase11_receipt = reuse_receipts.find { |r| r['requirement_id'] == 'phase:11' }
+abort('existing phase:11 receipt must bind actual vb-eirmk.53') unless
+  phase11_receipt && phase11_receipt['actual_issue_id'] == 'vb-eirmk.53' &&
+  phase11_receipt.dig('response', 'id') == 'vb-eirmk.53' &&
+  phase11_receipt.dig('response', 'status') == 'open' &&
+  phase11_receipt.dig('response', 'issue_type') == 'task'
+
+master_bytes = File.binread(File.join(ROOT, 'velvet-ballistics-MASTER.md'))
+abort('master document hash drift') unless bytes_sha(master_bytes) == MASTER_SHA
+
+$commands = []
+$command_number = 0
+def persist_json(path, value)
+  File.open(path, 'wb', 0o600) do |file|
+    file.write(JSON.pretty_generate(value) + "\n")
+    file.flush
+    file.fsync
+  end
+end
+
+def bd(*args)
+  $command_number += 1
+  stdout, stderr, status = Open3.capture3(BD_ENV, 'bd', *args, '--json', chdir: ROOT)
+  receipt = {
+    'args' => args,
+    'stdout' => stdout,
+    'stderr' => stderr,
+    'exit' => status.exitstatus
+  }
+  if File.directory?(File.join(ROOT, OUT))
+    persist_json(File.join(ROOT, OUT, format('bd-command-%04d.json', $command_number)), receipt)
+  else
+    $commands << receipt
+  end
+  abort("bd #{args.first} failed; stop and inspect receipts, do not retry") unless status.success?
+  JSON.parse(stdout)
+end
+
+def one(value)
+  value.is_a?(Array) ? value.fetch(0) : value
+end
+
+def dependency_edges(issue_id)
+  bd('dep', 'list', issue_id, '--readonly').map do |edge|
+    { 'id' => edge.fetch('id'), 'dependency_type' => edge.fetch('dependency_type') }
+  end.sort_by { |edge| [edge.fetch('id'), edge.fetch('dependency_type')] }
+end
+
+def assert_issue_fields_equal(before, after, excluded)
+  keys = (before.keys | after.keys) - excluded
+  abort("unexpected issue field change for #{before['id']}") unless
+    keys.all? { |key| before[key] == after[key] }
+end
+
+def scalar_spans(scanner, path, targets, spans)
+  scanner.skip(/\s*/)
+  case scanner.peek(1)
+  when '{'
+    scanner.getch
+    scanner.skip(/\s*/)
+    return scanner.getch if scanner.peek(1) == '}'
+    loop do
+      key_token = scanner.scan(/"(?:[^"\\]|\\.)*"/m)
+      abort('invalid design object key') unless key_token
+      key = JSON.parse(key_token)
+      scanner.skip(/\s*/)
+      abort('missing design object colon') unless scanner.getch == ':'
+      scalar_spans(scanner, path + [key], targets, spans)
+      scanner.skip(/\s*/)
+      separator = scanner.getch
+      break if separator == '}'
+      abort('missing design object comma') unless separator == ','
+      scanner.skip(/\s*/)
+    end
+  when '['
+    scanner.getch
+    scanner.skip(/\s*/)
+    return scanner.getch if scanner.peek(1) == ']'
+    index = 0
+    loop do
+      scalar_spans(scanner, path + [index], targets, spans)
+      scanner.skip(/\s*/)
+      separator = scanner.getch
+      break if separator == ']'
+      abort('missing design array comma') unless separator == ','
+      index += 1
+      scanner.skip(/\s*/)
+    end
+  else
+    start = scanner.pos
+    token = scanner.scan(/"(?:[^"\\]|\\.)*"|true|false|null|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/m)
+    abort('invalid design scalar') unless token
+    spans[path] = { 'offset' => start, 'length' => scanner.pos - start, 'original' => token } if targets.key?(path)
+  end
+end
+
+def value_at(root, path)
+  path.reduce(root) { |value, key| value.fetch(key) }
+end
+
+def assign_at(root, path, value)
+  parent = path[0...-1].reduce(root) { |node, key| node.fetch(key) }
+  parent[path.last] = value
+end
+
+def assert_manifest_invariants(manifest)
+  rows = manifest.dig('normalized_current_190_ownership', 'requirements')
+  abort('live manifest must retain 190 rows') unless rows&.size == 190
+  abort('completion_verified / implementation_missing invariants drifted') unless
+    rows.all? { |row| row['completion_verified'] == false && row['implementation_missing'].nil? }
+  rows
+end
+
+reviews_before = reviews.map { |r| read_hashed(r.fetch('path'), r.fetch('sha256')) }
+root_git, git_err, git_status = Open3.capture3('git', 'rev-parse', '--show-toplevel', chdir: ROOT)
+root_jj, jj_err, jj_status = Open3.capture3('jj', 'root', chdir: ROOT)
+abort("workspace root check failed: #{git_err} #{jj_err}") unless git_status.success? && jj_status.success?
+abort('Git/JJ roots do not equal intended parent workspace') unless root_git.strip == ROOT && root_jj.strip == ROOT
+
+live12 = one(bd('show', 'vb-eirmk.12', '--readonly'))
+design_before_raw = live12.fetch('design')
+abort('live design SHA differs from approved baseline') unless bytes_sha(design_before_raw) == DESIGN_SHA
+design_before = JSON.parse(design_before_raw)
+rows = assert_manifest_invariants(design_before)
+
+row_indices = {}
+proposals.each do |proposal|
+  requirement_id = proposal.fetch('requirement_id')
+  index = rows.index { |row| row['requirement_id'] == requirement_id }
+  abort("live row absent: #{requirement_id}") unless index
+  abort("live row snapshot differs: #{requirement_id}") unless rows.fetch(index) == proposal.fetch('live_row_before')
+  check_map = rows.fetch(index).fetch('unresolved_checks').to_h { |check| [check.fetch('check_id'), check] }
+  abort("live checks differ: #{requirement_id}") unless check_map == proposal.fetch('unresolved_checks_by_id')
+  abort("duplicate proposal row: #{requirement_id}") if row_indices.key?(requirement_id)
+  row_indices[requirement_id] = index
+end
+abort('affected row/check sets differ from V7 counts') unless row_indices.size == 9
+
+gate_before = one(bd('show', 'vb-eirmk.11', '--readonly'))
+gate_deps_before = dependency_edges('vb-eirmk.11')
+abort('duplicate gate dependency edge or repeated dependency ID') unless
+  gate_deps_before.uniq == gate_deps_before &&
+  gate_deps_before.map { |edge| edge.fetch('id') }.uniq.size == gate_deps_before.size
+abort('existing vb-eirmk.24 blocking gate edge missing') unless
+  gate_deps_before.include?({ 'id' => 'vb-eirmk.24', 'dependency_type' => 'blocks' })
+abort('existing vb-eirmk.53 blocking gate edge missing') unless
+  gate_deps_before.include?({ 'id' => 'vb-eirmk.53', 'dependency_type' => 'blocks' })
+abort('gate depends on itself') if gate_deps_before.any? { |edge| edge.fetch('id') == 'vb-eirmk.11' }
+abort('existing dependency graph already contains a cycle') unless bd('dep', 'cycles', '--readonly').empty?
+
+reuse_before = {}
+proposal53 = proposals.find { |p| p['actual_existing_task_id'] == 'vb-eirmk.53' }
+readback53 = proposal53.dig('reuse_task_readback', 'before_full_issue_readback')
+reuse_before['vb-eirmk.53'] = one(bd('show', 'vb-eirmk.53', '--readonly'))
+abort('vb-eirmk.53 full live readback differs from V7') unless reuse_before['vb-eirmk.53'] == readback53
+reuse24_record = v7.fetch('preserved_existing_qualifiers').find { |r| r['issue_id'] == 'vb-eirmk.24' }
+abort('V7 lacks full vb-eirmk.24 reuse snapshot') unless reuse24_record
+reuse_before['vb-eirmk.24'] = one(bd('show', 'vb-eirmk.24', '--readonly'))
+abort('vb-eirmk.24 full live readback differs from V7') unless
+  reuse_before['vb-eirmk.24'] == reuse24_record.fetch('full_task_before')
+reuse_snapshots = proposals.select { |proposal| proposal['actual_existing_task_id'] }
+abort('V7 must contain three full nested reuse snapshots') unless reuse_snapshots.size == 3
+reuse_snapshots.each do |proposal|
+  issue_id = proposal.fetch('actual_existing_task_id')
+  snapshot = proposal.dig('reuse_task_readback', 'before_full_issue_readback')
+  abort("nested reuse snapshot differs from full live readback: #{issue_id}") unless
+    snapshot == reuse_before.fetch(issue_id)
+end
+
+historical_owner_ids = proposals.map do |proposal|
+  proposal.fetch('live_row_before')['canonical_qualification_owner_id']
+end.compact.uniq.sort
+historical_owner_readbacks = historical_owner_ids.to_h do |issue_id|
+  issue = one(bd('show', issue_id, '--readonly'))
+  abort("historical owner is not actually closed: #{issue_id}") unless issue.fetch('status') == 'closed'
+  [issue_id, issue]
+end
+
+create_requirement_ids = proposals.select do |proposal|
+  %w[new_task new_group_task].include?(proposal.fetch('disposition'))
+end.map { |proposal| proposal.fetch('requirement_id') }.sort
+abort('duplicate create requirement IDs in V7 groups') unless create_requirement_ids.uniq == create_requirement_ids
+payloads.each do |proposal_key, payload|
+  group_ids = proposals.select { |proposal| proposal.fetch('proposal_key') == proposal_key }
+    .map { |proposal| proposal.fetch('requirement_id') }.sort
+  abort("task create payload scope mismatch: #{proposal_key}") unless
+    payload.fetch('issue_type') == 'task' && payload.fetch('status') == 'open' &&
+    payload.fetch('parent') == 'vb-eirmk' &&
+    payload.dig('metadata', 'master_requirement_ids').sort == group_ids &&
+    payload.dig('metadata', 'qualification_only') == true
+end
+active_issues = bd('list', '--status', 'open,in_progress,blocked,deferred', '--limit', '0', '--flat', '--readonly')
+active_issues = active_issues.fetch('issues') if active_issues.is_a?(Hash) && active_issues.key?('issues')
+abort('active issue listing has unexpected shape') unless active_issues.is_a?(Array)
+duplicate_open_owners = active_issues.select do |issue|
+  !reuse_ids.include?(issue.fetch('id')) &&
+    !(Array(issue.dig('metadata', 'master_requirement_ids')) & create_requirement_ids).empty?
+end
+abort("open metadata already owns create-group scope: #{duplicate_open_owners.map { |issue| issue['id'] }.join(', ')}") unless
+  duplicate_open_owners.empty?
+
+reviews_after = reviews.map { |r| read_hashed(r.fetch('path'), r.fetch('sha256')) }
+abort('Sol V7 review files changed during preflight') unless reviews_after == reviews_before
+
+FileUtils.mkdir_p(File.join(ROOT, OUT))
+File.open(File.join(ROOT, OUT, 'apply.lock'), File::WRONLY | File::CREAT | File::EXCL, 0o600) do |lock|
+  lock.write("apply start\n")
+  lock.flush
+  lock.fsync
+end
+$commands.each_with_index do |receipt, index|
+  persist_json(File.join(ROOT, OUT, format('bd-command-%04d.json', index + 1)), receipt)
+end
+File.open(File.join(ROOT, OUT, 'design-before.raw'), 'wb', 0o600) do |file|
+  file.write(design_before_raw)
+  file.flush
+  file.fsync
+end
+persist_json(File.join(ROOT, OUT, 'preflight.json'), {
+  'proposal_sha256' => V7_SHA,
+  'design_before_sha256' => DESIGN_SHA,
+  'master_sha256' => MASTER_SHA,
+  'reviews' => reviews,
+  'requirement_rows' => row_indices.size,
+  'owned_checks' => 13,
+  'new_task_payloads' => payloads.size,
+  'reused_ids' => reuse_ids,
+  'gate_issue_readback' => gate_before,
+  'gate_dependency_edges_before' => gate_deps_before,
+  'reuse_readbacks_before' => reuse_before,
+  'historical_owner_readbacks_before' => historical_owner_readbacks,
+  'active_issue_count' => active_issues.size,
+  'open_create_scope_duplicates' => duplicate_open_owners.map { |issue| issue['id'] },
+  'preflight_command_receipts' => $commands.size,
+  'completion_verified_false_all_190' => true,
+  'implementation_missing_null_all_190' => true
+})
+
+created_ids = {}
+create_receipts = []
+added_gate_edges = []
+payloads.each do |proposal_key, payload|
+  current_active = bd('list', '--status', 'open,in_progress,blocked,deferred', '--limit', '0', '--flat', '--readonly')
+  current_active = current_active.fetch('issues') if current_active.is_a?(Hash) && current_active.key?('issues')
+  abort('active issue recheck has unexpected shape') unless current_active.is_a?(Array)
+  allowed_ids = reuse_ids + created_ids.values
+  current_duplicates = current_active.select do |issue|
+    !allowed_ids.include?(issue.fetch('id')) &&
+      !(Array(issue.dig('metadata', 'master_requirement_ids')) & create_requirement_ids).empty?
+  end
+  abort('create-group scope appeared on another active issue; stop without retry') unless current_duplicates.empty?
+  payload_path = File.join(ROOT, OUT, "create-#{Digest::SHA256.hexdigest(proposal_key)[0, 12]}.json")
+  persist_json(payload_path, { 'proposal_sha256' => V7_SHA, 'proposal_key' => proposal_key, 'payload' => payload })
+  response = one(bd(
+    'create', '--title', payload.fetch('title'), '--type', payload.fetch('issue_type'),
+    '--parent', payload.fetch('parent'), '--description', payload.fetch('description'),
+    '--acceptance', payload.fetch('acceptance_criteria'),
+    '--metadata', JSON.generate(payload.fetch('metadata'))
+  ))
+  issue_id = response.fetch('id')
+  abort('Beads create returned a proposal key or repeated ID') if
+    issue_id == proposal_key || created_ids.value?(issue_id) || reuse_ids.include?(issue_id) ||
+    issue_id == 'vb-eirmk.11' || issue_id == 'vb-eirmk' ||
+    gate_deps_before.any? { |edge| edge.fetch('id') == issue_id } ||
+    added_gate_edges.any? { |edge| edge.fetch('id') == issue_id }
+  created_ids[proposal_key] = issue_id
+  create_receipts << { 'proposal_key' => proposal_key, 'actual_issue_id' => issue_id, 'response' => response }
+  persist_json(File.join(ROOT, OUT, 'creation-receipts.json'), create_receipts)
+  live = one(bd('show', issue_id, '--readonly'))
+  abort("created task readback mismatch: #{proposal_key}") unless
+    live['status'] == payload.fetch('status') &&
+    live['issue_type'] == payload.fetch('issue_type') &&
+    live['parent'] == payload.fetch('parent') &&
+    live['title'] == payload.fetch('title') &&
+    live['description'] == payload.fetch('description') &&
+    live['acceptance_criteria'] == payload.fetch('acceptance_criteria') &&
+    live['metadata'] == payload.fetch('metadata')
+  task_edges = dependency_edges(issue_id)
+  abort('new task must retain only its exact parent-child edge') unless
+    task_edges == [{ 'id' => 'vb-eirmk', 'dependency_type' => 'parent-child' }]
+  expected_current_gate = (gate_deps_before + added_gate_edges).sort_by do |edge|
+    [edge.fetch('id'), edge.fetch('dependency_type')]
+  end
+  abort('gate dependency set changed before adding a new edge') unless
+    dependency_edges('vb-eirmk.11') == expected_current_gate
+  edge = one(bd('dep', 'add', 'vb-eirmk.11', issue_id))
+  new_gate_edge = { 'id' => issue_id, 'dependency_type' => 'blocks' }
+  added_gate_edges << new_gate_edge
+  expected_after_add = (gate_deps_before + added_gate_edges).sort_by do |item|
+    [item.fetch('id'), item.fetch('dependency_type')]
+  end
+  abort('gate edge was not added as one new blocks edge') unless
+    dependency_edges('vb-eirmk.11') == expected_after_add
+  persist_json(File.join(ROOT, OUT, 'dependency-receipt-' + Digest::SHA256.hexdigest(issue_id)[0, 12] + '.json'), {
+    'from' => 'vb-eirmk.11', 'depends_on_actual_issue_id' => issue_id,
+    'dependency_type' => 'blocks', 'response' => edge
+  })
+end
+abort('actual task creation receipt count differs from V7 groups') unless
+  created_ids.size == payloads.size && added_gate_edges.size == payloads.size
+
+metadata53 = v7.dig('phase11_reuse_receipt', 'proposed_metadata_after')
+abort('V7 phase11 reuse metadata union drift') unless metadata53 == {
+  'master_requirement_ids' => %w[phase:11 function:28:2],
+  'qualification_only' => true
+}
+before53 = reuse_before.fetch('vb-eirmk.53')
+abort('vb-eirmk.53 changed after preflight; stop before update') unless
+  one(bd('show', 'vb-eirmk.53', '--readonly')) == before53
+persist_json(File.join(ROOT, OUT, 'reuse-53-before.json'), before53)
+persist_json(File.join(ROOT, OUT, 'reuse-53-metadata-after.json'), metadata53)
+response53 = one(bd('update', 'vb-eirmk.53', '--metadata', "@#{File.join(ROOT, OUT, 'reuse-53-metadata-after.json')}"))
+updated_at53 = response53.fetch('updated_at')
+abort('vb-eirmk.53 update response omitted updated_at') unless updated_at53.is_a?(String) && !updated_at53.empty?
+after53 = one(bd('show', 'vb-eirmk.53', '--readonly'))
+abort('vb-eirmk.53 postreadback timestamp differs from actual update response') unless after53['updated_at'] == updated_at53
+assert_issue_fields_equal(before53, after53, %w[metadata updated_at])
+abort('vb-eirmk.53 metadata readback differs from exact V7 union') unless after53['metadata'] == metadata53
+persist_json(File.join(ROOT, OUT, 'reuse-53-update-receipt.json'), {
+  'issue_id' => 'vb-eirmk.53', 'response' => response53, 'updated_at_response' => updated_at53,
+  'post_readback' => after53
+})
+
+after24 = reuse24_record.fetch('semantic_task_after_proposed')
+metadata24 = reuse24_record.fetch('metadata_after_proposed')
+expected_handlers = reuse24_record.fetch('all_handler_checks').map { |h| h.fetch('handler') }
+abort('V7 vb-eirmk.24 handler union is not 11 unique handlers') unless
+  expected_handlers.size == 11 && expected_handlers.uniq == expected_handlers
+abort('V7 vb-eirmk.24 metadata union drift') unless
+  metadata24.fetch('master_requirement_ids').sort == %w[function:31:4 master44.16 phase:30].sort
+before24 = reuse_before.fetch('vb-eirmk.24')
+abort('vb-eirmk.24 changed after preflight; stop before update') unless
+  one(bd('show', 'vb-eirmk.24', '--readonly')) == before24
+persist_json(File.join(ROOT, OUT, 'reuse-24-before.json'), before24)
+persist_json(File.join(ROOT, OUT, 'reuse-24-metadata-after.json'), metadata24)
+response24 = one(bd(
+  'update', 'vb-eirmk.24', '--metadata', "@#{File.join(ROOT, OUT, 'reuse-24-metadata-after.json')}",
+  '--description', after24.fetch('description'), '--acceptance', after24.fetch('acceptance_criteria')
+))
+updated_at24 = response24.fetch('updated_at')
+abort('vb-eirmk.24 update response omitted updated_at') unless updated_at24.is_a?(String) && !updated_at24.empty?
+after24_live = one(bd('show', 'vb-eirmk.24', '--readonly'))
+abort('vb-eirmk.24 postreadback timestamp differs from actual update response') unless
+  after24_live['updated_at'] == updated_at24
+assert_issue_fields_equal(before24, after24_live, %w[metadata description acceptance_criteria updated_at])
+abort('vb-eirmk.24 semantic scope readback differs from V7') unless
+  after24_live['metadata'] == metadata24 &&
+  after24_live['description'] == after24.fetch('description') &&
+  after24_live['acceptance_criteria'] == after24.fetch('acceptance_criteria')
+persist_json(File.join(ROOT, OUT, 'reuse-24-update-receipt.json'), {
+  'issue_id' => 'vb-eirmk.24', 'response' => response24, 'updated_at_response' => updated_at24,
+  'post_readback' => after24_live
+})
+
+historical_owner_after = historical_owner_ids.to_h do |issue_id|
+  issue = one(bd('show', issue_id, '--readonly'))
+  abort("historical owner status changed from closed: #{issue_id}") unless issue.fetch('status') == 'closed'
+  abort("historical owner readback changed: #{issue_id}") unless issue == historical_owner_readbacks.fetch(issue_id)
+  [issue_id, issue]
+end
+
+gate_deps_after = dependency_edges('vb-eirmk.11')
+expected_gate_deps = (gate_deps_before + added_gate_edges).sort_by do |edge|
+  [edge.fetch('id'), edge.fetch('dependency_type')]
+end
+abort('gate must preserve all old typed edges and add only the four actual blocks edges') unless
+  gate_deps_after == expected_gate_deps && added_gate_edges.size == payloads.size
+created_ids.each_value do |issue_id|
+  abort("created task parent-child edge changed: #{issue_id}") unless
+    dependency_edges(issue_id) == [{ 'id' => 'vb-eirmk', 'dependency_type' => 'parent-child' }]
+end
+abort('new dependency graph contains a cycle') unless bd('dep', 'cycles', '--readonly').empty?
+
+targets = {}
+proposals.each do |proposal|
+  requirement_id = proposal.fetch('requirement_id')
+  owner_id = if proposal['disposition'] == 'reuse_existing_open_target'
+    proposal.fetch('actual_existing_task_id')
+  else
+    created_ids.fetch(proposal.fetch('proposal_key'))
+  end
+  row_index = row_indices.fetch(requirement_id)
+  row_path = ['normalized_current_190_ownership', 'requirements', row_index]
+  row_values = proposal.dig('allowed_ledger_delta', 'row_fields')
+  expected_owner = proposal['disposition'] == 'reuse_existing_open_target' ?
+    proposal.fetch('actual_existing_task_id') : 'ACTUAL_ID_FROM_SUCCESSFUL_CREATE_RECEIPT'
+  expected_row_values = {
+    'canonical_qualification_owner_id' => expected_owner,
+    'current_owner_status' => 'open',
+    'resolved_from_proposal_key' => proposal.fetch('proposal_key')
+  }
+  abort("row patch fields drift for #{requirement_id}") unless row_values.keys.sort ==
+    %w[canonical_qualification_owner_id current_owner_status resolved_from_proposal_key].sort &&
+    row_values == expected_row_values
+  row_values.each_key do |field|
+    value = field == 'canonical_qualification_owner_id' ? owner_id :
+      field == 'current_owner_status' ? 'open' : proposal.fetch('proposal_key')
+    targets[row_path + [field]] = value
+  end
+  check_values = proposal.dig('allowed_ledger_delta', 'checks_by_id')
+  expected_check_ids = proposal.fetch('unresolved_checks_by_id').keys.sort
+  abort("check patch IDs drift for #{requirement_id}") unless check_values.keys.sort == expected_check_ids
+  check_values.each_key do |check_id|
+    expected_check_values = {
+      'accountable_bead_id' => expected_owner,
+      'proposal_key' => proposal.fetch('proposal_key')
+    }
+    abort("check patch fields or values drift for #{check_id}") unless
+      check_values.fetch(check_id) == expected_check_values
+    check_index = rows.fetch(row_index).fetch('unresolved_checks').index { |item| item['check_id'] == check_id }
+    abort("live check absent: #{check_id}") unless check_index
+    check_path = row_path + ['unresolved_checks', check_index]
+    targets[check_path + ['accountable_bead_id']] = owner_id
+    targets[check_path + ['proposal_key']] = proposal.fetch('proposal_key')
+  end
+end
+abort('expected exactly 53 approved scalar token patches') unless targets.size == 53
+
+spans = {}
+scanner = StringScanner.new(design_before_raw)
+scalar_spans(scanner, [], targets, spans)
+scanner.skip(/\s*/)
+abort('design token parse or target coverage failed') unless scanner.eos? && spans.keys.sort_by(&:inspect) == targets.keys.sort_by(&:inspect)
+targets.each_key do |path|
+  abort("target scalar does not match parsed live manifest: #{path.inspect}") unless JSON.parse(spans.fetch(path).fetch('original')) == value_at(design_before, path)
+end
+design_after_raw = design_before_raw.b.dup
+spans.sort_by { |_, span| -span.fetch('offset') }.each do |path, span|
+  old = span.fetch('original').b
+  offset = span.fetch('offset')
+  length = span.fetch('length')
+  abort('live design token changed during patch') unless design_after_raw.byteslice(offset, length) == old
+  replacement = JSON.generate(targets.fetch(path)).b
+  design_after_raw = design_after_raw.byteslice(0, offset) + replacement +
+    design_after_raw.byteslice(offset + length, design_after_raw.bytesize - offset - length)
+end
+design_after_raw.force_encoding(Encoding::UTF_8)
+design_after = JSON.parse(design_after_raw)
+restored = JSON.parse(JSON.generate(design_after))
+targets.each_key { |path| assign_at(restored, path, value_at(design_before, path)) }
+abort('design changes escaped the 53 approved token paths') unless restored == design_before
+assert_manifest_invariants(design_after)
+
+File.open(File.join(ROOT, OUT, 'design-after.raw'), 'wb', 0o600) do |file|
+  file.write(design_after_raw)
+  file.flush
+  file.fsync
+end
+persist_json(File.join(ROOT, OUT, 'ledger-token-patch.json'), {
+  'before_sha256' => bytes_sha(design_before_raw),
+  'after_sha256' => bytes_sha(design_after_raw),
+  'requirements' => 190,
+  'patched_row_count' => 9,
+  'patched_check_count' => 13,
+  'changed_scalar_tokens' => targets.size,
+  'all_completion_verified_false' => true,
+  'all_implementation_missing_null' => true,
+  'actual_issue_ids' => created_ids.merge('reuse:vb-eirmk.53' => 'vb-eirmk.53', 'reuse:vb-eirmk.24' => 'vb-eirmk.24')
+})
+
+latest12 = one(bd('show', 'vb-eirmk.12', '--readonly'))
+abort('live design changed during task/reuse mutations; stop before ledger remap') unless latest12.fetch('design') == design_before_raw
+bd('update', 'vb-eirmk.12', '--design-file', File.join(ROOT, OUT, 'design-after.raw'))
+final12 = one(bd('show', 'vb-eirmk.12', '--readonly'))
+abort('live design differs from exact 53-token patch') unless final12.fetch('design') == design_after_raw
+final_rows = assert_manifest_invariants(JSON.parse(final12.fetch('design')))
+abort('final design requirement count changed') unless final_rows.size == 190
+final_gate = dependency_edges('vb-eirmk.11')
+abort('final gate typed dependency set drifted') unless final_gate == expected_gate_deps
+historical_owner_final = historical_owner_ids.to_h do |issue_id|
+  issue = one(bd('show', issue_id, '--readonly'))
+  abort("historical owner is no longer closed: #{issue_id}") unless issue.fetch('status') == 'closed'
+  abort("historical owner changed during application: #{issue_id}") unless issue == historical_owner_readbacks.fetch(issue_id)
+  [issue_id, issue]
+end
+abort('final dependency graph contains a cycle') unless bd('dep', 'cycles', '--readonly').empty?
+
+persist_json(File.join(ROOT, OUT, 'apply-result.json'), {
+  'proposal_sha256' => V7_SHA,
+  'design_before_sha256' => DESIGN_SHA,
+  'design_after_sha256' => bytes_sha(design_after_raw),
+  'created_task_count' => created_ids.size,
+  'actual_created_ids' => created_ids,
+  'reused_issue_ids' => %w[vb-eirmk.24 vb-eirmk.53],
+  'patched_rows' => 9,
+  'patched_checks' => 13,
+  'changed_scalar_tokens' => targets.size,
+  'final_gate_dependency_edges' => final_gate,
+  'historical_owner_readbacks_after' => historical_owner_final,
+  'cycle_scan_empty' => true,
+  'full_plan_accepted' => false
+})
+puts JSON.generate({ 'actual_created_tasks' => created_ids.size, 'patched_rows' => 9, 'patched_checks' => 13, 'full_plan_accepted' => false })

@@ -1,0 +1,240 @@
+{
+  "schema_version": 6,
+  "artifact_kind": "gate7_v6_controlled_executor_contract",
+  "status": "draft_controlled_not_executed",
+  "workspace_root": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna",
+  "proposal_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-gate-owner-proposals/normalized-v5.json",
+  "proposal_sha256": "e16e633cb711bc58eddd5c67049272214b59b856720355a77469964273f0d8f4",
+  "source": {
+    "source_revision": "1a3a47754e04d69db27c43343a0b6c162c51483f",
+    "master_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/velvet-ballistics-MASTER.md",
+    "master_sha256": "fc0282bb901030dd1b195ebbce964d560fbf409c9f5e49c8c6e5203da3a46536",
+    "current_design_before_sha256": "c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9",
+    "proposal_design_after_sha256": "91693b0972b9cc82ccc573ac7615ab599bd6ccbcd1609a74f9fca2b0c5c36392"
+  },
+  "executor_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/executor.rb",
+  "executor_sha256": "dd180d8cc9f9a100b54a5c816dd245c90ba2762597ef513cafe3dca29c684946",
+  "run_tmp": "/run/user/1000/vbs",
+  "bd_environment": {
+    "BEADS_DOLT_SERVER_PORT": "37225",
+    "BD_DOLT_SERVER_PORT": "37225",
+    "BD_BACKUP_ENABLED": "false",
+    "TMPDIR": "/run/user/1000/vbs"
+  },
+  "v5_planning_reviews": {
+    "code": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/remaining-gate-planning-code-review-v5.json",
+      "sha256": "d6c470d47959266500703d2dd2ea21d5e47d11aec16a304a1eef523f8683e1eb",
+      "verdict": "PASS",
+      "binding_field": "artifact_sha256",
+      "bound_proposal_sha256": "e16e633cb711bc58eddd5c67049272214b59b856720355a77469964273f0d8f4"
+    },
+    "test": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/evidence/remaining-gate-planning-test-review-v5.json",
+      "sha256": "1b864651af94cb43736fe7805b2fe4ff10858500b6c33af91d0e74063482625b",
+      "verdict": "PASS",
+      "binding_field": "proposal_sha256",
+      "bound_proposal_sha256": "e16e633cb711bc58eddd5c67049272214b59b856720355a77469964273f0d8f4"
+    }
+  },
+  "executor_reviews": {
+    "preapply_required": true,
+    "code": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/gate-owner-apply-code-review-v6.json",
+      "verdict": "PASS",
+      "contract_binding_field": "artifact_sha256",
+      "contract_binding_value": "SHA256_OF_EXACT_CONTRACT_FILE_EXTERNAL",
+      "executor_binding_field": "executor_sha256",
+      "executor_binding_value": "dd180d8cc9f9a100b54a5c816dd245c90ba2762597ef513cafe3dca29c684946"
+    },
+    "test": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/core-build-20261110/evidence/gate-owner-apply-test-review-v6.json",
+      "verdict": "PASS",
+      "contract_binding_field": "proposal_sha256",
+      "contract_binding_value": "SHA256_OF_EXACT_CONTRACT_FILE_EXTERNAL",
+      "executor_binding_field": "executor_sha256",
+      "executor_binding_value": "dd180d8cc9f9a100b54a5c816dd245c90ba2762597ef513cafe3dca29c684946"
+    },
+    "note": "These executor CODE/TEST reports do not exist as approvals yet; both must independently PASS and bind the final contract bytes plus exact executor bytes."
+  },
+  "raw_snapshots": {
+    "issue11_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-gate-owner-proposals/live-v5-refresh-11.json",
+    "issue11_raw_sha256": "5a12f04115c99abd923acd0b489628cedccc3eace03a968a57c197fd93cce6cb",
+    "issue12_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-gate-owner-proposals/live-v5-refresh-12.json",
+    "issue12_raw_sha256": "f72592c2260b3a2bc3c3f75d51e35e1bb078023fa1b1e1815bad08779017dc65",
+    "typed_edges_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/remaining-gate-owner-proposals/live-v5-refresh-11-dependencies.json",
+    "typed_edges_raw_sha256": "f2551940d3e71046be569b8659c2610093624a7ee3327adf62513741ce938236",
+    "command_exit_codes": [
+      0,
+      0,
+      0
+    ]
+  },
+  "issue11": {
+    "id": "vb-eirmk.11",
+    "proposal_full_record_pointer": "/reuse_owner_readback/full_readback_before",
+    "canonical_full_record_sha256": "9eb4a387e744582713ec95a94c35a5a0b6d106f24bc6430deb2b6b8358cf5951",
+    "hash_serialization": "SHA256(compact UTF-8 JSON; recursively sorted object keys; preserve array order)",
+    "metadata_before": null,
+    "metadata_before_acceptance": "missing or null only",
+    "metadata_after_exact": {
+      "master_requirement_ids": [
+        "gate:feature-powerset",
+        "gate:miri",
+        "gate:coverage",
+        "gate:mutants-smoke",
+        "gate:bench-build",
+        "gate:benchmark-regression-policy",
+        "gate:fuzz-smoke"
+      ],
+      "qualification_only": true
+    },
+    "typed_edge_pointer": "/reuse_owner_readback/dependency_edges_before",
+    "typed_edge_count": 137,
+    "dependency_id_count": 137,
+    "self_edge": false,
+    "preservation": "All full business fields and every typed edge must equal the exact V5 proposal before snapshot; after update only metadata and server-generated updated_at may differ. updated_at must equal the successful update response and full post-readback."
+  },
+  "issue12_design": {
+    "id": "vb-eirmk.12",
+    "guarded_field_only": "design",
+    "before_sha256": "c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9",
+    "after_sha256": "91693b0972b9cc82ccc573ac7615ab599bd6ccbcd1609a74f9fca2b0c5c36392",
+    "patch_target_pointer": "/design_patch_preview/targets",
+    "target_count": 49,
+    "selected_rows": 7,
+    "selected_checks": 14,
+    "requirements_count": 190,
+    "outside_target_bytes_sha256": "b04c294f84c5af8ae5e4f117350c88353865ff62ad6f9ec138dc0f5c98b602dd",
+    "byte_patch_rule": "Verify each before token at its recorded byte offset, splice only the 49 exact JSON scalar byte spans, and never parse/reserialize the source design for output. Require semantic reverse-patch equality, unchanged outside-target bytes, and all190 completion_verified=false/implementation_missing=null.",
+    "unrelated_issue_fields": "Do not compare the full .12 issue or updated_at; progress notes do not stale the precondition. Recheck only id and exact design bytes before the .12 write."
+  },
+  "read_only_argv_allowlist": [
+    [
+      "bd",
+      "show",
+      "vb-eirmk.11",
+      "--readonly",
+      "--json"
+    ],
+    [
+      "bd",
+      "show",
+      "vb-eirmk.12",
+      "--readonly",
+      "--json"
+    ],
+    [
+      "bd",
+      "dep",
+      "list",
+      "vb-eirmk.11",
+      "--readonly",
+      "--json"
+    ]
+  ],
+  "mutating_argv_allowlist": [
+    [
+      "bd",
+      "update",
+      "vb-eirmk.11",
+      "--metadata",
+      "@<OUT>/metadata-after.json",
+      "--json"
+    ],
+    [
+      "bd",
+      "update",
+      "vb-eirmk.12",
+      "--design-file",
+      "<OUT>/design-after.raw",
+      "--json"
+    ]
+  ],
+  "mutation_order": [
+    "Update only vb-eirmk.11 metadata using the exact seven-ID union; validate response id/metadata/updated_at and full issue plus137-edge post-readback.",
+    "Re-read vb-eirmk.12 and require its design alone still equals c1b35...; then update only design using the verified raw49-scalar patch.",
+    "Read final vb-eirmk.12 design, full vb-eirmk.11 issue and typed edges; preserve every raw receipt."
+  ],
+  "fail_stop": "Non-atomic two-write sequence. On any command error, drift, failed receipt, or partial run, stop immediately; do not retry, rollback, add edges, or continue the second mutation.",
+  "prohibited": [
+    "create or delete tasks",
+    "status/close/reopen changes",
+    "dependency add/remove or cycle mutation",
+    "any historical owner mutation",
+    "title/description/acceptance/other metadata changes",
+    "any .12 field besides design",
+    "source, API, schema, gate, config, or repository history changes",
+    "arbitrary BD arguments or shell interpolation"
+  ],
+  "evidence_output": {
+    "directory": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output",
+    "require_absent_before_run": true,
+    "raw_receipts": "Persist exact stdout/stderr bytes plus command args/exit/hash for every before, update-response, and after BD process; fsync receipts and raw design before/after before first write."
+  },
+  "offline_controls": {
+    "command": "ruby target/core-build-20261110/evidence/gate-owner-resume-v6/executor.rb --offline-controls",
+    "bd_calls": 0,
+    "checks": [
+      "expect_reject meta-negative proves normal return fails outside rescued yielded guard; positive real GuardError rejection passes.",
+      "All49 target after-values and byte-offset mutants individually reject.",
+      "All137 typed edge identity mutants individually reject.",
+      "Both V5 planning reviews pass exact proposal SHA; CODE and TEST independently reject wrong/missing binding, missing/REJECT verdict, and altered report bytes.",
+      "Executor review contract/executor bindings accept exact positive and reject mismatches.",
+      "Full .11 title drift and missing edge reject; .12 notes-only progress passes, design drift rejects.",
+      "Raw 49-scalar patch preserves outside-target bytes and complete190 false/null semantics.",
+      "Forbidden BD create/status/edge/field/path vectors reject; offline performs zero BD calls."
+    ]
+  },
+  "execution": {
+    "live_apply_performed": false,
+    "native_or_build_commands_run": false,
+    "executor_reviews_passed": false,
+    "apply_authorized": false,
+    "future_apply_command": "ruby target/core-build-20261110/evidence/gate-owner-resume-v6/executor.rb --apply"
+  },
+  "review_separation": {
+    "planning_review_version": "V5",
+    "planning_proposal_sha256": "e16e633cb711bc58eddd5c67049272214b59b856720355a77469964273f0d8f4",
+    "planning_reports": {
+      "code": {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/remaining-gate-planning-code-review-v5.json",
+        "sha256": "d6c470d47959266500703d2dd2ea21d5e47d11aec16a304a1eef523f8683e1eb",
+        "verdict": "PASS",
+        "binding_field": "artifact_sha256"
+      },
+      "test": {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/evidence/remaining-gate-planning-test-review-v5.json",
+        "sha256": "1b864651af94cb43736fe7805b2fe4ff10858500b6c33af91d0e74063482625b",
+        "verdict": "PASS",
+        "binding_field": "proposal_sha256"
+      }
+    },
+    "executor_review_version": "V6",
+    "executor_reports": {
+      "code": {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/gate-owner-apply-code-review-v6.json",
+        "required_verdict": "PASS",
+        "contract_field": "artifact_sha256",
+        "executor_field": "executor_sha256"
+      },
+      "test": {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/core-build-20261110/evidence/gate-owner-apply-test-review-v6.json",
+        "required_verdict": "PASS",
+        "contract_field": "proposal_sha256",
+        "executor_field": "executor_sha256"
+      }
+    },
+    "executor_contract_sha256_binding": "External report must bind exact V6 contract file bytes; digest is not embedded into that contract.",
+    "apply_requires_both_v6_executor_reviews": true
+  },
+  "supersedes_v5_candidate": {
+    "contract_path": "target/core-build-20261110/evidence/gate-owner-apply-contract-v5.json",
+    "contract_sha256": "fd8ee490bf63a2db8e4d5ca8c48f3c815d20e5a690013d9f46cc9f8bcecace1b",
+    "executor_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v5/executor.rb",
+    "executor_sha256": "5a071b4d4a7c86bf83d6525c32b8e4f37c5f63d58bd3db2be5e480a0a1d8cbc6",
+    "independent_test_report_path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/core-build-20261110/evidence/gate-owner-apply-test-review-v5.json",
+    "independent_test_report_sha256": "66dd0dd463e787831c8364091ad17d74ab883b445fdf34b05a3f0dd6479a62cd",
+    "status": "REJECTED; preserved unchanged"
+  }
+}

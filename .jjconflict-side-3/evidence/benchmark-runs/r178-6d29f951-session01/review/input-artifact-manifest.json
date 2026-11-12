@@ -1,0 +1,1245 @@
+{
+  "accepted_session": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01",
+  "data_status": "ACCEPT_RECORDED_MEANS_AT_6D_WITH_EXPLICIT_HOST_LIMITATIONS",
+  "files": [
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json",
+      "bytes": 1012,
+      "sha256": "1ba6083481f29e6f18fa0adee3485d2cce5376b6ad537eb8eabcb64e22c4786e"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json",
+      "bytes": 997,
+      "sha256": "ea66f98bea80651c3858ac83faab915cdd73411488d0fef3e807a002c7ccac5e"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json",
+      "bytes": 2050,
+      "sha256": "0d373ba7c3ca4728ec2b8f958136261755205eed7a121127e1d732b3665508e8"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json",
+      "bytes": 76,
+      "sha256": "83aee99cb0bac34c402b5cc6655ca020cc83265838f9a22cb9d7a99fb5a95106"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json",
+      "bytes": 1012,
+      "sha256": "1ba6083481f29e6f18fa0adee3485d2cce5376b6ad537eb8eabcb64e22c4786e"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json",
+      "bytes": 997,
+      "sha256": "ea66f98bea80651c3858ac83faab915cdd73411488d0fef3e807a002c7ccac5e"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json",
+      "bytes": 2050,
+      "sha256": "0d373ba7c3ca4728ec2b8f958136261755205eed7a121127e1d732b3665508e8"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json",
+      "bytes": 76,
+      "sha256": "83aee99cb0bac34c402b5cc6655ca020cc83265838f9a22cb9d7a99fb5a95106"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/bench_engine_step_once_save_const_single_transition/criterion.log",
+      "bytes": 18272,
+      "sha256": "8259675962bc0d861255de492270dff3ee4150ec8ebe9fe7807f5784e3d05c01"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/commands.txt",
+      "bytes": 755,
+      "sha256": "a46d3829fc6bb9ec04bfd3cd580f531cd312ed0f5ccad7b30f7357e5445d3c2c"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json",
+      "bytes": 1006,
+      "sha256": "fbd1aa97474ff03e0b034c19a9dad307e2cb4cd62cb83fe56142d9c83ac32541"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json",
+      "bytes": 991,
+      "sha256": "98dbda0666b88191defc07b30fc0480356eb38978d2ea9876a1b45612c2a7477"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json",
+      "bytes": 2027,
+      "sha256": "4bb5b544d7d9033a80cad768432e76b479a2e036cd7414169e00b694c5d025fa"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json",
+      "bytes": 72,
+      "sha256": "8ece51a38bc7116e9674ff920bef55537ea0d2cee7d518e3e329aa93156d0c13"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json",
+      "bytes": 1006,
+      "sha256": "fbd1aa97474ff03e0b034c19a9dad307e2cb4cd62cb83fe56142d9c83ac32541"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json",
+      "bytes": 991,
+      "sha256": "98dbda0666b88191defc07b30fc0480356eb38978d2ea9876a1b45612c2a7477"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json",
+      "bytes": 2027,
+      "sha256": "4bb5b544d7d9033a80cad768432e76b479a2e036cd7414169e00b694c5d025fa"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json",
+      "bytes": 72,
+      "sha256": "8ece51a38bc7116e9674ff920bef55537ea0d2cee7d518e3e329aa93156d0c13"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/engine_run_until_blocked_budget_10_small_workflow/criterion.log",
+      "bytes": 17828,
+      "sha256": "e743863a286128f793ce28017d67ff1331bf8ad6cfde88d8a5193539779c5355"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/host-after.txt",
+      "bytes": 10747,
+      "sha256": "7f447b91edd6a35b1de3fa94ac5b57418ada4243183eb6864183998a6c627bc9"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/host-before.txt",
+      "bytes": 10747,
+      "sha256": "55d71038beb26f3a2da8e288bac318f50ebba288840fe6460b254c3e733ee688"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/invocation.json",
+      "bytes": 296,
+      "sha256": "222f7affdd7d8411b554efd15d301c1e5add0cd3693f908eb1d2bfa7d19383ba"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json",
+      "bytes": 943,
+      "sha256": "05e80bdf1438a983c988e4d27cfe52c6de6d77fb0832e39f6882fc65bd763e9a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json",
+      "bytes": 991,
+      "sha256": "aa927093d2fb5efae2b3298d4c2a6d0849df973642ebaad2eb4125b889967acb"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json",
+      "bytes": 2029,
+      "sha256": "860f5a3962e85e99b37e806a9803bf691e4d5e3bb7d2cb8e6139b1ac3a57be13"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json",
+      "bytes": 72,
+      "sha256": "3d5cef2525e6fec2c014032feb0b14cb748f986bd2f6c60665b66092a43616dd"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json",
+      "bytes": 943,
+      "sha256": "05e80bdf1438a983c988e4d27cfe52c6de6d77fb0832e39f6882fc65bd763e9a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json",
+      "bytes": 991,
+      "sha256": "aa927093d2fb5efae2b3298d4c2a6d0849df973642ebaad2eb4125b889967acb"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json",
+      "bytes": 2029,
+      "sha256": "860f5a3962e85e99b37e806a9803bf691e4d5e3bb7d2cb8e6139b1ac3a57be13"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json",
+      "bytes": 72,
+      "sha256": "3d5cef2525e6fec2c014032feb0b14cb748f986bd2f6c60665b66092a43616dd"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/ipc_frame_decode/criterion.log",
+      "bytes": 13695,
+      "sha256": "3d004e82ef7c3ecacf749f71729ce7c330d478bf5a03a3b63a6d2e1b56d2520d"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/source-after.json",
+      "bytes": 1311,
+      "sha256": "5af6e4a4af439219a4555fbbb78673347db3d94e9ebe85671fe2382b0916dc80"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/source-before.json",
+      "bytes": 1311,
+      "sha256": "5af6e4a4af439219a4555fbbb78673347db3d94e9ebe85671fe2382b0916dc80"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/01-A1/vmstat.log",
+      "bytes": 3658,
+      "sha256": "bc08e56ac82c48e61ca49742be340f3d13ee5faee00c96bec0fe0c783c24a1b6"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json",
+      "bytes": 1012,
+      "sha256": "1ba6083481f29e6f18fa0adee3485d2cce5376b6ad537eb8eabcb64e22c4786e"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json",
+      "bytes": 994,
+      "sha256": "f501aa2a68bcf9f412348f39817f946731d5e7b5cc569db444e6bd0539397f5c"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json",
+      "bytes": 2064,
+      "sha256": "a8b8f310bab6900f97bbf8e4b2aae1f701ad87d755e318bc0678da9f47392280"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json",
+      "bytes": 73,
+      "sha256": "505bbdb68debc64b287418f84113f3aea8ea6b2d7a033b80a2093d4135b0e9fe"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json",
+      "bytes": 1012,
+      "sha256": "1ba6083481f29e6f18fa0adee3485d2cce5376b6ad537eb8eabcb64e22c4786e"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json",
+      "bytes": 994,
+      "sha256": "f501aa2a68bcf9f412348f39817f946731d5e7b5cc569db444e6bd0539397f5c"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json",
+      "bytes": 2064,
+      "sha256": "a8b8f310bab6900f97bbf8e4b2aae1f701ad87d755e318bc0678da9f47392280"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json",
+      "bytes": 73,
+      "sha256": "505bbdb68debc64b287418f84113f3aea8ea6b2d7a033b80a2093d4135b0e9fe"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/bench_engine_step_once_save_const_single_transition/criterion.log",
+      "bytes": 18269,
+      "sha256": "d75c0cf1d0d55a86cccd7c331d7864b050e522ba067cd4e82cb72e9c2654906f"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/commands.txt",
+      "bytes": 764,
+      "sha256": "6fd2bfac6317ee816dbb25bf7ee588cf8d25994e4cbacfb2e3706b35af237ae6"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json",
+      "bytes": 1006,
+      "sha256": "fbd1aa97474ff03e0b034c19a9dad307e2cb4cd62cb83fe56142d9c83ac32541"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json",
+      "bytes": 988,
+      "sha256": "d3fd0e4fe3ae3422841b86dad110afa0c9fda1ea005789280ff773fe03501bb1"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json",
+      "bytes": 2042,
+      "sha256": "91f021d7e8269c245330d2d8f03ac3d1d73594068afaf25f438bcb71335bfff4"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json",
+      "bytes": 74,
+      "sha256": "e27df59d25b34f79beeb6e4ac5ac65862237bac22d800b61eb5822cbc4563519"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json",
+      "bytes": 1006,
+      "sha256": "fbd1aa97474ff03e0b034c19a9dad307e2cb4cd62cb83fe56142d9c83ac32541"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json",
+      "bytes": 988,
+      "sha256": "d3fd0e4fe3ae3422841b86dad110afa0c9fda1ea005789280ff773fe03501bb1"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json",
+      "bytes": 2042,
+      "sha256": "91f021d7e8269c245330d2d8f03ac3d1d73594068afaf25f438bcb71335bfff4"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json",
+      "bytes": 74,
+      "sha256": "e27df59d25b34f79beeb6e4ac5ac65862237bac22d800b61eb5822cbc4563519"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/engine_run_until_blocked_budget_10_small_workflow/criterion.log",
+      "bytes": 17966,
+      "sha256": "30a113ea09bbf9670590683d5294b98873b4efa6ea0c80088856bd12609e94d6"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/host-after.txt",
+      "bytes": 10747,
+      "sha256": "d45cd3a371ea70ee24fc5d093de161a025e4f25d558c7d917fce77e8f53d6bc0"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/host-before.txt",
+      "bytes": 10747,
+      "sha256": "fda713a1d61a8158ce482a9841398f14f69784f29bc43f09e506b9e233fefaac"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/invocation.json",
+      "bytes": 284,
+      "sha256": "6bfed3755aa919d1b0d8cfd85aa1cc409000ddd928be1f208a51943f40606478"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json",
+      "bytes": 943,
+      "sha256": "05e80bdf1438a983c988e4d27cfe52c6de6d77fb0832e39f6882fc65bd763e9a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json",
+      "bytes": 993,
+      "sha256": "645509f7817223b886e6003982d3a42880e4f151711b1641b93917c1c7afa493"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json",
+      "bytes": 2044,
+      "sha256": "068339ca968cfbd08a26bae87f259e188dfaeabfd8ab58cb1aab8ac1ab4a4321"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json",
+      "bytes": 74,
+      "sha256": "67b672d4ea624156e59973b93dcf1cf790aeac8e3f60e62aba001370ce78f1b5"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json",
+      "bytes": 943,
+      "sha256": "05e80bdf1438a983c988e4d27cfe52c6de6d77fb0832e39f6882fc65bd763e9a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json",
+      "bytes": 993,
+      "sha256": "645509f7817223b886e6003982d3a42880e4f151711b1641b93917c1c7afa493"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json",
+      "bytes": 2044,
+      "sha256": "068339ca968cfbd08a26bae87f259e188dfaeabfd8ab58cb1aab8ac1ab4a4321"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json",
+      "bytes": 74,
+      "sha256": "67b672d4ea624156e59973b93dcf1cf790aeac8e3f60e62aba001370ce78f1b5"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/ipc_frame_decode/criterion.log",
+      "bytes": 13802,
+      "sha256": "8fb960adb4ea0c49dae3232055efaf3046a9ac082436827adfb767965b251eb3"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/source-after.json",
+      "bytes": 1234,
+      "sha256": "ac89f336af02570bdf0e1fe05831ab6c85e76fa46b34aa78bffe10003ed51c42"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/source-before.json",
+      "bytes": 1234,
+      "sha256": "ac89f336af02570bdf0e1fe05831ab6c85e76fa46b34aa78bffe10003ed51c42"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/02-B1/vmstat.log",
+      "bytes": 4248,
+      "sha256": "a9314c7ef580547970e2f28d522d97ab177966236112eb4577f904a2527c1520"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json",
+      "bytes": 1012,
+      "sha256": "1ba6083481f29e6f18fa0adee3485d2cce5376b6ad537eb8eabcb64e22c4786e"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json",
+      "bytes": 996,
+      "sha256": "3ccb2c62a63d108dfd0c68cd5fc4037bb2ac7afffdbc64d6edc7b1a9d1b6ff15"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json",
+      "bytes": 2064,
+      "sha256": "3140fc51d1eaeba1944485937aab652587be7b18ba375cc91702653aba87cf70"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json",
+      "bytes": 74,
+      "sha256": "57b4328ba677c5826d19c0c160b34878a0d8fedfecb746859b52504be61ce254"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json",
+      "bytes": 1012,
+      "sha256": "1ba6083481f29e6f18fa0adee3485d2cce5376b6ad537eb8eabcb64e22c4786e"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json",
+      "bytes": 996,
+      "sha256": "3ccb2c62a63d108dfd0c68cd5fc4037bb2ac7afffdbc64d6edc7b1a9d1b6ff15"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json",
+      "bytes": 2064,
+      "sha256": "3140fc51d1eaeba1944485937aab652587be7b18ba375cc91702653aba87cf70"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json",
+      "bytes": 74,
+      "sha256": "57b4328ba677c5826d19c0c160b34878a0d8fedfecb746859b52504be61ce254"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/bench_engine_step_once_save_const_single_transition/criterion.log",
+      "bytes": 18205,
+      "sha256": "ebe49360389646e605aa1dd460a86b8503e35e76dc15ef98c8042adc04cef8b9"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/commands.txt",
+      "bytes": 764,
+      "sha256": "6fd2bfac6317ee816dbb25bf7ee588cf8d25994e4cbacfb2e3706b35af237ae6"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json",
+      "bytes": 1006,
+      "sha256": "fbd1aa97474ff03e0b034c19a9dad307e2cb4cd62cb83fe56142d9c83ac32541"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json",
+      "bytes": 986,
+      "sha256": "ac25ec4b78b2a05c423f84720ea5a4e7bcbf41e4df2197c09bbd03f4c59bc801"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json",
+      "bytes": 2043,
+      "sha256": "e9758ac4fc788c17f94761ca8a3453213338513ec7730e5fcbffaed3be8cb94f"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json",
+      "bytes": 75,
+      "sha256": "19d3523752c86ba70658edfe991fff2e1932684c8702a3d70d5a79e7151dff6c"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json",
+      "bytes": 1006,
+      "sha256": "fbd1aa97474ff03e0b034c19a9dad307e2cb4cd62cb83fe56142d9c83ac32541"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json",
+      "bytes": 986,
+      "sha256": "ac25ec4b78b2a05c423f84720ea5a4e7bcbf41e4df2197c09bbd03f4c59bc801"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json",
+      "bytes": 2043,
+      "sha256": "e9758ac4fc788c17f94761ca8a3453213338513ec7730e5fcbffaed3be8cb94f"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json",
+      "bytes": 75,
+      "sha256": "19d3523752c86ba70658edfe991fff2e1932684c8702a3d70d5a79e7151dff6c"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/engine_run_until_blocked_budget_10_small_workflow/criterion.log",
+      "bytes": 17950,
+      "sha256": "c507f220924d24c9c071fa5c63793f88949ab72b5f1004f4f327a185abe54543"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/host-after.txt",
+      "bytes": 10747,
+      "sha256": "6f11f7c95dc44294519d40f517022db234f596f5af1010861b17c9261b40f100"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/host-before.txt",
+      "bytes": 10747,
+      "sha256": "a1aa9e6901adc8ba4481ddbc26efc314baf9554113139674783a51dd746eac67"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/invocation.json",
+      "bytes": 284,
+      "sha256": "6bfed3755aa919d1b0d8cfd85aa1cc409000ddd928be1f208a51943f40606478"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json",
+      "bytes": 943,
+      "sha256": "05e80bdf1438a983c988e4d27cfe52c6de6d77fb0832e39f6882fc65bd763e9a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json",
+      "bytes": 991,
+      "sha256": "b7ed9e3e71a7d728e2c835d479f4e8a3fafdee63073272753a9e9ab7aea49760"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json",
+      "bytes": 2045,
+      "sha256": "2c8e9c447e13cda8d9c89e0f22a71cbf5aee551e8206707445283ddefcba3279"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json",
+      "bytes": 73,
+      "sha256": "efb2a5e09660c867f9eee2a7462f8d769b7936548eb46ac4a0e49a1250bf29ef"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json",
+      "bytes": 943,
+      "sha256": "05e80bdf1438a983c988e4d27cfe52c6de6d77fb0832e39f6882fc65bd763e9a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json",
+      "bytes": 991,
+      "sha256": "b7ed9e3e71a7d728e2c835d479f4e8a3fafdee63073272753a9e9ab7aea49760"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json",
+      "bytes": 2045,
+      "sha256": "2c8e9c447e13cda8d9c89e0f22a71cbf5aee551e8206707445283ddefcba3279"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json",
+      "bytes": 73,
+      "sha256": "efb2a5e09660c867f9eee2a7462f8d769b7936548eb46ac4a0e49a1250bf29ef"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/ipc_frame_decode/criterion.log",
+      "bytes": 13879,
+      "sha256": "3c54613fc3a05506a56259667f8378a3722cd90693b42ab29c24897155dfc2f0"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/source-after.json",
+      "bytes": 1234,
+      "sha256": "ac89f336af02570bdf0e1fe05831ab6c85e76fa46b34aa78bffe10003ed51c42"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/source-before.json",
+      "bytes": 1234,
+      "sha256": "ac89f336af02570bdf0e1fe05831ab6c85e76fa46b34aa78bffe10003ed51c42"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/03-B2/vmstat.log",
+      "bytes": 4130,
+      "sha256": "84bd4c14eb1500cf72fa5a134252a01ba970a704d1dec663320155f3de19ccd8"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json",
+      "bytes": 1012,
+      "sha256": "1ba6083481f29e6f18fa0adee3485d2cce5376b6ad537eb8eabcb64e22c4786e"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json",
+      "bytes": 997,
+      "sha256": "defa1036a87f3682284966bd5fb6771e54ed76ae02f919b374d75b5281288a35"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json",
+      "bytes": 2061,
+      "sha256": "7838a30c6a25627292dbc0d5593cb3776c79855f54135ee9e9a41153f1b9fdff"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json",
+      "bytes": 75,
+      "sha256": "bbd0e0b55c47734c39b4d1cf0898f2b62e1267c1dacdad5809e2af03e2dee753"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json",
+      "bytes": 1012,
+      "sha256": "1ba6083481f29e6f18fa0adee3485d2cce5376b6ad537eb8eabcb64e22c4786e"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json",
+      "bytes": 997,
+      "sha256": "defa1036a87f3682284966bd5fb6771e54ed76ae02f919b374d75b5281288a35"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json",
+      "bytes": 2061,
+      "sha256": "7838a30c6a25627292dbc0d5593cb3776c79855f54135ee9e9a41153f1b9fdff"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json",
+      "bytes": 75,
+      "sha256": "bbd0e0b55c47734c39b4d1cf0898f2b62e1267c1dacdad5809e2af03e2dee753"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/bench_engine_step_once_save_const_single_transition/criterion.log",
+      "bytes": 18317,
+      "sha256": "6ef5fe1096f8aaaa504f272f9e852b8cc2ab3c13443cbe4a349cd82d52cfce37"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/commands.txt",
+      "bytes": 755,
+      "sha256": "a46d3829fc6bb9ec04bfd3cd580f531cd312ed0f5ccad7b30f7357e5445d3c2c"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json",
+      "bytes": 1006,
+      "sha256": "fbd1aa97474ff03e0b034c19a9dad307e2cb4cd62cb83fe56142d9c83ac32541"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json",
+      "bytes": 982,
+      "sha256": "3e20b03679f17d7729eaee96561b5181f0cb05b92c58473ad8d478cbf266c2f3"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json",
+      "bytes": 2038,
+      "sha256": "8ce3f5e0bbfea86664bb62e1e84987ae044825ce0616e0a47e9df56dbb5e9e27"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json",
+      "bytes": 71,
+      "sha256": "5098991dcb32d63d91c5210a5866b8a4e8c9dbc45d2af203c635f70c34d1d4dc"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json",
+      "bytes": 1006,
+      "sha256": "fbd1aa97474ff03e0b034c19a9dad307e2cb4cd62cb83fe56142d9c83ac32541"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json",
+      "bytes": 982,
+      "sha256": "3e20b03679f17d7729eaee96561b5181f0cb05b92c58473ad8d478cbf266c2f3"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json",
+      "bytes": 2038,
+      "sha256": "8ce3f5e0bbfea86664bb62e1e84987ae044825ce0616e0a47e9df56dbb5e9e27"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json",
+      "bytes": 71,
+      "sha256": "5098991dcb32d63d91c5210a5866b8a4e8c9dbc45d2af203c635f70c34d1d4dc"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/engine_run_until_blocked_budget_10_small_workflow/criterion.log",
+      "bytes": 17952,
+      "sha256": "ac302de441240b777cec32e49987aba10eb85dcd146d13df91b84acb7f3afc50"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/host-after.txt",
+      "bytes": 10747,
+      "sha256": "7e2fc2a7d8145b88deaf9fd3fd6ecf310f64f7422204ba64f40a20175a62a431"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/host-before.txt",
+      "bytes": 10747,
+      "sha256": "8e1ee4a17d66db5f8c4fd76695050ed2abf0d2eef9e609e432ffd22052ad3344"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/invocation.json",
+      "bytes": 296,
+      "sha256": "222f7affdd7d8411b554efd15d301c1e5add0cd3693f908eb1d2bfa7d19383ba"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json",
+      "bytes": 943,
+      "sha256": "05e80bdf1438a983c988e4d27cfe52c6de6d77fb0832e39f6882fc65bd763e9a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json",
+      "bytes": 982,
+      "sha256": "85bea5f7d719b9e7e575e5102c4b8c4687fc2f6ff6753bcc33a5185949f15ee5"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json",
+      "bytes": 2029,
+      "sha256": "4421c81f76c91d4ea846f11d0831213b3983ed9b640a3f22bc3c7c92d88d6d31"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json",
+      "bytes": 72,
+      "sha256": "f5f634dc2847c6e84ec6a84258be901f0dbb8f77f5ce5df56b99160f294993f1"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json",
+      "bytes": 943,
+      "sha256": "05e80bdf1438a983c988e4d27cfe52c6de6d77fb0832e39f6882fc65bd763e9a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json",
+      "bytes": 982,
+      "sha256": "85bea5f7d719b9e7e575e5102c4b8c4687fc2f6ff6753bcc33a5185949f15ee5"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json",
+      "bytes": 2029,
+      "sha256": "4421c81f76c91d4ea846f11d0831213b3983ed9b640a3f22bc3c7c92d88d6d31"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json",
+      "bytes": 72,
+      "sha256": "f5f634dc2847c6e84ec6a84258be901f0dbb8f77f5ce5df56b99160f294993f1"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/ipc_frame_decode/criterion.log",
+      "bytes": 13762,
+      "sha256": "b6f407c75401122161e85516f5296bec1c7f1da6e9191ce495245f593d8fec83"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/source-after.json",
+      "bytes": 1311,
+      "sha256": "5af6e4a4af439219a4555fbbb78673347db3d94e9ebe85671fe2382b0916dc80"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/source-before.json",
+      "bytes": 1311,
+      "sha256": "5af6e4a4af439219a4555fbbb78673347db3d94e9ebe85671fe2382b0916dc80"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/04-A2/vmstat.log",
+      "bytes": 4012,
+      "sha256": "63901851c18a590470343cc25ad4774a52b35de518f2551b9bfb14372d56e93b"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/aggregate-review.json",
+      "bytes": 10312,
+      "sha256": "8f20492b21a7000e5598776cfad653a2a865c28dde1d5e95acae25b5352f5a88"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/allocations.tsv",
+      "bytes": 2378,
+      "sha256": "d13102ae5e7e93304e1cdf1a053e069824eb9c81a4b47b19040de710058d5f35"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/heaptrack-criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json",
+      "bytes": 1012,
+      "sha256": "1ba6083481f29e6f18fa0adee3485d2cce5376b6ad537eb8eabcb64e22c4786e"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/heaptrack-criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json",
+      "bytes": 982,
+      "sha256": "3923b6a2741d1fa3a45e25c10ddf2d5394f0cb33155e642d4c320202b1b291bb"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/heaptrack-criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json",
+      "bytes": 249,
+      "sha256": "3b2f2274f8e69c9d3c8648ea52cc04dc6e90f08aa42636feb9bab666603c3755"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/heaptrack-criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json",
+      "bytes": 75,
+      "sha256": "4748f0a9a1e3c35ed560a2e78d6fcb8358ed7b6185673ecbdca24e5f9ef86382"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/heaptrack-criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json",
+      "bytes": 1012,
+      "sha256": "1ba6083481f29e6f18fa0adee3485d2cce5376b6ad537eb8eabcb64e22c4786e"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/heaptrack-criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json",
+      "bytes": 982,
+      "sha256": "3923b6a2741d1fa3a45e25c10ddf2d5394f0cb33155e642d4c320202b1b291bb"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/heaptrack-criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json",
+      "bytes": 249,
+      "sha256": "3b2f2274f8e69c9d3c8648ea52cc04dc6e90f08aa42636feb9bab666603c3755"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/heaptrack-criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json",
+      "bytes": 75,
+      "sha256": "4748f0a9a1e3c35ed560a2e78d6fcb8358ed7b6185673ecbdca24e5f9ef86382"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/heaptrack-print.log",
+      "bytes": 763,
+      "sha256": "fe22fc6ebd5df67cef607770409c03fcfc643447cdf20b9eddbaeee2e09cf42b"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/heaptrack.data.zst",
+      "bytes": 232817,
+      "sha256": "f8e70c73792534e52d6568fdc7e54a66a5dd6b9ac0844c6050fa1194c9697af4"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/heaptrack.log",
+      "bytes": 6029,
+      "sha256": "b23537a7b27b9c525274ba588333d5acddea498211ecd7e53c2ddc521acd76fe"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/perf-criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json",
+      "bytes": 1012,
+      "sha256": "1ba6083481f29e6f18fa0adee3485d2cce5376b6ad537eb8eabcb64e22c4786e"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/perf-criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json",
+      "bytes": 996,
+      "sha256": "1accf2beda33877d16ab210f257f3bed34b589a04feda43ae5d54e83427f5c0d"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/perf-criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json",
+      "bytes": 255,
+      "sha256": "a787a04d4fa461361d0b8aa430f63e79384fb462d7fee4d0812ab9d4957d0bcc"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/perf-criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json",
+      "bytes": 73,
+      "sha256": "2727ff11a082f1176ea86eda00d365da61f65bf31b80e5df50008ff6db04c573"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/perf-criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json",
+      "bytes": 1012,
+      "sha256": "1ba6083481f29e6f18fa0adee3485d2cce5376b6ad537eb8eabcb64e22c4786e"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/perf-criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json",
+      "bytes": 996,
+      "sha256": "1accf2beda33877d16ab210f257f3bed34b589a04feda43ae5d54e83427f5c0d"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/perf-criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json",
+      "bytes": 255,
+      "sha256": "a787a04d4fa461361d0b8aa430f63e79384fb462d7fee4d0812ab9d4957d0bcc"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/perf-criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json",
+      "bytes": 73,
+      "sha256": "2727ff11a082f1176ea86eda00d365da61f65bf31b80e5df50008ff6db04c573"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/perf.csv",
+      "bytes": 87,
+      "sha256": "0685bd8aa2517288a58c44d5c2e722c65e155af45a3723bda1ebe5e0eac75b8d"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/bench_engine_step_once_save_const_single_transition/perf.log",
+      "bytes": 5714,
+      "sha256": "aeeb04d9dd75822c79803fdb1959fd195d77f9b636384b318be69608615c9fa5"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/commands.txt",
+      "bytes": 3879,
+      "sha256": "9e1c40e5c5c5c9e574cf30ee4bf3d94da65f8a0cc71b6590b86f87daa11455bd"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/allocations.tsv",
+      "bytes": 2378,
+      "sha256": "76dd0967f5b9a2cd0ad473ee17b4df884c51755a15eb5df2a96d85b697bebe9f"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/heaptrack-criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json",
+      "bytes": 1006,
+      "sha256": "fbd1aa97474ff03e0b034c19a9dad307e2cb4cd62cb83fe56142d9c83ac32541"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/heaptrack-criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json",
+      "bytes": 980,
+      "sha256": "9613c66264cf99b47a1a727e7ca5567fa0dc34518373a461a0a24af18a3bab68"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/heaptrack-criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json",
+      "bytes": 249,
+      "sha256": "eb8c7460a45ccf75d0c1c00d4472e4423e24ebd20f4d9ef2f8f2a65ad3f286a8"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/heaptrack-criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json",
+      "bytes": 76,
+      "sha256": "7dd1c30b788c24811cb2076fff0757928e7d63827ed9d7aceb304b9381224f0f"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/heaptrack-criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json",
+      "bytes": 1006,
+      "sha256": "fbd1aa97474ff03e0b034c19a9dad307e2cb4cd62cb83fe56142d9c83ac32541"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/heaptrack-criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json",
+      "bytes": 980,
+      "sha256": "9613c66264cf99b47a1a727e7ca5567fa0dc34518373a461a0a24af18a3bab68"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/heaptrack-criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json",
+      "bytes": 249,
+      "sha256": "eb8c7460a45ccf75d0c1c00d4472e4423e24ebd20f4d9ef2f8f2a65ad3f286a8"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/heaptrack-criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json",
+      "bytes": 76,
+      "sha256": "7dd1c30b788c24811cb2076fff0757928e7d63827ed9d7aceb304b9381224f0f"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/heaptrack-print.log",
+      "bytes": 758,
+      "sha256": "1ba5e9cbb733220eedd581791ef0d4ed7fc9554501850fe10b28f3618d880b74"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/heaptrack.data.zst",
+      "bytes": 230253,
+      "sha256": "6cbcfe5a4ea5469db6e07b4e97baf9604f5be63135a5c8ab1e8b06c7a54f27ca"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/heaptrack.log",
+      "bytes": 5822,
+      "sha256": "65ac9b8125d6e1e97748afa74e1c4b9654c834e8fb7f4be073f944b4f9ad341c"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/perf-criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json",
+      "bytes": 1006,
+      "sha256": "fbd1aa97474ff03e0b034c19a9dad307e2cb4cd62cb83fe56142d9c83ac32541"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/perf-criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json",
+      "bytes": 990,
+      "sha256": "49df582fe7ad07ba9ec27635f5798ce3d0818721ec56f41b7527c4b28b4593d3"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/perf-criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json",
+      "bytes": 255,
+      "sha256": "7ba69629d0c8a6d24267a64ba26084f5ea90a0ace1f6502220c6681b5c554a57"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/perf-criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json",
+      "bytes": 73,
+      "sha256": "f1d8d2e671b3587d22e5ff408ab89d2574eac792a4e2c60e6297c7739fe121e8"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/perf-criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json",
+      "bytes": 1006,
+      "sha256": "fbd1aa97474ff03e0b034c19a9dad307e2cb4cd62cb83fe56142d9c83ac32541"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/perf-criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json",
+      "bytes": 990,
+      "sha256": "49df582fe7ad07ba9ec27635f5798ce3d0818721ec56f41b7527c4b28b4593d3"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/perf-criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json",
+      "bytes": 255,
+      "sha256": "7ba69629d0c8a6d24267a64ba26084f5ea90a0ace1f6502220c6681b5c554a57"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/perf-criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json",
+      "bytes": 73,
+      "sha256": "f1d8d2e671b3587d22e5ff408ab89d2574eac792a4e2c60e6297c7739fe121e8"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/perf.csv",
+      "bytes": 87,
+      "sha256": "3ad97cb87f8075069b8c352d9bf8c0c6b0a43c819bc568af340b96afa182633a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/engine_run_until_blocked_budget_10_small_workflow/perf.log",
+      "bytes": 5488,
+      "sha256": "b4885e1531536db768cfb90d62d1e4cb4707911172e2c22f9f7bfd76aeeb9c3d"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/host-after.txt",
+      "bytes": 10748,
+      "sha256": "b6fd4cfbbfabddf1ead5482af935405af85c86316c0c85c766b5230bf5cb9c56"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/host-before.txt",
+      "bytes": 10747,
+      "sha256": "275c2271177057b03abf97f0ced8c4a8cf1e41e07ffd45ca2ebdc24de73725f3"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/invocation.json",
+      "bytes": 285,
+      "sha256": "7a6cce61e926d03f542728e517e2276e3817c568275df487b458571bb42c5668"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/allocations.tsv",
+      "bytes": 2325,
+      "sha256": "67740e865c614bc97edadd44132b21d4fff84c02b4ccc63b21befdea95f06796"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/heaptrack-criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json",
+      "bytes": 943,
+      "sha256": "05e80bdf1438a983c988e4d27cfe52c6de6d77fb0832e39f6882fc65bd763e9a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/heaptrack-criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json",
+      "bytes": 981,
+      "sha256": "17397e45cd0e70599d6cb254bd86fe52d5447544d10ea49fd47aec5c5d6b9d2a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/heaptrack-criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json",
+      "bytes": 249,
+      "sha256": "3033fd344d8a98078e2eecd41b2fa43502ea5c5fbc170d8fc3a2f12d72c933f3"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/heaptrack-criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json",
+      "bytes": 73,
+      "sha256": "15b8136304bbe604fd95db643a68e9da69ad3312ec49cef1176201caa4f4f940"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/heaptrack-criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json",
+      "bytes": 943,
+      "sha256": "05e80bdf1438a983c988e4d27cfe52c6de6d77fb0832e39f6882fc65bd763e9a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/heaptrack-criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json",
+      "bytes": 981,
+      "sha256": "17397e45cd0e70599d6cb254bd86fe52d5447544d10ea49fd47aec5c5d6b9d2a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/heaptrack-criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json",
+      "bytes": 249,
+      "sha256": "3033fd344d8a98078e2eecd41b2fa43502ea5c5fbc170d8fc3a2f12d72c933f3"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/heaptrack-criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json",
+      "bytes": 73,
+      "sha256": "15b8136304bbe604fd95db643a68e9da69ad3312ec49cef1176201caa4f4f940"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/heaptrack-print.log",
+      "bytes": 692,
+      "sha256": "d0e2af90722aadcd9f348a3e959224c842f593a669f38dd1b702ecfb9771ab3a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/heaptrack.data.zst",
+      "bytes": 240237,
+      "sha256": "ecc3d337d59bc0e259799c738b37b5196fe80762695f570dc8d5080dac0b4a43"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/heaptrack.log",
+      "bytes": 4734,
+      "sha256": "5766398d0167abdf9d6db270b129e21e6625f9d608f77206be6a23675c384302"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/perf-criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json",
+      "bytes": 943,
+      "sha256": "05e80bdf1438a983c988e4d27cfe52c6de6d77fb0832e39f6882fc65bd763e9a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/perf-criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json",
+      "bytes": 1000,
+      "sha256": "107792c1f062135c158589296cb0ed33465a15ee12d1a2a530e6fb4f2d94cffa"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/perf-criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json",
+      "bytes": 255,
+      "sha256": "0d7b87aad32e6099efd2be9827216712c551f9c35433fe623f7427064940ea4e"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/perf-criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json",
+      "bytes": 74,
+      "sha256": "02d3aa4b5bef16a5931eeda8ee75e4ae23b25bb03ae361627b1f3318853b2b76"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/perf-criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json",
+      "bytes": 943,
+      "sha256": "05e80bdf1438a983c988e4d27cfe52c6de6d77fb0832e39f6882fc65bd763e9a"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/perf-criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json",
+      "bytes": 1000,
+      "sha256": "107792c1f062135c158589296cb0ed33465a15ee12d1a2a530e6fb4f2d94cffa"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/perf-criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json",
+      "bytes": 255,
+      "sha256": "0d7b87aad32e6099efd2be9827216712c551f9c35433fe623f7427064940ea4e"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/perf-criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json",
+      "bytes": 74,
+      "sha256": "02d3aa4b5bef16a5931eeda8ee75e4ae23b25bb03ae361627b1f3318853b2b76"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/perf.csv",
+      "bytes": 87,
+      "sha256": "288457c3f4c6d3b578de87c6b523abddcec796d8f76fb40d716fe4a2ab3b9e40"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/ipc_frame_decode/perf.log",
+      "bytes": 4363,
+      "sha256": "1bdb07f7f21560f0aa7a9a33c981eb91f88e5986a27c6ac55fba59b5580d24da"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/source-after.json",
+      "bytes": 1234,
+      "sha256": "ac89f336af02570bdf0e1fe05831ab6c85e76fa46b34aa78bffe10003ed51c42"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/source-before.json",
+      "bytes": 1234,
+      "sha256": "ac89f336af02570bdf0e1fe05831ab6c85e76fa46b34aa78bffe10003ed51c42"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/counters-result/vmstat.log",
+      "bytes": 2478,
+      "sha256": "b0a4c68bf61f705d179b262c5121e639e652e11e9070a37ea8deb317944bf104"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/plan.json",
+      "bytes": 6438,
+      "sha256": "786bfd7b947a14f9e66488cc0a8b5db1fe01ae5ff52c3948714e1d478b2b30af"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/plan.sha256",
+      "bytes": 65,
+      "sha256": "20a602203733b5fba92ca68ef8f4d2eb7954113d195127404310b1cc5001a6b9"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01/sequence.log",
+      "bytes": 84,
+      "sha256": "aee203efa6b5858ce7f65ff77b9e5ccaacbc8c38c5c2b50b95d140ff250bf9d3"
+    }
+  ],
+  "driver_records": [
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/latency-driver-session01.log",
+      "bytes": 328,
+      "sha256": "e254f68ecf3a68a8d1142b1d5b89add85900c4f342c37991afc97f3005b11586"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/latency-driver-session01.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/counters-driver-session01.log",
+      "bytes": 95,
+      "sha256": "13ed817d1030d844b2c9dc7221b5c0ba1bddfa375d0848302300732e01fe74a9"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/counters-driver-session01.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/run-whole-session01.py",
+      "bytes": 2253,
+      "sha256": "d71813dbf8a84d56b4a96a3f6cea02cbf15920cfb635acf2488e407409179172"
+    }
+  ],
+  "build_receipt_manifest": "build-receipts-manifest.json",
+  "targets_and_binaries_copied": false,
+  "all_actual_session_files_unchanged_across_review": true,
+  "no_partial_retry_or_failed_driver_found_in_session01": true,
+  "additional_external_receipts": [
+    {
+      "file": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/whole-session01.log",
+        "bytes": 133,
+        "sha256": "1e39adf2570fad116a658aec245eb31eb3af2fc4befb896dad16666be663c72c"
+      },
+      "actual_text": "preflight exit 0\nsession01-create exit 0\nlatency-driver-session01 exit 0\ncounters-driver-session01 exit 0\naggregate-session01 exit 0\n"
+    },
+    {
+      "file": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/whole-session01.exit",
+        "bytes": 2,
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      "actual_text": "0\n"
+    },
+    {
+      "file": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/preflight.log",
+        "bytes": 50,
+        "sha256": "99aa59806376b99215227d9e20e6bc36394c25d505fe1f04798f2dba9ccff0d8"
+      },
+      "actual_text": "NATIVE_PREFLIGHT_OK; no timed benchmark execution\n"
+    },
+    {
+      "file": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/preflight.exit",
+        "bytes": 2,
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      "actual_text": "0\n"
+    },
+    {
+      "file": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01-create.log",
+        "bytes": 58,
+        "sha256": "2730e950508b17de3b6a2239fff05a2d7f04fcd79739915b3546ed03415fd3d1"
+      },
+      "actual_text": "SESSION_PREDECLARED A1 B1 B2 A2; no measurements executed\n"
+    },
+    {
+      "file": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/session01-create.exit",
+        "bytes": 2,
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      "actual_text": "0\n"
+    },
+    {
+      "file": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/aggregate-session01.exit",
+        "bytes": 2,
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      "actual_text": "0\n"
+    },
+    {
+      "file": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/cpu-monitor-owned-child.json",
+        "bytes": 95,
+        "sha256": "f1a82ed30f3bafb5f350f6fdd476869a9aa81d3c82205964c7d33f39e3d24334"
+      },
+      "actual_text": "{\n  \"pid\": 460525,\n  \"exit\": 0,\n  \"started_by_this_controller\": true,\n  \"monitor_only\": true\n}\n"
+    },
+    {
+      "file": {
+        "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/run-whole-session01.py",
+        "bytes": 2253,
+        "sha256": "d71813dbf8a84d56b4a96a3f6cea02cbf15920cfb635acf2488e407409179172"
+      },
+      "actual_text": "from pathlib import Path\nimport subprocess,json,time,signal\nout=Path(__file__).parent\nrecipe=Path('/home/lewis/tmp/vb-benchmark-recipe-merge-r5-20261112')\nroot='/home/lewis/src/isoloated/velvet-ballistics-f1f5-landing-20261111'\npin='6d29f95138ff2a646da740f772995f8fb927c9f5'\nbaseline=Path('/home/lewis/tmp/vb-f1f5-final-landing-r163-20261112/build-baseline')\nbuild=out/'build-candidate'\nsession=out/'session01'\nassert not session.exists()\nassert (build/'build.exit').read_text().strip()=='0'\nassert subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()==pin\n# Observability only: no frozen recipe, timing invocation or aggregation change.\nfor directory,source_pin in [(baseline,'7f505d498fa35acb5b70b083ac6f02cd40f3a891'),(build,pin)]:\n    (directory/'IDLE-AND-FROZEN.txt').write_text(f'pin={source_pin}\\ncpu=14\\nci_kani_and_other_builds=stopped\\n')\ndef run(label,args,output=None):\n    with (output or out/(label+'.log')).open('wb') as log:\n        code=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT).returncode\n    (out/(label+'.exit')).write_text(str(code)+'\\n')\n    print(label,'exit',code,flush=True)\n    if code:raise SystemExit(code)\nrun('preflight',['bash',str(recipe/'measure.sh'),'preflight','candidate',root,pin,str(build),'14'])\nrun('session01-create',['ruby',str(recipe/'session.rb'),'create',str(baseline),str(build),'14',str(session)])\nmonitor_log=(out/'cpu-monitor-session01.log').open('wb')\nmonitor=subprocess.Popen(['taskset','-c','0','mpstat','-P','14,30','-o','JSON','1'],stdout=monitor_log,stderr=subprocess.STDOUT)\ntry:\n    run('latency-driver-session01',['bash',str(recipe/'run-session.sh'),'latency',str(session)])\nfinally:\n    # Only terminate the exact monitor child created above; never a foreign process.\n    if monitor.poll() is None:monitor.terminate()\n    monitor.wait(timeout=10)\n    monitor_log.close()\n    (out/'cpu-monitor-owned-child.json').write_text(json.dumps({'pid':monitor.pid,'exit':monitor.returncode,'started_by_this_controller':True,'monitor_only':True},indent=2)+'\\n')\nrun('counters-driver-session01',['bash',str(recipe/'run-session.sh'),'counters',str(session)])\nrun('aggregate-session01',['ruby',str(recipe/'aggregate.rb'),str(session)],session/'aggregate-review.json')\n"
+    }
+  ],
+  "prior_archives": [
+    {
+      "source": "/home/lewis/tmp/vb-f1f5-final-benchmark-r168-20261112/VALID-REGRESSION-EVIDENCE.tar.gz",
+      "copy": "VALID-REGRESSION-EVIDENCE.tar.gz",
+      "sha256": "bc3712d5ce43c0e311fe0d820c3b4bbb05af185f8268d5893b9a1e71e4d8264b",
+      "bytes": 745911,
+      "status": "VALID_IPC_REGRESSION_FAIL",
+      "verbatim": true
+    },
+    {
+      "source": "/home/lewis/tmp/vb-f1f5-ipc-repair-benchmark-r169-20261112/REJECTED-CONTAMINATION-EVIDENCE.tar.gz",
+      "copy": "REJECTED-CONTAMINATION-EVIDENCE.tar.gz",
+      "sha256": "42b5171421dd20ba7dcf9f92896421503bf723168381da337393a0c33594b74b",
+      "bytes": 1502685,
+      "status": "REJECTED_CONTAMINATION",
+      "verbatim": true
+    },
+    {
+      "source": "/home/lewis/tmp/vb-f1f5-final-benchmark-r175-20261112/VALID-SUPERSEDED-EVIDENCE.tar.gz",
+      "copy": "VALID-SUPERSEDED-EVIDENCE.tar.gz",
+      "sha256": "120bb8892b7c1e2fcc1157638f1ace3b2be0e2777cbcb5e26b1f3f9fec28e5d0",
+      "bytes": 3002738,
+      "status": "VALID_AT_EA0D_SUPERSEDED_AFTER_TEST_PORT",
+      "verbatim": true
+    }
+  ],
+  "monitor_raw_source_copies": [
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/independent-review/cpu-monitor-session01.log",
+      "bytes": 47919,
+      "sha256": "ca4b977a3ff3a75839bd0aeb3f60b696bf28afb7cbc4203cedec5195489de2ee"
+    },
+    {
+      "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/independent-review/cpu-precheck.json",
+      "bytes": 1408,
+      "sha256": "b526cb62cc3c58a957c3f4b87020d8771c7e1aaab69d0eaa4999583f4c57d41f"
+    }
+  ],
+  "gpu_timeline_qualification": "gpu-timeline-qualification.json",
+  "recovered_gpu_raw_record": {
+    "path": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/independent-review/gpu-idle-observation-owned-raw-r320.jsonl",
+    "bytes": 4133,
+    "sha256": "a9d5646b3d1a70c0d34c146228d065a3b0d43594c5b67f16c858d36a1d818ad3"
+  }
+}

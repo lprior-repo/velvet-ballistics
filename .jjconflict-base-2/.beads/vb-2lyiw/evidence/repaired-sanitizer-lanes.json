@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing",
+  "argv": [
+    "moon",
+    "run",
+    ":fuzz-smoke",
+    ":fuzz-tsan",
+    ":fuzz-regress",
+    "--concurrency",
+    "2"
+  ],
+  "exit_code": 0,
+  "seconds": 755.493,
+  "timeout_seconds": 2700,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-2lyiw/evidence/repaired-sanitizer-lanes"
+}

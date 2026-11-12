@@ -1,0 +1,19 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 11,
+  "sublane": "cap-unblock-bdd-acceptance-evidence",
+  "delegate": "formal-verifier",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/implementation.md",
+    ".evidence/vb-kyyf/storage-replay-resume.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/state11-cap-bdd-acceptance-report.md",
+    ".beads/vb-kyyf/verification-ledger-cap-bdd.jsonl"
+  ],
+  "attempt": "owner-authorized-cap-unblock-1"
+}

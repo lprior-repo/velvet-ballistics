@@ -1,0 +1,22 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 6,
+  "sublane": "proof-review-after-black-hat-stale-ask-kani-repair",
+  "delegate": "proof-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/black-hat-review.md",
+    ".beads/vb-vt2f/defects.md",
+    ".beads/vb-vt2f/proof-evidence.md",
+    ".beads/vb-vt2f/proof-writer-report.md",
+    "crates/vb_runtime/src/kani_vt2f_runtime_facade.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/proof-review.md",
+    ".beads/vb-vt2f/proof-findings.jsonl",
+    ".beads/vb-vt2f/proof-repair-guide.md"
+  ],
+  "attempt": 1,
+  "cap_context": "rerun after black-hat routed proof defect; not proof-review attempt 8"
+}

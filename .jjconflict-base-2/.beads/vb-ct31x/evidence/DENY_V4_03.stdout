@@ -1,0 +1,131 @@
+▮▮▮▮ Loading changed files
+Base revision: N/A
+Head revision: HEAD
+Changed files:
+	.beads/vb-ct31x/contract.md
+	.beads/vb-ct31x/coordinator-v1-rejection.md
+	.beads/vb-ct31x/coordinator-v3-gate-bypass-rejection.md
+	.beads/vb-ct31x/evidence/DENY_V1_01.json
+	.beads/vb-ct31x/evidence/DENY_V1_01.stderr
+	.beads/vb-ct31x/evidence/DENY_V1_01.stdout
+	.beads/vb-ct31x/evidence/DENY_V1_02.json
+	.beads/vb-ct31x/evidence/DENY_V1_02.stderr
+	.beads/vb-ct31x/evidence/DENY_V1_02.stdout
+	.beads/vb-ct31x/evidence/DENY_V1_03.json
+	.beads/vb-ct31x/evidence/DENY_V1_03.stderr
+	.beads/vb-ct31x/evidence/DENY_V1_03.stdout
+	.beads/vb-ct31x/evidence/DENY_V2_01.json
+	.beads/vb-ct31x/evidence/DENY_V2_01.stderr
+	.beads/vb-ct31x/evidence/DENY_V2_01.stdout
+	.beads/vb-ct31x/evidence/DENY_V2_02.json
+	.beads/vb-ct31x/evidence/DENY_V2_02.stderr
+	.beads/vb-ct31x/evidence/DENY_V2_02.stdout
+	.beads/vb-ct31x/evidence/DENY_V2_03.json
+	.beads/vb-ct31x/evidence/DENY_V2_03.stderr
+	.beads/vb-ct31x/evidence/DENY_V2_03.stdout
+	.beads/vb-ct31x/evidence/DENY_V2_04.json
+	.beads/vb-ct31x/evidence/DENY_V2_04.stderr
+	.beads/vb-ct31x/evidence/DENY_V2_04.stdout
+	.beads/vb-ct31x/evidence/DENY_V2_05.json
+	.beads/vb-ct31x/evidence/DENY_V2_05.stderr
+	.beads/vb-ct31x/evidence/DENY_V2_05.stdout
+	.beads/vb-ct31x/evidence/DENY_V2_06.json
+	.beads/vb-ct31x/evidence/DENY_V2_06.stderr
+	.beads/vb-ct31x/evidence/DENY_V2_06.stdout
+	.beads/vb-ct31x/evidence/DENY_V2_07.json
+	.beads/vb-ct31x/evidence/DENY_V2_07.stderr
+	.beads/vb-ct31x/evidence/DENY_V2_07.stdout
+	.beads/vb-ct31x/evidence/DENY_V2_08.json
+	.beads/vb-ct31x/evidence/DENY_V2_08.stderr
+	.beads/vb-ct31x/evidence/DENY_V2_08.stdout
+	.beads/vb-ct31x/evidence/DENY_V2_09.json
+	.beads/vb-ct31x/evidence/DENY_V2_09.stderr
+	.beads/vb-ct31x/evidence/DENY_V2_09.stdout
+	.beads/vb-ct31x/evidence/DENY_V2_10.json
+	.beads/vb-ct31x/evidence/DENY_V2_10.stderr
+	.beads/vb-ct31x/evidence/DENY_V2_10.stdout
+	.beads/vb-ct31x/evidence/DENY_V2_11.json
+	.beads/vb-ct31x/evidence/DENY_V2_11.stderr
+	.beads/vb-ct31x/evidence/DENY_V2_11.stdout
+	.beads/vb-ct31x/handoff-v2.md
+	.beads/vb-ct31x/handoff.md
+	crates/vb_storage/src/batch/emergency_deny.rs
+	crates/vb_storage/src/batch/mod.rs
+	crates/vb_storage/src/batch/putters.rs
+	crates/vb_storage/src/constants.rs
+	crates/vb_storage/src/error/codes.rs
+	crates/vb_storage/src/error/mod.rs
+	crates/vb_storage/src/journal/core.rs
+	crates/vb_storage/src/journal/emergency_deny.rs
+	crates/vb_storage/src/journal/emergency_deny_tests.rs
+	crates/vb_storage/src/journal/mod.rs
+	crates/vb_storage/src/journal/readonly.rs
+	crates/vb_storage/src/journal/tests.rs
+	crates/vb_storage/src/tests.rs
+	fuzz/fuzz_targets/decode_record.rs
+	fuzz/fuzz_targets/journal_decode.rs
+	fuzz/src/journal_target/errors.rs
+	fuzz/tests/proptest_journal_error_exhaustiveness.rs
+▮▮▮▮ Building action graph
+Action count: 11
+Requested targets: 3
+	:fmt
+	:source-length
+	:lint-src
+Resolved targets: 3
+	velvet-ballistics:lint-src
+	velvet-ballistics:source-length
+	velvet-ballistics:fmt
+▮▮▮▮ Executing action pipeline
+▮▮▮▮ velvet-ballistics:workspace-assertions (80ae4217)
+▮▮▮▮ velvet-ballistics:test-integrity (1a7911a3)
+▮▮▮▮ velvet-ballistics:workspace-assertions (99ms, 80ae4217)
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (51869be8)
+velvet-ballistics:ignored-fallible-results | FixturePass: clean production-like fixture exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-001 bare fallible call exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-002 let underscore exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 ok err lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 embedded ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 split ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-004 swallowed Err exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-005 drop fallible exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-006 undocumented allow marker exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: path-bound justified exception exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: overbroad exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | FixturePass: malformed exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | ScanDomain: crates/*/src xtask/src
+velvet-ballistics:ignored-fallible-results | NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+velvet-ballistics:test-integrity | test integrity: PASS base=HEAD
+▮▮▮▮ velvet-ballistics:test-integrity (328ms, 1a7911a3)
+▮▮▮▮ velvet-ballistics:panic-surface (3235fb57)
+velvet-ballistics:panic-surface | CWD: /home/lewis/src/isoloated/vb-ct31x-v4
+velvet-ballistics:panic-surface | CommitSHA: 380a92cb271859ec3d147068e2a7c2bb5a97e7ad
+velvet-ballistics:panic-surface | Toolchain: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+velvet-ballistics:panic-surface | Command: bash scripts/check-panic-surface.sh
+velvet-ballistics:panic-surface | ScanDomain: crates/*/src
+velvet-ballistics:panic-surface | NonProductionPathExcluded: tests benches examples fuzz target .beads fixtures build.rs path-scoped tests.rs *_tests.rs kani harnesses loom models
+velvet-ballistics:panic-surface | NoViolationFound
+velvet-ballistics:panic-surface | ExitCode: 0
+▮▮▮▮ velvet-ballistics:panic-surface (3s 496ms, 3235fb57)
+▮▮▮▮ velvet-ballistics:unsafe-audit (311e8d5f)
+▮▮▮▮ velvet-ballistics:unsafe-audit (10ms, 311e8d5f)
+▮▮▮▮ velvet-ballistics:fmt (3593c3f9)
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/vb-ct31x-v4/crates/vb_storage/src/batch/putters.rs:288:
+          velvet-ballistics:fmt |          self.inner.remove(&self.journal.index_action, key);
+          velvet-ballistics:fmt |          Ok(())
+          velvet-ballistics:fmt |      }
+          velvet-ballistics:fmt | -
+          velvet-ballistics:fmt |  }
+          velvet-ballistics:fmt |  
+▮▮▮▮ velvet-ballistics:fmt (1s 509ms, 3593c3f9)
+velvet-ballistics:ignored-fallible-results | NoViolationFound
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (25s 674ms, 51869be8)
+▮▮▮▮ velvet-ballistics:lint-src (e1f5a325)
+▮▮▮▮ velvet-ballistics:banned-token-gates (no op, 91594a7b)
+▮▮▮▮ velvet-ballistics:source-length (52f07d73)
+▮▮▮▮ velvet-ballistics:source-length (4s 410ms, 52f07d73)
+▮▮▮▮ velvet-ballistics:lint-src (21s 728ms, e1f5a325)
+
+Tasks: 8 completed, 1 failed
+ Time: 48s 71ms
+

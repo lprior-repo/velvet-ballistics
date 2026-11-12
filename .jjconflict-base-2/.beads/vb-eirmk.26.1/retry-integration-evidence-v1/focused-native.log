@@ -1,0 +1,7 @@
+COMMAND: flock --shared target/moon-locks/source-mutation.lock env TMPDIR=/run/user/1000/vbs CARGO_TARGET_DIR=/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target CARGO_BUILD_JOBS=2 RUSTC_WRAPPER= RUSTFLAGS=-Dwarnings timeout 10m rustup run nightly-2026-04-28 cargo nextest run --cargo-quiet -p vb_runtime --lib --all-features timer_wheel_due_handler_error_preserves_ownership_for_retry
+────────────
+ Nextest run ID d53feba2-ece8-4e45-9714-cc0f7764bb75 with nextest profile: default
+    Starting 1 test across 1 binary (2447 tests skipped)
+        PASS [   0.003s] (1/1) vb_runtime shard::lifecycle::tests::timer_wheel_due_handler_error_preserves_ownership_for_retry
+────────────
+     Summary [   0.004s] 1 test run: 1 passed, 2447 skipped

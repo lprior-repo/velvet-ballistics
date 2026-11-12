@@ -866,7 +866,7 @@ obligations:
     proof_level: L2
     crate: reference
     files:
-      - xtask/reference/src/engine_model.rs
+      - crates/reference/src/engine_model.rs
     required:
       differential_tests: [engine_vs_reference]
     commands:
@@ -879,7 +879,7 @@ obligations:
     proof_level: L2
     crate: reference
     files:
-      - xtask/reference/src/taint_model.rs
+      - crates/reference/src/taint_model.rs
     required:
       differential_tests: [taint_vs_reference]
     commands:

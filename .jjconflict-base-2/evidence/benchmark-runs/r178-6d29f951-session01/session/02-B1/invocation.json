@@ -1,0 +1,8 @@
+{
+  "role": "candidate",
+  "root": "/home/lewis/src/isoloated/velvet-ballistics-f1f5-landing-20261111",
+  "pin": "6d29f95138ff2a646da740f772995f8fb927c9f5",
+  "build_output": "/home/lewis/tmp/vb-f1f5-final-benchmark-r178-20261112/build-candidate",
+  "cpu": 14,
+  "phase": "latency"
+}

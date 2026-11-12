@@ -1,0 +1,81 @@
+name: verification_certificate
+screen_kind: VerificationCertificate
+app_snapshot:
+  status:
+    storage_health: Healthy
+    writer_queue_depth: 0
+    journal_batch_healthy: true
+    snapshot_seq: 500
+    blob_store_ok: true
+    index_healthy: true
+    uptime_seconds: 43200
+    active_run_count: 0
+  active_runs: []
+  selected_run: null
+  selected_workflow:
+    workflow_id: wf_verify01
+    workflow_digest: "0x5555555555555555555555555555555555555555555555555555555555555555"
+    nodes:
+      - step_idx: 0
+        label: Start
+        kind: Start
+        input_slot_count: 0
+        output_slot_count: 1
+      - step_idx: 1
+        label: Process
+        kind: Sequence
+        input_slot_count: 1
+        output_slot_count: 1
+      - step_idx: 2
+        label: End
+        kind: Finish
+        input_slot_count: 1
+        output_slot_count: 0
+    edges:
+      - from_step: 0
+        to_step: 1
+        label: null
+      - from_step: 1
+        to_step: 2
+        label: null
+    node_x: [200, 400, 600]
+    node_y: [300, 300, 300]
+  verification:
+    workflow_id: wf_verify01
+    passed: true
+    warnings:
+      - "No retry policy on Process step"
+    certificate:
+      structure: true
+      boundedness: true
+      resources: true
+      taint: true
+      action_policy: true
+      durability: true
+      idempotency: true
+      capability: true
+    gate_results:
+      - name: Structure
+        passed: true
+        detail: null
+      - name: Boundedness
+        passed: true
+        detail: null
+      - name: Resources
+        passed: true
+        detail: null
+      - name: Taint
+        passed: true
+        detail: null
+      - name: ActionPolicy
+        passed: true
+        detail: null
+      - name: Durability
+        passed: true
+        detail: null
+      - name: Idempotency
+        passed: true
+        detail: null
+      - name: Capability
+        passed: true
+        detail: null

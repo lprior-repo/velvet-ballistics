@@ -1,0 +1,3 @@
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/crates/vb_runtime)
+    Finished `flux` profile [unoptimized + debuginfo] target(s) in 0.63s
+# exit_status=0

@@ -1,0 +1,609 @@
+#![forbid(unsafe_code)]
+//! Pure journal analysis logic for trace, retry, resume, answer commands.
+//!
+//! All functions in this module are pure: they accept `&[JournalEvent]` and
+//! return structured data. No I/O, no formatting, no side effects.
+
+use vb_storage::JournalEvent;
+
+// ---------------------------------------------------------------------------
+// Trace
+// ---------------------------------------------------------------------------
+
+/// Structured trace entry produced by [`build_trace`].
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct TraceEntry {
+    pub index: usize,
+    pub event_type: &'static str,
+    pub step: Option<u16>,
+    pub status: Option<TraceStatus>,
+    pub action: Option<u16>,
+    pub seq: u64,
+    /// Extra key-value pairs for JSON output (variant-specific fields).
+    pub extra_json: Vec<(&'static str, serde_json::Value)>,
+}
+
+/// Trace status categories used by CLI filters.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TraceStatus {
+    Pending,
+    Active,
+    WaitingAnswer,
+    Cancelled,
+    Completed,
+    Failed,
+}
+
+impl TraceStatus {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Active => "active",
+            Self::WaitingAnswer => "waiting_answer",
+            Self::Cancelled => "cancelled",
+            Self::Completed => "completed",
+            Self::Failed => "failed",
+        }
+    }
+}
+
+/// Optional trace filters. All populated filters must match.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct TraceFilters {
+    pub(crate) step: Option<u16>,
+    pub(crate) action: Option<u16>,
+    pub(crate) status: Option<TraceStatus>,
+    pub(crate) since_seq: Option<u64>,
+    pub(crate) until_seq: Option<u64>,
+    pub(crate) limit: Option<usize>,
+}
+
+/// Scan a slice of journal events and return one structured entry per event.
+pub(crate) fn build_trace(events: &[JournalEvent]) -> Vec<TraceEntry> {
+    events
+        .iter()
+        .enumerate()
+        .map(|(idx, event)| trace_one(idx, event))
+        .collect()
+}
+
+/// Apply trace filters while preserving the surviving entries' original order and index.
+pub(crate) fn filter_trace(entries: Vec<TraceEntry>, filters: TraceFilters) -> Vec<TraceEntry> {
+    let filtered = entries
+        .into_iter()
+        .filter(|entry| trace_entry_matches_filters(entry, filters));
+    match filters.limit {
+        Some(limit) => filtered.take(limit).collect(),
+        None => filtered.collect(),
+    }
+}
+
+fn trace_entry_matches_filters(entry: &TraceEntry, filters: TraceFilters) -> bool {
+    let step_matches = filters
+        .step
+        .is_none_or(|expected_step| entry.step == Some(expected_step));
+    let action_matches = filters
+        .action
+        .is_none_or(|expected_action| entry.action == Some(expected_action));
+    let status_matches = filters
+        .status
+        .is_none_or(|expected_status| entry.status == Some(expected_status));
+    let since_seq_matches = filters
+        .since_seq
+        .is_none_or(|minimum_seq| entry.seq >= minimum_seq);
+    let until_seq_matches = filters
+        .until_seq
+        .is_none_or(|maximum_seq| entry.seq <= maximum_seq);
+    step_matches && action_matches && status_matches && since_seq_matches && until_seq_matches
+}
+
+fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
+    match event {
+        JournalEvent::RunAccepted { seq, run, workflow } => TraceEntry {
+            index: idx,
+            event_type: "RunAccepted",
+            step: None,
+            status: Some(TraceStatus::Pending),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![
+                ("run", serde_json::Value::from(run.get())),
+                ("workflow", serde_json::Value::from(format!("{workflow:?}"))),
+            ],
+        },
+        JournalEvent::RunAdmission {
+            seq,
+            artifact_digest,
+            granted_capabilities,
+            policy,
+            ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "RunAdmission",
+            step: None,
+            status: Some(TraceStatus::Pending),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![
+                (
+                    "artifact_digest",
+                    serde_json::Value::from(format!("{artifact_digest:?}")),
+                ),
+                (
+                    "granted_capabilities",
+                    serde_json::Value::from(format!("{granted_capabilities:?}")),
+                ),
+                ("policy", serde_json::Value::from(format!("{policy:?}"))),
+            ],
+        },
+        JournalEvent::StepStarted { seq, step, .. } => TraceEntry {
+            index: idx,
+            event_type: "StepStarted",
+            step: Some(step.get()),
+            status: Some(TraceStatus::Active),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![],
+        },
+        JournalEvent::StepSucceeded {
+            seq, step, output, ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "StepSucceeded",
+            step: Some(step.get()),
+            status: Some(TraceStatus::Completed),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![("output", serde_json::Value::from(output.get()))],
+        },
+        JournalEvent::ActionScheduled {
+            seq, step, action, ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "ActionScheduled",
+            step: Some(step.get()),
+            status: Some(TraceStatus::Active),
+            action: Some(action.get()),
+            seq: seq.get(),
+            extra_json: vec![("action", serde_json::Value::from(action.get()))],
+        },
+        JournalEvent::ActionCompletedEvent {
+            seq, step, action, ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "ActionCompleted",
+            step: Some(step.get()),
+            status: Some(TraceStatus::Completed),
+            action: Some(action.get()),
+            seq: seq.get(),
+            extra_json: vec![("action", serde_json::Value::from(action.get()))],
+        },
+        JournalEvent::ActionFailedEvent {
+            seq, step, action, ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "ActionFailed",
+            step: Some(step.get()),
+            status: Some(TraceStatus::Failed),
+            action: Some(action.get()),
+            seq: seq.get(),
+            extra_json: vec![("action", serde_json::Value::from(action.get()))],
+        },
+        JournalEvent::SlotWrittenEvent { seq, slot, .. } => TraceEntry {
+            index: idx,
+            event_type: "SlotWritten",
+            step: None,
+            status: Some(TraceStatus::Completed),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![("slot", serde_json::Value::from(slot.get()))],
+        },
+        JournalEvent::WaitScheduledEvent { seq, step, .. } => TraceEntry {
+            index: idx,
+            event_type: "WaitScheduled",
+            step: Some(step.get()),
+            status: Some(TraceStatus::Active),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![],
+        },
+        JournalEvent::AskScheduledEvent { seq, step, .. } => TraceEntry {
+            index: idx,
+            event_type: "AskScheduled",
+            step: Some(step.get()),
+            status: Some(TraceStatus::WaitingAnswer),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![],
+        },
+        JournalEvent::AskAnsweredEvent { seq, step, .. } => TraceEntry {
+            index: idx,
+            event_type: "AskAnswered",
+            step: Some(step.get()),
+            status: Some(TraceStatus::Completed),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![],
+        },
+        JournalEvent::RetryScheduledEvent { seq, step, .. } => TraceEntry {
+            index: idx,
+            event_type: "RetryScheduled",
+            step: Some(step.get()),
+            status: Some(TraceStatus::Active),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![],
+        },
+        JournalEvent::RunCancelled { seq, .. } => TraceEntry {
+            index: idx,
+            event_type: "RunCancelled",
+            step: None,
+            status: Some(TraceStatus::Cancelled),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![],
+        },
+        JournalEvent::RunKilled { seq, .. } => TraceEntry {
+            index: idx,
+            event_type: "RunKilled",
+            step: None,
+            status: Some(TraceStatus::Cancelled),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![],
+        },
+        JournalEvent::RunFinished { seq, result, .. } => TraceEntry {
+            index: idx,
+            event_type: "RunFinished",
+            step: None,
+            status: Some(TraceStatus::Completed),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![("result", serde_json::Value::from(result.get()))],
+        },
+        JournalEvent::RunFailedEvent { seq, .. } => TraceEntry {
+            index: idx,
+            event_type: "RunFailed",
+            step: None,
+            status: Some(TraceStatus::Failed),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![],
+        },
+        JournalEvent::RunResumed { run, seq, .. } => TraceEntry {
+            index: idx,
+            event_type: "RunResumed",
+            step: None,
+            status: Some(TraceStatus::Active),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![("run", serde_json::Value::from(run.get()))],
+        },
+        JournalEvent::RunRetried { run, seq, .. } => TraceEntry {
+            index: idx,
+            event_type: "RunRetried",
+            step: None,
+            status: Some(TraceStatus::Active),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![("run", serde_json::Value::from(run.get()))],
+        },
+        JournalEvent::RunAnswered {
+            run,
+            seq,
+            slot_idx,
+            answer,
+            ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "RunAnswered",
+            step: None,
+            status: Some(TraceStatus::Completed),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![
+                ("run", serde_json::Value::from(run.get())),
+                ("slot_idx", serde_json::Value::from(slot_idx.get())),
+                ("answer", serde_json::Value::from(format!("{:?}", answer))),
+            ],
+        },
+        JournalEvent::RunContinuation { carrier } => TraceEntry {
+            index: idx,
+            event_type: "RunContinuation",
+            step: None,
+            status: Some(TraceStatus::Active),
+            action: None,
+            seq: carrier.header().own_seq().get(),
+            extra_json: vec![
+                ("run", serde_json::Value::from(carrier.header().run().get())),
+                (
+                    "attempt",
+                    serde_json::Value::from(carrier.header().actual_attempt()),
+                ),
+                (
+                    "prior_seq",
+                    serde_json::Value::from(carrier.header().prior_seq().get()),
+                ),
+            ],
+        },
+        JournalEvent::RetryCheckpoint {
+            seq, step, attempt, ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "RetryCheckpoint",
+            step: Some(step.get()),
+            status: Some(TraceStatus::Active),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![("attempt", serde_json::Value::from(*attempt))],
+        },
+        JournalEvent::StepFailed {
+            seq, step, attempt, ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "StepFailed",
+            step: Some(step.get()),
+            status: Some(TraceStatus::Failed),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![("attempt", serde_json::Value::from(*attempt))],
+        },
+        JournalEvent::ActionScheduledTicket {
+            seq,
+            ticket,
+            input,
+            output,
+            ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "ActionScheduledTicket",
+            step: Some(ticket.step.get()),
+            status: Some(TraceStatus::Active),
+            action: Some(ticket.action.get()),
+            seq: seq.get(),
+            extra_json: vec![
+                ("input", serde_json::Value::from(input.get())),
+                ("output", serde_json::Value::from(output.get())),
+            ],
+        },
+        JournalEvent::ActionCompletedEnvelope {
+            seq,
+            ticket,
+            output,
+            outcome,
+            ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "ActionCompletedEnvelope",
+            step: Some(ticket.step.get()),
+            status: Some(TraceStatus::Completed),
+            action: Some(ticket.action.get()),
+            seq: seq.get(),
+            extra_json: vec![
+                ("output", serde_json::Value::from(output.get())),
+                ("outcome", serde_json::Value::from(format!("{outcome:?}"))),
+            ],
+        },
+        JournalEvent::ActionAbandoned { seq, ticket, .. } => TraceEntry {
+            index: idx,
+            event_type: "ActionAbandoned",
+            step: Some(ticket.step.get()),
+            status: Some(TraceStatus::Cancelled),
+            action: Some(ticket.action.get()),
+            seq: seq.get(),
+            extra_json: vec![],
+        },
+        JournalEvent::WaitResolvedEvent {
+            seq, step, attempt, ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "WaitResolved",
+            step: Some(step.get()),
+            status: Some(TraceStatus::Completed),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![("attempt", serde_json::Value::from(*attempt))],
+        },
+        JournalEvent::AskTimedOutEvent {
+            seq, step, attempt, ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "AskTimedOut",
+            step: Some(step.get()),
+            status: Some(TraceStatus::Completed),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![("attempt", serde_json::Value::from(*attempt))],
+        },
+        JournalEvent::PolicyDecisionEvent { seq, decision, .. } => TraceEntry {
+            index: idx,
+            event_type: "PolicyDecision",
+            step: Some(decision.ticket.step.get()),
+            status: None,
+            action: Some(decision.ticket.action.get()),
+            seq: seq.get(),
+            extra_json: vec![
+                (
+                    "outcome",
+                    serde_json::Value::from(format!("{:?}", decision.outcome)),
+                ),
+                (
+                    "layer",
+                    serde_json::Value::from(format!("{:?}", decision.layer)),
+                ),
+            ],
+        },
+        JournalEvent::GateDecisionEvent { seq, run, record } => TraceEntry {
+            index: idx,
+            event_type: "GateDecision",
+            step: None,
+            status: Some(match record.outcome {
+                vb_core::manual_gate::GateOutcome::Approved
+                | vb_core::manual_gate::GateOutcome::BreakGlassApproved => TraceStatus::Completed,
+                vb_core::manual_gate::GateOutcome::Denied => TraceStatus::Failed,
+                vb_core::manual_gate::GateOutcome::MoreEvidenceRequested
+                | vb_core::manual_gate::GateOutcome::Escalated => TraceStatus::WaitingAnswer,
+                vb_core::manual_gate::GateOutcome::Delegated => TraceStatus::Active,
+            }),
+            action: Some(record.action.get()),
+            seq: seq.get(),
+            extra_json: vec![
+                ("run", serde_json::Value::from(run.get())),
+                ("gate", serde_json::Value::from(record.gate.get())),
+                (
+                    "decision",
+                    serde_json::Value::from(format!("{:?}", record.decision)),
+                ),
+                (
+                    "outcome",
+                    serde_json::Value::from(format!("{:?}", record.outcome)),
+                ),
+            ],
+        },
+        JournalEvent::GateOpenedEvent {
+            seq,
+            run,
+            gate,
+            opened_at_ms,
+            requester,
+        } => TraceEntry {
+            index: idx,
+            event_type: "GateOpened",
+            step: None,
+            status: Some(TraceStatus::WaitingAnswer),
+            action: Some(gate.action.get()),
+            seq: seq.get(),
+            extra_json: vec![
+                ("run", serde_json::Value::from(run.get())),
+                ("gate", serde_json::Value::from(gate.id.get())),
+                ("opened_at_ms", serde_json::Value::from(*opened_at_ms)),
+                ("requester", serde_json::Value::from(requester.value())),
+            ],
+        },
+        JournalEvent::CompatibilityDecisionEvent { seq, run, decision } => TraceEntry {
+            index: idx,
+            event_type: "CompatibilityDecision",
+            step: None,
+            status: None,
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![
+                ("run", serde_json::Value::from(run.get())),
+                (
+                    "boundary",
+                    serde_json::Value::from(format!("{:?}", decision.boundary)),
+                ),
+                (
+                    "class",
+                    serde_json::Value::from(format!("{:?}", decision.class)),
+                ),
+                (
+                    "rule",
+                    serde_json::Value::from(format!("{:?}", decision.rule)),
+                ),
+                (
+                    "decision_code",
+                    serde_json::Value::from(format!("{:?}", decision.decision_code)),
+                ),
+            ],
+        },
+        _ => TraceEntry {
+            index: idx,
+            event_type: "Unknown",
+            step: None,
+            status: None,
+            action: None,
+            seq: 0,
+            extra_json: vec![],
+        },
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Retry
+// ---------------------------------------------------------------------------
+
+/// Analysis result produced by [`analyze_retry`].
+#[derive(Debug, Clone)]
+pub(crate) struct RetryAnalysis {
+    pub failed_at_step: Option<u16>,
+    pub last_successful_step: Option<u16>,
+    pub can_retry: bool,
+    pub reason: String,
+}
+
+/// Scan a journal and decide whether a retry is possible.
+///
+/// Returns structured data; the caller is responsible for formatting.
+pub(crate) fn analyze_retry(events: &[JournalEvent]) -> RetryAnalysis {
+    // `RetryCheckpoint` is retry-authority evidence, not an execution-attempt
+    // transition. It is excluded from attempt selection so a trailing checkpoint
+    // (captured at the failure boundary) does not masquerade as an executed next
+    // attempt.
+    let latest_attempt = events
+        .iter()
+        .filter(|event| !matches!(event, JournalEvent::RetryCheckpoint { .. }))
+        .filter_map(JournalEvent::attempt)
+        .max()
+        .unwrap_or(1);
+    let latest_events = events
+        .iter()
+        .filter(|event| event.attempt().unwrap_or(1) == latest_attempt);
+    let state = latest_events.fold(
+        (None, None),
+        |(last_successful, pending), event| match event {
+            JournalEvent::StepStarted { step, .. } => (last_successful, Some(step.get())),
+            JournalEvent::StepFailed { step, .. } => (last_successful, Some(step.get())),
+            JournalEvent::ActionFailedEvent { step, .. } => (last_successful, Some(step.get())),
+            JournalEvent::StepSucceeded { step, .. } => {
+                let new_pending = if pending == Some(step.get()) {
+                    None
+                } else {
+                    pending
+                };
+                (Some(step.get()), new_pending)
+            }
+            _ => (last_successful, pending),
+        },
+    );
+
+    let (last_successful_step, pending_step) = state;
+
+    // The run is retryable when the last execution evidence for the latest attempt
+    // is its durable `RunFailedEvent`, allowing a trailing retry checkpoint.
+    let is_failed = events
+        .iter()
+        .rev()
+        .find(|event| !matches!(event, JournalEvent::RetryCheckpoint { .. }))
+        .is_some_and(|event| {
+            matches!(event, JournalEvent::RunFailedEvent { attempt, .. } if *attempt == latest_attempt)
+        });
+
+    if !is_failed {
+        return RetryAnalysis {
+            failed_at_step: None,
+            last_successful_step,
+            can_retry: false,
+            reason: "run did not fail (no retry needed)".into(),
+        };
+    }
+
+    RetryAnalysis {
+        failed_at_step: pending_step,
+        last_successful_step,
+        can_retry: true,
+        reason: String::new(),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+#[path = "commands_journal/tests.rs"]
+mod tests;
+
+#[cfg(test)]
+#[path = "commands_journal/retry_analysis_tests.rs"]
+mod retry_analysis_tests;

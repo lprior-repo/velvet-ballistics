@@ -1,0 +1,11 @@
+{
+  "args": [
+    "dep",
+    "add",
+    "vb-eirmk.11",
+    "vb-eirmk.69"
+  ],
+  "stdout": "{\n  \"depends_on_id\": \"vb-eirmk.69\",\n  \"issue_id\": \"vb-eirmk.11\",\n  \"schema_version\": 1,\n  \"status\": \"added\",\n  \"type\": \"blocks\"\n}\n",
+  "stderr": "",
+  "exit": 0
+}

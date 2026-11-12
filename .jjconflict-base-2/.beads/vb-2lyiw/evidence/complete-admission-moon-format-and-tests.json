@@ -1,0 +1,25 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing",
+  "argv": [
+    "moon",
+    "run",
+    "velvet-ballistics:fmt",
+    "velvet-ballistics:check",
+    "velvet-ballistics:test",
+    "velvet-ballistics:doc-test",
+    "velvet-ballistics:doc",
+    "--force",
+    "--downstream",
+    "none",
+    "--concurrency",
+    "2"
+  ],
+  "exit_code": 0,
+  "seconds": 294.682,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-2lyiw/evidence/complete-admission-moon-format-and-tests"
+}

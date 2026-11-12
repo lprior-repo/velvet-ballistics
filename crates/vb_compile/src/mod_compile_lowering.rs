@@ -59,6 +59,12 @@ mod proptest_step_offset;
 #[path = "mod_compile_lowering/canonical_collect_scoped_tests.rs"]
 mod canonical_collect_scoped_tests;
 #[cfg(test)]
+#[path = "mod_compile_lowering/canonical_choose_scoped_tests.rs"]
+mod canonical_choose_scoped_tests;
+#[cfg(test)]
+#[path = "mod_compile_lowering/canonical_for_each_scoped_tests.rs"]
+mod canonical_for_each_scoped_tests;
+#[cfg(test)]
 #[path = "mod_compile_lowering/vb_8mdp_7_collect.rs"]
 mod vb_8mdp_7_collect;
 

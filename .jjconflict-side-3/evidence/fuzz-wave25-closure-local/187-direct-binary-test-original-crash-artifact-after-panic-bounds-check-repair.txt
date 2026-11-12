@@ -1,0 +1,25 @@
+=== Direct binary test with original crash artifact (0a 0a b3 5b) ===
+Working dir: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+Git toplevel: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+JJ root: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+Date: 2026-07-10T12:36:02Z
+
+-rw-r--r-- 1 lewis lewis 4 Jul 10 07:36 /tmp/fuzz_crash_artifact.bin
+
+Crash artifact bytes:
+zsh:14: command not found: xxd
+
+Command: target/x86_64-unknown-linux-gnu/release/fuzz_retry_record_attempt /tmp/fuzz_crash_artifact.bin
+
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2378741929
+INFO: Loaded 1 modules   (6045 inline 8-bit counters): 6045 [0x5611e0958160, 0x5611e09598fd), 
+INFO: Loaded 1 PC tables (6045 PCs): 6045 [0x5611e0959900,0x5611e09712d0), 
+./fuzz/target/x86_64-unknown-linux-gnu/release/fuzz_retry_record_attempt: Running 1 inputs 1 time(s) each.
+Running: /tmp/fuzz_crash_artifact.bin
+Executed /tmp/fuzz_crash_artifact.bin in 0 ms
+***
+*** NOTE: fuzzing was not performed, you have only
+***       executed the target code on a fixed set of inputs.
+***
+exit_status=0

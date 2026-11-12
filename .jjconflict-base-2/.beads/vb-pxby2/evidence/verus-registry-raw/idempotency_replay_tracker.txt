@@ -1,0 +1,168 @@
+[verus] verus --crate-type=lib verification/verus/idempotency_replay_tracker.rs
+note: automatically chose triggers for this expression:
+   --> verification/verus/idempotency_replay_tracker.rs:349:5
+    |
+349 | /     exists|key: (SpecActionId, SpecStepIdx)| {
+350 | |         &&& key.0.0 as int == action
+351 | |         &&& key.1.0 as int == step
+352 | |         &&& tracker.completed@.contains(key)
+353 | |     }
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> verification/verus/idempotency_replay_tracker.rs:352:13
+    |
+352 |         &&& tracker.completed@.contains(key)
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/idempotency_replay_tracker.rs:371:5
+    |
+371 | /     exists|key: (SpecActionId, SpecStepIdx)| {
+372 | |         &&& key.0.0 as int == action
+373 | |         &&& key.1.0 as int == step
+374 | |         &&& tracker.failed@.contains(key)
+375 | |     }
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> verification/verus/idempotency_replay_tracker.rs:374:13
+    |
+374 |         &&& tracker.failed@.contains(key)
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/idempotency_replay_tracker.rs:432:9
+    |
+432 | /         forall |a: int, s: int|
+433 | |             spec_action_step_in_range(a, s) && (a != action.0 as int || s != step.0 as int) ==>
+434 | |                 spec_has_completed(*old(tracker), a, s)
+435 | |                     == spec_has_completed(*final(tracker), a, s),
+    | |________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> verification/verus/idempotency_replay_tracker.rs:433:13
+    |
+433 |             spec_action_step_in_range(a, s) && (a != action.0 as int || s != step.0 as int) ==>
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/idempotency_replay_tracker.rs:437:9
+    |
+437 | /         forall |a: int, s: int|
+438 | |             spec_action_step_in_range(a, s) ==>
+439 | |                 spec_has_failed(*old(tracker), a, s) == spec_has_failed(*final(tracker), a, s),
+    | |______________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> verification/verus/idempotency_replay_tracker.rs:438:13
+    |
+438 |             spec_action_step_in_range(a, s) ==>
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/idempotency_replay_tracker.rs:464:9
+    |
+464 | /         forall |a: int, s: int|
+465 | |             spec_action_step_in_range(a, s) && (a != action.0 as int || s != step.0 as int) ==>
+466 | |                 spec_has_failed(*old(tracker), a, s)
+467 | |                     == spec_has_failed(*final(tracker), a, s),
+    | |_____________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> verification/verus/idempotency_replay_tracker.rs:465:13
+    |
+465 |             spec_action_step_in_range(a, s) && (a != action.0 as int || s != step.0 as int) ==>
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/idempotency_replay_tracker.rs:469:9
+    |
+469 | /         forall |a: int, s: int|
+470 | |             spec_action_step_in_range(a, s) ==>
+471 | |                 spec_has_completed(*old(tracker), a, s) == spec_has_completed(*final(tracker), a, s),
+    | |____________________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> verification/verus/idempotency_replay_tracker.rs:470:13
+    |
+470 |             spec_action_step_in_range(a, s) ==>
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/idempotency_replay_tracker.rs:548:9
+    |
+548 | /         forall |a: int, s: int|
+549 | |             spec_action_step_in_range(a, s) ==>
+550 | |                 spec_has_failed(*old(tracker), a, s) == spec_has_failed(*final(tracker), a, s),
+    | |______________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> verification/verus/idempotency_replay_tracker.rs:549:13
+    |
+549 |             spec_action_step_in_range(a, s) ==>
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/idempotency_replay_tracker.rs:569:9
+    |
+569 | /         forall |a: int, s: int|
+570 | |             spec_action_step_in_range(a, s) ==>
+571 | |                 spec_has_completed(*old(tracker), a, s) == spec_has_completed(*final(tracker), a, s),
+    | |____________________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> verification/verus/idempotency_replay_tracker.rs:570:13
+    |
+570 |             spec_action_step_in_range(a, s) ==>
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/idempotency_replay_tracker.rs:598:9
+    |
+598 | /         forall |a: int, s: int|
+599 | |             spec_action_step_in_range(a, s) ==>
+600 | |                 spec_has_failed(*old(tracker), a, s) == spec_has_failed(*final(tracker), a, s),
+    | |______________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> verification/verus/idempotency_replay_tracker.rs:599:13
+    |
+599 |             spec_action_step_in_range(a, s) ==>
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/idempotency_replay_tracker.rs:627:9
+    |
+627 | /         forall |a: int, s: int|
+628 | |             spec_action_step_in_range(a, s) ==>
+629 | |                 spec_has_completed(*old(tracker), a, s) == spec_has_completed(*final(tracker), a, s),
+    | |____________________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> verification/verus/idempotency_replay_tracker.rs:628:13
+    |
+628 |             spec_action_step_in_range(a, s) ==>
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> verification/verus/idempotency_replay_tracker.rs:627:9
+    |
+627 | /         forall |a: int, s: int|
+628 | |             spec_action_step_in_range(a, s) ==>
+629 | |                 spec_has_completed(*old(tracker), a, s) == spec_has_completed(*final(tracker), a, s),
+    | |____________________________________________________________________________________________________^
+
+verification results:: 12 verified, 0 errors

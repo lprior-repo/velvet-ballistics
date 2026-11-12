@@ -1,0 +1,18 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-deepseek-repair",
+  "argv": [
+    "cargo",
+    "fmt",
+    "--manifest-path",
+    "xtask/Cargo.toml"
+  ],
+  "exit_code": 0,
+  "seconds": 0.085,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-j3e3s/evidence/fmt-xtask",
+  "coordinator_message": "Additional concrete Stage1 issue found by root: existing crates/workspace_tests/benches/velvet_ballistics.rs BENCH_METADATA literally includes forbidden instructions=not-collected and allocations=allocator-external. New actual Criterion raw stdout will contain these and gate rejects; do not sanitize raw logs or weaken forbidden marker check. In Stage1 replace ONLY those descriptive ID fields with truthful neutral metadata e.g. measurement=criterion-timing;external-counters=separate-evidence (no claim counts collected on every bench). Preserve workload/code; independent review will check metadata-only change. Then Stage2 real perf and heaptrack evidence will supply actual counts. This must be done BEFORE final measured source freeze. Existing bench already compiled; do not addfakefixture. Public xtask legacy CLI uses current process cwd so integration child Command.current_dir(tempdir) achieves publicflow without globalcwdmutation. Keep modules under300, tests helperResult and uniqueTempDir, actual dirtyproductionvalidator negative. END source only; no Stage2 measurements in this context.\nAdditional root audit of in-progress benchmark_freshness.rs: currently git ls-files --others --exclude-standard hides ignored firstparty inputs. This permits ignored new .cargo/config or ignored included Rust sources to alter measuredprogram with noinvalidaton. Include ignored relevant files too (pathspecs under relevant roots, explicit excludes ONLY buildoutput target/.jj/.git caches) and actual regression sets .gitignore for relevant config thenchangesfile: mustreject. Also include legacy rust-toolchain filename and .moon/config/build roots or use conservative alltrackedfirstparty minusexplicit evidence/docs/bead/artifactoutputs rather than narrowmissingdependencies. No NEW #![allow(unreachable_pub)] inhelpermodules: pub(crate) sufficient and promptforbidsnewallow. Root seesnewbenchmark_budget/freshness helpernewallow. Remove those ifnotneeded, neveraddexceptledger. Existingbiglegacyexceptionsretainedonlypreexisting. ExistingBENCH_METADATA placeholderfixstillrequiredbeforefreeze. Temporary Git fixture commits permitted using /usr/bin/git only, never projectGitmutations. END after actual productionvalidator+publicCLI regressions; source-only no Stage2.\n"
+}

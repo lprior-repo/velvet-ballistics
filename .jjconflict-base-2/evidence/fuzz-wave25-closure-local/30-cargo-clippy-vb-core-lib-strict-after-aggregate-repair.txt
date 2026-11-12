@@ -1,0 +1,10 @@
+   Compiling syn v2.0.117
+   Compiling num-traits v0.2.19
+   Compiling serde_derive v1.0.228
+   Compiling thiserror-impl v2.0.18
+    Checking thiserror v2.0.18
+    Checking serde v1.0.228
+    Checking chrono v0.4.44
+    Checking bytes v1.11.1
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.01s

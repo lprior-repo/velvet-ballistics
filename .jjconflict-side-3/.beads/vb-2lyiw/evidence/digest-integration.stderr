@@ -1,0 +1,6 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/digest_ask_determinism.rs (target/debug/deps/digest_ask_determinism-600f030f9ccf3494)
+     Running tests/digest_compilation_pipeline.rs (target/debug/deps/digest_compilation_pipeline-6d530936976c5587)
+     Running tests/digest_framing_collision.rs (target/debug/deps/digest_framing_collision-b17c76b403c4e0d0)
+     Running tests/digest_set_finish_regression.rs (target/debug/deps/digest_set_finish_regression-ba0e6cf2eaceff06)
+     Running tests/digest_structural_fields.rs (target/debug/deps/digest_structural_fields-9e662360fd6f25df)

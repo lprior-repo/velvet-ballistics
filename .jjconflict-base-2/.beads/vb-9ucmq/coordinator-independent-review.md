@@ -1,0 +1,6 @@
+# STATUS: APPROVED for the bounded compatible root-lock patch
+Author: LOCAL3090. Independent coordinator review: exact Cargo.lock delta inspected, only crossbeam-epoch0.9.18->0.9.20 and rtrb0.3.4->0.3.5 versions/checksums changed. No manifest pin, production API, policy ignore, or unrelated dependency delta.
+Primary sources checked live: https://rustsec.org/advisories/RUSTSEC-2026-0204 (patched>=0.9.20) and https://rustsec.org/advisories/RUSTSEC-2026-0274 (0.3.x users prefer0.3.5 due0.4 behavior change).
+Actual independent immutable-runner metadata/raw logs: coordinator-audit exit0 (six existing allowed warnings remain); coordinator-consumer-libs exit0, core2177/storage1617/runtime1938/IPC537 =6269 tests. This is bounded consumer evidence, not powercut/concurrency proof or full CI.
+`cargo locate-project --workspace --manifest-path fuzz/Cargo.toml` resolves this workspace root Cargo.toml: fuzz is an explicit root workspace member. Its separately tracked historical fuzz/Cargo.lock is unused by current workspace resolution; it was left unchanged. A failed cargo generate-lockfile attempt hit the already-yanked pinned Fjall and did not change the resolved lock. No Fjall upgrade was made.
+Full supply-chain deny/vet/geiger and canonical CI remain separate gates; no claimed pass from a cargo-audit pass alone.

@@ -1,0 +1,593 @@
+1: use chrono::{DateTime, Utc};
+2: use std::num::NonZeroUsize;
+3: use std::sync::{Arc, Mutex};
+4: use vb_core::Taint;
+5: use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+6: use vb_storage::{
+7:     DurabilityProfile, EventSeq, FjallJournal, JournalEvent, JournalWriterFlushReport,
+8:     JournalWriterQueue,
+9: };
+10: 
+11: use crate::{RuntimeError, RuntimeResult};
+12: 
+13: /// Minimal lifecycle event emitted by the runtime before a durable store is wired.
+14: #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+15: #[non_exhaustive]
+16: pub enum RuntimeJournalEvent {
+17:     /// Run was accepted by the runtime.
+18:     RunSubmitted {
+19:         /// Run identifier.
+20:         run: RunId,
+21:         /// Compiled workflow digest admitted for this run.
+22:         workflow: WorkflowDigest,
+23:     },
+24:     /// Run admission metadata was recorded after admission control succeeded.
+25:     RunAdmission {
+26:         /// Admission record for this run.
+27:         admission: crate::admission::RunAdmission,
+28:     },
+29:     /// Full typed checkpoint and next-attempt authority for a retry.
+30:     RetryCheckpoint {
+31:         /// Run identifier.
+32:         run: RunId,
+33:         /// New run attempt authorized by this checkpoint.
+34:         attempt: u16,
+35:         /// Failed step selected for re-execution.
+36:         step: StepIdx,
+37:         /// Digest of the serialized checkpoint payload.
+38:         payload_digest: [u8; 32],
+39:         /// Serialized versioned checkpoint payload.
+40:         payload: Vec<u8>,
+41:     },
+42:     /// Run reached a successful terminal state.
+43:     RunFinished {
+44:         /// Run identifier.
+45:         run: RunId,
+46:         /// Result slot selected by the terminal finish node.
+47:         result: SlotIdx,
+48:         /// Run attempt that reached the terminal state.
+49:         attempt: u16,
+50:     },
+51:     /// Run reached a failed terminal state.
+52:     RunFailed {
+53:         /// Run identifier.
+54:         run: RunId,
+55:         /// Run attempt that failed.
+56:         attempt: u16,
+57:     },
+58:     /// Run was cancelled by the caller.
+59:     RunCancelled {
+60:         /// Run identifier.
+61:         run: RunId,
+62:         /// Optional cancellation reason.
+63:         reason: Option<String>,
+64:         /// Run attempt that was cancelled.
+65:         attempt: u16,
+66:     },
+67:     /// Run was killed by the runtime.
+68:     RunKilled {
+69:         /// Run identifier.
+70:         run: RunId,
+71:         /// Run attempt that was killed.
+72:         attempt: u16,
+73:     },
+74:     /// Action was scheduled and handed to the external action boundary.
+75:     ActionScheduled {
+76:         /// Run identifier.
+77:         run: RunId,
+78:         /// Step that scheduled the action.
+79:         step: StepIdx,
+80:         /// Action identifier.
+81:         action: ActionId,
+82:     },
+83:     /// Action completed successfully.
+84:     ActionCompleted {
+85:         /// Run identifier.
+86:         run: RunId,
+87:         /// Step that received completion.
+88:         step: StepIdx,
+89:         /// Action identifier.
+90:         action: ActionId,
+91:     },
+92:     /// Action was scheduled with the full ticket preserved for durable replay.
+93:     ActionScheduledTicket {
+94:         /// Full ticket issued for the action.
+95:         ticket: vb_core::action::ActionTicket,
+96:         /// Input slot consumed by the action.
+97:         input: SlotIdx,
+98:         /// Output slot expected to receive the result.
+99:         output: SlotIdx,
+100:         /// Digest of the persisted action ABI contract used for this action.
+101:         action_abi_digest: WorkflowDigest,
+102:     },
+103:     /// Action completed successfully with an atomic durable envelope.
+104:     ActionCompletedEnvelope {
+105:         /// Full ticket completed by the action boundary.
+106:         ticket: vb_core::action::ActionTicket,
+107:         /// Output slot written by the action.
+108:         output: SlotIdx,
+109:         /// Encoded output value bytes.
+110:         value: Vec<u8>,
+111:         /// Encoded output byte length validated before persistence.
+112:         encoded_len: u32,
+113:         /// Taint written with the output value.
+114:         taint: Taint,
+115:         /// BLAKE3 digest of `value` used to reject divergent duplicate evidence.
+116:         value_digest: [u8; 32],
+117:         /// Digest of the persisted action ABI contract used for this action.
+118:         action_abi_digest: WorkflowDigest,
+119:     },
+120:     /// Action failed at the external action boundary.
+121:     ActionFailed {
+122:         /// Run identifier.
+123:         run: RunId,
+124:         /// Step that received failure.
+125:         step: StepIdx,
+126:         /// Action identifier.
+127:         action: ActionId,
+128:         /// Execution attempt number for this action.
+129:         attempt: u16,
+130:     },
+131:     /// Action was abandoned because the run was cancelled or killed
+132:     /// before the action boundary completed. Carries the full ticket
+133:     /// so recovery can deterministically finalize the step without
+134:     /// re-executing the external action. Master §45 Do-node "Resume"
+135:     /// sub-row requires this event.
+136:     ActionAbandoned {
+137:         /// Full ticket that was abandoned. All seven required
+138:         /// `ActionTicket` fields are preserved across the durability
+139:         /// boundary.
+140:         ticket: vb_core::action::ActionTicket,
+141:     },
+142:     /// Wait was scheduled and the run suspended.
+143:     WaitScheduled {
+144:         /// Run identifier.
+145:         run: RunId,
+146:         /// Step that scheduled the wait.
+147:         step: StepIdx,
+148:     },
+149:     /// Wait was resolved by an external timer.
+150:     WaitResolved {
+151:         /// Run identifier.
+152:         run: RunId,
+153:         /// Step that resumed from waiting.
+154:         step: StepIdx,
+155:     },
+156:     /// Ask was scheduled and the run suspended.
+157:     AskScheduled {
+158:         /// Run identifier.
+159:         run: RunId,
+160:         /// Step that scheduled the ask.
+161:         step: StepIdx,
+162:     },
+163:     /// Ask was answered and wrote a slot.
+164:     AskAnswered {
+165:         /// Run identifier.
+166:         run: RunId,
+167:         /// Step that scheduled the ask.
+168:         step: StepIdx,
+169:         /// Slot that received the answer.
+170:         slot: SlotIdx,
+171:     },
+172:     /// Ask timed out and resumed along the timeout path.
+173:     AskTimedOut {
+174:         /// Run identifier.
+175:         run: RunId,
+176:         /// Step that scheduled the ask.
+177:         step: StepIdx,
+178:     },
+179:     /// Slot was written by an external runtime boundary.
+180:     SlotWritten {
+181:         /// Run identifier.
+182:         run: RunId,
+183:         /// Slot written by the event.
+184:         slot: SlotIdx,
+185:         /// Encoded slot value bytes (postcard-encoded `SlotValue`).
+186:         value: Vec<u8>,
+187:         /// Taint written with this slot value.
+188:         taint: Taint,
+189:         /// Encoded frame extra data captured with this slot write.
+190:         extra: Option<Vec<u8>>,
+191:     },
+192:     /// Deterministic step began execution.
+193:     StepStarted {
+194:         /// Run identifier.
+195:         run: RunId,
+196:         /// Step index.
+197:         step: StepIdx,
+198:         /// Run attempt in which the step started.
+199:         attempt: u16,
+200:     },
+201:     /// Deterministic step completed and wrote an output slot.
+202:     StepSucceeded {
+203:         /// Run identifier.
+204:         run: RunId,
+205:         /// Step index.
+206:         step: StepIdx,
+207:         /// Output slot index.
+208:         output: SlotIdx,
+209:         /// Execution attempt number for this step.
+210:         attempt: u16,
+211:     },
+212:     /// Run was resumed from a suspended state.
+213:     Resumed {
+214:         /// Run identifier.
+215:         run: RunId,
+216:         /// Monotonic timestamp in seconds since epoch.
+217:         timestamp: u64,
+218:     },
+219: }
+220: 
+221: impl RuntimeJournalEvent {
+222:     /// Run identifier carried by this runtime event.
+223:     #[must_use]
+224:     pub fn run_id(&self) -> RunId {
+225:         match self {
+226:             Self::RunSubmitted { run, .. }
+227:             | Self::RunFinished { run, .. }
+228:             | Self::RunFailed { run, .. }
+229:             | Self::RunCancelled { run, .. }
+230:             | Self::RunKilled { run, .. }
+231:             | Self::ActionScheduled { run, .. }
+232:             | Self::ActionCompleted { run, .. }
+233:             | Self::ActionFailed { run, .. }
+234:             | Self::WaitScheduled { run, .. }
+235:             | Self::WaitResolved { run, .. }
+236:             | Self::AskScheduled { run, .. }
+237:             | Self::AskAnswered { run, .. }
+238:             | Self::AskTimedOut { run, .. }
+239:             | Self::SlotWritten { run, .. }
+240:             | Self::StepStarted { run, .. }
+241:             | Self::StepSucceeded { run, .. }
+242:             | Self::Resumed { run, .. } => *run,
+243:             Self::ActionScheduledTicket { ticket, .. }
+244:             | Self::ActionCompletedEnvelope { ticket, .. }
+245:             | Self::ActionAbandoned { ticket } => ticket.run,
+246:             Self::RunAdmission { admission } => admission.run_id(),
+247:             Self::RetryCheckpoint { run, .. } => *run,
+248:         }
+249:     }
+250: 
+251:     /// Stable variant name for typed storage-mapping diagnostics.
+252:     #[must_use]
+253:     pub const fn kind(&self) -> &'static str {
+254:         match self {
+255:             Self::RunSubmitted { .. } => "RunSubmitted",
+256:             Self::RunAdmission { .. } => "RunAdmission",
+257:             Self::RetryCheckpoint { .. } => "RetryCheckpoint",
+258:             Self::RunFinished { .. } => "RunFinished",
+259:             Self::RunFailed { .. } => "RunFailed",
+260:             Self::RunCancelled { .. } => "RunCancelled",
+261:             Self::RunKilled { .. } => "RunKilled",
+262:             Self::ActionScheduled { .. } => "ActionScheduled",
+263:             Self::ActionCompleted { .. } => "ActionCompleted",
+264:             Self::ActionScheduledTicket { .. } => "ActionScheduledTicket",
+265:             Self::ActionCompletedEnvelope { .. } => "ActionCompletedEnvelope",
+266:             Self::ActionFailed { .. } => "ActionFailed",
+267:             Self::ActionAbandoned { .. } => "ActionAbandoned",
+268:             Self::WaitScheduled { .. } => "WaitScheduled",
+269:             Self::WaitResolved { .. } => "WaitResolved",
+270:             Self::AskScheduled { .. } => "AskScheduled",
+271:             Self::AskAnswered { .. } => "AskAnswered",
+272:             Self::AskTimedOut { .. } => "AskTimedOut",
+273:             Self::SlotWritten { .. } => "SlotWritten",
+274:             Self::StepStarted { .. } => "StepStarted",
+275:             Self::StepSucceeded { .. } => "StepSucceeded",
+276:             Self::Resumed { .. } => "Resumed",
+277:         }
+278:     }
+279: }
+280: 
+281: /// Append-only port used by runtime shards for lifecycle journaling.
+282: pub trait RuntimeJournal: Send + Sync {
+283:     /// Explicit trusted startup catalog; raw serialized reports cannot create this value.
+284:     fn executor_catalog(&self) -> Option<Arc<vb_storage::executor::ExecutorCatalog>> {
+285:         None
+286:     }
+287: 
+288:     /// Appends a lifecycle event.
+289:     fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()>;
+290: 
+291:     /// Returns the underlying Fjall journal if this is a storage-backed journal.
+292:     ///
+293:     /// Returns `Some(Arc<FjallJournal>)` for `StorageRuntimeJournal`, or `None` for
+294:     /// noop/volatile journals. This allows callers to construct a
+295:     /// `StorageArtifactStore` from a storage-backed journal for strict/journaled
+296:     /// artifact admission.
+297:     fn storage_journal(&self) -> Option<std::sync::Arc<vb_storage::FjallJournal>> {
+298:         None
+299:     }
+300: 
+301:     /// Appends a lifecycle event whose per-run sequence is owned by the shard.
+302:     fn append_sequenced(&self, event: RuntimeJournalEvent, _seq: EventSeq) -> RuntimeResult<()> {
+303:         self.append(event)
+304:     }
+305:     /// Converts a `RuntimeJournalEvent` into a storage `JournalEvent` with the
+306:     /// given sequence. Only `StorageRuntimeJournal` and `QueuedStorageRuntimeJournal`
+307:     /// can perform this conversion; noop/volatile journals return
+308:     /// `UnsupportedOperation` since they lack a storage event format.
+309:     fn convert_to_storage_event(
+310:         &self,
+311:         _event: RuntimeJournalEvent,
+312:         _seq: EventSeq,
+313:     ) -> RuntimeResult<vb_storage::JournalEvent> {
+314:         Err(RuntimeError::UnsupportedOperation {
+315:             operation: "storage_event_conversion",
+316:         })
+317:     }
+318: 
+319:     /// Appends a same-run lifecycle batch whose first per-run sequence is owned
+320:     /// by the shard.
+321:     ///
+322:     /// The default fails closed for multi-event batches so callers cannot get a
+323:     /// partial durable prefix from a journal implementation that has not opted
+324:     /// into atomic batch semantics.
+325:     fn append_sequenced_batch(
+326:         &self,
+327:         events: &[RuntimeJournalEvent],
+328:         start_seq: EventSeq,
+329:     ) -> RuntimeResult<()> {
+330:         let Some((event, rest)) = events.split_first() else {
+331:             return Ok(());
+332:         };
+333:         if !rest.is_empty() {
+334:             return Err(RuntimeError::UnsupportedOperation {
+335:                 operation: "runtime_journal_batch_append",
+336:             });
+337:         }
+338:         self.append_sequenced(event.clone(), start_seq)
+339:     }
+340: 
+341:     /// Appends a policy decision with strict durable acknowledgement at the
+342:     /// given per-run sequence. The default fails closed for implementations
+343:     /// that lack a strict port (noop and volatile journals).
+344:     fn append_policy_decision_strict(
+345:         &self,
+346:         _decision: vb_core::policy::DecisionRecord,
+347:         _seq: EventSeq,
+348:     ) -> RuntimeResult<()> {
+349:         Err(RuntimeError::UnsupportedOperation {
+350:             operation: "append_policy_decision_strict",
+351:         })
+352:     }
+353: 
+354:     /// Probes journal health without side effects.
+355:     /// Returns `JournalPoisoned` if the underlying storage is unavailable.
+356:     fn probe(&self) -> RuntimeResult<()>;
+357: 
+358:     /// Drains queued durable writes during graceful shutdown.
+359:     fn drain_for_shutdown(&self) -> RuntimeResult<JournalWriterFlushReport> {
+360:         Ok(JournalWriterFlushReport {
+361:             drained: 0,
+362:             written: 0,
+363:         })
+364:     }
+365: }
+366: 
+367: /// Shared journal trait object.
+368: pub type SharedRuntimeJournal = Arc<dyn RuntimeJournal>;
+369: 
+370: /// Journal implementation that intentionally drops all events.
+371: #[derive(Debug, Default)]
+372: pub struct NoopRuntimeJournal;
+373: 
+374: impl NoopRuntimeJournal {
+375:     /// Creates a shared noop journal for explicitly non-durable tests or benchmarks.
+376:     #[must_use]
+377:     pub fn shared_for_tests_and_benchmarks() -> SharedRuntimeJournal {
+378:         Arc::new(Self)
+379:     }
+380: 
+381:     /// Creates a shared noop journal for callers that explicitly select no durability.
+382:     #[must_use]
+383:     pub fn shared() -> SharedRuntimeJournal {
+384:         Self::shared_for_tests_and_benchmarks()
+385:     }
+386: }
+387: 
+388: impl RuntimeJournal for NoopRuntimeJournal {
+389:     fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
+390:         Ok(())
+391:     }
+392: 
+393:     fn append_sequenced_batch(
+394:         &self,
+395:         _events: &[RuntimeJournalEvent],
+396:         _start_seq: EventSeq,
+397:     ) -> RuntimeResult<()> {
+398:         Ok(())
+399:     }
+400: 
+401:     fn probe(&self) -> RuntimeResult<()> {
+402:         Ok(())
+403:     }
+404: }
+405: 
+406: /// In-memory journal useful for tests and volatile embeddings.
+407: #[derive(Debug)]
+408: pub struct VolatileRuntimeJournal {
+409:     events: Mutex<Vec<RuntimeJournalEvent>>,
+410:     capacity: usize,
+411: }
+412: 
+413: impl VolatileRuntimeJournal {
+414:     /// Default maximum number of in-memory journal events retained by a volatile journal.
+415:     pub const DEFAULT_CAPACITY: usize = 65_536;
+416: 
+417:     /// Creates an empty volatile journal.
+418:     #[must_use]
+419:     pub const fn new() -> Self {
+420:         Self {
+421:             events: Mutex::new(Vec::new()),
+422:             capacity: Self::DEFAULT_CAPACITY,
+423:         }
+424:     }
+425: 
+426:     /// Creates an empty volatile journal with an explicit event capacity.
+427:     #[must_use]
+428:     pub const fn with_capacity(capacity: NonZeroUsize) -> Self {
+429:         Self {
+430:             events: Mutex::new(Vec::new()),
+431:             capacity: capacity.get(),
+432:         }
+433:     }
+434: 
+435:     /// Creates a shared volatile journal.
+436:     #[must_use]
+437:     pub fn shared() -> SharedRuntimeJournal {
+438:         Arc::new(Self::new())
+439:     }
+440: 
+441:     /// Returns a point-in-time copy of appended events.
+442:     pub fn snapshot(&self) -> RuntimeResult<Vec<RuntimeJournalEvent>> {
+443:         let events = self
+444:             .events
+445:             .lock()
+446:             .map_err(|_| crate::RuntimeError::JournalPoisoned)?;
+447:         Ok(events.clone())
+448:     }
+449: 
+450:     fn reserve_one_event(
+451:         events: &mut Vec<RuntimeJournalEvent>,
+452:         capacity: usize,
+453:     ) -> RuntimeResult<()> {
+454:         events
+455:             .try_reserve(1)
+456:             .map_err(|_| crate::RuntimeError::JournalFull { capacity })
+457:     }
+458: }
+459: 
+460: impl Default for VolatileRuntimeJournal {
+461:     fn default() -> Self {
+462:         Self::new()
+463:     }
+464: }
+465: 
+466: /// Runtime journal selection using explicit storage durability profiles.
+467: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+468: pub struct RuntimeJournalConfig {
+469:     profile: DurabilityProfile,
+470: }
+471: 
+472: impl RuntimeJournalConfig {
+473:     /// Creates a runtime journal configuration for a durability profile.
+474:     #[must_use]
+475:     pub const fn new(profile: DurabilityProfile) -> Self {
+476:         Self { profile }
+477:     }
+478: 
+479:     /// Selected durability profile.
+480:     #[must_use]
+481:     pub const fn profile(self) -> DurabilityProfile {
+482:         self.profile
+483:     }
+484: 
+485:     /// Builds a shared runtime journal for this profile.
+486:     ///
+487:     /// Returns `Err(RuntimeError::UnsupportedDurabilityProfile { .. })`
+488:     /// for any future `DurabilityProfile` variant the runtime does not
+489:     /// yet implement. This replaces the prior silent downgrade to
+490:     /// `Volatile` (master §45 contract: missing transitions return a
+491:     /// typed error rather than silently absorbing into the
+492:     /// least-durable profile).
+493:     pub fn shared_journal(
+494:         self,
+495:         journal: Arc<FjallJournal>,
+496:         queue: Arc<JournalWriterQueue>,
+497:     ) -> RuntimeResult<SharedRuntimeJournal> {
+498:         match self.profile {
+499:             DurabilityProfile::Volatile => Ok(VolatileRuntimeJournal::shared()),
+500:             DurabilityProfile::Journaled => Ok(QueuedStorageRuntimeJournal::shared_journaled(
+501:                 journal, queue,
+502:             )),
+503:             DurabilityProfile::Strict => Ok(StorageRuntimeJournal::shared_strict(journal)),
+504:             _ => Err(RuntimeError::UnsupportedDurabilityProfile {
+505:                 profile_debug: format!("{:?}", self.profile),
+506:             }),
+507:         }
+508:     }
+509: 
+510:     //    /// Compile-time exhaustiveness assertion for `shared_journal`.
+511:     //    #[allow(dead_code, unreachable_patterns)]
+512:     //    const _: () = {
+513:     //        fn _check_exhaustiveness(
+514:     //            profile: DurabilityProfile,
+515:     //            journal: std::sync::Arc<FjallJournal>,
+516:     //            queue: std::sync::Arc<JournalWriterQueue>,
+517:     //        ) -> RuntimeResult<SharedRuntimeJournal> {
+518:     //            match profile {
+519:     //                DurabilityProfile::Volatile => Ok(VolatileRuntimeJournal::shared()),
+520:     //                DurabilityProfile::Journaled => Ok(QueuedStorageRuntimeJournal::shared_journaled(
+521:     //                    journal, queue,
+522:     //                )),
+523:     //                DurabilityProfile::Strict => Ok(StorageRuntimeJournal::shared_strict(journal)),
+524:     //                _ => Err(RuntimeError::UnsupportedDurabilityProfile {
+525:     //                    profile_debug: String::new(),
+526:     //                }),
+527:     //            }
+528:     //        }
+529:     //// };
+530:     //}
+531: }
+532: 
+533: impl RuntimeJournal for VolatileRuntimeJournal {
+534:     fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
+535:         let mut events = self
+536:             .events
+537:             .lock()
+538:             .map_err(|_| crate::RuntimeError::JournalPoisoned)?;
+539:         if events.len() >= self.capacity {
+540:             return Err(RuntimeError::JournalFull {
+541:                 capacity: self.capacity,
+542:             });
+543:         }
+544:         Self::reserve_one_event(&mut events, self.capacity)?;
+545:         events.push(event);
+546:         Ok(())
+547:     }
+548: 
+549:     fn append_sequenced_batch(
+550:         &self,
+551:         events: &[RuntimeJournalEvent],
+552:         _start_seq: EventSeq,
+553:     ) -> RuntimeResult<()> {
+554:         let mut stored = self
+555:             .events
+556:             .lock()
+557:             .map_err(|_| crate::RuntimeError::JournalPoisoned)?;
+558:         let available =
+559:             self.capacity
+560:                 .checked_sub(stored.len())
+561:                 .ok_or(RuntimeError::JournalFull {
+562:                     capacity: self.capacity,
+563:                 })?;
+564:         if events.len() > available {
+565:             return Err(RuntimeError::JournalFull {
+566:                 capacity: self.capacity,
+567:             });
+568:         }
+569:         stored
+570:             .try_reserve(events.len())
+571:             .map_err(|_| RuntimeError::JournalFull {
+572:                 capacity: self.capacity,
+573:             })?;
+574:         stored.extend(events.iter().cloned());
+575:         Ok(())
+576:     }
+577: 
+578:     fn probe(&self) -> RuntimeResult<()> {
+579:         // Verify the mutex is not poisoned.
+580:         let _guard = self
+581:             .events
+582:             .lock()
+583:             .map_err(|_| crate::RuntimeError::JournalPoisoned)?;
+584:         Ok(())
+585:     }
+586: }
+587: 
+588: /// Runtime journal adapter that appends lifecycle events into `vb_storage`.
+589: pub struct StorageRuntimeJournal {
+590:     catalog: Option<Arc<vb_storage::executor::ExecutorCatalog>>,
+591:     journal: Arc<FjallJournal>,
+592:     profile: DurabilityProfile,
+593: }

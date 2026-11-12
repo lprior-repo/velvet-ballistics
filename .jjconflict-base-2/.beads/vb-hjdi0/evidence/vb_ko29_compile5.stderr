@@ -1,0 +1,11 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-p51m8-local5090-finish/crates/workspace_tests)
+error: this file contains an unclosed delimiter
+   --> crates/workspace_tests/tests/vb_ko29_5_fixture/mod.rs:168:29
+    |
+127 | ) -> Result<(ActionTicket, WorkflowDigest), String> {
+    |                                                     - unclosed delimiter
+...
+168 |     Ok((ticket, abi_digest))
+    |                             ^
+
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_ko29_5_public_idempotency") due to 1 previous error

@@ -1,0 +1,23 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 6,
+  "sublane": "proof-review-after-evidence-sync-and-contract-approval",
+  "delegate": "proof-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/proof-review.md",
+    ".beads/vb-vt2f/proof-repair-guide.md",
+    ".beads/vb-vt2f/proof-writer-report.md",
+    ".beads/vb-vt2f/proof-evidence.md",
+    ".beads/vb-vt2f/contract-verification-review.md",
+    ".beads/vb-vt2f/machine-gate-report.md",
+    ".beads/vb-vt2f/verification-ledger.jsonl"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/proof-review.md",
+    ".beads/vb-vt2f/proof-findings.jsonl",
+    ".beads/vb-vt2f/proof-repair-guide.md"
+  ],
+  "attempt": 7
+}

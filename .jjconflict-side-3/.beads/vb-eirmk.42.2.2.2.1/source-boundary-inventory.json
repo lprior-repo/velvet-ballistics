@@ -1,0 +1,769 @@
+{
+  "schema_version": 2,
+  "author_disposition": "FOR_INDEPENDENT_CODE_AND_TEST_ADJUDICATION",
+  "bead": "vb-eirmk.42.2.2.2.1",
+  "source_pin": "50f6782a00878728fea2cb38cfc2ee068ecc1f12",
+  "parent_before_arity": "b9206889ce46201d4366437db84be3446b89c9df",
+  "previous_docs_pin": "141e33da9f25c3276b48ee969a4958684abd4e26",
+  "preserved_draft_pin": "361ab429fa1a5caf87a94c1d1b923bc110693d16",
+  "subjects": {
+    "verifier": {
+      "path": "crates/vb_compile/src/artifact.rs",
+      "versions": {
+        "current": {
+          "name": "verify_compiled_artifact",
+          "line": 174,
+          "logical_lines": 27,
+          "nonblank_including_braces": 28,
+          "parameters": 2,
+          "sha256_including_final_newline": "3602e8c2e09885f4d21c762535596fdebf923664e308fafc12cd438c6adaa8eb",
+          "source_pin": "50f6782a00878728fea2cb38cfc2ee068ecc1f12",
+          "file_sha256": "7bb380cf38c103da2d3e74d7bac220bfed0ff91ac5181056d02f5f1414da00e4",
+          "file_git_blob": "4b4a7a4f5012588cf7070c0cf4bad6a4b6dfe6ba",
+          "file_lines": 234
+        },
+        "parent_before_arity": {
+          "name": "verify_compiled_artifact",
+          "line": 174,
+          "logical_lines": 27,
+          "nonblank_including_braces": 28,
+          "parameters": 2,
+          "sha256_including_final_newline": "3602e8c2e09885f4d21c762535596fdebf923664e308fafc12cd438c6adaa8eb",
+          "source_pin": "b9206889ce46201d4366437db84be3446b89c9df",
+          "file_sha256": "7bb380cf38c103da2d3e74d7bac220bfed0ff91ac5181056d02f5f1414da00e4",
+          "file_git_blob": "4b4a7a4f5012588cf7070c0cf4bad6a4b6dfe6ba",
+          "file_lines": 234
+        },
+        "previous_documentation": {
+          "name": "verify_compiled_artifact",
+          "line": 174,
+          "logical_lines": 27,
+          "nonblank_including_braces": 28,
+          "parameters": 2,
+          "sha256_including_final_newline": "3602e8c2e09885f4d21c762535596fdebf923664e308fafc12cd438c6adaa8eb",
+          "source_pin": "141e33da9f25c3276b48ee969a4958684abd4e26",
+          "file_sha256": "7bb380cf38c103da2d3e74d7bac220bfed0ff91ac5181056d02f5f1414da00e4",
+          "file_git_blob": "4b4a7a4f5012588cf7070c0cf4bad6a4b6dfe6ba",
+          "file_lines": 234
+        },
+        "preserved_draft": {
+          "name": "verify_compiled_artifact",
+          "line": 174,
+          "logical_lines": 27,
+          "nonblank_including_braces": 28,
+          "parameters": 2,
+          "sha256_including_final_newline": "3602e8c2e09885f4d21c762535596fdebf923664e308fafc12cd438c6adaa8eb",
+          "source_pin": "361ab429fa1a5caf87a94c1d1b923bc110693d16",
+          "file_sha256": "7bb380cf38c103da2d3e74d7bac220bfed0ff91ac5181056d02f5f1414da00e4",
+          "file_git_blob": "4b4a7a4f5012588cf7070c0cf4bad6a4b6dfe6ba",
+          "file_lines": 234
+        },
+        "historical_review": {
+          "name": "verify_compiled_artifact",
+          "line": 174,
+          "logical_lines": 27,
+          "nonblank_including_braces": 28,
+          "parameters": 2,
+          "sha256_including_final_newline": "3602e8c2e09885f4d21c762535596fdebf923664e308fafc12cd438c6adaa8eb",
+          "source_pin": "594d34579e381f5270cf65dfde617a052d343db1",
+          "file_sha256": "7bb380cf38c103da2d3e74d7bac220bfed0ff91ac5181056d02f5f1414da00e4",
+          "file_git_blob": "4b4a7a4f5012588cf7070c0cf4bad6a4b6dfe6ba",
+          "file_lines": 234
+        }
+      }
+    },
+    "finalizer": {
+      "path": "crates/vb_compile/src/mod_compile_lowering/compile_source_finish.rs",
+      "versions": {
+        "current": {
+          "name": "finalize_compiled_workflow",
+          "line": 14,
+          "logical_lines": 13,
+          "nonblank_including_braces": 14,
+          "parameters": 5,
+          "sha256_including_final_newline": "25dacd1c11c4875878b27b1cfbcaf9beb7b3c5831ea80bb5843272821af1a49f",
+          "source_pin": "50f6782a00878728fea2cb38cfc2ee068ecc1f12",
+          "file_sha256": "738d52182b1c743931f9c2456afca76f70caf0a3b26934ca14796a9e6f2c9bf7",
+          "file_git_blob": "ccbe7e3b5482af955c82d7abeb290ef25713431b",
+          "file_lines": 104
+        },
+        "parent_before_arity": {
+          "name": "finalize_compiled_workflow",
+          "line": 14,
+          "logical_lines": 14,
+          "nonblank_including_braces": 15,
+          "parameters": 6,
+          "sha256_including_final_newline": "1ab5b6c19e07172fe41aea68e70cffbef443183861ee96cbfb2ebcbd0d4e372f",
+          "source_pin": "b9206889ce46201d4366437db84be3446b89c9df",
+          "file_sha256": "998ed7e0910fadaf6267eb1784e24b12e1bba1833cdc27d1dbdf04919ed5fc6f",
+          "file_git_blob": "b659773e67c50f82c756834c9d90453e78ca8baf",
+          "file_lines": 105
+        },
+        "previous_documentation": {
+          "name": "finalize_compiled_workflow",
+          "line": 14,
+          "logical_lines": 14,
+          "nonblank_including_braces": 15,
+          "parameters": 6,
+          "sha256_including_final_newline": "1ab5b6c19e07172fe41aea68e70cffbef443183861ee96cbfb2ebcbd0d4e372f",
+          "source_pin": "141e33da9f25c3276b48ee969a4958684abd4e26",
+          "file_sha256": "998ed7e0910fadaf6267eb1784e24b12e1bba1833cdc27d1dbdf04919ed5fc6f",
+          "file_git_blob": "b659773e67c50f82c756834c9d90453e78ca8baf",
+          "file_lines": 105
+        },
+        "preserved_draft": {
+          "name": "finalize_compiled_workflow",
+          "line": 14,
+          "logical_lines": 14,
+          "nonblank_including_braces": 15,
+          "parameters": 6,
+          "sha256_including_final_newline": "1ab5b6c19e07172fe41aea68e70cffbef443183861ee96cbfb2ebcbd0d4e372f",
+          "source_pin": "361ab429fa1a5caf87a94c1d1b923bc110693d16",
+          "file_sha256": "998ed7e0910fadaf6267eb1784e24b12e1bba1833cdc27d1dbdf04919ed5fc6f",
+          "file_git_blob": "b659773e67c50f82c756834c9d90453e78ca8baf",
+          "file_lines": 105
+        },
+        "historical_review": {
+          "name": "finalize_compiled_workflow",
+          "line": 14,
+          "logical_lines": 30,
+          "nonblank_including_braces": 31,
+          "parameters": 6,
+          "sha256_including_final_newline": "0d9bde61a10523d6c711f7bc072eb5b77d9cf1c4d9fd13fd8e0ac1f90cd30b37",
+          "source_pin": "594d34579e381f5270cf65dfde617a052d343db1",
+          "file_sha256": "14458d751fdc8e41bb619f49a5cd5133ba35b3474ab8e181cac5a64c8da05b3f",
+          "file_git_blob": "aefb7e22fd087e0d9b36c5745915843ab3657493",
+          "file_lines": 44
+        }
+      }
+    }
+  },
+  "finalizer_helpers": [
+    {
+      "name": "assemble_source_parts",
+      "line": 29,
+      "logical_lines": 22,
+      "nonblank_including_braces": 23,
+      "parameters": 4,
+      "sha256_including_final_newline": "08d745ce6c858a29fe1479c6c3352e7f8e8e8d4ef351b472711fb5b459363f0f"
+    },
+    {
+      "name": "compiler_symbol_count",
+      "line": 53,
+      "logical_lines": 8,
+      "nonblank_including_braces": 9,
+      "parameters": 1,
+      "sha256_including_final_newline": "42fba7ecb3cf1f63c31b6fa5c064ee450fe9a21ebc1cd2a2708243ad94b391b2"
+    },
+    {
+      "name": "source_version",
+      "line": 63,
+      "logical_lines": 14,
+      "nonblank_including_braces": 16,
+      "parameters": 2,
+      "sha256_including_final_newline": "02bc6d57f571890d1353278b8dd76b9f7fbca025de0ad8867d11815136a8fda0"
+    },
+    {
+      "name": "validated_source_parts",
+      "line": 80,
+      "logical_lines": 7,
+      "nonblank_including_braces": 8,
+      "parameters": 2,
+      "sha256_including_final_newline": "078ff46639de189e5469b3adfbf481258fa83c259b72ff056494e325021f78e4"
+    },
+    {
+      "name": "construct_source_workflow",
+      "line": 89,
+      "logical_lines": 13,
+      "nonblank_including_braces": 16,
+      "parameters": 2,
+      "sha256_including_final_newline": "b1cec79e6bbcd434f43925b932b9a96f3df819f32313856178a64070054ef1b2"
+    }
+  ],
+  "getter": {
+    "name": "steps",
+    "line": 81,
+    "logical_lines": 2,
+    "nonblank_including_braces": 3,
+    "parameters": 0,
+    "sha256_including_final_newline": "33ebb2c29cae7360d23419130adf0d35c05c2e06564267f01c00276fc33ebea0",
+    "path": "crates/vb_yaml/src/yaml_ast/types/workflow.rs",
+    "file_sha256": "53c4d56e39a283c8ff7c0556252020b0271c455315aaaec3d6978c00c49b1788"
+  },
+  "source_bound_equivalence": {
+    "sole_caller": "crates/vb_compile/src/mod_compile_lowering/part_01.rs",
+    "old_alias": "let steps = source.steps();",
+    "getter": "&self.steps",
+    "exact_two_file_transform_checked": true,
+    "other_finalizer_helpers_unchanged": true,
+    "caller_other_sites_unchanged": true,
+    "error_getter_is_pure": true,
+    "scope": "Original arity component 50f6782a00878728fea2cb38cfc2ee068ecc1f12 vs parent b9206889ce46201d4366437db84be3446b89c9df; caller_other_sites_unchanged and exact_two_file_transform_checked apply only to that component. Width edits remain outside the identical compile_source span."
+  },
+  "master": {
+    "path": "velvet-ballistics-MASTER.md",
+    "line": 125,
+    "text": "| Short functions | Hot functions must be <= 25 logical lines. Complex cold validation phase functions must be decomposed or carry a bead-linked justification and must stay out of hot paths. CI and Moon tasks must include a source-length gate that fails hot functions over 25 logical lines. |",
+    "sha256": "6a1dd5dac5a1afd8268d21ef68dea9379fc26b0a0c1e44fa3663392d008166ee"
+  },
+  "reports": {
+    "compiler-codec-cold-function-code-review-v2.json": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/compiler-codec-cold-function-code-review-v2.json",
+      "sha256": "65f5ad456c5ff057b6e0342e3145fc91681a2aa3880c946033882366f26bccf8",
+      "verdict": "REJECT"
+    },
+    "prelanding-code-coverage-d30a6a-r50-v5.json": {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/prelanding-code-coverage-d30a6a-r50-v5.json",
+      "sha256": "41bb9747bdf9fdcfdc75fdffa41fb16ea3fb3437670ca46f917d448d90b2d32e",
+      "verdict": "REJECT"
+    }
+  },
+  "caller_denominator": {
+    "tracked_rust_files": 2693,
+    "excluded": "external restate/ subtree only",
+    "reference_lines": 24,
+    "reference_paths": 10,
+    "listing_sha256": "9bbf462830ecc1d8ae57349a9e92c4228cd5c76a8e88d974e193898e7086d320",
+    "method": "All listed tracked Rust files read for literal names, including ignored tracked sources; definitions/imports/reexports/tests classified. No dynamic/external whole-program proof.",
+    "scope": "Historical arity-component evidence:2693 tracked Rust files at exact b920 listing,24 literal references/10paths at source50f. No global count is asserted for the prospective parent composition.",
+    "listing_source_pin": "b9206889ce46201d4366437db84be3446b89c9df",
+    "reference_source_pin": "50f6782a00878728fea2cb38cfc2ee068ecc1f12"
+  },
+  "references": [
+    {
+      "path": "crates/vb_compile/src/artifact/retry_generation_tests.rs",
+      "line": 2,
+      "text": "use crate::artifact::{compile_verified_artifact, verify_compiled_artifact};",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "38c17e918c89a48895e26d7d97672301d2a9988bb9870e5bd08da88f7028b37b"
+    },
+    {
+      "path": "crates/vb_compile/src/artifact/retry_generation_tests.rs",
+      "line": 15,
+      "text": "    let seed = compile_verified_artifact(SOURCE, &[])?;",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "38c17e918c89a48895e26d7d97672301d2a9988bb9870e5bd08da88f7028b37b"
+    },
+    {
+      "path": "crates/vb_compile/src/artifact/retry_generation_tests.rs",
+      "line": 74,
+      "text": "    Ok(verify_compiled_artifact(&workflow, &contracts)?)",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "38c17e918c89a48895e26d7d97672301d2a9988bb9870e5bd08da88f7028b37b"
+    },
+    {
+      "path": "crates/vb_compile/src/artifact/retry_generation_tests.rs",
+      "line": 351,
+      "text": "    let legacy = verify_compiled_artifact(&workflow, ordinary.contracts())?;",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "38c17e918c89a48895e26d7d97672301d2a9988bb9870e5bd08da88f7028b37b"
+    },
+    {
+      "path": "crates/vb_compile/src/artifact.rs",
+      "line": 163,
+      "text": "pub fn compile_verified_artifact(",
+      "role": "definition",
+      "file_sha256": "7bb380cf38c103da2d3e74d7bac220bfed0ff91ac5181056d02f5f1414da00e4"
+    },
+    {
+      "path": "crates/vb_compile/src/artifact.rs",
+      "line": 168,
+      "text": "    let mut candidate = verify_compiled_artifact(&workflow, contracts)?;",
+      "role": "production call; containing body inspected",
+      "file_sha256": "7bb380cf38c103da2d3e74d7bac220bfed0ff91ac5181056d02f5f1414da00e4"
+    },
+    {
+      "path": "crates/vb_compile/src/artifact.rs",
+      "line": 174,
+      "text": "pub fn verify_compiled_artifact(",
+      "role": "definition",
+      "file_sha256": "7bb380cf38c103da2d3e74d7bac220bfed0ff91ac5181056d02f5f1414da00e4"
+    },
+    {
+      "path": "crates/vb_compile/src/compiled_ir_test_support.rs",
+      "line": 106,
+      "text": "    match crate::verify_compiled_artifact(&workflow, &[]) {",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "3cca65d5253bf2c4076d1a98da8fbf90877eed0302d2d2e7b4983d56aac95d92"
+    },
+    {
+      "path": "crates/vb_compile/src/compiled_ir_tests.rs",
+      "line": 1,
+      "text": "use crate::artifact::verify_compiled_artifact;",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "e45b4bf39ce268396b07f2bb624216e1c98aad5a0d9c3cda944bb3a6dd118d79"
+    },
+    {
+      "path": "crates/vb_compile/src/compiled_ir_tests.rs",
+      "line": 33,
+      "text": "        verify_compiled_artifact(&workflow, &[])?",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "e45b4bf39ce268396b07f2bb624216e1c98aad5a0d9c3cda944bb3a6dd118d79"
+    },
+    {
+      "path": "crates/vb_compile/src/compiled_ir_tests.rs",
+      "line": 53,
+      "text": "        verify_compiled_artifact(&workflow, &[])?.payload(),",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "e45b4bf39ce268396b07f2bb624216e1c98aad5a0d9c3cda944bb3a6dd118d79"
+    },
+    {
+      "path": "crates/vb_compile/src/compiled_ir_tests.rs",
+      "line": 78,
+      "text": "    let verified = verify_compiled_artifact(&workflow, &[])?;",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "e45b4bf39ce268396b07f2bb624216e1c98aad5a0d9c3cda944bb3a6dd118d79"
+    },
+    {
+      "path": "crates/vb_compile/src/lib.rs",
+      "line": 96,
+      "text": "    VerifiedCompilation, compile_verified_artifact, verify_compiled_artifact,",
+      "role": "public reexport",
+      "file_sha256": "ca1e8ac4bed05f5965b83b059c165df581b50966eda1d2939aaeda809328853b"
+    },
+    {
+      "path": "crates/vb_compile/src/mod_compile_lowering/compile_source_finish.rs",
+      "line": 14,
+      "text": "pub(super) fn finalize_compiled_workflow(",
+      "role": "definition",
+      "file_sha256": "738d52182b1c743931f9c2456afca76f70caf0a3b26934ca14796a9e6f2c9bf7"
+    },
+    {
+      "path": "crates/vb_compile/src/mod_compile_lowering/part_01.rs",
+      "line": 30,
+      "text": "use compile_source_finish::finalize_compiled_workflow;",
+      "role": "private import",
+      "file_sha256": "c49718bf9ac2da02b860f12510322c6737285d7ab85d12bf7e55d0cf8f2a3230",
+      "qualified_component_file_sha256": "b55d6f6f807a890af25c3f75f38855d00a4626b9a8d20362f2f60823f7ae5b69",
+      "file_binding_status": "prospective_composition_not_yet_parent_observed"
+    },
+    {
+      "path": "crates/vb_compile/src/mod_compile_lowering/part_01.rs",
+      "line": 79,
+      "text": "    finalize_compiled_workflow(",
+      "role": "production call; containing body inspected",
+      "file_sha256": "c49718bf9ac2da02b860f12510322c6737285d7ab85d12bf7e55d0cf8f2a3230",
+      "qualified_component_file_sha256": "b55d6f6f807a890af25c3f75f38855d00a4626b9a8d20362f2f60823f7ae5b69",
+      "file_binding_status": "prospective_composition_not_yet_parent_observed"
+    },
+    {
+      "path": "crates/vb_compile/tests/support/source_text_binding_cases.rs",
+      "line": 7,
+      "text": "    encode_compiled_ir, verify_compiled_artifact,",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "7a6729f524b068d9aacd6930f30c7b6c82f27213f4f747d5fac592da49f0ef3b"
+    },
+    {
+      "path": "crates/vb_compile/tests/support/source_text_binding_cases.rs",
+      "line": 153,
+      "text": "    match verify_compiled_artifact(workflow, &[]) {",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "7a6729f524b068d9aacd6930f30c7b6c82f27213f4f747d5fac592da49f0ef3b"
+    },
+    {
+      "path": "crates/workspace_tests/tests/artifact_evidence_support/compiler_cases.rs",
+      "line": 28,
+      "text": "    let candidate = vb_compile::compile_verified_artifact(SOURCE, &[])?;",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "ff2f2871189dc01abdebb9f890a7aea64a0c83e6f79c29fc4c802114cb0c3d54"
+    },
+    {
+      "path": "crates/workspace_tests/tests/artifact_evidence_support/compiler_cases.rs",
+      "line": 62,
+      "text": "    let first = vb_compile::compile_verified_artifact(SOURCE, &[])?;",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "ff2f2871189dc01abdebb9f890a7aea64a0c83e6f79c29fc4c802114cb0c3d54"
+    },
+    {
+      "path": "crates/workspace_tests/tests/artifact_evidence_support/compiler_cases.rs",
+      "line": 63,
+      "text": "    let second = vb_compile::compile_verified_artifact(&source, &[])?;",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "ff2f2871189dc01abdebb9f890a7aea64a0c83e6f79c29fc4c802114cb0c3d54"
+    },
+    {
+      "path": "crates/workspace_tests/tests/artifact_evidence_support/compiler_cases.rs",
+      "line": 67,
+      "text": "        vb_compile::verify_compiled_artifact(first.workflow(), &[])?.source_provenance(),",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "ff2f2871189dc01abdebb9f890a7aea64a0c83e6f79c29fc4c802114cb0c3d54"
+    },
+    {
+      "path": "crates/workspace_tests/tests/artifact_evidence_support/compiler_cases.rs",
+      "line": 78,
+      "text": "    match vb_compile::verify_compiled_artifact(&stale, &[]) {",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "ff2f2871189dc01abdebb9f890a7aea64a0c83e6f79c29fc4c802114cb0c3d54"
+    },
+    {
+      "path": "crates/workspace_tests/tests/artifact_evidence_support/runtime_cases.rs",
+      "line": 192,
+      "text": "        match vb_compile::verify_compiled_artifact(workflow, &contracts) {",
+      "role": "test source/import; execution not asserted",
+      "file_sha256": "7dc2bd311f36235431c0d501f205ecdfcdf712979cde12f506701b227b881104"
+    }
+  ],
+  "inspected_dependency_manifests": {
+    "vb_compile": {
+      "path": "crates/vb_compile/Cargo.toml",
+      "sha256": "e998818f34633dab623c9cdcef3db7c3a4f269abd7211fb3cc1b68131ef571da",
+      "normal_first_party_dependencies": [
+        "vb_core",
+        "vb_yaml",
+        "vb_expr",
+        "vb_validate"
+      ]
+    },
+    "vb_core": {
+      "path": "crates/vb_core/Cargo.toml",
+      "sha256": "ca8d2f6447a350ee88c3599946089de3a6227589a8734d13335ead87b7e04e4f",
+      "normal_first_party_dependencies": []
+    },
+    "vb_runtime": {
+      "path": "crates/vb_runtime/Cargo.toml",
+      "sha256": "797788fae86be8d73421464a3c2ea0562d4365f50dd1664ffd70a37c18f8e88e",
+      "normal_first_party_dependencies": [
+        "vb_core",
+        "vb_storage"
+      ]
+    },
+    "vb_storage": {
+      "path": "crates/vb_storage/Cargo.toml",
+      "sha256": "90ca760ac3450d381d1077ec1f6ff7ad72438f9bd50950d3d2bf6b7ebe2eea2b",
+      "normal_first_party_dependencies": [
+        "vb_core",
+        "vb_validate"
+      ]
+    },
+    "vb_validate": {
+      "path": "crates/vb_validate/Cargo.toml",
+      "sha256": "0ab619159c55585dbe3d99964ede1ef1830194032a73efb7ed2e61345efc4448",
+      "normal_first_party_dependencies": [
+        "vb_core"
+      ]
+    }
+  },
+  "runtime_normal_first_party_closure": [
+    "vb_runtime",
+    "vb_core",
+    "vb_storage",
+    "vb_validate"
+  ],
+  "source_files": {
+    "velvet-ballistics-MASTER.md": {
+      "sha256": "6a1dd5dac5a1afd8268d21ef68dea9379fc26b0a0c1e44fa3663392d008166ee",
+      "lines": 5317
+    },
+    "docs/master/section-003-holzmann-compliance-matrix.md": {
+      "sha256": "d7bab67f3e6da4312cb6154a83eefaa6874b2e06eb6a36b98130184f884652bb",
+      "lines": 23
+    },
+    "crates/vb_compile/src/artifact.rs": {
+      "sha256": "7bb380cf38c103da2d3e74d7bac220bfed0ff91ac5181056d02f5f1414da00e4",
+      "lines": 234
+    },
+    "crates/vb_compile/src/lib.rs": {
+      "sha256": "ca1e8ac4bed05f5965b83b059c165df581b50966eda1d2939aaeda809328853b",
+      "lines": 122
+    },
+    "crates/vb_compile/src/mod_compile_lowering/part_01.rs": {
+      "sha256": "c49718bf9ac2da02b860f12510322c6737285d7ab85d12bf7e55d0cf8f2a3230",
+      "lines": 283,
+      "qualified_component": {
+        "sha256": "b55d6f6f807a890af25c3f75f38855d00a4626b9a8d20362f2f60823f7ae5b69",
+        "lines": 415,
+        "source_pin": "50f6782a00878728fea2cb38cfc2ee068ecc1f12"
+      },
+      "binding_status": "prospective_composition_not_yet_parent_observed"
+    },
+    "crates/vb_compile/src/mod_compile_lowering/compile_source_finish.rs": {
+      "sha256": "738d52182b1c743931f9c2456afca76f70caf0a3b26934ca14796a9e6f2c9bf7",
+      "lines": 104
+    },
+    "crates/vb_compile/src/mod_compile_lowering/part_08.rs": {
+      "sha256": "e84cb9b39a1823110c19d4c406d1cc939a27fed5e55422cc1f30cfd6fbbdb776",
+      "lines": 208
+    },
+    "crates/vb_compile/src/compiled_ir.rs": {
+      "sha256": "4a53adf922fc4a3c56acc4d9bc00bf2f66f5445638adcf938eefd952c2b270e0",
+      "lines": 79
+    },
+    "crates/vb_compile/src/source_symbols.rs": {
+      "sha256": "12dd430797455dc02524bac91750fecf195dbab9637df2661715414cabecc4b1",
+      "lines": 138
+    },
+    "crates/vb_compile/src/mod_compile_core.rs": {
+      "sha256": "c54994124b29484094de22eb4c0bcd1ff6c42bfd6eb62d95163438fdd4f48600",
+      "lines": 245
+    },
+    "crates/vb_core/src/action/registry.rs": {
+      "sha256": "c957887bfb624a7ee67691fc20b366acfbae17942a3f9cb3bbba12c05fcdc48f",
+      "lines": 49
+    },
+    "crates/vb_core/src/workflow/resource_limits.rs": {
+      "sha256": "619065d0d13c63c30fc13d7ac16450c29f935bad4f7408d2e46c3da67f3f8a87",
+      "lines": 196
+    },
+    "crates/vb_core/src/workflow/validate.rs": {
+      "sha256": "5c929171553ef6472312372d15480f755888f221d9980a4206fda8740828278c",
+      "lines": 185
+    },
+    "crates/vb_core/src/limits.rs": {
+      "sha256": "5dc57068b70fb37340ea9756bed955834f4e7244b7371d12b272fefc090982d7",
+      "lines": 138
+    },
+    "crates/vb_compile/Cargo.toml": {
+      "sha256": "e998818f34633dab623c9cdcef3db7c3a4f269abd7211fb3cc1b68131ef571da",
+      "lines": 61
+    },
+    "crates/vb_core/Cargo.toml": {
+      "sha256": "ca8d2f6447a350ee88c3599946089de3a6227589a8734d13335ead87b7e04e4f",
+      "lines": 34
+    },
+    "crates/vb_runtime/Cargo.toml": {
+      "sha256": "797788fae86be8d73421464a3c2ea0562d4365f50dd1664ffd70a37c18f8e88e",
+      "lines": 50
+    },
+    "crates/vb_storage/Cargo.toml": {
+      "sha256": "90ca760ac3450d381d1077ec1f6ff7ad72438f9bd50950d3d2bf6b7ebe2eea2b",
+      "lines": 34
+    },
+    "crates/vb_validate/Cargo.toml": {
+      "sha256": "0ab619159c55585dbe3d99964ede1ef1830194032a73efb7ed2e61345efc4448",
+      "lines": 24
+    }
+  },
+  "verifier_error_order": [
+    "parts projection",
+    "V1/V2 reconstruction -> Workflow",
+    "shared validate_with_contracts -> Validation",
+    "validate_action_registry -> ActionRegistry",
+    "check_idempotency_gates -> Compilation",
+    "versioned payload encoding -> Encoding",
+    "canonical preimage -> Encoding; then check_digest -> DigestMismatch(Workflow)",
+    "WholeWorkflowBudget::compute -> Workflow",
+    "candidate field order: payload digest/copy contracts/CompiledIrOnly/contract serialization digest/policy serialization digest/budget; serialization -> Encoding"
+  ],
+  "finalizer_error_order": [
+    "assemble_source_parts: checked slot count, checked u32 symbol count, consume builder tables",
+    "source_version: empty symbols V1, otherwise finish symbols or mapped source-symbol error then V2",
+    "compute_compiled_ir_digest: canonical-preimage encoding error before construction",
+    "construct_source_workflow: set digest, shared validation, then V1/V2 constructor",
+    "only construction errors pass named_workflow_error; only BackwardEdge is renamed; earlier errors retain original mapping"
+  ],
+  "bounds": {
+    "local_loops": 0,
+    "local_recursion": false,
+    "verifier_parameters": 2,
+    "finalizer_parameters": 5,
+    "limits_source": "crates/vb_core/src/limits.rs and workflow/resource_limits.rs; checked existing ResourceContract/ID domains, not a new time bound",
+    "slot_count": "checked_add(1), then u16::try_from in SlotCompiler::slot_count",
+    "symbol_count": "u32::try_from; intern enforces MAX_VALUES_PER_RUN=1000000 and MAX_SYMBOL_BYTES_PER_VALUE=4096 before finish",
+    "action_registry": "enumerated index -> u16::try_from, index mismatch then name validation; idempotency scans the supplied slice",
+    "cost_limit": "No fixed latency, total allocation bound or bounded-public-contract-slice proof is claimed by this length justification."
+  },
+  "finalizer_disposition": "Current finalizer has5 parameters and13 logical lines; both ordinary bounds hold with no arity exception. Historical30/six and previous14/six remain history only.",
+  "bead_deduplication": {
+    "reused": "vb-eirmk.42.2.2.2.1 in_progress Lewis",
+    "preserved_closed_unrelated": [
+      "vb-eirmk.42.2.2.3.2",
+      "vb-eirmk.42.2.2.5"
+    ]
+  },
+  "native_execution": true,
+  "formal_execution": false,
+  "production_changes": [
+    "crates/vb_compile/src/mod_compile_lowering/compile_source_finish.rs",
+    "crates/vb_compile/src/mod_compile_lowering/part_01.rs"
+  ],
+  "tests_API_schema_dependency_gate_changes": false,
+  "native_receipts": {
+    "source-text-default": {
+      "source": "50f6782a00878728fea2cb38cfc2ee068ecc1f12",
+      "argv": [
+        "systemd-run",
+        "--user",
+        "--scope",
+        "--collect",
+        "-p",
+        "MemoryHigh=20G",
+        "-p",
+        "MemoryMax=24G",
+        "-p",
+        "MemorySwapMax=0",
+        "timeout",
+        "--kill-after=10s",
+        "600s",
+        "rustup",
+        "run",
+        "nightly-2026-04-28",
+        "cargo",
+        "nextest",
+        "run",
+        "--cargo-quiet",
+        "-p",
+        "vb_compile",
+        "--test-threads",
+        "2",
+        "--test",
+        "source_text_literal_lowering"
+      ],
+      "executed": 11,
+      "passed": 11,
+      "exit": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "b4804eb9389df06b8747e0b2a435fe16542890a9c73193ed956f7996b3834b5c"
+    },
+    "source-text-all-features": {
+      "source": "50f6782a00878728fea2cb38cfc2ee068ecc1f12",
+      "argv": [
+        "systemd-run",
+        "--user",
+        "--scope",
+        "--collect",
+        "-p",
+        "MemoryHigh=20G",
+        "-p",
+        "MemoryMax=24G",
+        "-p",
+        "MemorySwapMax=0",
+        "timeout",
+        "--kill-after=10s",
+        "600s",
+        "rustup",
+        "run",
+        "nightly-2026-04-28",
+        "cargo",
+        "nextest",
+        "run",
+        "--cargo-quiet",
+        "-p",
+        "vb_compile",
+        "--test-threads",
+        "2",
+        "--all-features",
+        "--test",
+        "source_text_literal_lowering"
+      ],
+      "executed": 11,
+      "passed": 11,
+      "exit": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e961eba6a660da2c51a4359cc125b750d477ea747addc1d2eee2ec4f7566d927"
+    },
+    "compiler-default": {
+      "source": "50f6782a00878728fea2cb38cfc2ee068ecc1f12",
+      "argv": [
+        "systemd-run",
+        "--user",
+        "--scope",
+        "--collect",
+        "-p",
+        "MemoryHigh=20G",
+        "-p",
+        "MemoryMax=24G",
+        "-p",
+        "MemorySwapMax=0",
+        "timeout",
+        "--kill-after=10s",
+        "600s",
+        "rustup",
+        "run",
+        "nightly-2026-04-28",
+        "cargo",
+        "nextest",
+        "run",
+        "--cargo-quiet",
+        "-p",
+        "vb_compile",
+        "--test-threads",
+        "2"
+      ],
+      "executed": 944,
+      "passed": 944,
+      "exit": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "463a18053f152d1253f163b1a2767470eec6498e21a42452a9cf326961c8b43c"
+    },
+    "compiler-all-features": {
+      "source": "50f6782a00878728fea2cb38cfc2ee068ecc1f12",
+      "argv": [
+        "systemd-run",
+        "--user",
+        "--scope",
+        "--collect",
+        "-p",
+        "MemoryHigh=20G",
+        "-p",
+        "MemoryMax=24G",
+        "-p",
+        "MemorySwapMax=0",
+        "timeout",
+        "--kill-after=10s",
+        "600s",
+        "rustup",
+        "run",
+        "nightly-2026-04-28",
+        "cargo",
+        "nextest",
+        "run",
+        "--cargo-quiet",
+        "-p",
+        "vb_compile",
+        "--test-threads",
+        "2",
+        "--all-features"
+      ],
+      "executed": 944,
+      "passed": 944,
+      "exit": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e713ff648b47edfbef1d57d975dffdfac151b1771ebee202f97bd582f53fc194"
+    }
+  },
+  "independent_reviews": "pending",
+  "limits": [
+    "Source-bound arity repair and verifier cold rationale; independent reviews pending.",
+    "Native receipts establish named scopes only, not fullCI/master/push closure.",
+    "Any changed body/call/dependency boundary requires renewed disposition; hot use must meet25 and all arities must meet5."
+  ],
+  "source_pin_scope": "Original qualified arity component. Prospective composition entries are explicitly marked; no actual parent composition pin is asserted.",
+  "native_execution_scope": "Only original source50f receipts, unchanged. No prospective-composition native run.",
+  "production_changes_scope": "Only original two-file arity component; this successor edits two documents and does not characterize width-owned source changes.",
+  "prospective_composition": {
+    "status": "PENDING_PARENT_ACTUAL_HASH_MATCH_AND_FOCUSED_CODE_TEST",
+    "actual_parent_composition_pin": null,
+    "width_source_pin": "e781b76334f7bac1569055d3b0d7686657ded9b4",
+    "qualified_arity_pin": "bb5c0d64bd33b3db8be5c1a80360718fe6945d75",
+    "width_part01_sha256": "9fdf39041cde126cf5162711d2a2dccbee3951d1a9bac9e6d6f851130968d48b",
+    "expected_part01": {
+      "path": "crates/vb_compile/src/mod_compile_lowering/part_01.rs",
+      "sha256": "c49718bf9ac2da02b860f12510322c6737285d7ab85d12bf7e55d0cf8f2a3230",
+      "git_blob": "0a31d8ca5eeb802efb97989dd8f62fea2b3eda35",
+      "lines": 283
+    },
+    "caller_span": {
+      "function": "compile_source",
+      "sha256_including_final_newline": "50d8ceec24af5ce6685e3f9790d75af9700cd9982c43faa882d3f4a430c3d2f3",
+      "relation": "byte-identical to qualified bb5c after the one call-argument removal"
+    },
+    "qualification": "Binding-only successor; no new width/source-family/semantic/native acceptance.",
+    "guards_before_parent_import": [
+      "Observe actual composed part01 full SHA c49718bf9ac2da02b860f12510322c6737285d7ab85d12bf7e55d0cf8f2a3230 and283lines; record actual parent pin.",
+      "Confirm compile_source span exact50d8ceec24af5ce6685e3f9790d75af9700cd9982c43faa882d3f4a430c3d2f3.",
+      "Keep verifier27/two body3602e8c2e09885f4d21c762535596fdebf923664e308fafc12cd438c6adaa8eb, finalizer13/five body25dacd1c11c4875878b27b1cfbcaf9beb7b3c5831ea80bb5843272821af1a49f and pure getter bindings unchanged.",
+      "Fresh independent CODE/TEST focused on this binding delta; preserve historical native source hashes."
+    ],
+    "native_execution_on_composition": false,
+    "current_global_rust_file_count": null,
+    "current_global_listing_pin": null
+  },
+  "binding_delta_test_followup": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/evidence/compiler-finalizer-arity-test-review-v1.json",
+    "sha256": "ef2f39d8cc16f9d4f61c05b6cb7f22633227736fcd110eba1c8e28b3e130f2c8",
+    "reviewed_source": "bb5c0d64bd33b3db8be5c1a80360718fe6945d75",
+    "verdict": "REJECT",
+    "finding": "COLD-DOC-T1",
+    "author_action": "Correct stale rationale count to exact b9202693; label original source50f references and prospective-composition global count unknown. Focused independent follow-up pending."
+  }
+}

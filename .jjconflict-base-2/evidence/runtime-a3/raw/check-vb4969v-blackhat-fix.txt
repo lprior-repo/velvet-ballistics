@@ -1,0 +1,5 @@
+# command: cargo check --workspace --all-targets --all-features
+# workdir: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+cargo build (5 crates compiled)
+Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.74s
+# exit_status=0

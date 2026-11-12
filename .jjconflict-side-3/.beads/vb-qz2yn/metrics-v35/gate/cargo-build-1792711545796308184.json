@@ -1,0 +1,22 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12",
+  "argv": [
+    "cargo",
+    "bench",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--bench",
+    "velvet_ballistics",
+    "--no-run",
+    "--message-format=json",
+    "--locked"
+  ],
+  "exit_code": 0,
+  "seconds": 50.245,
+  "timeout_seconds": 1800,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-qz2yn-integrated-metrics-v35/gate/cargo-build-1792711545796308184"
+}

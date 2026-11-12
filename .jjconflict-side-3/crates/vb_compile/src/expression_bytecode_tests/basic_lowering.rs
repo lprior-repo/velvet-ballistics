@@ -1,0 +1,636 @@
+#[test]
+fn lowers_binary_expression_to_postfix_bytecode() -> Result<(), String> {
+    let (ops, constants, max_stack) = lower("1 + 2 * 3")?;
+
+    let expected_ops = vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::LoadConst(ConstIdx::new(2)),
+        ExprOp::Mul,
+        ExprOp::Add,
+    ];
+    let expected_constants = vec![ConstValue::I64(1), ConstValue::I64(2), ConstValue::I64(3)];
+    if ops != expected_ops {
+        return Err(format!(
+            "ops mismatch: expected {expected_ops:?}, got {ops:?}"
+        ));
+    }
+    if constants != expected_constants {
+        return Err(format!(
+            "constants mismatch: expected {expected_constants:?}, got {constants:?}"
+        ));
+    }
+    if max_stack != 3 {
+        return Err(format!("max_stack mismatch: expected 3, got {max_stack}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn lowers_unary_not_and_numeric_negation() -> Result<(), String> {
+    let (ops, constants, max_stack) = lower("not -1")?;
+
+    let expected_ops = vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::Sub,
+        ExprOp::Not,
+    ];
+    let expected_constants = vec![ConstValue::I64(0), ConstValue::I64(1)];
+    if ops != expected_ops {
+        return Err(format!(
+            "ops mismatch: expected {expected_ops:?}, got {ops:?}"
+        ));
+    }
+    if constants != expected_constants {
+        return Err(format!(
+            "constants mismatch: expected {expected_constants:?}, got {constants:?}"
+        ));
+    }
+    if max_stack != 2 {
+        return Err(format!("max_stack mismatch: expected 2, got {max_stack}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn validates_helper_arity_before_stack_validation() -> Result<(), String> {
+    let expr = parse_expression("contains(1)").map_err(|error| error.to_string())?;
+    let mut constants = Vec::new();
+
+    match compile_expr_to_bytecode(&expr, &mut constants) {
+        Err(CompileError::ExpressionHelperArity {
+            helper: "contains",
+            actual: 1,
+            ..
+        }) => Ok(()),
+        other => Err(format!("unexpected lowering result: {other:?}")),
+    }
+}
+
+#[test]
+fn rejects_references_until_accessor_table_exists() -> Result<(), String> {
+    let expr = parse_expression("$input.value").map_err(|error| error.to_string())?;
+    let mut constants = Vec::new();
+
+    match compile_expr_to_bytecode(&expr, &mut constants) {
+        Err(CompileError::ExpressionLoweringUnsupported { ref feature })
+            if feature.as_ref() == "accessor references" =>
+        {
+            Ok(())
+        }
+        other => Err(format!("unexpected lowering result: {other:?}")),
+    }
+}
+
+#[test]
+fn lowers_direct_slot_reference_to_load_slot() -> Result<(), String> {
+    let (ops, constants, accessors) = lower_with_accessors("$slot.7 == true")?;
+    let expected_ops = vec![
+        ExprOp::LoadSlot(SlotIdx::new(7)),
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::Eq,
+    ];
+    if ops != expected_ops {
+        return Err(format!(
+            "ops mismatch: expected {expected_ops:?}, got {ops:?}"
+        ));
+    }
+    if constants != vec![ConstValue::Bool(true)] {
+        return Err(format!("unexpected constants: {constants:?}"));
+    }
+    if !accessors.is_empty() {
+        return Err(format!("direct slot ref created accessors: {accessors:?}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn lowers_numeric_nested_slot_reference_to_accessor_table() -> Result<(), String> {
+    let (ops, constants, accessors) = lower_with_accessors("$slots.2.0.3")?;
+    let expected_ops = vec![ExprOp::LoadAccessor(AccessorIdx::new(0))];
+    let expected_accessors = vec![AccessorProgram {
+        root: SlotIdx::new(2),
+        path: vec![PathSegment::Index(0), PathSegment::Index(3)].into_boxed_slice(),
+    }];
+    if ops != expected_ops {
+        return Err(format!(
+            "ops mismatch: expected {expected_ops:?}, got {ops:?}"
+        ));
+    }
+    if !constants.is_empty() {
+        return Err(format!("nested accessor created constants: {constants:?}"));
+    }
+    if accessors != expected_accessors {
+        return Err(format!(
+            "accessors mismatch: expected {expected_accessors:?}, got {accessors:?}"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn lowers_single_list_index_accessor_to_table() -> Result<(), String> {
+    let (ops, constants, accessors) = lower_with_accessors("$slot.4.12")?;
+    let expected_ops = vec![ExprOp::LoadAccessor(AccessorIdx::new(0))];
+    let expected_accessors = vec![AccessorProgram {
+        root: SlotIdx::new(4),
+        path: vec![PathSegment::Index(12)].into_boxed_slice(),
+    }];
+    if ops != expected_ops {
+        return Err(format!(
+            "ops mismatch: expected {expected_ops:?}, got {ops:?}"
+        ));
+    }
+    if !constants.is_empty() {
+        return Err(format!("list accessor created constants: {constants:?}"));
+    }
+    if accessors != expected_accessors {
+        return Err(format!(
+            "accessors mismatch: expected {expected_accessors:?}, got {accessors:?}"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn rejects_field_accessor_without_symbol_table() -> Result<(), String> {
+    let expr = parse_expression("$slot.1.name").map_err(|error| error.to_string())?;
+    let mut constants = Vec::new();
+    let mut accessors = Vec::new();
+
+    match compile_expr_to_bytecode_with_accessors(&expr, &mut constants, &mut accessors) {
+        Err(CompileError::UnsupportedAccessorReference { root, path, .. })
+            if root.as_ref() == "slot.1" && path.as_ref() == "name" =>
+        {
+            Ok(())
+        }
+        other => Err(format!("unexpected lowering result: {other:?}")),
+    }
+}
+
+#[test]
+fn rejects_field_accessor_after_list_index_without_mutating_table() -> Result<(), String> {
+    let expr = parse_expression("$slots.1.0.name").map_err(|error| error.to_string())?;
+    let mut constants = Vec::new();
+    let mut accessors = Vec::new();
+
+    match compile_expr_to_bytecode_with_accessors(&expr, &mut constants, &mut accessors) {
+        Err(CompileError::UnsupportedAccessorReference { root, path, .. })
+            if root.as_ref() == "slots.1" && path.as_ref() == "0.name" =>
+        {
+            if !accessors.is_empty() {
+                return Err(format!("unsupported accessor mutated table: {accessors:?}"));
+            }
+            Ok(())
+        }
+        other => Err(format!("unexpected lowering result: {other:?}")),
+    }
+}
+
+#[test]
+fn rejects_empty_accessor_segment_with_exact_diagnostic_code() -> Result<(), String> {
+    let expr = parse_expression("$slot.1..0").map_err(|error| error.to_string())?;
+    let mut constants = Vec::new();
+    let mut accessors = Vec::new();
+
+    match compile_expr_to_bytecode_with_accessors(&expr, &mut constants, &mut accessors) {
+        Err(error @ CompileError::UnsupportedAccessorReference { .. }) => match error {
+            CompileError::UnsupportedAccessorReference {
+                ref root, ref path, ..
+            } if root.as_ref() == "slot.1"
+                && path.as_ref() == ".0"
+                && error.diagnostic_code().as_str() == "UNSUPPORTED_ACCESSOR_REFERENCE" =>
+            {
+                Ok(())
+            }
+            other => Err(format!("unexpected lowering result: {other:?}")),
+        },
+        other => Err(format!("unexpected lowering result: {other:?}")),
+    }
+}
+
+// ── Adversarial expression bytecode tests ────────────────────────────────
+
+fn adv_lower_error(source: &str) -> Result<CompileError, String> {
+    let expr = parse_expression(source).map_err(|error| error.to_string())?;
+    let mut constants = Vec::new();
+    match compile_expr_to_bytecode(&expr, &mut constants) {
+        Err(error) => Ok(error),
+        Ok(program) => Err(format!("lowering unexpectedly succeeded: {program:?}")),
+    }
+}
+
+fn adv_ensure(condition: bool, message: &'static str) -> Result<(), String> {
+    if condition {
+        Ok(())
+    } else {
+        Err(message.to_owned())
+    }
+}
+
+#[test]
+fn text_literal_rejected_with_expression_lowering_unsupported() -> Result<(), String> {
+    let expr = parse_expression("\"hello\"").map_err(|e| e.to_string())?;
+    let mut constants = Vec::new();
+    let result = compile_expr_to_bytecode(&expr, &mut constants);
+    adv_ensure(
+        matches!(
+            result,
+            Err(CompileError::ExpressionLoweringUnsupported {
+                ref feature
+            }) if feature.as_ref() == "text constants"
+        ),
+        "text literal did not produce exact text constants diagnostic",
+    )
+}
+
+#[test]
+fn accessor_reference_without_table_rejected_with_unsupported_feature() -> Result<(), String> {
+    let error = adv_lower_error("$slot.5")?;
+    adv_ensure(
+        matches!(
+            error,
+            CompileError::ExpressionLoweringUnsupported {
+                ref feature
+            } if feature.as_ref() == "accessor references"
+        ),
+        "accessor without table did not produce accessor references diagnostic",
+    )
+}
+
+#[test]
+fn constant_pool_overflow_in_expression_rejected() -> Result<(), String> {
+    let expr = parse_expression("1").map_err(|e| e.to_string())?;
+    // Pre-fill constants to u16::MAX + 1 (65536) so the next push fails
+    let count = usize::from(u16::MAX) + 1;
+    let mut constants = Vec::with_capacity(count);
+    for i in 0..count {
+        let value = i64::try_from(i).map_err(|error| error.to_string())?;
+        constants.push(ConstValue::I64(value));
+    }
+    let result = compile_expr_to_bytecode(&expr, &mut constants);
+    adv_ensure(
+        result.is_err(),
+        "constant pool overflow (65536 existing + 1 new) should produce an error",
+    )
+}
+
+#[test]
+fn helper_zero_args_rejected_with_arity_mismatch() -> Result<(), String> {
+    let error = adv_lower_error("contains()")?;
+    adv_ensure(
+        matches!(
+            error,
+            CompileError::ExpressionHelperArity {
+                helper: "contains",
+                expected: 2,
+                actual: 0
+            }
+        ),
+        "contains() did not produce arity mismatch",
+    )
+}
+
+#[test]
+fn helper_too_many_args_rejected_with_arity_mismatch() -> Result<(), String> {
+    let error = adv_lower_error("append_if(1, 2)")?;
+    adv_ensure(
+        matches!(
+            error,
+            CompileError::ExpressionHelperArity {
+                helper: "append_if",
+                expected: 3,
+                actual: 2
+            }
+        ),
+        "append_if(1, 2) did not produce arity mismatch",
+    )
+}
+
+#[test]
+fn slot_accessor_with_non_numeric_root_rejected() -> Result<(), String> {
+    let expr = parse_expression("$slot.abc").map_err(|e| e.to_string())?;
+    let mut constants = Vec::new();
+    let mut accessors = Vec::new();
+    let result = compile_expr_to_bytecode_with_accessors(&expr, &mut constants, &mut accessors);
+    adv_ensure(
+        matches!(
+            result,
+            Err(CompileError::UnknownReferenceName { kind: "slot", .. })
+        ),
+        "non-numeric slot index did not produce slot reference error",
+    )
+}
+
+#[test]
+fn unknown_reference_root_rejected_in_slot_accessor_path() -> Result<(), String> {
+    let expr = parse_expression("$unknown.5").map_err(|e| e.to_string())?;
+    let mut constants = Vec::new();
+    let mut accessors = Vec::new();
+    let result = compile_expr_to_bytecode_with_accessors(&expr, &mut constants, &mut accessors);
+    adv_ensure(
+        matches!(result, Err(CompileError::UnknownReferenceRoot { root, .. }) if root.as_ref() == "unknown"),
+        "unknown root did not produce UnknownReferenceRoot",
+    )
+}
+
+#[test]
+fn deeply_nested_arithmetic_produces_valid_bytecode() -> Result<(), String> {
+    // Build a left-associative chain: 1 + 2 + 3 + 4 + 5
+    let (ops, constants, max_stack) = lower("1 + 2 + 3 + 4 + 5")?;
+    adv_ensure(constants.len() == 5, "should have 5 constants")?;
+    adv_ensure(ops.len() == 9, "should have 5 loads + 4 adds = 9 ops")?;
+    adv_ensure(
+        max_stack >= 2,
+        "max_stack should be at least 2 for left-assoc chain",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn nested_negation_produces_correct_bytecode() -> Result<(), String> {
+    // --5 should produce: LoadConst(0), LoadConst(0), LoadConst(5), Sub, Sub
+    let (ops, _constants, _max_stack) = lower("--5")?;
+    adv_ensure(ops.len() == 5, "nested negation should produce 5 ops")?;
+    // Check last two ops are Sub
+    let fourth = ops.get(3).ok_or("missing 4th op")?;
+    let fifth = ops.get(4).ok_or("missing 5th op")?;
+    adv_ensure(matches!(fourth, ExprOp::Sub), "4th op should be Sub")?;
+    adv_ensure(matches!(fifth, ExprOp::Sub), "5th op should be Sub")?;
+    Ok(())
+}
+
+// ── Edge-case expression bytecode tests ──────────────────────────────────
+
+// 1. Empty string constant expressions
+
+#[test]
+fn empty_string_literal_rejected_as_unsupported() -> Result<(), String> {
+    let error = adv_lower_error("\"\"")?;
+    adv_ensure(
+        matches!(
+            error,
+            CompileError::ExpressionLoweringUnsupported { ref feature }
+                if feature.as_ref() == "text constants"
+        ),
+        "empty string literal did not produce text constants diagnostic",
+    )
+}
+
+// 2. Non-empty string constants (rejected as ExpressionLoweringUnsupported)
+
+#[test]
+fn nonempty_string_literal_rejected_as_unsupported() -> Result<(), String> {
+    let error = adv_lower_error("\"hello world\"")?;
+    adv_ensure(
+        matches!(
+            error,
+            CompileError::ExpressionLoweringUnsupported { ref feature }
+                if feature.as_ref() == "text constants"
+        ),
+        "non-empty string literal did not produce text constants diagnostic",
+    )
+}
+
+#[test]
+fn string_in_helper_call_rejected_as_unsupported() -> Result<(), String> {
+    // contains($slot.0, "needle") - first arg is a reference (rejected),
+    // but the string arg alone would also fail if lowered first
+    let error = adv_lower_error("contains(\"a\", \"b\")")?;
+    adv_ensure(
+        matches!(
+            error,
+            CompileError::ExpressionLoweringUnsupported { ref feature }
+                if feature.as_ref() == "text constants"
+        ),
+        "string arguments in helper should be rejected as text constants",
+    )
+}
+
+// 3. Large integer constants (near i64::MAX, i64::MIN, zero)
+
+#[test]
+fn zero_integer_constant_lowers_correctly() -> Result<(), String> {
+    let (ops, constants, _max_stack) = lower("0")?;
+    adv_ensure(
+        constants == vec![ConstValue::I64(0)],
+        "zero should produce I64(0) constant",
+    )?;
+    adv_ensure(ops.len() == 1, "single zero should produce one op")?;
+    adv_ensure(
+        matches!(ops.first(), Some(ExprOp::LoadConst(_))),
+        "zero should produce LoadConst op",
+    )
+}
+
+#[test]
+fn near_max_integer_constant_lowers_correctly() -> Result<(), String> {
+    let source = i64::MAX.to_string();
+    let (ops, constants, _max_stack) = lower(&source)?;
+    adv_ensure(
+        constants == vec![ConstValue::I64(i64::MAX)],
+        "i64::MAX should produce correct constant",
+    )?;
+    adv_ensure(
+        matches!(ops.first(), Some(ExprOp::LoadConst(_))),
+        "i64::MAX should produce LoadConst op",
+    )
+}
+
+#[test]
+fn near_min_integer_constant_lowers_correctly() -> Result<(), String> {
+    // i64::MIN = -9223372036854775808 cannot be parsed as a literal because
+    // the lexer treats the minus as unary negation and 9223372036854775808
+    // overflows i64::MAX. Instead verify a large negative constant is lowered
+    // through the negation path correctly.
+    let (ops, constants, _max_stack) = lower("-9999999999")?;
+    adv_ensure(
+        constants == vec![ConstValue::I64(0), ConstValue::I64(9999999999)],
+        "large negative should produce 0 and absolute value constants",
+    )?;
+    adv_ensure(ops.len() == 3, "negation should produce 3 ops")?;
+    let last = ops.last().ok_or("missing last op")?;
+    adv_ensure(matches!(last, ExprOp::Sub), "should end with Sub")?;
+    Ok(())
+}
+
+#[test]
+fn negative_one_integer_constant_lowers_correctly() -> Result<(), String> {
+    let (ops, constants, _max_stack) = lower("-1")?;
+    adv_ensure(
+        constants == vec![ConstValue::I64(0), ConstValue::I64(1)],
+        "negation of 1 should produce 0 and 1 constants",
+    )?;
+    adv_ensure(ops.len() == 3, "negation should produce 3 ops")?;
+    let last = ops.last().ok_or("missing last op")?;
+    adv_ensure(matches!(last, ExprOp::Sub), "negation should end with Sub")?;
+    Ok(())
+}
+
+#[test]
+fn large_integer_in_binary_expression() -> Result<(), String> {
+    let source = format!("{} + {}", i64::MAX - 1, 1);
+    let (ops, constants, _max_stack) = lower(&source)?;
+    adv_ensure(constants.len() == 2, "should have 2 constants")?;
+    adv_ensure(
+        constants.first() == Some(&ConstValue::I64(i64::MAX - 1)),
+        "first constant should be i64::MAX - 1",
+    )?;
+    adv_ensure(
+        constants.get(1) == Some(&ConstValue::I64(1)),
+        "second constant should be 1",
+    )?;
+    adv_ensure(ops.len() == 3, "should have 2 loads + 1 add = 3 ops")?;
+    Ok(())
+}
+
+// 4. Boolean constant expressions (true, false)
+
+#[test]
+fn true_boolean_lowers_to_const() -> Result<(), String> {
+    let (ops, constants, _max_stack) = lower("true")?;
+    adv_ensure(
+        constants == vec![ConstValue::Bool(true)],
+        "true should produce Bool(true) constant",
+    )?;
+    adv_ensure(ops.len() == 1, "true should produce one op")?;
+    adv_ensure(
+        matches!(ops.first(), Some(ExprOp::LoadConst(_))),
+        "true should produce LoadConst op",
+    )
+}
+
+#[test]
+fn false_boolean_lowers_to_const() -> Result<(), String> {
+    let (ops, constants, _max_stack) = lower("false")?;
+    adv_ensure(
+        constants == vec![ConstValue::Bool(false)],
+        "false should produce Bool(false) constant",
+    )?;
+    adv_ensure(ops.len() == 1, "false should produce one op")?;
+    adv_ensure(
+        matches!(ops.first(), Some(ExprOp::LoadConst(_))),
+        "false should produce LoadConst op",
+    )
+}
+
+#[test]
+fn boolean_equality_expression_lowers_correctly() -> Result<(), String> {
+    let (ops, constants, _max_stack) = lower("true == false")?;
+    adv_ensure(
+        constants == vec![ConstValue::Bool(true), ConstValue::Bool(false)],
+        "true == false should produce two boolean constants",
+    )?;
+    adv_ensure(
+        ops.len() == 3,
+        "should have 3 ops (LoadConst, LoadConst, Eq)",
+    )?;
+    let last = ops.last().ok_or("missing last op")?;
+    adv_ensure(matches!(last, ExprOp::Eq), "should end with Eq op")?;
+    Ok(())
+}
+
+// 5. Null constant expressions
+
+#[test]
+fn null_constant_lowers_to_const() -> Result<(), String> {
+    let (ops, constants, _max_stack) = lower("null")?;
+    adv_ensure(
+        constants == vec![ConstValue::Null],
+        "null should produce Null constant",
+    )?;
+    adv_ensure(ops.len() == 1, "null should produce one op")?;
+    adv_ensure(
+        matches!(ops.first(), Some(ExprOp::LoadConst(_))),
+        "null should produce LoadConst op",
+    )
+}
+
+#[test]
+fn null_equality_expression_lowers_correctly() -> Result<(), String> {
+    let (ops, constants, _max_stack) = lower("null == null")?;
+    adv_ensure(
+        constants == vec![ConstValue::Null, ConstValue::Null],
+        "null == null should produce two null constants",
+    )?;
+    let last = ops.last().ok_or("missing last op")?;
+    adv_ensure(matches!(last, ExprOp::Eq), "should end with Eq")?;
+    Ok(())
+}
+
+#[test]
+fn null_inequality_expression_lowers_correctly() -> Result<(), String> {
+    let (ops, constants, _max_stack) = lower("null != 0")?;
+    adv_ensure(
+        constants == vec![ConstValue::Null, ConstValue::I64(0)],
+        "null != 0 should produce null and zero constants",
+    )?;
+    let last = ops.last().ok_or("missing last op")?;
+    adv_ensure(matches!(last, ExprOp::NotEq), "should end with NotEq")?;
+    Ok(())
+}
+
+// 6. Nested expressions (parenthesized, deeply nested)
+
+#[test]
+fn parenthesized_expression_lowers_identically() -> Result<(), String> {
+    let (ops_unparen, constants_unparen, max_unparen) = lower("1 + 2")?;
+    let (ops_paren, constants_paren, max_paren) = lower("(1 + 2)")?;
+    adv_ensure(
+        ops_unparen == ops_paren,
+        "parenthesized ops should match unparenthesized",
+    )?;
+    adv_ensure(
+        constants_unparen == constants_paren,
+        "parenthesized constants should match unparenthesized",
+    )?;
+    adv_ensure(
+        max_unparen == max_paren,
+        "parenthesized max_stack should match unparenthesized",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn nested_parentheses_preserve_precedence() -> Result<(), String> {
+    // ((1 + 2)) should be the same as 1 + 2
+    let (ops, _constants, _max_stack) = lower("((1 + 2))")?;
+    adv_ensure(ops.len() == 3, "double-parenthesized 1+2 should be 3 ops")?;
+    let last = ops.last().ok_or("missing last op")?;
+    adv_ensure(matches!(last, ExprOp::Add), "should end with Add")?;
+    Ok(())
+}
+
+#[test]
+fn deeply_nested_unary_not_lowers_correctly() -> Result<(), String> {
+    let (ops, _constants, _max_stack) = lower("not not true")?;
+    adv_ensure(ops.len() == 3, "not not true should be 3 ops")?;
+    adv_ensure(
+        matches!(ops.get(1), Some(ExprOp::Not)),
+        "second op should be Not",
+    )?;
+    adv_ensure(
+        matches!(ops.get(2), Some(ExprOp::Not)),
+        "third op should be Not",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn deeply_nested_mixed_arithmetic_and_negation() -> Result<(), String> {
+    let (ops, _constants, max_stack) = lower("-(1 + -(2 * 3))")?;
+    adv_ensure(
+        max_stack >= 3,
+        "nested negation and arithmetic should need stack >= 3",
+    )?;
+    // Verify the expression compiles without error and has reasonable ops
+    adv_ensure(
+        ops.len() >= 7,
+        "complex nested expression should have many ops",
+    )?;
+    Ok(())
+}
+
+// 7. BinaryOp edge cases (division, multiplication, subtraction)
+

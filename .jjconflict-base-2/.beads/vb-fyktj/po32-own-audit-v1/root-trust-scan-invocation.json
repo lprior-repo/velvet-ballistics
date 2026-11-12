@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1",
+  "argv": [
+    "python3",
+    "/home/lewis/.agents/skills/verus/scripts/trust_scan_adapter.py",
+    "--changed",
+    "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-02-extern_signals_invariant.rs.txt",
+    "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-03-signals_production.rs.txt",
+    "/home/lewis/src/isoloated/vb-fyktj-po32-own-audit-local3090-v1/.beads/vb-fyktj/po32-own-audit-v1/old-04-signals_from_env.rs.txt",
+    "--closure",
+    "verification/verus/production_inner/signals_production.rs",
+    "verification/verus/extern_signals_invariant.rs",
+    "verification/verus/signals_invariant.rs",
+    "crates/vb_core/src/engine/signals.rs",
+    "--json"
+  ],
+  "exit_code": 1,
+  "stderr": "",
+  "scope": "Three exact historical proof source texts plus four current production/companion/mirror files; bounded source trust scan, not all vstd verifier closure or verifier execution. Comment marker mentions must be classified manually.",
+  "historical_executable_code_ran": false
+}

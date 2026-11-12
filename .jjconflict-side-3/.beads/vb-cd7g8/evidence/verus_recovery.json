@@ -1,0 +1,11 @@
+{
+  "command": [
+    "verus",
+    "--crate-type=lib",
+    "verification/verus/recovery_verification.rs"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 0.519913911819458,
+  "stdout": "verification results:: 123 verified, 0 errors\n",
+  "stderr": ""
+}

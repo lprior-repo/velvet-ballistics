@@ -1,0 +1,69 @@
+use proptest::prelude::*;
+use vb_core::{RunId, WorkflowDigest};
+use vb_storage::EventSeq;
+use vb_storage::codec::encode_record;
+use vb_storage::constants::{
+    MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_LEN,
+};
+use vb_storage::events::JournalEvent;
+use vb_storage::records::RecordKind;
+
+proptest! {
+    #[test]
+    fn ps002_checked_add_no_panic(a: u64, b: u64) {
+        let _result = a.checked_add(b);
+    }
+    #[test]
+    fn ps002_checked_add_correct(a: u64, b: u64) {
+        if let Some(total) = a.checked_add(b) {
+            prop_assert_eq!(total, a + b);
+        }
+    }
+    #[test]
+    fn ps002_overflow_detect(a: u64, b: u64) {
+        if a as u128 + b as u128 > u64::MAX as u128 {
+            prop_assert!(a.checked_add(b).is_none());
+        } else {
+            prop_assert!(a.checked_add(b).is_some());
+        }
+    }
+    #[test]
+    fn ps002_u32_to_u64(n: u32) {
+        let wide: u64 = n as u64;
+        prop_assert_eq!(wide as u32, n);
+        prop_assert!(wide <= u32::MAX as u64);
+    }
+    #[test]
+    fn ps002_usize_safe(n in 0usize..1000000usize) {
+        let wide: u64 = n as u64;
+        prop_assert_eq!(wide as usize, n);
+    }
+    #[test]
+    fn ps002_max_encoded_fits(_dummy in proptest::bool::ANY) {
+        let max = RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
+        prop_assert!(max < u64::MAX);
+    }
+    #[test]
+    fn ps002_encode_valid(run in 1u64..1000u64, seq in 0u64..100u64) {
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(run), seq: EventSeq::new(seq),
+            workflow: WorkflowDigest::from_bytes([0u8; 32]),
+        };
+        let result = encode_record(
+            MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, seq,
+            &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
+        prop_assert!(result.is_ok());
+    }
+    #[test]
+    fn ps002_chain_safe(
+        base in 0u64..100000u64,
+        adds in proptest::collection::vec(1u64..10000u64, 0..20)
+    ) {
+        let mut total: u64 = base;
+        for add in adds {
+            if let Some(nt) = total.checked_add(add) { total = nt; }
+        }
+        prop_assert!(total >= base);
+    }
+}

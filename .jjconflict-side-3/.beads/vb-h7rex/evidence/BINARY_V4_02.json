@@ -1,0 +1,22 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-admission-pin",
+  "argv": [
+    "cargo",
+    "clippy",
+    "-p",
+    "vb_runtime",
+    "--lib",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "exit_code": 0,
+  "seconds": 1.62,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-h7rex/evidence/BINARY_V4_02",
+  "coordinator_message": "Coordinator: your BINARY_V4 edits still write payload[0] = 2 in malformed test. This is unchecked indexing and is explicitly forbidden. Use literal [2, 0] (version2 with malformed too-short body), or Vec from postcard-encoded 2u16 extended with a literal array; no index writes. Also there is still pub with_policy_pin plus new #[allow(clippy::missing_inline_in_public_items)] from earlier unaccepted V1: do not add suppressions. That trust boundary will be repaired in next task; report it as remaining. Do not claim child complete. Only focused new tests/doc cleanup now.\n"
+}

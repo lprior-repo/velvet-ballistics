@@ -1,0 +1,832 @@
+{
+  "artifact_sha256": "6ea5bbee36dc5fd9bf0421aab85d7ab74f90f804e43b9617e29e0d71b4e91f1b",
+  "executor_sha256": "dd180d8cc9f9a100b54a5c816dd245c90ba2762597ef513cafe3dca29c684946",
+  "proposal_sha256": "e16e633cb711bc58eddd5c67049272214b59b856720355a77469964273f0d8f4",
+  "verdict": "PASS",
+  "review_kind": "independent bounded Gate V6 actual post-apply CODE evidence audit",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+  "git_and_jj_roots_verified": true,
+  "evidence_output": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output",
+  "findings": [],
+  "observed_execution": {
+    "apply_log": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6-apply.log",
+    "apply_exit_file": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6-apply.exit",
+    "actual_exit_file_value": 0,
+    "stdout_summary": {
+      "apply": "completed",
+      "issue11_metadata_union": true,
+      "issue12_scalar_targets": 49,
+      "typed_edges_unchanged": true,
+      "live_acceptance_claimed": false
+    },
+    "summary_booleans_independently_checked_against_raw_data": true
+  },
+  "bindings": {
+    "actual_final_contract_and_executor_hashes_match_approved_bytes": true,
+    "actual_proposal_hash_matches_approved_V5": true,
+    "preflight_three_artifact_digests_match_actual_files": true,
+    "all_four_preapproval_report_file_hashes_PASS_and_exact_bindings_verified": true,
+    "preapproval_report_hashes": {
+      "planning_CODE": "d6c470d47959266500703d2dd2ea21d5e47d11aec16a304a1eef523f8683e1eb",
+      "planning_TEST": "1b864651af94cb43736fe7805b2fe4ff10858500b6c33af91d0e74063482625b",
+      "executor_CODE": "155dc9b5f62488901210459645be8303449e1f69f4a0b48891e606bef346d3a9",
+      "executor_TEST": "80d63be5db8674d74763e835734b835311c8f05269ba252cf106c83f18fd935a"
+    },
+    "planning_approval_binds_proposal_executor_approval_binds_contract_and_script": true
+  },
+  "raw_receipt_audit": {
+    "count": 13,
+    "all_exit_zero": true,
+    "all_stdout_and_stderr_hashes_match_actual_bytes": true,
+    "all_stderr_empty": true,
+    "sequence_and_exact_allowlist_match": true,
+    "mutations": [
+      [
+        "update",
+        "vb-eirmk.11",
+        "--metadata",
+        "@/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/metadata-after.json"
+      ],
+      [
+        "update",
+        "vb-eirmk.12",
+        "--design-file",
+        "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/design-after.raw"
+      ]
+    ],
+    "metadata_update_sequence": 6,
+    "design_update_sequence": 10,
+    "create_delete_status_close_reopen_or_dependency_mutations": 0,
+    "receipt_argv": [
+      {
+        "sequence": 1,
+        "args": [
+          "show",
+          "vb-eirmk.11",
+          "--readonly"
+        ],
+        "exit": 0
+      },
+      {
+        "sequence": 2,
+        "args": [
+          "dep",
+          "list",
+          "vb-eirmk.11",
+          "--readonly"
+        ],
+        "exit": 0
+      },
+      {
+        "sequence": 3,
+        "args": [
+          "show",
+          "vb-eirmk.12",
+          "--readonly"
+        ],
+        "exit": 0
+      },
+      {
+        "sequence": 4,
+        "args": [
+          "show",
+          "vb-eirmk.11",
+          "--readonly"
+        ],
+        "exit": 0
+      },
+      {
+        "sequence": 5,
+        "args": [
+          "dep",
+          "list",
+          "vb-eirmk.11",
+          "--readonly"
+        ],
+        "exit": 0
+      },
+      {
+        "sequence": 6,
+        "args": [
+          "update",
+          "vb-eirmk.11",
+          "--metadata",
+          "@/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/metadata-after.json"
+        ],
+        "exit": 0
+      },
+      {
+        "sequence": 7,
+        "args": [
+          "show",
+          "vb-eirmk.11",
+          "--readonly"
+        ],
+        "exit": 0
+      },
+      {
+        "sequence": 8,
+        "args": [
+          "dep",
+          "list",
+          "vb-eirmk.11",
+          "--readonly"
+        ],
+        "exit": 0
+      },
+      {
+        "sequence": 9,
+        "args": [
+          "show",
+          "vb-eirmk.12",
+          "--readonly"
+        ],
+        "exit": 0
+      },
+      {
+        "sequence": 10,
+        "args": [
+          "update",
+          "vb-eirmk.12",
+          "--design-file",
+          "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/apply-output/design-after.raw"
+        ],
+        "exit": 0
+      },
+      {
+        "sequence": 11,
+        "args": [
+          "show",
+          "vb-eirmk.12",
+          "--readonly"
+        ],
+        "exit": 0
+      },
+      {
+        "sequence": 12,
+        "args": [
+          "show",
+          "vb-eirmk.11",
+          "--readonly"
+        ],
+        "exit": 0
+      },
+      {
+        "sequence": 13,
+        "args": [
+          "dep",
+          "list",
+          "vb-eirmk.11",
+          "--readonly"
+        ],
+        "exit": 0
+      }
+    ],
+    "argv_provenance": "Receipts store the exact args supplied to the approved wrapper. The byte-bound executor constructs full argv as bd + args + --json without shell interpolation.",
+    "per_command_environment": {
+      "BEADS_DOLT_SERVER_PORT": "37225",
+      "BD_DOLT_SERVER_PORT": "37225",
+      "BD_BACKUP_ENABLED": "false",
+      "TMPDIR": "/run/user/1000/vbs"
+    },
+    "environment_provenance": "Verified in the exact approved/executed script and contract; environment is not independently embedded in each receipt. The13 receipts have empty stderr, with no run backup warnings observed.",
+    "no_persistent_setting_or_backup_health_claim": true
+  },
+  "issue11": {
+    "status": "open",
+    "actual_changed_full_record_keys": [
+      "updated_at",
+      "metadata"
+    ],
+    "metadata_after_exact": {
+      "master_requirement_ids": [
+        "gate:feature-powerset",
+        "gate:miri",
+        "gate:coverage",
+        "gate:mutants-smoke",
+        "gate:bench-build",
+        "gate:benchmark-regression-policy",
+        "gate:fuzz-smoke"
+      ],
+      "qualification_only": true
+    },
+    "updated_at_from_actual_update_response": "2026-11-11T01:29:25Z",
+    "full_before_matches_hash_bound_proposal_and_canonical_digest": true,
+    "canonical_before_sha256": "9eb4a387e744582713ec95a94c35a5a0b6d106f24bc6430deb2b6b8358cf5951",
+    "immediate_before_equals_initial_before": true,
+    "full_after_equals_before_plus_only_metadata_and_actual_response_timestamp": true,
+    "post_and_final_full_records_equal": true,
+    "all_other_business_fields_and_full_nested_dependency_records_preserved": true
+  },
+  "design_audit": {
+    "before_sha256": "c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9",
+    "after_sha256": "91693b0972b9cc82ccc573ac7615ab599bd6ccbcd1609a74f9fca2b0c5c36392",
+    "before_bytes": 4148359,
+    "after_bytes": 4149239,
+    "exact_changed_scalar_paths": 49,
+    "changed_rows": 7,
+    "changed_checks": 14,
+    "requirement_rows": 190,
+    "all_completion_verified_false": true,
+    "all_implementation_missing_null": true,
+    "row_mappings": [
+      {
+        "requirement_id": "gate:feature-powerset",
+        "checks": 2,
+        "owner": "vb-eirmk.11",
+        "status": "open"
+      },
+      {
+        "requirement_id": "gate:miri",
+        "checks": 2,
+        "owner": "vb-eirmk.11",
+        "status": "open"
+      },
+      {
+        "requirement_id": "gate:coverage",
+        "checks": 2,
+        "owner": "vb-eirmk.11",
+        "status": "open"
+      },
+      {
+        "requirement_id": "gate:mutants-smoke",
+        "checks": 2,
+        "owner": "vb-eirmk.11",
+        "status": "open"
+      },
+      {
+        "requirement_id": "gate:bench-build",
+        "checks": 2,
+        "owner": "vb-eirmk.11",
+        "status": "open"
+      },
+      {
+        "requirement_id": "gate:benchmark-regression-policy",
+        "checks": 2,
+        "owner": "vb-eirmk.11",
+        "status": "open"
+      },
+      {
+        "requirement_id": "gate:fuzz-smoke",
+        "checks": 2,
+        "owner": "vb-eirmk.11",
+        "status": "open"
+      }
+    ],
+    "exact_path_allowlist": [
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          163,
+          "canonical_qualification_owner_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          163,
+          "current_owner_status"
+        ],
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          163,
+          "resolved_from_proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          163,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          163,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          163,
+          "unresolved_checks",
+          1,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          163,
+          "unresolved_checks",
+          1,
+          "proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          164,
+          "canonical_qualification_owner_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          164,
+          "current_owner_status"
+        ],
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          164,
+          "resolved_from_proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          164,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          164,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          164,
+          "unresolved_checks",
+          1,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          164,
+          "unresolved_checks",
+          1,
+          "proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          165,
+          "canonical_qualification_owner_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          165,
+          "current_owner_status"
+        ],
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          165,
+          "resolved_from_proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          165,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          165,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          165,
+          "unresolved_checks",
+          1,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          165,
+          "unresolved_checks",
+          1,
+          "proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          166,
+          "canonical_qualification_owner_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          166,
+          "current_owner_status"
+        ],
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          166,
+          "resolved_from_proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          166,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          166,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          166,
+          "unresolved_checks",
+          1,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          166,
+          "unresolved_checks",
+          1,
+          "proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          167,
+          "canonical_qualification_owner_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          167,
+          "current_owner_status"
+        ],
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          167,
+          "resolved_from_proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          167,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          167,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          167,
+          "unresolved_checks",
+          1,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          167,
+          "unresolved_checks",
+          1,
+          "proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          168,
+          "canonical_qualification_owner_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          168,
+          "current_owner_status"
+        ],
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          168,
+          "resolved_from_proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          168,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          168,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          168,
+          "unresolved_checks",
+          1,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          168,
+          "unresolved_checks",
+          1,
+          "proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          170,
+          "canonical_qualification_owner_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          170,
+          "current_owner_status"
+        ],
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          170,
+          "resolved_from_proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          170,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          170,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          170,
+          "unresolved_checks",
+          1,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          170,
+          "unresolved_checks",
+          1,
+          "proposal_key"
+        ],
+        "after": "reuse:vb-eirmk.11:closed-gate-qualification"
+      }
+    ],
+    "byte_outside_hash": "b04c294f84c5af8ae5e4f117350c88353865ff62ad6f9ec138dc0f5c98b602dd",
+    "raw_forward_and_reverse_reconstruction_exact": true,
+    "outside_target_bytes_identical": true,
+    "independent_method": "Compared every decoded key/array/leaf against independently derived approved .11 owner/status/proposal mappings. Independently scanned original and final JSON token byte spans (rejecting duplicate keys), replaced only49 actual scalar tokens in both directions, and required full byte equality. Every outside-target byte and non-target semantic value is unchanged.",
+    "actual_update_response_and_final_raw_readback_equal_design_after": true,
+    "issue12_status": "in_progress",
+    "issue12_full_changed_keys": [
+      "design",
+      "updated_at"
+    ],
+    "issue12_other_business_fields_unchanged": true,
+    "status_scope": "Seven design current_owner_status values intentionally become open per approved remap; no Beads issue status command was sent."
+  },
+  "graph_and_history": {
+    "typed_edges_before": 137,
+    "typed_edges_after": 137,
+    "all_four_raw_typed_edge_readbacks_equal_approved_set": true,
+    "all_embedded_full_issue11_dependency_sets_equal": true,
+    "no_self_edge": true,
+    "full_nested_dependency_business_records_unchanged": true,
+    "historical_issue_writes_observed": 0,
+    "historical_design_fields_and_check_status_assertion_payloads_outside49_tokens_byte_preserved": true,
+    "scope_limit": "Captured records and exact mutation sequence only; not a global live database history/cycle audit or a guarantee about unrelated concurrent operations."
+  },
+  "parent_fresh_crosscheck": {
+    "issue11_file": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/gate-owner-post-live11.json",
+    "issue12_file": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/gate-owner-post-live12.json",
+    "validation_file": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/gate-owner-parent-live-validation.json",
+    "both_fresh_full_readbacks_equal_executor_final_records": true,
+    "validation_counts_metadata_statuses_and_design_hash_independently_recalculated": true,
+    "full_plan_accepted": false
+  },
+  "evidence_fingerprint": {
+    "file_count": 55,
+    "sha256": "1c1b5e05382f4158e6ffc8cf477cd255f86c56c909ca2d489753221ddfe540c2",
+    "algorithm": "SHA256(compact JSON object mapping sorted absolute file paths to SHA256); all50 apply-output files, apply log/exit and three parent fresh files.",
+    "key_sha256": {
+      "preflight": "8894b6e9ea9396caf839d7fb0307c0a10648b5b0cb8e47e6d52b3675c8900b1d",
+      "final_readbacks": "37377581bf250f1dd4ae1d7d64a7bd61723da7ab6e2e34189368bb5e7ed3c83d",
+      "apply_log": "e4b4ed86f11b5969059166a7b3ddf6c04997604d2893891a7795c9d5240099c1",
+      "apply_exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "parent_issue11": "9d1fd15a12ce402b95e462073eb9262f89c0a51b6cc57cc590458afed36e2645",
+      "parent_issue12": "b981ffbbacbd1e6c972ef4764a7e615b75ff676ee57bbfd40d0bd2ec5b9492c6",
+      "parent_validation": "80f85043e93295830c68f5b3fbe9c41d85f555b892034a60c2b8a5a8755c9b1d"
+    }
+  },
+  "disposition": {
+    "bounded_actual_creation_or_remap_audit": "PASS: reuse .11 metadata plus exact49-scalar .12 design change",
+    "new_owner_creation": false,
+    "plan_or_core_closed": false
+  },
+  "limits": [
+    "Reviewer made no BD calls, mutations, source/gate changes, builds or agents; only own requested report written.",
+    "Fresh means parent-captured readback files checked against raw executor data; reviewer did not independently query live BD.",
+    "No gate/native/runtime/formal/backup-health, full CI, full190 plan or whole-core acceptance."
+  ],
+  "full_plan_accepted": false
+}

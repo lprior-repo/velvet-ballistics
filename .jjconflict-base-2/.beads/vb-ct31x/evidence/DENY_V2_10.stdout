@@ -1,0 +1,112 @@
+▮▮▮▮ Loading changed files
+Base revision: N/A
+Head revision: HEAD
+Changed files:
+	.beads/vb-ct31x/contract.md
+	.beads/vb-ct31x/coordinator-v1-rejection.md
+	.beads/vb-ct31x/evidence/DENY_V1_01.json
+	.beads/vb-ct31x/evidence/DENY_V1_01.stderr
+	.beads/vb-ct31x/evidence/DENY_V1_01.stdout
+	.beads/vb-ct31x/evidence/DENY_V1_02.json
+	.beads/vb-ct31x/evidence/DENY_V1_02.stderr
+	.beads/vb-ct31x/evidence/DENY_V1_02.stdout
+	.beads/vb-ct31x/evidence/DENY_V1_03.json
+	.beads/vb-ct31x/evidence/DENY_V1_03.stderr
+	.beads/vb-ct31x/evidence/DENY_V1_03.stdout
+	.beads/vb-ct31x/handoff.md
+	crates/vb_storage/src/batch/putters.rs
+	crates/vb_storage/src/constants.rs
+	crates/vb_storage/src/error/codes.rs
+	crates/vb_storage/src/error/mod.rs
+	crates/vb_storage/src/journal/core.rs
+	crates/vb_storage/src/journal/emergency_deny.rs
+	crates/vb_storage/src/journal/emergency_deny_tests.rs
+	crates/vb_storage/src/journal/mod.rs
+	crates/vb_storage/src/journal/readonly.rs
+	crates/vb_storage/src/journal/tests.rs
+	crates/vb_storage/src/tests.rs
+	fuzz/fuzz_targets/decode_record.rs
+	fuzz/fuzz_targets/journal_decode.rs
+	fuzz/src/journal_target/errors.rs
+	fuzz/tests/proptest_journal_error_exhaustiveness.rs
+▮▮▮▮ Building action graph
+Action count: 11
+Requested targets: 3
+	:fmt
+	:source-length
+	:lint-src
+Resolved targets: 3
+	velvet-ballistics:lint-src
+	velvet-ballistics:source-length
+	velvet-ballistics:fmt
+▮▮▮▮ Executing action pipeline
+▮▮▮▮ velvet-ballistics:panic-surface (dc7a043b)
+velvet-ballistics:panic-surface | CWD: /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair
+▮▮▮▮ velvet-ballistics:test-integrity (08dde8b1)
+velvet-ballistics:panic-surface | CommitSHA: 32e383287d59c6fa163e5038cf7bcbfa2a663a10
+velvet-ballistics:panic-surface | Toolchain: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+velvet-ballistics:panic-surface | Command: bash scripts/check-panic-surface.sh
+velvet-ballistics:panic-surface | ScanDomain: crates/*/src
+velvet-ballistics:panic-surface | NonProductionPathExcluded: tests benches examples fuzz target .beads fixtures build.rs path-scoped tests.rs *_tests.rs kani harnesses loom models
+velvet-ballistics:test-integrity | test integrity: PASS base=HEAD
+▮▮▮▮ velvet-ballistics:test-integrity (1s 634ms, 08dde8b1)
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (2d1c1d43)
+velvet-ballistics:ignored-fallible-results | FixturePass: clean production-like fixture exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-001 bare fallible call exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-002 let underscore exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 ok err lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 embedded ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 split ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-004 swallowed Err exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-005 drop fallible exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-006 undocumented allow marker exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: path-bound justified exception exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: overbroad exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | FixturePass: malformed exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | ScanDomain: crates/*/src xtask/src
+velvet-ballistics:ignored-fallible-results | NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+velvet-ballistics:panic-surface | NoViolationFound
+velvet-ballistics:panic-surface | ExitCode: 0
+▮▮▮▮ velvet-ballistics:panic-surface (20s 746ms, dc7a043b)
+▮▮▮▮ velvet-ballistics:unsafe-audit (d62eb013)
+▮▮▮▮ velvet-ballistics:unsafe-audit (25ms, d62eb013)
+▮▮▮▮ velvet-ballistics:fmt (7e5fd6f3)
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny_tests.rs:18:
+          velvet-ballistics:fmt |  //! All tests use Result return and ?/let-else patterns.
+          velvet-ballistics:fmt |  //! Zero .expect(), .unwrap(), .panic(), unchecked indexing, or unchecked arithmetic.
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt | -use crate::events::JournalEvent;
+          velvet-ballistics:fmt |  use crate::error::JournalError;
+          velvet-ballistics:fmt | +use crate::events::JournalEvent;
+          velvet-ballistics:fmt |  use crate::journal::EmergencyDenyState;
+          velvet-ballistics:fmt |  use crate::journal::FjallJournal;
+          velvet-ballistics:fmt |  use std::path::PathBuf;
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny_tests.rs:406:
+          velvet-ballistics:fmt |      // Verify run event is still intact with exact event vector
+          velvet-ballistics:fmt |      let events = journal.events_for_run(run)?;
+          velvet-ballistics:fmt |      assert_eq!(events.len(), 1, "expected 1 event");
+          velvet-ballistics:fmt | -    assert_eq!(events.first(), Some(&event), "expected exact event identity");
+          velvet-ballistics:fmt | +    assert_eq!(
+          velvet-ballistics:fmt | +        events.first(),
+          velvet-ballistics:fmt | +        Some(&event),
+          velvet-ballistics:fmt | +        "expected exact event identity"
+          velvet-ballistics:fmt | +    );
+          velvet-ballistics:fmt |      Ok(())
+          velvet-ballistics:fmt |  }
+          velvet-ballistics:fmt |  
+▮▮▮▮ velvet-ballistics:fmt (3s 592ms, 7e5fd6f3)
+▮▮▮▮ velvet-ballistics:workspace-assertions (80ae4217)
+▮▮▮▮ velvet-ballistics:workspace-assertions (306ms, 80ae4217)
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (running for 30s)
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (running for 60s)
+velvet-ballistics:ignored-fallible-results | NoViolationFound
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (1m 16s 910ms, 2d1c1d43)
+▮▮▮▮ velvet-ballistics:lint-src (393380cd)
+▮▮▮▮ velvet-ballistics:banned-token-gates (no op, caf01200)
+▮▮▮▮ velvet-ballistics:source-length (05bd1c52)
+▮▮▮▮ velvet-ballistics:lint-src (275ms, 393380cd)
+▮▮▮▮ velvet-ballistics:source-length (4s 279ms, 05bd1c52)
+
+Tasks: 8 completed, 1 failed
+ Time: 1m 23s 652ms
+

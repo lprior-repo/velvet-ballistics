@@ -1,0 +1,194 @@
+{
+  "verdict": "PASS",
+  "review_kind": "independent bounded Has compiler/static and timer test composition CODE review",
+  "source_pin": "6d7789cd3fc8997e228b568da7270738ba8e2080",
+  "source_tree": "3d5bf7361a14f50cbe32290f0dc241cd28620aea",
+  "baseline_pin": "2736640b4f18a170a0996129f7cdf43a3acb9e98",
+  "contract_sha256": "2f3329582a76616ad9b02e83ea0b5036a66c616fa5b49e39afcd71b33339d860",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+  "git_and_jj_roots_verified": true,
+  "findings": [],
+  "components": {
+    "Has_compiler_static": "2616d28138c781efddf9bef23d6125e3edd84105",
+    "compiler_artifact_strengthening": "ff42abf7bd9f778d388274fb9a0c01d081715bb7",
+    "original_positional_guard": "d5420f5fc2a6c9490bbd32e16d0fc4d575714e37",
+    "timer_composition": "8d3a2bbc3834a9f9ae341b3ba1c0dddb1beb994f",
+    "lint_followup": "abee91b9c6ade9948a7c299502c8baa446d08730",
+    "exact_component_comparison": "Every one of the ten paths equals its stated component byte-for-byte: six Has test/registration paths equal2616; private production helper equalsabee; three timer test/registration paths equal8d3a.",
+    "all_ten_current_validation_source_files_match_frozen_candidate": true
+  },
+  "prior_own_CODE_reviews_read": [
+    {
+      "path": "has-parse-ast-code-review-v1.json",
+      "sha256": "1388a2245c3f4ddadd0ea7b289f126d7e69eac64e5e330c593e9366568a133e3",
+      "verdict": "PASS"
+    },
+    {
+      "path": "has-public-compiler-code-review-v2.json",
+      "sha256": "9d8903a760d8791d54816f8b42f051cd5aa6e1a417a44b8a118fd1b328099d14",
+      "verdict": "PASS"
+    },
+    {
+      "path": "timer-authority-code-sol-v2.json",
+      "sha256": "4d311023c4f44cff4f136203010c6cdfbe423d3395b7b6036a2fbfedd904ae4d",
+      "verdict": "PASS"
+    },
+    {
+      "path": "timer-capacity-code-sol.json",
+      "sha256": "d5f5a3e8a28d725d037f0c594d7b7d2716deae5f72fd13fe7ad0c788ee5e7578",
+      "verdict": "PASS"
+    }
+  ],
+  "scope": {
+    "paths": 10,
+    "Has_paths": 7,
+    "timer_paths": 3,
+    "source_sha256": {
+      "crates/vb_compile/src/type_taint_expr.rs": "4f90e7ec7980516351afec59fffd3dafc6dd89e0f0abd20283c6cf13f7f415c7",
+      "crates/vb_expr/src/expr_typecheck/tests.rs": "538750ccf392d4ba7f398fa9a2ba47e7db2162dd55668135f1a8126324a4e113",
+      "crates/vb_expr/src/expr_typecheck/tests/has_argument_types.rs": "fd5cc6e6080bc983d04978760bf22307335861a69696af40e9d58be24a1e5aaf",
+      "crates/vb_runtime/src/shard/lifecycle.rs": "a79f0d91b12b5e97ef624f6bc36dabb2a8785c81d9f9a915a8466649d6bf3c49",
+      "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs": "46ac76897e1591e45d90ca9493fef23a8d3c59f8d437c09d576b1fef6fdd8e4a",
+      "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs": "ae78a8e5bf440e2edde5b1ac5f55498917c92d1020fad5d48cd2d38ed9898335",
+      "crates/workspace_tests/tests/has_helper_compiler_preservation.rs": "b9933fe9a31a9d492a1eb0649a59e8fda668a71a72f8a083b98966b997cbe763",
+      "crates/workspace_tests/tests/support/has_compiler_artifact_cases.rs": "2f855fad833f0a7c1a85c64563f7d00066a47273c4c659eabec40ceba51fc809",
+      "crates/workspace_tests/tests/support/has_compiler_artifacts.rs": "65b27bf7b7cd452c735d466364e04d7e7a843d9024eed43a8572574b6c09acaa",
+      "crates/workspace_tests/tests/support/has_compiler_precedence_cases.rs": "d190dadd19afa8c39ceed56d2aa9fbaf3e5ca3386a48d7b69490093c66d8f007"
+    },
+    "production_change": "Only the private cold compiler Has positional fact guard; no TimerWheel production change against this base.",
+    "public_API_format_schema_dependencies_gates_unchanged": true
+  },
+  "interaction_and_registration": [
+    {
+      "refs": [
+        "crates/vb_runtime/src/shard/lifecycle.rs:47",
+        "crates/vb_runtime/src/shard/lifecycle.rs:48"
+      ],
+      "assessment": "Exactly the capacity and authority includes are added under the existing lifecycle test module. Existing includes remain. Both test-file SHA256 values equal their independently reviewed final components; helper names are distinct, and all seven test names occur exactly once in the integrated selected run. No runtime behavior, snapshot layout, timer generation policy or public registration is altered."
+    },
+    {
+      "refs": [
+        "crates/vb_expr/src/expr_typecheck/tests.rs:6",
+        "crates/vb_expr/src/expr_typecheck/tests/has_argument_types.rs:92"
+      ],
+      "assessment": "The existing cfg(test) typecheck module registers six Has cases. Malformed zero/three-argument checker cases construct real ExprAst::Helper values, so parser arity rejection cannot mask the checker under test; exact helper/expected/actual payloads are required. The sixth test asserts receiver-first exact object/boolean mismatch for two bad operands. Canonical production static guard remains unchanged."
+    },
+    {
+      "refs": [
+        "crates/workspace_tests/tests/has_helper_compiler_preservation.rs:3",
+        "crates/workspace_tests/tests/support/has_compiler_precedence_cases.rs:38"
+      ],
+      "assessment": "The previously reviewed ff42 positive artifact bodies remain byte-identical. Three added public parse_ast negatives exercise one bad receiver with one argument, Any receiver with a numeric key among three arguments, and receiver-first precedence for two bad operands among three arguments. Exact single TypeMismatch payloads use choose.condition; these are present-position checks, not newly introduced parse-AST arity errors. Existing positive zero/one/three-argument AST preservation and canonical arity negatives remain."
+    },
+    {
+      "refs": [
+        "crates/vb_compile/src/type_taint_expr.rs:132",
+        "crates/vb_compile/src/type_taint_expr.rs:142"
+      ],
+      "assessment": "The abee lint delta replaces nested if-let/if with a short-circuit let-chain. helper_expected_type is evaluated once; matches_type executes only for Some(expected), and the same field/expected/found error is returned. One left-to-right try_fold traversal, independent Any wildcard behavior, Boolean result, all-successful-argument taint merging and unchanged arity ownership are preserved. No suppression or gate weakening is added."
+    },
+    {
+      "assessment": "Compiler inference is a cold pure calculation; timer additions are test-only. There is no production overlap or shared mutable global state introduced between these components. All ten changed paths are accounted for, without removal of sibling registrations or changes to runtime/public formats."
+    }
+  ],
+  "source_size": {
+    "new_or_changed_function_count": 91,
+    "maximum_logical_lines_including_signature": 23,
+    "all_at_most25": true,
+    "by_file": {
+      "crates/vb_compile/src/type_taint_expr.rs": {
+        "functions": 3,
+        "max_logical": 15
+      },
+      "crates/vb_expr/src/expr_typecheck/tests/has_argument_types.rs": {
+        "functions": 9,
+        "max_logical": 20
+      },
+      "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_authority_regressions.rs": {
+        "functions": 16,
+        "max_logical": 22
+      },
+      "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_capacity_regressions.rs": {
+        "functions": 18,
+        "max_logical": 23
+      },
+      "crates/workspace_tests/tests/has_helper_compiler_preservation.rs": {
+        "functions": 8,
+        "max_logical": 19
+      },
+      "crates/workspace_tests/tests/support/has_compiler_artifact_cases.rs": {
+        "functions": 10,
+        "max_logical": 15
+      },
+      "crates/workspace_tests/tests/support/has_compiler_artifacts.rs": {
+        "functions": 22,
+        "max_logical": 19
+      },
+      "crates/workspace_tests/tests/support/has_compiler_precedence_cases.rs": {
+        "functions": 5,
+        "max_logical": 12
+      }
+    },
+    "counting_rule": "Signature and every nonblank/noncomment line count, including punctuation/macro/closure closing lines; only standalone brace lines are excluded. No compressed statement packing found.",
+    "forbidden_construct_additions_found": false
+  },
+  "raw_evidence": {
+    "focused_compiler": {
+      "log": "/home/lewis/src/isoloated/velvet-ballistics-has-static-local5090/target/core-build-20261110/evidence/has-malformed-prefix-native.log",
+      "log_sha256": "344510b5026712f8298e2fdf95ea7c924a0cb6c34a96ccafe59b3f9ec8d4d3ea",
+      "exit_file": "has-malformed-prefix-native.exit",
+      "observed_exit": "NATIVE_EXIT=0",
+      "passed": 23,
+      "skipped": 0,
+      "frozen_test_inventory_equals_all23_raw_log_names": true
+    },
+    "focused_static": {
+      "log": "/home/lewis/src/isoloated/velvet-ballistics-has-static-local5090/target/core-build-20261110/evidence/has-static-six-native.log",
+      "log_sha256": "adfc35175973041dfa40892e5aeac64ad947265b0c1d190c47f156e89c0e21bd",
+      "command_receipt": "has-static-six-command-receipt.json",
+      "actual_command_receipt_exit": 0,
+      "passed": 6,
+      "skipped_by_filter": 949
+    },
+    "focused_timer": {
+      "log": "/home/lewis/src/isoloated/velvet-ballistics-timer-extra-validation/target/core-build-20261110/evidence/timer-extra-seven-native.log",
+      "log_sha256": "12c849eb2f4099f21d7726f9b59fb5132e2327848b7adf9bd8760b283c35d0d7",
+      "exit_file": "timer-extra-seven-native.exit",
+      "observed_exit": "NATIVE_EXIT=0",
+      "passed": 7,
+      "skipped_by_filter": 3015
+    },
+    "selected_v1": {
+      "log": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-compiler-timer-moon-selected.log",
+      "observed_exit": "MOON_EXIT=1",
+      "observed_failure": "lint-src clippy::collapsible_if at type_taint_expr.rs:142; retained as failed evidence."
+    },
+    "selected_v2": {
+      "log": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-compiler-timer-moon-selected-v2.log",
+      "log_sha256": "ca6a90b418bfea57072db2ba4dff22b1837ba3acae1f67d5461cc0ec920abbd5",
+      "exit_file": "has-compiler-timer-moon-selected-v2.exit",
+      "exit_sha256": "99378a3544b6469ba679bcb306beeb8701cb1c42ab78e520775593a310116115",
+      "observed_exit": "MOON_EXIT=0",
+      "passed": 16524,
+      "skipped": 7,
+      "completed_tasks": 12,
+      "cached_tasks": 4,
+      "exact_new_component_case_occurrences": {
+        "compiler": 23,
+        "static": 6,
+        "timer": 7
+      },
+      "warnings": "Log contains missing fixture-input hash warnings and remote cache write warnings. The actual selected run completed exit0; no clean-cache or full-CI claim is made."
+    }
+  },
+  "limits": [
+    "PASS binds this exact composition/source and let-chain lint delta; independent TEST disposition remains separate.",
+    "Literal Text unsupported failure ead289 remains separate and open; no assertion was weakened to include it in the green compiler cases.",
+    "Prior component limits remain: these timer capacity/authority cases do not close replacement final firing, bounded recovery, due/error/retry or the full TimerWheel contract; Has qualification is not fully closed.",
+    "Raw receipts were inspected, not rerun; no builds, native commands, source/tracker/gate edits, or agents were invoked by this reviewer.",
+    "Selected Moon evidence is not full moon ci, formal proof, full Has/Timer/master acceptance."
+  ],
+  "full_has_accepted": false,
+  "full_timer_accepted": false,
+  "full_plan_accepted": false
+}

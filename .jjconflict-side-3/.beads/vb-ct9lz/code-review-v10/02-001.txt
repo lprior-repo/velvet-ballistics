@@ -1,0 +1,100 @@
+crates/vb_storage/src/journal/artifact_acceptance.rs:1: //! Private artifact acceptance counter and issuance helpers.
+crates/vb_storage/src/journal/artifact_acceptance.rs:2: //!
+crates/vb_storage/src/journal/artifact_acceptance.rs:3: //! This module owns the artifact sequence counter stored in the
+crates/vb_storage/src/journal/artifact_acceptance.rs:4: //! `artifact_acceptance` metadata keyspace. It provides a single private
+crates/vb_storage/src/journal/artifact_acceptance.rs:5: //! helper, `issue_artifact`, that performs the entire RMW sequence:
+crates/vb_storage/src/journal/artifact_acceptance.rs:6: //! read counter, increment, stamp, rebind digest, encode record, stage
+crates/vb_storage/src/journal/artifact_acceptance.rs:7: //! both writes in one `fjall::OwnedWriteBatch`, and commit with policy-
+crates/vb_storage/src/journal/artifact_acceptance.rs:8: //! appropriate durability.
+crates/vb_storage/src/journal/artifact_acceptance.rs:9: //!
+crates/vb_storage/src/journal/artifact_acceptance.rs:10: //! All helpers here are private (`fn` not `pub fn`). No new public API is
+crates/vb_storage/src/journal/artifact_acceptance.rs:11: //! exposed through this module.
+crates/vb_storage/src/journal/artifact_acceptance.rs:12: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:13: use std::num::NonZeroU64;
+crates/vb_storage/src/journal/artifact_acceptance.rs:14: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:15: use crate::admission::AcceptedArtifact;
+crates/vb_storage/src/journal/artifact_acceptance.rs:16: use crate::admission::bind_artifact_digest;
+crates/vb_storage/src/journal/artifact_acceptance.rs:17: use crate::constants::MAGIC_COMPILED_ARTIFACT;
+crates/vb_storage/src/journal/artifact_acceptance.rs:18: use crate::constants::MAX_COMPILED_IR_BYTES;
+crates/vb_storage/src/journal/artifact_acceptance.rs:19: use crate::error::JournalError;
+crates/vb_storage/src/journal/artifact_acceptance.rs:20: use crate::journal::FjallJournal;
+crates/vb_storage/src/journal/artifact_acceptance.rs:21: use crate::journal::admission::verify_compiled_ir_record_digest;
+crates/vb_storage/src/journal/artifact_acceptance.rs:22: use crate::keys::compiled_ir_key;
+crates/vb_storage/src/journal/artifact_acceptance.rs:23: use crate::records::CompiledIrRecord;
+crates/vb_storage/src/journal/artifact_acceptance.rs:24: use crate::records::RecordKind;
+crates/vb_storage/src/journal/artifact_acceptance.rs:25: use crate::types::EventSeq;
+crates/vb_storage/src/journal/artifact_acceptance.rs:26: use vb_core::RuntimePolicy;
+crates/vb_storage/src/journal/artifact_acceptance.rs:27: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:28: /// Private wrapper for issued artifact sequence numbers.
+crates/vb_storage/src/journal/artifact_acceptance.rs:29: ///
+crates/vb_storage/src/journal/artifact_acceptance.rs:30: /// Wraps `NonZeroU64` because issued sequences always start at 1.
+crates/vb_storage/src/journal/artifact_acceptance.rs:31: /// This type is not exported; only `EventSeq` appears in the public API.
+crates/vb_storage/src/journal/artifact_acceptance.rs:32: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+crates/vb_storage/src/journal/artifact_acceptance.rs:33: pub(crate) struct IssuedArtifactSequence(std::num::NonZeroU64);
+crates/vb_storage/src/journal/artifact_acceptance.rs:34: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:35: impl IssuedArtifactSequence {
+crates/vb_storage/src/journal/artifact_acceptance.rs:36:     /// Creates a new issued sequence from a validated non-zero value.
+crates/vb_storage/src/journal/artifact_acceptance.rs:37:     /// The caller must have already incremented the counter and ensured
+crates/vb_storage/src/journal/artifact_acceptance.rs:38:     /// the value is strictly greater than zero.
+crates/vb_storage/src/journal/artifact_acceptance.rs:39:     #[inline]
+crates/vb_storage/src/journal/artifact_acceptance.rs:40:     fn new(value: u64) -> Result<Self, JournalError> {
+crates/vb_storage/src/journal/artifact_acceptance.rs:41:         let nz = NonZeroU64::new(value).ok_or(JournalError::SequenceOverflow)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:42:         Ok(Self(nz))
+crates/vb_storage/src/journal/artifact_acceptance.rs:43:     }
+crates/vb_storage/src/journal/artifact_acceptance.rs:44: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:45:     /// Converts to the public EventSeq type for embedding in the artifact.
+crates/vb_storage/src/journal/artifact_acceptance.rs:46:     #[inline]
+crates/vb_storage/src/journal/artifact_acceptance.rs:47:     pub(crate) fn to_event_seq(self) -> EventSeq {
+crates/vb_storage/src/journal/artifact_acceptance.rs:48:         EventSeq::new(self.0.get())
+crates/vb_storage/src/journal/artifact_acceptance.rs:49:     }
+crates/vb_storage/src/journal/artifact_acceptance.rs:50: }
+crates/vb_storage/src/journal/artifact_acceptance.rs:51: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:52: /// The literal key for the last-issued counter in the artifact_acceptance
+crates/vb_storage/src/journal/artifact_acceptance.rs:53: /// keyspace. The dedicated keyspace already isolates this key; no prefix
+crates/vb_storage/src/journal/artifact_acceptance.rs:54: /// is needed.
+crates/vb_storage/src/journal/artifact_acceptance.rs:55: const LAST_ISSUED_KEY: &[u8] = b"last_issued";
+crates/vb_storage/src/journal/artifact_acceptance.rs:56: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:57: /// Reads the last issued artifact sequence from the metadata keyspace.
+crates/vb_storage/src/journal/artifact_acceptance.rs:58: ///
+crates/vb_storage/src/journal/artifact_acceptance.rs:59: /// Returns 0 if the counter key is absent (no artifacts issued yet).
+crates/vb_storage/src/journal/artifact_acceptance.rs:60: fn read_counter(journal: &FjallJournal) -> Result<u64, JournalError> {
+crates/vb_storage/src/journal/artifact_acceptance.rs:61:     match journal.artifact_acceptance.get(LAST_ISSUED_KEY)? {
+crates/vb_storage/src/journal/artifact_acceptance.rs:62:         Some(value) => decode_counter_value(&value),
+crates/vb_storage/src/journal/artifact_acceptance.rs:63:         None => Ok(0),
+crates/vb_storage/src/journal/artifact_acceptance.rs:64:     }
+crates/vb_storage/src/journal/artifact_acceptance.rs:65: }
+crates/vb_storage/src/journal/artifact_acceptance.rs:66: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:67: /// Decodes a counter value from bytes.
+crates/vb_storage/src/journal/artifact_acceptance.rs:68: ///
+crates/vb_storage/src/journal/artifact_acceptance.rs:69: /// Uses safe fixed array TryFrom; no unchecked slicing or indexing.
+crates/vb_storage/src/journal/artifact_acceptance.rs:70: /// Value must be exactly 8 bytes (big-endian u64).
+crates/vb_storage/src/journal/artifact_acceptance.rs:71: fn decode_counter_value(value: &[u8]) -> Result<u64, JournalError> {
+crates/vb_storage/src/journal/artifact_acceptance.rs:72:     if value.len() != 8 {
+crates/vb_storage/src/journal/artifact_acceptance.rs:73:         return Err(JournalError::MalformedKeyspaceRow {
+crates/vb_storage/src/journal/artifact_acceptance.rs:74:             prefix: 0,
+crates/vb_storage/src/journal/artifact_acceptance.rs:75:             expected_len: 8,
+crates/vb_storage/src/journal/artifact_acceptance.rs:76:             actual_len: value.len(),
+crates/vb_storage/src/journal/artifact_acceptance.rs:77:         });
+crates/vb_storage/src/journal/artifact_acceptance.rs:78:     }
+crates/vb_storage/src/journal/artifact_acceptance.rs:79:     // Safe fixed array TryFrom (no unchecked indexing or copy_from_slice)
+crates/vb_storage/src/journal/artifact_acceptance.rs:80:     let bytes: [u8; 8] = value
+crates/vb_storage/src/journal/artifact_acceptance.rs:81:         .try_into()
+crates/vb_storage/src/journal/artifact_acceptance.rs:82:         .map_err(|_| JournalError::MalformedKeyspaceRow {
+crates/vb_storage/src/journal/artifact_acceptance.rs:83:             prefix: 0,
+crates/vb_storage/src/journal/artifact_acceptance.rs:84:             expected_len: 8,
+crates/vb_storage/src/journal/artifact_acceptance.rs:85:             actual_len: value.len(),
+crates/vb_storage/src/journal/artifact_acceptance.rs:86:         })?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:87:     Ok(u64::from_be_bytes(bytes))
+crates/vb_storage/src/journal/artifact_acceptance.rs:88: }
+crates/vb_storage/src/journal/artifact_acceptance.rs:89: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:90: /// Encodes a counter value to big-endian bytes.
+crates/vb_storage/src/journal/artifact_acceptance.rs:91: fn encode_counter_value(value: u64) -> [u8; 8] {
+crates/vb_storage/src/journal/artifact_acceptance.rs:92:     value.to_be_bytes()
+crates/vb_storage/src/journal/artifact_acceptance.rs:93: }
+crates/vb_storage/src/journal/artifact_acceptance.rs:94: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:95: /// Increment the counter and prepare the stamped artifact.
+crates/vb_storage/src/journal/artifact_acceptance.rs:96: fn prepare_artifact(
+crates/vb_storage/src/journal/artifact_acceptance.rs:97:     last: u64,
+crates/vb_storage/src/journal/artifact_acceptance.rs:98:     artifact: AcceptedArtifact,
+crates/vb_storage/src/journal/artifact_acceptance.rs:99: ) -> Result<(u64, AcceptedArtifact), JournalError> {
+crates/vb_storage/src/journal/artifact_acceptance.rs:100:     let next = last.checked_add(1).ok_or(JournalError::SequenceOverflow)?;

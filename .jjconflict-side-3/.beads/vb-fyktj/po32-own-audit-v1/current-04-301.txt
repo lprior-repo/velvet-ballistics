@@ -1,0 +1,99 @@
+verification/verus/signals_invariant.rs:301:     }
+verification/verus/signals_invariant.rs:302: }
+verification/verus/signals_invariant.rs:303: 
+verification/verus/signals_invariant.rs:304: /// Lemma: after try_take(true), remaining decreases by 1.
+verification/verus/signals_invariant.rs:305: pub proof fn proof_try_take_true_decreases(remaining: int)
+verification/verus/signals_invariant.rs:306:     requires
+verification/verus/signals_invariant.rs:307:         remaining > 0,
+verification/verus/signals_invariant.rs:308:         spec_step_budget_invariant(remaining),
+verification/verus/signals_invariant.rs:309:     ensures
+verification/verus/signals_invariant.rs:310:         spec_try_take(remaining).1 == remaining - 1,
+verification/verus/signals_invariant.rs:311: {
+verification/verus/signals_invariant.rs:312:     let (_, new_rem) = spec_try_take(remaining);
+verification/verus/signals_invariant.rs:313:     assert(new_rem == remaining - 1);
+verification/verus/signals_invariant.rs:314: }
+verification/verus/signals_invariant.rs:315: 
+verification/verus/signals_invariant.rs:316: /// Lemma: after try_take(false), remaining stays the same.
+verification/verus/signals_invariant.rs:317: pub proof fn proof_try_take_false_unchanged(remaining: int)
+verification/verus/signals_invariant.rs:318:     requires
+verification/verus/signals_invariant.rs:319:         remaining == 0,
+verification/verus/signals_invariant.rs:320:     ensures
+verification/verus/signals_invariant.rs:321:         spec_try_take(remaining).1 == remaining,
+verification/verus/signals_invariant.rs:322: {
+verification/verus/signals_invariant.rs:323:     let (_, new_rem) = spec_try_take(remaining);
+verification/verus/signals_invariant.rs:324:     assert(new_rem == remaining);
+verification/verus/signals_invariant.rs:325: }
+verification/verus/signals_invariant.rs:326: 
+verification/verus/signals_invariant.rs:327: /// Monotonicity: try_take never increases remaining.
+verification/verus/signals_invariant.rs:328: pub proof fn proof_try_take_never_increases(remaining: int)
+verification/verus/signals_invariant.rs:329:     requires
+verification/verus/signals_invariant.rs:330:         spec_step_budget_invariant(remaining),
+verification/verus/signals_invariant.rs:331:     ensures
+verification/verus/signals_invariant.rs:332:         spec_try_take(remaining).1 <= remaining,
+verification/verus/signals_invariant.rs:333: {
+verification/verus/signals_invariant.rs:334:     let (_, new_rem) = spec_try_take(remaining);
+verification/verus/signals_invariant.rs:335:     if remaining > 0 && remaining <= max_step_budget() {
+verification/verus/signals_invariant.rs:336:         assert(new_rem == remaining - 1);
+verification/verus/signals_invariant.rs:337:         assert(new_rem <= remaining);
+verification/verus/signals_invariant.rs:338:     } else if remaining == 0 {
+verification/verus/signals_invariant.rs:339:         assert(new_rem == 0);
+verification/verus/signals_invariant.rs:340:         assert(new_rem <= remaining);
+verification/verus/signals_invariant.rs:341:     } else {
+verification/verus/signals_invariant.rs:342:         // remaining > MAX: excluded by precondition
+verification/verus/signals_invariant.rs:343:         assert(false);
+verification/verus/signals_invariant.rs:344:     }
+verification/verus/signals_invariant.rs:345: }
+verification/verus/signals_invariant.rs:346: 
+verification/verus/signals_invariant.rs:347: // =============================================================================
+verification/verus/signals_invariant.rs:348: // Production-bound exec proofs (exec fns that exercise StepBudget contracts)
+verification/verus/signals_invariant.rs:349: // =============================================================================
+verification/verus/signals_invariant.rs:350: //
+verification/verus/signals_invariant.rs:351: // These exec fns call the MIRROR exec fns
+verification/verus/signals_invariant.rs:352: // (`production::StepBudget::new`, `::try_take`) directly and verify
+verification/verus/signals_invariant.rs:353: // that their actual return values satisfy the production-bound
+verification/verus/signals_invariant.rs:354: // contracts attached via `assume_specification` above. They provide
+verification/verus/signals_invariant.rs:355: // the end-to-end production binding demanded by GOD RULE 2: the spec
+verification/verus/signals_invariant.rs:356: // proofs above are not just abstract reasoning over `spec_try_take`
+verification/verus/signals_invariant.rs:357: // — they reason over the production behavior of
+verification/verus/signals_invariant.rs:358: // `production::StepBudget::try_take` and `::new`.
+verification/verus/signals_invariant.rs:359: 
+verification/verus/signals_invariant.rs:360: /// Exec proof: `production::StepBudget::new(value)` produces a
+verification/verus/signals_invariant.rs:361: /// StepBudget whose `remaining` field equals `min(value,
+verification/verus/signals_invariant.rs:362: /// MAX_STEP_BUDGET)`.
+verification/verus/signals_invariant.rs:363: ///
+verification/verus/signals_invariant.rs:364: /// Discharged by the production contract on
+verification/verus/signals_invariant.rs:365: /// `production::StepBudget::new`.
+verification/verus/signals_invariant.rs:366: pub fn exec_proof_step_budget_new_clamps(value: u64) -> (budget: production::StepBudget)
+verification/verus/signals_invariant.rs:367:     ensures
+verification/verus/signals_invariant.rs:368:         budget.remaining as int == spec_new(value as int),
+verification/verus/signals_invariant.rs:369:         spec_step_budget_invariant(budget.remaining as int),
+verification/verus/signals_invariant.rs:370: {
+verification/verus/signals_invariant.rs:371:     // Discharged by production contract on
+verification/verus/signals_invariant.rs:372:     // production::StepBudget::new (assume_specification).
+verification/verus/signals_invariant.rs:373:     let budget = production::StepBudget::new(value);
+verification/verus/signals_invariant.rs:374:     budget
+verification/verus/signals_invariant.rs:375: }
+verification/verus/signals_invariant.rs:376: 
+verification/verus/signals_invariant.rs:377: /// Exec proof: `production::StepBudget::try_take` exercises the
+verification/verus/signals_invariant.rs:378: /// production contract. The exec body performs a construction, a
+verification/verus/signals_invariant.rs:379: /// take, and the bounded invariant holds for the final budget.
+verification/verus/signals_invariant.rs:380: ///
+verification/verus/signals_invariant.rs:381: /// Discharged by the production contracts on
+verification/verus/signals_invariant.rs:382: /// `production::StepBudget::new` and
+verification/verus/signals_invariant.rs:383: /// `production::StepBudget::try_take`.
+verification/verus/signals_invariant.rs:384: pub fn exec_proof_step_budget_try_take(initial: u64) -> (budget: production::StepBudget)
+verification/verus/signals_invariant.rs:385:     ensures
+verification/verus/signals_invariant.rs:386:         budget.remaining as int <= spec_new(initial as int),
+verification/verus/signals_invariant.rs:387:         spec_step_budget_invariant(budget.remaining as int),
+verification/verus/signals_invariant.rs:388: {
+verification/verus/signals_invariant.rs:389:     // Discharged by production contracts on
+verification/verus/signals_invariant.rs:390:     // production::StepBudget::new and production::StepBudget::try_take
+verification/verus/signals_invariant.rs:391:     // (assume_specification).
+verification/verus/signals_invariant.rs:392:     let mut budget = production::StepBudget::new(initial);
+verification/verus/signals_invariant.rs:393:     let _ = budget.try_take();
+verification/verus/signals_invariant.rs:394:     budget
+verification/verus/signals_invariant.rs:395: }
+verification/verus/signals_invariant.rs:396: 
+verification/verus/signals_invariant.rs:397: fn main() {}
+verification/verus/signals_invariant.rs:398: 
+verification/verus/signals_invariant.rs:399: } // verus!

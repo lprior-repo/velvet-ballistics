@@ -1,0 +1,33 @@
+1: //! Fuzz target for YAML compiler with strict profile validation.
+2: //!
+3: //! Command: cargo fuzz run vb_f04l_yaml_compiler_compile -- -max_len=65536 -runs=100000
+4: 
+5: #![no_main]
+6: 
+7: use libfuzzer_sys::fuzz_target;
+8: use vb_compile::{CompileError, YamlCompiler};
+9: 
+10: fuzz_target!(|data: &[u8]| {
+11:     let result = YamlCompiler::default().compile(data);
+12:     if let Err(errors) = result {
+13:         for error in errors.iter() {
+14:             match error {
+15:                 CompileError::CanonicalYaml { .. }
+16:                 | CompileError::EmptySteps
+17:                 | CompileError::UnsupportedTopLevelDeclaration { .. }
+18:                 | CompileError::UnsupportedTopLevelResult
+19:                 | CompileError::UnsupportedStepControlField { .. }
+20:                 | CompileError::DuplicateStepId { .. }
+21:                 | CompileError::DuplicateOutputName { .. }
+22:                 | CompileError::UnknownOutputName { .. }
+23:                 | CompileError::StepFieldShape { .. }
+24:                 | CompileError::StepIndexOutOfRange { .. }
+25:                 | CompileError::SlotIndexOutOfRange { .. }
+26:                 | CompileError::PrimitiveLoweringLimitExceeded { .. }
+27:                 | CompileError::Workflow(_)
+28:                 | CompileError::UnsupportedStepPrimitive { .. } => {}
+29:                 _ => {}
+30:             }
+31:         }
+32:     }
+33: });

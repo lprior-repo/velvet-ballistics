@@ -1,0 +1,679 @@
+{
+  "artifact_sha256": "fb421d0eaef2f674f990d19c8ebf6cea6ed3d890b5412d9f19c5b1f9789f468f",
+  "executor_sha256": "8c508a85448145b3273cabc4a0e301d8d05295771b7e5a6b5685f440d3f91817",
+  "proposal_sha256": "9cef921c994a6bd6bbf706d597b3a244580970eba3a1d14139c566f9e011c155",
+  "verdict": "PASS",
+  "review_kind": "independent bounded post-apply CODE evidence audit",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+  "roots_verified": {
+    "git": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+    "jj": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol"
+  },
+  "evidence_root": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence",
+  "run_subdirectory": "remaining-owner-resume-v3",
+  "findings": [],
+  "bindings": {
+    "contract_and_executor_exact_frozen_hashes": true,
+    "executed_parent_copy_byte_hash_equals_approved_executor": true,
+    "preflight_contract_executor_and_V7_hashes_exact": true,
+    "original_V7_review_receipts_hashes_and_proposal_bindings_checked": true,
+    "current_resume_CODE_TEST_review_receipts_hashes_and_contract_executor_bindings_checked": true
+  },
+  "observed_run": {
+    "exit_file": "remaining-owner-resume-v3-run.exit",
+    "exit_text": "RESUME_EXIT=0",
+    "stdout_file": "remaining-owner-resume-v3-run.log",
+    "stdout": {
+      "patched_rows": 9,
+      "patched_checks": 13,
+      "changed_scalar_tokens": 53,
+      "full_plan_accepted": false
+    }
+  },
+  "design": {
+    "before_sha256": "0af85ed146ed27fbe169a400ccd02d484f018db94f60c891d52052d17bbe2dd1",
+    "after_sha256": "c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9",
+    "before_bytes": 4147120,
+    "after_bytes": 4148359,
+    "original_V5_before_bytes_identical": true,
+    "exact_changed_scalar_paths": 53,
+    "changed_rows": 9,
+    "owned_checks": 13,
+    "rows": 190,
+    "completion_verified_all_false": true,
+    "implementation_missing_all_null": true,
+    "independent_method": "Parsed both JSON trees and compared every leaf with independently derived V7 mappings plus retained actual IDs. Separate JSON lexical traversal located scalar byte spans, rejected duplicate keys, and reconstructed after from before and before from after using only the 53 approved tokens. Both complete byte comparisons matched; all non-target bytes and semantic values are unchanged.",
+    "exact_path_allowlist": [
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          57,
+          "canonical_qualification_owner_id"
+        ],
+        "after": "vb-eirmk.68"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          57,
+          "current_owner_status"
+        ],
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          57,
+          "resolved_from_proposal_key"
+        ],
+        "after": "proposal:current-qualification:function:24:1"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          57,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.68"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          57,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "after": "proposal:current-qualification:function:24:1"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          57,
+          "unresolved_checks",
+          1,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.68"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          57,
+          "unresolved_checks",
+          1,
+          "proposal_key"
+        ],
+        "after": "proposal:current-qualification:function:24:1"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          80,
+          "canonical_qualification_owner_id"
+        ],
+        "after": "vb-eirmk.53"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          80,
+          "current_owner_status"
+        ],
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          80,
+          "resolved_from_proposal_key"
+        ],
+        "after": "proposal:current-qualification:phase:11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          80,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.53"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          80,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "after": "proposal:current-qualification:phase:11"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          87,
+          "canonical_qualification_owner_id"
+        ],
+        "after": "vb-eirmk.69"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          87,
+          "current_owner_status"
+        ],
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          87,
+          "resolved_from_proposal_key"
+        ],
+        "after": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          87,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.69"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          87,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "after": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          87,
+          "unresolved_checks",
+          1,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.69"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          87,
+          "unresolved_checks",
+          1,
+          "proposal_key"
+        ],
+        "after": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          90,
+          "canonical_qualification_owner_id"
+        ],
+        "after": "vb-eirmk.69"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          90,
+          "current_owner_status"
+        ],
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          90,
+          "resolved_from_proposal_key"
+        ],
+        "after": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          90,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.69"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          90,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "after": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          90,
+          "unresolved_checks",
+          1,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.69"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          90,
+          "unresolved_checks",
+          1,
+          "proposal_key"
+        ],
+        "after": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          92,
+          "canonical_qualification_owner_id"
+        ],
+        "after": "vb-eirmk.69"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          92,
+          "current_owner_status"
+        ],
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          92,
+          "resolved_from_proposal_key"
+        ],
+        "after": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          92,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.69"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          92,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "after": "proposal:current-qualification:function:29:storage-keyspace-key-digest"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          105,
+          "canonical_qualification_owner_id"
+        ],
+        "after": "vb-eirmk.24"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          105,
+          "current_owner_status"
+        ],
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          105,
+          "resolved_from_proposal_key"
+        ],
+        "after": "proposal:reuse-vb-eirmk.24-for-function:31:4-and-master44.16"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          105,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.24"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          105,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "after": "proposal:reuse-vb-eirmk.24-for-function:31:4-and-master44.16"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          185,
+          "canonical_qualification_owner_id"
+        ],
+        "after": "vb-eirmk.70"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          185,
+          "current_owner_status"
+        ],
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          185,
+          "resolved_from_proposal_key"
+        ],
+        "after": "qualify-v1min-version-compatibility-algebra"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          185,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.70"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          185,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "after": "qualify-v1min-version-compatibility-algebra"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          179,
+          "canonical_qualification_owner_id"
+        ],
+        "after": "vb-eirmk.71"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          179,
+          "current_owner_status"
+        ],
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          179,
+          "resolved_from_proposal_key"
+        ],
+        "after": "qualify-v1min-capability-grant-lifecycle"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          179,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.71"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          179,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "after": "qualify-v1min-capability-grant-lifecycle"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          179,
+          "unresolved_checks",
+          1,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.71"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          179,
+          "unresolved_checks",
+          1,
+          "proposal_key"
+        ],
+        "after": "qualify-v1min-capability-grant-lifecycle"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          152,
+          "canonical_qualification_owner_id"
+        ],
+        "after": "vb-eirmk.24"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          152,
+          "current_owner_status"
+        ],
+        "after": "open"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          152,
+          "resolved_from_proposal_key"
+        ],
+        "after": "proposal:reuse-vb-eirmk.24-for-function:31:4-and-master44.16"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          152,
+          "unresolved_checks",
+          0,
+          "accountable_bead_id"
+        ],
+        "after": "vb-eirmk.24"
+      },
+      {
+        "path": [
+          "normalized_current_190_ownership",
+          "requirements",
+          152,
+          "unresolved_checks",
+          0,
+          "proposal_key"
+        ],
+        "after": "proposal:reuse-vb-eirmk.24-for-function:31:4-and-master44.16"
+      }
+    ]
+  },
+  "actual_ids": {
+    "function:24:1": "vb-eirmk.68",
+    "function:28:2": "vb-eirmk.53",
+    "function:29:3": "vb-eirmk.69",
+    "function:29:6": "vb-eirmk.69",
+    "function:29:8": "vb-eirmk.69",
+    "function:31:4": "vb-eirmk.24",
+    "77.17": "vb-eirmk.70",
+    "77.10": "vb-eirmk.71",
+    "master44.16": "vb-eirmk.24"
+  },
+  "source_counts": {
+    "original_V5_command_receipts": 54,
+    "original_V5_created_TASKs": 4,
+    "original_V5_added_final_gate_edges": 4,
+    "original_V5_reuse_updates": 2,
+    "original_V5_exit": "APPLY_EXIT=1",
+    "original_V5_stop": "historical owner readback changed: vb-juuw",
+    "original_V5_did_not_update_design": true,
+    "resume_command_receipts": 40,
+    "resume_readonly_commands": 39,
+    "resume_updates": 1,
+    "resume_creations": 0,
+    "resume_reuse_updates": 0,
+    "resume_edge_writes": 0
+  },
+  "command_audit": {
+    "all_40_exit_zero": true,
+    "all_40_stderr_empty": true,
+    "sole_mutation_receipt": "remaining-owner-resume-v3/bd-command-0023.json",
+    "sole_mutation_args": [
+      "update",
+      "vb-eirmk.12",
+      "--design-file",
+      "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/remaining-owner-resume-v3/design-after.raw"
+    ],
+    "issue12_full_before_after_different_keys": [
+      "design",
+      "updated_at"
+    ],
+    "update_response_equals_saved_response": true,
+    "final_raw_design_readback_exact": true,
+    "no_auto_backup_warnings_observed": true,
+    "subprocess_policy": "Approved byte-identical executor sets BD_BACKUP_ENABLED=false and TMPDIR=/run/user/1000/vbs per command. This audit makes no backup-health, native-backup-recovery, or persistent-setting claim."
+  },
+  "task_audit": {
+    "actual_reused_created_ids": [
+      "vb-eirmk.68",
+      "vb-eirmk.69",
+      "vb-eirmk.70",
+      "vb-eirmk.71"
+    ],
+    "retained_create_payloads_equal_entire_hash_bound_V7_payloads": true,
+    "original_creation_responses_match_all_returned_approved_fields": true,
+    "original_create_response_parent_omission_checked_in_old_current_full_readbacks_and_parent_edges": true,
+    "original_hash_bound_task_readbacks_valid": true,
+    "all_title_description_acceptance_type_status_parent_full_metadata_match_approved_payload": true,
+    "complete_resume_before_after_task_records_equal": true,
+    "root_parent_child_edges_exact": true,
+    "reuse24_53_hash_bound_receipts_valid": true,
+    "reuse24_53_response_timestamps_match_post_readbacks": true,
+    "complete_reuse24_53_records_equal_prior_approved_post_readbacks_before_after": true
+  },
+  "graph_and_historical_audit": {
+    "typed_gate_edges_before": 137,
+    "typed_gate_edges_after": 137,
+    "typed_gate_edges_equal_contract_preflight_and_raw_before_after": true,
+    "cycle_queries_before_after_empty": true,
+    "closed_historical_ids": [
+      "vb-b5f",
+      "vb-f8lko",
+      "vb-hk1j8",
+      "vb-ito",
+      "vb-juuw",
+      "vb-o6qcf",
+      "vb-s6vj",
+      "vb-wymp"
+    ],
+    "original_hash_bound_historical_before_source_checked": true,
+    "expected_historical_after_reconstructed_using_only_named_receipt_bound24_53_fields": true,
+    "reconstructed_views_equal_saved_after_and_resume_fresh_before": true,
+    "full_eight_closed_records_including_nested_children_and_typed_edges_equal_resume_before_after": true
+  },
+  "key_evidence_sha256": {
+    "preflight.json": "f8cea7d7fc2958d778ea1e1d415e3b5c09baa1f22ce94275c744acedff8d3e4d",
+    "ledger-token-patch.json": "9f3ea64613ac8b6aac6722aafaa784a269528b7bb7e97c1664c36bd3c794c6ab",
+    "final-readbacks.json": "643d9cdb172cbdff6fc8d16e7534865adb2a3e4f92a1f9c177986f51007eba34",
+    "ledger-update-response.json": "2a99914ef9465f6dc9566d1495e6f82c9bc9146fd6ede2c221d4f314f87e8bce"
+  },
+  "receipt_set_fingerprint": {
+    "file_count": 48,
+    "sha256": "ab6443583977b677558d592dd4c31ad7f9ecdc6b8e674f5a47540ccc3b6e6451",
+    "method": "SHA256 of compact JSON object mapping sorted evidence-root-relative paths to file SHA256; includes run directory JSON/raw files and outside run log/exit."
+  },
+  "limits": [
+    "PASS applies only to this receipt-bound ownership resume and exact 53-token remap.",
+    "No BD calls, executor runs, native tests, builds, source/gate changes, or tracker mutations were performed by this reviewer.",
+    "Database state is evidenced by retained raw command responses at execution time; no current live-state or unrelated concurrent-operation guarantee.",
+    "No runtime qualification, native backup health, full CI, formal proof, or full 190-row plan/product acceptance."
+  ],
+  "full_plan_accepted": false
+}

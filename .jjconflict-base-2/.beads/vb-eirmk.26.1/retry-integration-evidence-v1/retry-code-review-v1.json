@@ -1,0 +1,57 @@
+{
+  "artifact": "timer-failure-retry-code-review/v1",
+  "verdict": "PASS",
+  "source_pin": "013489a00a0c1a5f07f2611cb0bdbcab4e00cbdf",
+  "scope": "Only additive timer_wheel_failure_retry_regressions.rs and its cfg(test) lifecycle include; not acceptance of the candidate's entire older tree.",
+  "workspace": {
+    "git_root": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+    "jj_root": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol"
+  },
+  "findings": [],
+  "reviewed_paths": {
+    "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_failure_retry_regressions.rs": {
+      "sha256": "2de8392cac900a6caaffb5a25b4bed4e57ab48d9cdbc6ecb41e57493429b7461",
+      "physical_lines": 247
+    },
+    "crates/vb_runtime/src/shard/lifecycle.rs": {
+      "sha256": "c87a6b22e14666fa17d13800c5db855859c5e452b4316ada4d1d9bb56181ad5a",
+      "change": "One additive include inside existing #[cfg(test)] mod tests; existing sibling registrations retained."
+    }
+  },
+  "comparison": {
+    "baseline_for_bounded_paths": "9661872b95e3af01b98070367b021dfb8c59795a",
+    "runtime_delta": "Exactly two paths:247-line test addition plus one include; no runtime production change.",
+    "immediate_parent": "d5e4b6a3b17622734fa900d3afc3299a1c8cc6bc",
+    "parent_note": "Immediate-parent diff is a repair within the test. Reviewed full final test and additive registration, not merely that repair."
+  },
+  "verified_oracles": [
+    "OneShotWaitFailureJournal starts unarmed, wraps actual Arc<VolatileRuntimeJournal>, and arms only after two successful submitted wait runs and due-deadline replacements. Non-WaitResolved events short-circuit without consuming the arm.",
+    "append, append_sequenced and append_sequenced_batch each reject a matching armed resolution before inner mutation with exact StorageJournalAppend containing WriteLockPoisoned, then delegate normally once disarmed. Batch scan does not append a partial prefix; probe delegates. No real journal lock is poisoned.",
+    "Two distinct runs84020/84021 share a checked past deadline. Replacement insertion high then low makes lower-RunId ordering observable independently of equal-deadline vector order. Public shard.tick performs actual due selection; no shadow scheduling model.",
+    "First tick must produce the exact nested typed error. Both AuthoritySnapshots compare complete RunState, all pending timers, bounded pending boundary, global counters and complete journal Vec; separate low/high sequence snapshots remain equal and pending count stays2.",
+    "Production append resolution precedes take_run_state/pending_timer_remove; journal sequence advances only after successful journal append. Failure is injected at that actual boundary rather than mocked after ownership removal.",
+    "Second tick must resolve only low, terminalize low and leave one timer. Exact resolved-run Vec is [low]; peer high RunState and PendingTimer remain structurally equal to pre-failure values. Global counter equality is deliberately not imposed after successful low completion.",
+    "Third tick resolves high and leaves zero timers; exact resolution order [low,high], terminal high. A further idle tick compares the whole post-success journal Vec and high resolution count1."
+  ],
+  "size_audit": {
+    "functions_including_methods": 19,
+    "max_logical_lines": 21,
+    "method": "Read full final source; count nonblank/noncomment lines including signatures and punctuation closers, exclude standalone braces only.",
+    "largest": "assert_low_retry_preserves_high:21; timer_retry_fixture:19; assert_high_retry_is_exactly_once:19",
+    "forbidden": "No new unsafe/unwrap/expect/panic/todo/unimplemented/dbg/ignore or optional-success setup; checked Instant subtraction; Result-bearing setup/delegation is propagated."
+  },
+  "native_receipt": {
+    "log": "/home/lewis/src/isoloated/velvet-ballistics-has-hot-fixtures-luna/target/core-build-20261110/evidence/timer-failure-retry-luna-final.log",
+    "log_sha256": "d3fc2a46be800c5e6e5d3ea758217d93350ba9f556c2318064affe10fba467be",
+    "exit_sha256": "aa7b9032e30a23d35090c33991b13943c26862e4b514e29dd279ba1314572053",
+    "observed": "NATIVE_EXIT=0; one named test passed;3022 tests filtered/skipped by selected Nextest run.",
+    "named_test": "vb_runtime shard::lifecycle::tests::timer_wheel_due_handler_error_preserves_ownership_for_retry"
+  },
+  "limits": [
+    "No native/build/BD/source edits executed by reviewer; raw supplied log and explicit exit inspected. Independent TEST verdict is not substituted for CODE inspection.",
+    "Volatile in-memory one-shot synthetic append failure only: no durable storage, crash/reopen, real poisoned-lock recovery, allocation-failure or all-handler-error proof.",
+    "AuthoritySnapshot is a defined run/timer/boundary/counters/journal projection, not the entire Shard/private allocator/trace state. Bounded boundary covers the two fixture runs.",
+    "One combined scenario covers failure-before-removal and ordered retry; no blanket Timer26.1/15-scenario, clock-seam, formal, full runtime-suite/full CI or master acceptance.",
+    "Integrate only these additive two paths into the newer accepted source. Do not apply the whole older tree or remove the newer Contains tests; final composition/native evidence remains separate."
+  ]
+}

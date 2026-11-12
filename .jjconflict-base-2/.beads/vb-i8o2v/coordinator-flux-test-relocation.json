@@ -1,0 +1,100 @@
+{
+  "base": "da633fe0bbde9e414173d5f7aabe314a37f8752d",
+  "base_path": "crates/vb_storage/src/types/flux_sequence.rs",
+  "old_named_tests": 15,
+  "current_named_tests": 15,
+  "relocations": [
+    {
+      "name": "contiguous_sequence_valid",
+      "current_path": "crates/vb_storage/src/types/flux_sequence/tests.rs",
+      "assertion_body_identical_modulo_whitespace": true,
+      "normalized_body_sha256": "732c680a6ba2a0dae484587e77541fac6f23d405b0467ba1d43bfe38cb1d90cc"
+    },
+    {
+      "name": "non_contiguous_gap_detected",
+      "current_path": "crates/vb_storage/src/types/flux_sequence/tests.rs",
+      "assertion_body_identical_modulo_whitespace": true,
+      "normalized_body_sha256": "d3c18bc2669074e60a4ebd615db895d29fed19290f8162105b67fc3852d919ba"
+    },
+    {
+      "name": "duplicate_detected",
+      "current_path": "crates/vb_storage/src/types/flux_sequence/tests.rs",
+      "assertion_body_identical_modulo_whitespace": true,
+      "normalized_body_sha256": "4ee1d99d51a18ccf00595d9c288e09f4be83440dec9783aa2db749db884d8870"
+    },
+    {
+      "name": "empty_sequence_is_contiguous",
+      "current_path": "crates/vb_storage/src/types/flux_sequence/tests.rs",
+      "assertion_body_identical_modulo_whitespace": true,
+      "normalized_body_sha256": "995a3790568120bfc2b459f284af437ca788550d3653fd960600d1cbcdc792f6"
+    },
+    {
+      "name": "single_element_is_contiguous",
+      "current_path": "crates/vb_storage/src/types/flux_sequence/tests.rs",
+      "assertion_body_identical_modulo_whitespace": true,
+      "normalized_body_sha256": "9f7d72b59c17394a55bedc6b84d4c1e612aacfd874d67a4973234946fa050e34"
+    },
+    {
+      "name": "contiguity_extends_valid",
+      "current_path": "crates/vb_storage/src/types/flux_sequence/tests.rs",
+      "assertion_body_identical_modulo_whitespace": true,
+      "normalized_body_sha256": "29d2d81595ffa1721a3d021d53e6636e1ada156adcc1534afd9102caac7b4405"
+    },
+    {
+      "name": "contiguity_extends_fails",
+      "current_path": "crates/vb_storage/src/types/flux_sequence/tests.rs",
+      "assertion_body_identical_modulo_whitespace": true,
+      "normalized_body_sha256": "e3d8766efcb11167322957b563a6cd6e83071ffdb75007bdf7c5e1e8dd3ed36b"
+    },
+    {
+      "name": "step_order_preserved",
+      "current_path": "crates/vb_storage/src/types/flux_sequence/tests.rs",
+      "assertion_body_identical_modulo_whitespace": true,
+      "normalized_body_sha256": "969245c2570d0c5cfac713d95fc060a55a27585a222d86e85a583e57ae22aa30"
+    },
+    {
+      "name": "step_order_diverges",
+      "current_path": "crates/vb_storage/src/types/flux_sequence/tests.rs",
+      "assertion_body_identical_modulo_whitespace": true,
+      "normalized_body_sha256": "6369a59ccf86b0d1bff3d8db32c882ec7c9ed831882826c3072b6d0dde309468"
+    },
+    {
+      "name": "tail_after_snapshot_valid",
+      "current_path": "crates/vb_storage/src/types/flux_sequence/tests.rs",
+      "assertion_body_identical_modulo_whitespace": true,
+      "normalized_body_sha256": "3145372af338943a20afe8e380f3a2b9c4389790f454361a5046abcf82c23432"
+    },
+    {
+      "name": "tail_after_snapshot_rejected",
+      "current_path": "crates/vb_storage/src/types/flux_sequence/tests.rs",
+      "assertion_body_identical_modulo_whitespace": true,
+      "normalized_body_sha256": "f7f9b499475a61e217eb7a4c65cb2dd5e43d86c0f6604024fd8f8c6658d00343"
+    },
+    {
+      "name": "tail_rejection_detected",
+      "current_path": "crates/vb_storage/src/types/flux_sequence/tests.rs",
+      "assertion_body_identical_modulo_whitespace": true,
+      "normalized_body_sha256": "c46cfcf357db6ede363c1d9a61025985d3386afc18460e0228daf2b005e9d532"
+    },
+    {
+      "name": "stale_attempt_detection",
+      "current_path": "crates/vb_storage/src/types/flux_sequence/tests.rs",
+      "assertion_body_identical_modulo_whitespace": true,
+      "normalized_body_sha256": "c75821f19770339140408a28ec46340cd106c278075cb10cbf36d2e512ca0f85"
+    },
+    {
+      "name": "current_attempt_detection",
+      "current_path": "crates/vb_storage/src/types/flux_sequence/tests.rs",
+      "assertion_body_identical_modulo_whitespace": true,
+      "normalized_body_sha256": "615c3a50be35b15ee696b016b59a4eb3ab8b1c2b27d5c081475596f0534152a7"
+    },
+    {
+      "name": "max_attempt_at_least_one",
+      "current_path": "crates/vb_storage/src/types/flux_sequence/tests.rs",
+      "assertion_body_identical_modulo_whitespace": true,
+      "normalized_body_sha256": "e0dee421b6c88f745d32f1ecca767f316a2238fd1080ff25c239459b6347f1ae"
+    }
+  ],
+  "all_15_retained_with_identical_bodies": true,
+  "method": "Extract #[test] fn braces and compare whole bodies after removing whitespace. These 15 bodies contain no string literals whose whitespace could change meaning."
+}
