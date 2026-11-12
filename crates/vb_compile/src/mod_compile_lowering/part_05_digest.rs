@@ -3,6 +3,9 @@
 #[path = "part_05_digest_primitive.rs"]
 mod part_05_digest_primitive;
 
+#[path = "part_05_digest_step.rs"]
+mod part_05_digest_step;
+
 pub(crate) use part_05_digest_primitive::digest_step_primitive;
 
 #[path = "part_05_digest_validate.rs"]
@@ -177,30 +180,12 @@ pub fn canonical_digest(source: &crate::WorkflowSource) -> Result<WorkflowDigest
 }
 
 /// Digest a complete step including all metadata fields.
+///
+/// Iterative heap-stack walk (run in `part_05_digest_step`): identical
+/// pre-order bytes plus `TAG_END` per container, with
+/// `MAX_BODY_NESTING_DEPTH` budget. Top-level steps enter at depth 0.
 fn digest_step(hasher: &mut blake3::Hasher, step: &crate::StepAst) -> Result<(), CompileErrors> {
-    digest_string(hasher, &step.id)?;
-    digest_optional_string(hasher, b"step_name:", step.name.as_deref())?;
-    digest_optional_string(hasher, b"step_condition:", step.condition.as_deref())?;
-    hasher.update(b"step_primitive:");
-    digest_step_primitive(hasher, &step.primitive)?;
-    digest_optional_string(hasher, b"step_with:", step.with.as_deref())?;
-    hasher.update(b"step_retry:");
-    if let Some(retry) = &step.retry {
-        hasher.update(&[TAG_SOME]);
-        digest_u16(hasher, retry.max_attempts);
-        digest_optional_string(hasher, b"retry_delay:", retry.delay.as_deref())?;
-    } else {
-        hasher.update(&[TAG_NONE]);
-    }
-    hasher.update(b"step_on_error:");
-    if let Some(error_handler) = &step.on_error {
-        hasher.update(&[TAG_SOME]);
-        digest_string(hasher, &error_handler.handler)?;
-    } else {
-        hasher.update(&[TAG_NONE]);
-    }
-    digest_optional_string(hasher, b"step_then:", step.then.as_deref())?;
-    Ok(())
+    part_05_digest_step::digest_step_at(hasher, step, 0)
 }
 
 /// Hash a `ScalarValue`, failing closed on future unknown variants.
@@ -225,14 +210,14 @@ fn digest_scalar_value(
 }
 
 /// Hash the body steps of a container primitive.
+///
+/// Iterative heap-stack walk with `MAX_BODY_NESTING_DEPTH` budget; body steps
+/// enter at depth 0 when called standalone. Nested bodies driven from
+/// `run_digest_stack` carry the parent step depth plus one.
+#[allow(dead_code)]
 fn digest_body_steps(
     hasher: &mut blake3::Hasher,
     body: &[crate::StepAst],
 ) -> Result<(), CompileErrors> {
-    digest_len(hasher, body.len())?;
-    for step in body {
-        digest_step(hasher, step)?;
-    }
-    hasher.update(&[TAG_END]);
-    Ok(())
+    part_05_digest_step::digest_body_at(hasher, body, 0)
 }

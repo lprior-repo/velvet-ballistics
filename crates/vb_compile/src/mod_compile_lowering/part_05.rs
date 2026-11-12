@@ -8,7 +8,9 @@ mod ir;
 mod utility;
 
 pub use digest::canonical_digest;
-pub(crate) use digest::{canonical_primitive_name, digest_step_primitive, validate_branch_counts};
+pub(crate) use digest::{
+    canonical_primitive_name, digest_author_value, digest_step_primitive, validate_branch_counts,
+};
 pub use ir::{lower_do, lower_set, lower_steps_to_ir};
 pub(super) use utility::{
     canonical_finish_slot, optional_slot_from_text, parse_i64_field, slot_from_text,
