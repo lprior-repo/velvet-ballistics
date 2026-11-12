@@ -221,16 +221,18 @@ fn resolve_numeric_slot(text: &str) -> Result<SlotIdx, CompileError> {
 /// Implementation of the expression bytecode reference resolver.
 impl crate::expression_bytecode::ExpressionReferenceResolver for StepReferenceResolver<'_> {
     fn resolve_text(&mut self, text: &str) -> Result<vb_core::SymbolId, CompileError> {
-        self.symbols
-            .as_mut()
-            .ok_or_else(|| CompileError::ExpressionLoweringUnsupported {
-                feature: "symbol context".into(),
-            })?
-            .intern(text)
-            .map_err(|error| CompileError::ExpressionLoweringUnsupported {
-                feature: error.to_string().into(),
-            })
+        self.intern_text(text)
     }
+
+    fn intern_text(&mut self, text: &str) -> Result<vb_core::SymbolId, CompileError> {
+        let symbols = self.symbols.as_mut().ok_or_else(|| {
+            CompileError::ExpressionLoweringUnsupported {
+                feature: "symbol context".into(),
+            }
+        })?;
+        crate::source_symbol_binding::intern_source_text(symbols, text)
+    }
+
     fn resolve_reference(&mut self, reference: &str) -> Result<ExprOp, CompileError> {
         let (slot, path) = self.resolve_path(reference)?;
         let Some(path) = path else {
