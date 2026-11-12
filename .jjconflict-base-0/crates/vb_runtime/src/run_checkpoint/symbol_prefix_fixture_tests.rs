@@ -35,6 +35,7 @@ fn fixture_parts(symbols_count: u32) -> WorkflowParts {
         name: Box::from("checkpoint-prefix"),
         digest: WorkflowDigest::from_bytes([42; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: fixture_nodes(),
         expressions: Box::new([]),
         accessors: Box::new([]),
