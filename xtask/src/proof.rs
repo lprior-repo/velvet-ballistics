@@ -298,6 +298,8 @@ mod tests {
                 loom: None,
                 property_tests: vec![],
                 differential_tests: vec![],
+                crash_lab: vec![],
+                diff_test: vec![],
             },
             commands: vec![],
         };
