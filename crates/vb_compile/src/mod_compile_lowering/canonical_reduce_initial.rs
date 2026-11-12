@@ -6,6 +6,8 @@
 //! are rejected at the parse boundary with the lowering's `aggregate.initial`
 //! diagnostic, so the lowering core never sees unchecked text.
 
+use super::canonical_reduce::ReduceLowering;
+use super::field_error;
 use crate::expression::{ExpressionLiteral, ParsedExpression, UnaryOp, parse_expression};
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use vb_core::{ConstValue, FiniteF64};
@@ -94,4 +96,28 @@ fn initial_error(index: usize) -> CompileErrors {
         field: "aggregate.initial",
         expected: "a literal constant: null, boolean, integer, or finite float",
     }])
+}
+
+pub(super) fn accumulator_type(
+    index: usize,
+    final_type: ExprType,
+    initial_type: ExprType,
+    config: &ReduceLowering<'_>,
+) -> Result<ExprType, CompileErrors> {
+    let last_is_set = config
+        .body
+        .last()
+        .is_some_and(|step| matches!(step.primitive, crate::StepPrimitive::Set { .. }));
+    if last_is_set && final_type != initial_type {
+        return Err(field_error(
+            index,
+            "reduce.steps",
+            "a set value preserving the accumulator type",
+        ));
+    }
+    if last_is_set || final_type != ExprType::Unknown {
+        Ok(initial_type)
+    } else {
+        Ok(ExprType::Unknown)
+    }
 }

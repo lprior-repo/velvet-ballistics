@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use super::canonical_reduce_initial::parse_typed_initial;
+use super::canonical_reduce_initial::{accumulator_type, parse_typed_initial};
 use super::{emit_single_body_set, field_error};
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use crate::mod_compile_lowering::part_02::for_each_capture;
@@ -216,30 +216,6 @@ fn lower_multi_body(
         Some(accumulator),
     )?;
     accumulator_type(index, final_type, initial_type, config)
-}
-
-fn accumulator_type(
-    index: usize,
-    final_type: ExprType,
-    initial_type: ExprType,
-    config: &ReduceLowering<'_>,
-) -> Result<ExprType, CompileErrors> {
-    let last_is_set = config
-        .body
-        .last()
-        .is_some_and(|step| matches!(step.primitive, crate::StepPrimitive::Set { .. }));
-    if last_is_set && final_type != initial_type {
-        return Err(field_error(
-            index,
-            "reduce.steps",
-            "a set value preserving the accumulator type",
-        ));
-    }
-    if last_is_set || final_type != ExprType::Unknown {
-        Ok(initial_type)
-    } else {
-        Ok(ExprType::Unknown)
-    }
 }
 
 fn lower_body(
