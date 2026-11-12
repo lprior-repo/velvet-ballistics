@@ -8,8 +8,9 @@
 // Sibling of `try_from_parts_production.rs`: the `StepIdx` / `SlotIdx` /
 // `ConstIdx` / `ActionId` / `ExprIdx` / `AccessorIdx` / `SymbolId` /
 // `WorkflowDigest` / `FiniteF64` / `ConstValue` mirrors, verbatim copies
-// of the production declarations in `crates/vb_core/src/ids/mod.rs` and
-// `crates/vb_core/src/value.rs`, with minimal substitutions required to
+// of the production declarations in `crates/vb_core/src/ids/mod.rs`,
+// `crates/vb_core/src/value/finite.rs`, and
+// `crates/vb_core/src/value/slot.rs`, with minimal substitutions required to
 // compile under `verus --crate-type=lib` without proc-macro crate
 // registration:
 //
