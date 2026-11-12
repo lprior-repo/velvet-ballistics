@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 
 mod commands;
 
-pub use commands::commands_for_obligation;
+pub use commands::{commands_for_obligation, obligations_for_level};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofObligation {
@@ -134,14 +134,6 @@ pub fn obligations_for_files(
     obligations
         .iter()
         .filter(|obl| obl.files.iter().any(|f| changed_set.contains(&f.as_str())))
-        .cloned()
-        .collect()
-}
-
-pub fn obligations_for_level(obligations: &[ProofObligation], level: &str) -> Vec<ProofObligation> {
-    obligations
-        .iter()
-        .filter(|obl| obl.proof_level == level)
         .cloned()
         .collect()
 }

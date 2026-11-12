@@ -51,3 +51,11 @@ pub fn commands_for_obligation(obl: &ProofObligation) -> Vec<String> {
 
     cmds
 }
+
+pub fn obligations_for_level(obligations: &[ProofObligation], level: &str) -> Vec<ProofObligation> {
+    obligations
+        .iter()
+        .filter(|obl| obl.proof_level == level)
+        .cloned()
+        .collect()
+}
