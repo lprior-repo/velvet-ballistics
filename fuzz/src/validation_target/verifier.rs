@@ -39,6 +39,7 @@ fn build_fuzz_node(
         None
     };
     vb_core::CompiledNode {
+        retry: None,
         id: step_idx,
         output: output.into(),
         routing: vb_core::workflow::NodeRouting {
@@ -200,6 +201,7 @@ pub fn fuzz_verifier_gates(data: &[u8]) {
         name: Box::<str>::from("fuzz_gates"),
         digest: vb_core::WorkflowDigest::from_bytes([0xD0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: nodes.into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),

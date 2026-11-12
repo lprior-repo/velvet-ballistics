@@ -14,7 +14,7 @@ mod tests {
 
     #[test]
     fn dwa_empty_contracts_returns_finished() -> Result<(), String> {
-        let wf = mkwf(vec![fin(0, 0)], 2)?;
+        let wf = mkwf(vec![fin(0, 0)], 2, &[0])?;
         let mut r = mkr(1, 2)?;
         ws(&mut r, 0, SlotValue::I64(7))?;
         let mut b = StepBudget::new(10);
@@ -32,7 +32,7 @@ mod tests {
     /// fails to take budget and returns StepBudgetExhausted.
     #[test]
     fn dwa_single_nop_budget_one() -> Result<(), String> {
-        let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 2)?;
+        let wf = mkwf(vec![nop(0, 1), fin(1, 0)], 2, &[0])?;
         let mut r = mkr(2, 2)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         let mut b = StepBudget::new(1);
@@ -48,7 +48,7 @@ mod tests {
     /// exhausts after the first step, never reaching the remaining steps.
     #[test]
     fn dwa_budget_exhaustion() -> Result<(), String> {
-        let wf = mkwf(vec![nop(0, 1), nop(1, 2), fin(2, 0)], 2)?;
+        let wf = mkwf(vec![nop(0, 1), nop(1, 2), fin(2, 0)], 2, &[0])?;
         let mut r = mkr(3, 2)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         let mut b = StepBudget::new(1);
@@ -66,6 +66,7 @@ mod tests {
             vec![setc(0, 0, 0, 1), fin(1, 0)],
             2,
             vec![ConstValue::I64(42)],
+            &[],
         )?;
         let mut r = mkr(2, 2)?;
         let mut b = StepBudget::new(10);

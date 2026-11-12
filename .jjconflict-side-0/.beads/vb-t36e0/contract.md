@@ -1,0 +1,2 @@
+# vb-t36e0 regression contract
+Restore the explicitly missing wrong-run AskAnswer rejection case identified by the 36-name retention audit. Use real runtime-issued ask ticket for a real run plus unrelated genuine suspended run; mutate only ticket run identity to an absent run using supported API, assert exact production error and full unrelated state/counters/journal/pending equality. Preserve all existing cases and assertions. Do not fabricate a ticket from arbitrary bytes. Local3090 test author, root real commands, independent test review.

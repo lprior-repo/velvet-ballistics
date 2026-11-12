@@ -1,0 +1,13 @@
+Dictionary: 10 entries
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 3782734135
+INFO: Loaded 1 modules   (10303 inline 8-bit counters): 10303 [0x5647ac830743, 0x5647ac832f82), 
+INFO: Loaded 1 PC tables (10303 PCs): 10303 [0x5647ac832f88,0x5647ac85b378), 
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 50 ft: 51 corp: 1/1b exec/s: 0 rss: 32Mb
+#4	NEW    cov: 51 ft: 58 corp: 2/3b lim: 4 exec/s: 0 rss: 33Mb L: 2/2 MS: 2 ShuffleBytes-CrossOver-
+#12	NEW    cov: 51 ft: 65 corp: 3/7b lim: 4 exec/s: 0 rss: 33Mb L: 4/4 MS: 3 CrossOver-CopyPart-ManualDict- DE: "\035\000"-
+#18	NEW    cov: 51 ft: 67 corp: 4/10b lim: 4 exec/s: 0 rss: 34Mb L: 3/4 MS: 1 EraseBytes-
+#100	DONE   cov: 51 ft: 67 corp: 4/10b lim: 4 exec/s: 0 rss: 34Mb
+Done 100 runs in 0 second(s)

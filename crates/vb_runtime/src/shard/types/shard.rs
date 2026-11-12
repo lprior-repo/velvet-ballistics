@@ -1,5 +1,6 @@
 /// Single-threaded shard owning all mutable run state.
 pub struct Shard {
+    pub(crate) secret_availability: std::sync::Arc<[Box<str>]>,
     pub(crate) command_queue: ShardCommandQueue,
     pub(super) runs: IndexMap<RunId, RunState>,
     pub(super) run_aggregate: RunAggregate,

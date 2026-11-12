@@ -1,0 +1,54 @@
+   Compiling serde_core v1.0.228
+   Compiling num-traits v0.2.19
+   Compiling byteorder v1.5.0
+   Compiling hash32 v0.2.1
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.9.4
+   Compiling serde v1.0.228
+   Compiling proptest v1.11.0
+   Compiling chrono v0.4.44
+   Compiling bytes v1.11.1
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_core)
+   Compiling heapless v0.7.17
+   Compiling postcard v1.1.3
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.42s
+────────────
+ Nextest run ID 3c08e583-5f2a-4d8c-89ec-d037e6a84fc3 with nextest profile: default
+    Starting 7 tests across 1 binary
+  Cancelling due to signal: 3 tests still running
+     SIGTERM [  22.479s] (5/7) vb_storage::proptest_vb_vzcuf_PS_001 ps001_append_increments
+  stdout ───
+
+    running 1 test
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+    (test aborted with signal 15: SIGTERM)
+
+     SIGTERM [  22.482s] (6/7) vb_storage::proptest_vb_vzcuf_PS_001 ps001_duplicate_rejected
+  stdout ───
+
+    running 1 test
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+    (test aborted with signal 15: SIGTERM)
+
+     SIGTERM [  22.482s] (7/7) vb_storage::proptest_vb_vzcuf_PS_001 ps001_new_batch_empty
+  stdout ───
+
+    running 1 test
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [  22.482s] 7 tests run: 4 passed, 3 failed, 0 skipped
+     SIGTERM [  22.479s] (5/7) vb_storage::proptest_vb_vzcuf_PS_001 ps001_append_increments
+     SIGTERM [  22.482s] (6/7) vb_storage::proptest_vb_vzcuf_PS_001 ps001_duplicate_rejected
+     SIGTERM [  22.482s] (7/7) vb_storage::proptest_vb_vzcuf_PS_001 ps001_new_batch_empty
+error: test run failed

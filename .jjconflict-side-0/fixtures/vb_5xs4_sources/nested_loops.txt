@@ -1,0 +1,10 @@
+// vb-5xs4-fixture:nested_loops
+
+#[test]
+fn nested() {
+    for outer in [1] {
+        for inner in [2] {
+            assert_eq!(outer + inner, 3);
+        }
+    }
+}

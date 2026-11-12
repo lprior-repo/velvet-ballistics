@@ -354,7 +354,12 @@ fn handle_action_failure_append_failure_keeps_retry_state_and_pending_action() -
     });
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(50_050);
-    submit_run(&mut shard, run, retry_workflow()?);
+    submit_run(
+        &mut shard,
+        run,
+        retry_workflow()?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
+    );
     let ticket = pending_ticket(&shard, run, StepIdx::new(1), 1);
     let frame_before = shard
         .run_state_get(run)
@@ -459,6 +464,7 @@ fn fail_run_action_failure_queue_full_keeps_state_and_allows_retry() -> Result<(
         &mut shard,
         run,
         require_workflow("suspended", suspended_workflow())?,
+        &[(SlotIdx::ZERO, SlotValue::I64(0))],
     );
 
     let target_pending = QUEUE_CAPACITY

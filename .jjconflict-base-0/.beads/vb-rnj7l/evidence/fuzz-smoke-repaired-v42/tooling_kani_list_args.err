@@ -1,0 +1,27 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 3214454076
+INFO: Loaded 1 modules   (868 inline 8-bit counters): 868 [0x5649f03a61a3, 0x5649f03a6507), 
+INFO: Loaded 1 PC tables (868 PCs): 868 [0x5649f03a6508,0x5649f03a9b48), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/tooling_kani_list_args
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 40 ft: 41 corp: 1/1b exec/s: 0 rss: 39Mb
+#4	NEW    cov: 41 ft: 43 corp: 2/3b lim: 4 exec/s: 0 rss: 40Mb L: 2/2 MS: 2 CopyPart-InsertByte-
+	NEW_FUNC[1/4]: 0x5649f0338150  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/tooling_kani_list_args+0x161150) (BuildId: f15ca9dedae43d725dc825a4429ff534b00af2e8)
+	NEW_FUNC[2/4]: 0x5649f0339630  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/tooling_kani_list_args+0x162630) (BuildId: f15ca9dedae43d725dc825a4429ff534b00af2e8)
+#11	NEW    cov: 97 ft: 111 corp: 3/5b lim: 4 exec/s: 0 rss: 41Mb L: 2/2 MS: 2 ShuffleBytes-InsertByte-
+#14	NEW    cov: 98 ft: 112 corp: 4/6b lim: 4 exec/s: 0 rss: 41Mb L: 1/2 MS: 3 EraseBytes-CopyPart-ChangeByte-
+#19	NEW    cov: 99 ft: 113 corp: 5/7b lim: 4 exec/s: 0 rss: 41Mb L: 1/2 MS: 5 EraseBytes-ShuffleBytes-ChangeBit-ChangeBit-ChangeByte-
+#21	NEW    cov: 99 ft: 114 corp: 6/9b lim: 4 exec/s: 0 rss: 41Mb L: 2/2 MS: 2 ChangeBit-InsertByte-
+#34	NEW    cov: 99 ft: 119 corp: 7/13b lim: 4 exec/s: 34 rss: 42Mb L: 4/4 MS: 3 InsertByte-CopyPart-CrossOver-
+#40	NEW    cov: 99 ft: 120 corp: 8/15b lim: 4 exec/s: 40 rss: 43Mb L: 2/4 MS: 1 CopyPart-
+#41	NEW    cov: 99 ft: 122 corp: 9/19b lim: 4 exec/s: 41 rss: 43Mb L: 4/4 MS: 1 CopyPart-
+#42	NEW    cov: 99 ft: 124 corp: 10/22b lim: 4 exec/s: 42 rss: 44Mb L: 3/4 MS: 1 InsertByte-
+	NEW_FUNC[1/1]: 0x5649f033aa40  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/tooling_kani_list_args+0x163a40) (BuildId: f15ca9dedae43d725dc825a4429ff534b00af2e8)
+#44	NEW    cov: 103 ft: 129 corp: 11/26b lim: 4 exec/s: 44 rss: 44Mb L: 4/4 MS: 2 CMP-ChangeBinInt- DE: "\001\000\000\205"-
+#52	NEW    cov: 103 ft: 130 corp: 12/29b lim: 4 exec/s: 52 rss: 44Mb L: 3/4 MS: 3 InsertByte-ChangeByte-InsertByte-
+#62	DONE   cov: 103 ft: 130 corp: 12/29b lim: 4 exec/s: 31 rss: 45Mb
+###### Recommended dictionary. ######
+"\001\000\000\205" # Uses: 1
+###### End of recommended dictionary. ######
+Done 62 runs in 2 second(s)

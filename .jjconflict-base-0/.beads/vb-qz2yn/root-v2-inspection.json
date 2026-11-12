@@ -1,0 +1,14 @@
+{
+  "status": "UNACCEPTED_REQUIRE_COMPILER_AND_REPAIR",
+  "issues": [
+    "journalhelper accesses JournalWriteBatch.inner which is pub(super) to batchmodule, inaccessible fromjournalmodule. Use actual private rawOwnedWriteBatch not public wrapperextension.",
+    "New counterdecode unchecked value[..8] forbidden even afterlengthguard; checked array TryFrom required.",
+    "Counterkey new unchecked1+name_len asusize arithmetic/cast unnecessary: fixed internal bytes suffice.",
+    "IssuedArtifactSequence doc says NonZeroU64 but actualu64, change actualtype +checkedconstructor.",
+    "Strict existing persistfault hook silentlylost explicitlyadmitted inimplementationdoc, mustpreserve faultsemantics.",
+    "Unused JournalWriteBatch import and unusedtestcountergetter likelydeniedwarnings.",
+    "Long submit andcounterread helpers exceed25 logical, decompose no waiver.",
+    "Implementationdoc wrongly says testsrootwrites: localmodelswrite alltests rootexecutes."
+  ],
+  "next": "Actual scoped compiler then local5090 repair. No behavior accepted."
+}

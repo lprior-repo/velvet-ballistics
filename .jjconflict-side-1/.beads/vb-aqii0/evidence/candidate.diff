@@ -1,0 +1,113 @@
+diff --git a/crates/vb_storage/src/admission/tests.rs b/crates/vb_storage/src/admission/tests.rs
+index 9720686e2..1729e9f29 100644
+--- a/crates/vb_storage/src/admission/tests.rs
++++ b/crates/vb_storage/src/admission/tests.rs
+@@ -193,6 +193,7 @@ fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, String> {
+ 
+     let mut parts = WorkflowParts {
+         name: Box::<str>::from("test_admission"),
++        input_slots: Box::new([]),
+         digest: WorkflowDigest::from_bytes([0u8; 32]),
+         nodes: Box::new([
+             CompiledNode {
+diff --git a/crates/vb_storage/src/hydrate_tests.rs b/crates/vb_storage/src/hydrate_tests.rs
+index 911afaf9f..aaf9c116d 100644
+--- a/crates/vb_storage/src/hydrate_tests.rs
++++ b/crates/vb_storage/src/hydrate_tests.rs
+@@ -33,13 +33,13 @@ mod hydrate_tests {
+         let snapshot_run = RunId::new(1);
+         let requested_run = RunId::new(2);
+         let result = validate_snapshot_metadata(snapshot_run, EventSeq::new(5), requested_run);
+-        assert!(
+-            matches!(result, Err(SnapshotRecoveryInputViolation::SnapshotRunMismatch {
+-                snapshot_run: sr,
+-                snapshot_seq: _
+-            }) if sr == RunId::new(1)),
+-            "should reject mismatched run, got {:?}",
+-            result
++        assert_eq!(
++            result,
++            Err(SnapshotRecoveryInputViolation::SnapshotRunMismatch {
++                expected_run: requested_run,
++                snapshot_run,
++                snapshot_seq: EventSeq::new(5)
++            })
+         );
+     }
+ 
+diff --git a/crates/vb_storage/src/proptests.rs b/crates/vb_storage/src/proptests.rs
+index 5a4bc3a5f..71c6b40db 100644
+--- a/crates/vb_storage/src/proptests.rs
++++ b/crates/vb_storage/src/proptests.rs
+@@ -601,6 +601,7 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
+     // Build parts with digest zeroed, compute correct digest, then set it.
+     let parts_zeroed = WorkflowParts {
+         name: Box::from("admit_test"),
++        input_slots: Box::new([]),
+         digest: WorkflowDigest::from_bytes([0u8; 32]),
+         nodes: Box::from([node, finish]),
+         expressions: Box::from([]),
+@@ -667,6 +668,7 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
+     // Build a workflow with a wrong digest that won't match the content hash.
+     let parts = WorkflowParts {
+         name: Box::from("checksum_test"),
++        input_slots: Box::new([]),
+         digest: WorkflowDigest::from_bytes([8u8; 32]), // wrong digest
+         nodes: Box::from([node, finish]),
+         expressions: Box::from([]),
+@@ -723,6 +725,7 @@ fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
+     };
+     let parts_zeroed = WorkflowParts {
+         name: Box::from("submit_test"),
++        input_slots: Box::new([]),
+         digest: WorkflowDigest::from_bytes([0u8; 32]),
+         nodes: Box::from([node, finish]),
+         expressions: Box::from([]),
+@@ -812,6 +815,7 @@ fn submit_artifact_checksum_mismatch_rejected() {
+     };
+     let parts = WorkflowParts {
+         name: Box::from("mismatch_test"),
++        input_slots: Box::new([]),
+         digest: WorkflowDigest::from_bytes([0xAA; 32]), // wrong digest
+         nodes: Box::from([node, finish]),
+         expressions: Box::from([]),
+@@ -880,6 +884,7 @@ fn submit_artifact_stale_digest_rejected() {
+     };
+     let parts = WorkflowParts {
+         name: Box::from("different_workflow"),
++        input_slots: Box::new([]),
+         digest: original_digest, // claiming the SAME digest
+         nodes: Box::from([node, finish]),
+         expressions: Box::from([]),
+diff --git a/crates/vb_storage/src/recovery/tests.rs b/crates/vb_storage/src/recovery/tests.rs
+index 43e16e8de..ce44b6fb8 100644
+--- a/crates/vb_storage/src/recovery/tests.rs
++++ b/crates/vb_storage/src/recovery/tests.rs
+@@ -31,6 +31,7 @@ fn deterministic_plan() -> Result<CompiledWorkflow, Box<dyn std::error::Error>>
+ fn deterministic_parts() -> WorkflowParts {
+     WorkflowParts {
+         name: "recovery_replay".into(),
++        input_slots: Box::new([]),
+         digest: sample_digest(44),
+         nodes: deterministic_nodes().into(),
+         expressions: Vec::new().into(),
+@@ -683,6 +684,7 @@ fn frame_seed_with_workflow_preserves_action_completed_envelope_output_slot_valu
+     let action = ActionId::new(4);
+     let parts = WorkflowParts {
+         name: "action_recovery".into(),
++        input_slots: Box::new([]),
+         digest,
+         nodes: vec![CompiledNode {
+             id: StepIdx::ZERO,
+diff --git a/crates/vb_storage/src/vb_2bok_durability_gate_tests.rs b/crates/vb_storage/src/vb_2bok_durability_gate_tests.rs
+index 0ad57cf49..3b195ea59 100644
+--- a/crates/vb_storage/src/vb_2bok_durability_gate_tests.rs
++++ b/crates/vb_storage/src/vb_2bok_durability_gate_tests.rs
+@@ -44,6 +44,7 @@ mod durability_gate_tests {
+ 
+         let mut parts = WorkflowParts {
+             name: Box::<str>::from("vb_2bok_test"),
++            input_slots: Box::new([]),
+             digest: WorkflowDigest::from_bytes([0u8; 32]),
+             nodes: Box::new([
+                 CompiledNode {

@@ -1,0 +1,10 @@
+{
+  "loaded_skill_name": "go-skill",
+  "skill_version": "10.0.0",
+  "agent": "go-skill-orchestrator",
+  "timestamp": "2026-05-24T00:00:00Z",
+  "workspace": "/tmp/opencode/vb-xi2f.4-workspace/repo",
+  "isolated": true,
+  "parent_commit": "a97b03fb",
+  "parent_branch": "main"
+}

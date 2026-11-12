@@ -1,0 +1,77 @@
+Running as unit: vb-has-hot-baseline-v3-20261110.scope; invocation ID: 4c02f6b437ff4dc8b7aa0c545be3d21a
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-has-hot-tests-local5090/crates/vb_core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.49s
+────────────
+ Nextest run ID 7012b1e9-cb96-4c1d-92dc-c9effe28c98e with nextest profile: default
+    Starting 4 tests across 28 binaries (3366 tests skipped)
+        FAIL [   0.004s] (1/4) vb_core engine::expr_eval::ops_text_list::tests::has_parity_hot_object_other_key_only
+  stdout ───
+
+    running 1 test
+    test engine::expr_eval::ops_text_list::tests::has_parity_hot_object_other_key_only ... FAILED
+
+    failures:
+
+    failures:
+        engine::expr_eval::ops_text_list::tests::has_parity_hot_object_other_key_only
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2848 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: "type mismatch: expected list, found object"
+
+        FAIL [   0.005s] (2/4) vb_core engine::expr_eval::ops_text_list::tests::has_parity_hot_empty_object
+  stdout ───
+
+    running 1 test
+    test engine::expr_eval::ops_text_list::tests::has_parity_hot_empty_object ... FAILED
+
+    failures:
+
+    failures:
+        engine::expr_eval::ops_text_list::tests::has_parity_hot_empty_object
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2848 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: "type mismatch: expected list, found object"
+
+        FAIL [   0.005s] (3/4) vb_core engine::expr_eval::ops_text_list::tests::has_parity_hot_object_has_requested_key
+  stdout ───
+
+    running 1 test
+    test engine::expr_eval::ops_text_list::tests::has_parity_hot_object_has_requested_key ... FAILED
+
+    failures:
+
+    failures:
+        engine::expr_eval::ops_text_list::tests::has_parity_hot_object_has_requested_key
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2848 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: "type mismatch: expected list, found object"
+
+        FAIL [   0.005s] (4/4) vb_core engine::expr_eval::ops_text_list::tests::has_parity_hot_object_missing_key
+  stdout ───
+
+    running 1 test
+    test engine::expr_eval::ops_text_list::tests::has_parity_hot_object_missing_key ... FAILED
+
+    failures:
+
+    failures:
+        engine::expr_eval::ops_text_list::tests::has_parity_hot_object_missing_key
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2848 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: "type mismatch: expected list, found object"
+
+────────────
+     Summary [   0.006s] 4 tests run: 0 passed, 4 failed, 3366 skipped
+        FAIL [   0.004s] (1/4) vb_core engine::expr_eval::ops_text_list::tests::has_parity_hot_object_other_key_only
+        FAIL [   0.005s] (2/4) vb_core engine::expr_eval::ops_text_list::tests::has_parity_hot_empty_object
+        FAIL [   0.005s] (3/4) vb_core engine::expr_eval::ops_text_list::tests::has_parity_hot_object_has_requested_key
+        FAIL [   0.005s] (4/4) vb_core engine::expr_eval::ops_text_list::tests::has_parity_hot_object_missing_key
+error: test run failed

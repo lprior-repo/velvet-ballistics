@@ -1,0 +1,18 @@
+Independent 5090 code review and test review complete for vb-3l40a candidate 713902f756ea825ff6500c838a087dbb98f25cf4.
+
+**Code Review (APPROVED):** Production changes in `contract_validation.rs` (107 lines, new) and `chunk_001.rs` implement three validation helper functions with correct global-pass architecture. Validation order is duplicate IDs > empty names > dense index > capability coverage > workflow Do binding. Both `handle_submit_with_contracts` and `handle_submit_with_inputs_and_contracts` validate before calling the enqueue path — no journal mutation on failure. No forbidden constructs, proper `u16::try_from` and bounded `contracts.get` access. Source is production-bound via actual `CompiledWorkflow` and `CompiledNodeKind::Do` types.
+
+**Test Review (APPROVED):** All 120 filtered lifecycle tests and full 1909 lib tests pass. All previous BLOCKER and MINOR findings are repaired:
+- Negative shard boundary tests now attach recording journals and verify immutability via snapshot comparison
+- Positive tests verify actual outputs (100, 200), RunFinished events, zero RunFailed events, and serialized ActionCompletedEnvelope values
+- Empty action name, multiple distinct action IDs, and duplicate-precedes-index precedence tests now exist
+- 17 dedicated admission validation tests cover all contract requirements
+
+Two INFORMATIONAL findings remain (missing mismatched-ID-at-valid-index test, vb-eyij7 test-only compile drift) but do not affect approval.
+
+**Artifacts:**
+- `.beads/vb-3l40a/independent-admission-code-review.md`
+- `.beads/vb-3l40a/independent-admission-test-review.md`
+- `.beads/vb-3l40a/evidence/independent-admission-review/` (lifecycle-lib.log, full-lib.log, lifecycle.log)
+
+No source edits, no pushes, no bead closures. Workspace roots verified throughout.

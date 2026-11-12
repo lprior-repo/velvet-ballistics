@@ -8,6 +8,7 @@ pub(crate) struct ActionFailurePreflight {
     /// Value to write into `state.action_attempts[step]` for `RetryNow`.
     /// Unused for `DriveHandler` and `FailRun`.
     next_attempt: u16,
+    delay_ms: u64,
     /// Handler step for `DriveHandler`. Required when `outcome ==
     /// ActionFailureOutcome::DriveHandler`.
     handler_pc: Option<StepIdx>,
@@ -63,6 +64,7 @@ pub(crate) fn preflight_action_failure(
                 ticket,
                 outcome: ActionFailureOutcome::RetryNow,
                 next_attempt: next,
+                delay_ms: policy.base_delay_ms,
                 handler_pc: None,
                 error_slot: None,
             });
@@ -81,6 +83,7 @@ pub(crate) fn preflight_action_failure(
                 ticket,
                 outcome: ActionFailureOutcome::DriveHandler,
                 next_attempt: 0,
+                delay_ms: 0,
                 handler_pc: Some(handler),
                 error_slot,
             })
@@ -89,6 +92,7 @@ pub(crate) fn preflight_action_failure(
             ticket,
             outcome: ActionFailureOutcome::FailRun,
             next_attempt: 0,
+            delay_ms: 0,
             handler_pc: None,
             error_slot: None,
         }),
@@ -115,6 +119,10 @@ pub(crate) fn apply_action_failure_preflight(
             }
             state
                 .frame
+                .mark_waiting(preflight.ticket.step)
+                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+            state
+                .frame
                 .set_pc(preflight.ticket.step)
                 .map_err(|_| RuntimeError::InvalidActionCompletion)?;
             Ok(())
@@ -130,6 +138,13 @@ pub(crate) fn apply_action_failure_preflight(
                 .mark_failed(preflight.ticket.step)
                 .map_err(|_| RuntimeError::InvalidActionCompletion)?;
             write_failure_slot(state, preflight.ticket.step, preflight.error_slot)?;
+            vb_core::engine::abandon_together_scopes(
+                &state.workflow,
+                &mut state.frame,
+                preflight.ticket.step,
+                handler,
+            )
+            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
             state
                 .frame
                 .set_pc(handler)
@@ -160,6 +175,8 @@ fn validate_handler_apply(
 ) -> RuntimeResult<()> {
     validate_step_index(state, failed)?;
     validate_step_index(state, handler)?;
+    vb_core::engine::abandoned_together_count(&state.workflow, &state.frame, failed, handler)
+        .map_err(|_| RuntimeError::InvalidActionCompletion)?;
     if state
         .frame
         .step_state(failed)

@@ -1,0 +1,100 @@
+old-source:901:             BoundedActionCompletionQueue::with_backpressure_infallible(capacity);
+old-source:902: 
+old-source:903:         for i in 0..7 {
+old-source:904:             let queue = BoundedActionCompletionQueue::new_infallible(capacity);
+old-source:905:             let (_enqueue_result, bp_outcome) =
+old-source:906:                 queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+old-source:907:             assert_eq!(
+old-source:908:                 bp_outcome,
+old-source:909:                 BackpressureWarningOutcome::Delivered,
+old-source:910:                 "below 80% threshold ({i}/7): outcome is Delivered, no warning sent"
+old-source:911:             );
+old-source:912:         }
+old-source:913: 
+old-source:914:         // Verify no warnings on channel
+old-source:915:         assert_eq!(rx.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty));
+old-source:916:     }
+old-source:917: 
+old-source:918:     #[test]
+old-source:919:     fn backpressure_outcome_delivered_on_queue_full() {
+old-source:920:         let capacity = 3;
+old-source:921:         let (_queue, rx) =
+old-source:922:             BoundedActionCompletionQueue::with_backpressure_infallible(capacity);
+old-source:923: 
+old-source:924:         let queue = BoundedActionCompletionQueue::new_infallible(capacity);
+old-source:925: 
+old-source:926:         // Fill the queue
+old-source:927:         for i in 0..3 {
+old-source:928:             let (enqueue_result, _bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+old-source:929:             assert_eq!(enqueue_result, Ok(()));
+old-source:930:         }
+old-source:931: 
+old-source:932:         // Try to enqueue beyond capacity — returns QueueFull with Delivered outcome
+old-source:933:         let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(99));
+old-source:934:         assert_eq!(
+old-source:935:             enqueue_result,
+old-source:936:             Err(ActionQueueError::QueueFull {
+old-source:937:                 capacity: ActionQueueCapacity(capacity)
+old-source:938:             })
+old-source:939:         );
+old-source:940:         assert_eq!(
+old-source:941:             bp_outcome,
+old-source:942:             BackpressureWarningOutcome::Delivered,
+old-source:943:             "queue full: outcome is Delivered (no enqueue, no warning sent)"
+old-source:944:         );
+old-source:945: 
+old-source:946:         // No warnings should have been sent (threshold for cap=3 is ceil(3*8/10)=3,
+old-source:947:         // but we never actually enqueued to reach threshold because the 4th failed)
+old-source:948:         assert_eq!(rx.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty));
+old-source:949:     }
+old-source:950: 
+old-source:951:     #[test]
+old-source:952:     fn backpressure_outcome_delivered_via_channel_with_backpressure() {
+old-source:953:         // Verifies that when a backpressure channel is present and active,
+old-source:954:         // enqueue_with_backpressure_warning_outcome reports Delivered and
+old-source:955:         // the receiver can observe the matching warning.
+old-source:956:         let capacity = 5;
+old-source:957:         let (queue, rx) = BoundedActionCompletionQueue::with_backpressure_infallible(capacity);
+old-source:958: 
+old-source:959:         // For capacity 5, threshold = ceil(5*8/10) = 4.
+old-source:960:         // Items 0-3: first three below threshold, fourth at threshold.
+old-source:961:         for i in 0..3 {
+old-source:962:             let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+old-source:963:             assert_eq!(enqueue_result, Ok(()));
+old-source:964:             assert_eq!(
+old-source:965:                 bp_outcome,
+old-source:966:                 BackpressureWarningOutcome::Delivered,
+old-source:967:                 "below threshold ({i}/3): Delivered, no warning sent"
+old-source:968:             );
+old-source:969:         }
+old-source:970: 
+old-source:971:         // 4th item (80%) triggers a warning — must be Delivered and visible on channel
+old-source:972:         let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(3));
+old-source:973:         assert_eq!(enqueue_result, Ok(()));
+old-source:974:         assert_eq!(
+old-source:975:             bp_outcome,
+old-source:976:             BackpressureWarningOutcome::Delivered,
+old-source:977:             "at threshold: Delivered when channel receiver is live"
+old-source:978:         );
+old-source:979: 
+old-source:980:         let warning = rx.recv_timeout(std::time::Duration::from_millis(100));
+old-source:981:         assert_eq!(
+old-source:982:             warning,
+old-source:983:             Ok(BackpressureWarning { depth: 4, capacity: 5 }),
+old-source:984:             "channel must contain the warning when outcome is Delivered"
+old-source:985:         );
+old-source:986:     }
+old-source:987: 
+old-source:988:     #[test]
+old-source:989:     fn backpressure_outcome_channel_disconnected_when_receiver_dropped() {
+old-source:990:         // Create queue with backpressure, drop the receiver, then enqueue
+old-source:991:         let capacity = 10;
+old-source:992:         let (queue, rx) = BoundedActionCompletionQueue::with_backpressure_infallible(capacity);
+old-source:993:         drop(rx);
+old-source:994: 
+old-source:995:         // Enqueue to threshold — should get ChannelDisconnected outcome
+old-source:996:         for i in 0..7 {
+old-source:997:             let (_enqueue_result, bp_outcome) =
+old-source:998:                 queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+old-source:999:             assert_eq!(
+old-source:1000:                 bp_outcome,

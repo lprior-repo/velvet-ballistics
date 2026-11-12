@@ -1,0 +1,16 @@
+
+running 11 tests
+test compiler_cases::legacy_constructor_cannot_mint_verification_from_caller_claims ... ok
+test compiler_cases::compiler_rejects_stale_workflow_identity ... ok
+test compiler_cases::compiler_candidate_binds_actual_source_and_exact_payload_with_named_checks ... ok
+test compiler_cases::source_only_comment_changes_provenance_while_ir_identity_is_stable ... ok
+test storage_rejects_missing_and_orphan_action_contracts ... ok
+test rehashed_forged_closure_and_duplicate_ledger_entries_are_rejected ... ok
+test legacy_and_unknown_schema_fail_closed ... ok
+test strict_side_effects_fail_without_executor_conformance_and_cannot_upgrade_policy ... ok
+test accepted_ledger_distinguishes_executed_checks_and_unproved_runtime_assumptions ... ok
+test every_identity_binding_rejects_rehashed_tampering ... ok
+test persisted_artifact_reopens_with_checked_identity_and_runtime_admission ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

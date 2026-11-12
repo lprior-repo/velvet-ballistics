@@ -9,7 +9,9 @@ use super::types::*;
 use crate::yaml_error::{YamlError, YamlResult};
 
 mod tail;
-use tail::{parse_ask, parse_error_handler, parse_finish, parse_retry, parse_wait};
+use tail::{
+    parse_ask, parse_body_steps, parse_error_handler, parse_finish, parse_retry, parse_wait,
+};
 
 pub(super) fn parse_steps(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<StepAst>> {
     let Some(node) = lookup(node, "steps") else {
@@ -28,7 +30,34 @@ fn parse_step(yaml: &saphyr::Yaml<'_>) -> YamlResult<StepAst> {
     let name = opt_str(yaml, "name")?;
     let condition = opt_str(yaml, "if")?;
     let primitive = parse_step_primitive(yaml)?;
-    let with = opt_control_str(yaml, "with")?;
+    let outer = lookup(yaml, "with");
+    let inner = lookup(yaml, "do")
+        .or_else(|| lookup(yaml, "run"))
+        .and_then(|action| lookup(action, "with"));
+    if outer.is_some() && inner.is_some() {
+        return Err(YamlError::FieldShape {
+            field: "with",
+            expected: "one action input binding",
+        });
+    }
+    let with = outer
+        .or(inner)
+        .map(super::parse_fields::parse_author_value)
+        .transpose()?;
+    if with.is_some() && !matches!(primitive, StepPrimitive::Do { .. }) {
+        return Err(YamlError::FieldShape {
+            field: "with",
+            expected: "an action step",
+        });
+    }
+    if let StepPrimitive::Do { input, .. } = &primitive
+        && (with.is_some() == !input.is_empty())
+    {
+        return Err(YamlError::FieldShape {
+            field: "do.input",
+            expected: "exactly one of input or with",
+        });
+    }
     let retry = parse_retry(yaml)?;
     let on_error = parse_error_handler(yaml)?;
     let then = opt_control_str(yaml, "then")?;
@@ -169,9 +198,12 @@ fn parse_set(sub: &saphyr::Yaml<'_>, primitive: &'static str) -> YamlResult<Step
 }
 
 fn parse_do(sub: &saphyr::Yaml<'_>, primitive: &str) -> YamlResult<StepPrimitive> {
-    reject_unknown_fields(sub, &["action", "input"])?;
+    reject_unknown_fields(sub, &["action", "input", "with"])?;
     let action = require_str_in(sub, "action", "do.action")?;
-    let input = require_str_in(sub, "input", "do.input")?;
+    let input = match lookup(sub, "input") {
+        Some(_) => require_str_in(sub, "input", "do.input")?,
+        None => String::new(),
+    };
     if primitive == "run" && action.is_empty() {
         return Err(YamlError::FieldShape {
             field: "run.action",
@@ -262,15 +294,4 @@ fn parse_repeat(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     let max_attempts = require_u16(node, "max_attempts")?;
     let body = parse_body_steps(node)?;
     Ok(StepPrimitive::Repeat { max_attempts, body })
-}
-
-fn parse_body_steps(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<StepAst>> {
-    let Some(seq) = lookup(node, "steps") else {
-        return Ok(Vec::new());
-    };
-    let mut steps = Vec::new();
-    for item in sequence(seq, "steps")? {
-        steps.push(parse_step(item)?);
-    }
-    Ok(steps)
 }

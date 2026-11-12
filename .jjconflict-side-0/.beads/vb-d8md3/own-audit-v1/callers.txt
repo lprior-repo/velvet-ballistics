@@ -1,0 +1,108 @@
+crates/workspace_tests/tests/vb_test_runtime_queue_timer_behavior.rs:8://! Note: The BoundedActionCompletionQueue (action_queue) is not publicly exported
+crates/vb_runtime/tests/vb_wave16_mqa.rs:23:use vb_runtime::action_queue::{BackpressureWarning, BoundedActionCompletionQueue};
+crates/vb_runtime/tests/vb_wave16_mqa.rs:153:// Scenario 2 (RP-019): BoundedActionCompletionQueue backpressure for
+crates/vb_runtime/tests/vb_wave16_mqa.rs:166:    let (queue_with_bp, rx) = BoundedActionCompletionQueue::with_backpressure_infallible(7);
+crates/vb_runtime/tests/vb_wave16_mqa.rs:169:    let mut warnings: Vec<BackpressureWarning> = Vec::new();
+crates/vb_runtime/tests/vb_wave16_mqa.rs:196:    let (queue_at_floor, rx_floor) = BoundedActionCompletionQueue::with_backpressure_infallible(7);
+crates/vb_runtime/tests/vb_wave16_mqa.rs:197:    let mut warnings_floor: Vec<BackpressureWarning> = Vec::new();
+crates/vb_runtime/tests/vb_wave16_mqa.rs:217:    let (queue_full, rx_full) = BoundedActionCompletionQueue::with_backpressure_infallible(7);
+crates/vb_runtime/tests/vb_wave16_mqa.rs:218:    let mut warnings_full: Vec<BackpressureWarning> = Vec::new();
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:4://! Exercises the `BoundedActionCompletionQueue` from `vb_runtime` under:
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:15:    BoundedActionCompletionQueue, MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:40:fn enqueue_n(q: &BoundedActionCompletionQueue, count: u32) -> Vec<ActionTicket> {
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:58:    let q = BoundedActionCompletionQueue::new(8).unwrap();
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:75:    let q = BoundedActionCompletionQueue::new(4).unwrap();
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:88:    let q = BoundedActionCompletionQueue::new(4).unwrap();
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:101:    let q = BoundedActionCompletionQueue::new(cap).unwrap();
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:119:    let q = BoundedActionCompletionQueue::new(cap).unwrap();
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:139:    let (q, rx) = BoundedActionCompletionQueue::with_backpressure(10).unwrap();
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:159:    let (q, rx) = BoundedActionCompletionQueue::with_backpressure(20).unwrap();
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:173:    let (q, rx) = BoundedActionCompletionQueue::with_backpressure(10).unwrap();
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:199:    let q = BoundedActionCompletionQueue::new(cap).unwrap();
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:216:    let q = BoundedActionCompletionQueue::new(cap).unwrap();
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:237:    let q = BoundedActionCompletionQueue::new(cap).unwrap();
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:262:    let q1 = BoundedActionCompletionQueue::new(1).unwrap();
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:267:    let q_max = BoundedActionCompletionQueue::new(cap).unwrap();
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:279:    let res = BoundedActionCompletionQueue::new(0);
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:286:    let res = BoundedActionCompletionQueue::new(MAX_ACTION_COMPLETION_QUEUE_CAPACITY + 1);
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:293:    let q = BoundedActionCompletionQueue::new(4).unwrap();
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:316:    let q = BoundedActionCompletionQueue::new(4).unwrap();
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:338:    let q = Arc::new(BoundedActionCompletionQueue::new(16).unwrap());
+crates/workspace_tests/tests/restate_sync_drr_scheduler_tests.rs:17://! Production VB types (`ActionTicket`, `BoundedActionCompletionQueue`) are
+crates/workspace_tests/tests/restate_sync_drr_scheduler_tests.rs:24:use vb_runtime::action_queue::BoundedActionCompletionQueue;
+crates/workspace_tests/tests/restate_sync_drr_scheduler_tests.rs:43:    inner: BoundedActionCompletionQueue,
+crates/workspace_tests/tests/restate_sync_drr_scheduler_tests.rs:87:            let q = BoundedActionCompletionQueue::new(queue_capacity).map_err(|_| {
+crates/workspace_tests/tests/restate_sync_drr_scheduler_tests.rs:358:    // BoundedActionCompletionQueue won't return it again because dequeue removed it
+crates/workspace_tests/tests/restate_sync_drr_scheduler_tests.rs:390:    let q = BoundedActionCompletionQueue::new(1).unwrap();
+crates/workspace_tests/tests/restate_sync_drr_scheduler_tests.rs:401:    let res = BoundedActionCompletionQueue::new(0);
+crates/workspace_tests/tests/restate_sync_drr_scheduler_tests.rs:502:    let q = BoundedActionCompletionQueue::new(cap).unwrap();
+crates/workspace_tests/tests/restate_sync_drr_scheduler_tests.rs:526:    let (q, rx) = BoundedActionCompletionQueue::with_backpressure(capacity).unwrap();
+crates/workspace_tests/tests/restate_shutdown_drain_tests.rs:5://! lifecycle during graceful shutdown. Uses `BoundedActionCompletionQueue` and
+crates/workspace_tests/tests/restate_shutdown_drain_tests.rs:18:use vb_runtime::action_queue::BoundedActionCompletionQueue;
+crates/workspace_tests/tests/restate_shutdown_drain_tests.rs:66:    queue: BoundedActionCompletionQueue,
+crates/workspace_tests/tests/restate_shutdown_drain_tests.rs:76:            queue: BoundedActionCompletionQueue::new(capacity).unwrap(),
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:3://! These tests verify the BoundedActionCompletionQueue behavior through
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:12:use vb_runtime::action_queue::BoundedActionCompletionQueue;
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:48:    let queue = BoundedActionCompletionQueue::new(10).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:54:    let queue = BoundedActionCompletionQueue::new(1).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:60:    let queue = BoundedActionCompletionQueue::new(1024).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:68:    // When: BoundedActionCompletionQueue::new(0).unwrap() is called
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:70:    let result = BoundedActionCompletionQueue::new(0);
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:76:    let queue = BoundedActionCompletionQueue::new(5).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:83:    let queue = BoundedActionCompletionQueue::new(8).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:89:    let queue = BoundedActionCompletionQueue::new(3).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:99:    let queue = BoundedActionCompletionQueue::new(3).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:107:    let queue = BoundedActionCompletionQueue::new(5).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:117:    let queue = BoundedActionCompletionQueue::new(4).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:130:    let queue = BoundedActionCompletionQueue::new(5).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:144:    let queue = BoundedActionCompletionQueue::new(10).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:160:    let queue = BoundedActionCompletionQueue::new(3).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:177:    let queue = BoundedActionCompletionQueue::new(1).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:188:    let queue = BoundedActionCompletionQueue::new(2).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:198:    let queue = BoundedActionCompletionQueue::new(7).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:219:    let queue = BoundedActionCompletionQueue::new(4).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:230:    let queue = BoundedActionCompletionQueue::new(3).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:246:    let queue = BoundedActionCompletionQueue::new(5).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:260:    let queue = BoundedActionCompletionQueue::new(2).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:272:    let queue = BoundedActionCompletionQueue::new(2).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:287:    let queue = BoundedActionCompletionQueue::new(4).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:298:    let queue = BoundedActionCompletionQueue::new(5).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:304:    let queue = BoundedActionCompletionQueue::new(5).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:311:    let queue = BoundedActionCompletionQueue::new(3).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:321:    let queue = BoundedActionCompletionQueue::new(4).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:327:    let queue = BoundedActionCompletionQueue::new(3).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:336:    let queue = BoundedActionCompletionQueue::new(3).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:344:    let queue = BoundedActionCompletionQueue::new(1).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:358:    let queue = BoundedActionCompletionQueue::new(16).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:368:    let queue = BoundedActionCompletionQueue::new(4).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:381:    let queue = BoundedActionCompletionQueue::new(8).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:394:    let queue = BoundedActionCompletionQueue::new(8).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:406:    let queue = BoundedActionCompletionQueue::new(10).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:416:    let queue = BoundedActionCompletionQueue::new(5).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:432:    let (queue, rx) = BoundedActionCompletionQueue::with_backpressure(10).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:451:    let (queue, rx) = BoundedActionCompletionQueue::with_backpressure(10).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:473:    let (queue, rx) = BoundedActionCompletionQueue::with_backpressure(10).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:485:    let (queue2, rx2) = BoundedActionCompletionQueue::with_backpressure(10).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:497:    let (queue, rx) = BoundedActionCompletionQueue::with_backpressure(5).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:513:    let (_queue, rx) = BoundedActionCompletionQueue::with_backpressure(10).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:521:    let (queue, rx) = BoundedActionCompletionQueue::with_backpressure(5).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:546:    let queue = BoundedActionCompletionQueue::new(5).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:566:    let queue = BoundedActionCompletionQueue::new(3).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:575:    let queue = BoundedActionCompletionQueue::new(3).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:594:    let queue = BoundedActionCompletionQueue::new(5).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:608:    let queue = BoundedActionCompletionQueue::new(1).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:617:    let queue = BoundedActionCompletionQueue::new(1).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:625:    let queue = BoundedActionCompletionQueue::new(1).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:634:    let queue = BoundedActionCompletionQueue::new(1).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:651:    let queue = BoundedActionCompletionQueue::new(1000).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:664:    let (queue, rx) = BoundedActionCompletionQueue::with_backpressure(100).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:687:    let queue = BoundedActionCompletionQueue::new(7).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:693:    let queue = BoundedActionCompletionQueue::new(7).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:702:    let queue = BoundedActionCompletionQueue::new(7).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:711:    let queue = BoundedActionCompletionQueue::new(7).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:720:    let queue = BoundedActionCompletionQueue::new(7).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:760:    let queue = BoundedActionCompletionQueue::new(5).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:771:    let queue = BoundedActionCompletionQueue::new(5).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:787:    let queue = BoundedActionCompletionQueue::new(10).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:812:    let queue = BoundedActionCompletionQueue::new(100).unwrap();
+crates/vb_runtime/src/action_queue/tests/bounded_queue_tests.rs:827:    let queue = BoundedActionCompletionQueue::new(5).unwrap();

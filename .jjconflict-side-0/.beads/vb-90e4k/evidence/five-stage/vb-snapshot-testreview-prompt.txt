@@ -1,0 +1,1941 @@
+You are local5090 independent TEST REVIEWER, after code review. DO NOT CALL TOOLS. The exact relevant source and fresh actual test evidence is included below. Return JSON only: {"status":"APPROVED or REJECTED","findings":[...],"report_markdown":"..."}. No XML. No invented waivers. Scope frozen a244efa285b0da825f31fdd87e2e86db96869619 snapshot mismatch fix only, not v1/package/CI approval. Review existing tests for exact wrong-run CorruptSnapshot expected run/seq, ensure tail mismatch remains ReplayDivergence, mutation resistance. No implementation. Fresh actual coordinator command env RUSTC_WRAPPER= CARGO_BUILD_JOBS=2 timeout300 cargo test -p vb_runtime --test recovery_bdd_tests --test recovery_hydration_tests exited0:82pass +43pass,1 ignored crash_child_marker invoked by its nonignored parent. Identify genuine gaps if any. Other broad historical panics outside changed tests are out of this bounded review. Do not claim you ran tests yourself.
+
+---
+name: test-reviewer
+description: "Adversarial reviewer for behavior test plans and suites only. Enforces contract parity, assertion strength, determinism, public-API testing, and mutation resistance. Does not review proof plans or proof artifacts; use proof-plan-reviewer/proof-reviewer for that."
+---
+
+# Test Reviewer
+
+You do not write tests. You find the test that would still pass if the behavior were deleted.
+
+## Scope
+
+This skill reviews behavior-test plans and executable test suites only.
+
+Proof plans, proof obligations, Verus, Kani, Flux, Loom, and proof evidence belong to `proof-plan-reviewer` or `proof-reviewer`.
+
+## Modes
+
+- Plan review: input `contract.md` plus `test-plan.md`; output `test-plan-review.md`.
+- Suite review: input implementation plus tests; output `test-suite-review.md`.
+
+## Plan Review Gates
+
+1. Every public behavior in `contract.md` has at least one Given/When/Then scenario.
+2. Every error variant has a scenario asserting the exact variant and fields.
+3. Assertions are concrete; `is_ok()`, `is_err()`, `Some(_)`, and boolean smoke assertions are lethal unless the contract is explicitly boolean.
+4. Boundary cases are named: minimum, maximum, just below, just above, empty/zero/none, overflow/underflow where relevant.
+5. Non-trivial pure behavior has property tests planned.
+6. Parser/codec/hostile input has fuzz or adversarial input tests planned.
+7. Verifier harnesses do not count as behavior tests.
+8. Proof-to-implementation rows must be covered by executable behavior tests that hit production code, not copied models or commented-out examples.
+
+## Suite Review Gates
+
+1. Tests compile and execute deterministically.
+2. Integration tests use public API only.
+3. Tests assert behavior, not implementation details.
+4. No ignored tests, sleeps, broad mocks of domain queries, hidden shared mutable state, or silent error suppression.
+5. Mutation thought experiment: deleting branch/error/value logic must be caught by a named test.
+6. Snapshot tests must be checked and intentional.
+7. Resource-heavy commands are bounded: broad Kani/CBMC, mutation, fuzz, coverage, sanitizer, or full-workspace suites must use scoped targets, timeouts, and memory caps. Unbounded verifier commands such as `cargo kani -j 4` are infrastructure-risk findings, not acceptable test evidence.
+8. Commented-out tests, dormant modules, `#[ignore]` proof properties not run by the required command, and zero-test filtered runs are not evidence.
+
+## Resource Governance
+
+When a test plan or suite asks the agent to execute expensive verification-adjacent commands, review the command shape before approving or running it.
+
+- Behavior tests should not depend on broad proof lanes; verifier harnesses still do not count as behavior tests.
+- Prefer exact package, test, harness, or file scopes over full-workspace sweeps.
+- Require timeouts for long-running lanes.
+- Require cgroup/container memory caps for broad or unknown Kani/CBMC runs. Safe local default:
+
+```bash
+systemd-run --user --scope --collect \
+  -p WorkingDirectory=<workspace> \
+  -p MemoryHigh=20G \
+  -p MemoryMax=24G \
+  -p MemorySwapMax=0 \
+  cargo kani -j 1 --output-format=regular <exact-package-or-harness-args>
+```
+
+- Flag any unbounded `cargo kani`, `cargo kani -j 4`, full mutation sweep, or fuzz run without a time and memory budget as a review finding.
+
+## References
+
+- `references/behavior-test-rubric.md`
+- `references/determinism-and-mutation.md`
+- `../go-skill/references/finding-codes.md`
+
+## Output Rules
+
+Findings first, ordered by severity. Include file/line when reviewing code. Include resource-risk findings for unbounded expensive test commands. `STATUS: APPROVED` only when every finding at every severity uses canonical disposition `fixed_with_evidence`, `owner_approved_debt`, or `owner_approved_no_action`. If any finding is `blocker`, write `STATUS: REJECTED` and prevent advancement. Do not approve with open LOW/MINOR/OBSERVATION/INFORMATIONAL findings.
+
+# vb-90e4k: Snapshot Run Mismatch Error Mapping
+
+## Problem
+`hydrate_run_frame` returns `RecoveryError::ReplayDivergence` for snapshot run_id
+mismatch. The intended behavior is to return `RecoveryError::CorruptSnapshot` for
+this case, distinguishing it from tail/journal replay divergence.
+
+## Expected Behavior
+When the snapshot's `run_id` differs from the expected run being recovered:
+- Return `CorruptSnapshot { run: expected_run, seq: snapshot_seq }`
+- The `run` field is the expected run (not the one in the snapshot)
+- The `seq` field is the snapshot's sequence number
+- Tail validation errors (TailRunMismatch, TailSeqNotAfterSnapshot, TailSeqGap)
+  continue to return `ReplayDivergence`
+
+## Implementation
+- File: `crates/vb_storage/src/recovery/hydrate.rs`
+- Function: `snapshot_input_violation_to_error`
+- Change: Map `SnapshotRunMismatch` to `CorruptSnapshot` instead of `ReplayDivergence`
+- Use `..` pattern for unused `snapshot_run` binding in the error variant
+
+## Test Strategy
+- Strengthen existing test `recovery_hydration_tests::corrupt_snapshot_run_mismatch_rejected`
+  to assert exact `run` and `seq` fields (not wildcards)
+- Strengthen existing test `recovery_bdd_tests::corrupt_snapshot_returns_corrupt_snapshot_error`
+  to assert exact `run` and `seq` fields
+- Verify that `recovery_hydration_tests::incremental_recovery_rejects_tail_event_before_watermark`
+  still returns `ReplayDivergence` (unchanged tail path)
+- No new test files; no invented test IDs or APIs
+
+## Scope
+- Production: `hydrate.rs` only
+- Tests: the two existing failing integration tests only
+- No math, no proof, no verification harness changes
+
+# vb-90e4k Independent Code Review
+
+Reviewer: Local 5090
+Commit: a244efa285b0da825f31fdd87e2e86db96869619
+Date: 2026-10-21
+
+## Changed Files
+- `crates/vb_storage/src/recovery/hydrate.rs` (production)
+- `crates/vb_runtime/tests/recovery_bdd_tests.rs` (test)
+- `crates/vb_runtime/tests/recovery_hydration_tests.rs` (test)
+
+## Production Change Analysis
+
+### `crates/vb_storage/src/recovery/hydrate.rs`
+
+Lines 455-465 (new):
+```rust
+SnapshotRecoveryInputViolation::SnapshotRunMismatch {
+    expected_run,
+    snapshot_seq,
+    ..
+} => RecoveryError::CorruptSnapshot {
+    run: expected_run,
+    seq: snapshot_seq,
+},
+```
+
+**Correctness:** Maps `SnapshotRunMismatch` to `CorruptSnapshot` with `run = expected_run` (the run being recovered, not the one in the snapshot) and `seq = snapshot_seq` (the snapshot's sequence number). This matches the contract exactly: "The run field is the expected run (not the one in the snapshot)" and "The seq field is the snapshot's sequence number."
+
+**Tail divergence preserved:** Lines 466-490 map `TailRunMismatch`, `TailSeqNotAfterSnapshot`, and `TailSeqGap` to `ReplayDivergence` with descriptive detail strings. These paths are unchanged, preserving the distinction between snapshot corruption and tail replay issues.
+
+**Pattern completeness:** The `..` pattern correctly captures unused `snapshot_run` field from `SnapshotRecoveryInputViolation::SnapshotRunMismatch`. No unused-variable warnings are generated.
+
+## Test Change Analysis
+
+### `crates/vb_runtime/tests/recovery_hydration_tests.rs` (lines 774-779)
+
+```rust
+assert!(matches!(
+    result,
+    Err(RecoveryError::CorruptSnapshot { run: err_run, seq: err_seq })
+        if err_run == run && err_seq == EventSeq::new(1)
+));
+```
+
+**Assertion strength:** Exact variant and exact field values (run and seq) are asserted via matches! guard. The previous `let Err(...) = result else { panic!(...) }` form only checked the variant, not the payload. The test provides `run = RunId::new(10500)` and `wrong_run = RunId::new(99999)` for the snapshot, so the guard correctly validates that `err_run` is the expected run (10500), not the snapshot's run (99999).
+
+### `crates/vb_runtime/tests/recovery_bdd_tests.rs` (lines 1299-1304)
+
+```rust
+assert!(matches!(
+    result,
+    Err(RecoveryError::CorruptSnapshot { run: err_run, seq: err_seq })
+        if err_run == run && err_seq == EventSeq::new(1)
+));
+```
+
+**Assertion strength:** Same improvement. Provides `run = RunId::new(42)` and `wrong_run = RunId::new(999)` for the snapshot. Validates exact variant and payload.
+
+### Mutation resistance assessment
+
+If the production change were reverted (mapping `SnapshotRunMismatch` back to `ReplayDivergence`), both tests would fail because `matches!` with the `CorruptSnapshot` pattern would not bind, the guard would not execute, and `matches!` would return `false`. The old panic fallback blocks have been replaced with `matches!` guard assertions, eliminating the possibility of silent acceptance.
+
+The test `incremental_recovery_rejects_tail_event_before_watermark` continues to verify that tail path errors return `ReplayDivergence`, preserving the snapshot/tail distinction.
+
+## Findings
+
+**No unresolved findings.** The implementation correctly maps the snapshot run_id mismatch to the `CorruptSnapshot` error variant with the expected run and snapshot sequence number, preserving the distinction between snapshot corruption and tail replay divergence. Test assertions have been strengthened from variant-only checks to exact field-value validation.
+
+STATUS: APPROVED
+
+
+SOURCE crates/vb_storage/src/recovery/hydrate.rs
+#![forbid(unsafe_code)]
+//! RunFrame hydration from snapshot and journal events.
+//!
+//! Provides:
+//! - `hydrate_run_frame`: Reconstruct live RunFrame from snapshot + tail events
+//! - `hydrate_run_frame_from_events`: Reconstruct live RunFrame from events only
+
+use crate::JournalEvent;
+use crate::recovery::hydrate_support::{
+    apply_tail_events, decode_snapshot_slots, derive_dimensions_from_snapshot_and_tail,
+    verified_action_envelope_digest, verify_action_ticket_event,
+};
+use crate::recovery::types::ActionReplayEffect;
+use crate::recovery::types::{
+    ActionReplayTracker, RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState,
+    RecoveryCannotResumeState, RecoveryError, RecoveryFrameSeed, RecoveryResult, RunSnapshot,
+};
+use std::collections::BTreeSet;
+use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
+/// Production proof surface for snapshot-plus-tail run identity.
+#[must_use]
+pub fn hydrate_snapshot_tail_run_matches(
+    snapshot: &RunSnapshot,
+    tail_events: &[JournalEvent],
+    run_id: RunId,
+) -> bool {
+    snapshot.run == run_id && tail_events.iter().all(|event| event.run_id() == run_id)
+}
+
+/// Production proof surface for snapshot-plus-tail sequence ordering.
+#[must_use]
+pub fn hydrate_snapshot_tail_seq_after_snapshot(
+    snapshot: &RunSnapshot,
+    tail_events: &[JournalEvent],
+) -> bool {
+    tail_events.iter().all(|event| event.seq() > snapshot.seq)
+}
+
+/// Production proof surface for non-empty recovery evidence.
+#[must_use]
+pub fn hydrate_snapshot_tail_has_evidence(
+    snapshot: &RunSnapshot,
+    tail_events: &[JournalEvent],
+) -> bool {
+    !tail_events.is_empty() || !snapshot.slots.is_empty() || !snapshot.taint.is_empty()
+}
+
+/// Production proof surface for hydrate_run_frame preconditions that do not decode bytes.
+#[must_use]
+pub fn hydrate_snapshot_tail_preconditions(
+    snapshot: &RunSnapshot,
+    tail_events: &[JournalEvent],
+    run_id: RunId,
+) -> bool {
+    hydrate_snapshot_tail_run_matches(snapshot, tail_events, run_id)
+        && hydrate_snapshot_tail_seq_after_snapshot(snapshot, tail_events)
+        && hydrate_snapshot_tail_has_evidence(snapshot, tail_events)
+}
+
+/// Production proof surface for events-only hydrate preconditions.
+#[must_use]
+pub const fn hydrate_events_preconditions(events: &[JournalEvent]) -> bool {
+    !events.is_empty()
+}
+
+/// Production proof surface for positive frame dimensions.
+#[must_use]
+pub const fn hydrate_dimensions_positive(step_count: u16, slot_count: u16) -> bool {
+    step_count > 0 && slot_count > 0
+}
+
+/// Copy-only metadata needed to validate snapshot/tail hydration ordering.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct TailEventMetadata {
+    pub(crate) run: RunId,
+    pub(crate) seq: crate::EventSeq,
+}
+
+impl TailEventMetadata {
+    #[must_use]
+    pub(crate) const fn new(run: RunId, seq: crate::EventSeq) -> Self {
+        Self { run, seq }
+    }
+
+    #[must_use]
+    pub(crate) const fn from_event(event: &JournalEvent) -> Self {
+        Self::new(event.run_id(), event.seq())
+    }
+}
+
+/// Allocation-free classification for snapshot/tail hydration preconditions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SnapshotRecoveryInputViolation {
+    SnapshotRunMismatch {
+        expected_run: RunId,
+        snapshot_run: RunId,
+        snapshot_seq: crate::EventSeq,
+    },
+    TailRunMismatch {
+        expected: RunId,
+        actual: RunId,
+    },
+    TailSeqNotAfterSnapshot {
+        snapshot_seq: crate::EventSeq,
+        actual_seq: crate::EventSeq,
+    },
+    /// First tail event seq is not contiguous with snapshot seq.
+    TailSeqGap {
+        snapshot_seq: crate::EventSeq,
+        actual_seq: crate::EventSeq,
+    },
+    NoRecoveryData {
+        run: RunId,
+    },
+}
+
+pub(crate) const fn validate_snapshot_metadata(
+    snapshot_run: RunId,
+    snapshot_seq: crate::EventSeq,
+    run_id: RunId,
+) -> Result<(), SnapshotRecoveryInputViolation> {
+    if snapshot_run.get() == run_id.get() {
+        Ok(())
+    } else {
+        Err(SnapshotRecoveryInputViolation::SnapshotRunMismatch {
+            expected_run: run_id,
+            snapshot_run,
+            snapshot_seq,
+        })
+    }
+}
+
+pub(crate) const fn validate_tail_run_metadata(
+    event: TailEventMetadata,
+    run_id: RunId,
+) -> Result<(), SnapshotRecoveryInputViolation> {
+    if event.run.get() == run_id.get() {
+        Ok(())
+    } else {
+        Err(SnapshotRecoveryInputViolation::TailRunMismatch {
+            expected: run_id,
+            actual: event.run,
+        })
+    }
+}
+
+pub(crate) const fn validate_tail_seq_after_snapshot(
+    event: TailEventMetadata,
+    snapshot_seq: crate::EventSeq,
+) -> Result<(), SnapshotRecoveryInputViolation> {
+    if event.seq.get() > snapshot_seq.get() {
+        Ok(())
+    } else {
+        Err(SnapshotRecoveryInputViolation::TailSeqNotAfterSnapshot {
+            snapshot_seq,
+            actual_seq: event.seq,
+        })
+    }
+}
+
+pub(crate) const fn validate_recovery_data_present(
+    tail_events_empty: bool,
+    snapshot_slots_empty: bool,
+    snapshot_taint_empty: bool,
+    run_id: RunId,
+) -> Result<(), SnapshotRecoveryInputViolation> {
+    if tail_events_empty && snapshot_slots_empty && snapshot_taint_empty {
+        Err(SnapshotRecoveryInputViolation::NoRecoveryData { run: run_id })
+    } else {
+        Ok(())
+    }
+}
+
+/// Hydrates a live RunFrame from a snapshot plus ordered tail journal events.
+///
+/// Reconstructs the full runtime frame by decoding the snapshot's compact
+/// slot/taint data and applying tail events on top.
+///
+/// # Errors
+///
+/// Returns `RecoveryError` when:
+/// - Snapshot run_id does not match requested run_id
+/// - Tail events contain a different run_id
+/// - Tail event seq is not strictly after snapshot seq
+/// - Snapshot bytes are corrupt or undecodable
+/// - No snapshot and no tail events are provided
+/// - Derived dimensions are zero or overflow `u16`
+///
+/// Hydrates a live `RunFrame` from a snapshot plus ordered tail events.
+///
+/// The snapshot+tail path is the **lower-level** durable hydration
+/// mechanism: it consumes the snapshot bytes and reapplies tail events
+/// to derive a `RunFrame` shape with hydrated slot/taint data and a
+/// monotonically advanced program counter. The corresponding cannot-
+/// resume witness lives at the typed boundary that consumes this
+/// frame (the `RuntimeRecoveryBoundary`
+/// implementation at the runtime layer; see
+/// `DurableFrameRecoveryBoundary::hydrate_run_frame` and
+/// `summary::recover_runtime_frame_seed_from_events`). The events-only
+/// [`hydrate_run_frame_from_events`] entry point is where the typed
+/// `UnsupportedFrameSeed { run, reason }` rejection is enforced, so
+/// any caller passing a frame seed alone through the typed boundary
+/// still fails closed with the precise reason string. The
+/// snapshot+tail entry point ALSO enforces the typed cannot-resume
+/// gate up-front via [`classify_snapshot_tail_cannot_resume`] so a
+/// tail that would leave pending timers/asks/actions or carry a
+/// `SlotWrittenEvent { value: None, .. }` is rejected with
+/// `UnsupportedFrameSeed { reason }` BEFORE any frame is allocated.
+/// This closes BLOCKER 4 and matches the typed-boundary contract the
+/// events-only path already satisfies. The per-event-typed lower-
+/// level gate is also enforced inside the tail application helpers
+/// (see `hydrate_support::apply_slot_written`) so any
+/// `SlotWrittenEvent { value: None }` that slips past the up-front
+/// check (e.g. through a programmatic call path) is rejected by the
+/// helper as defense-in-depth. A valid (snapshot slot bytes + tail
+/// step lifecycle) path continues to assemble the lower-level frame
+/// successfully. This keeps the unit-level durability, taint
+/// preservation, and replay-shape tests green: they construct valid
+/// durable evidence.
+pub fn hydrate_run_frame(
+    snapshot: &RunSnapshot,
+    tail_events: &[JournalEvent],
+    run_id: RunId,
+) -> RecoveryResult<vb_core::RunFrame> {
+    validate_snapshot_recovery_inputs(snapshot, tail_events, run_id)?;
+    reject_if_cannot_resume(snapshot, tail_events, run_id)?;
+    let snapshot_slots =
+        decode_snapshot_slots(&snapshot.slots, &snapshot.taint, run_id, snapshot.seq)?;
+    let (step_count, slot_count, first_step) =
+        derive_dimensions_from_snapshot_and_tail(snapshot, tail_events, run_id, &snapshot_slots)?;
+    ensure_nonzero_step_count(step_count)?;
+
+    let mut frame = vb_core::RunFrame::new(run_id, first_step, step_count, slot_count)
+        .map_err(|_| RecoveryError::FrameDimensionOverflow { run: run_id })?;
+    apply_snapshot_slots(&mut frame, &snapshot_slots)?;
+
+    let mut tracker = ActionReplayTracker::new();
+    let executed = apply_tail_events(&mut frame, tail_events, &mut tracker, &[]);
+    increment_executed(&mut frame, run_id, executed?)?;
+    Ok(frame)
+}
+
+/// Rejects a snapshot+tail pair that fails the typed cannot-resume gate.
+///
+/// Returns `Ok(())` when the pair has enough evidence to rebuild a live
+/// frame; otherwise returns `RecoveryError::UnsupportedFrameSeed`
+/// carrying the precise priority-ordered reason string.
+fn reject_if_cannot_resume(
+    snapshot: &RunSnapshot,
+    tail_events: &[JournalEvent],
+    run_id: RunId,
+) -> RecoveryResult<()> {
+    let cannot_resume = classify_snapshot_tail_cannot_resume(snapshot, tail_events);
+    if cannot_resume.is_resumable() {
+        return Ok(());
+    }
+    Err(RecoveryError::UnsupportedFrameSeed {
+        run: run_id,
+        reason: String::from(cannot_resume.unsupported_reason()),
+    })
+}
+
+/// Walks the snapshot+tail pair and classifies the cannot-resume
+/// surface that the typed boundary would otherwise flag. Returns a
+/// [`RecoveryCannotResumeState`] whose `is_resumable()` reflects
+/// whether the pair carries enough evidence to rebuild a live frame.
+///
+/// Flags set by this helper:
+/// - `slot_values` — any `SlotWrittenEvent { value: None, .. }` in
+///   the tail (defense-in-depth alongside `apply_slot_written`).
+/// - `pending_actions` — any `ActionScheduled` /
+///   `ActionScheduledTicket` whose step still appears in the tail
+///   without a matching `ActionCompleted*` / `ActionFailedEvent` /
+///   `ActionAbandoned`.
+/// - `pending_timers` — any `WaitScheduledEvent` whose step still
+///   appears without a matching `WaitResolvedEvent`.
+/// - `pending_asks` — any `AskScheduledEvent` whose step still
+///   appears without a matching `AskAnsweredEvent` /
+///   `AskTimedOutEvent`.
+///
+/// The frame-seed-only `*_missing` flags are NOT set by this helper:
+/// they describe the absence of full RunState evidence, which the
+/// snapshot+tail path rebuilds from durable snapshot bytes.
+///
+/// The `_snapshot` parameter is reserved for future flag-set
+/// expansion: today the typed `*_missing` flags are stamped
+/// unconditionally by [`RecoveryCannotResumeState::from_seed`], but
+/// this helper will eventually need to inspect the snapshot's
+/// `slots`/`taint`/`workflow` bytes to distinguish
+/// `snapshot_supports_resume` from
+/// `snapshot_bytes_diverge_from_tail`. Keeping the parameter in the
+/// public signature avoids a future API break. Underscore prefix is
+/// the standard Rust convention for intentional non-use.
+#[must_use]
+pub fn classify_snapshot_tail_cannot_resume(
+    _snapshot: &RunSnapshot,
+    tail_events: &[JournalEvent],
+) -> RecoveryCannotResumeState {
+    let mut state = RecoveryCannotResumeState::RESUMABLE;
+    let mut pending_waits: BTreeSet<StepIdx> = BTreeSet::new();
+    let mut pending_asks: BTreeSet<StepIdx> = BTreeSet::new();
+    let mut pending_actions: BTreeSet<StepIdx> = BTreeSet::new();
+    for event in tail_events {
+        mark_slot_value_none(&mut state, event);
+        drain_classify_event_to_pending_sets(
+            &mut pending_waits,
+            &mut pending_asks,
+            &mut pending_actions,
+            event,
+        );
+    }
+    set_cannot_resume_from_pending_sets(
+        &mut state,
+        &pending_waits,
+        &pending_asks,
+        &pending_actions,
+    );
+    state
+}
+
+/// Sets `state.slot_values = true` when the event is a
+/// `SlotWrittenEvent { value: None, .. }`; otherwise no-op.
+fn mark_slot_value_none(state: &mut RecoveryCannotResumeState, event: &JournalEvent) {
+    if let JournalEvent::SlotWrittenEvent { value: None, .. } = event {
+        state.slot_values = true;
+    }
+}
+
+/// Distributes a single event into the per-domain pending sets.
+fn drain_classify_event_to_pending_sets(
+    pending_waits: &mut BTreeSet<StepIdx>,
+    pending_asks: &mut BTreeSet<StepIdx>,
+    pending_actions: &mut BTreeSet<StepIdx>,
+    event: &JournalEvent,
+) {
+    match event {
+        JournalEvent::WaitScheduledEvent { step, .. } => {
+            pending_waits.insert(*step);
+        }
+        JournalEvent::WaitResolvedEvent { step, .. } => {
+            pending_waits.remove(step);
+        }
+        JournalEvent::AskScheduledEvent { step, .. } => {
+            pending_asks.insert(*step);
+        }
+        JournalEvent::AskAnsweredEvent { step, .. } => {
+            pending_asks.remove(step);
+        }
+        JournalEvent::AskTimedOutEvent { step, .. } => {
+            pending_asks.remove(step);
+        }
+        JournalEvent::ActionScheduled { step, .. } => {
+            pending_actions.insert(*step);
+        }
+        JournalEvent::ActionCompletedEvent { step, .. } => {
+            pending_actions.remove(step);
+        }
+        JournalEvent::ActionFailedEvent { step, .. } => {
+            pending_actions.remove(step);
+        }
+        JournalEvent::ActionScheduledTicket { ticket, .. } => {
+            pending_actions.insert(ticket.step);
+        }
+        JournalEvent::ActionCompletedEnvelope { ticket, .. } => {
+            pending_actions.remove(&ticket.step);
+        }
+        JournalEvent::ActionAbandoned { ticket, .. } => {
+            pending_actions.remove(&ticket.step);
+        }
+        _ => {}
+    }
+}
+
+/// Transfers the "non-empty pending set" markers from the per-domain
+/// sets into the typed cannot-resume witness. Only the boolean
+/// emptiness flags are set; the `slot_values` flag is set by
+/// [`mark_slot_value_none`] because it does not require accumulation.
+fn set_cannot_resume_from_pending_sets(
+    state: &mut RecoveryCannotResumeState,
+    waits: &BTreeSet<StepIdx>,
+    asks: &BTreeSet<StepIdx>,
+    actions: &BTreeSet<StepIdx>,
+) {
+    state.pending_timers = !waits.is_empty();
+    state.pending_asks = !asks.is_empty();
+    state.pending_actions = !actions.is_empty();
+}
+
+fn validate_snapshot_recovery_inputs(
+    snapshot: &RunSnapshot,
+    tail_events: &[JournalEvent],
+    run_id: RunId,
+) -> RecoveryResult<()> {
+    validate_snapshot_metadata(snapshot.run, snapshot.seq, run_id)
+        .map_err(snapshot_input_violation_to_error)?;
+    validate_tail_events_match_run(tail_events, run_id)?;
+    validate_tail_events_after_snapshot(tail_events, snapshot)?;
+    validate_recovery_data_present(
+        tail_events.is_empty(),
+        snapshot.slots.is_empty(),
+        snapshot.taint.is_empty(),
+        run_id,
+    )
+    .map_err(snapshot_input_violation_to_error)
+}
+
+fn validate_tail_events_match_run(
+    tail_events: &[JournalEvent],
+    run_id: RunId,
+) -> RecoveryResult<()> {
+    for event in tail_events {
+        validate_tail_run_metadata(TailEventMetadata::from_event(event), run_id)
+            .map_err(snapshot_input_violation_to_error)?;
+    }
+    Ok(())
+}
+
+fn validate_tail_events_after_snapshot(
+    tail_events: &[JournalEvent],
+    snapshot: &RunSnapshot,
+) -> RecoveryResult<()> {
+    // Contiguity gate: first tail event must be snapshot.seq + 1.
+    // This catches gaps between snapshot and tail that the
+    // per-event ordering check misses.
+    if let Some(first) = tail_events.first() {
+        let first_seq = first.seq();
+        let expected = snapshot
+            .seq
+            .get()
+            .checked_add(1)
+            .ok_or(SnapshotRecoveryInputViolation::TailSeqGap {
+                snapshot_seq: snapshot.seq,
+                actual_seq: snapshot.seq,
+            })
+            .map_err(snapshot_input_violation_to_error)?;
+        if first_seq.get() != expected {
+            return Err(snapshot_input_violation_to_error(
+                SnapshotRecoveryInputViolation::TailSeqGap {
+                    snapshot_seq: snapshot.seq,
+                    actual_seq: first_seq,
+                },
+            ));
+        }
+    }
+    for event in tail_events {
+        validate_tail_seq_after_snapshot(TailEventMetadata::from_event(event), snapshot.seq)
+            .map_err(snapshot_input_violation_to_error)?;
+    }
+    Ok(())
+}
+
+fn snapshot_input_violation_to_error(
+    violation: SnapshotRecoveryInputViolation,
+) -> RecoveryError {
+    match violation {
+        SnapshotRecoveryInputViolation::SnapshotRunMismatch {
+            expected_run,
+            snapshot_seq,
+            ..
+        } => RecoveryError::CorruptSnapshot {
+            run: expected_run,
+            seq: snapshot_seq,
+        },
+        SnapshotRecoveryInputViolation::TailRunMismatch { expected, actual } => {
+            RecoveryError::ReplayDivergence {
+                step: vb_core::StepIdx::ZERO,
+                detail: format!(
+                    "tail event run_id mismatch: expected {expected:?}, found {actual:?}"
+                ),
+            }
+        }
+        SnapshotRecoveryInputViolation::TailSeqNotAfterSnapshot {
+            snapshot_seq,
+            actual_seq,
+        } => RecoveryError::ReplayDivergence {
+            step: vb_core::StepIdx::ZERO,
+            detail: format!(
+                "tail event seq {} is not after snapshot seq {}",
+                actual_seq.get(),
+                snapshot_seq.get()
+            ),
+        },
+        SnapshotRecoveryInputViolation::TailSeqGap {
+            snapshot_seq,
+            actual_seq,
+        } => RecoveryError::ReplayDivergence {
+            step: vb_core::StepIdx::ZERO,
+            detail: format!(
+                "tail event seq {} is not contiguous with snapshot seq {} (gap detected)",
+                actual_seq.get(),
+                snapshot_seq.get()
+            ),
+        },
+        SnapshotRecoveryInputViolation::NoRecoveryData { run } => {
+            RecoveryError::NoRecoveryData { run }
+        }
+    }
+}
+
+fn ensure_nonzero_step_count(step_count: u16) -> RecoveryResult<()> {
+    if step_count == 0 {
+        return Err(RecoveryError::ReplayDivergence {
+            step: vb_core::StepIdx::ZERO,
+            detail: "derived step_count is zero".to_owned(),
+        });
+    }
+    Ok(())
+}
+
+fn apply_snapshot_slots(
+    frame: &mut vb_core::RunFrame,
+    snapshot_slots: &[RecoveredSlotEntry],
+) -> RecoveryResult<()> {
+    for entry in snapshot_slots {
+        frame
+            .write_slot_with_taint(entry.slot, entry.value, entry.taint)
+            .map_err(|_| RecoveryError::ReplayDivergence {
+                step: vb_core::StepIdx::ZERO,
+                detail: "snapshot slot write out of bounds".to_owned(),
+            })?;
+    }
+    Ok(())
+}
+
+fn increment_executed(
+    frame: &mut vb_core::RunFrame,
+    run_id: RunId,
+    executed: u64,
+) -> RecoveryResult<()> {
+    for _ in 0..executed {
+        frame
+            .increment_executed()
+            .map_err(|_| RecoveryError::FrameDimensionOverflow { run: run_id })?;
+    }
+    Ok(())
+}
+
+/// Hydrates a live RunFrame from full journal events (no snapshot).
+///
+/// # Errors
+///
+/// Returns `RecoveryError` when:
+/// - Events are empty
+/// - Derived dimensions are zero or overflow `u16`
+/// - The recovered frame seed is cannot-resume (e.g. pending
+///   actions, pending timers, pending asks, unsupported slot
+///   values/taint/payloads, or missing full-RunState components
+///   like workflow, store, action attempts, admission, collect
+///   states, action contracts, or action ABI digests).
+pub fn hydrate_run_frame_from_events(
+    events: &[JournalEvent],
+    run_id: RunId,
+) -> RecoveryResult<vb_core::RunFrame> {
+    if events.is_empty() {
+        return Err(RecoveryError::NoRecoveryData { run: run_id });
+    }
+
+    let seed = crate::recovery::replay::summary::recover_runtime_frame_seed_from_events(events)?;
+    ensure_nonzero_step_count(seed.step_count)?;
+    let cannot_resume = seed.cannot_resume_state();
+    if !cannot_resume.is_resumable() {
+        return Err(RecoveryError::UnsupportedFrameSeed {
+            run: run_id,
+            reason: String::from(cannot_resume.unsupported_reason()),
+        });
+    }
+    let mut frame = build_frame_from_seed(&seed, run_id)?;
+    apply_seed_step_states(&mut frame, &seed.steps)?;
+    apply_seed_slots(&mut frame, &seed.slots)?;
+    apply_seed_pc(&mut frame, seed.pc)?;
+    let executed = apply_replay_accounting(&mut frame, events, run_id, &[])?;
+    increment_executed(&mut frame, run_id, executed)?;
+
+    Ok(frame)
+}
+
+fn build_frame_from_seed(
+    seed: &RecoveryFrameSeed,
+    run_id: RunId,
+) -> RecoveryResult<vb_core::RunFrame> {
+    vb_core::RunFrame::new(run_id, seed.first_step, seed.step_count, seed.slot_count)
+        .map_err(|_| RecoveryError::FrameDimensionOverflow { run: run_id })
+}
+
+fn apply_seed_step_states(
+    frame: &mut vb_core::RunFrame,
+    steps: &[RecoveredStepEntry],
+) -> RecoveryResult<()> {
+    for entry in steps {
+        let result = match entry.state {
+            RecoveredStepState::Running => frame.mark_running(entry.step),
+            RecoveredStepState::Succeeded => frame.mark_succeeded(entry.step),
+            RecoveredStepState::Failed => frame.mark_failed(entry.step),
+            RecoveredStepState::Waiting => frame
+                .mark_running(entry.step)
+                .and_then(|_| frame.mark_waiting(entry.step)),
+            RecoveredStepState::Asking => frame
+                .mark_running(entry.step)
+                .and_then(|_| frame.mark_asking(entry.step)),
+        };
+        result.map_err(|_| RecoveryError::ReplayDivergence {
+            step: entry.step,
+            detail: "seed step state transition failed".to_owned(),
+        })?;
+    }
+    Ok(())
+}
+
+fn apply_seed_slots(
+    frame: &mut vb_core::RunFrame,
+    slots: &[RecoveredSlotEntry],
+) -> RecoveryResult<()> {
+    for entry in slots {
+        frame
+            .write_slot_with_taint(entry.slot, entry.value, entry.taint)
+            .map_err(|_| RecoveryError::ReplayDivergence {
+                step: vb_core::StepIdx::ZERO,
+                detail: "seed slot write out of bounds".to_owned(),
+            })?;
+    }
+    Ok(())
+}
+
+fn apply_seed_pc(frame: &mut vb_core::RunFrame, pc: vb_core::StepIdx) -> RecoveryResult<()> {
+    frame
+        .set_pc(pc)
+        .map_err(|_| RecoveryError::ReplayDivergence {
+            step: pc,
+            detail: "seed pc out of bounds".to_owned(),
+        })
+}
+
+fn apply_replay_accounting(
+    frame: &mut vb_core::RunFrame,
+    events: &[JournalEvent],
+    run_id: RunId,
+    expected_action_abi_digests: &[(vb_core::ActionId, vb_core::WorkflowDigest)],
+) -> RecoveryResult<u64> {
+    let mut tracker = ActionReplayTracker::new();
+    let mut count = 0u64;
+    let mut peak = 0u16;
+    for event in events {
+        if apply_accounting_event(frame, event, &mut tracker, expected_action_abi_digests)? {
+            count = increment_replay_count(count, run_id)?;
+        }
+        if frame.parallel_in_flight() > peak {
+            peak = frame.parallel_in_flight();
+        }
+    }
+    frame.set_max_parallel_in_flight(peak);
+    Ok(count)
+}
+
+fn increment_replay_count(current: u64, run_id: RunId) -> RecoveryResult<u64> {
+    current
+        .checked_add(1)
+        .ok_or(RecoveryError::FrameDimensionOverflow { run: run_id })
+}
+fn apply_accounting_event(
+    frame: &mut vb_core::RunFrame,
+    event: &JournalEvent,
+    tracker: &mut ActionReplayTracker,
+    expected_action_abi_digests: &[(vb_core::ActionId, vb_core::WorkflowDigest)],
+) -> RecoveryResult<bool> {
+    match event {
+        JournalEvent::ActionScheduled { .. }
+        | JournalEvent::ActionCompletedEvent { .. }
+        | JournalEvent::ActionFailedEvent { .. } => {
+            apply_simple_action_event(frame, tracker, event)
+        }
+        JournalEvent::ActionScheduledTicket { .. } => {
+            apply_action_scheduled_ticket_event(frame, tracker, event, expected_action_abi_digests)
+        }
+        JournalEvent::ActionCompletedEnvelope { .. } => apply_action_completed_envelope_event(
+            frame,
+            tracker,
+            event,
+            expected_action_abi_digests,
+        ),
+        _ => classify_metadata_event(event),
+    }
+}
+
+fn apply_simple_action_event(
+    frame: &mut vb_core::RunFrame,
+    tracker: &mut ActionReplayTracker,
+    event: &JournalEvent,
+) -> RecoveryResult<bool> {
+    match event {
+        JournalEvent::ActionScheduled { action, step, .. } => {
+            reject_resolved_action(tracker, *action, *step)?;
+            add_replay_parallel_in_flight(frame, *step).map(|()| true)
+        }
+        JournalEvent::ActionCompletedEvent { action, step, .. } => {
+            reject_resolved_action(tracker, *action, *step)?;
+            tracker.mark_completed(*action, *step);
+            sub_replay_parallel_in_flight(frame, *step).map(|()| true)
+        }
+        JournalEvent::ActionFailedEvent { action, step, .. } => {
+            reject_resolved_action(tracker, *action, *step)?;
+            tracker.mark_failed(*action, *step);
+            sub_replay_parallel_in_flight(frame, *step).map(|()| true)
+        }
+        _ => Ok(false),
+    }
+}
+
+fn apply_action_scheduled_ticket_event(
+    frame: &mut vb_core::RunFrame,
+    tracker: &mut ActionReplayTracker,
+    event: &JournalEvent,
+    expected_action_abi_digests: &[(vb_core::ActionId, vb_core::WorkflowDigest)],
+) -> RecoveryResult<bool> {
+    let JournalEvent::ActionScheduledTicket {
+        run,
+        ticket,
+        input,
+        output,
+        action_abi_digest,
+        ..
+    } = event
+    else {
+        return Ok(false);
+    };
+    verify_action_ticket_event(*run, *ticket)?;
+    check_action_abi_digest_against_expected(
+        ticket.action,
+        *action_abi_digest,
+        expected_action_abi_digests,
+    )?;
+    let effect =
+        tracker.mark_scheduled_ticket_effect(*ticket, *input, *output, *action_abi_digest)?;
+    if effect == ActionReplayEffect::Apply {
+        add_replay_parallel_in_flight(frame, ticket.step)?;
+    }
+    Ok(effect == ActionReplayEffect::Apply)
+}
+
+fn apply_action_completed_envelope_event(
+    frame: &mut vb_core::RunFrame,
+    tracker: &mut ActionReplayTracker,
+    event: &JournalEvent,
+    expected_action_abi_digests: &[(vb_core::ActionId, vb_core::WorkflowDigest)],
+) -> RecoveryResult<bool> {
+    let JournalEvent::ActionCompletedEnvelope {
+        run,
+        ticket,
+        output,
+        outcome,
+        value,
+        encoded_len,
+        taint,
+        value_digest,
+        action_abi_digest,
+        ..
+    } = event
+    else {
+        return Ok(false);
+    };
+    let verified_digest = verified_action_envelope_digest(
+        *run,
+        *ticket,
+        *outcome,
+        value,
+        *encoded_len,
+        *value_digest,
+    )?;
+    tracker.require_scheduled_ticket(*ticket, *output, *action_abi_digest)?;
+    check_action_abi_digest_against_expected(
+        ticket.action,
+        *action_abi_digest,
+        expected_action_abi_digests,
+    )?;
+    let effect = tracker.mark_completed_envelope_effect(
+        *ticket,
+        *output,
+        *encoded_len,
+        *taint,
+        verified_digest,
+        *action_abi_digest,
+    )?;
+    if effect == ActionReplayEffect::Apply {
+        sub_replay_parallel_in_flight(frame, ticket.step)?;
+    }
+    Ok(effect == ActionReplayEffect::Apply)
+}
+// VB-NOORE (wildcard elimination): explicit arms for every
+// JournalEvent variant so adding a new variant forces a
+// compile-time failure. The dispatcher routes action events
+// to dedicated helpers, so this classifier returns Ok(false)
+// for any action variant that ever reaches it (a defensive
+// belt-and-braces for the dispatcher's `_ =>` arm).
+fn classify_metadata_event(event: &JournalEvent) -> RecoveryResult<bool> {
+    match event {
+        JournalEvent::StepStarted { .. }
+        | JournalEvent::StepSucceeded { .. }
+        | JournalEvent::StepFailed { .. }
+        | JournalEvent::SlotWrittenEvent { .. }
+        | JournalEvent::WaitScheduledEvent { .. }
+        | JournalEvent::AskScheduledEvent { .. }
+        | JournalEvent::AskTimedOutEvent { .. }
+        | JournalEvent::WaitResolvedEvent { .. }
+        | JournalEvent::AskAnsweredEvent { .. }
+        | JournalEvent::RetryScheduledEvent { .. } => Ok(true),
+        JournalEvent::ActionScheduled { .. }
+        | JournalEvent::ActionScheduledTicket { .. }
+        | JournalEvent::ActionCompletedEvent { .. }
+        | JournalEvent::ActionCompletedEnvelope { .. }
+        | JournalEvent::ActionFailedEvent { .. }
+        | JournalEvent::ActionAbandoned { .. }
+        | JournalEvent::RunAccepted { .. }
+        | JournalEvent::RunAdmission { .. }
+        | JournalEvent::RunCancelled { .. }
+        | JournalEvent::RunKilled { .. }
+        | JournalEvent::RunFinished { .. }
+        | JournalEvent::RunFailedEvent { .. }
+        | JournalEvent::RunResumed { .. }
+        | JournalEvent::RunRetried { .. }
+        | JournalEvent::RunAnswered { .. } => Ok(false),
+    }
+}
+
+fn add_replay_parallel_in_flight(
+    frame: &mut vb_core::RunFrame,
+    step: vb_core::StepIdx,
+) -> RecoveryResult<()> {
+    frame
+        .add_parallel_in_flight(1)
+        .map_err(|_| RecoveryError::ReplayDivergence {
+            step,
+            detail: "parallel_in_flight overflow".to_owned(),
+        })
+}
+
+fn sub_replay_parallel_in_flight(
+    frame: &mut vb_core::RunFrame,
+    step: vb_core::StepIdx,
+) -> RecoveryResult<()> {
+    frame
+        .sub_parallel_in_flight(1)
+        .map_err(|_| RecoveryError::ReplayDivergence {
+            step,
+            detail: "parallel_in_flight underflow".to_owned(),
+        })
+}
+
+fn reject_resolved_action(
+    tracker: &ActionReplayTracker,
+    action: vb_core::ActionId,
+    step: vb_core::StepIdx,
+) -> RecoveryResult<()> {
+    if tracker.is_resolved(action, step) {
+        return Err(RecoveryError::NonIdempotentActionBlocked { action, step });
+    }
+    Ok(())
+}
+/// Checks whether the found action ABI digest matches any of the expected digests.
+fn check_action_abi_digest_against_expected(
+    action_id: ActionId,
+    found: WorkflowDigest,
+    expected: &[(ActionId, WorkflowDigest)],
+) -> RecoveryResult<()> {
+    if found == zero_workflow_digest() {
+        return Err(RecoveryError::ActionAbiMismatch { action_id });
+    }
+    for (exp_action_id, exp_digest) in expected {
+        if *exp_action_id == action_id {
+            if *exp_digest == zero_workflow_digest() || *exp_digest != found {
+                return Err(RecoveryError::ActionAbiMismatch {
+                    action_id: *exp_action_id,
+                });
+            }
+            return Ok(());
+        }
+    }
+    Err(RecoveryError::ActionAbiMismatch { action_id })
+}
+
+const fn zero_workflow_digest() -> WorkflowDigest {
+    WorkflowDigest::from_bytes([0; 32])
+}
+
+
+SOURCE crates/vb_runtime/tests/recovery_bdd_tests.rs
+1253: // GA-012a — Corrupt snapshot returns CorruptSnapshot error
+1254: // ---------------------------------------------------------------------------
+1255: 
+1256: #[test]
+1257: fn corrupt_snapshot_returns_corrupt_snapshot_error() {
+1258:     let dir = TempDir::new().expect("temp dir should be created");
+1259:     let run = RunId::new(12001);
+1260:     let wrong_run = RunId::new(99999);
+1261:     let digest = test_digest(0xCC);
+1262: 
+1263:     let snapshot = RunSnapshot {
+1264:         run: wrong_run, // Mismatched run id
+1265:         seq: EventSeq::new(1),
+1266:         workflow: digest,
+1267:         slots: vec![],
+1268:         taint: vec![],
+1269:     };
+1270: 
+1271:     let tail = vec![JournalEvent::StepStarted {
+1272:         run,
+1273:         seq: EventSeq::new(2),
+1274:         step: StepIdx::ZERO,
+1275:         attempt: 1,
+1276:     }];
+1277: 
+1278:     {
+1279:         let journal = open_journal(&dir);
+1280:         write_events_strict(
+1281:             &journal,
+1282:             &[JournalEvent::RunAccepted {
+1283:                 run,
+1284:                 seq: EventSeq::ZERO,
+1285:                 workflow: digest,
+1286:             }],
+1287:         );
+1288:     }
+1289: 
+1290:     let _journal = open_journal(&dir);
+1291: 
+1292:     // GA-012a: Snapshot run_id mismatch returns CorruptSnapshot (contract B-012, POST-008)
+1293:     let result = hydrate_run_frame(&snapshot, &tail, run);
+1294:     assert!(matches!(
+1295:         result,
+1296:         Err(RecoveryError::CorruptSnapshot { run: err_run, seq: err_seq })
+1297:             if err_run == run && err_seq == EventSeq::new(1)
+1298:     ));
+1299: }
+1300: 
+1301: // ---------------------------------------------------------------------------
+1302: // B-013: Replay Divergence Typed Rejection
+1303: // GA-013a — Sequence gap returns ReplayDivergence (in replay_resume.rs)
+1304: // GA-013b — Tail before snapshot returns ReplayDivergence (B-003b)
+1305: // ---------------------------------------------------------------------------
+1306: 
+1307: // See: replay_resume.rs tests for sequence gap
+1308: // See: snapshot_plus_tail_rejects_tail_before_snapshot
+1309: 
+1310: // ---------------------------------------------------------------------------
+1311: // B-014: No Recovery Data Typed Rejection
+1312: // GA-014a — Header without recovery events returns NoRecoveryData
+1313: // ---------------------------------------------------------------------------
+1314: 
+1315: #[test]
+1316: fn header_without_recovery_events_returns_no_recovery_data() {
+1317:     let dir = TempDir::new().expect("temp dir should be created");
+1318:     let run = RunId::new(14001);
+1319: 
+1320:     // Journal is empty for this run
+1321:     {
+1322:         let _journal = open_journal(&dir);
+1323:         // Don't write anything for run 14001
+1324:     }
+1325: 
+1326:     let journal = open_journal(&dir);
+1327: 
+1328:     // GA-014a: No events for this run returns NoRecoveryData
+1329:     let result = recover_runtime_summary(&journal, run);
+1330:     let Err(RecoveryError::NoRecoveryData { run: found }) = result else {
+1331:         panic!("expected NoRecoveryData, got: {result:?}");
+1332:     };
+1333:     assert_eq!(found, run);
+1334: }
+1335: 
+1336: // ---------------------------------------------------------------------------
+1337: // B-015: Non-Idempotent Action Blocked Typed Rejection
+1338: // GA-015a — Non-idempotent pending action blocked returns typed error
+1339: // (Covered by B-006b: non_idempotent_pending_action_fails_closed)
+1340: // ---------------------------------------------------------------------------
+1341: 
+1342: // See: non_idempotent_pending_action_fails_closed
+1343: 
+1344: // ---------------------------------------------------------------------------
+1345: // B-016: Unsupported Recovery State Typed Rejection (PRE-006)
+1346: // GA-016a — Unsupported recovery state returns RecoveryCannotResume with exact reason
+1347: // GA-016b — Unsupported live-frame component fails closed at boundary
+1348: // ---------------------------------------------------------------------------
+1349: 
+1350: #[test]
+1351: fn unsupported_recovery_state_returns_recovery_cannot_resume_reason() {
+1352:     use vb_runtime::RuntimeError;
+1353:     use vb_runtime::recovery::RuntimeRecoveryBoundary;
+1354:     use vb_storage::recovery::UnsupportedRecoveryState;
+1355: 
+1356:     let run = RunId::new(16001);
+
+SOURCE crates/vb_runtime/tests/recovery_hydration_tests.rs
+739: /// Given a snapshot with a mismatched run_id
+740: /// When hydrate_run_frame is called with a different run
+741: /// Then CorruptSnapshot error is returned
+742: #[test]
+743: fn corrupt_snapshot_run_mismatch_rejected() {
+744:     let run = RunId::new(10500);
+745:     let wrong_run = RunId::new(99999);
+746:     let digest = test_digest(0x0D);
+747: 
+748:     let snapshot = RunSnapshot {
+749:         run: wrong_run,
+750:         seq: EventSeq::new(1),
+751:         workflow: digest,
+752:         slots: vec![],
+753:         taint: vec![],
+754:     };
+755: 
+756:     let tail = vec![JournalEvent::StepStarted {
+757:         run,
+758:         seq: EventSeq::new(2),
+759:         step: StepIdx::ZERO,
+760:         attempt: 1,
+761:     }];
+762: 
+763:     let result = hydrate_run_frame(&snapshot, &tail, run);
+764:     assert!(matches!(
+765:         result,
+766:         Err(RecoveryError::CorruptSnapshot { run: err_run, seq: err_seq })
+767:             if err_run == run && err_seq == EventSeq::new(1)
+768:     ));
+769: }
+770: 
+771: /// Given a snapshot with non-empty slots but empty taint vector
+772: /// When hydrate_run_frame is called
+773: /// Then it fails closed (taint evidence missing)
+774: #[test]
+775: fn corrupt_snapshot_missing_taint_for_non_empty_slots_fails_closed() {
+776:     let run = RunId::new(10501);
+777:     let digest = test_digest(0x0E);
+778: 
+779:     let snapshot = RunSnapshot {
+780:         run,
+781:         seq: EventSeq::new(1),
+782:         workflow: digest,
+783:         slots: vec![1, 2, 3],
+784:         taint: vec![],
+785:     };
+786: 
+787:     let tail = vec![];
+788: 
+789:     let result = hydrate_run_frame(&snapshot, &tail, run);
+790:     assert!(matches!(
+791:         result,
+792:         Err(RecoveryError::CorruptSnapshot { run: found, seq })
+793:             if found == run && seq == EventSeq::new(1)
+794:     ));
+795: }
+796: 
+797: /// Given a snapshot with empty slots and empty taint
+798: /// When hydrate_run_frame is called with a valid tail
+799: /// Then hydration succeeds (empty taint for empty slots is valid)
+800: #[test]
+801: fn snapshot_empty_slots_empty_taint_hydrates_successfully() {
+802:     let run = RunId::new(10502);
+803:     let digest = test_digest(0x0F);
+804: 
+805:     let snapshot = RunSnapshot {
+806:         run,
+807:         seq: EventSeq::new(1),
+808:         workflow: digest,
+809:         slots: vec![],
+810:         taint: vec![],
+811:     };
+812: 
+813:     let tail = vec![
+814:         JournalEvent::StepStarted {
+815:             run,
+816:             seq: EventSeq::new(2),
+817:             step: StepIdx::ZERO,
+818:             attempt: 1,
+819:         },
+820:         JournalEvent::StepSucceeded {
+821:             run,
+822:             seq: EventSeq::new(3),
+823:             step: StepIdx::ZERO,
+824:             output: SlotIdx::ZERO,
+825:         },
+826:     ];
+827: 
+828:     let result = hydrate_run_frame(&snapshot, &tail, run);
+829:     assert!(
+830:         result.is_ok(),
+831:         "empty taint + empty slots should succeed: {result:?}"
+832:     );
+833: }
+834: 
+835: // ============================================================================
+836: // SECTION 6: Checkpoint creation and restore
+837: // ============================================================================
+838: 
+839: /// Given a journal, when a snapshot is put and retrieved by exact seq
+840: /// Then the snapshot is preserved bit-for-bit
+841: #[test]
+842: fn checkpoint_snapshot_roundtrip_preserves_all_fields() {
+843:     let dir = TempDir::new().expect("temp dir should be created");
+844:     let run = RunId::new(10600);
+845:     let digest = test_digest(0x10);
+846: 
+847:     let original = RunSnapshot {
+848:         run,
+849:         seq: EventSeq::new(42),
+850:         workflow: digest,
+851:         slots: vec![0xAA, 0xBB],
+852:         taint: vec![0x01, 0x02],
+853:     };
+854: 
+855:     {
+856:         let journal = open_journal(&dir);
+857:         journal
+858:             .put_snapshot(&original)
+859:             .expect("put_snapshot should succeed");
+860:     }
+861: 
+862:     let journal = open_journal(&dir);
+863:     let loaded = journal
+864:         .snapshot(run, EventSeq::new(42))
+865:         .expect("snapshot load should succeed")
+866:         .expect("snapshot should exist");
+867: 
+868:     assert_eq!(loaded.run, original.run);
+869:     assert_eq!(loaded.seq, original.seq);
+870:     assert_eq!(loaded.workflow, original.workflow);
+871:     assert_eq!(loaded.slots, original.slots);
+872:     assert_eq!(loaded.taint, original.taint);
+873: }
+874: 
+974: /// Given snapshot at seq 2 and tail containing an event at seq 1 (before watermark)
+975: /// When hydrate_run_frame is called
+976: /// Then ReplayDivergence is returned because tail is before snapshot
+977: #[test]
+978: fn incremental_recovery_rejects_tail_event_before_watermark() {
+979:     let run = RunId::new(10701);
+980:     let digest = test_digest(0x13);
+981: 
+982:     let snapshot = RunSnapshot {
+983:         run,
+984:         seq: EventSeq::new(2),
+985:         workflow: digest,
+986:         slots: vec![],
+987:         taint: vec![],
+988:     };
+989: 
+990:     let tail = vec![JournalEvent::StepStarted {
+991:         run,
+992:         seq: EventSeq::new(1),
+993:         step: StepIdx::new(1),
+994:         attempt: 1,
+995:     }];
+996: 
+997:     let result = hydrate_run_frame(&snapshot, &tail, run);
+998:     assert!(matches!(
+999:         result,
+1000:         Err(RecoveryError::ReplayDivergence { .. })
+1001:     ));
+1002: }
+1003: 
+1004: // ============================================================================
+1005: // SECTION 8: Recovery idempotency
+1006: // ============================================================================
+1007: 
+1008: /// Given a journal with a finished run
+1009: /// When recover_full_journal is called twice with fresh trackers
+1010: /// Then both replays produce identical event sets
+1011: #[test]
+1012: fn recovery_idempotency_full_journal_replayed_twice_identical() {
+1013:     let dir = TempDir::new().expect("temp dir should be created");
+1014:     let run = RunId::new(10800);
+1015:     let digest = test_digest(0x14);
+1016:     let events = build_two_step_finished_run(run, digest);
+1017: 
+1018:     {
+1019:         let journal = open_journal(&dir);
+1020:         write_events_strict(&journal, &events);
+1021:     }
+1022: 
+1023:     let replay_a = {
+1024:         let j = open_journal(&dir);
+1025:         let mut tracker = ActionReplayTracker::new();
+1026:         recover_full_journal(&j, run, &mut tracker, &[], &[]).expect("first replay should succeed")
+1027:     };
+1028: 
+1029:     let replay_b = {
+1030:         let j = open_journal(&dir);
+1031:         let mut tracker = ActionReplayTracker::new();
+1032:         recover_full_journal(&j, run, &mut tracker, &[], &[]).expect("second replay should succeed")
+1033:     };
+1034: 
+1035:     assert_eq!(replay_a, replay_b);
+1036:     assert_eq!(replay_a.len(), events.len());
+1037: }
+1038: 
+1039: /// Given snapshot + tail events
+1040: /// When hydrate_run_frame is called twice with same inputs
+1041: /// Then both results are equivalent
+1042: #[test]
+1043: fn recovery_idempotency_snapshot_tail_hydrated_twice_identical() {
+1044:     let run = RunId::new(10801);
+1045:     let digest = test_digest(0x15);
+1046: 
+1047:     let snapshot = RunSnapshot {
+1048:         run,
+1049:         seq: EventSeq::new(1),
+1050:         workflow: digest,
+1051:         slots: vec![],
+1052:         taint: vec![],
+1053:     };
+1054: 
+1055:     let tail = vec![
+1056:         JournalEvent::StepStarted {
+1057:             run,
+1058:             seq: EventSeq::new(2),
+1059:             step: StepIdx::new(1),
+1060:             attempt: 1,
+1061:         },
+1062:         JournalEvent::StepSucceeded {
+1063:             run,
+1064:             seq: EventSeq::new(3),
+1065:             step: StepIdx::new(1),
+1066:             output: SlotIdx::ZERO,
+1067:         },
+1068:     ];
+1069: 
+1070:     let result_a = hydrate_run_frame(&snapshot, &tail, run);
+1071:     let result_b = hydrate_run_frame(&snapshot, &tail, run);
+1072: 
+1073:     let frame_a = result_a.expect("first hydration should succeed");
+1074:     let frame_b = result_b.expect("second hydration should succeed");
+1075: 
+1076:     assert_eq!(frame_a.run_id(), frame_b.run_id());
+1077:     assert_eq!(frame_a.pc(), frame_b.pc());
+1865: // out-of-scope. Round 6 closes the TODO by adding the genuine
+1866: // multi-process crash-survival test
+1867: // `pending_action_crash_via_append_journaled_then_exit_replays_to_typed_cannot_resume`
+1868: // (with helper `crash_child_marker`) which spawns the test binary
+1869: // itself via `std::process::Command::new(current_exe)`, writes via
+1870: // `append_journaled` (no `SyncAll`), and exits via
+1871: // `std::process::exit(0)` without graceful drop. The parent reopens
+1872: // the WAL and asserts the same typed `CannotResume` contract
+1873: // witnessed by the clean-restart test.
+1874: 
+1875: /// Given a real `FjallJournal` with events including a
+1876: /// `JournalEvent::ActionScheduled` for an action that never finishes
+1877: /// When the journal is reopened on the same `TempDir` after a clean
+1878: /// close (each event already `PersistMode::SyncAll`'d via
+1879: /// `write_events_strict`)
+1880: /// Then `recover_runtime_frame_seed` reconstructs the seed with the
+1881: /// pending action recorded, `DurableFrameRecoveryBoundary::resume_status`
+1882: /// reports `CannotResume` with `pending_actions: true` (plus the
+1883: /// full-RunState-missing flags), and `boundary.hydrate_run_frame()`
+1884: /// returns `Err(RuntimeError::RecoveryCannotResume { reason: "pending_actions" })`. The
+1885: /// storage-level `hydrate_run_frame_from_events` also returns
+1886: /// `Err(RecoveryError::UnsupportedFrameSeed)` so the fail-closed
+1887: /// surface is uniform across the runtime and storage layers.
+1888: ///
+1889: /// This is the typed-rejection contract test called out by
+1890: /// FINDING-005 in `vb-wy33p.11`. The journal is opened twice on the
+1891: /// same `TempDir` so the test exercises the actual durable boundary
+1892: /// (no in-memory mocking). The events are written strictly so the
+1893: /// sequences are well-defined and the assertion is reproducible
+1894: /// without timing variance.
+1895: ///
+1896: /// NOTE on terminology: this is the TYPED-REJECTION CONTRACT test,
+1897: /// NOT a power-loss WAL replay test. A true power-loss test would
+1898: /// require a multi-process harness that writes events via the
+1899: /// non-fsync `append_journaled` path and `std::process::exit(0)`s
+1900: /// without graceful close; that is tracked as a follow-up bead.
+1901: #[test]
+1902: fn pending_action_persisted_restart_via_appends_with_syncall() {
+1903:     let dir = TempDir::new().expect("temp dir should be created");
+1904:     let run = RunId::new(11300);
+1905:     let digest = test_digest(0x2B);
+1906:     let action = ActionId::new(0x5A);
+1907: 
+1908:     // First lifecycle: write events for a run whose ActionScheduled
+1909:     // never resolves, with per-event `PersistMode::SyncAll` (clean
+1910:     // shutdown semantics).
+1911:     {
+1912:         let journal = open_journal(&dir);
+1913:         write_events_strict(
+1914:             &journal,
+1915:             &[
+1916:                 JournalEvent::RunAccepted {
+1917:                     run,
+1918:                     seq: EventSeq::new(0),
+1919:                     workflow: digest,
+1920:                 },
+1921:                 JournalEvent::StepStarted {
+1922:                     run,
+1923:                     seq: EventSeq::new(1),
+1924:                     step: StepIdx::new(2),
+1925:                     attempt: 1,
+1926:                 },
+1927:                 JournalEvent::ActionScheduled {
+1928:                     run,
+1929:                     seq: EventSeq::new(2),
+1930:                     step: StepIdx::new(2),
+1931:                     action,
+1932:                     attempt: 1,
+1933:                 },
+1934:             ],
+1935:         );
+1936:     }
+1937: 
+1938:     // Second lifecycle: reopen the journal on the same path. The
+1939:     // pending action MUST still be observable.
+1940:     let journal = open_journal(&dir);
+1941:     let seed =
+1942:         recover_runtime_frame_seed(&journal, run).expect("frame seed recovery should succeed");
+1943: 
+1944:     let pending = seed
+1945:         .pending_actions
+1946:         .iter()
+1947:         .find(|entry| entry.action == action)
+1948:         .expect("pending action must survive journal reopen");
+1949:     assert_eq!(pending.step, StepIdx::new(2));
+1950:     assert_eq!(seed.pending_actions.len(), 1);
+1951: 
+1952:     let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_product(seed);
+1953:     let cannot_resume = RecoveryCannotResumeState {
+1954:         pending_actions: true,
+1955:         workflow_missing: true,
+1956:         store_missing: true,
+1957:         action_attempts_missing: true,
+1958:         admission_missing: true,
+1959:         collect_states_missing: true,
+1960:         action_contracts_missing: true,
+1961:         action_abi_digests_missing: true,
+1962:         ..RecoveryCannotResumeState::RESUMABLE
+1963:     };
+1964: 
+1965:     assert_eq!(
+1966:         boundary.resume_status(),
+1967:         RecoveryResumeStatus::CannotResume(cannot_resume)
+1968:     );
+1993: }
+1994: 
+1995: /// Real crash-replay test (FINDING-005 satisfied end-to-end).
+1996: ///
+1997: /// Spawns a child test binary via `std::process::Command::new(current_exe)`
+1998: /// that opens the Fjall journal, writes events via the NON-strict
+1999: /// `append_journaled` path (no `PersistMode::SyncAll` per event), and
+2000: /// exits via `std::process::exit(0)` WITHOUT calling `drop` on the
+2001: /// journal. This simulates an in-flight crash where the Fjall WAL
+2002: /// has buffered writes that have been flushed to the OS page cache
+2003: /// (`PersistMode::Buffer` in Fjall V3 default config) but not
+2004: /// fsynced to disk. The parent reopens the journal, recovers the
+2005: /// frame seed via `recover_runtime_frame_seed`, and asserts the
+2006: /// typed `CannotResume { pending_actions: true, ... }` rejection
+2007: /// plus the storage-layer `UnsupportedFrameSeed` surface.
+2008: ///
+2009: /// This is the test that satisfies FINDING-005's "deterministic
+2010: /// crash/restart" requirement. It complements the existing
+2011: /// `pending_action_persisted_restart_via_appends_with_syncall`
+2012: /// test which exercises the clean-restart path (per-event
+2013: /// `SyncAll` + graceful `drop`). Together they prove the
+2014: /// typed-rejection contract holds across both crash-survival
+2015: /// scenarios.
+2016: ///
+2017: /// HARNESS DESIGN:
+2018: /// 1. Parent opens `TempDir` and the journal once to materialize
+2019: ///    the Fjall partition layout, then drops the journal so the
+2020: ///    Fjall `Database` lock and our `ProcessLock` are released.
+2021: /// 2. Parent spawns `current_exe` with env vars
+2022: ///    `VB_CRASH_CHILD=1`, `VB_CRASH_JOURNAL_DIR=<path>`,
+2023: ///    `VB_CRASH_RUN_ID=<run>` and CLI args
+2024: ///    `--ignored --exact crash_child_marker`. The `#[ignore]`
+2025: ///    attribute on `crash_child_marker` keeps it out of normal
+2026: ///    `cargo test` runs; `--ignored` plus `--exact` makes cargo
+2027: ///    run only the marker test in the child process.
+2028: /// 3. Child detects `VB_CRASH_CHILD=1` and writes the three
+2029: ///    events (RunAccepted, StepStarted, ActionScheduled) via
+2030: ///    `append_journaled`. Then `std::process::exit(0)` without
+2031: ///    dropping the journal — this is the crash simulation.
+2032: /// 4. Parent waits for the child, reopens the journal on the same
+2033: ///    `TempDir`, recovers the frame seed, and asserts the typed
+2034: ///    cannot-resume contract.
+2035: #[test]
+2036: fn pending_action_crash_via_append_journaled_then_exit_replays_to_typed_cannot_resume() {
+2037:     let dir = TempDir::new().expect("temp dir should be created");
+2038:     let run = RunId::new(11400);
+2039:     let action = ActionId::new(0xDD);
+2040: 
+2041:     // Touch the journal so the Fjall partition layout exists before
+2042:     // the child opens it. Drop immediately so the Fjall Database
+2043:     // lock and our ProcessLock are released.
+2044:     {
+2045:         let _primer = open_journal(&dir);
+2046:     }
+2047: 
+2048:     // Spawn self as child in crash mode. The child runs ONLY the
+2049:     // `crash_child_marker` test (via `--ignored --exact`). That
+2050:     // marker detects `VB_CRASH_CHILD=1`, performs the
+2051:     // append_journaled + std::process::exit(0) work, and exits.
+2052:     let exe = std::env::current_exe().expect("current exe should resolve");
+2053:     let mut cmd = std::process::Command::new(exe);
+2054:     cmd.env("VB_CRASH_CHILD", "1");
+2055:     cmd.env("VB_CRASH_JOURNAL_DIR", dir.path());
+2056:     cmd.env("VB_CRASH_RUN_ID", run.get().to_string());
+2057:     cmd.arg("--ignored");
+2058:     cmd.arg("--exact");
+2059:     cmd.arg("crash_child_marker");
+2060: 
+2061:     {
+2062:         let _spawn_guard = journal_test_lock();
+2063:         let status = cmd
+2064:             .status()
+2065:             .expect("child process should spawn and complete");
+2066:         assert!(
+2067:             status.success(),
+2068:             "child must exit successfully even though it exited without dropping the journal: {status:?}"
+2069:         );
+2070:     }
+2071: 
+2072:     // Reopen the journal on the same path. The pending action must
+2073:     // survive Fjall WAL replay because the child's writes were
+2074:     // committed via `append_journaled` (writes go to WAL +
+2075:     // memtable, flushed to OS via PersistMode::Buffer, but not
+2076:     // fsynced — exactly the scenario the test is meant to cover).
+2077:     let journal = open_journal(&dir);
+2078:     let seed = recover_runtime_frame_seed(&journal, run)
+2079:         .expect("frame seed recovery should succeed after child crash");
+2080: 
+2081:     let pending = seed
+2082:         .pending_actions
+2083:         .iter()
+2084:         .find(|entry| entry.action == action)
+2085:         .expect("pending action must survive crash WAL replay");
+2086:     assert_eq!(pending.step, StepIdx::new(2));
+2087:     assert_eq!(seed.pending_actions.len(), 1);
+2088: 
+2089:     // Typed rejection contract — same shape as the clean-restart
+2090:     // test, because the durable evidence is identical.
+2091:     let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_product(seed);
+2092:     let cannot_resume = RecoveryCannotResumeState {
+2093:         pending_actions: true,
+2094:         workflow_missing: true,
+2095:         store_missing: true,
+2096:         action_attempts_missing: true,
+2097:         admission_missing: true,
+2098:         collect_states_missing: true,
+2099:         action_contracts_missing: true,
+2100:         action_abi_digests_missing: true,
+2101:         ..RecoveryCannotResumeState::RESUMABLE
+2102:     };
+2103: 
+2104:     assert_eq!(
+2105:         boundary.resume_status(),
+2106:         RecoveryResumeStatus::CannotResume(cannot_resume)
+2107:     );
+2108:     assert_eq!(boundary.cannot_resume_state(), cannot_resume);
+2109:     assert_eq!(
+2110:         boundary.hydrate_run_frame(),
+2111:         Err(vb_runtime::RuntimeError::RecoveryCannotResume {
+2112:             reason: String::from("pending_actions")
+2113:         })
+2114:     );
+2115: 
+2116:     // Storage-layer `UnsupportedFrameSeed` surface must match too —
+2117:     // the durable evidence is identical regardless of crash path.
+2118:     let events: Vec<JournalEvent> = journal
+2119:         .events_for_run(run)
+2120:         .expect("events_for_run should succeed after crash reopen");
+2121:     let storage_result = hydrate_run_frame_from_events(&events, run);
+2122:     let Err(RecoveryError::UnsupportedFrameSeed { run: found, reason }) = storage_result else {
+2123:         panic!(
+2124:             "expected UnsupportedFrameSeed from storage layer after crash, got: {storage_result:?}"
+2125:         );
+2126:     };
+2127:     assert_eq!(found, run);
+2128:     assert_eq!(
+2129:         reason, "pending_actions",
+2130:         "UnsupportedFrameSeed reason must be the exact `pending_actions` token after crash replay"
+2131:     );
+2132: }
+2133: 
+2134: /// Marker test invoked by the crash-replay parent via
+2135: /// `std::process::Command::new(current_exe)` with
+2136: /// `VB_CRASH_CHILD=1` and `--ignored --exact crash_child_marker`.
+2137: ///
+2138: /// When `VB_CRASH_CHILD=1` is set, this test performs the crash
+2139: /// simulation: opens the journal at `VB_CRASH_JOURNAL_DIR`, writes
+2140: /// three events via `append_journaled` (NO `PersistMode::SyncAll`),
+2141: /// and exits via `std::process::exit(0)` WITHOUT dropping the
+2142: /// journal. The OS closes the Fjall file descriptors during
+2143: /// `_exit()`, the Fjall WAL replay recovers the writes on parent
+2144: /// reopen.
+2145: ///
+2146: /// When `VB_CRASH_CHILD` is NOT set (i.e. someone invokes this
+2147: /// test directly), the body is a no-op so the test passes
+2148: /// trivially. This keeps the marker harmless if it ever runs
+2149: /// without the parent harness (e.g. during
+2150: /// `cargo test --ignored --list` enumeration).
+2151: ///
+2152: /// The `#[ignore]` attribute keeps this test out of normal
+2153: /// `cargo test` runs. The parent passes `--ignored` to surface
+2154: /// this marker specifically when it spawns the child process.
+2155: #[test]
+2156: #[ignore = "marker for crash-replay parent's Command::new invocation; not run directly"]
+2157: fn crash_child_marker() {
+2158:     // Defensive: if this test runs WITHOUT VB_CRASH_CHILD set,
+2159:     // treat it as a no-op marker. The parent harness sets the env
+2160:     // var and observes the exit status.
+2161:     if std::env::var("VB_CRASH_CHILD").as_deref() != Ok("1") {
+2162:         return;
+2163:     }
+2164: 
+2165:     // Child-mode: perform the crash-survival work.
+2166:     let dir_path =
+2167:         std::env::var("VB_CRASH_JOURNAL_DIR").expect("VB_CRASH_JOURNAL_DIR must be set for child");
+2168:     let path = std::path::PathBuf::from(dir_path);
+2169: 
+2170:     let run_id: u64 = std::env::var("VB_CRASH_RUN_ID")
+2171:         .expect("VB_CRASH_RUN_ID must be set for child")
+2172:         .parse()
+2173:         .expect("VB_CRASH_RUN_ID must parse as u64");
+2174:     let run = RunId::new(run_id);
+2175:     let digest = WorkflowDigest::from_bytes([0xCC; 32]);
+2176:     let action = ActionId::new(0xDD);
+2177: 
+2178:     let journal = FjallJournal::open(&path, Some(FjallConfig::default()))
+2179:         .expect("child: journal open should succeed");
+2180: 
+2181:     // CRITICAL: use `append_journaled` (no SyncAll), not
+2182:     // `append_strict`. This is what makes this a real crash
+2183:     // simulation: the writes go to Fjall's WAL + memtable but
+2184:     // are NOT fsynced before exit.
+2185:     journal
+2186:         .append_journaled(&JournalEvent::RunAccepted {
+2187:             run,
+2188:             seq: EventSeq::new(0),
+2189:             workflow: digest,
+2190:         })
+2191:         .expect("child: append_run_accepted should succeed");
+2192:     journal
+2193:         .append_journaled(&JournalEvent::StepStarted {
+2194:             run,
+2195:             seq: EventSeq::new(1),
+2196:             step: StepIdx::new(2),
+2197:             attempt: 1,
+2198:         })
+2199:         .expect("child: append_step_started should succeed");
+2200:     journal
+2201:         .append_journaled(&JournalEvent::ActionScheduled {
+2202:             run,
+2203:             seq: EventSeq::new(2),
+2204:             step: StepIdx::new(2),
+2205:             action,
+2206:             attempt: 1,
+2207:         })
+2208:         .expect("child: append_action_scheduled should succeed");
+2209: 
+2210:     // Simulate in-flight crash: exit without dropping the journal,
+2211:     // without SyncAll. The Fjall WAL + memtable hold the writes;
+2212:     // the OS will close the file descriptors during _exit().
+2213:     // The parent's reopen triggers Fjall WAL replay which surfaces
+2214:     // the pending action to recovery.
+2215:     std::process::exit(0);
+2216: }
+2217: 
+2218: // ============================================================================
+2219: // SECTION 13: Advanced hydration scenarios
+2220: // ============================================================================
+2221: 
+2222: /// Given events with a SlotWrittenEvent having None value (no payload)
+2223: /// When hydrate_run_frame_from_events is called
+2224: /// Then the storage layer rejects with `UnsupportedFrameSeed` (a
+2225: /// `None` slot value is unsupported by the runtime hydration boundary
+2226: /// and a frame seed alone never carries the full RunState).
+2227: #[test]
+2228: fn slot_written_with_none_value_is_rejected_typed() {
+2229:     let run = RunId::new(11200);
+2230:     let digest = test_digest(0x28);
+2231: 
+2232:     let events = vec![
+2233:         JournalEvent::RunAccepted {
+2234:             run,
+2235:             seq: EventSeq::new(0),
+2236:             workflow: digest,
+2237:         },
+2238:         JournalEvent::StepStarted {
+2239:             run,
+2240:             seq: EventSeq::new(1),
+2241:             step: StepIdx::ZERO,
+2242:             attempt: 1,
+2243:         },
+2244:         JournalEvent::SlotWrittenEvent {
+2245:             run,
+2246:             seq: EventSeq::new(2),
+2247:             slot: SlotIdx::new(1),
+2248:             value: None,
+2249:             extra: None,
+2250:             attempt: 1,
+2251:         },
+2252:         JournalEvent::StepSucceeded {
+2253:             run,
+2254:             seq: EventSeq::new(3),
+2255:             step: StepIdx::ZERO,
+2256:             output: SlotIdx::new(1),
+
+FRESH RAW TEST LOG
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/recovery_bdd_tests.rs (target/debug/deps/recovery_bdd_tests-34837ba592d5e81b)
+
+running 82 tests
+test action_abi_mismatch_returns_typed_error ... ok
+test action_abi_match_returns_ok ... ok
+test action_replay_tracker_new_is_unresolved ... ok
+test check_policy_digests_empty_input_returns_ok ... ok
+test action_replay_tracker_mark_completed_preserves_resolution ... ok
+test check_action_abi_digests_empty_input_returns_ok ... ok
+test action_scheduled_then_completed_reconstructed ... ok
+test ask_scheduled_and_answered_events_reconstructed ... ok
+test check_compiled_ir_digest_rejects_mismatch ... ok
+test corrupt_collect_extra_returns_collect_extra_hydration_failed ... ok
+test digest_check_variants_exist ... ok
+test action_scheduled_then_failed_reconstructed ... ok
+test header_rejects_compiled_ir_digest_mismatch ... ok
+test hydrate_run_frame_from_empty_events_returns_no_recovery_data ... ok
+test hydrate_run_frame_rejects_tail_events_with_wrong_run_id ... ok
+test hydrate_run_frame_rejects_tail_seq_before_snapshot ... ok
+test hydrate_run_frame_validates_snapshot_run_id_match ... ok
+test missing_taint_evidence_fails_closed ... ok
+test multiple_slots_different_indices_reconstructed ... ok
+test parametrized_mask_all_yields_workflow_reason_due_to_priority_order ... ok
+test identical_tail_on_same_snapshot_is_idempotent ... ok
+test parametrized_mask_none_yields_resumable ... ok
+test parametrized_mask_single_action_abi_digests_missing_yields_action_abi_digests_reason ... ok
+test parametrized_mask_single_action_attempts_missing_yields_action_attempts_reason ... ok
+test parametrized_mask_single_action_contracts_missing_yields_action_contracts_reason ... ok
+test parametrized_mask_single_admission_missing_yields_admission_reason ... ok
+test parametrized_mask_single_collect_states_missing_yields_collect_states_reason ... ok
+test parametrized_mask_single_store_missing_yields_store_reason ... ok
+test parametrized_mask_single_workflow_missing_yields_workflow_reason ... ok
+test policy_digest_match_returns_ok ... ok
+test policy_digest_mismatch_returns_typed_error ... ok
+test snapshot_plus_tail_idempotent_on_same_input ... ok
+test snapshot_plus_tail_with_unresolved_ask_rejects_at_typed_gate ... ok
+test snapshot_plus_tail_with_unresolved_wait_rejects_at_typed_gate ... ok
+test snapshot_plus_tail_with_empty_taint_preserves_empty_taint ... ok
+test retry_scheduled_event_reconstructed ... ok
+test step_started_event_advances_pc ... ok
+test typed_rejection_hydrate_from_events_pending_actions_fails_closed ... ok
+test typed_rejection_hydrate_from_events_pending_asks_fails_closed ... ok
+test typed_rejection_hydrate_from_events_slot_taint_fails_closed ... ok
+test typed_rejection_hydrate_from_events_workflow_missing_fails_closed ... ok
+test typed_rejection_hydrate_from_events_pending_timers_fails_closed ... ok
+test typed_rejection_hydrate_snapshot_tail_pending_actions_fails_closed ... ok
+test unsupported_live_frame_component_fails_closed_at_boundary ... ok
+test unsupported_recovery_state_returns_recovery_cannot_resume_reason ... ok
+test check_workflow_source_digest_rejects_mismatch ... ok
+test run_cancelled_event_sets_terminal_state ... ok
+test recover_runtime_frame_seed_from_events_with_multiple_attempts ... ok
+test run_finished_event_sets_terminal_state_with_result ... ok
+test check_workflow_source_digest_accepts_matching_digest ... ok
+test non_empty_run_with_header_only_returns_no_recovery_data ... ok
+test slot_written_none_value_reconstructed_correctly ... ok
+test watermark_preserves_snapshot_data_beyond_tail ... ok
+test check_compiled_ir_digest_accepts_matching_digest ... ok
+test recover_runtime_summary_handles_empty_journal ... ok
+test corrupt_collect_extra_does_not_panic_storage_layer ... ok
+test recover_runtime_summary_returns_recovery_hydration ... ok
+test header_binds_target_run_when_digests_match ... ok
+test frame_dimension_overflow_returns_typed_error ... ok
+test run_failed_event_sets_terminal_state ... ok
+test non_idempotent_pending_action_fails_closed ... ok
+test stale_attempt_state_not_mixed_into_active_attempt ... ok
+test secret_slot_taint_preserved_across_restart ... ok
+test snapshot_plus_tail_applies_tail_after_watermark ... ok
+test header_rejects_workflow_source_digest_mismatch ... ok
+test full_journal_reconstructs_exact_pc_steps_slots_taint_terminal ... ok
+test collect_cursor_page_order_survive_via_extra_field ... ok
+test resolved_action_not_reexecuted_on_restart ... ok
+test recover_all_incomplete_runs_excludes_finished_runs ... ok
+test header_without_recovery_events_returns_no_recovery_data ... ok
+test corrupt_snapshot_returns_corrupt_snapshot_error ... ok
+test recover_runtime_frame_seed_with_no_slot_events ... ok
+test unsequenced_lifecycle_events_do_not_change_recovered_state ... ok
+test snapshot_plus_tail_rejects_tail_before_snapshot ... ok
+test verify_digests_returns_workflow_mismatch_error ... ok
+test verify_digests_detects_ir_digest_mismatch ... ok
+test snapshot_tail_monotonic_slot_overwrite_preserves_tail_value ... ok
+test ask_answer_slot_value_and_taint_survive_across_restart ... ok
+test verify_digests_returns_ok_when_all_match ... ok
+test wait_identity_and_state_survive_across_restart ... ok
+test verify_digests_at_workflow_source_only_level ... ok
+test same_journal_and_snapshot_replayed_twice_equivalent ... ok
+
+test result: ok. 82 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/recovery_hydration_tests.rs (target/debug/deps/recovery_hydration_tests-648c83a82e210716)
+
+running 44 tests
+test crash_child_marker ... ignored, marker for crash-replay parent's Command::new invocation; not run directly
+test corrupt_snapshot_run_mismatch_rejected ... ok
+test corrupt_snapshot_missing_taint_for_non_empty_slots_fails_closed ... ok
+test hydration_returns_no_recovery_data_for_empty_events ... ok
+test hydration_reconstructs_failed_terminal_state ... ok
+test hydration_from_events_rejects_frame_only_missing_slot_payload ... ok
+test hydration_rejects_sequence_gap_in_events ... ok
+test incremental_recovery_snapshot_plus_tail_applies_only_events_after_watermark ... ok
+test incremental_recovery_rejects_tail_event_before_watermark ... ok
+test multiple_noncontiguous_slot_writes_derive_correct_slot_count ... ok
+test recovery_idempotency_snapshot_tail_hydrated_twice_identical ... ok
+test retry_scheduled_event_reconstructed_in_hydration ... ok
+test runtime_boundary_exposes_supported_pending_actions_state ... ok
+test runtime_boundary_exposes_unsupported_state ... ok
+test slot_written_with_none_value_is_rejected_typed ... ok
+test snapshot_empty_slots_empty_taint_hydrates_successfully ... ok
+test action_scheduled_then_completed_is_resolved_after_recovery ... ok
+test checkpoint_snapshot_plus_tail_hydrates_using_snapshot_watermark ... ok
+test clean_shutdown_recovery_reads_all_events_in_exact_order ... ok
+test clean_shutdown_recovery_reconstructs_exact_summary_counts ... ok
+test empty_journal_returns_no_recovery_data_for_any_run ... ok
+test crash_recovery_detects_no_terminal_state_for_incomplete_run ... ok
+test hydration_reconstructs_waiting_and_asking_step_states ... ok
+test max_size_journal_many_events_recoverable_in_order ... ok
+test non_idempotent_action_rescheduled_after_completion_is_blocked ... ok
+test pending_action_persisted_restart_via_appends_with_syncall ... ok
+test recover_runtime_summary_with_expected_terminal_mismatch ... ok
+test recovery_idempotency_full_journal_replayed_twice_identical ... ok
+test run_cancelled_produces_cancelled_terminal_state ... ok
+test verify_digests_workflow_and_ir_level_detects_ir_mismatch ... ok
+test checkpoint_snapshot_roundtrip_preserves_all_fields ... ok
+test crash_recovery_reads_partial_events_written_before_crash ... ok
+test hydration_from_frame_seed_reconstructs_slot_values_and_taint ... ok
+test max_size_journal_near_max_seq_events_recoverable ... ok
+test recover_runtime_summary_with_expected_terminal_matches ... ok
+test run_admission_metadata_preserved_in_summary ... ok
+test slot_written_presence_counted_in_summary_even_with_none_value ... ok
+test clean_shutdown_recovery_is_deterministic_across_reopens ... ok
+test recovery_across_multiple_runs_is_isolated ... ok
+test verify_digests_workflow_source_only_level_passes ... ok
+test hydration_returns_no_recovery_data_for_wrong_run ... ok
+test recovery_idempotency_summary_recovered_twice_identical ... ok
+test crash_recovery_run_accepted_only_returns_minimal_summary ... ok
+
+running 1 test
+test pending_action_crash_via_append_journaled_then_exit_replays_to_typed_cannot_resume ... ok
+
+test result: ok. 43 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.24s
+

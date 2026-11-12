@@ -46,6 +46,7 @@ pub struct ActionReplayTracker {
     scheduled_tickets: std::collections::HashMap<(ActionId, StepIdx), ActionScheduleEvidence>,
     completed: std::collections::HashSet<(ActionId, StepIdx)>,
     failed: std::collections::HashSet<(ActionId, StepIdx)>,
+    retry_attempts: std::collections::HashMap<(ActionId, StepIdx), u16>,
     completed_envelopes: std::collections::HashMap<(ActionId, StepIdx), ActionCompletionEvidence>,
 }
 
@@ -80,6 +81,7 @@ impl ActionReplayTracker {
             scheduled_tickets: std::collections::HashMap::new(),
             completed: std::collections::HashSet::new(),
             failed: std::collections::HashSet::new(),
+            retry_attempts: std::collections::HashMap::new(),
             completed_envelopes: std::collections::HashMap::new(),
         }
     }
@@ -92,6 +94,7 @@ impl ActionReplayTracker {
         action_abi_digest: WorkflowDigest,
     ) -> RecoveryResult<ActionReplayEffect> {
         let key = (ticket.action, ticket.step);
+        self.consume_retry(ticket, input, output, action_abi_digest)?;
         if self.is_resolved(ticket.action, ticket.step) {
             return Err(RecoveryError::NonIdempotentActionBlocked {
                 action: ticket.action,
@@ -263,3 +266,6 @@ impl Default for ActionReplayTracker {
         Self::new()
     }
 }
+
+#[path = "../retry_authority.rs"]
+mod retry_authority;

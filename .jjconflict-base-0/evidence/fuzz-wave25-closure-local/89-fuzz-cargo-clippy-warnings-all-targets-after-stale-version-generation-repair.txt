@@ -1,0 +1,5 @@
+COMMAND: cargo clippy --workspace --all-targets --all-features -- -D warnings (fuzz workspace)
+    Checking velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.43s
+
+EXIT_STATUS=0

@@ -1,0 +1,14 @@
+=== source-length @ 2026-07-10T07:03:19Z ===
+cmd: bash scripts/check-source-length.sh
+source-length gate summary:
+  generated          scanned=1     excluded (no limit)
+  perf               scanned=0     excluded (no limit)
+  kani               scanned=87    warn=2    over_limit=0    limit=800 warn_at=640
+  verus              scanned=220   warn=44   over_limit=0    limit=800 warn_at=640
+  flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+  verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+  test_in_src        scanned=276   warn=50   over_limit=0    limit=1500 warn_at=1200
+  test_top_level     scanned=352   warn=6    over_limit=0    limit=3000 warn_at=2400
+  production         scanned=852   warn=185  over_limit=0    limit=300 warn_at=240
+  ledger rows used:    384
+EXIT=0

@@ -1,0 +1,22 @@
+COMMANDS: scoped libFuzzer ASAN smoke for `ipc_frame_fuzz`, `ipc_decode`, `ipc_frame_fuzz_boundary` after decoder hardening
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+
+=== ipc_frame_fuzz (decoder hardening + version oracle) ===
+Finished `release` profile [unoptimized + debuginfo] target(s) in 0.04s
+INFO: Loaded 1 modules (1199 inline 8-bit counters)
+INFO: seed corpus: files: 14 min: 24b max: 28b total: 367b rss: 59Mb
+#20000	DONE   cov: 157 ft: 172 corp: 25/647b lim: 182 exec/s: 0 rss: 59Mb
+Done 20000 runs in 0 second(s)
+EXIT_STATUS_ipc_frame_fuzz=0
+
+=== ipc_decode (typed header decoder walk over NonZeroUsize bounds) ===
+Finished `release` profile [unoptimized + debuginfo] target(s) in 0.04s
+Running `target/x86_64-unknown-linux-gnu/release/ipc_decode ...`
+EXIT_STATUS_ipc_decode=0
+
+=== ipc_frame_fuzz_boundary (magic / version / reserved / length bounds) ===
+Finished `release` profile [unoptimized + debuginfo] target(s) in 0.04s
+Running `target/x86_64-unknown-linux-gnu/release/ipc_frame_fuzz_boundary ...`
+EXIT_STATUS_ipc_frame_fuzz_boundary=0
+
+OVERALL_EXIT_STATUS=0

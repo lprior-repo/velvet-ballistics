@@ -1,0 +1,5 @@
+{"contract_clause":"INV-001","tests":["shard_command_queue_capacity_returns_configured_value","shard_command_queue_len_starts_at_zero","shard_command_queue_len_increments_on_enqueue"],"proofs":["KANI-QUEUE-001","VERUS-INV-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-002","tests":["shard_command_queue_len_matches_actual"],"proofs":["VERUS-INV-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-001","tests":["shard_config_new_rejects_zero_command_queue_capacity","shard_config_new_rejects_excessive_command_queue_capacity"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-001","tests":["shard_command_queue_len_increments_on_enqueue"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-003","tests":["memory_ingress_bounded_capacity_one_accepts_one_rejects_second"],"proofs":["KANI-QUEUE-001"],"review":"contract-verification-review.md"}

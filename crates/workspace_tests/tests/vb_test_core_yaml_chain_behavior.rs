@@ -492,7 +492,12 @@ fn validate_with_contracts_rejects_missing_action_contract() {
 
     let parts = vb_core::WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::workflow::InputSlotKind::Any,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: vec![do_node, finish_node].into_boxed_slice(),
@@ -539,7 +544,12 @@ fn validate_with_contracts_rejects_orphan_action_contract() {
 
     let parts = vb_core::WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::workflow::InputSlotKind::Any,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: vec![finish_node].into_boxed_slice(),
@@ -605,7 +615,12 @@ fn validate_with_contracts_accepts_matching_contract() {
 
     let parts = vb_core::WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::workflow::InputSlotKind::Any,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: vec![do_node, finish_node].into_boxed_slice(),
@@ -729,7 +744,12 @@ fn workflow_parts_accepts_resource_contract_at_exact_usage_bounds() {
 
     let parts = vb_core::WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::workflow::InputSlotKind::Any,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
         name: Box::from("bounds_test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: vec![finish_node].into_boxed_slice(),

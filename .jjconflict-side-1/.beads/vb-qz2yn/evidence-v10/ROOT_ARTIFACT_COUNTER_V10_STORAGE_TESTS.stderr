@@ -1,0 +1,31 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+────────────
+ Nextest run ID 99c00afa-b601-4ea8-897d-2232e74e44e6 with nextest profile: default
+    Starting 1637 tests across 1 binary
+        FAIL [   0.004s] (1278/1637) vb_storage tests::tests::declared_keyspaces_returns_eleven_entries
+  stdout ───
+
+    running 1 test
+    test tests::tests::declared_keyspaces_returns_eleven_entries ... FAILED
+
+    failures:
+
+    failures:
+        tests::tests::declared_keyspaces_returns_eleven_entries
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1636 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'tests::tests::declared_keyspaces_returns_eleven_entries' (15598) panicked at crates/vb_storage/src/tests.rs:2272:9:
+    assertion `left == right` failed
+      left: 12
+     right: 11
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+  Cancelling due to test failure: 31 tests still running
+────────────
+     Summary [   1.433s] 1309/1637 tests run: 1308 passed, 1 failed, 0 skipped
+        FAIL [   0.004s] (1278/1637) vb_storage tests::tests::declared_keyspaces_returns_eleven_entries
+warning: 328/1637 tests were not run due to test failure (run with --no-fail-fast to run all tests, or run with --max-fail)
+error: test run failed

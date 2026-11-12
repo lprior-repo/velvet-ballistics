@@ -1,0 +1,32 @@
+{
+  "waivers": [
+    {
+      "obligation": "UNWRAP-002",
+      "contract_clause": "INV-001",
+      "layer": "waiver",
+      "rationale": "as_str().unwrap_or() on serde_json::Value returns Option<&str>, not Result. unwrap_or(\"unknown\") on Option is zero-panic — it cannot panic or propagate errors.",
+      "approved_by": "contract-verification-review.md",
+      "status": "APPROVED"
+    },
+    {
+      "obligation": "FORMAL-VERIFICATION (TLA+/Verus/Kani/Flux/Miri)",
+      "contract_clause": "All",
+      "layer": "formal-proof",
+      "rationale": "Incident command consists of pure functions with no unsafe, no concurrency, no temporal behavior, and no external state mutations beyond FjallJournal (which is handled by storage-level verification). Proof obligations waived per contract-verification-review.md.",
+      "approved_by": "contract-verification-review.md",
+      "status": "APPROVED"
+    }
+  ],
+  "unrelated_deferred_global": [
+    {
+      "issue": "vb_runtime::primitives::collect::tests — 3 PolicyDigestMismatch failures",
+      "affected_gate": "moon-ci:test, cargo-test",
+      "recommendation": "Fix collect pagination test assertions or fix PolicyDigestMismatch logic in vb_runtime"
+    },
+    {
+      "issue": "xtask/src/evidence_gate.rs — 10 clippy warnings",
+      "affected_gate": "moon-ci:lint-src, moon-ci:fmt",
+      "recommendation": "Replace map_or with is_some_and, use utf8_chunks for string slicing, add arithmetic checks"
+    }
+  ]
+}

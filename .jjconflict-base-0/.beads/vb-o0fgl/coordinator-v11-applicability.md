@@ -1,0 +1,5 @@
+# Final fixture review applicability and arithmetic errata
+
+Independent final review applies only to the exact V11 fixture delta at ffa76eb26b35de6c795be058d97a57ca0125e82c, SHA256 25ec33113630e61922b672946ed87d3fa0bc403bcd26fe18808bb93bd2e851de. Root independently verified all17V10storagehashes unchanged, every original negative case except now-known38 preserved, explicit decoded kind38 equality using Result propagation, no newly added forbidden panic/index/unwrap, actual focused33pass and pinnedfmt0. Canonical fullsuite remains pending.
+
+The review still miscounts unrelated enumerations: actual from_id has35explicit numeric arms, not36; existing valid_kinds set has28values before and29after, not26/27. Tag4 is RunInputs; its actual kind-family validation remains untouched. These arithmetic/reporting claims are corrected here and are not accepted as source coverage claims. The limited verdict concerns exact tag38fixture alignment and preservation; it does not assert exhaustive positive coverage of every existing journal kind or accept preexisting test panics generally. No source changes result from these report errata.

@@ -1,0 +1,194 @@
+{
+  "source_candidate": "0cb3ac1167cd686ece968c61b60d1cb5feac154d",
+  "integrated_parent": "03eaf38a",
+  "integration_changes_are_bead_artifacts_only": true,
+  "source_guard_candidate": "df89acd5",
+  "test_candidate": "b0e4773530bf0a39574679261bbdacf8b8efa7d0",
+  "rejected_prototype": "79e34026",
+  "native_baseline": {
+    "registered": 4,
+    "passed": 1,
+    "failed": 3,
+    "exit": 100,
+    "limit": "Failed matrix groups stop at first assertion; no all-pairs baseline failure claim"
+  },
+  "native_fixed": {
+    "registered": 4,
+    "passed": 4,
+    "skipped": 0,
+    "exit": 0
+  },
+  "selected_moon": {
+    "command": "moon run :fmt :check :test :ignored-fallible-results :workspace-assertions :lint-src",
+    "environment": {
+      "TMPDIR": "/run/user/1000/vbs",
+      "CARGO_TARGET_DIR": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target",
+      "CARGO_BIN_EXE_velvet_ballistics_runtime_key": "CARGO_BIN_EXE_velvet-ballistics",
+      "CARGO_BIN_EXE_velvet_ballistics_value": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/debug/velvet-ballistics",
+      "CARGO_BUILD_JOBS": 2,
+      "BEADS_DOLT_SERVER_PORT": 37225
+    },
+    "passed": 16425,
+    "skipped": 7,
+    "tasks_completed": 12,
+    "cached": 7,
+    "exit": 0,
+    "initial_run_limit": "Initial run lacked supported runtime CLI binary path binding; 8 spawn failures, 825 not run; failed log retained"
+  },
+  "source_length": {
+    "exit": 0,
+    "existing_ledger_rows_used": 92
+  },
+  "live_integrity": {
+    "exit": 1,
+    "remaining_findings": 2,
+    "scope": "Previously reviewed replay test relocation; live ledger awaiting approval"
+  },
+  "copied_ledger_preview": {
+    "exit": 0,
+    "not_live_gate": true
+  },
+  "full_moon_ci_executed": false,
+  "whole_vb_rihha_1_complete": false,
+  "master_helper_text_object_conflict": "Open; preserved existing behavior",
+  "files": [
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-tests-repair-luna/target/core-build-20261110/evidence/helper-scalar-native.log",
+      "archive": ".beads/vb-rihha.1/evidence/baseline.log",
+      "sha256": "6a885834378d841163e4b34b3a8368518c41d00376c92ee5d5234dcf27f7b22f",
+      "bytes": 3374
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-tests-repair-luna/target/core-build-20261110/evidence/helper-scalar-native.exit",
+      "archive": ".beads/vb-rihha.1/evidence/baseline.exit",
+      "sha256": "eea8254c7500ba3de996aa8ad6af399183f04e17d4a8102fde539dbc93a90012",
+      "bytes": 4
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-tests-repair-luna/target/core-build-20261110/evidence/helper-typecheck-production-before.gitblob",
+      "archive": ".beads/vb-rihha.1/evidence/baseline-production-before.gitblob",
+      "sha256": "b8e47bb386d59dbc1f5fd31a9a95d3c718853d459acda7b9b5df08cf5139be81",
+      "bytes": 41
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-tests-repair-luna/target/core-build-20261110/evidence/helper-typecheck-production-after.gitblob",
+      "archive": ".beads/vb-rihha.1/evidence/baseline-production-after.gitblob",
+      "sha256": "b8e47bb386d59dbc1f5fd31a9a95d3c718853d459acda7b9b5df08cf5139be81",
+      "bytes": 41
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-scalar-fixed.log",
+      "archive": ".beads/vb-rihha.1/evidence/helper-scalar-fixed.log",
+      "sha256": "3e8d92c1a356c845ab378ea63893aea7c17c8a28072af15faf3419f9b23b9857",
+      "bytes": 955
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-scalar-fixed-exit.txt",
+      "archive": ".beads/vb-rihha.1/evidence/helper-scalar-fixed-exit.txt",
+      "sha256": "3cc1ae9f4cfdcec61dcd3f399ba7c56364f77d3e6b140b094a81a3fae33157d5",
+      "bytes": 20
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-scalars-moon.log",
+      "archive": ".beads/vb-rihha.1/evidence/helper-scalars-moon.log",
+      "sha256": "f42715fe0959bffc4a6e76735565c6fd5d6600d6f5de8bbd1f3a1cb8a9057d7c",
+      "bytes": 2829038
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-scalars-moon-exit.txt",
+      "archive": ".beads/vb-rihha.1/evidence/helper-scalars-moon-exit.txt",
+      "sha256": "b6bec78b7d733d39fb3bdb49b01964656df5955daa77142cb0bfe4fe6b95f826",
+      "bytes": 12
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-scalars-moon-cli-path.log",
+      "archive": ".beads/vb-rihha.1/evidence/helper-scalars-moon-cli-path.log",
+      "sha256": "2102c75b98787395daa80380360b25b32801fa3b56e68190f0ff8423ef3a284a",
+      "bytes": 2990727
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-scalars-moon-cli-path-exit.txt",
+      "archive": ".beads/vb-rihha.1/evidence/helper-scalars-moon-cli-path-exit.txt",
+      "sha256": "99378a3544b6469ba679bcb306beeb8701cb1c42ab78e520775593a310116115",
+      "bytes": 12
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-scalars-source-length.log",
+      "archive": ".beads/vb-rihha.1/evidence/helper-scalars-source-length.log",
+      "sha256": "25db2e7ab5477f94cc4e67589b503845d0be5af4ab00d68a091605b2e45d20a8",
+      "bytes": 749
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-scalars-source-length-exit.txt",
+      "archive": ".beads/vb-rihha.1/evidence/helper-scalars-source-length-exit.txt",
+      "sha256": "ed30ded6300273f3b85f0ba1edd9a86ffb860c87e73f32739bef0b1221781f9f",
+      "bytes": 21
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-scalars-live-integrity.log",
+      "archive": ".beads/vb-rihha.1/evidence/helper-scalars-live-integrity.log",
+      "sha256": "c394df48fa48f85331718569e7f17124bf3702d1f0f119910d4654b4555d9100",
+      "bytes": 301
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-scalars-live-integrity-exit.txt",
+      "archive": ".beads/vb-rihha.1/evidence/helper-scalars-live-integrity-exit.txt",
+      "sha256": "44f46b580490e629e6bcd2fb7b75d32265efb1e4afd83cc21c6e72325c889b0f",
+      "bytes": 22
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-scalars-ledger-preview.log",
+      "archive": ".beads/vb-rihha.1/evidence/helper-scalars-ledger-preview.log",
+      "sha256": "ccda3733ad5ffcdcc0948ab690363ce7a66d61e89b295ba6285f00e8de033c8c",
+      "bytes": 332
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-scalars-ledger-preview-exit.txt",
+      "archive": ".beads/vb-rihha.1/evidence/helper-scalars-ledger-preview-exit.txt",
+      "sha256": "db2a37d78d86c9e472d4ed40b6b0528f0291b5c3db8247cc2e4ba91284099c5b",
+      "bytes": 22
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-cli-binary-build.log",
+      "archive": ".beads/vb-rihha.1/evidence/helper-cli-binary-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-cli-binary-build-exit.txt",
+      "archive": ".beads/vb-rihha.1/evidence/helper-cli-binary-build-exit.txt",
+      "sha256": "fc15a2fa6066a50358c5b7460de4197d6724571391157b2f9c245ef32a3df0c2",
+      "bytes": 17
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-cli-binary-before.sha256",
+      "archive": ".beads/vb-rihha.1/evidence/helper-cli-binary-before.sha256",
+      "sha256": "c1ffaff9deba9e208ae78c740f2ed628e0a6cb208c0ef40e6e2fb455c442e322",
+      "bytes": 161
+    },
+    {
+      "source": "target/core-build-20261110/evidence/helper-scalars-code-sol.json",
+      "archive": ".beads/vb-rihha.1/evidence/helper-scalars-code-sol.json",
+      "sha256": "446db32cf5e105cc4eac65a3bba7bd41e270a42d2d651375e1082246ec41969a",
+      "bytes": 5073
+    },
+    {
+      "source": "target/core-build-20261110/evidence/helper-scalars-code-sol-v2.json",
+      "archive": ".beads/vb-rihha.1/evidence/helper-scalars-code-sol-v2.json",
+      "sha256": "51e97bda313fdf673801a8e574eb9c0aa71643221cc9e2ece96188caf32b04c4",
+      "bytes": 7395
+    },
+    {
+      "source": "target/core-build-20261110/evidence/helper-scalars-test-sol.json",
+      "archive": ".beads/vb-rihha.1/evidence/helper-scalars-test-sol.json",
+      "sha256": "d922970c3a0f4e0dde6f94319732976317c15a96e9ad3c9039ea5f17c2fd7899",
+      "bytes": 8958
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-local5090/target/red_run.log",
+      "archive": ".beads/vb-rihha.1/evidence/rejected-prototype-compile.log",
+      "sha256": "994c10cd2aa17bd088b4be4399dc4ef434feba9320f47bd6ea4d622b133d1e7d",
+      "bytes": 6100
+    }
+  ]
+}

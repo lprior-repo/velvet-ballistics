@@ -1,0 +1,11 @@
+# Invalid Fixture: Missing 'when' Field
+# This workflow is missing the required 'when' trigger field
+# Semantic validation should fail with MissingField("when")
+---
+version: velvet-ballistics/v1
+name: missing_when_workflow
+
+steps:
+  - id: done
+    finish:
+      result: 0

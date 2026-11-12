@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-p51m8-local5090-finish",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_ko29_5_public_idempotency"
+  ],
+  "exit_code": 101,
+  "seconds": 0.165,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/tmp/vb_ko29_final",
+  "coordinator_message": "Finish real-runtime tests promptly. Current helper was panic! now returnErr keep. Remove temporary DEBUG eprintln and no broad Debugdump. Actual ABI from scheduledticket event is authoritative for replay. Full before/after journalVec equality all4requestedguards plus replaycases. Run actual immutable runner NEW .beads/vb-p51m8/evidence/runtime-backed-v3 prefix,16namedPASS. Bare prior probes notclosure. Write contract/handoff including actual count, thenEND. Root will independently review before acceptance; no source/contractwaiver."
+}

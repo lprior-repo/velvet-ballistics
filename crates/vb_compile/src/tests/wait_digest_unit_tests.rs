@@ -436,17 +436,17 @@ fn canonical_primitive_name_returns_wait_when_primitive_is_wait() {
 
     // When/Then: canonical_primitive_name returns "wait" for all shapes
     assert_eq!(
-        canonical_primitive_name(&wait_until),
+        canonical_primitive_name(&wait_until).expect("known variant"),
         "wait",
         "canonical_primitive_name must return 'wait' for WaitUntil"
     );
     assert_eq!(
-        canonical_primitive_name(&wait_event_unbounded),
+        canonical_primitive_name(&wait_event_unbounded).expect("known variant"),
         "wait",
         "canonical_primitive_name must return 'wait' for WaitEvent unbounded"
     );
     assert_eq!(
-        canonical_primitive_name(&wait_event_bounded),
+        canonical_primitive_name(&wait_event_bounded).expect("known variant"),
         "wait",
         "canonical_primitive_name must return 'wait' for WaitEvent bounded"
     );
@@ -547,7 +547,7 @@ fn canonical_primitive_name_returns_non_empty_distinct_name_for_every_variant() 
     let mut seen_names: Vec<&str> = Vec::with_capacity(variants.len());
 
     for (expected_name, variant) in &variants {
-        let actual = canonical_primitive_name(variant);
+        let actual = canonical_primitive_name(variant).expect("known variant");
 
         // Every name must be non-empty
         assert!(

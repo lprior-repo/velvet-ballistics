@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-policy-dispatch-v1",
+  "argv": [
+    "/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/decode_record",
+    "-runs=0",
+    "-dict=/home/lewis/src/isoloated/vb-policy-dispatch-v1/fuzz/fuzz_targets/ipc_frame.dict"
+  ],
+  "exit_code": 1,
+  "seconds": 0.006,
+  "timeout_seconds": 30,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/dictionary-parse-before-v1/ipc_frame"
+}

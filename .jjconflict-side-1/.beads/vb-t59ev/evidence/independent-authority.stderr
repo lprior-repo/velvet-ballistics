@@ -1,0 +1,3 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-t59ev-local5090-review/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.31s
+     Running tests/durable_retry_run_attempt_authority.rs (target/debug/deps/durable_retry_run_attempt_authority-b180fa8f9d632497)

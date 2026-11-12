@@ -1,0 +1,56 @@
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-nn1yo-retry-5090/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.96s
+     Running unittests src/main.rs (target/debug/deps/velvet_ballistics-88cfba1fae4762ec)
+
+running 48 tests
+test commands_journal::retry_analysis_tests::failed_run_after_matching_success_has_unknown_step ... ok
+test commands_journal::retry_analysis_tests::no_retry_active_or_empty ... ok
+test commands_journal::retry_analysis_tests::no_retry_cancelled_or_finished ... ok
+test commands_journal::retry_analysis_tests::retry_failed_action ... ok
+test commands_journal::retry_analysis_tests::retry_step_zero ... ok
+test commands_journal::retry_analysis_tests::retry_last_started ... ok
+test commands_journal::tests::analyze_retry_cancelled_run_cannot_retry ... ok
+test commands_journal::retry_analysis_tests::retry_step_max ... ok
+test commands_journal::tests::analyze_retry_completed_run_cannot_retry ... ok
+test commands_journal::tests::analyze_retry_failed_run_can_retry ... ok
+test commands_journal::tests::analyze_retry_empty_events_cannot_retry ... ok
+test commands_journal::tests::build_trace_empty_input_returns_empty_output ... ok
+test commands_journal::tests::build_trace_length_matches_input ... ok
+test commands_journal::tests::build_trace_is_deterministic ... ok
+test commands_journal::tests::build_trace_preserves_event_order ... ok
+test commands_journal::tests::build_trace_maps_seq_field_correctly ... ok
+test commands_journal::tests::build_trace_preserves_length_empty ... ok
+test commands_journal::tests::build_trace_preserves_length_small ... ok
+test commands_journal::tests::build_trace_run_level_events_have_no_step ... ok
+test commands_journal::tests::build_trace_preserves_length_large ... ok
+test commands_journal::tests::build_trace_returns_identical_output_for_identical_events ... ok
+test commands_journal::tests::build_trace_run_resumed_uses_event_seq ... ok
+test commands_journal::tests::build_trace_step_events_have_step_value ... ok
+test commands_journal::tests::filter_trace_by_action_matches_action_id_only ... ok
+test commands_journal::tests::filter_trace_by_sequence_range_is_inclusive ... ok
+test commands_journal::tests::filter_trace_by_status_uses_event_status_categories ... ok
+test commands_journal::tests::filter_trace_by_step_preserves_original_indices ... ok
+test commands_journal::tests::filter_trace_limit_applies_after_filters ... ok
+test commands_journal::tests::trace_one_action_completed_maps_correct_fields ... ok
+test commands_journal::tests::trace_one_action_failed_maps_correct_fields ... ok
+test commands_journal::tests::trace_one_action_scheduled_maps_correct_fields ... ok
+test commands_journal::tests::trace_one_ask_answered_maps_correct_fields ... ok
+test commands_journal::tests::trace_one_ask_scheduled_maps_correct_fields ... ok
+test commands_journal::tests::trace_one_retry_scheduled_maps_correct_fields ... ok
+test commands_journal::tests::trace_one_run_accepted_maps_correct_fields ... ok
+test commands_journal::tests::trace_one_run_answered_uses_event_seq ... ok
+test commands_journal::tests::trace_one_run_admission_maps_correct_fields ... ok
+test commands_journal::tests::trace_one_run_cancelled_maps_correct_fields ... ok
+test commands_journal::tests::trace_one_run_failed_maps_correct_fields ... ok
+test commands_journal::tests::trace_one_run_finished_maps_correct_fields ... ok
+test commands_journal::tests::trace_one_run_resumed_uses_event_seq ... ok
+test commands_journal::tests::trace_one_run_retried_uses_event_seq ... ok
+test commands_journal::tests::trace_one_slot_written_maps_correct_fields ... ok
+test commands_journal::tests::trace_one_step_started_maps_correct_fields ... ok
+test commands_journal::tests::trace_one_step_succeeded_maps_correct_fields ... ok
+test commands_journal::tests::trace_one_wait_scheduled_maps_correct_fields ... ok
+test commands_journal::retry_analysis_tests::any_step ... ok
+test commands_journal::tests::trace_entry_index_matches_position ... ok
+
+test result: ok. 48 passed; 0 failed; 0 ignored; 0 measured; 298 filtered out; finished in 0.00s
+

@@ -839,6 +839,7 @@ fn drive_deterministic_budget_zero_returns_step_budget_exhausted() {
     let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None);
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("nop"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([node]),
@@ -1036,6 +1037,7 @@ fn bh_drive_budget_exhausted_does_not_emit_step_succeeded_in_evidence() {
     let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None);
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("bh_nop"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([node]),
@@ -1099,6 +1101,7 @@ fn bh_drive_single_nop_emits_started_then_succeeded() {
     );
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("bh_nop_finish"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([node, finish]),
@@ -1175,6 +1178,7 @@ fn bh_drive_evidence_step_succeeded_not_emitted_for_awaiting_action() {
     );
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("bh_do"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([node]),
@@ -1626,17 +1630,23 @@ mod blackhat_engine {
 
     // ---- Workflow/Run factories ----
 
-    fn make_workflow(nodes: Vec<CompiledNode>, slot_count: u16) -> CompiledWorkflow {
-        make_workflow_with_constants(nodes, slot_count, Box::from([]))
+    fn make_workflow(
+        nodes: Vec<CompiledNode>,
+        slot_count: u16,
+        inputs: &[u16],
+    ) -> CompiledWorkflow {
+        make_workflow_with_constants(nodes, slot_count, Box::from([]), inputs)
     }
 
     fn make_workflow_with_constants(
         nodes: Vec<CompiledNode>,
         slot_count: u16,
         constants: Box<[vb_core::value::ConstValue]>,
+        inputs: &[u16],
     ) -> CompiledWorkflow {
         let parts = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             name: Box::from("bh_test"),
             digest: vb_core::ids::WorkflowDigest::from_bytes([0xBB; 32]),
             nodes: nodes.into_boxed_slice(),
@@ -1647,7 +1657,14 @@ mod blackhat_engine {
             symbols_count: 0,
             entry: StepIdx::ZERO,
             resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
-            input_slots: Box::from([]),
+            input_slots: inputs
+                .iter()
+                .map(|slot| vb_core::CompiledInputSlot {
+                    slot: SlotIdx::new(*slot),
+                    kind: vb_core::InputSlotKind::Any,
+                    constraint: vb_core::CompiledInputConstraint::required(),
+                })
+                .collect(),
             step_names: Box::from([]),
         };
         match CompiledWorkflow::try_from_parts(parts) {
@@ -1729,6 +1746,7 @@ mod blackhat_engine {
             vec![set_const, finish],
             4,
             Box::from([vb_core::value::ConstValue::I64(1)]),
+            &[],
         );
         let mut run = make_run(4, 4);
         let mut store = ValueStore::new();
@@ -1794,7 +1812,7 @@ mod blackhat_engine {
             Some(StepIdx::new(2)),
         );
         let finish = finish_node(2, 0);
-        let wf = make_workflow(vec![nop, nop1, finish], 4);
+        let wf = make_workflow(vec![nop, nop1, finish], 4, &[0]);
         let mut run = make_run(4, 4);
         let mut store = ValueStore::new();
         let mut budget = vb_core::engine::StepBudget::new(1);
@@ -1874,7 +1892,7 @@ mod blackhat_engine {
         );
         let finish1 = finish_node(1, 0);
         let finish2 = finish_node(2, 0);
-        let wf = make_workflow(vec![node, finish1, finish2], 4);
+        let wf = make_workflow(vec![node, finish1, finish2], 4, &[0]);
         let mut run = make_run(4, 4);
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
@@ -1944,7 +1962,7 @@ mod blackhat_engine {
             None,
             None,
         );
-        let wf = make_workflow(vec![node], 4);
+        let wf = make_workflow(vec![node], 4, &[0]);
         let mut run = make_run(4, 2);
         assert_eq!(
             run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret),
@@ -1985,7 +2003,7 @@ mod blackhat_engine {
             None,
             None,
         );
-        let wf = make_workflow(vec![node], 4);
+        let wf = make_workflow(vec![node], 4, &[0]);
         let mut run = make_run(4, 2);
         assert_eq!(run.write_slot(SlotIdx::new(0), SlotValue::I64(42)), Ok(()));
         let mut store = ValueStore::new();
@@ -2023,7 +2041,7 @@ mod blackhat_engine {
             None,
             None,
         );
-        let wf = make_workflow(vec![node], 4);
+        let wf = make_workflow(vec![node], 4, &[0]);
         let mut run = make_run(4, 2);
         assert_eq!(
             run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret),
@@ -2086,7 +2104,7 @@ mod blackhat_engine {
             None,
         );
         let finish = finish_node(1, 0);
-        let wf = make_workflow(vec![node0, finish], 4);
+        let wf = make_workflow(vec![node0, finish], 4, &[]);
         let mut run = make_run(4, 4);
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
@@ -2134,6 +2152,7 @@ mod blackhat_engine {
         );
         let parts = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             name: Box::from("bh_do_no_out"),
             digest: vb_core::ids::WorkflowDigest::from_bytes([0xDD; 32]),
             nodes: Box::from([node]),
@@ -2286,6 +2305,7 @@ mod blackhat_engine {
             vec![set_const, finish],
             4,
             Box::from([vb_core::value::ConstValue::I64(1)]),
+            &[],
         );
         let mut run = make_run(4, 4);
         let mut budget = vb_core::engine::StepBudget::new(10);
@@ -2523,7 +2543,7 @@ mod blackhat_engine {
                 branches,
                 join: StepIdx::new(4),
             },
-            None,
+            Some(SlotIdx::new(0)),
             None,
         );
         let step1 = vb_core::workflow::node(
@@ -2545,7 +2565,7 @@ mod blackhat_engine {
             Some(StepIdx::new(4)),
         );
         let finish = finish_node(4, 0);
-        let wf = make_workflow(vec![node, step1, step2, step3, finish], 4);
+        let wf = make_workflow(vec![node, step1, step2, step3, finish], 4, &[0]);
         let mut run = make_run(4, 4);
         let mut store = ValueStore::new();
         let mut budget = vb_core::engine::StepBudget::new(10);
@@ -2594,7 +2614,7 @@ mod blackhat_engine {
             Some(StepIdx::new(2)),
         );
         let finish = finish_node(2, 0);
-        let wf = make_workflow(vec![nop0, nop1, finish], 4);
+        let wf = make_workflow(vec![nop0, nop1, finish], 4, &[0]);
         let mut run = make_run(4, 4);
         let mut store = ValueStore::new();
         let mut budget = vb_core::engine::StepBudget::new(1);

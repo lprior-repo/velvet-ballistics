@@ -1,0 +1,22 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 14,
+  "sublane": "landing-after-owner-waived-state13-and-vt2f-serial-landing",
+  "delegate": "landing-skill",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/state13-provenance-waiver.md",
+    ".beads/vb-kyyf/assurance-bundle.md",
+    ".beads/vb-kyyf/truth-serum-report.md",
+    ".beads/vb-kyyf/final-evidence-decision.md",
+    ".beads/vb-kyyf/black-hat-review.md",
+    ".beads/vb-kyyf/formal-verification-report.md",
+    ".beads/vb-kyyf/verification-ledger.jsonl"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/landing-report.md"
+  ],
+  "attempt": 1,
+  "serial_section": "landing to main/remote must be serialized; vt2f already landed before this attempt"
+}

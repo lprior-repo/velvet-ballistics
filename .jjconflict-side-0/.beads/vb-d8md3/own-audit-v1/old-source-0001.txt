@@ -1,0 +1,100 @@
+old-source:1: //! Bounded Action Completion Queue — VB-CONC-005
+old-source:2: //!
+old-source:3: //! Provides a bounded queue for tracking action completion tickets with:
+old-source:4: //! - Bounded capacity enforcement
+old-source:5: //! - Backpressure warning at 80% capacity
+old-source:6: //! - FIFO dequeue ordering
+old-source:7: //! - Accurate remaining capacity tracking
+old-source:8: //! - Backpressure warning send outcome surfacing (VB-D8MD3)
+old-source:9: //!
+old-source:10: //! This module implements the LETHAL-5 fix for the missing bounded action
+old-source:11: //! completion queue requirement from Section 4.
+old-source:12: 
+old-source:13: use std::collections::VecDeque;
+old-source:14: use std::sync::mpsc::{Receiver, SyncSender, TrySendError};
+old-source:15: use vb_core::action::ActionTicket;
+old-source:16: 
+old-source:17: /// Maximum accepted action completion queue capacity.
+old-source:18: pub const MAX_ACTION_COMPLETION_QUEUE_CAPACITY: usize = 65_536;
+old-source:19: 
+old-source:20: /// Parsed, non-zero, bounded action completion queue capacity.
+old-source:21: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+old-source:22: pub struct ActionQueueCapacity(usize);
+old-source:23: 
+old-source:24: impl ActionQueueCapacity {
+old-source:25:     /// Returns the capacity as a primitive for allocation and reporting.
+old-source:26:     #[must_use]
+old-source:27:     pub const fn get(self) -> usize {
+old-source:28:         self.0
+old-source:29:     }
+old-source:30: 
+old-source:31:     /// Creates a new [`ActionQueueCapacity`] without validating the input.
+old-source:32:     ///
+old-source:33:     /// Use this constructor ONLY when the caller has already verified that
+old-source:34:     /// `1 <= capacity <= MAX_ACTION_COMPLETION_QUEUE_CAPACITY`. The naming
+old-source:35:     /// convention `new_unchecked` makes the trust boundary explicit at the
+old-source:36:     /// call site. Constructing an `ActionQueueCapacity` with `capacity == 0`
+old-source:37:     /// or above the maximum violates the type's invariants and may cause
+old-source:38:     /// `BoundedActionCompletionQueue` operations to behave incorrectly.
+old-source:39:     ///
+old-source:40:     /// For runtime/derived input where the value is not statically known,
+old-source:41:     /// use the fallible [`BoundedActionCompletionQueue::new`] and propagate
+old-source:42:     /// the error.
+old-source:43:     #[must_use]
+old-source:44:     pub const fn new_unchecked(capacity: usize) -> Self {
+old-source:45:         Self(capacity)
+old-source:46:     }
+old-source:47: }
+old-source:48: 
+old-source:49: /// Reason an action completion queue capacity was rejected.
+old-source:50: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+old-source:51: pub enum InvalidActionQueueCapacity {
+old-source:52:     /// Capacity must be at least one.
+old-source:53:     Zero,
+old-source:54:     /// Capacity is above the maximum allowed bound.
+old-source:55:     AboveMaximum {
+old-source:56:         /// Maximum accepted capacity.
+old-source:57:         maximum: usize,
+old-source:58:     },
+old-source:59: }
+old-source:60: 
+old-source:61: /// Errors returned by bounded action completion queue operations.
+old-source:62: #[derive(Debug, Clone, PartialEq, Eq)]
+old-source:63: #[non_exhaustive]
+old-source:64: pub enum ActionQueueError {
+old-source:65:     /// Queue has reached its bounded capacity; no more items can be enqueued.
+old-source:66:     QueueFull {
+old-source:67:         /// The fixed capacity of this queue.
+old-source:68:         capacity: ActionQueueCapacity,
+old-source:69:     },
+old-source:70:     /// Constructor received an invalid capacity.
+old-source:71:     InvalidCapacity {
+old-source:72:         /// Capacity requested by the caller.
+old-source:73:         requested: usize,
+old-source:74:         /// Typed rejection reason.
+old-source:75:         reason: InvalidActionQueueCapacity,
+old-source:76:     },
+old-source:77: }
+old-source:78: 
+old-source:79: /// Thread-safe bounded action completion queue.
+old-source:80: ///
+old-source:81: /// Tracks action completion tickets with a fixed capacity bound.
+old-source:82: /// Emits backpressure warnings when the queue reaches at least 80% capacity.
+old-source:83: #[derive(Debug)]
+old-source:84: pub struct BoundedActionCompletionQueue {
+old-source:85:     inner: std::sync::Mutex<Inner>,
+old-source:86:     capacity: ActionQueueCapacity,
+old-source:87:     backpressure_tx: Option<SyncSender<BackpressureWarning>>,
+old-source:88: }
+old-source:89: 
+old-source:90: #[derive(Debug, Clone)]
+old-source:91: struct Inner {
+old-source:92:     items: VecDeque<ActionTicket>,
+old-source:93: }
+old-source:94: 
+old-source:95: /// Backpressure warning emitted when queue reaches 80% capacity.
+old-source:96: #[derive(Debug, Clone, PartialEq, Eq)]
+old-source:97: pub struct BackpressureWarning {
+old-source:98:     /// Current depth (items in queue) at time of warning.
+old-source:99:     pub depth: usize,
+old-source:100:     /// Fixed capacity of the queue.

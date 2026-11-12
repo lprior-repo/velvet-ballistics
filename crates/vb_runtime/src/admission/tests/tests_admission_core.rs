@@ -626,7 +626,7 @@ fn admit_artifact_run_rejects_future_major_ir_version() -> Result<(), String> {
 #[test]
 fn admit_artifact_run_accepts_same_major_newer_minor_ir_version() -> Result<(), String> {
     let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
-    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(1, 2, 0);
+    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(2, 2, 0);
     let digest =
         vb_storage::admission::accepted_artifact_digest(&artifact).map_err(|e| e.to_string())?;
     artifact.digest = digest;
@@ -708,7 +708,7 @@ fn admit_artifact_run_carries_ir_compat_decision() -> Result<(), String> {
 #[test]
 fn admit_artifact_run_carries_forward_compat_decision() -> Result<(), String> {
     let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
-    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(1, 2, 0);
+    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(2, 2, 0);
     let digest =
         vb_storage::admission::accepted_artifact_digest(&artifact).map_err(|e| e.to_string())?;
     artifact.digest = digest;
@@ -1182,4 +1182,3 @@ fn admit_artifact_run_returns_digest_mismatch() -> Result<(), String> {
     );
     Ok(())
 }
-

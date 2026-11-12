@@ -1,0 +1,21 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 11,
+  "sublane": "canonical-status-line-repair",
+  "delegate": "formal-verifier",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/formal-verification-report.md",
+    ".beads/vb-kyyf/machine-gate-report.md",
+    ".beads/vb-kyyf/regression-diff.md",
+    ".beads/vb-kyyf/verification-ledger.jsonl"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/formal-verification-report.md",
+    ".beads/vb-kyyf/machine-gate-report.md",
+    ".beads/vb-kyyf/regression-diff.md"
+  ],
+  "attempt": 4,
+  "repair": "Replace non-canonical status strings like STATUS: APPROVED/PASS with exact STATUS: APPROVED while preserving command evidence and ledger content"
+}

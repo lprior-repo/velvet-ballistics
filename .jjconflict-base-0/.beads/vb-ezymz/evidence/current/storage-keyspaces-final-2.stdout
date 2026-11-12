@@ -1,0 +1,10 @@
+
+running 5 tests
+test tests::tests::declared_keyspaces_returns_ten_entries ... ok
+test journal::tests::all_declared_keyspaces_are_iterable_after_open ... ok
+test journal::tests::declared_keyspaces_count_matches_opened_keyspaces ... ok
+test tests::tests::journal_opens_declared_keyspaces_and_round_trips_typed_records ... ok
+test tests::tests::public_open_wrappers_create_declared_keyspaces ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 1607 filtered out; finished in 0.01s
+

@@ -1,0 +1,4 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cd7g8-local5090-review/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.31s
+     Running tests/vb_lp2v_proof_admission_bdd.rs (target/debug/deps/vb_lp2v_proof_admission_bdd-806d9871cee47eab)
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_lp2v_proof_admission_bdd`

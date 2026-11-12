@@ -1,0 +1,52 @@
+=== Latest-followups evidence index (logs 168-178) ===
+
+Log                                                                                             | EXIT_STATUS
+------------------------------------------------------------------------------------------------------------------------
+168-root-cargo-fmt-check-after-latest-black-hat-blocker-followups.txt                           | EXIT_STATUS=0
+169-fuzz-cargo-fmt-check-after-latest-black-hat-blocker-followups.txt                           | EXIT_STATUS=0
+170-root-cargo-check-workspace-all-targets-all-features-after-latest-black-hat-blocker-followups.txt | EXIT_STATUS=0
+171-fuzz-cargo-check-all-targets-all-features-after-latest-black-hat-blocker-followups.txt      | EXIT_STATUS=0
+172-root-cargo-clippy-source-strict-after-latest-black-hat-blocker-followups.txt                | EXIT_STATUS=0
+173-fuzz-cargo-clippy-strict-all-targets-after-latest-black-hat-blocker-followups.txt           | EXIT_STATUS=0
+174-fuzz-proptests-after-latest-black-hat-blocker-followups.txt                                 | EXIT_STATUS=0
+175-cargo-fuzz-build-after-latest-black-hat-blocker-followups.txt                               | EXIT_STATUS=0
+176-ipc-frame-and-decode-fuzz-asan-smoke-after-latest-black-hat-blocker-followups.txt           | EXIT_STATUS=0
+177-fjall-and-fuzz-lock-preservation-after-latest-black-hat-blocker-followups.txt               | EXIT_STATUS=0
+178-final-root-jj-checks-and-diff-summary-after-latest-black-hat-blocker-followups.txt          | EXIT_STATUS=0
+
+=== Command lines used (each maps to one log) ===
+
+168: root  cargo fmt --all -- --check
+169: fuzz  cargo fmt --all -- --check
+170: root  cargo check --workspace --all-targets --all-features
+171: fuzz  cargo check --workspace --all-targets --all-features
+172: root  cargo clippy --workspace --lib --bins --examples --all-features -- <strict lints>
+173: fuzz  cargo clippy --workspace --all-targets --all-features -- <strict lints>
+174: fuzz  cargo test --workspace --all-features  (proptests)
+175: fuzz  cargo fuzz build
+176: fuzz  cargo fuzz run ipc_frame_fuzz -- -runs=20000 -max_total_time=60; cargo fuzz run ipc_decode -- -runs=20000 -max_total_time=60
+177: root + fuzz  cargo tree -i fjall --workspace ; ls -la fuzz/Cargo.lock ; git status fuzz/Cargo.lock fuzz/Cargo.toml
+178: root + jj  pwd; git rev-parse --show-toplevel; jj root; jj status; git status --short; jj log -r @; jj diff --stat
+
+=== Touched source files (this round) ===
+  fuzz/src/ipc_target.rs                    (FINDING-R2-1, FINDING-EMPTYIF, FINDING-COMMENT-MISLEADING)
+  fuzz/src/workflow_target/accessor.rs      (FINDING-R3-REASON-NIT)
+  evidence/fuzz-wave25-closure-local/evidence-package.md  (added logs 168-178 + latest-followups closure section)
+
+=== Mandatory invariants check ===
+  pwd:                                       /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+  git rev-parse --show-toplevel:            /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+  jj root:                                   /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+  fuzz/Cargo.lock:                            A fuzz/Cargo.lock (added/tracked)
+  Fjall in root graph:                       fjall v3.1.4
+  Fjall in fuzz graph:                       fjall v3.1.4
+
+=== JJ diff summary (working-copy scope) ===
+  change_id:           vrsompwtztlz
+  commit_id:           59de7b730606
+  description:         wave25 fuzz targets: vb-k7bsz vb-3or6p vb-i0fkp vb-1f4h3 vb-87qtk
+  parent commit_id:    c190b285f341 fix: align runtime recovery and shutdown tests
+  files touched by round (per jj diff --stat):
+
+=== No commit/push/dolt/close-bead per task contract ===
+  jj status: dirty working copy as expected (no commit, no push, no bd dolt push, no bd close)

@@ -1,0 +1,117 @@
+Generate a SMALL inspected Rust patch, no tools. Return JSON only, max2000tokens: {"contract_markdown":"...<=180words","predicate_function":"...","export_line":"...","tests_module":"...","callsite_replacements":[{"old":"...","new":"..."}]}. Task vb-k563f. First contract, then implementation+tests fields. Existing private assert_typed_ipc_error accepts all future enum variants via wildcard{} and external fuzz_lib caller failscompile. Make pub #[must_use] bool predicate with explicit14 current variants true and wildcard false; exportlinepubuse. EVERY old callsite MUST assert its returned boolean, no ignoredresults. Keep functionname for static oracle script. Add small unit tests in same ipc_target module: each14currentvariant accepted, actual malformed header exact InvalidMagic then predicate. No fabricatedunknownvariant (non_exhaustive external impossible), noclaim untestedfuturebranch executed. No unsafe/unwrap/expect/panic/dbg/newallow or uncheckedops. Ordinary assert! asserts booleancontract. Do not modify production IPC. Sourcebelow. No XML tool output, do not call anytools.
+
+#![forbid(unsafe_code)]
+//! IPC error types.
+
+use thiserror::Error;
+use vb_core::DiagnosticCode;
+
+/// IPC/memory ingress failures.
+#[derive(Debug, Error, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum IpcError {
+    /// Queue is full and the producer must apply backpressure.
+    #[error("memory ingress queue is full")]
+    Full,
+    /// All producers or consumers have disconnected.
+    #[error("memory ingress queue is disconnected")]
+    Disconnected,
+    /// Payload exceeds the configured frame limit.
+    #[error("ingress payload is too large: actual={actual}, limit={limit}")]
+    PayloadTooLarge {
+        /// Actual payload bytes.
+        actual: usize,
+        /// Configured limit.
+        limit: usize,
+    },
+    /// Frame magic did not match `VBLT`.
+    #[error("invalid IPC frame magic: actual={actual:#010x}")]
+    InvalidMagic {
+        /// Decoded magic value.
+        actual: u32,
+    },
+    /// Frame version is not supported by this crate.
+    #[error("unsupported IPC frame version: actual={actual}")]
+    UnsupportedVersion {
+        /// Decoded version value.
+        actual: u16,
+    },
+    /// Command id is not part of the v1 command set.
+    #[error("unknown IPC command: {0}")]
+    UnknownCommand(u16),
+    /// Reserved header field must remain zero.
+    #[error("IPC reserved header field is non-zero: actual={actual}")]
+    ReservedNonZero {
+        /// Decoded reserved value.
+        actual: u16,
+    },
+    /// Header payload length and supplied payload bytes disagree.
+    #[error("IPC payload length mismatch: header={header}, actual={actual}")]
+    PayloadLengthMismatch {
+        /// Header-declared payload length.
+        header: usize,
+        /// Actual payload bytes supplied to the decoder.
+        actual: usize,
+    },
+    /// Header could not be encoded to the fixed wire length.
+    #[error("failed to encode IPC header")]
+    HeaderEncodeFailed,
+    /// Header bytes could not be read as fixed-width fields.
+    #[error("failed to decode IPC header")]
+    HeaderDecodeFailed,
+    /// Payload length cannot fit this target architecture.
+    #[error("IPC payload length cannot fit usize: actual={actual}")]
+    PayloadLengthOutOfRange {
+        /// Header-declared payload length.
+        actual: u32,
+    },
+    /// Typed Postcard payload encoding failed.
+    #[error("failed to encode IPC payload")]
+    PayloadEncodeFailed,
+    /// Typed Postcard payload decoding failed.
+    #[error("failed to decode IPC payload")]
+    PayloadDecodeFailed,
+    /// Typed response payload decoding failed.
+    #[error("failed to decode IPC response")]
+    ResponseDecodeFailed,
+}
+
+
+//! IPC frame fuzzing targets.
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::let_underscore_must_use)]
+#![allow(clippy::as_conversions)]
+#![allow(clippy::arithmetic_side_effects)]
+#![allow(clippy::len_zero)]
+
+fn assert_typed_ipc_error(error: vb_ipc::IpcError) {
+    use vb_ipc::IpcError;
+    match error {
+        IpcError::Full
+        | IpcError::Disconnected
+        | IpcError::PayloadTooLarge { .. }
+        | IpcError::InvalidMagic { .. }
+        | IpcError::UnsupportedVersion { .. }
+        | IpcError::UnknownCommand(_)
+        | IpcError::ReservedNonZero { .. }
+        | IpcError::PayloadLengthMismatch { .. }
+        | IpcError::HeaderEncodeFailed
+        | IpcError::HeaderDecodeFailed
+        | IpcError::PayloadLengthOutOfRange { .. }
+        | IpcError::PayloadEncodeFailed
+        | IpcError::PayloadDecodeFailed
+        | IpcError::ResponseDecodeFailed => {}
+        _ => {}
+    }
+}
+
+
+Callsites in ipc_target.rs: Err(e) => assert_typed_ipc_error(e), and assert_typed_ipc_error(e); in another function. In fuzz/fuzz_targets/ipc_frame.rs: fuzz_lib::assert_typed_ipc_error(encode_error); and fuzz_lib::assert_typed_ipc_error(decode_error);. All must become assert!(predicate(...)).
+Header API: vb_ipc::frame::decode_frame_header(&[u8; vb_ipc::IPC_HEADER_LEN]) -> Result<vb_ipc::IpcFrameHeader,vb_ipc::IpcError>. Allzeroheader has InvalidMagic{actual:0}, no payloadneeded.
+RESPONSE ONLY SMALL VALID JSON. Do not reread old contracts. No tool calls/XML. Return source, coordinator will inspect/apply/run.

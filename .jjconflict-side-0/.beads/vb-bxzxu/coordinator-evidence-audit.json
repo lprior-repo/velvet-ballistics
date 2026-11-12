@@ -1,0 +1,20 @@
+{
+  "checker_blob": "d2a64ab1a4d8ded0bf005dc0704a8dbe815a2721",
+  "review_reports_are_provisional": true,
+  "actual_selftest_cases_passed": 33,
+  "actual_selftest_cases_failed": 0,
+  "all_PASS_markers_in_stdout": 40,
+  "actual_raw_base_findings": 33,
+  "unique_raw_base_findings": 32,
+  "breakdown": {
+    "IgnoredOrSkippedTest": 6,
+    "WeakenedAssertion": 19,
+    "DeletedTestFile": 2,
+    "DeletedTestDeclaration": 6
+  },
+  "corrections": [
+    "The prior58case/35finding report is not supported by current raw logs.",
+    "Adapted hash-probe-*-current.py use literal invalid hash placeholders, and --root is unsupported. Their rejection cannot establish sound hash binding.",
+    "Fresh independent vb-i8o2v is assigned valid-hash probes and exact coverage-record audit; code acceptance awaits those results."
+  ]
+}

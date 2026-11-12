@@ -1,0 +1,26 @@
+# Loom concurrency verification tasks.
+
+fileGroups:
+  loom_sources:
+    - 'crates/vb_runtime/Cargo.toml'
+    - 'crates/vb_runtime/src/**/*'
+    - 'scripts/loom-list.sh'
+    - '.moon/tasks/loom.yml'
+
+tasks:
+  verify-loom:
+    script: |
+      set -euo pipefail
+      mkdir -p target/loom-tmp
+      mkdir -p target/moon-locks
+      TMPDIR="$PWD/target/loom-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings --cfg loom" timeout 10m rustup run nightly-2026-04-28 cargo test --quiet -p vb_runtime --lib --all-features models::loom
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(loom_sources)'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+    options:
+      runInCI: true
+      cache: false

@@ -199,6 +199,7 @@ fn chain_workflow() -> Option<CompiledWorkflow> {
     ));
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("chain_then_finish"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -233,7 +234,7 @@ fn make_running_shard_with_config(
         workflow,
         caps: CapabilitySet::empty(),
         action_contracts: Box::from([]),
-        inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+        inputs: Box::from([]),
     })?;
     shard.tick()?;
     let state = shard

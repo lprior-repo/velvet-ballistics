@@ -1,5 +1,5 @@
 use crate::JournalError;
-use vb_core::{CompiledInputSlot, CompiledWorkflow, InputSlotKind, SlotIdx, SlotValue};
+use vb_core::{CompiledInputSlot, CompiledWorkflow, SlotIdx, SlotValue};
 
 /// Validates supplied inputs against retained schema constraints and fills
 /// scalar defaults for omitted slots.
@@ -32,10 +32,11 @@ pub(super) fn prepare_inputs(
             .get(usize::from(slot.slot.get()))
             .is_some_and(Option::is_some)
         {
-            if slot.constraint.requires_value() {
+            if slot.constraint.requires_value() || slot.constraint.default_cold.is_some() {
                 return Err(JournalError::InputSchemaMismatch);
             }
             if let Some(default) = slot.constraint.default_value {
+                check_value(workflow, slot, default)?;
                 filled.push((slot.slot, default));
             }
         }
@@ -62,7 +63,9 @@ pub(super) fn validate_inputs(
         if remaining
             .get(usize::from(slot.slot.get()))
             .is_some_and(Option::is_some)
-            && slot.constraint.requires_value()
+            && (slot.constraint.requires_value()
+                || slot.constraint.default_value.is_some()
+                || slot.constraint.default_cold.is_some())
         {
             return Err(JournalError::InputSchemaMismatch);
         }
@@ -75,20 +78,8 @@ fn check_value(
     declared: &CompiledInputSlot,
     value: SlotValue,
 ) -> Result<(), JournalError> {
-    // A nullable slot accepts an explicit null without regard to kind.
-    if !matches!(value, SlotValue::Null) || !declared.constraint.nullability.allows_null() {
-        let kind = retained_value_kind(workflow, value)?;
-        if declared.kind != InputSlotKind::Any && declared.kind != kind {
-            return Err(JournalError::InputSchemaMismatch);
-        }
-    }
-    if let SlotValue::I64(number) = value
-        && (declared.constraint.min.is_some_and(|min| number < min)
-            || declared.constraint.max.is_some_and(|max| number > max))
-    {
-        return Err(JournalError::InputSchemaMismatch);
-    }
-    Ok(())
+    vb_core::input_validation::validate_scalar_input_value(declared, value, workflow)
+        .map_err(|_| JournalError::InputSchemaMismatch)
 }
 
 fn declared_slots(
@@ -103,24 +94,7 @@ fn declared_slots(
         let slot = remaining
             .get_mut(usize::from(declaration.slot.get()))
             .ok_or(JournalError::InputSchemaMismatch)?;
-        *slot = Some(*declaration);
+        *slot = Some(declaration.clone());
     }
     Ok(remaining)
-}
-
-fn retained_value_kind(
-    workflow: &CompiledWorkflow,
-    value: SlotValue,
-) -> Result<InputSlotKind, JournalError> {
-    match value {
-        SlotValue::Null => Ok(InputSlotKind::Null),
-        SlotValue::Bool(_) => Ok(InputSlotKind::Bool),
-        SlotValue::I64(_) => Ok(InputSlotKind::I64),
-        SlotValue::F64(_) => Ok(InputSlotKind::F64),
-        SlotValue::Symbol(symbol) if symbol.get() < workflow.symbols_count() => {
-            Ok(InputSlotKind::Symbol)
-        }
-        // The positional CLI wire carries handles, not their arena payloads.
-        _ => Err(JournalError::InputSchemaMismatch),
-    }
 }

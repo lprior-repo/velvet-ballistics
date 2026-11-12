@@ -1,0 +1,240 @@
+// SPDX-License-Identifier: MIT
+//
+// ============================================================================
+// EXTERN SURFACE for budget_computation Verus spec (WEAK binding via production_inner/)
+// ============================================================================
+//
+// This file is the production-binding surface for the `budget_computation.rs`
+// Verus spec. It includes the in-tree production mirror at
+// `verification/verus/production_inner/budget_computation_production.rs` via
+// `#[path]` so that:
+//
+//   * The companion gate `scripts/check-verus-production-binding.sh`
+//     classifies the spec file as WEAK-bound (spec uses
+//     `#[path = "extern_budget_computation.rs"]`; this file uses
+//     `#[path = "production_inner/budget_computation_production.rs"]`).
+//   * Any drift in the production field names, discriminant sets, or
+//     fn signatures breaks the
+//     `production_inner/budget_computation_production.rs` mirror and
+//     the spec proofs that depend on it.
+//
+// The mirror at `production_inner/budget_computation_production.rs`
+// is a hand-written structural copy of the production surface in
+// `crates/vb_core/src/budget.rs`. The substitutions relative to direct
+// production `#[path]` inclusion are documented in the mirror's
+// header and at the section heads of each block.
+//
+// BINDING LEDGER (mirrors production_inner/budget_computation_production.rs)
+// ============================================================================
+//   - `count_and_push_loop_body`            <- crates/vb_core/src/budget/loop_body.rs:224-251
+//     declared error-exit filter             <- crates/vb_core/src/budget/loop_region.rs:174-189
+//   - `find_node_position`                  <- crates/vb_core/src/budget.rs:154-178
+//   - `push_done_continuation`              <- crates/vb_core/src/budget/loop_body.rs:253-269
+//   - `checked_step_add`                    <- crates/vb_core/src/budget/loop_body.rs:214-219
+//   - `max_gather_pages`                    <- crates/vb_core/src/budget/reachable.rs:169-181
+//   - `total`                               <- crates/vb_core/src/budget/loop_body.rs:43-47
+//   - `count`                               <- crates/vb_core/src/budget/loop_region.rs:47-52
+//
+// ============================================================================
+// TRUST BOUNDARY
+// ============================================================================
+// The production bodies of every fn in the mirror are NOT verified by
+// Verus. Each exec fn is `#[verifier::external]` so Verus skips body
+// verification. The contracts attached via `assume_specification` in
+// the companion spec file `budget_computation.rs` state the
+// production behavior the spec proofs discharge. Drift between the
+// mirror and the production source is reported as binding-debt
+// tracked outside Verus.
+#![forbid(unsafe_code)]
+#![allow(dead_code)]
+#![allow(non_snake_case)]
+
+use vstd::prelude::*;
+
+verus! {
+
+// ---------------------------------------------------------------------------
+// PRODUCTION MIRROR INCLUSION via #[path]
+// ---------------------------------------------------------------------------
+//
+// Direct `#[path]` inclusion of the in-tree mirror at
+// `production_inner/budget_computation_production.rs` (NOT the actual
+// production source). The mirror is a hand-written structural copy of
+// `crates/vb_core/src/budget.rs` with documented substitutions
+// (thiserror/serde stripped; ordinary Rust bodies kept behind the existing
+// `#[verifier::external]` boundary). Any drift in field NAME,
+// discriminant shape, or method signature breaks the verification build.
+#[path = "production_inner/budget_computation_production.rs"]
+pub mod production_inner;
+
+// ===========================================================================
+// Phantom drift-detection helper
+// ===========================================================================
+//
+// The body is `#[verifier::external]` (opaque to Verus), but the
+// `production_inner::*` type and method references force Rust to
+// resolve the production method names at compile time. A rename of
+// any of these production methods (or the production struct fields
+// referenced below) breaks this fn's compilation.
+//
+// The drift check references every production method that the spec
+// file attaches an `assume_specification` bridge to:
+//
+//   - count_and_push_loop_body      (budget/loop_body.rs:224-251)
+//   - find_node_position            (crates/vb_core/src/budget.rs:154-178)
+//   - push_done_continuation        (budget/loop_body.rs:253-269)
+//   - checked_step_add              (budget/loop_body.rs:214-219)
+//   - collect_start_update_metrics  (budget/reachable.rs:169-181)
+//   - count_total_steps_step_increment (budget/loop_body.rs:43-47)
+//   - body_region_step_increment    (budget/loop_region.rs:47-52)
+//
+// Plus the production type discriminants referenced by the spec
+// (BudgetTraversalError::StepCountOverflow, BudgetError::TotalStepsExceeded,
+// CompiledNodeKind::ForEachStart, CompiledNodeKind::CollectStart, etc.)
+// and the underlying StepIdx / SlotIdx / ResourceContract / CompiledNode
+// mirror types.
+#[verifier::external]
+fn prod_methods_drift_check() {
+    // Reference every field of ResourceContract (crates/vb_core/src/workflow/resource_contract.rs:8-45)
+    // to surface any rename.
+    let _contract = production_inner::ResourceContract {
+        max_steps: 0,
+        max_slots: 0,
+        max_constants: 0,
+        max_accessors: 0,
+        max_expressions: 0,
+        max_expr_stack: 0,
+        max_step_budget_per_tick: 0,
+        max_transitions_per_tick: 0,
+        max_input_bytes: 0,
+        max_output_bytes: 0,
+        max_blob_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_retry_attempts: 0,
+        max_fanout: 0,
+        max_collect_items: 0,
+        max_queue_depth: 0,
+        max_journal_batch_bytes: 0,
+        allows_secret_results: false,
+    };
+
+    // Reference every variant of CompiledNodeKind used by the spec:
+    // ForEachStart, CollectStart, RepeatStart (production
+    // crates/vb_core/src/workflow/node_kind.rs:14-180). CollectNext is referenced too, to
+    // pin its collector_slot field, even though the spec never
+    // constructs it.
+    let entry = production_inner::StepIdx::new(0);
+    let step = production_inner::StepIdx::new(0);
+    let slot = production_inner::SlotIdx::new(0);
+    let _kind = production_inner::CompiledNodeKind::ForEachStart {
+        input: slot,
+        item_slot: slot,
+        limit: 0,
+        body: step,
+        done: step,
+    };
+    let _kind = production_inner::CompiledNodeKind::CollectStart {
+        source: slot,
+        limit: 0,
+        page_size: 0,
+        body: step,
+        done: step,
+    };
+    let _kind = production_inner::CompiledNodeKind::CollectNext {
+        collector_slot: slot,
+        body: step,
+        done: step,
+    };
+    let _kind = production_inner::CompiledNodeKind::RepeatStart {
+        max_attempts: 0,
+        body: step,
+        done: step,
+    };
+    // Pin ReduceStart's full production fields (input, accumulator,
+    // initial, body, done); the spec never constructs it, so this
+    // construction is the only load-bearing use of the mirror shape.
+    let constant = production_inner::ConstIdx::new(0);
+    let reduce_slot = production_inner::SlotIdx::new(0);
+    let _kind = production_inner::CompiledNodeKind::ReduceStart {
+        limit: 65_535,
+        input: reduce_slot,
+        accumulator: reduce_slot,
+        initial: constant,
+        body: step,
+        done: step,
+    };
+
+    // Reference every variant of BudgetTraversalError (budget/traversal_error.rs:11-37)
+    // and BudgetError (budget/validate_error.rs:7-57) used by the spec.
+    let _err = production_inner::BudgetTraversalError::StepCountOverflow { actual: 0 };
+    let _err = production_inner::BudgetError::TotalStepsExceeded { actual: 0, limit: 0 };
+
+    // Reference the workflow::CompiledNode and workflow::WorkflowError
+    // mirror types so a rename in crates/vb_core/src/workflow/error.rs:13-227 breaks the build.
+    // The CompiledNode constructions pin the struct shape
+    // (crates/vb_core/src/workflow/node.rs:14-23) and both routing shapes of the
+    // NodeOutput / NodeContinuation / ErrorRouting mirrors.
+    let node_slot = production_inner::SlotIdx::new(0);
+    let _node = production_inner::CompiledNode {
+        retry: None,
+        id: entry,
+        output: production_inner::NodeOutput::Slot(node_slot),
+        routing: production_inner::NodeRouting {
+            next: production_inner::NodeContinuation::Step(step),
+            error: production_inner::ErrorRouting::Handler {
+                handler: step,
+                error_slot: Some(node_slot),
+            },
+        },
+        kind: production_inner::CompiledNodeKind::Nop,
+    };
+    let _node = production_inner::CompiledNode {
+        retry: None,
+        id: entry,
+        output: production_inner::NodeOutput::Discard,
+        routing: production_inner::NodeRouting {
+            next: production_inner::NodeContinuation::End,
+            error: production_inner::ErrorRouting::None,
+        },
+        kind: production_inner::CompiledNodeKind::Nop,
+    };
+    let _err = production_inner::workflow::WorkflowError::Other;
+
+    // Force resolution of every production method by invoking it
+    // with phantom arguments. The body is opaque to Verus but the
+    // rustc compilation resolves the names.
+    let nodes: Vec<production_inner::CompiledNode> = Vec::new();
+    let mut stack: Vec<production_inner::StepIdx> = Vec::new();
+    let _ = production_inner::count_and_push_loop_body(
+        0u64,
+        0u64,
+        0u64,
+        &nodes,
+        production_inner::StepIdx::new(0),
+        production_inner::StepIdx::new(0),
+        0,
+        &mut stack,
+    );
+    let _ = production_inner::find_node_position(&nodes, production_inner::StepIdx::new(0), 0);
+    let _ = production_inner::push_done_continuation(
+        &nodes,
+        production_inner::StepIdx::new(0),
+        0,
+        &mut stack,
+    );
+    let _ = production_inner::checked_step_add(0u64, 0u64);
+    let _ = production_inner::collect_start_update_metrics(0u32, 0u32, 0u32, 0u32);
+    let _ = production_inner::count_total_steps_step_increment(
+        0u64,
+        production_inner::StepIdx::new(0),
+    );
+    let _ = production_inner::body_region_step_increment(0u64);
+}
+
+} // verus!
+// Re-export the production types and exec wrappers so the spec file
+// can reference them via `crate::production::*`. The mirror module
+// is included inside `verus!` so the type declarations are nameable
+// in spec mode; this outer re-export makes them visible in exec mode
+// as well.
+pub use production_inner::*;

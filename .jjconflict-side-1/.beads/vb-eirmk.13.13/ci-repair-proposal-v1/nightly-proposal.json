@@ -1,0 +1,8 @@
+{
+  "protected_path": ".moon/tasks/all.yml",
+  "original_sha256": "6c98ccc7d9def0de1979dc910098f32c34062aa21520ee4fdf1aff8489ad04df",
+  "proposed_sha256": "e8b95ae162515e1a392a25652da4f168ac2b216b34f0c63322ecbfc17a19077f",
+  "patch_sha256": "6bdd72fa26ae056fbf2d9a98885d609488aa4c96a0bdc94294bb1452914ee8a4",
+  "live_unchanged": true,
+  "user_approval_required": true
+}

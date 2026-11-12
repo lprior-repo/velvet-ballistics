@@ -1,0 +1,19 @@
+{
+  "verdict": "narrow3line TEST delta accepted; production unchanged and priorCODE/fullv27TEST scopes carry",
+  "source": "4b7248a43322d3c58b097b67ef05bbb71329b21a",
+  "native_coverage": "All5actual100line source textpackets and exacttestpatch read; nonexistent guessedpaths retained inraw, correctedreads coveractualfullfile.",
+  "actual_file_test_count": 29,
+  "corrections": [
+    "Reviewer other29tests wording wrong: filehas29TOTAL, onechanged+28unchanged.",
+    "State2 is reviewer template text, not tracker acceptance or lifecycle state.",
+    "Exact0->1 updates contract expectation, no generic strongerassertion guarantee inferred.",
+    "RootV44 actualfullintegrationfile29/29passed2.848s on5ab integratedsource, no skip; reviewer sourceonly no executedpass claim."
+  ],
+  "gate_state": "Finalcombined48ef V48canonicalrunning; notpassedbyinference.",
+  "excluded": [
+    "productionCODEdelta",
+    "allproducerfreshness",
+    "formal/powerloss",
+    "fullv1closure"
+  ]
+}

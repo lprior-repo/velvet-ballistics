@@ -1,0 +1,16 @@
+# Invalid Fixture: Unknown Step Type
+# This workflow uses an unknown/unsupported step type
+# Semantic validation should fail with UnsupportedStepPrimitive
+---
+version: velvet-ballistics/v1
+name: unknown_step_type_workflow
+
+when:
+  manual: {}
+steps:
+  - id: magic
+    wizardry:
+      spell: "fireball"
+  - id: done
+    finish:
+      result: 0

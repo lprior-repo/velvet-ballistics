@@ -1,0 +1,19 @@
+```json
+[
+  {
+    "file": "crates/vb_compile/src/tests/error_variant_tests.rs",
+    "old": "    assert_ne!(\n        wf_la.digest(),\n        wf_lb.digest(),\n        \"different branch labels must produce different digests\"\n    );",
+    "new": "    assert_eq!(\n        wf_la.to_parts(),\n        wf_lb.to_parts(),\n        \"consistent branch renames preserve compiled IR parts\"\n    );\n    assert_eq!(\n        wf_la.digest(),\n        wf_lb.digest(),\n        \"consistent branch renames preserve compiled IR digest\"\n    );\n    assert!(\n        matches!(\n            (crate::canonical_digest(&source_la), crate::canonical_digest(&source_lb)),\n            (Ok(a), Ok(b)) if a != b\n        ),\n        \"authoring digest preserves branch label spelling\"\n    );"
+  },
+  {
+    "file": "crates/vb_compile/src/tests/error_variant_tests.rs",
+    "old": "    assert_ne!(\n        wf_ida.digest(),\n        wf_idb.digest(),\n        \"different sub-step IDs must produce different digests\"\n    );",
+    "new": "    assert_eq!(\n        wf_ida.to_parts(),\n        wf_idb.to_parts(),\n        \"consistent sub-step ID renames preserve compiled IR parts\"\n    );\n    assert_eq!(\n        wf_ida.digest(),\n        wf_idb.digest(),\n        \"consistent sub-step ID renames preserve compiled IR digest\"\n    );\n    assert!(\n        matches!(\n            (crate::canonical_digest(&source_ida), crate::canonical_digest(&source_idb)),\n            (Ok(a), Ok(b)) if a != b\n        ),\n        \"authoring digest preserves sub-step ID spelling\"\n    );"
+  },
+  {
+    "file": "crates/vb_compile/src/proptest_finish_digest.rs",
+    "old": "        prop_assert_ne!(da, db,\n            \"different Finish result output names must produce different digests\");",
+    "new": "        prop_assert_eq!(da, db, \"consistent output renames preserve compiled IR digest\");\n        let source_a = crate::canonical_digest(&yaml_a)\n            .map_err(|e| TestCaseError::fail(format!(\"canonical_digest(a): {}\", e)))?;\n        let source_b = crate::canonical_digest(&yaml_b)\n            .map_err(|e| TestCaseError::fail(format!(\"canonical_digest(b): {}\", e)))?;\n        prop_assert_ne!(source_a, source_b, \"authoring digest preserves output spelling\");\n        let parts_a = compile_workflow(&yaml_a)\n            .map_err(|e| TestCaseError::fail(format!(\"compile(a): {}\", e)))?\n            .to_parts();\n        let parts_b = compile_workflow(&yaml_b)\n            .map_err(|e| TestCaseError::fail(format!(\"compile(b): {}\", e)))?\n            .to_parts();\n        prop_assert_eq!(parts_a, parts_b, \"consistent output renames preserve compiled IR parts\");"
+  }
+]
+```

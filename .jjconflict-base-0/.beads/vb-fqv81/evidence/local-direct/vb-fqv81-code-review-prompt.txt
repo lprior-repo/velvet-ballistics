@@ -1,0 +1,61 @@
+Independent config code review. Return APPROVED or REJECTED. Actualsinglemetadatachange removes only dolt_server_port preservingallotherJSONfields. Existingmainbd-managedserver healthy44101 andportfile44101; mainDBhyphenlegacyremainsuntilseparatemigration. No serviceconfig/restart/delete/remotechanges. Boundedactualcheckerpositiveandnegative2tests pass, activebdcontext/statussame. Validate portseparation implementation, notdbnamingmigration. Diff and evidence:
+diff --git a/.beads/metadata.json b/.beads/metadata.json
+index cd4b910651..6b2aac9056 100644
+--- a/.beads/metadata.json
++++ b/.beads/metadata.json
+@@ -3,7 +3,6 @@
+   "backend": "dolt",
+   "dolt_mode": "server",
+   "dolt_server_host": "127.0.0.1",
+-  "dolt_server_port": 44101,
+   "dolt_database": "velvet-ballistics",
+   "project_id": "3265bb22-ec7c-4f87-b1a5-6001b941b612"
+-}
+\ No newline at end of file
++}
+
+.beads/vb-fqv81/evidence/metadata-postcondition.json
+{
+  "removed": [
+    "dolt_server_port"
+  ],
+  "preserved": {
+    "database": "dolt",
+    "backend": "dolt",
+    "dolt_mode": "server",
+    "dolt_server_host": "127.0.0.1",
+    "dolt_database": "velvet-ballistics",
+    "project_id": "3265bb22-ec7c-4f87-b1a5-6001b941b612"
+  },
+  "all_other_fields_equal": true
+}
+
+.beads/vb-fqv81/evidence/server-mode-check.log
+beads server-mode check passed
+
+.beads/vb-fqv81/evidence/bd-context.log
+bd version:     1.0.5
+
+Repository:
+  beads dir:    /home/lewis/src/velvet-ballistics/.beads
+  repo root:    /home/lewis/src/velvet-ballistics
+  cwd repo:     /home/lewis/src/isoloated/velvet-ballistics-vb-fqv81-beads-metadata-3090
+  worktree:     yes
+  role:         maintainer
+
+Backend:
+  type:         dolt
+  mode:         server
+  database:     velvet-ballistics
+  server:       127.0.0.1:44101
+  project id:   3265bb22-ec7c-4f87-b1a5-6001b941b612
+
+.beads/vb-fqv81/evidence/bd-server-status.log
+Dolt server: running
+  PID:  2371574
+  Port: 44101
+  Data: /home/lewis/src/velvet-ballistics/.beads/dolt
+  Logs: /home/lewis/src/velvet-ballistics/.beads/dolt-server.log
+
+.beads/vb-fqv81/evidence/port-regression-tests.log
+2 regression cases passed

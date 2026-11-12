@@ -20,6 +20,7 @@ use vb_runtime::shard::{InspectResponse, ResumeError, Shard, ShardCommand, Shard
 fn one_step_workflow(kind: CompiledNodeKind, slot_count: u16) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::<str>::from("vb_5m8w_runtime_suspension"),
         digest: WorkflowDigest::from_bytes([0x8b; 32]),
         nodes: vec![node(StepIdx::new(0), kind, None, None)].into_boxed_slice(),
@@ -30,7 +31,11 @@ fn one_step_workflow(kind: CompiledNodeKind, slot_count: u16) -> Result<Compiled
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::new([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
         step_names: Box::new([]),
     })
     .map_err(|error| error.to_string())
@@ -39,6 +44,7 @@ fn one_step_workflow(kind: CompiledNodeKind, slot_count: u16) -> Result<Compiled
 fn const_then_finish_workflow(value: ConstValue) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::<str>::from("vb_5m8w_runtime_completed_then_exhausted"),
         digest: WorkflowDigest::from_bytes([0x5e; 32]),
         nodes: vec![

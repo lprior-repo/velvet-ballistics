@@ -1,0 +1,14 @@
+{
+  "status": "invalid complete session; A2 guard refused before measurement",
+  "latency_exit": 1,
+  "accepted_measurements": false,
+  "log_sha256": "cc08a82193896d3591aeeb8012f1395a2637dec422a1b49417750a0392797d2f",
+  "observed_busy_pids": [
+    1173826,
+    1173875,
+    1174329,
+    1174646
+  ],
+  "processes_already_exited_when_inspected": true,
+  "processes_stopped_by_parent": false
+}

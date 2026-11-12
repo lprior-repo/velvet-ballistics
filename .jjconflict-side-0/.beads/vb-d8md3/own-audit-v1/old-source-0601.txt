@@ -1,0 +1,100 @@
+old-source:601: 
+old-source:602:         // Enqueue 16th item (80% exactly) — backpressure warning MUST fire
+old-source:603:         queue.enqueue(make_ticket(15)).unwrap();
+old-source:604: 
+old-source:605:         let warning = rx.recv_timeout(std::time::Duration::from_millis(100));
+old-source:606:         assert_eq!(
+old-source:607:             warning,
+old-source:608:             Ok(BackpressureWarning {
+old-source:609:                 depth: 16,
+old-source:610:                 capacity: 20
+old-source:611:             }),
+old-source:612:             "backpressure warning must fire at exactly 80% capacity (depth=16, cap=20)"
+old-source:613:         );
+old-source:614:     }
+old-source:615: 
+old-source:616:     #[test]
+old-source:617:     fn action_queue_no_warning_before_80_percent_capacity() {
+old-source:618:         // Given: capacity=10, threshold=8
+old-source:619:         // At depth=7 (70%), no warning should fire
+old-source:620:         let capacity = 10;
+old-source:621:         let (queue, rx) = BoundedActionCompletionQueue::with_backpressure(capacity).unwrap();
+old-source:622: 
+old-source:623:         // Enqueue 7 items (70%)
+old-source:624:         for i in 0..7 {
+old-source:625:             queue.enqueue(make_ticket(i)).unwrap();
+old-source:626:         }
+old-source:627: 
+old-source:628:         // No backpressure warning at 70% (7/10 = 70% < 80%)
+old-source:629:         assert_eq!(
+old-source:630:             rx.try_recv(),
+old-source:631:             Err(std::sync::mpsc::TryRecvError::Empty),
+old-source:632:             "no backpressure warning at 70% capacity (7/10)"
+old-source:633:         );
+old-source:634: 
+old-source:635:         // Queue state is correct
+old-source:636:         assert_eq!(queue.len(), 7);
+old-source:637:         assert_eq!(queue.remaining_capacity(), 3);
+old-source:638:     }
+old-source:639: 
+old-source:640:     #[test]
+old-source:641:     fn action_queue_no_warning_at_79_percent_capacity() {
+old-source:642:         // Given: capacity=19, threshold = ceil(19 * 8 / 10) = ceil(15.2) = 16.
+old-source:643:         // At depth=15: 15/19 = 78.9% < 80%, so no warning.
+old-source:644:         // At depth=16: 16/19 = 84.2% >= 80%, warning fires.
+old-source:645:         // Regression: previously the floor-division bug made threshold=15, which
+old-source:646:         // produced a misleading warning at 78.9% (RP-019 / bead vb-lxkqh).
+old-source:647:         let capacity = 19;
+old-source:648:         let (queue, rx) = BoundedActionCompletionQueue::with_backpressure(capacity).unwrap();
+old-source:649: 
+old-source:650:         // Enqueue 15 items (78.9%) — below the ceiling-of-80% threshold of 16.
+old-source:651:         for i in 0..15 {
+old-source:652:             queue.enqueue(make_ticket(i)).unwrap();
+old-source:653:         }
+old-source:654: 
+old-source:655:         // Depth=15 < threshold=16 → no warning should be emitted.
+old-source:656:         let warning = rx.recv_timeout(std::time::Duration::from_millis(100));
+old-source:657:         assert_eq!(
+old-source:658:             warning,
+old-source:659:             Err(std::sync::mpsc::RecvTimeoutError::Timeout),
+old-source:660:             "no warning should fire below the ceiling-of-80% threshold (depth=15, threshold=16)"
+old-source:661:         );
+old-source:662:     }
+old-source:663: 
+old-source:664:     #[test]
+old-source:665:     fn action_queue_backpressure_warning_fires_once_per_enqueue_at_threshold() {
+old-source:666:         // Verify warning fires on EACH enqueue that crosses or meets threshold
+old-source:667:         let capacity = 10;
+old-source:668:         let (queue, rx) = BoundedActionCompletionQueue::with_backpressure(capacity).unwrap();
+old-source:669: 
+old-source:670:         // Enqueue to 7 (70%) — no warning
+old-source:671:         for i in 0..7 {
+old-source:672:             queue.enqueue(make_ticket(i)).unwrap();
+old-source:673:         }
+old-source:674:         assert_eq!(rx.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty));
+old-source:675: 
+old-source:676:         // Enqueue 8th (80%) — warning fires
+old-source:677:         queue.enqueue(make_ticket(7)).unwrap();
+old-source:678:         assert_eq!(
+old-source:679:             rx.recv_timeout(std::time::Duration::from_millis(100)),
+old-source:680:             Ok(BackpressureWarning {
+old-source:681:                 depth: 8,
+old-source:682:                 capacity: 10
+old-source:683:             })
+old-source:684:         );
+old-source:685: 
+old-source:686:         // Enqueue 9th (90%) — another warning fires (depth=9 >= threshold=8)
+old-source:687:         queue.enqueue(make_ticket(8)).unwrap();
+old-source:688:         assert_eq!(
+old-source:689:             rx.recv_timeout(std::time::Duration::from_millis(100)),
+old-source:690:             Ok(BackpressureWarning {
+old-source:691:                 depth: 9,
+old-source:692:                 capacity: 10
+old-source:693:             })
+old-source:694:         );
+old-source:695: 
+old-source:696:         // Drain and verify no more warnings after drain
+old-source:697:         let _ = queue.dequeue();
+old-source:698:         let _ = queue.dequeue();
+old-source:699:         assert_eq!(queue.len(), 7);
+old-source:700: 

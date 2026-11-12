@@ -12,6 +12,7 @@ use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, WorkflowParts, node}
 fn workflow_with_const_then_finish(value: ConstValue) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("vb_5m8w_step_budget_suspension"),
         digest: WorkflowDigest::from_bytes([0x5d; 32]),

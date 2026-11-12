@@ -1,0 +1,43 @@
+1: impl Shard {
+2:     /// Strict durable policy decision port.
+3:     ///
+4:     /// Checks pending ticket ownership, computes checked next sequence,
+5:     /// reserves map capacity, calls the journal's strict port, and advances
+6:     /// the per-run sequence only after success. On any failure the pending
+7:     /// state and next sequence are unchanged.
+8:     pub(crate) fn append_policy_decision_strict(
+9:         &mut self,
+10:         decision: vb_core::policy::DecisionRecord,
+11:     ) -> crate::RuntimeResult<()> {
+12:         let run = decision.ticket.run;
+13: 
+14:         // Verify shard owns this pending ticket.
+15:         self.require_pending_action_ownership(decision.ticket)?;
+16: 
+17:         // Get current sequence, compute checked next BEFORE append.
+18:         let seq = self.journal_sequence_for(run);
+19:         let next = Self::checked_next_seq(seq)?;
+20: 
+21:         // Reserve map capacity before append.
+22:         self.reserve_journal_sequence_slot(run)?;
+23: 
+24:         // Call the journal strict port.
+25:         self.journal.append_policy_decision_strict(decision, seq)?;
+26: 
+27:         // Publish next sequence only after successful append.
+28:         let _previous = self.journal_sequences.insert(run, next);
+29: 
+30:         Ok(())
+31:     }
+32: 
+33:     /// Compute the checked next sequence number for a run.
+34:     ///
+35:     /// Returns an error on u64 overflow. Must be called before any
+36:     /// irreversible state mutation.
+37:     fn checked_next_seq(seq: vb_storage::EventSeq) -> crate::RuntimeResult<vb_storage::EventSeq> {
+38:         seq.get()
+39:             .checked_add(1)
+40:             .map(vb_storage::EventSeq::new)
+41:             .ok_or_else(|| crate::RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
+42:     }
+43: }

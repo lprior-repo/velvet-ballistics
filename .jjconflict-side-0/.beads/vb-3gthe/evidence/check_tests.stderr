@@ -1,0 +1,282 @@
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling libc v0.2.186
+   Compiling syn v2.0.117
+    Checking cfg-if v1.0.4
+   Compiling serde_core v1.0.228
+   Compiling serde v1.0.228
+   Compiling serde_derive v1.0.228
+   Compiling autocfg v1.5.1
+   Compiling num-traits v0.2.19
+   Compiling jobserver v0.1.35
+   Compiling shlex v1.3.0
+   Compiling find-msvc-tools v0.1.9
+   Compiling cc v1.2.62
+    Checking once_cell v1.21.4
+   Compiling thiserror v2.0.18
+   Compiling thiserror-impl v2.0.18
+    Checking equivalent v1.0.2
+   Compiling zerocopy v0.8.48
+   Compiling zerocopy-derive v0.8.48
+    Checking bitflags v2.11.1
+    Checking hashbrown v0.17.1
+   Compiling rustix v1.1.4
+   Compiling getrandom v0.4.2
+    Checking indexmap v2.14.0
+   Compiling getrandom v0.3.4
+    Checking linux-raw-sys v0.12.1
+    Checking iana-time-zone v0.1.65
+    Checking fastrand v2.4.1
+    Checking chrono v0.4.44
+    Checking tempfile v3.27.0
+    Checking bytes v1.11.1
+   Compiling semver v1.0.28
+   Compiling rustc_version v0.4.1
+    Checking regex-syntax v0.8.10
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_core)
+    Checking rand_core v0.9.5
+    Checking ppv-lite86 v0.2.21
+    Checking scopeguard v1.2.0
+    Checking lock_api v0.4.14
+    Checking rand_chacha v0.9.0
+    Checking rand v0.9.4
+    Checking wait-timeout v0.2.1
+    Checking bit-vec v0.8.0
+    Checking quick-error v1.2.3
+    Checking fnv v1.0.7
+    Checking rusty-fork v0.3.1
+    Checking bit-set v0.8.0
+    Checking spin v0.9.8
+    Checking rand_xorshift v0.4.0
+    Checking arrayvec v0.7.6
+    Checking unarray v0.1.4
+    Checking proptest v1.11.0
+   Compiling heapless v0.7.17
+    Checking byteorder v1.5.0
+    Checking hash32 v0.2.1
+   Compiling blake3 v1.8.5
+    Checking stable_deref_trait v1.2.1
+    Checking cobs v0.3.0
+    Checking arrayref v0.3.9
+    Checking cpufeatures v0.3.0
+    Checking constant_time_eq v0.4.2
+    Checking postcard v1.1.3
+   Compiling crossbeam-utils v0.8.21
+    Checking vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_validate)
+    Checking crossbeam-epoch v0.9.18
+    Checking memchr v2.8.0
+    Checking log v0.4.29
+    Checking smallvec v1.15.1
+    Checking byteorder-lite v0.1.0
+   Compiling parking_lot_core v0.9.12
+    Checking twox-hash v2.1.2
+    Checking xxhash-rust v0.8.15
+    Checking hashbrown v0.16.1
+    Checking compare v0.0.6
+    Checking interval-heap v0.0.5
+    Checking quick_cache v0.6.22
+    Checking sfa v1.0.0
+   Compiling enum_dispatch v0.3.13
+    Checking lz4_flex v0.13.1
+    Checking crossbeam-skiplist v0.1.3
+    Checking varint-rs v2.2.0
+    Checking hashbrown v0.14.5
+    Checking byteview v0.10.1
+    Checking self_cell v1.2.2
+    Checking rustc-hash v2.1.2
+    Checking dashmap v6.2.1
+    Checking lsm-tree v3.1.4
+    Checking flume v0.12.0
+   Compiling crc32c v0.6.8
+    Checking fjall v3.1.4
+    Checking aho-corasick v1.1.4
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_storage)
+    Checking regex-automata v0.4.14
+    Checking arraydeque v0.5.1
+   Compiling zmij v1.0.21
+    Checking foldhash v0.1.5
+    Checking hashbrown v0.15.5
+   Compiling logos-codegen v0.15.1
+    Checking hashlink v0.10.0
+   Compiling lazy_static v1.5.0
+   Compiling beef v0.5.2
+   Compiling serde_json v1.0.150
+    Checking anstyle v1.0.14
+    Checking itoa v1.0.18
+    Checking saphyr-parser v0.0.6
+    Checking ordered-float v5.3.0
+    Checking saphyr v0.0.6
+   Compiling logos-derive v0.15.1
+    Checking logos v0.15.1
+    Checking crossbeam-queue v0.3.12
+    Checking rtrb v0.3.4
+    Checking vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_expr)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_runtime)
+    Checking vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_yaml)
+    Checking vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_compile)
+    Checking utf8parse v0.2.2
+    Checking anstyle-query v1.1.5
+    Checking anstyle-parse v1.0.0
+    Checking is_terminal_polyfill v1.70.2
+    Checking colorchoice v1.0.5
+   Compiling heck v0.5.0
+    Checking anstream v1.0.0
+    Checking clap_lex v1.1.0
+    Checking strsim v0.11.1
+   Compiling clap_derive v4.6.1
+    Checking clap_builder v4.6.0
+    Checking regex v1.12.3
+    Checking either v1.16.0
+   Compiling rayon-core v1.13.0
+    Checking crossbeam-deque v0.8.6
+    Checking half v2.7.1
+   Compiling alloca v0.4.0
+    Checking plotters-backend v0.3.7
+    Checking ciborium-io v0.2.2
+    Checking ciborium-ll v0.2.2
+    Checking plotters-svg v0.3.7
+    Checking clap v4.6.1
+    Checking itertools v0.13.0
+    Checking same-file v1.0.6
+    Checking cast v0.3.0
+    Checking walkdir v2.5.0
+    Checking criterion-plot v0.8.2
+    Checking rayon v1.12.0
+    Checking plotters v0.3.7
+    Checking ciborium v0.2.2
+    Checking tinytemplate v1.2.1
+    Checking page_size v0.6.0
+    Checking oorandom v11.1.5
+    Checking anes v0.1.6
+   Compiling crc32fast v1.5.0
+    Checking criterion v0.8.2
+    Checking crossbeam-channel v0.5.15
+   Compiling version_check v0.9.5
+   Compiling ahash v0.8.12
+    Checking mio v1.2.0
+    Checking encoding_rs v0.8.35
+    Checking unicode-width v0.2.2
+    Checking annotate-snippets v0.12.16
+    Checking encoding_rs_io v0.1.7
+    Checking vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_ipc)
+    Checking saphyr-parser-bw v0.0.611
+    Checking nohash-hasher v0.2.0
+    Checking base64 v0.22.1
+    Checking simd-adler32 v0.3.9
+    Checking serde-saphyr v0.0.25
+    Checking adler2 v2.0.1
+    Checking miniz_oxide v0.8.9
+    Checking winnow v1.0.3
+   Compiling camino v1.2.2
+    Checking toml_parser v1.1.2+spec-1.1.0
+    Checking flate2 v1.1.9
+    Checking fdeflate v0.3.7
+    Checking serde_spanned v1.1.1
+    Checking toml_datetime v0.7.5+spec-1.1.0
+    Checking pxfm v0.1.29
+    Checking unsafe-libyaml v0.2.11
+    Checking ryu v1.0.23
+   Compiling anyhow v1.0.102
+    Checking velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/velvet_ballistics)
+    Checking toml_writer v1.1.1+spec-1.1.0
+    Checking winnow v0.7.15
+    Checking toml v0.9.12+spec-1.1.0
+    Checking serde_yaml v0.9.34+deprecated
+    Checking moxcms v0.8.1
+    Checking png v0.18.1
+    Checking cargo-platform v0.1.9
+    Checking bytemuck v1.25.0
+    Checking image v0.25.10
+    Checking cargo_metadata v0.19.2
+    Checking velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/workspace_tests)
+   Compiling rustversion v1.0.22
+    Checking xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/xtask)
+    Checking tracing-core v0.1.36
+   Compiling generator v0.8.8
+    Checking pin-project-lite v0.2.17
+    Checking sharded-slab v0.1.7
+    Checking tracing v0.1.44
+    Checking tracing-log v0.2.0
+    Checking matchers v0.2.0
+    Checking thread_local v1.1.9
+    Checking nu-ansi-term v0.50.3
+    Checking tracing-subscriber v0.3.23
+    Checking scoped-tls v1.0.1
+    Checking loom v0.7.2
+   Compiling libfuzzer-sys v0.4.13
+    Checking arbitrary v1.4.2
+warning: unused import: `AdmissionError`
+ --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:8:52
+  |
+8 | use vb_runtime::admission::{AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError};
+  |                                                    ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `ActionReplayTracker` and `replay_journal`
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:10:5
+   |
+10 |     ActionReplayTracker, EventSeq, FjallJournal, JournalError, JournalEvent, replay_journal,
+   |     ^^^^^^^^^^^^^^^^^^^                                                      ^^^^^^^^^^^^^^
+
+warning: struct `FixedArtifactStore` is never constructed
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:14:8
+   |
+14 | struct FixedArtifactStore {
+   |        ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `ticket` is never used
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:37:4
+   |
+37 | fn ticket(run: u64, step: u16, key: u128) -> ActionTicket {
+   |    ^^^^^^
+
+warning: function `valid_artifact` is never used
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:50:4
+   |
+50 | fn valid_artifact(_artifact_digest: WorkflowDigest) -> vb_storage::AcceptedArtifact {
+   |    ^^^^^^^^^^^^^^
+
+warning: function `count_scheduled` is never used
+   --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:389:4
+    |
+389 | fn count_scheduled(events: &[JournalEvent]) -> usize {
+    |    ^^^^^^^^^^^^^^^
+
+warning: function `count_completed` is never used
+   --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:396:4
+    |
+396 | fn count_completed(events: &[JournalEvent]) -> usize {
+    |    ^^^^^^^^^^^^^^^
+
+warning: `velvet-ballistics-workspace-tests` (test "vb_ko29_5_public_idempotency") generated 7 warnings (run `cargo fix --test "vb_ko29_5_public_idempotency" -p velvet-ballistics-workspace-tests` to apply 2 suggestions)
+    Checking velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/fuzz)
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/workspace_tests/tests/restate_sync_drr_scheduler_tests.rs:198:27
+    |
+198 |     let idempotency_key = compute_action_idempotency_key(run, seq, action);
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^      --- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_core/src/action/ticket.rs:28:8
+    |
+ 28 | pub fn compute_action_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: provide the argument
+    |
+198 |     let idempotency_key = compute_action_idempotency_key(run, /* u16 */, seq, action);
+    |                                                               ++++++++++
+
+error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+   --> crates/workspace_tests/tests/restate_sync_drr_scheduler_tests.rs:199:5
+    |
+199 |     ActionTicket {
+    |     ^^^^^^^^^^^^ missing `run_attempt`
+
+Some errors have detailed explanations: E0061, E0063.
+For more information about an error, try `rustc --explain E0061`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "restate_sync_drr_scheduler_tests") due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...

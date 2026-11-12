@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-//! Node-kind reference validation.
 
 use super::validate_refs::{
     validate_branch_route, validate_const, validate_expr, validate_optional_slot,
@@ -85,12 +84,13 @@ pub(super) fn validate_node_kind(
             validate_slot(*collector_slot, parts.slot_count)
         }
         CompiledNodeKind::ReduceStart {
+            limit,
             input,
             accumulator,
             initial,
             body,
             done,
-        } => validate_reduce_start(*input, *accumulator, *initial, *body, *done, parts),
+        } => validate_reduce_start(*limit, *input, *accumulator, *initial, *body, *done, parts),
         CompiledNodeKind::ReduceNext {
             iterator_slot,
             accumulator,
@@ -229,6 +229,7 @@ fn validate_nonzero_u16(value: u16, resource: ContractResource) -> Result<(), Wo
 }
 
 fn validate_reduce_start(
+    limit: u32,
     input: SlotIdx,
     accumulator: SlotIdx,
     initial: ConstIdx,
@@ -236,6 +237,7 @@ fn validate_reduce_start(
     done: StepIdx,
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
+    super::resource_limits::validate_reduce_limit(limit)?;
     validate_slot(input, parts.slot_count)?;
     validate_slot(accumulator, parts.slot_count)?;
     validate_const(initial, parts.constants.len())?;

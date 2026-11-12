@@ -1,0 +1,220 @@
+             }
+@@ -254,71 +257,74 @@ impl Shard {
+                 granted_count,
+             }),
+         }
+     }
+ 
+     pub(crate) fn validate_submit_admission(
+         &self,
+         run: RunId,
+         workflow: &CompiledWorkflow,
+         caps: CapabilitySet,
+     ) -> RuntimeResult<()> {
+         self.build_admission(run, workflow.digest(), caps)?;
+         execution_binding::validate(self.artifact_store.as_ref(), self.policy, workflow, &[])?;
+         Ok(())
+     }
+ 
+     /// Validates admission requirements for a submitted run with action contracts.
+     ///
+     /// Checks: contract ID matches its registry index, duplicate action IDs,
+     /// well-formed contract names, that granted capabilities cover the required
+     /// capabilities declared by the contracts, and that each workflow Do action
+     /// has a corresponding contract at its registry index.
+     pub(crate) fn validate_submit_admission_with_contracts(
+         &self,
+         run: RunId,
+         workflow: &CompiledWorkflow,
+         caps: CapabilitySet,
+         action_contracts: &[vb_core::action::ActionContract],
+     ) -> RuntimeResult<()> {
+         let digest = workflow.digest();
+         self.build_admission(run, digest, caps.clone())?;
+         super::contract_validation::validate_contract_ids(action_contracts)?;
+         super::contract_validation::validate_contract_capabilities(action_contracts, &caps)?;
+         super::contract_validation::validate_workflow_action_binding(workflow, action_contracts)?;
+         execution_binding::validate(
+-            self.artifact_store.as_ref(), self.policy, workflow, action_contracts,
++            self.artifact_store.as_ref(),
++            self.policy,
++            workflow,
++            action_contracts,
+         )?;
+         Ok(())
+     }
+     pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {
+         self.validate_run_exists(run)?;
+         let current_state = self.get_runtime_state_or_running(run);
+         if current_state == RuntimeState::Running {
+             return Ok(ResumeResult {
+                 run_id: run,
+                 status: ResumeStatus::AlreadyRunning,
+                 timestamp: current_timestamp(),
+             });
+         }
+         if current_state != RuntimeState::Resumable {
+             return Err(ResumeError::NotResumable {
+                 run_id: run,
+                 current_state,
+             });
+         }
+         let timestamp = self.append_resumed_event(run)?;
+         let drive_result = self.drive_run(run);
+         self.observe_resume_drive_result(run, drive_result)?;
+         Ok(ResumeResult {
+             run_id: run,
+             status: ResumeStatus::Resumed,
+             timestamp,
+         })
+     }
+ 
+     /// Recovers a run from a pre-hydrated `RunFrame` by loading the
+     /// compiled workflow from the artifact store and constructing a full
+     /// `RunState`.
+     ///
+     /// The workflow digest comes from the journal recovery summary and is
+     /// used to look up the `AcceptedArtifact` whose `ir` field contains the
+@@ -329,161 +335,202 @@ impl Shard {
+     /// - No `prepare_run_slots` / `take_frame_for` — the frame is pre-hydrated.
+     /// - The artifact store is queried by digest rather than the workflow being
+     ///   passed directly.
+     /// - Admission is built with empty capabilities (caps are not persisted
+     ///   per-run in the journal; runs requiring non-empty caps will fail
+     ///   admission during recovery, which is the correct fail-closed behavior).
+     ///
+     /// Recovers a run from full recovery context provided by journal replay.
+     ///
+     /// The typed `RecoverRunCommand` carries all recovery evidence: artifact
+     /// digest for verification, workflow digest for identity validation,
+     /// journal sequence for sequencing, collect states for pagination
+     /// resumption, and boundary classification for suspended operations.
+     ///
+     /// Recovery flow:
+     /// 1. Load artifact by artifact_digest (verification)
+     /// 2. Deserialize and compile workflow from artifact IR
+     /// 3. Verify workflow identity matches command workflow_digest
+     /// 4. Seed journal sequence from command next_seq
+     /// 5. Build admission with artifact's required capabilities
+     /// 6. Construct RunState restoring collect_states
+     /// 7. Handle boundary (pending action / open ask)
+     /// 8. Drive run from recovered state
+     pub(crate) fn handle_recover(
+         &mut self,
+         command: crate::shard::types::RecoverRunCommand,
+     ) -> RuntimeResult<()> {
+         let run = command.run;
+         let frame = command.frame;
+         let artifact_digest = command.artifact_digest;
+         let workflow_digest = command.workflow_digest;
+         let next_seq = command.next_seq;
+         let collect_states = command.collect_states;
+         let retry_checkpoint = command.retry_checkpoint;
+         let boundary = command.boundary;
++        let admission = command.admission;
+ 
+         // Step 1: Load artifact by artifact_digest for verification
+         let artifact = self
+             .artifact_store
+             .load_accepted_artifact(artifact_digest)
+             .map_err(|e| match e {
+                 crate::admission::ArtifactEnvelopeError::ArtifactNotFound { digest } => {
+                     RuntimeError::Recovery {
+                         error: format!("artifact not found during recovery: {digest:?}"),
+                     }
+                 }
+                 other => RuntimeError::Recovery {
+                     error: format!("artifact load failed: {other}"),
+                 },
+             })?;
+ 
+         // Step 2: Deserialize and compile workflow from artifact IR
+         let parts: vb_core::workflow::WorkflowParts =
+             postcard::from_bytes(&artifact.ir).map_err(|_| RuntimeError::Recovery {
+                 error: "artifact IR decode failed".to_string(),
+             })?;
+ 
+         let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).map_err(|e| {
+             RuntimeError::Recovery {
+                 error: format!("workflow compile failed: {e}"),
+             }
+         })?;
+ 
+         // Step 3: Verify workflow identity matches command workflow_digest
+         if workflow.digest() != workflow_digest {
+             return Err(RuntimeError::Recovery {
+                 error: format!(
+                     "workflow digest mismatch: expected {workflow_digest:?}, got {:?}",
+                     workflow.digest()
+                 ),
+             });
+         }
+ 
+-        // Step 4: Validate the checkpoint's admission policy pin against the
+-        // loaded artifact's durable policy_digest before any restore mutation.
+-        // This catches admission_policy_pin_mismatch that the separate full
+-        // recovery flow validates via validate_recovered_admission_evidence.
+-        if let Some(checkpoint) = &retry_checkpoint
+-            && let Some(admission) = &checkpoint.admission
+-        {
+-            crate::recovery::validate_recovered_policy_pin(admission, &artifact)?;
+-        }
++        // Phase A: Validate the command's admission evidence.
++        // Runs for all recovery paths (full, raw, retry) because the
++        // raw command path bypasses the Runtime prefix validation.
++        recovered_admission::validate_recovered_admission(
++            &admission,
++            crate::recovery::RecoveredAdmissionContext {
++                run,
++                expected_workflow: workflow_digest,
++                runtime_policy: self.policy,
++            },
++            &artifact,
++            &workflow,
++        )?;
++
++        // Phase B: Validate the full retry checkpoint before any state mutation.
++        // Checks nested identities against the compiled workflow, and if the
++        // checkpoint carries an admission, validates the full recovered
++        // admission evidence. Applies to both Historical and Unverified
++        // command paths because the public new(...).with_retry_checkpoint(...)
++        // API can attach a checkpoint to an Unverified command without Runtime
++        // prefix validation.
++        recovered_admission::validate_retry_checkpoint(
++            retry_checkpoint.as_ref(),
++            crate::recovery::RecoveredAdmissionContext {
++                run,
++                expected_workflow: workflow_digest,
++                runtime_policy: self.policy,
++            },
++            &artifact,
++            &workflow,
++        )?;
++
++        // Phase C: Build unverified admission for legacy recovery.
++        // For Unverified kind, build admission using the artifact's required
++        // capabilities and current policy, then force the Unverified pin so
++        // recovery never promotes to Pinned.
++        let unverified_admission = if matches!(
++            admission,
++            crate::shard::types::RecoveredAdmissionKind::Unverified { .. }
++        ) {
++            recovered_admission::build_unverified_admission(self, run, artifact_digest, &artifact)?
++        } else {
++            None
++        };
+ 
+         // Step 5: Seed journal sequence from recovered next_seq
+         self.seed_journal_sequence(run, next_seq)?;
+ 
+         // Step 6: Restore the full validated checkpoint when this is a retry.
+         // The checkpoint's accepted artifact digest and action registry are
+         // checked against the independently loaded artifact before run state mutates.
+-        let registered_execution = if boundary.kind()
+-            == crate::recovery::RecoveredRunBoundaryKind::PendingAction
+-        {
+-            crate::shard::types::RegisteredExecutionMode::ReconcileOnly
+-        } else {
+-            crate::shard::types::RegisteredExecutionMode::Live
+-        };
++        let registered_execution =

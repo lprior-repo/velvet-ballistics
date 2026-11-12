@@ -1,0 +1,5 @@
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol/crates/vb_storage)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol/crates/vb_runtime)
+    Checking vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol/crates/vb_ipc)
+    Checking velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol/crates/velvet_ballistics)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.03s

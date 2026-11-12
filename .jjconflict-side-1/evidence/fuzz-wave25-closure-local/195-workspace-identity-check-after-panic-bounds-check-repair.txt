@@ -1,0 +1,68 @@
+=== Cargo.toml (root + fuzz) workspace identity ===
+Date: 2026-07-10T12:36:52Z
+
+--- root Cargo.toml ---
+[workspace]
+members = [
+    "crates/vb_cli",
+    "crates/vb_compile",
+    "crates/vb_core",
+    "crates/vb_ipc",
+    "crates/vb_queue_semantics",
+    "crates/vb_runtime",
+    "crates/vb_storage",
+    "crates/vb_validate",
+    "crates/workspace_tests",
+]
+resolver = "2"
+exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz"]
+
+[workspace.package]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+version = "0.1.0"
+
+[workspace.dependencies]
+arrayvec = "0.7"
+blake3 = "1"
+byteorder = "1.5"
+bytes = { version = "1", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+crc32c = "0.6"
+crc32fast = "1"
+crossbeam-channel = "0.5"
+crossbeam-queue = "0.3"
+criterion = "0.8"
+trybuild = "1"
+fjall = { version = "=3.1.4", default-features = false, features = ["lz4"] }
+indoc = "2"
+indexmap = "2"
+logos = "0.15"
+libfuzzer-sys = "0.4"
+mio = "1"
+postcard = { version = "1", features = ["alloc"] }
+proptest = "1"
+rand = "0.9"
+rtrb = "0.3"
+rustix = { version = "1", features = ["fs"] }
+saphyr = { version = "=0.0.6", default-features = false }
+saphyr-parser = "=0.0.6"
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
+serde-saphyr = { version = "=0.0.25", default-features = false, features = ["deserialize", "serialize"] }
+serde_json = { version = "1", default-features = false, features = ["std", "alloc"] }
+serde_yaml = "0.9"
+thiserror = "2"
+
+--- fuzz/Cargo.toml [package] block ---
+[package]
+name = "velvet-ballistics-fuzz"
+version = "0.1.0"
+edition = "2024"
+
+--- workspace detection (root) ---
+workspace_root= /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+workspace_members= ['path+file:///home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_cli#velvet-ballistics@0.1.0', 'path+file:///home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile#0.1.0', 'path+file:///home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_core#0.1.0', 'path+file:///home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_validate#0.1.0', 'path+file:///home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_ipc#0.1.0', 'path+file:///home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_runtime#0.1.0', 'path+file:///home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_storage#0.1.0', 'path+file:///home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_queue_semantics#0.1.0', 'path+file:///home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0', 'path+file:///home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/xtask#0.1.0']
+
+--- workspace detection (fuzz) ---
+workspace_root= /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+workspace_members= ['path+file:///home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz#velvet-ballistics-fuzz@0.1.0']

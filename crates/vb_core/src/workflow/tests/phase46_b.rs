@@ -3,6 +3,7 @@ fn phase46_rejects_unreachable_node_from_entry() -> Result<(), String> {
     // Node 0 finishes immediately; node 1 is never reached.
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("unreachable"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
@@ -57,6 +58,7 @@ fn phase46_rejects_accessor_field_symbol_out_of_bounds() -> Result<(), String> {
     contract.max_accessors = 1;
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("acc_sym_oob"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
@@ -96,7 +98,8 @@ fn phase46_accepts_accessor_field_symbol_at_boundary() -> Result<(), String> {
     contract.max_accessors = 1;
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(InputSlotKind::Any),
         name: Box::<str>::from("acc_sym_boundary"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![crate::workflow::node(
@@ -133,6 +136,7 @@ fn phase46_rejects_accessor_field_symbol_zero_when_no_symbols() -> Result<(), St
     contract.max_accessors = 1;
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("acc_sym_zero_no_syms"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
@@ -176,6 +180,7 @@ fn phase46_rejects_accessor_path_too_deep() -> Result<(), String> {
     contract.max_accessors = 1;
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("acc_deep"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
@@ -223,7 +228,8 @@ fn phase46_accepts_accessor_path_at_max_depth() -> Result<(), String> {
     contract.max_accessors = 1;
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(InputSlotKind::Any),
         name: Box::<str>::from("acc_max_depth"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![crate::workflow::node(
@@ -260,7 +266,8 @@ fn phase46_accepts_accessor_empty_path() -> Result<(), String> {
     contract.max_accessors = 1;
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(InputSlotKind::Any),
         name: Box::<str>::from("acc_empty_path"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![crate::workflow::node(
@@ -293,6 +300,7 @@ fn phase46_accepts_accessor_empty_path() -> Result<(), String> {
 fn phase46_rejects_constant_symbol_out_of_bounds() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("const_sym_oob"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
@@ -325,6 +333,7 @@ fn phase46_rejects_constant_symbol_out_of_bounds() -> Result<(), String> {
 fn phase46_accepts_constant_symbol_at_boundary() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("const_sym_boundary"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
@@ -356,6 +365,7 @@ fn phase46_accepts_constant_symbol_at_boundary() -> Result<(), String> {
 fn phase46_rejects_constant_symbol_when_zero_symbols() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("const_sym_no_syms"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
@@ -439,6 +449,7 @@ fn phase46_rejects_accessor_index_u32_max() -> Result<(), String> {
     contract.max_accessors = 1;
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("acc_u32max"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
@@ -490,7 +501,8 @@ fn phase46_accepts_accessor_mixed_path() -> Result<(), String> {
     contract.max_accessors = 1;
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(InputSlotKind::Any),
         name: Box::<str>::from("acc_mixed"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![crate::workflow::node(
@@ -532,6 +544,7 @@ fn phase46_rejects_mixed_path_with_bad_symbol() -> Result<(), String> {
     contract.max_accessors = 1;
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("acc_mixed_bad"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
@@ -566,7 +579,8 @@ fn phase46_rejects_mixed_path_with_bad_symbol() -> Result<(), String> {
 fn phase46_symbols_count_roundtrip() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(InputSlotKind::Any),
         name: Box::<str>::from("sym_roundtrip"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![crate::workflow::node(
@@ -610,6 +624,7 @@ fn phase46_symbols_count_roundtrip() -> Result<(), String> {
 fn phase46_rejects_second_constant_symbol_out_of_bounds() -> Result<(), String> {
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("const_mixed_oob"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
@@ -664,6 +679,7 @@ fn phase46_rejects_accessor_root_slot_out_of_bounds() -> Result<(), String> {
     contract.max_accessors = 1;
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("acc_root_oob"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),

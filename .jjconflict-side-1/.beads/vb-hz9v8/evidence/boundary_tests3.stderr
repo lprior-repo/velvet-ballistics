@@ -1,0 +1,4 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hz9v8-deepseek-boundaries/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.32s
+     Running tests/durable_retry_boundary.rs (target/debug/deps/durable_retry_boundary-df5b8b30cebf6988)
+error: test failed, to rerun pass `-p vb_runtime --test durable_retry_boundary`

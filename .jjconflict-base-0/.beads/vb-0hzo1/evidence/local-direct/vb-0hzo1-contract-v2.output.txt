@@ -1,0 +1,84 @@
+# Fixture Edit Inventory
+
+## Production Constant Context
+- `CANONICAL_UNDERSCORE` = `"velvet_ballistics"` (correct canonical form)
+- `LEGACY_CRATE` = misspelling of `velvet_ballistics` (e.g., `"velvet_ballstics"`)
+
+---
+
+## File: `crates/velvet_ballistics/src/naming_scan/legacy.rs`
+
+### Edit 1: `contains_legacy_returns_true_for_legacy_crate()`
+**Line:** `assert!(contains_legacy("velvet_ballistics crate"));`
+**Change to:** `assert!(contains_legacy(LEGACY_CRATE));`
+**Reason:** Test must use actual legacy misspelling, not canonical form.
+
+### Edit 2: `class_for_text_returns_legacy_crate_module_spelling()`
+**Line:** `let result = class_for_text("velvet_ballistics is wrong");`
+**Change to:** `let result = class_for_text(LEGACY_CRATE);`
+**Reason:** Classification test must feed legacy misspelling, not canonical.
+
+### Edit 3: Add standalone canonical-underscore-not-legacy assertion
+**Insert after** `contains_legacy_returns_false_for_canonical_hyphen()`:
+```rust
+#[test]
+fn contains_legacy_returns_false_for_canonical_underscore() {
+    assert!(!contains_legacy(CANONICAL_UNDERSCORE));
+}
+```
+**Reason:** Explicit positive assertion that canonical underscore form is not classified as legacy.
+
+---
+
+## File: `crates/velvet_ballistics/src/naming_scan/classify.rs`
+
+### Edit 4: `classify_occurrence_returns_allowed_legacy_for_exact_exception()`
+**Line:** `let legacy_path = "legacy/path/velvet_ballistics";`
+**Change to:** `let legacy_path = format!("legacy/path/{}", LEGACY_CRATE);`
+**Reason:** Allowlist path must contain actual legacy misspelling, not canonical form.
+
+---
+
+## File: `crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/common_part_02.rs`
+
+### Edit 5: `maximum_scan_patterns()`
+**Line:** `"velvet_ballistics".to_string(),`
+**Change to:** `LEGACY_CRATE.to_string(),`
+**Reason:** Scan patterns must target legacy misspelling, not canonical form.
+
+---
+
+## File: `crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_03.rs`
+
+### Edit 6: `classify_occurrence_returns_legacy_crate_module_class_when_legacy_crate_module_token_is_seen()`
+**Line:** `let result = classify_occurrence(path, line(1), column(9), "velvet_ballistics", &config);`
+**Change to:** `let result = classify_occurrence(path, line(1), column(9), LEGACY_CRATE, &config);`
+**Reason:** Must classify actual legacy misspelling, not canonical form.
+
+---
+
+## File: `crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_04.rs`
+
+### Edit 7: `scan_file_does_not_report_canonical_crate_module_even_when_pattern_selects_it()`
+**Line:** `let input = text_scan_input("crates/velvet_ballistics/src/lib.rs", "pub mod vb_cli;\n");`
+**Change to:** `let input = text_scan_input("crates/velvet_ballistics/src/lib.rs", "pub mod velvet_ballistics;\n");`
+**Reason:** Restore actual canonical scanned input; `vb_cli` was a placeholder that would pass vacuously after constant fix.
+
+### Edit 8: `scan_file_returns_legacy_crate_module_finding_when_legacy_crate_module_token_is_seen()`
+**Line:** `let input = text_scan_input("crates/legacy/src/lib.rs", "pub mod velvet_ballistics;\n");`
+**Change to:** `let input = text_scan_input("crates/legacy/src/lib.rs", &format!("pub mod {};\n", LEGACY_CRATE));`
+**Reason:** Must scan actual legacy misspelling to produce finding.
+
+### Edit 9: `scan_repository_returns_invalid_canonical_spelling_when_legacy_crate_module_is_in_real_file()`
+**Line:** `write_fixture_file(temp.path(), "crates/legacy/src/lib.rs", "pub mod velvet_ballistics;\n")?;`
+**Change to:** `write_fixture_file(temp.path(), "crates/legacy/src/lib.rs", &format!("pub mod {};\n", LEGACY_CRATE))?;`
+**Reason:** Fixture file must contain actual legacy misspelling to trigger repository-level finding.
+
+---
+
+## Summary
+- **9 edits total** across 5 files
+- All hardcoded `"velvet_ballistics"` strings used as legacy test inputs replaced with `LEGACY_CRATE` constant
+- One placeholder input (`vb_cli`) restored to actual canonical form
+- One new standalone assertion added for canonical-underscore-not-legacy
+- No production algorithm changes; no new panic/unwrap/expect

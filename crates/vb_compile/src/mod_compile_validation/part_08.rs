@@ -256,26 +256,29 @@ fn required_body_step_sequence<'a>(
 fn validate_scoped_body_step(body_step: &Yaml<'_>, step: usize) -> Result<(), CompileError> {
     let id = required_step_id(body_step, step)?;
     validate_public_name("step id", id)?;
-    let StepSpec { primitive, body } = step_spec(body_step, step)?;
+    let StepSpec { primitive, body } =
+        super::canonical_guarded_shape::canonical_step_spec(body_step, step)?;
     match primitive {
         StepPrimitive::Set | StepPrimitive::Save => validate_choose_body_set(body, step),
         StepPrimitive::Run | StepPrimitive::Do => {
             validate_choose_body_do(body, step, primitive.as_str())
         }
-        // Nested containers recurse into their own shape validators. The
-        // nested step is never a workflow-last step, so the last-step bound
-        // cannot fire here.
-        StepPrimitive::ForEach => validate_for_each_shape(body, step, usize::MAX),
-        StepPrimitive::Collect => validate_collect_shape(body, step, usize::MAX),
-        StepPrimitive::Repeat => validate_repeat_shape(body, step, usize::MAX),
-        StepPrimitive::Choose => {
-            super::part_04::validate_canonical_choose_shape(body, step, usize::MAX)
-        }
-        _ => Err(CompileError::UnsupportedStepPrimitive {
-            step,
-            primitive: primitive.as_str(),
-        }),
+        _ => validate_nested_primitive(body_step, step, primitive),
     }
+}
+
+pub(super) fn validate_nested_primitive(
+    body_step: &Yaml<'_>,
+    step: usize,
+    primitive: StepPrimitive,
+) -> Result<(), CompileError> {
+    let last = if matches!(primitive, StepPrimitive::Finish) {
+        step
+    } else {
+        step.checked_add(1)
+            .ok_or(CompileError::StepIndexOutOfRange { value: step })?
+    };
+    super::part_03::validate_canonical_phase_zero_step_shape(body_step, step, last)
 }
 
 fn validate_text_or_integer_node(

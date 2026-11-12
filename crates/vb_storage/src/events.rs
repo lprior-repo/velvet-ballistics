@@ -6,10 +6,11 @@
 //! wire-format sub-modules (`wire*`) and their `decode_*` /
 //! `is_schema_one_shared_envelope_compatible` re-exports are unchanged.
 
-use crate::{JournalError, RecordKind};
-use vb_core::{RunId, SlotValue};
+use crate::RecordKind;
+use vb_core::RunId;
 
 mod event;
+mod value;
 mod wire;
 
 pub use wire::classify_journal_envelope;
@@ -39,6 +40,7 @@ impl JournalEvent {
             | Self::ActionFailedEvent { run, .. }
             | Self::ActionAbandoned { run, .. }
             | Self::SlotWrittenEvent { run, .. }
+            | Self::RetryTimerScheduled { run, .. }
             | Self::WaitScheduledEvent { run, .. }
             | Self::AskScheduledEvent { run, .. }
             | Self::AskAnsweredEvent { run, .. }
@@ -54,8 +56,8 @@ impl JournalEvent {
             | Self::AskTimedOutEvent { run, .. }
             | Self::PolicyDecisionEvent { run, .. }
             | Self::GateDecisionEvent { run, .. }
-            | Self::GateOpenedEvent { run, .. } => *run,
-            Self::CompatibilityDecisionEvent { run, .. }
+            | Self::GateOpenedEvent { run, .. }
+            | Self::CompatibilityDecisionEvent { run, .. }
             | Self::TenantAdmissionEvent { run, .. } => *run,
         }
     }
@@ -81,6 +83,7 @@ impl JournalEvent {
             | Self::ActionFailedEvent { seq, .. }
             | Self::ActionAbandoned { seq, .. }
             | Self::SlotWrittenEvent { seq, .. }
+            | Self::RetryTimerScheduled { seq, .. }
             | Self::WaitScheduledEvent { seq, .. }
             | Self::AskScheduledEvent { seq, .. }
             | Self::AskAnsweredEvent { seq, .. }
@@ -96,8 +99,8 @@ impl JournalEvent {
             | Self::AskTimedOutEvent { seq, .. }
             | Self::PolicyDecisionEvent { seq, .. }
             | Self::GateDecisionEvent { seq, .. }
-            | Self::GateOpenedEvent { seq, .. } => *seq,
-            Self::CompatibilityDecisionEvent { seq, .. }
+            | Self::GateOpenedEvent { seq, .. }
+            | Self::CompatibilityDecisionEvent { seq, .. }
             | Self::TenantAdmissionEvent { seq, .. } => *seq,
         }
     }
@@ -107,6 +110,7 @@ impl JournalEvent {
     pub const fn record_kind(&self) -> RecordKind {
         match self {
             Self::RunContinuation { carrier: _ } => RecordKind::RunContinuation,
+            Self::RetryTimerScheduled { .. } => RecordKind::RetryTimerScheduled,
             Self::RunAccepted { .. } => RecordKind::RunAccepted,
             Self::RunAdmission {
                 input_digest: crate::RunInputBinding::LegacyUnbound,
@@ -161,43 +165,6 @@ impl JournalEvent {
         }
     }
 
-    /// Returns the slot value if this is a `SlotWrittenEvent` and a value was captured.
-    ///
-    /// Returns `Ok(None)` if no value was captured (absent optional payload).
-    /// Returns `Ok(Some(slot_value))` if decoding succeeded.
-    /// Returns `Err(JournalError::PostcardDecodeFailed(_))` if bytes are corrupt/truncated.
-    /// Returns `Err(JournalError::PayloadTooLarge)` if bytes exceed the maximum allowed size.
-    #[must_use = "slot_value returns a fallible result that must be handled"]
-    pub fn slot_value(&self) -> Result<Option<SlotValue>, JournalError> {
-        match self {
-            Self::SlotWrittenEvent {
-                value: Some(bytes), ..
-            } => {
-                // First check payload size bounds before attempting decode.
-                let max_bytes = crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES;
-                let len_u32 =
-                    u32::try_from(bytes.len()).map_err(|_| JournalError::PayloadTooLarge {
-                        len: u32::MAX,
-                        max: max_bytes,
-                    })?;
-                if len_u32 > max_bytes {
-                    return Err(JournalError::PayloadTooLarge {
-                        len: len_u32,
-                        max: max_bytes,
-                    });
-                }
-                // Decode with typed error propagation instead of silent erasure.
-                postcard::from_bytes(bytes)
-                    .map(Some)
-                    .map_err(JournalError::PostcardDecodeFailed)
-            }
-            // Explicit absent branch for optional payloads.
-            Self::SlotWrittenEvent { value: None, .. } => Ok(None),
-            // Non-SlotWrittenEvent variants have no slot value.
-            _ => Ok(None),
-        }
-    }
-
     /// Returns the attempt number for this event.
     ///
     /// Events that carry attempt info return `Some(attempt)`.
@@ -212,6 +179,7 @@ impl JournalEvent {
             | Self::ActionCompletedEvent { attempt, .. }
             | Self::ActionFailedEvent { attempt, .. }
             | Self::SlotWrittenEvent { attempt, .. }
+            | Self::RetryTimerScheduled { attempt, .. }
             | Self::WaitScheduledEvent { attempt, .. }
             | Self::AskScheduledEvent { attempt, .. }
             | Self::AskAnsweredEvent { attempt, .. }
@@ -237,8 +205,9 @@ impl JournalEvent {
             | Self::RunAnswered { .. }
             | Self::PolicyDecisionEvent { .. }
             | Self::GateDecisionEvent { .. }
-            | Self::GateOpenedEvent { .. } => None,
-            Self::CompatibilityDecisionEvent { .. } | Self::TenantAdmissionEvent { .. } => None,
+            | Self::GateOpenedEvent { .. }
+            | Self::CompatibilityDecisionEvent { .. }
+            | Self::TenantAdmissionEvent { .. } => None,
         }
     }
 
@@ -268,6 +237,7 @@ impl JournalEvent {
             | Self::ActionCompletedEvent { attempt, .. }
             | Self::ActionFailedEvent { attempt, .. }
             | Self::SlotWrittenEvent { attempt, .. }
+            | Self::RetryTimerScheduled { attempt, .. }
             | Self::WaitScheduledEvent { attempt, .. }
             | Self::AskScheduledEvent { attempt, .. }
             | Self::AskAnsweredEvent { attempt, .. }

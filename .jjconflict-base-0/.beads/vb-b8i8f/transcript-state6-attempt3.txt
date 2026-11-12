@@ -1,0 +1,52 @@
+# Transcript: vb-b8i8f state 6 proof-reviewer attempt 3
+# Agent: proof-reviewer (femdation delegate)
+# Invocation: vb-b8i8f-state6-proof-reviewer-attempt3
+# Started: 2026-05-29T23:15:00Z
+# Completed: 2026-05-29T23:30:00Z
+
+## Task Summary
+Re-review of proof artifacts after controller attempted fixes for wiring gaps found in attempt 2.
+
+## Review Actions
+1. Loaded proof-reviewer skill from /home/lewis/.opencode/skill/proof-reviewer/SKILL.md
+2. Read all .beads/vb-b8i8f/ State 5 artifacts (proof-obligations.written.jsonl, proof-evidence.md, trusted-base-ledger.jsonl, proof-plan-review.md, waiver-candidates.jsonl)
+3. Checked isolated workspace for actual proof artifact files and module wiring
+4. Verified controller fix: codec/mod.rs now has #[cfg(feature = "flux")] pub mod flux_validation; (line 96-97)
+5. Confirmed remaining dead code: Kani harness file not wired (no verification/mod.rs), Flux lifecycle file not wired (no mod declaration in lifecycle.rs)
+6. Verified Verus still disconnected from production exec fn (zero requires/ensures on chunk_002.rs or validation.rs)
+7. Verified all Flux functions still #[flux_rs::trusted] — nothing verified
+8. Discovered missing flux_rs dependency in both Cargo.toml files
+9. Verified BLOCK-001 resolved (validation.rs range 10..=28)
+10. Confirmed 10/20 Kani harnesses still use boolean models (vacuous)
+
+## Key Commands Executed
+- grep for mod declarations in codec/mod.rs, lifecycle.rs, lib.rs, Cargo.toml files
+- ls verification/ directory structure to confirm missing mod.rs
+- grep for flux_rs in Cargo.toml dependencies
+- grep for requires/ensures in production source files
+- wc -l on all proof artifacts
+
+## Evidence Collected
+- codec/mod.rs:96-97: flux_validation wired (controller fix applied)
+- verification/: no mod.rs, no kani/mod.rs (kani still dead)
+- lifecycle.rs: no mod flux_cancel_kill (flux lifecycle still dead)
+- Cargo.toml: no flux_rs dependency, no flux feature (even wired can't compile)
+- chunk_002.rs: 0 requires/ensures matches (Verus still disconnected)
+- validation.rs: 0 requires/ensures, 0 flux_rs::sig, 0 vstd imports
+
+## Findings
+11 findings: 6 CRITICAL, 2 HIGH, 1 MEDIUM, 2 LOW
+- 2 Verus disconnected (GOD RULE 2, unchanged from attempts 1+2)
+- 2 Kani (unwired + vacuous boolean models)
+- 2 Flux (lifecycle unwired + trusted abuse/missing dep)
+- 1 Flux missing dependency (new)
+- 1 Proptest blocked (unchanged)
+- 1 Code duplication (new, medium)
+- 2 Low (deprecated is_variant, non_snake_case — unchanged)
+
+## Verdict
+STATUS: REJECTED
+- 4/22 obligations have genuine evidence (PO-PROP-001..003, PO-KANI-004..005)
+- 14/22 rejected for fatal gaps (5 Verus, 3 Kani, 5 Flux, 1 blocked proptest)
+- 4/22 pending or blocked
+- Controller fix addressed 0.5 of 10 previous findings

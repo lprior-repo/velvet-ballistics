@@ -7,8 +7,8 @@ use crate::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::ConstValue;
 use crate::value::{SlotValue, Taint};
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeOutput, NodeRouting,
-    ResourceContract, WorkflowParts, node,
+    CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+    ErrorRouting, InputSlotKind, NodeOutput, NodeRouting, ResourceContract, WorkflowParts, node,
 };
 
 pub(super) fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
@@ -32,10 +32,19 @@ pub(super) fn test_frame(workflow: &CompiledWorkflow) -> Result<RunFrame, String
     .map_err(|e| e.to_string())
 }
 
+pub(super) fn external_input() -> Box<[CompiledInputSlot]> {
+    Box::new([CompiledInputSlot {
+        slot: SlotIdx::new(0),
+        kind: InputSlotKind::Any,
+        constraint: CompiledInputConstraint::required(),
+    }])
+}
+
 pub(super) fn nop_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(),
         name: Box::<str>::from("nop_finish"),
         digest: WorkflowDigest::from_bytes([0x11; 32]),
         nodes: vec![
@@ -140,7 +149,8 @@ pub(super) fn single_do_workflow(
 ) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(),
         name: Box::<str>::from(name),
         digest: WorkflowDigest::from_bytes(digest),
         nodes: vec![do_node(StepIdx::new(0), ActionId::new(1), None, None, None)]
@@ -164,7 +174,8 @@ pub(super) fn do_then_finish_workflow(
 ) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(),
         name: Box::<str>::from(name),
         digest: WorkflowDigest::from_bytes(digest),
         nodes: vec![
@@ -196,7 +207,8 @@ pub(super) fn do_with_error_handler_workflow(
 ) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: external_input(),
         name: Box::<str>::from(name),
         digest: WorkflowDigest::from_bytes(digest),
         nodes: vec![
@@ -231,6 +243,7 @@ fn do_node(
     error_slot: Option<SlotIdx>,
 ) -> CompiledNode {
     CompiledNode {
+        retry: None,
         id,
         output: NodeOutput::Slot(SlotIdx::new(0)),
         routing: NodeRouting {

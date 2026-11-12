@@ -1,0 +1,2 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/vb_test_runtime_lifecycle_state_behavior.rs (target/debug/deps/vb_test_runtime_lifecycle_state_behavior-c425ace591f70253)

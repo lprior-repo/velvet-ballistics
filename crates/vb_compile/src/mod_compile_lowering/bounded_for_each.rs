@@ -1,252 +1,222 @@
-#![forbid(unsafe_code)]
-
 use super::super::part_01::ForEachInputs;
-use super::super::part_14::BodyCtx;
-use super::canonical_references::resolve_slot_reference_scoped;
-use super::{CanonicalScope, validate_output_alias};
+use super::super::{SlotCompiler, list_input};
+use super::{CanonicalScope, resolve_slot_reference_scoped};
 use crate::{CompileError, CompileErrors};
-use std::collections::HashMap;
-use vb_core::{SlotIdx, StepIdx};
+use vb_core::{
+    CompiledNodeKind as K, ExprOp, ExprProgram, SlotIdx, StepIdx, WorkflowError, workflow::node,
+};
+use vb_expr::expr_typecheck::ExprType;
 
-pub(in crate::mod_compile_lowering) struct ForEachLowering<'a> {
-    pub(in crate::mod_compile_lowering) input: &'a str,
-    pub(in crate::mod_compile_lowering) variable: &'a str,
-    pub(in crate::mod_compile_lowering) at_once: Option<u32>,
-    pub(in crate::mod_compile_lowering) body: &'a [crate::StepAst],
-    pub(in crate::mod_compile_lowering) next: Option<StepIdx>,
-    pub(in crate::mod_compile_lowering) scope: CanonicalScope<'a>,
-    pub(in crate::mod_compile_lowering) inputs: &'a ForEachInputs,
-    pub(in crate::mod_compile_lowering) nested: BodyCtx<'a>,
+pub(super) struct ForEachLowering<'a> {
+    pub(super) input: &'a str,
+    pub(super) variable: &'a str,
+    pub(super) at_once: Option<u32>,
+    pub(super) body: &'a [crate::StepAst],
+    pub(super) next: Option<StepIdx>,
+    pub(super) scope: CanonicalScope<'a>,
+    pub(super) inputs: &'a ForEachInputs,
 }
 
-fn domain_error(index: usize) -> CompileErrors {
-    CompileErrors(vec![CompileError::StepFieldShape {
-        step: index,
-        field: "for_each.input",
-        expected: "direct declared list<any> input with finite schema max",
-    }])
+fn offset(id: StepIdx, distance: usize, field: &'static str) -> Result<StepIdx, CompileErrors> {
+    let distance = u16::try_from(distance)
+        .map_err(|_| CompileErrors(vec![CompileError::StepIndexOutOfRange { value: distance }]))?;
+    super::super::checked_step_offset(id, distance, "for_each", field)
+        .map_err(|e| CompileErrors(vec![e]))
+}
+
+fn allocate(builder: &mut SlotCompiler) -> Result<SlotIdx, CompileErrors> {
+    builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))
 }
 
 fn resolve_input(
     index: usize,
+    id: StepIdx,
     config: &ForEachLowering<'_>,
-) -> Result<(SlotIdx, u32), CompileErrors> {
-    let name = config
+    builder: &mut SlotCompiler,
+) -> Result<(SlotIdx, StepIdx, u32), CompileErrors> {
+    let prelude = list_input::source_width(config.input);
+    let init = offset(id, prelude, "init")?;
+    let (input, ty) = if prelude == 0 {
+        let input = resolve_slot_reference_scoped(config.input, config.scope)
+            .map_err(|e| CompileErrors(vec![e]))?;
+        (
+            input,
+            config.scope.get_type(input).unwrap_or(ExprType::Unknown),
+        )
+    } else {
+        let input = allocate(builder)?;
+        let ty = super::lower_canonical_set_expression(
+            id,
+            input,
+            config.input,
+            Some(init),
+            config.scope,
+            builder,
+        )?;
+        (input, ty)
+    };
+    if !matches!(ty, ExprType::List | ExprType::Unknown) {
+        return Err(CompileErrors(vec![CompileError::TypeMismatch {
+            field: "for_each.input",
+            expected: "list",
+            found: "non-list",
+        }]));
+    }
+    builder.record_slot(input);
+    let bound = list_input::input_limit(input, builder)?;
+    let declared = config
         .input
         .strip_prefix("$input.")
-        .ok_or_else(|| domain_error(index))?;
-    let slot = resolve_slot_reference_scoped(config.input, config.scope)
-        .map_err(|e| CompileErrors(vec![e]))?;
-    let max = config
-        .inputs
-        .resolve(slot, name, index)
-        .map_err(|e| CompileErrors(vec![e]))?;
-    Ok((slot, max))
+        .and_then(|name| config.inputs.resolve(input, name, index).ok());
+    Ok((input, init, declared.map_or(bound, |max| max.min(bound))))
 }
 
-fn validate_concurrency(index: usize, at_once: Option<u32>) -> Result<(), CompileErrors> {
-    match at_once {
-        None | Some(1) => Ok(()),
-        Some(_) => Err(CompileErrors(vec![CompileError::StepFieldShape {
+fn validate(index: usize, config: &ForEachLowering<'_>) -> Result<(), CompileErrors> {
+    if config.at_once == Some(0) {
+        return Err(CompileErrors(vec![CompileError::StepFieldShape {
             step: index,
             field: "for_each.at_once",
-            expected: "omitted or 1 until concurrent for_each lowering is implemented",
-        }])),
+            expected: "a positive concurrency upper bound",
+        }]));
     }
-}
-
-fn validate_variable_name(variable: &str) -> Result<(), CompileErrors> {
-    crate::mod_compile_validation::validate_public_name("for_each.variable", variable)
+    crate::mod_compile_validation::validate_public_name("for_each.variable", config.variable)
         .map_err(|e| CompileErrors(vec![e]))?;
-    validate_output_alias(variable).map_err(|e| CompileErrors(vec![e]))?;
-    if variable == "step" {
+    super::validate_output_alias(config.variable).map_err(|e| CompileErrors(vec![e]))?;
+    if config.variable == "step" {
         return Err(CompileErrors(vec![CompileError::InvalidName {
             field: "for_each.variable",
-            value: variable.into(),
+            value: config.variable.into(),
         }]));
     }
-    Ok(())
-}
-
-fn validate_variable_capture(
-    variable: &str,
-    config: &ForEachLowering<'_>,
-) -> Result<(), CompileErrors> {
-    if config.scope.contains_output(variable) || config.scope.contains_step(variable) {
+    if config.scope.contains_output(config.variable) || config.scope.contains_step(config.variable)
+    {
         return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-            name: variable.into(),
+            name: config.variable.into(),
         }]));
     }
+    super::for_each_capture::validate_for_each_capture(config.variable, config.body)?;
     Ok(())
-}
-
-pub(super) fn validate_parameters(
-    index: usize,
-    config: &ForEachLowering<'_>,
-) -> Result<(), CompileErrors> {
-    validate_concurrency(index, config.at_once)?;
-    validate_variable_name(config.variable)?;
-    validate_variable_capture(config.variable, config)?;
-    Ok(())
-}
-
-pub(super) struct ForEachEdges {
-    pub body: StepIdx,
-    pub advance: StepIdx,
-    pub done: StepIdx,
-}
-
-fn body_edge(
-    id: StepIdx,
-    body_width: usize,
-    extra: usize,
-    field: &'static str,
-) -> Result<StepIdx, CompileErrors> {
-    let offset = body_width.checked_add(extra).ok_or(CompileErrors(vec![
-        CompileError::StepIndexOutOfRange { value: body_width },
-    ]))?;
-    let offset = u16::try_from(offset).map_err(|_| {
-        CompileErrors(vec![CompileError::StepIndexOutOfRange {
-            value: body_width,
-        }])
-    })?;
-    super::super::checked_step_offset(id, offset, "for_each", field)
-        .map_err(|e| CompileErrors(vec![e]))
-}
-
-pub(super) fn body_edges(
-    id: StepIdx,
-    body_width: usize,
-    next: Option<StepIdx>,
-) -> Result<ForEachEdges, CompileErrors> {
-    let body = super::super::checked_step_offset(id, 1, "for_each", "body")
-        .map_err(|e| CompileErrors(vec![e]))?;
-    let advance = body_edge(id, body_width, 1, "next")?;
-    let done = match next {
-        Some(n) => n,
-        None => body_edge(id, body_width, 2, "done")?,
-    };
-    Ok(ForEachEdges {
-        body,
-        advance,
-        done,
-    })
-}
-
-fn empty_error(index: usize) -> CompileErrors {
-    CompileErrors(vec![CompileError::StepFieldShape {
-        step: index,
-        field: "for_each.body",
-        expected: "non-empty body",
-    }])
-}
-
-fn validate_body(index: usize, config: &ForEachLowering<'_>) -> Result<(), CompileErrors> {
-    if config.body.is_empty() {
-        return Err(empty_error(index));
-    }
-    super::for_each_capture::validate_for_each_capture(config.variable, config.body)
-}
-
-use super::super::SlotCompiler;
-use vb_core::CompiledNodeKind;
-use vb_core::workflow::node;
-
-fn emit_start(
-    id: StepIdx,
-    iterator: SlotIdx,
-    item: SlotIdx,
-    input: SlotIdx,
-    limit: u32,
-    edges: &ForEachEdges,
-    builder: &mut SlotCompiler,
-) {
-    builder.push_node(node(
-        id,
-        CompiledNodeKind::ForEachStart {
-            input,
-            item_slot: item,
-            limit: limit.into(),
-            body: edges.body,
-            done: edges.done,
-        },
-        Some(iterator),
-        None,
-    ));
-}
-
-fn emit_next(iterator: SlotIdx, item: SlotIdx, edges: &ForEachEdges, builder: &mut SlotCompiler) {
-    builder.push_node(node(
-        edges.advance,
-        CompiledNodeKind::ForEachNext {
-            iterator_slot: iterator,
-            body: edges.body,
-            done: edges.done,
-        },
-        Some(item),
-        None,
-    ));
 }
 
 fn emit_body(
     config: &ForEachLowering<'_>,
-    edges: &ForEachEdges,
+    body: StepIdx,
+    capture: StepIdx,
     item: SlotIdx,
+    item_type: ExprType,
     builder: &mut SlotCompiler,
 ) -> Result<Option<SlotIdx>, CompileErrors> {
-    // Borrowed overlay: tiny HashMaps for the single variable binding plus
-    // parent chain. Avoids cloning the whole lexical maps (perf waiver fix).
-    let mut overlay_outputs = HashMap::with_capacity(1);
-    overlay_outputs.insert(config.variable.to_owned(), item);
-    let mut overlay_types = HashMap::with_capacity(1);
-    overlay_types.insert(item, vb_expr::expr_typecheck::ExprType::Unknown);
-
-    // Reuse parent step_outputs directly (no clone needed — not modified).
-    let local_scope = CanonicalScope {
-        outputs: &overlay_outputs,
-        step_outputs: config.scope.step_outputs,
-        slot_types: &overlay_types,
-        parent: Some(&config.scope),
-    };
-
-    let (body_output, _) = super::super::part_14::emit_scoped_flat_body(
+    let mut outputs = std::collections::HashMap::new();
+    let mut types = std::collections::HashMap::new();
+    outputs.insert(config.variable.to_owned(), item);
+    types.insert(item, item_type);
+    super::super::part_14::emit_iteration_body(
         config.body,
-        edges.body,
-        edges.advance,
-        local_scope,
-        config.nested,
+        body,
+        capture,
+        CanonicalScope {
+            outputs: &outputs,
+            step_outputs: config.scope.step_outputs,
+            slot_types: &types,
+            parent: Some(&config.scope),
+        },
         builder,
-        "for_each",
-        None,
-    )?;
-
-    Ok(body_output)
+    )
 }
 
-pub(in crate::mod_compile_lowering) fn lower_bounded_for_each(
+pub(super) fn lower_bounded_for_each(
     index: usize,
     id: StepIdx,
     config: ForEachLowering<'_>,
     builder: &mut SlotCompiler,
-) -> Result<Option<SlotIdx>, CompileErrors> {
-    validate_body(index, &config)?;
-    validate_parameters(index, &config)?;
-
-    let width = super::super::body_width(config.body, 0).map_err(|e| CompileErrors(vec![e]))?;
-    let edges = body_edges(id, width, config.next)?;
-
-    let (input, limit) = resolve_input(index, &config)?;
-
-    let iterator = builder
-        .allocate_slot()
+) -> Result<SlotIdx, CompileErrors> {
+    validate(index, &config)?;
+    let (input, init, limit) = resolve_input(index, id, &config, builder)?;
+    let taint = offset(init, 1, "source taint")?;
+    let start = offset(init, 2, "start")?;
+    let body = offset(init, 3, "body")?;
+    let width = super::super::part_14::iteration_body_width(config.body)
         .map_err(|e| CompileErrors(vec![e]))?;
-    let item = builder
-        .allocate_slot()
+    let append = offset(body, width, "append")?;
+    let advance = offset(append, 1, "next")?;
+    let join = offset(advance, 1, "join")?;
+    let item_type = list_input::item_type(input, builder, config.scope);
+    let accumulator = allocate(builder)?;
+    let iterator = allocate(builder)?;
+    let item = allocate(builder)?;
+    let result = allocate(builder)?;
+    builder.push_node(node(
+        init,
+        K::BuildList {
+            items: Box::new([]),
+        },
+        Some(accumulator),
+        Some(taint),
+    ));
+    let condition = builder.push_constant(vb_core::ConstValue::Bool(false))?;
+    let expr = ExprProgram::try_from_ops(Box::from([
+        ExprOp::LoadSlot(accumulator),
+        ExprOp::LoadSlot(input),
+        ExprOp::LoadConst(condition),
+        ExprOp::AppendIf,
+    ]))
+    .map_err(|e| CompileErrors(vec![CompileError::Workflow(WorkflowError::Expression(e))]))?;
+    let expr = builder.push_expression(expr)?;
+    builder.push_node(node(
+        taint,
+        K::EvalExpr { expr },
+        Some(accumulator),
+        Some(start),
+    ));
+    builder.push_node(node(
+        start,
+        K::ForEachStart {
+            input,
+            item_slot: item,
+            limit: limit.into(),
+            body,
+            done: join,
+        },
+        Some(iterator),
+        None,
+    ));
+    let output = emit_body(&config, body, append, item, item_type, builder)?;
+    let value = match output {
+        Some(slot) => ExprOp::LoadSlot(slot),
+        None => ExprOp::LoadConst(builder.push_constant(vb_core::ConstValue::Null)?),
+    };
+    let expr = ExprProgram::try_from_ops(Box::from([
+        ExprOp::LoadSlot(accumulator),
+        value,
+        ExprOp::Append,
+    ]))
+    .map_err(|e| CompileErrors(vec![CompileError::Workflow(WorkflowError::Expression(e))]))?;
+    let expr = builder
+        .push_expression(expr)
         .map_err(|e| CompileErrors(vec![e]))?;
-
-    emit_start(id, iterator, item, input, limit, &edges, builder);
-    let body_output = emit_body(&config, &edges, item, builder)?;
-    emit_next(iterator, item, &edges, builder);
-
-    Ok(body_output)
+    builder.push_node(node(
+        append,
+        K::EvalExpr { expr },
+        Some(accumulator),
+        Some(advance),
+    ));
+    builder.push_node(node(
+        advance,
+        K::ForEachNext {
+            iterator_slot: iterator,
+            body,
+            done: join,
+        },
+        Some(item),
+        None,
+    ));
+    builder.push_node(node(
+        join,
+        K::ForEachJoin {
+            output: accumulator,
+        },
+        Some(result),
+        config.next,
+    ));
+    Ok(result)
 }

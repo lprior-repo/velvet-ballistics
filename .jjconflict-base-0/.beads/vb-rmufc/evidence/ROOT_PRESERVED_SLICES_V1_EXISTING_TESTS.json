@@ -1,0 +1,28 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-rmufc-preserved-slices-v1",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "--quiet",
+    "-p",
+    "vb_ipc",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--all-features",
+    "--lib"
+  ],
+  "exit_code": 0,
+  "seconds": 33.823,
+  "timeout_seconds": 240,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_PRESERVED_SLICES_V1_EXISTING_TESTS"
+}

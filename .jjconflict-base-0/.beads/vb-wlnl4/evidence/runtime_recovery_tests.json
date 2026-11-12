@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-integration-local5090-20261021",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--lib",
+    "recovery"
+  ],
+  "exit_code": 0,
+  "seconds": 2.886,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  }
+}

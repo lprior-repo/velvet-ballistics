@@ -1,0 +1,187 @@
+{
+  "status": "REVIEW_SUMMARY_ONLY_NOT_POLICY_ROWS",
+  "source_plan": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/plan.json",
+  "metrics": {
+    "bench_engine_step_once_save_const_single_transition": {
+      "sides": {
+        "baseline": {
+          "mean_ns": "43.475893927706702",
+          "mean_ps_rounded_once": 43476,
+          "sample_count": 200,
+          "aggregation": "arithmetic mean of two unrounded Criterion mean estimates in ns; equal run weighting",
+          "quantile_scope": "nearest-rank quantiles of pooled Criterion sample means, not individual-operation tails",
+          "p50_sample_mean_ns": "43.522123694854486416",
+          "p95_sample_mean_ns": "44.104552394469174032",
+          "p99_sample_mean_ns": "44.203054374711286013",
+          "runs": [
+            {
+              "label": "A1",
+              "unrounded_mean_ns": "43.296355574273804",
+              "measured_iterations": 78512350.0,
+              "raw_directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/01-A1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new"
+            },
+            {
+              "label": "A2",
+              "unrounded_mean_ns": "43.6554322811396",
+              "measured_iterations": 78280050.0,
+              "raw_directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/04-A2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new"
+            }
+          ]
+        },
+        "candidate": {
+          "mean_ns": "40.879784926938365",
+          "mean_ps_rounded_once": 40880,
+          "sample_count": 200,
+          "aggregation": "arithmetic mean of two unrounded Criterion mean estimates in ns; equal run weighting",
+          "quantile_scope": "nearest-rank quantiles of pooled Criterion sample means, not individual-operation tails",
+          "p50_sample_mean_ns": "40.586433907387069912",
+          "p95_sample_mean_ns": "44.323126840072387435",
+          "p99_sample_mean_ns": "51.543366956864872864",
+          "runs": [
+            {
+              "label": "B1",
+              "unrounded_mean_ns": "42.43618383575015",
+              "measured_iterations": 71225200.0,
+              "raw_directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/02-B1/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new"
+            },
+            {
+              "label": "B2",
+              "unrounded_mean_ns": "39.32338601812658",
+              "measured_iterations": 78754750.0,
+              "raw_directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/03-B2/bench_engine_step_once_save_const_single_transition/criterion/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new"
+            }
+          ]
+        }
+      },
+      "delta_percent": "-5.971375781450846044",
+      "unchanged_limit_percent": 3,
+      "counters": {
+        "allocation_count": 11376611,
+        "bytes_allocated": 136253159,
+        "instruction_count": 48605463648
+      },
+      "counter_scope": "whole filtered Criterion process, including startup, all suite fixture setup, warmup/calibration and measured work; separate perf and heaptrack invocations; not per-operation counters; profiler timings never enter latency aggregation"
+    },
+    "ipc_frame_decode": {
+      "sides": {
+        "baseline": {
+          "mean_ns": "69.15586775889006",
+          "mean_ps_rounded_once": 69156,
+          "sample_count": 200,
+          "aggregation": "arithmetic mean of two unrounded Criterion mean estimates in ns; equal run weighting",
+          "quantile_scope": "nearest-rank quantiles of pooled Criterion sample means, not individual-operation tails",
+          "p50_sample_mean_ns": "68.288192733990147783",
+          "p95_sample_mean_ns": "71.287401508871528214",
+          "p99_sample_mean_ns": "87.612594255215713857",
+          "runs": [
+            {
+              "label": "A1",
+              "unrounded_mean_ns": "69.63952420651728",
+              "measured_iterations": 57438700.0,
+              "raw_directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/01-A1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new"
+            },
+            {
+              "label": "A2",
+              "unrounded_mean_ns": "68.67221131126284",
+              "measured_iterations": 56560000.0,
+              "raw_directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/04-A2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new"
+            }
+          ]
+        },
+        "candidate": {
+          "mean_ns": "70.713892427994255",
+          "mean_ps_rounded_once": 70714,
+          "sample_count": 200,
+          "aggregation": "arithmetic mean of two unrounded Criterion mean estimates in ns; equal run weighting",
+          "quantile_scope": "nearest-rank quantiles of pooled Criterion sample means, not individual-operation tails",
+          "p50_sample_mean_ns": "70.226725054206878959",
+          "p95_sample_mean_ns": "72.584508509028951213",
+          "p99_sample_mean_ns": "79.445692577772407764",
+          "runs": [
+            {
+              "label": "B1",
+              "unrounded_mean_ns": "70.28181194765789",
+              "measured_iterations": 55247000.0,
+              "raw_directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/02-B1/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new"
+            },
+            {
+              "label": "B2",
+              "unrounded_mean_ns": "71.14597290833062",
+              "measured_iterations": 54656150.0,
+              "raw_directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/03-B2/ipc_frame_decode/criterion/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new"
+            }
+          ]
+        }
+      },
+      "delta_percent": "2.252917531938436677",
+      "unchanged_limit_percent": 5,
+      "counters": {
+        "allocation_count": 8454037,
+        "bytes_allocated": 240554614,
+        "instruction_count": 31626032474
+      },
+      "counter_scope": "whole filtered Criterion process, including startup, all suite fixture setup, warmup/calibration and measured work; separate perf and heaptrack invocations; not per-operation counters; profiler timings never enter latency aggregation"
+    },
+    "engine_run_until_blocked_budget_10_small_workflow": {
+      "sides": {
+        "baseline": {
+          "mean_ns": "67.652184247104685",
+          "mean_ps_rounded_once": 67652,
+          "sample_count": 200,
+          "aggregation": "arithmetic mean of two unrounded Criterion mean estimates in ns; equal run weighting",
+          "quantile_scope": "nearest-rank quantiles of pooled Criterion sample means, not individual-operation tails",
+          "p50_sample_mean_ns": "66.56230755382285019",
+          "p95_sample_mean_ns": "74.538730780778408103",
+          "p99_sample_mean_ns": "75.906264406472237547",
+          "runs": [
+            {
+              "label": "A1",
+              "unrounded_mean_ns": "69.53549044486147",
+              "measured_iterations": 58105300.0,
+              "raw_directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/01-A1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new"
+            },
+            {
+              "label": "A2",
+              "unrounded_mean_ns": "65.7688780493479",
+              "measured_iterations": 58024500.0,
+              "raw_directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/04-A2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new"
+            }
+          ]
+        },
+        "candidate": {
+          "mean_ns": "60.0373197328068475",
+          "mean_ps_rounded_once": 60037,
+          "sample_count": 200,
+          "aggregation": "arithmetic mean of two unrounded Criterion mean estimates in ns; equal run weighting",
+          "quantile_scope": "nearest-rank quantiles of pooled Criterion sample means, not individual-operation tails",
+          "p50_sample_mean_ns": "59.516204365257579593",
+          "p95_sample_mean_ns": "63.174041275797373358",
+          "p99_sample_mean_ns": "63.53171869918699187",
+          "runs": [
+            {
+              "label": "B1",
+              "unrounded_mean_ns": "60.08672306237707",
+              "measured_iterations": 62115000.0,
+              "raw_directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/02-B1/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new"
+            },
+            {
+              "label": "B2",
+              "unrounded_mean_ns": "59.987916403236625",
+              "measured_iterations": 63978450.0,
+              "raw_directory": "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/03-B2/engine_run_until_blocked_budget_10_small_workflow/criterion/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new"
+            }
+          ]
+        }
+      },
+      "delta_percent": "-11.255903411017703186",
+      "unchanged_limit_percent": 3,
+      "counters": {
+        "allocation_count": 11138671,
+        "bytes_allocated": 134745305,
+        "instruction_count": 34396748570
+      },
+      "counter_scope": "whole filtered Criterion process, including startup, all suite fixture setup, warmup/calibration and measured work; separate perf and heaptrack invocations; not per-operation counters; profiler timings never enter latency aggregation"
+    }
+  },
+  "required_review": "inspect every raw run and host-load/thermal record before accepting; counters are whole-process totals, not per-operation; no run selection permitted"
+}

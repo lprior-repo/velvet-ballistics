@@ -1,0 +1,191 @@
+```hemlock
+fn setup_retry_advance_ticket2_to_ticket3() -> Result<{
+    shard: Shard,
+    run: RunId,
+    old_ticket: ActionTicket,
+    current_ticket: ActionTicket,
+    journal: Arc<VolatileRuntimeJournal>,
+}, Box<dyn std::error::Error>> {
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let shared = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let Some(wf) = retry_workflow() else {
+        return Err("missing retry workflow fixture".into());
+    };
+    let run = RunId::new(100);
+
+    submit_with_contracts(&shard, run, wf);
+    shard.tick()?;
+
+    let ticket1 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 1")?;
+    shard.enqueue(ShardCommand::ActionFailed {
+        ticket: ticket1,
+        failure: retryable_failure(),
+    })?;
+    shard.tick()?;
+
+    let ticket2 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 2")?;
+    assert_eq!(ticket2.attempt, 2, "ticket 2 should have attempt=2");
+    shard.enqueue(ShardCommand::ActionFailed {
+        ticket: ticket2,
+        failure: retryable_failure(),
+    })?;
+    shard.tick()?;
+
+    let ticket3 = shard
+        .pending_action_get(run)
+        .ok_or("action should have issued ticket 3")?;
+    assert_eq!(ticket3.attempt, 3, "ticket 3 should have attempt=3");
+
+    Ok({ shard, run, old_ticket: ticket2, current_ticket: ticket3, journal })
+}
+
+fn apply_tamper(
+    original: ActionTicket,
+    run: RunId,
+    tamper: &str,
+) -> ActionTicket {
+    let mut t = original;
+    match tamper {
+        "wrong_step" => {
+            t.step = StepIdx::new(99);
+        }
+        "wrong_action" => {
+            t.action = ActionId::new(99);
+            t.idempotency_key = compute_action_idempotency_key(run, t.seq, t.action);
+        }
+        "changed_capacity" => {
+            t.capacity = 999;
+        }
+        "invalid_key" => {
+            t.idempotency_key = [0u8; 16];
+        }
+        "advanced_seq" => {
+            t.seq = SeqNo::new(100);
+            t.idempotency_key = compute_action_idempotency_key(run, t.seq, t.action);
+        }
+        _ => panic!("unknown tamper"),
+    }
+    t
+}
+
+fn verify_state_unchanged(
+    shard: &Shard,
+    run: RunId,
+    journal: &Arc<VolatileRuntimeJournal>,
+    expected_ticket: ActionTicket,
+    expected_journal: Vec<RuntimeJournalEvent>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let pending = shard
+        .pending_action_get(run)
+        .ok_or("pending action should still exist")?;
+    assert_eq!(pending, expected_ticket, "pending ticket should be unchanged");
+
+    let state = shard
+        .run_state_get(run)
+        .ok_or("run state should still exist")?;
+    let step_idx = usize::from(state.pc);
+    let slot0 = state.slots.get(SlotIdx::ZERO)
+        .ok_or("slot 0 should exist")?.clone();
+    let slot1 = state.slots.get(SlotIdx::new(1))
+        .ok_or("slot 1 should exist")?.clone();
+
+    let snapshot = journal.snapshot()?;
+    assert_eq!(snapshot, expected_journal, "journal should be unchanged");
+
+    Ok(())
+}
+
+#[test]
+fn completion_of_old_ticket_rejected_even_when_attempt_matches() -> Result<(), Box<dyn std::error::Error>> {
+    let tamper_cases = ["wrong_step", "wrong_action", "changed_capacity", "invalid_key", "advanced_seq"];
+
+    for (let i = 0; i < tamper_cases.len(); i = i + 1) {
+        let tamper = tamper_cases[i];
+        let setup = setup_retry_advance_ticket2_to_ticket3()?;
+        let shard = setup.shard;
+        let run = setup.run;
+        let old_ticket = setup.old_ticket;
+        let current_ticket = setup.current_ticket;
+        let journal = setup.journal;
+
+        let journal_before = journal.snapshot()?;
+
+        let tampered = apply_tamper(old_ticket, run, tamper);
+        let output = ActionOutputReady {
+            output_slot: SlotIdx::ZERO,
+            value: SlotValue::I64(7),
+            taint: Taint::Clean,
+            encoded_len: 3,
+        };
+        shard.enqueue(ShardCommand::ActionCompleted {
+            ticket: tampered,
+            output,
+        })?;
+
+        let result = shard.tick();
+        assert_eq!(
+            result,
+            Err(RuntimeError::InvalidActionCompletion),
+            "tampered ticket {} should be rejected as InvalidActionCompletion",
+            tamper
+        );
+
+        verify_state_unchanged(
+            &shard,
+            run,
+            &journal,
+            current_ticket,
+            journal_before,
+        )?;
+    }
+
+    Ok(())
+}
+
+#[test]
+fn failure_of_old_ticket_rejected_even_when_attempt_matches() -> Result<(), Box<dyn std::error::Error>> {
+    let tamper_cases = ["wrong_step", "wrong_action", "changed_capacity", "invalid_key", "advanced_seq"];
+
+    for (let i = 0; i < tamper_cases.len(); i = i + 1) {
+        let tamper = tamper_cases[i];
+        let setup = setup_retry_advance_ticket2_to_ticket3()?;
+        let shard = setup.shard;
+        let run = setup.run;
+        let old_ticket = setup.old_ticket;
+        let current_ticket = setup.current_ticket;
+        let journal = setup.journal;
+
+        let journal_before = journal.snapshot()?;
+
+        let tampered = apply_tamper(old_ticket, run, tamper);
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: tampered,
+            failure: non_retryable_failure(),
+        })?;
+
+        let result = shard.tick();
+        assert_eq!(
+            result,
+            Err(RuntimeError::InvalidActionCompletion),
+            "tampered ticket {} should be rejected as InvalidActionCompletion",
+            tamper
+        );
+
+        verify_state_unchanged(
+            &shard,
+            run,
+            &journal,
+            current_ticket,
+            journal_before,
+        )?;
+    }
+
+    Ok(())
+}
+```

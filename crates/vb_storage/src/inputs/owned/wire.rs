@@ -4,7 +4,7 @@ use vb_core::value_store::ValueStoreCheckpointV1;
 use vb_core::workflow::{CompiledInputSlot, ResourceContract};
 use vb_core::{RunId, SlotIdx, SlotValue, Taint, WorkflowDigest};
 
-pub(super) const VERSION: u16 = 1;
+pub(super) const VERSION: u16 = 2;
 const DOMAIN: &str = "velvet-ballistics/owned-run-inputs/v1";
 
 /// Exact digest preimage; the digest itself is deliberately absent.

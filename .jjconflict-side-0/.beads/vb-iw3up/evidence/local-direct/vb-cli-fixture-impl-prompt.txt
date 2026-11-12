@@ -1,0 +1,87 @@
+Implement tinyRust testfixture repair vb-iw3up from accepted contract. Return ONLY JSON array [{"path":"crates/velvet_ballistics/tests/ir_artifact_admission.rs","old":"exact unique substring","new":"replacement"}]. Add exactly one field in base_parts WorkflowParts: input_slots: Box::from([vb_core::workflow::CompiledInputSlot {slot:SlotIdx::ZERO,kind:vb_core::workflow::InputSlotKind::I64}]), after existing step_names. Actual CompiledInputSlot has ONLY slot and kind. Keepallother fields/tests unchanged. No new helper, production, names/defaults/requiredflags.
+# Rust contract: handcrafted CLI IR input metadata
+
+Existing WorkflowParts fixture base_parts must include input_slots. Actual type CompiledInputSlot has exactly pub slot:SlotIdx and pub kind:InputSlotKind. Declare a single slot0/I64 input, matching slot_count1 and the existing valid test payload I64(42) consumed by Finish(slot0). No names, required flags, or defaults exist in this IR metadata. All malformed artifact source tests and exact diagnostics remainunchanged; no production change. Valid input shape and IR validation boundaries preserved.
+
+Command: bounded cargo test -p velvet-ballistics --test ir_artifact_admission; then fullCLIpackage, with raw logs and failures reported exactly. Independent code and test reviews required. No proof planning.
+
+Local initial draft invented metadata fields and a tests/cli path; rejectedthose claims beforeimplementation. Actual path crates/velvet_ballistics/tests/ir_artifact_admission.rs and actual struct crates/vb_core/src/workflow/mod.rs:312-317 verified.
+
+ACTUAL SOURCE:
+#![forbid(unsafe_code)]
+
+use std::ffi::OsStr;
+use std::path::Path;
+use std::process::Output;
+
+use vb_core::ids::{AccessorIdx, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
+use vb_core::value::SlotValue;
+use vb_core::workflow::{
+    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
+    ResourceContract, WorkflowParts,
+};
+
+fn finish_node(step: u16, result: u16) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(step),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(result),
+        },
+    }
+}
+
+fn nop_node(step: u16, next: Option<u16>) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(step),
+        output: None,
+        next: next.map(StepIdx::new),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Nop,
+    }
+}
+
+fn base_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
+    WorkflowParts {
+        name: Box::from("handcrafted-admission"),
+        digest: WorkflowDigest::from_bytes([0xA7; 32]),
+        nodes,
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
+    }
+}
+
+fn valid_input_payload(value: SlotValue) -> Vec<u8> {
+    let values: Box<[SlotValue]> = Box::from([value]);
+    let encoded = postcard::to_allocvec(&values);
+    assert!(encoded.is_ok(), "test input payload encodes: {encoded:?}");
+    encoded.unwrap_or_default()
+}
+
+fn write_bytes(path: &Path, bytes: &[u8]) {
+    let written = std::fs::write(path, bytes);
+    assert!(written.is_ok(), "test fixture write succeeds: {written:?}");
+}
+
+fn write_parts(path: &Path, parts: &WorkflowParts) {
+    let encoded = postcard::to_allocvec(parts);
+    assert!(encoded.is_ok(), "test WorkflowParts encodes: {encoded:?}");
+    let payload = encoded.unwrap_or_default();
+    write_bytes(path, &payload);
+}
+
+fn run_vb(args: &[&OsStr]) -> Output {
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
+        .args(args)
+        .output();
+    assert!(outpu

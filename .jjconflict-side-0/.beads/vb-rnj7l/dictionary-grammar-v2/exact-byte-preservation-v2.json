@@ -1,0 +1,333 @@
+{
+  "base": "42fd94f21c3615c8fbe322806a76beea671b6d16",
+  "all8_dictionaries": [
+    {
+      "path": "fuzz/fuzz_targets/decode_record.dict",
+      "sha256": "e39131d7addcccc626b29a61aacb833d99fac6245158c8a5c4177d999f235ee1",
+      "unchanged": false,
+      "entries": 17,
+      "exact_name_and_escape_bytes_preserved": true,
+      "tokens": [
+        {
+          "name": "MAGIC_JOURNAL_EVENT_LE",
+          "hex": "454a4256"
+        },
+        {
+          "name": "MAGIC_BLOB_LE",
+          "hex": "4c424256"
+        },
+        {
+          "name": "MAGIC_SNAPSHOT_LE",
+          "hex": "4e534256"
+        },
+        {
+          "name": "MAGIC_COMPILED_ARTIFACT_LE",
+          "hex": "52494256"
+        },
+        {
+          "name": "MAGIC_WORKFLOW_SOURCE_LE",
+          "hex": "52534256"
+        },
+        {
+          "name": "MAGIC_INDEX_RECORD_LE",
+          "hex": "58494256"
+        },
+        {
+          "name": "MAGIC_IPC_FRAME_LE",
+          "hex": "544c4256"
+        },
+        {
+          "name": "BOUNDARY_ZERO_MAGIC",
+          "hex": "00000000"
+        },
+        {
+          "name": "BOUNDARY_MAX_MAGIC",
+          "hex": "ffffffff"
+        },
+        {
+          "name": "KIND_RunAccepted_LE",
+          "hex": "0a00"
+        },
+        {
+          "name": "KIND_RunCancelled_LE",
+          "hex": "1500"
+        },
+        {
+          "name": "KIND_RunFailed_LE",
+          "hex": "1700"
+        },
+        {
+          "name": "KIND_RunKilled_LE",
+          "hex": "1c00"
+        },
+        {
+          "name": "KIND_Snapshot_LE",
+          "hex": "1e00"
+        },
+        {
+          "name": "KIND_Blob_LE",
+          "hex": "2800"
+        },
+        {
+          "name": "HEADER_LEN_60_LE",
+          "hex": "3c000000"
+        },
+        {
+          "name": "MAX_PAYLOAD_1MB_LE",
+          "hex": "00001000"
+        }
+      ]
+    },
+    {
+      "path": "fuzz/fuzz_targets/expression.dict",
+      "sha256": "521dc00cb139163c58b93b5f03fcab99d4e6a0438d8fcffc8735de3559d877dd",
+      "unchanged": true
+    },
+    {
+      "path": "fuzz/fuzz_targets/ipc_frame.dict",
+      "sha256": "8d79a7630730309e33f74f06f574c178e00e2a92b338637bfd359ef1c3c859e0",
+      "unchanged": false,
+      "entries": 16,
+      "exact_name_and_escape_bytes_preserved": true,
+      "tokens": [
+        {
+          "name": "MAGIC_VBLT_LE",
+          "hex": "544c4256"
+        },
+        {
+          "name": "VERSION_LE_1",
+          "hex": "0100"
+        },
+        {
+          "name": "CMD_SubmitRun_LE",
+          "hex": "0100"
+        },
+        {
+          "name": "CMD_SubmitRunInline_LE",
+          "hex": "0200"
+        },
+        {
+          "name": "CMD_CancelRun_LE",
+          "hex": "0300"
+        },
+        {
+          "name": "CMD_InspectRun_LE",
+          "hex": "0400"
+        },
+        {
+          "name": "CMD_ListEvents_LE",
+          "hex": "0500"
+        },
+        {
+          "name": "CMD_AnswerAsk_LE",
+          "hex": "0600"
+        },
+        {
+          "name": "CMD_CompleteAction_LE",
+          "hex": "0700"
+        },
+        {
+          "name": "CMD_FailAction_LE",
+          "hex": "0800"
+        },
+        {
+          "name": "CMD_DrainTrace_LE",
+          "hex": "0900"
+        },
+        {
+          "name": "CMD_Health_LE",
+          "hex": "0a00"
+        },
+        {
+          "name": "CMD_Shutdown_LE",
+          "hex": "0b00"
+        },
+        {
+          "name": "FLAG_PAYLOAD_PRESENT_LE",
+          "hex": "0100"
+        },
+        {
+          "name": "LEN_24_LE",
+          "hex": "18000000"
+        },
+        {
+          "name": "ZERO_8B",
+          "hex": "0000000000000000"
+        }
+      ]
+    },
+    {
+      "path": "fuzz/fuzz_targets/journal_decode.dict",
+      "sha256": "02fdabc698d1bf37e794fc81698cf152950617ec1cbc1705fe90243ffb031e62",
+      "unchanged": false,
+      "entries": 10,
+      "exact_name_and_escape_bytes_preserved": true,
+      "tokens": [
+        {
+          "name": "MAGIC_JOURNAL_EVENT_LE",
+          "hex": "454a4256"
+        },
+        {
+          "name": "MAGIC_BLOB_LE",
+          "hex": "4c424256"
+        },
+        {
+          "name": "MAGIC_SNAPSHOT_LE",
+          "hex": "4e534256"
+        },
+        {
+          "name": "MAGIC_COMPILED_ARTIFACT_LE",
+          "hex": "52494256"
+        },
+        {
+          "name": "MAGIC_WORKFLOW_SOURCE_LE",
+          "hex": "52534256"
+        },
+        {
+          "name": "MAGIC_INDEX_RECORD_LE",
+          "hex": "58494256"
+        },
+        {
+          "name": "KIND_RunKilled_LE",
+          "hex": "1c00"
+        },
+        {
+          "name": "KIND_AskTimedOut_LE",
+          "hex": "1d00"
+        },
+        {
+          "name": "KIND_WaitResolved_LE",
+          "hex": "1f00"
+        },
+        {
+          "name": "KIND_ActionAbandoned_LE",
+          "hex": "2000"
+        }
+      ]
+    },
+    {
+      "path": "fuzz/fuzz_targets/journal_event.dict",
+      "sha256": "3be9b93bcc2661e19bec5cee66c79eedc2666ade383af6a2fd4a8f2f48ce73a5",
+      "unchanged": false,
+      "entries": 3,
+      "exact_name_and_escape_bytes_preserved": true,
+      "tokens": [
+        {
+          "name": "MAGIC_JOURNAL_EVENT_LE",
+          "hex": "454a4256"
+        },
+        {
+          "name": "KIND_RunAccepted_LE",
+          "hex": "0a00"
+        },
+        {
+          "name": "KIND_StepStarted_LE",
+          "hex": "0b00"
+        }
+      ]
+    },
+    {
+      "path": "fuzz/fuzz_targets/kind_validation.dict",
+      "sha256": "9333d261c3de4d99d4bf85eb3ccc4f4f95355537bd4a6b18b34fad5e70cee1ac",
+      "unchanged": false,
+      "entries": 10,
+      "exact_name_and_escape_bytes_preserved": true,
+      "tokens": [
+        {
+          "name": "MAGIC_JOURNAL_EVENT_LE",
+          "hex": "454a4256"
+        },
+        {
+          "name": "MAGIC_BLOB_LE",
+          "hex": "4c424256"
+        },
+        {
+          "name": "MAGIC_SNAPSHOT_LE",
+          "hex": "4e534256"
+        },
+        {
+          "name": "MAGIC_COMPILED_ARTIFACT_LE",
+          "hex": "52494256"
+        },
+        {
+          "name": "MAGIC_WORKFLOW_SOURCE_LE",
+          "hex": "52534256"
+        },
+        {
+          "name": "MAGIC_INDEX_RECORD_LE",
+          "hex": "58494256"
+        },
+        {
+          "name": "BOUNDARY_KIND_28_LE",
+          "hex": "1c00"
+        },
+        {
+          "name": "BOUNDARY_KIND_30_LE",
+          "hex": "1e00"
+        },
+        {
+          "name": "BOUNDARY_KIND_40_LE",
+          "hex": "2800"
+        },
+        {
+          "name": "BOUNDARY_KIND_UNKNOWN_999_LE",
+          "hex": "e703"
+        }
+      ]
+    },
+    {
+      "path": "fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.dict",
+      "sha256": "7876a8cc13ac8d00509a83a901b4453b120145169f68f160e58e21dec3cc4697",
+      "unchanged": true
+    },
+    {
+      "path": "fuzz/fuzz_targets/vb_storage_codec.dict",
+      "sha256": "c38dd87fc904ca16e3bb5ee2b0b1ab033c041f43292cd931a36facf4f0c95bd4",
+      "unchanged": false,
+      "entries": 9,
+      "exact_name_and_escape_bytes_preserved": true,
+      "tokens": [
+        {
+          "name": "MAGIC_JOURNAL_EVENT_LE",
+          "hex": "454a4256"
+        },
+        {
+          "name": "MAGIC_BLOB_LE",
+          "hex": "4c424256"
+        },
+        {
+          "name": "MAGIC_SNAPSHOT_LE",
+          "hex": "4e534256"
+        },
+        {
+          "name": "MAGIC_COMPILED_ARTIFACT_LE",
+          "hex": "52494256"
+        },
+        {
+          "name": "MAGIC_WORKFLOW_SOURCE_LE",
+          "hex": "52534256"
+        },
+        {
+          "name": "MAGIC_INDEX_RECORD_LE",
+          "hex": "58494256"
+        },
+        {
+          "name": "BOUNDARY_ZERO_MAGIC",
+          "hex": "00000000"
+        },
+        {
+          "name": "BOUNDARY_MAX_MAGIC",
+          "hex": "ffffffff"
+        },
+        {
+          "name": "DEADBEEF_LE",
+          "hex": "efbeadde"
+        }
+      ]
+    }
+  ],
+  "changed": 6,
+  "unchanged": 2,
+  "preserved_named_hex_tokens": 65,
+  "status": "exact lexical byte intent preserved; real parser execution still required"
+}

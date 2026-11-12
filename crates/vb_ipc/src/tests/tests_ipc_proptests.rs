@@ -5,7 +5,20 @@ mod proptests {
     use super::*;
     use proptest::prelude::*;
 
+    fn regression_config() -> ProptestConfig {
+        ProptestConfig {
+            failure_persistence: Some(Box::new(
+                proptest::test_runner::FileFailurePersistence::Direct(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/proptest-regressions/tests.txt"
+                )),
+            )),
+            ..ProptestConfig::default()
+        }
+    }
+
     proptest! {
+        #![proptest_config(regression_config())]
         #[test]
         fn ipc_command_roundtrips_through_u16(cmd in 1u16..=11u16) {
             let parsed = IpcCommand::from_u16(cmd);
@@ -16,6 +29,7 @@ mod proptests {
     }
 
     proptest! {
+        #![proptest_config(regression_config())]
         #[test]
         fn non_magic_bytes_always_rejected(magic in 0u32..) {
             if magic != IPC_MAGIC {
@@ -35,6 +49,7 @@ mod proptests {
     }
 
     proptest! {
+        #![proptest_config(regression_config())]
         #[test]
         fn ipc_command_encode_decode_roundtrip(cmd_val in 1u16..=11u16) {
             let Ok(command) = IpcCommand::from_u16(cmd_val) else {
@@ -54,6 +69,7 @@ mod proptests {
     }
 
     proptest! {
+        #![proptest_config(regression_config())]
         #[test]
         fn ipc_response_encode_decode_roundtrip(run_id_val in 0u64..) {
             let payload = IpcPayload::CancelRun { run_id: RunId::new(run_id_val) };
@@ -70,6 +86,7 @@ mod proptests {
     }
 
     proptest! {
+        #![proptest_config(regression_config())]
         #[test]
         fn frame_header_length_never_exceeds_max(cmd_val in 1u16..=11u16, payload_len in 0u32..=1024u32) {
             let Ok(command) = IpcCommand::from_u16(cmd_val) else {

@@ -1,0 +1,102 @@
+---- shard::lifecycle::tests::action_completed_unknown_run_returns_run_not_found stdout ----
+
+thread 'shard::lifecycle::tests::action_completed_unknown_run_returns_run_not_found' (2026157) panicked at crates/vb_runtime/src/shard/lifecycle_tests/chunk_003.rs:243:9:
+assertion `left == right` failed
+  left: Err(InvalidActionCompletion)
+ right: Err(RunNotFound)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- shard::lifecycle::tests::action_failure_unknown_run_returns_run_not_found stdout ----
+
+thread 'shard::lifecycle::tests::action_failure_unknown_run_returns_run_not_found' (2026163) panicked at crates/vb_runtime/src/shard/lifecycle_tests/chunk_005.rs:108:9:
+assertion `left == right` failed
+  left: Err(InvalidActionCompletion)
+ right: Err(RunNotFound)
+
+---- shard::lifecycle::tests::handle_action_completion_returns_run_not_found_when_run_missing stdout ----
+
+thread 'shard::lifecycle::tests::handle_action_completion_returns_run_not_found_when_run_missing' (2026192) panicked at crates/vb_runtime/src/shard/lifecycle_tests/chunk_004.rs:1742:5:
+assertion `left == right` failed
+  left: Err(InvalidActionCompletion)
+ right: Err(RunNotFound)
+
+---- shard::lifecycle::tests::handle_action_completion_returns_run_not_found_when_run_cancelled stdout ----
+
+thread 'shard::lifecycle::tests::handle_action_completion_returns_run_not_found_when_run_cancelled' (2026190) panicked at crates/vb_runtime/src/shard/lifecycle_tests/chunk_004.rs:1773:5:
+assertion `left == right` failed
+  left: Err(InvalidActionCompletion)
+ right: Err(RunNotFound)
+
+---- shard::lifecycle::tests::future_attempt_completion_beyond_max_is_action_failed_code stdout ----
+
+thread 'shard::lifecycle::tests::future_attempt_completion_beyond_max_is_action_failed_code' (2026187) panicked at crates/vb_runtime/src/shard/lifecycle_tests/chunk_004.rs:78:5:
+assertion `left == right` failed
+  left: Err(InvalidActionCompletion)
+ right: Err(AttemptBeyondMax { attempt: 4, max: 3 })
+
+---- shard::lifecycle::tests::handle_action_failure_returns_run_not_found_when_run_missing stdout ----
+
+thread 'shard::lifecycle::tests::handle_action_failure_returns_run_not_found_when_run_missing' (2026196) panicked at crates/vb_runtime/src/shard/lifecycle_tests/chunk_004.rs:1823:5:
+assertion `left == right` failed
+  left: Err(InvalidActionCompletion)
+ right: Err(RunNotFound)
+
+---- shard::lifecycle::tests::handle_action_completion_returns_run_not_found_when_run_finished stdout ----
+
+thread 'shard::lifecycle::tests::handle_action_completion_returns_run_not_found_when_run_finished' (2026191) panicked at crates/vb_runtime/src/shard/lifecycle_tests/chunk_004.rs:1806:5:
+assertion `left == right` failed
+  left: Err(InvalidActionCompletion)
+ right: Err(RunNotFound)
+
+---- shard::lifecycle::tests::stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged stdout ----
+
+thread 'shard::lifecycle::tests::stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged' (2026245) panicked at crates/vb_runtime/src/shard/lifecycle_tests/chunk_004.rs:131:5:
+assertion `left == right` failed
+  left: Err(InvalidActionCompletion)
+ right: Err(StaleAttempt { incoming: 2, current: 3 })
+
+---- shard::tests::adversarial_shard_action_failed_for_unknown_run_returns_run_not_found stdout ----
+
+thread 'shard::tests::adversarial_shard_action_failed_for_unknown_run_returns_run_not_found' (2026298) panicked at crates/vb_runtime/src/shard/tests/chunk_007.rs:289:5:
+assertion `left == right` failed
+  left: Err(InvalidActionCompletion)
+ right: Err(RunNotFound)
+
+---- shard::tests::shard_action_failed_for_unknown_run_returns_run_not_found stdout ----
+
+thread 'shard::tests::shard_action_failed_for_unknown_run_returns_run_not_found' (2026384) panicked at crates/vb_runtime/src/shard/tests/chunk_011.rs:107:5:
+assertion `left == right` failed
+  left: Err(InvalidActionCompletion)
+ right: Err(RunNotFound)
+
+---- shard::tests::shard_action_failure_after_cancel_returns_run_not_found stdout ----
+
+thread 'shard::tests::shard_action_failure_after_cancel_returns_run_not_found' (2026385) panicked at crates/vb_runtime/src/shard/tests/chunk_016.rs:165:5:
+assertion `left == right` failed
+  left: Err(InvalidActionCompletion)
+ right: Err(RunNotFound)
+
+---- shard::tests::shard_action_failure_with_wrong_run_in_ticket_returns_run_not_found stdout ----
+
+thread 'shard::tests::shard_action_failure_with_wrong_run_in_ticket_returns_run_not_found' (2026390) panicked at crates/vb_runtime/src/shard/tests/chunk_015.rs:66:5:
+assertion `left == right` failed
+  left: Err(InvalidActionCompletion)
+ right: Err(RunNotFound)
+
+---- shard::tests::vb1u88_action_completion_unknown_run_not_found stdout ----
+
+thread 'shard::tests::vb1u88_action_completion_unknown_run_not_found' (2026549) panicked at crates/vb_runtime/src/shard/tests/chunk_025.rs:43:5:
+assertion `left == right` failed
+  left: Err(InvalidActionCompletion)
+ right: Err(RunNotFound)
+
+---- shard::tests::vb1u88_action_failure_unknown_run_not_found stdout ----
+
+thread 'shard::tests::vb1u88_action_failure_unknown_run_not_found' (2026550) panicked at crates/vb_runtime/src/shard/tests/chunk_025.rs:70:5:
+assertion `left == right` failed
+  left: Err(InvalidActionCompletion)
+ right: Err(RunNotFound)
+
+
+test result: FAILED. 1842 passed; 14 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.96s
+[full output: ~/.local/share/rtk/tee/1783611597_cargo_test.log]

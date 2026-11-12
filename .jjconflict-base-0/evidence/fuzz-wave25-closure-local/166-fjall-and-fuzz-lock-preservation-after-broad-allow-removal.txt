@@ -1,0 +1,25 @@
+COMMANDS: cargo tree -i fjall --workspace (root and fuzz), Cargo.lock existence check, Cargo.toml `fjall` requirement presence in fuzz
+CWD_ROOT: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+CWD_FUZZ: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+
+=== Root tree ===
+fjall v3.2.2
+├── vb_storage v0.1.0 (...)
+│   ├── velvet-ballistics-workspace-tests v0.1.0 (...)
+│   └── velvet-ballistics v0.1.0 (...) [binary package; CLI]
+[... rest of the dependency chain ...]
+
+=== Fuzz tree (cargo tree -i fjall --manifest-path fuzz/Cargo.toml) ===
+fjall v3.2.2
+└── vb_storage v0.1.0 (...)
+    └── velvet-ballistics-fuzz v0.1.0 (...)
+
+=== Lockfile presence ===
+-rw-r--r-- 1 lewis lewis 60552 Jul  7 20:03 /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/Cargo.lock
+-rw-r--r-- 1 lewis lewis 50765 Jul  9 22:57 /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/Cargo.lock
+
+Both lockfiles present. Fjall remains a mandatory dependency in both
+graphs and across both lockfiles. No lockfile-removal change was made in
+this round.
+
+EXIT_STATUS=0

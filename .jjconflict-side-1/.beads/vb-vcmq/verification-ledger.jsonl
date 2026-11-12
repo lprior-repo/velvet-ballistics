@@ -1,0 +1,4 @@
+{"id":"PO-001","result":"PASS","evidence":"cargo-public-api 0.51.0 installed; machine-gate-report.md","waiver":null,"owner_state":11,"rerun_from":11}
+{"id":"PO-002","result":"WAIVED","evidence":".beads/vb-vcmq/public-api-workspace-unsupported.log","waiver":"WVR-API-001","owner_state":11,"rerun_from":11}
+{"id":"PO-003","result":"PASS","evidence":".beads/vb-vcmq/public-api-per-package.log; 20 [exit=0], 0 nonzero exit markers","waiver":null,"owner_state":11,"rerun_from":11}
+{"id":"PO-004","result":"DEFERRED_GLOBAL","evidence":".beads/vb-vcmq/verify-standard.log; known blocker vb-ybi5","waiver":null,"owner_state":11,"rerun_from":11}

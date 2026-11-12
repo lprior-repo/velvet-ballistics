@@ -1,0 +1,180 @@
+361: +                step,
+362: +                action,
+363: +                attempt: 1,
+364: +            })
+365: +            .expect("completion must succeed");
+366: +        assert!(
+367: +            !has_index_entry(&journal, action, run, step),
+368: +            "ActionCompletedEvent must remove the pending action marker"
+369: +        );
+370: +        assert_eq!(
+371: +            count_action_index_entries(&journal),
+372: +            0,
+373: +            "index_action must be empty after terminal completion",
+374: +        );
+375: +    }
+376: +
+377: +    #[test]
+378: +    fn append_journaled_action_failed_removes_index_entry() {
+379: +        let (_temp, journal) = temp_journal();
+380: +        let run = RunId::new(3);
+381: +        let step = StepIdx::new(7);
+382: +        let action = ActionId::new(13);
+383: +
+384: +        journal
+385: +            .append_journaled(&JournalEvent::ActionScheduled {
+386: +                run,
+387: +                seq: EventSeq::new(0),
+388: +                step,
+389: +                action,
+390: +                attempt: 1,
+391: +            })
+392: +            .expect("schedule must succeed");
+393: +        journal
+394: +            .append_journaled(&JournalEvent::ActionFailedEvent {
+395: +                run,
+396: +                seq: EventSeq::new(1),
+397: +                step,
+398: +                action,
+399: +                attempt: 1,
+400: +            })
+401: +            .expect("failure must succeed");
+402: +        assert!(
+403: +            !has_index_entry(&journal, action, run, step),
+404: +            "ActionFailedEvent must remove the pending action marker"
+405: +        );
+406: +    }
+407: +
+408: +    // -----------------------------------------------------------------
+409: +    // Direct journal path: append_strict (force fsync)
+410: +    // -----------------------------------------------------------------
+411: +
+412: +    #[test]
+413: +    fn append_strict_action_scheduled_creates_index_entry() {
+414: +        let (_temp, journal) = temp_journal();
+415: +        let run = RunId::new(4);
+416: +        let step = StepIdx::new(8);
+417: +        let action = ActionId::new(17);
+418: +
+419: +        journal
+420: +            .append_strict(&JournalEvent::ActionScheduled {
+421: +                run,
+422: +                seq: EventSeq::new(0),
+423: +                step,
+424: +                action,
+425: +                attempt: 1,
+426: +            })
+427: +            .expect("append_strict must succeed");
+428: +        assert!(
+429: +            has_index_entry(&journal, action, run, step),
+430: +            "append_strict ActionScheduled must add the index marker"
+431: +        );
+432: +    }
+433: +
+434: +    // -----------------------------------------------------------------
+435: +    // Atomic batch insert path: append_event through JournalWriteBatch
+436: +    // -----------------------------------------------------------------
+437: +
+438: +    #[test]
+439: +    fn batch_append_event_action_scheduled_creates_index_entry() {
+440: +        let (_temp, journal) = temp_journal();
+441: +        let run = RunId::new(5);
+442: +        let step = StepIdx::new(9);
+443: +        let action = ActionId::new(19);
+444: +
+445: +        let event = JournalEvent::ActionScheduled {
+446: +            run,
+447: +            seq: EventSeq::new(0),
+448: +            step,
+449: +            action,
+450: +            attempt: 1,
+451: +        };
+452: +        let mut batch = JournalWriteBatch::new(&journal);
+453: +        batch
+454: +            .append_event(&event)
+455: +            .expect("batch.append_event must succeed");
+456: +        batch.commit().expect("commit must succeed");
+457: +
+458: +        assert!(
+459: +            has_index_entry(&journal, action, run, step),
+460: +            "batch-staged ActionScheduled must add the pending action marker"
+461: +        );
+462: +    }
+463: +
+464: +    #[test]
+465: +    fn batch_append_event_action_completed_removes_index_entry() {
+466: +        let (_temp, journal) = temp_journal();
+467: +        let run = RunId::new(6);
+468: +        let step = StepIdx::new(10);
+469: +        let action = ActionId::new(23);
+470: +
+471: +        let mut batch = JournalWriteBatch::new(&journal);
+472: +        batch
+473: +            .append_event(&JournalEvent::ActionScheduled {
+474: +                run,
+475: +                seq: EventSeq::new(0),
+476: +                step,
+477: +                action,
+478: +                attempt: 1,
+479: +            })
+480: +            .expect("schedule must succeed");
+481: +        batch
+482: +            .append_event(&JournalEvent::ActionCompletedEvent {
+483: +                run,
+484: +                seq: EventSeq::new(1),
+485: +                step,
+486: +                action,
+487: +                attempt: 1,
+488: +            })
+489: +            .expect("completion must succeed");
+490: +        batch.commit().expect("commit must succeed");
+491: +
+492: +        assert!(
+493: +            !has_index_entry(&journal, action, run, step),
+494: +            "batch-staged ActionCompleted must remove the pending action marker"
+495: +        );
+496: +        assert_eq!(
+497: +            count_action_index_entries(&journal),
+498: +            0,
+499: +            "no markers must remain after scheduled+completed pair",
+500: +        );
+501: +    }
+502: +
+503: +    #[test]
+504: +    fn batch_append_event_action_scheduled_ticket_creates_index_entry() {
+505: +        let (_temp, journal) = temp_journal();
+506: +        let run = RunId::new(7);
+507: +        let step = StepIdx::new(11);
+508: +        let action = ActionId::new(29);
+509: +        let ticket = minimal_action_ticket(run, step, action);
+510: +
+511: +        let event = JournalEvent::ActionScheduledTicket {
+512: +            run,
+513: +            seq: EventSeq::new(0),
+514: +            ticket,
+515: +            input: SlotIdx::new(0),
+516: +            output: SlotIdx::new(1),
+517: +            action_abi_digest: WorkflowDigest::from_bytes([0xAB; 32]),
+518: +        };
+519: +        let mut batch = JournalWriteBatch::new(&journal);
+520: +        batch
+521: +            .append_event(&event)
+522: +            .expect("batch.append_event must succeed");
+523: +        batch.commit().expect("commit must succeed");
+524: +
+525: +        assert!(
+526: +            has_index_entry(&journal, action, run, step),
+527: +            "ActionScheduledTicket must add the pending action marker"
+528: +        );
+529: +    }
+530: +
+531: +    #[test]
+532: +    fn batch_append_event_action_completed_envelope_removes_index_entry() {
+533: +        let (_temp, journal) = temp_journal();
+534: +        let run = RunId::new(8);
+535: +        let step = StepIdx::new(12);
+536: +        let action = ActionId::new(31);
+537: +        let ticket = minimal_action_ticket(run, step, action);
+538: +
+539: +        let mut batch = JournalWriteBatch::new(&journal);
+540: +        batch

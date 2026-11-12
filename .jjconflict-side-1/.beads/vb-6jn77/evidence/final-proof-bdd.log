@@ -1,0 +1,14 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.17s
+     Running tests/vb_lp2v_proof_admission_bdd.rs (target/debug/deps/vb_lp2v_proof_admission_bdd-63908c5e1a3c6f0d)
+
+running 3 tests
+test given_mismatched_proof_digest_when_strict_admission_runs_then_digest_mismatch_denies ... ok
+test given_matching_proof_digest_when_strict_admission_runs_then_artifact_is_admitted ... ok
+test given_storage_record_requested_by_source_digest_when_strict_admission_runs_then_artifact_is_admitted ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s

@@ -1,0 +1,5 @@
++zsh:1> cargo clippy --workspace --all-targets --all-features -- -D warnings
+    Checking velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.67s
+
+exit_status=0

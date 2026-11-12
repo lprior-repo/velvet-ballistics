@@ -1,0 +1,202 @@
+[verus] verus --crate-type=lib verification/verus/taint_lattice.rs
+verification results:: 25 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/step_state_machine.rs
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> verification/verus/production_inner/step_state_machine_production.rs:68:10
+   |
+68 | #[derive(Clone)]
+   |          ^^^^^
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/step_state_machine_production.rs:100:10
+    |
+100 | #[derive(Clone)]
+    |          ^^^^^
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/step_state_machine_production.rs:120:10
+    |
+120 | #[derive(Clone)]
+    |          ^^^^^
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/step_state_machine_production.rs:144:10
+    |
+144 | #[derive(Clone)]
+    |          ^^^^^
+
+verification results:: 32 verified, 0 errors
+warning: 4 warnings emitted
+
+[verus] verus --crate-type=lib verification/verus/step_budget.rs
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> verification/verus/production_inner/signals_production.rs:58:10
+   |
+58 | #[derive(Clone)]
+   |          ^^^^^
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> verification/verus/production_inner/signals_production.rs:76:10
+   |
+76 | #[derive(Clone)]
+   |          ^^^^^
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/signals_production.rs:194:10
+    |
+194 | #[derive(Clone)]
+    |          ^^^^^
+
+verification results:: 21 verified, 0 errors
+warning: 3 warnings emitted
+
+[verus] verus --no-lifetime --crate-type=lib verification/verus/budget_bounded.rs
+verification results:: 65 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/budget_computation.rs
+verification results:: 30 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/vb_jpq724_events_for_run_production.rs
+verification results:: 37 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/vb_runtime_execute_do_spec.rs
+verification results:: 30 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/budget_monotonic.rs
+verification results:: 50 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/run_frame_invariant.rs
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/run_frame_invariant_production.rs:176:10
+    |
+176 | #[derive(Clone)]
+    |          ^^^^^
+
+verification results:: 47 verified, 0 errors
+warning: 1 warning emitted
+
+[verus] verus --crate-type=lib verification/verus/value_store_invariant.rs
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> verification/verus/value_store_invariant.rs:78:17
+   |
+78 | #[derive(Debug, Clone, PartialEq, Eq)]
+   |                 ^^^^^
+
+verification results:: 20 verified, 0 errors
+warning: 1 warning emitted
+
+[verus] verus --crate-type=lib verification/verus/signals_invariant.rs
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> verification/verus/production_inner/signals_production.rs:58:10
+   |
+58 | #[derive(Clone)]
+   |          ^^^^^
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> verification/verus/production_inner/signals_production.rs:76:10
+   |
+76 | #[derive(Clone)]
+   |          ^^^^^
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/signals_production.rs:194:10
+    |
+194 | #[derive(Clone)]
+    |          ^^^^^
+
+verification results:: 21 verified, 0 errors
+warning: 3 warnings emitted
+
+[verus] verus --crate-type=lib verification/verus/signals_try_take.rs
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> verification/verus/production_inner/signals_production.rs:58:10
+   |
+58 | #[derive(Clone)]
+   |          ^^^^^
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> verification/verus/production_inner/signals_production.rs:76:10
+   |
+76 | #[derive(Clone)]
+   |          ^^^^^
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/signals_production.rs:194:10
+    |
+194 | #[derive(Clone)]
+    |          ^^^^^
+
+verification results:: 20 verified, 0 errors
+warning: 3 warnings emitted
+
+[verus] verus --crate-type=lib verification/verus/step_offset.rs
+verification results:: 13 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/try_from_parts.rs
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/extern_try_from_parts.rs:244:10
+    |
+244 | #[derive(Clone)]
+    |          ^^^^^
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/extern_try_from_parts.rs:366:10
+    |
+366 | #[derive(Clone)]
+    |          ^^^^^
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/extern_try_from_parts.rs:410:10
+    |
+410 | #[derive(Clone)]
+    |          ^^^^^
+
+verification results:: 67 verified, 0 errors
+warning: 3 warnings emitted
+
+[verus] verus --crate-type=lib verification/verus/admission_artifact_model.rs
+verification results:: 19 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/capability_artifact_model.rs
+verification results:: 18 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/accepted_artifact_admission_decision.rs
+verification results:: 19 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/accepted_run_atomic_admission.rs
+verification results:: 14 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/accepted_envelope_model.rs
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> verification/verus/extern_accepted_envelope.rs:58:17
+   |
+58 | #[derive(Debug, Clone, PartialEq, Eq)]
+   |                 ^^^^^
+
+verification results:: 10 verified, 0 errors
+warning: 1 warning emitted
+
+warning: function `SPEC_REQUIRED_GATE_COUNT` should have a snake case name
+  --> verification/verus/accepted_envelope_model.rs:39:18
+   |
+39 | pub open spec fn SPEC_REQUIRED_GATE_COUNT() -> int { 15 }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `spec_required_gate_count`
+   |
+   = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: 1 warning emitted
+
+[verus] verus --crate-type=lib verification/verus/accepted_cli_digest_binding.rs
+verification results:: 17 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/strict_admission_witness.rs
+verification results:: 13 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/idempotency_decision.rs
+verification results:: 15 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/recovery_verification.rs
+verification results:: 123 verified, 0 errors
+[verus] verus --crate-type=lib verification/verus/idempotency_replay_tracker.rs
+error: cannot use type `idempotency_replay_tracker::production::prod_src::WorkflowDigest` which is ignored because it is either declared outside the verus! macro or it is marked as `external`.
+   --> verification/verus/idempotency_replay_tracker.rs:137:1
+    |
+137 | pub struct ExActionScheduleEvidence(pub production::prod_src::ActionScheduleEvidence);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+143 | pub struct ExActionCompletionEvidence(pub production::prod_src::ActionCompletionEvidence);
+    | ------------------------------------------------------------------------------------------
+    |
+    = help: The following declaration may resolve this error:
+            #[verifier::external_type_specification]
+            pub struct ExWorkflowDigest(crate::production::prod_src::WorkflowDigest);
+
+error: aborting due to 1 previous error
+

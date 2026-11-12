@@ -1,0 +1,18 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc cab3653d691a31fbe8fd7488930664a3e15b63152597f9cdf7d7f5e2f502c3a0 # shrinks to depth = 1
+cc 4082fe497918f1bc8879ff5c600ddafc975872d4d81438c0008e71d9ab064cff # shrinks to indent = 1
+cc ba480d39919c54a278f48fd69916887bdf98984258d43b740e50162dbf14044b # shrinks to key = "a"
+cc 44e4c424dffb4f5df5babc9b1724f68ee50c5d5eda2a1b15ff61e0abb7cd2c2c # shrinks to values = "n"
+cc 27be2d7f6c6f07a47a656b5484946463e110c37c0b8bedbbe64a640c98358791 # shrinks to key = "_", value = "n"
+cc fba83ae89f3706327e1e21525ab859f005ce4a50865d211abcfd144e499aecf0 # shrinks to key = "Y"
+cc 9e1fa693ff982593bf9d33e2a1e95aa9bf1832a5eaf8466fb599e67273a84f9b # shrinks to value = "N"
+cc 882e5fd437ac71b4bb3a1c816f5764f9ac0d671a99aeffd75a088aa1c5d68279 # shrinks to key = "Y"
+cc 3ffdd8c81226753e4a6c53216c76521f34de95baef98aad5c1c7861602b148cd # shrinks to key = "Y"
+cc efa6eb45d6724ef8fc0c52f6d9ec986671d48e36bb4bb3f36fa395233cfac746 # shrinks to key = "y", value = "A"
+cc 4c4e5b2bf9d7111c5489281a101d467ab125d60e6f842cade8062fd201ca1845 # shrinks to key = "Y"
+cc 3030dbf6a3342e2b4400d79ff6356f98973e6504dae72d133a30debb4867fd37 # shrinks to key = "aa", value = "Y"

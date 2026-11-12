@@ -1,0 +1,932 @@
+{
+  "verdict": "PASS",
+  "scope": "Bounded independent TEST suite/source-contract parity review of integrated Has runtime tests; not full Has qualification",
+  "source_pin": "1a3a47754e04d69db27c43343a0b6c162c51483f",
+  "base_pin": "1de99017b80db741cf735a7301ead4f288ba47d4",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+  "roots_verified": {
+    "git": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+    "jj": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol"
+  },
+  "contract": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-masterplan-locator-luna/.beads/vb-eirmk.42/has-parity-contract-proposal-v3.md",
+    "sha256": "2f3329582a76616ad9b02e83ea0b5036a66c616fa5b49e39afcd71b33339d860"
+  },
+  "findings": [],
+  "coverage": {
+    "new_tests": 40,
+    "groups": {
+      "store_and_context_free": 19,
+      "hot_positive": 4,
+      "hot_typed_negative_and_precedence": 7,
+      "replay_positive": 4,
+      "replay_public_op_pc1_negative": 6
+    },
+    "positive_oracles": "Each evaluator has explicit fixture-derived true for a present key and false for absent, empty, and only-other-key objects. Expected values are literals, not another evaluator or production membership lookup.",
+    "store_errors": "Exact ExprError object/boolean and text/number payloads; ObjectId/SymbolId MAX InvalidReference; invalid symbols rejected for empty and populated valid objects; both bad tags choose receiver; wrong key type precedes invalid Object resolution; two invalid correctly tagged handles choose Object. Explicit isolated invalid Object with valid stored Symbol.",
+    "arity_context": "Store-aware arities 0/1/3 and context-free arities 0/1/3 assert exact HelperArityMismatch. Correctly tagged context-free handles assert exact context-required TypeMismatch. No handle-validity assertion on context-free API.",
+    "hot_errors": "Seven direct eval_has tests assert exact EngineError variants/payloads for tags, invalid handles, and distinguishable ordering; four positives use actual eval_expr_with_store via valid compiled program.",
+    "replay_errors": "Six tests call public replay::ops::eval_replay_op with initialized stack, valid two-node plan, and actual RunFrame PC1; assert exact ExpressionEvalFailed step1. Test success cannot arise from invalid plan/step setup; Has dispatch actually consumes supplied operands. Both-wrong tests do not reveal internal precedence because public error is shared.",
+    "mutation_reasoning": [
+      "Constant true/false or list-membership restoration fails literal positive/negative object fixtures.",
+      "Removing Symbol resolution returns false for invalid Symbol on a valid empty object; store and hot exact-error tests fail; replay exact Err also fails.",
+      "Swapping type/handle validation order fails distinguishable store/hot combined-fault cases.",
+      "Mapping replay errors to StepIdx::ZERO instead of actual PC fails every new replay negative.",
+      "Wrong arity or replacing context-required error with success/wrong payload fails direct whole-Result equality."
+    ]
+  },
+  "legacy_preservation": {
+    "removed_functions": 0,
+    "unchanged_function_bodies_measured": 188,
+    "intentional_changed_functions": [
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/tests.rs",
+        "name": "has_finds_existing_element",
+        "line": 239
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/tests.rs",
+        "name": "has_returns_false_for_missing_element",
+        "line": 249
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/tests.rs",
+        "name": "has_list_out_of_bounds",
+        "line": 643
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list.rs",
+        "name": "eval_has",
+        "line": 61
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/tests/string_list_ops.rs",
+        "name": "has_finds_element_in_list",
+        "line": 89
+      },
+      {
+        "path": "crates/vb_core/src/replay/helpers.rs",
+        "name": "eval_has",
+        "line": 122
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "name": "blackhat_helper_has_matches_engine_list_membership",
+        "line": 876
+      },
+      {
+        "path": "crates/vb_expr/src/expr_eval/helper_store_values.rs",
+        "name": "eval_helper_has_with_store",
+        "line": 190
+      },
+      {
+        "path": "crates/vb_expr/src/expr_eval_tests_store.rs",
+        "name": "eval_helper_with_store_has_checks_object_key",
+        "line": 398
+      },
+      {
+        "path": "crates/vb_expr/src/expr_eval_tests_store.rs",
+        "name": "eval_helper_with_store_has_returns_false_for_missing_key",
+        "line": 421
+      }
+    ],
+    "assessment": "Original Has function names and includes retained. Wrong legacy list-membership fixtures deliberately replaced with normative Object/Symbol tests; true/false oracles retained. Legacy invalid-list fixture identity retained but now exact invalid Object error. Two old store fixtures now use valid interned Symbols while keeping their original true/false assertions. Unrelated function bodies unchanged in inspected modified files."
+  },
+  "source_audit": {
+    "changed_has_files": 14,
+    "support_files": 6,
+    "source_file_cap": 20,
+    "new_function_count": 48,
+    "max_new_function_logical_lines_including_signature": 21,
+    "max_touched_function_logical_lines_including_signature": 22,
+    "line_measurement": "Nonblank, non-comment lines with meaningful tokens; signature continuations included; brace/bracket/closing-punctuation-only lines excluded.",
+    "assertion_integrity": "No new optional extraction, early successful return, ignore/sleep, presence-only Result checks, forbidden panic helpers, discarded setup Results, production-derived expected booleans, or assertion suppression found. Setup failures propagate via Result.",
+    "static_compiler_diff": "No changes from base under vb_compile or vb_expr/src/expr_typecheck. No static/compiler correctness or new static coverage inferred from unchanged source.",
+    "files": [
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+        "sha256": "88f637a29fe7d85d4a6953354f93d3ab23b73bcb7a919a252f805099eed4a9da",
+        "status": "A"
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_parity_tests.rs",
+        "sha256": "54bd3fcefe491e1cf89dfa4b074db6974ecafb515df9d0eeb1c721765dfe8414",
+        "status": "A"
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/tests.rs",
+        "sha256": "9bebbe8f5fb1ae3a8c55ecb527df48b8943e1d9ef3e129f8bd91c50fe0c7a3b3",
+        "status": "M"
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list.rs",
+        "sha256": "d9e106b61fdb81125d78af259b271dd224bf0075b5082a8c80692a32a6aea326",
+        "status": "M"
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/tests/string_list_ops.rs",
+        "sha256": "32502d48f72ddae37ef61364c0cc630460aa28efbba7b1f689173fa49d8487ac",
+        "status": "M"
+      },
+      {
+        "path": "crates/vb_core/src/replay/helpers.rs",
+        "sha256": "38ebdf0f04e97d29eafd57956301378e79e5196da3d2c0b0d3a98d6244c31c07",
+        "status": "M"
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/has_error_replay_tests.rs",
+        "sha256": "e126da8a3859126b87372dde6946a6263fbcf55f38b9729928b9adab9c230c04",
+        "status": "A"
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/has_parity_replay_tests.rs",
+        "sha256": "b151af706293357ccfb2843f2bfd36668c4511d238d719f069582ce7d7119ad3",
+        "status": "A"
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/tests.rs",
+        "sha256": "5c336d1c87c4f4246f0857c342f6eccf51ab01f9a5f648ece3a643a167d028d7",
+        "status": "M"
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "sha256": "3fc7c0aed3e63b103a5b437d45e341e31a047800a8cf3f151bf0f7ac2a48b0f6",
+        "status": "M"
+      },
+      {
+        "path": "crates/vb_expr/src/expr_eval/helper_store_values.rs",
+        "sha256": "d11cc9ca8e1d4bba59fd9079d50a8e67600d760428344ff4a946daaa0b2f8122",
+        "status": "M"
+      },
+      {
+        "path": "crates/vb_expr/src/expr_eval_tests_store.rs",
+        "sha256": "44e67d10af0602636c6ae95d1d13e70284b6809cf2ec28660c0995153c24fdbe",
+        "status": "M"
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_operand_boundaries.rs",
+        "sha256": "433e3a219809bbf29377f652393ec867a5ad196c4ca3ecf4ce3a1392ad40684a",
+        "status": "A"
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "sha256": "ecbba0b605f591cf34431ff75da2fb924931f7fd6031b29a3ddd20ea30b73271",
+        "status": "A"
+      }
+    ],
+    "support": [
+      {
+        "path": "crates/vb_core/src/replay/ops.rs",
+        "sha256": "75e8004e3840725952c6d227391c8295d9dd466fea14c1601ef104de9ba9ad6a"
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/stack.rs",
+        "sha256": "ad3bd9eae2f2aa4136846a96e71ec612b937b9fe8b7365843ae48e53788340e9"
+      },
+      {
+        "path": "crates/vb_expr/src/expr_eval/environment.rs",
+        "sha256": "0a208617374cf016c3af93d1bfa26956d2c89d3ca58845693818db63037ea280"
+      },
+      {
+        "path": "crates/vb_expr/src/expr_eval.rs",
+        "sha256": "cfdbfeb2c419655e31d1f858b7bb0be83404dc018fe3b49a86630f721a2b160d"
+      },
+      {
+        "path": "crates/vb_expr/src/expr_eval/helper_store.rs",
+        "sha256": "e3eee61980561fbd09c0632c20171272bca8197fac60bd1865b61f9b5436c1e1"
+      },
+      {
+        "path": "crates/vb_core/src/replay/mod.rs",
+        "sha256": "89888eb9656bd202795e270b6d240313e81c604f493abb7ff2b16de72d99b630"
+      }
+    ],
+    "function_measurements": [
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+        "name": "has_error_for",
+        "line": 1,
+        "logical_lines_including_signature": 9,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+        "name": "has_rejects_boolean_receiver",
+        "line": 13,
+        "logical_lines_including_signature": 9,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+        "name": "has_rejects_numeric_key",
+        "line": 27,
+        "logical_lines_including_signature": 9,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+        "name": "has_checks_receiver_type_before_key_type",
+        "line": 41,
+        "logical_lines_including_signature": 8,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+        "name": "has_checks_key_type_before_object_lookup",
+        "line": 54,
+        "logical_lines_including_signature": 11,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+        "name": "has_rejects_invalid_object_handle",
+        "line": 71,
+        "logical_lines_including_signature": 11,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+        "name": "has_rejects_invalid_symbol_handle_before_membership",
+        "line": 88,
+        "logical_lines_including_signature": 11,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+        "name": "has_checks_object_before_symbol_handle",
+        "line": 105,
+        "logical_lines_including_signature": 10,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_parity_tests.rs",
+        "name": "has_parity_hot_eval",
+        "line": 1,
+        "logical_lines_including_signature": 16,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_parity_tests.rs",
+        "name": "has_parity_hot_object_has_requested_key",
+        "line": 22,
+        "logical_lines_including_signature": 10,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_parity_tests.rs",
+        "name": "has_parity_hot_object_missing_key",
+        "line": 36,
+        "logical_lines_including_signature": 11,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_parity_tests.rs",
+        "name": "has_parity_hot_empty_object",
+        "line": 51,
+        "logical_lines_including_signature": 6,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_parity_tests.rs",
+        "name": "has_parity_hot_object_other_key_only",
+        "line": 60,
+        "logical_lines_including_signature": 8,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/tests.rs",
+        "name": "has_finds_existing_element",
+        "line": 239,
+        "logical_lines_including_signature": 7,
+        "new_function": false
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/tests.rs",
+        "name": "has_returns_false_for_missing_element",
+        "line": 249,
+        "logical_lines_including_signature": 8,
+        "new_function": false
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/tests.rs",
+        "name": "has_list_out_of_bounds",
+        "line": 643,
+        "logical_lines_including_signature": 10,
+        "new_function": false
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/ops_text_list.rs",
+        "name": "eval_has",
+        "line": 61,
+        "logical_lines_including_signature": 12,
+        "new_function": false
+      },
+      {
+        "path": "crates/vb_core/src/engine/expr_eval/tests/string_list_ops.rs",
+        "name": "has_finds_element_in_list",
+        "line": 89,
+        "logical_lines_including_signature": 22,
+        "new_function": false
+      },
+      {
+        "path": "crates/vb_core/src/replay/helpers.rs",
+        "name": "eval_has",
+        "line": 122,
+        "logical_lines_including_signature": 8,
+        "new_function": false
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/has_error_replay_tests.rs",
+        "name": "replay_has_wrong_receiver_with_valid_symbol_maps_failure_to_current_step",
+        "line": 2,
+        "logical_lines_including_signature": 20,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/has_error_replay_tests.rs",
+        "name": "replay_has_wrong_key_with_valid_object_maps_failure_to_current_step",
+        "line": 27,
+        "logical_lines_including_signature": 17,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/has_error_replay_tests.rs",
+        "name": "replay_has_both_operands_wrong_maps_failure_to_current_step",
+        "line": 49,
+        "logical_lines_including_signature": 16,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/has_error_replay_tests.rs",
+        "name": "replay_has_invalid_object_with_valid_symbol_maps_failure_to_current_step",
+        "line": 70,
+        "logical_lines_including_signature": 21,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/has_error_replay_tests.rs",
+        "name": "replay_has_valid_empty_object_with_invalid_symbol_maps_failure_to_current_step",
+        "line": 96,
+        "logical_lines_including_signature": 21,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/has_error_replay_tests.rs",
+        "name": "replay_has_both_typed_handles_invalid_maps_failure_to_current_step",
+        "line": 122,
+        "logical_lines_including_signature": 20,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/has_parity_replay_tests.rs",
+        "name": "has_parity_replay_eval",
+        "line": 1,
+        "logical_lines_including_signature": 10,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/has_parity_replay_tests.rs",
+        "name": "has_parity_replay_valid_key_true",
+        "line": 15,
+        "logical_lines_including_signature": 10,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/has_parity_replay_tests.rs",
+        "name": "has_parity_replay_missing_key_false",
+        "line": 29,
+        "logical_lines_including_signature": 11,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/has_parity_replay_tests.rs",
+        "name": "has_parity_replay_empty_object_false",
+        "line": 44,
+        "logical_lines_including_signature": 6,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/has_parity_replay_tests.rs",
+        "name": "has_parity_replay_one_other_field_false",
+        "line": 53,
+        "logical_lines_including_signature": 8,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "name": "insert_has_object",
+        "line": 845,
+        "logical_lines_including_signature": 8,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "name": "assert_has_result",
+        "line": 856,
+        "logical_lines_including_signature": 16,
+        "new_function": true
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "name": "blackhat_helper_has_matches_engine_list_membership",
+        "line": 876,
+        "logical_lines_including_signature": 8,
+        "new_function": false
+      },
+      {
+        "path": "crates/vb_expr/src/expr_eval/helper_store_values.rs",
+        "name": "eval_helper_has_with_store",
+        "line": 190,
+        "logical_lines_including_signature": 19,
+        "new_function": false
+      },
+      {
+        "path": "crates/vb_expr/src/expr_eval_tests_store.rs",
+        "name": "eval_helper_with_store_has_checks_object_key",
+        "line": 398,
+        "logical_lines_including_signature": 18,
+        "new_function": false
+      },
+      {
+        "path": "crates/vb_expr/src/expr_eval_tests_store.rs",
+        "name": "eval_helper_with_store_has_returns_false_for_missing_key",
+        "line": 421,
+        "logical_lines_including_signature": 21,
+        "new_function": false
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_operand_boundaries.rs",
+        "name": "has_checks_receiver_before_wrong_key_type",
+        "line": 10,
+        "logical_lines_including_signature": 10,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_operand_boundaries.rs",
+        "name": "has_rejects_invalid_object_with_valid_stored_symbol",
+        "line": 26,
+        "logical_lines_including_signature": 11,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_operand_boundaries.rs",
+        "name": "context_free_has_rejects_one_argument",
+        "line": 43,
+        "logical_lines_including_signature": 9,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_operand_boundaries.rs",
+        "name": "context_free_has_rejects_three_arguments",
+        "line": 57,
+        "logical_lines_including_signature": 13,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_operand_boundaries.rs",
+        "name": "context_free_has_requires_store_for_tagged_handles",
+        "line": 76,
+        "logical_lines_including_signature": 11,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "make_object_with_field",
+        "line": 9,
+        "logical_lines_including_signature": 9,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "make_empty_object",
+        "line": 20,
+        "logical_lines_including_signature": 3,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "make_symbol",
+        "line": 25,
+        "logical_lines_including_signature": 3,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "has_store_true_when_field_present",
+        "line": 31,
+        "logical_lines_including_signature": 13,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "has_store_false_when_field_absent",
+        "line": 49,
+        "logical_lines_including_signature": 14,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "has_store_false_on_empty_object",
+        "line": 68,
+        "logical_lines_including_signature": 7,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "has_store_false_on_other_field",
+        "line": 79,
+        "logical_lines_including_signature": 7,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "has_store_invalid_symbol_empty_object",
+        "line": 90,
+        "logical_lines_including_signature": 11,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "has_store_invalid_symbol_nonempty_object",
+        "line": 107,
+        "logical_lines_including_signature": 11,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "has_store_type_mismatch_wrong_receiver",
+        "line": 124,
+        "logical_lines_including_signature": 11,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "has_store_type_mismatch_wrong_key_type",
+        "line": 141,
+        "logical_lines_including_signature": 11,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "has_store_key_type_checked_before_object_lookup",
+        "line": 158,
+        "logical_lines_including_signature": 11,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "has_store_object_reference_checked_first",
+        "line": 175,
+        "logical_lines_including_signature": 11,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "has_store_helper_arity_zero_args",
+        "line": 192,
+        "logical_lines_including_signature": 10,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "has_store_helper_arity_one_arg",
+        "line": 207,
+        "logical_lines_including_signature": 11,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "has_store_helper_arity_three_args",
+        "line": 223,
+        "logical_lines_including_signature": 13,
+        "new_function": true
+      },
+      {
+        "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+        "name": "has_context_free_helper_arity_zero_args",
+        "line": 241,
+        "logical_lines_including_signature": 9,
+        "new_function": true
+      }
+    ]
+  },
+  "retained_execution": {
+    "reviewer_executed_native": false,
+    "selected_moon": {
+      "tests_passed": 16488,
+      "skipped": 7,
+      "tasks_completed": 12,
+      "exit": 0,
+      "cli_before_after_equal": true,
+      "cli_sha256": "879153585d3c5c7cf56c643b7c752bb5db28838390be7997737a96b65e31d7bd",
+      "new_reviewed_test_names_observed_pass": 40
+    },
+    "baseline": {
+      "scope": "Only original 14-test store file; same frozen file SHA ecbba0b605f591cf34431ff75da2fb924931f7fd6031b29a3ddd20ea30b73271",
+      "passed": 12,
+      "failed": 2,
+      "skipped": 0,
+      "exit": 100,
+      "failures": [
+        "has_store_invalid_symbol_empty_object",
+        "has_store_invalid_symbol_nonempty_object"
+      ],
+      "actual_mismatch": "Ok(Bool(false)) versus exact InvalidReference symbol MAX; not 19 baseline-red cases."
+    },
+    "raw_artifacts": [
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-cli-moon-selected.log",
+        "sha256": "3e72e0be7e3eaecb49da79404732e1f914bcb9c9d9adc66fc7a31738a3e6eb59",
+        "bytes": 3008331
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-cli-moon-selected.exit",
+        "sha256": "99378a3544b6469ba679bcb306beeb8701cb1c42ab78e520775593a310116115",
+        "bytes": 12
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-cli-moon-selected-before.sha256",
+        "sha256": "68191fc2a5a94a1d11cd0b4d03a7705cc7e119d3a81051570e7ff8b3c48aff33",
+        "bytes": 161
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-cli-moon-selected-after.sha256",
+        "sha256": "68191fc2a5a94a1d11cd0b4d03a7705cc7e119d3a81051570e7ff8b3c48aff33",
+        "bytes": 161
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-composition-initial-receipt.json",
+        "sha256": "6fddc06dce1c4e0c63a276a2dcf32a18d681e24935d42db8322d561eb5f8fa6a",
+        "bytes": 3198
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-composition-followup-receipt-v2.json",
+        "sha256": "a3d17d0d7ccb450929a4b7b55c05cfa429f206a46691a98bfdcf7bdb6d59e948",
+        "bytes": 1533
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/cli-has-composition-receipt.json",
+        "sha256": "eb74ea7c0466f54485cb300b5358cf58c53ecdc643db5e8f784dae409a66cee2",
+        "bytes": 900
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-store-tests-local5090/target/core-build-20261110/evidence/has-store-baseline-v2.log",
+        "sha256": "8ea6450e1a45cfce281d48cb6c165ae7975d71055ce9b56b2fd5269a89f48dec",
+        "bytes": 3863
+      },
+      {
+        "path": "/home/lewis/src/isoloated/velvet-ballistics-has-store-tests-local5090/target/core-build-20261110/evidence/has-store-baseline-v2.exit",
+        "sha256": "14b1cbad14fcd7c8b2a815b8fada920c736acf69bf3511e68d1ec48925b17722",
+        "bytes": 16
+      }
+    ]
+  },
+  "tests": [
+    {
+      "name": "has_rejects_boolean_receiver",
+      "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+      "line": 13,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.005s] ( 1398/16488) vb_core engine::expr_eval::ops_text_list::tests::has_rejects_boolean_receiver"
+    },
+    {
+      "name": "has_rejects_numeric_key",
+      "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+      "line": 27,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.004s] ( 1399/16488) vb_core engine::expr_eval::ops_text_list::tests::has_rejects_numeric_key"
+    },
+    {
+      "name": "has_checks_receiver_type_before_key_type",
+      "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+      "line": 41,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.005s] ( 1394/16488) vb_core engine::expr_eval::ops_text_list::tests::has_checks_receiver_type_before_key_type"
+    },
+    {
+      "name": "has_checks_key_type_before_object_lookup",
+      "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+      "line": 54,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.004s] ( 1389/16488) vb_core engine::expr_eval::ops_text_list::tests::has_checks_key_type_before_object_lookup"
+    },
+    {
+      "name": "has_rejects_invalid_object_handle",
+      "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+      "line": 71,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.005s] ( 1402/16488) vb_core engine::expr_eval::ops_text_list::tests::has_rejects_invalid_object_handle"
+    },
+    {
+      "name": "has_rejects_invalid_symbol_handle_before_membership",
+      "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+      "line": 88,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.004s] ( 1395/16488) vb_core engine::expr_eval::ops_text_list::tests::has_rejects_invalid_symbol_handle_before_membership"
+    },
+    {
+      "name": "has_checks_object_before_symbol_handle",
+      "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_operand_errors.rs",
+      "line": 105,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.003s] ( 1387/16488) vb_core engine::expr_eval::ops_text_list::tests::has_checks_object_before_symbol_handle"
+    },
+    {
+      "name": "has_parity_hot_object_has_requested_key",
+      "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_parity_tests.rs",
+      "line": 22,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.006s] ( 1405/16488) vb_core engine::expr_eval::ops_text_list::tests::has_parity_hot_object_has_requested_key"
+    },
+    {
+      "name": "has_parity_hot_object_missing_key",
+      "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_parity_tests.rs",
+      "line": 36,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.004s] ( 1396/16488) vb_core engine::expr_eval::ops_text_list::tests::has_parity_hot_object_missing_key"
+    },
+    {
+      "name": "has_parity_hot_empty_object",
+      "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_parity_tests.rs",
+      "line": 51,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.006s] ( 1403/16488) vb_core engine::expr_eval::ops_text_list::tests::has_parity_hot_empty_object"
+    },
+    {
+      "name": "has_parity_hot_object_other_key_only",
+      "path": "crates/vb_core/src/engine/expr_eval/ops_text_list/has_parity_tests.rs",
+      "line": 60,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.004s] ( 1397/16488) vb_core engine::expr_eval::ops_text_list::tests::has_parity_hot_object_other_key_only"
+    },
+    {
+      "name": "replay_has_wrong_receiver_with_valid_symbol_maps_failure_to_current_step",
+      "path": "crates/vb_core/src/replay/ops/has_error_replay_tests.rs",
+      "line": 2,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.008s] ( 2885/16488) vb_core replay::ops::tests::replay_has_wrong_receiver_with_valid_symbol_maps_failure_to_current_step"
+    },
+    {
+      "name": "replay_has_wrong_key_with_valid_object_maps_failure_to_current_step",
+      "path": "crates/vb_core/src/replay/ops/has_error_replay_tests.rs",
+      "line": 27,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.008s] ( 2881/16488) vb_core replay::ops::tests::replay_has_wrong_key_with_valid_object_maps_failure_to_current_step"
+    },
+    {
+      "name": "replay_has_both_operands_wrong_maps_failure_to_current_step",
+      "path": "crates/vb_core/src/replay/ops/has_error_replay_tests.rs",
+      "line": 49,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.005s] ( 2868/16488) vb_core replay::ops::tests::replay_has_both_operands_wrong_maps_failure_to_current_step"
+    },
+    {
+      "name": "replay_has_invalid_object_with_valid_symbol_maps_failure_to_current_step",
+      "path": "crates/vb_core/src/replay/ops/has_error_replay_tests.rs",
+      "line": 70,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.006s] ( 2875/16488) vb_core replay::ops::tests::replay_has_invalid_object_with_valid_symbol_maps_failure_to_current_step"
+    },
+    {
+      "name": "replay_has_valid_empty_object_with_invalid_symbol_maps_failure_to_current_step",
+      "path": "crates/vb_core/src/replay/ops/has_error_replay_tests.rs",
+      "line": 96,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.004s] ( 2869/16488) vb_core replay::ops::tests::replay_has_valid_empty_object_with_invalid_symbol_maps_failure_to_current_step"
+    },
+    {
+      "name": "replay_has_both_typed_handles_invalid_maps_failure_to_current_step",
+      "path": "crates/vb_core/src/replay/ops/has_error_replay_tests.rs",
+      "line": 122,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.004s] ( 2866/16488) vb_core replay::ops::tests::replay_has_both_typed_handles_invalid_maps_failure_to_current_step"
+    },
+    {
+      "name": "has_parity_replay_valid_key_true",
+      "path": "crates/vb_core/src/replay/ops/has_parity_replay_tests.rs",
+      "line": 15,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.006s] ( 2863/16488) vb_core replay::ops::tests::has_parity_replay_valid_key_true"
+    },
+    {
+      "name": "has_parity_replay_missing_key_false",
+      "path": "crates/vb_core/src/replay/ops/has_parity_replay_tests.rs",
+      "line": 29,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.006s] ( 2864/16488) vb_core replay::ops::tests::has_parity_replay_missing_key_false"
+    },
+    {
+      "name": "has_parity_replay_empty_object_false",
+      "path": "crates/vb_core/src/replay/ops/has_parity_replay_tests.rs",
+      "line": 44,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.006s] ( 2862/16488) vb_core replay::ops::tests::has_parity_replay_empty_object_false"
+    },
+    {
+      "name": "has_parity_replay_one_other_field_false",
+      "path": "crates/vb_core/src/replay/ops/has_parity_replay_tests.rs",
+      "line": 53,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.005s] ( 2861/16488) vb_core replay::ops::tests::has_parity_replay_one_other_field_false"
+    },
+    {
+      "name": "has_checks_receiver_before_wrong_key_type",
+      "path": "crates/workspace_tests/tests/has_operand_boundaries.rs",
+      "line": 10,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.003s] (13233/16488) velvet-ballistics-workspace-tests::has_operand_boundaries has_checks_receiver_before_wrong_key_type"
+    },
+    {
+      "name": "has_rejects_invalid_object_with_valid_stored_symbol",
+      "path": "crates/workspace_tests/tests/has_operand_boundaries.rs",
+      "line": 26,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.003s] (13235/16488) velvet-ballistics-workspace-tests::has_operand_boundaries has_rejects_invalid_object_with_valid_stored_symbol"
+    },
+    {
+      "name": "context_free_has_rejects_one_argument",
+      "path": "crates/workspace_tests/tests/has_operand_boundaries.rs",
+      "line": 43,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.003s] (13234/16488) velvet-ballistics-workspace-tests::has_operand_boundaries context_free_has_rejects_one_argument"
+    },
+    {
+      "name": "context_free_has_rejects_three_arguments",
+      "path": "crates/workspace_tests/tests/has_operand_boundaries.rs",
+      "line": 57,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.003s] (13230/16488) velvet-ballistics-workspace-tests::has_operand_boundaries context_free_has_rejects_three_arguments"
+    },
+    {
+      "name": "context_free_has_requires_store_for_tagged_handles",
+      "path": "crates/workspace_tests/tests/has_operand_boundaries.rs",
+      "line": 76,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.002s] (13231/16488) velvet-ballistics-workspace-tests::has_operand_boundaries context_free_has_requires_store_for_tagged_handles"
+    },
+    {
+      "name": "has_store_true_when_field_present",
+      "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+      "line": 31,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.004s] (13249/16488) velvet-ballistics-workspace-tests::has_store_key_validation has_store_true_when_field_present"
+    },
+    {
+      "name": "has_store_false_when_field_absent",
+      "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+      "line": 49,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.003s] (13238/16488) velvet-ballistics-workspace-tests::has_store_key_validation has_store_false_when_field_absent"
+    },
+    {
+      "name": "has_store_false_on_empty_object",
+      "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+      "line": 68,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.003s] (13240/16488) velvet-ballistics-workspace-tests::has_store_key_validation has_store_false_on_empty_object"
+    },
+    {
+      "name": "has_store_false_on_other_field",
+      "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+      "line": 79,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.003s] (13237/16488) velvet-ballistics-workspace-tests::has_store_key_validation has_store_false_on_other_field"
+    },
+    {
+      "name": "has_store_invalid_symbol_empty_object",
+      "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+      "line": 90,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.003s] (13241/16488) velvet-ballistics-workspace-tests::has_store_key_validation has_store_invalid_symbol_empty_object"
+    },
+    {
+      "name": "has_store_invalid_symbol_nonempty_object",
+      "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+      "line": 107,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.004s] (13246/16488) velvet-ballistics-workspace-tests::has_store_key_validation has_store_invalid_symbol_nonempty_object"
+    },
+    {
+      "name": "has_store_type_mismatch_wrong_receiver",
+      "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+      "line": 124,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.004s] (13261/16488) velvet-ballistics-workspace-tests::has_store_key_validation has_store_type_mismatch_wrong_receiver"
+    },
+    {
+      "name": "has_store_type_mismatch_wrong_key_type",
+      "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+      "line": 141,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.004s] (13252/16488) velvet-ballistics-workspace-tests::has_store_key_validation has_store_type_mismatch_wrong_key_type"
+    },
+    {
+      "name": "has_store_key_type_checked_before_object_lookup",
+      "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+      "line": 158,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.003s] (13244/16488) velvet-ballistics-workspace-tests::has_store_key_validation has_store_key_type_checked_before_object_lookup"
+    },
+    {
+      "name": "has_store_object_reference_checked_first",
+      "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+      "line": 175,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.004s] (13251/16488) velvet-ballistics-workspace-tests::has_store_key_validation has_store_object_reference_checked_first"
+    },
+    {
+      "name": "has_store_helper_arity_zero_args",
+      "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+      "line": 192,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.003s] (13243/16488) velvet-ballistics-workspace-tests::has_store_key_validation has_store_helper_arity_zero_args"
+    },
+    {
+      "name": "has_store_helper_arity_one_arg",
+      "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+      "line": 207,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.003s] (13242/16488) velvet-ballistics-workspace-tests::has_store_key_validation has_store_helper_arity_one_arg"
+    },
+    {
+      "name": "has_store_helper_arity_three_args",
+      "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+      "line": 223,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.002s] (13239/16488) velvet-ballistics-workspace-tests::has_store_key_validation has_store_helper_arity_three_args"
+    },
+    {
+      "name": "has_context_free_helper_arity_zero_args",
+      "path": "crates/workspace_tests/tests/has_store_key_validation.rs",
+      "line": 241,
+      "retained_log_pass": "velvet-ballistics:test |         PASS [   0.005s] (13245/16488) velvet-ballistics-workspace-tests::has_store_key_validation has_context_free_helper_arity_zero_args"
+    }
+  ],
+  "limits": [
+    "PASS applies to the actual bounded runtime suite only. V3 static Unknown/Any, canonical compile, parse_ast contextual/combined-fault and inferred-schema requirements are not newly established here; remain separately audited/open.",
+    "New suite does not complete V3 malformed bytecode 0/1/3 stack-underflow/non-single-result coverage across all three evaluators; no full contract closure.",
+    "Public replay-op unit tests validate current-PC error boundary, not complete replay_step/whole-workflow execution or internal precedence distinguishability.",
+    "No native/build/BD/script execution, source changes, agents, or parent artifact writes by reviewer; only retained execution receipts read.",
+    "Selected 12-task Moon receipt and CLI before/after equality do not establish full moon ci, whole-master acceptance, formal proof, or continuous hash immutability during execution."
+  ]
+}

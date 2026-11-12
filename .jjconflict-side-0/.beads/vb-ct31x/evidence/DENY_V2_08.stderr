@@ -1,0 +1,35 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage)
+warning: unused import: `std::path::PathBuf`
+  --> crates/vb_storage/src/journal/emergency_deny_tests.rs:22:5
+   |
+22 | use std::path::PathBuf;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `temp2`
+  --> crates/vb_storage/src/journal/emergency_deny_tests.rs:94:10
+   |
+94 |     let (temp2, journal2) = test_journal()?;
+   |          ^^^^^ help: if this is intentional, prefix it with an underscore: `_temp2`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_storage` (lib test) generated 2 warnings (run `cargo fix --lib -p vb_storage --tests` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.50s
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-ce7dc9c74a468062)
+     Running tests/accepted_artifact_red_phase.rs (target/debug/deps/accepted_artifact_red_phase-931565c488d92c1c)
+     Running tests/manual_qa_smoke.rs (target/debug/deps/manual_qa_smoke-684cf6b11dc3793b)
+     Running tests/proptest_journal_error_codes.rs (target/debug/deps/proptest_journal_error_codes-d0f2cc80e1161bfa)
+     Running tests/proptest_journal_idempotency.rs (target/debug/deps/proptest_journal_idempotency-65e37248ca63cdbc)
+     Running tests/proptest_vb_vzcuf_PS_001.rs (target/debug/deps/proptest_vb_vzcuf_PS_001-ca13b34fb8d13eb6)
+     Running tests/proptest_vb_vzcuf_PS_002.rs (target/debug/deps/proptest_vb_vzcuf_PS_002-d6ae40e1c62f4a85)
+     Running tests/proptest_vb_vzcuf_PS_003.rs (target/debug/deps/proptest_vb_vzcuf_PS_003-b7fd4c2c8e7fdb29)
+     Running tests/proptest_vb_vzcuf_PS_004.rs (target/debug/deps/proptest_vb_vzcuf_PS_004-aebadac2336b7d3a)
+     Running tests/proptest_vb_vzcuf_PS_005.rs (target/debug/deps/proptest_vb_vzcuf_PS_005-4a98cd677e693bbc)
+     Running tests/proptest_vb_vzcuf_PS_006.rs (target/debug/deps/proptest_vb_vzcuf_PS_006-505f5f354ae259e8)
+     Running tests/proptest_vb_vzcuf_PS_007.rs (target/debug/deps/proptest_vb_vzcuf_PS_007-20dc664e75305dd7)
+     Running tests/proptest_vb_vzcuf_PS_008.rs (target/debug/deps/proptest_vb_vzcuf_PS_008-8defabde3db02945)
+     Running tests/proptest_vb_vzcuf_PS_009.rs (target/debug/deps/proptest_vb_vzcuf_PS_009-e0ce7df16969021e)
+     Running tests/recovery_property_tests.rs (target/debug/deps/recovery_property_tests-548a47c037a98128)
+     Running tests/vb_core_atomic_admission_red.rs (target/debug/deps/vb_core_atomic_admission_red-ba6a6623d2f59b9a)

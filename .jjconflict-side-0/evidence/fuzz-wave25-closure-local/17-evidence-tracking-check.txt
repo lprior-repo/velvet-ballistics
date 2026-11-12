@@ -1,0 +1,8 @@
++zsh:1> git check-ignore -v evidence/fuzz-wave25-closure-local/evidence-package.md
++zsh:1> ignore_status=1 
++zsh:1> [ 1 -eq 1 ']'
++zsh:1> printf 'not_ignored=evidence/fuzz-wave25-closure-local/evidence-package.md\n'
+not_ignored=evidence/fuzz-wave25-closure-local/evidence-package.md
++zsh:1> exit 0
+
+exit_status=0

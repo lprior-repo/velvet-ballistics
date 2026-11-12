@@ -1,0 +1,8 @@
+[ WARN 2026-10-22 02:14:34.720] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 02:14:34.726] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 02:14:36.676] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 02:14:38.899] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 02:14:39.953] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+velvet-ballistics:test-integrity | test integrity: FAIL
+velvet-ballistics:test-integrity | DeletedTestDeclaration|xtask/src/benchmark_policy.rs|removed_declarations=6 added_declarations=0
+velvet-ballistics:test-integrity | Add equal-or-stronger replacement coverage or bead-linked justification.

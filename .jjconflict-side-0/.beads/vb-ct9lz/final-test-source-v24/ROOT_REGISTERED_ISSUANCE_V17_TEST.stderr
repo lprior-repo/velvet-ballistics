@@ -1,0 +1,155 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-ct9lz-impl-local5090-v4/crates/vb_storage)
+error: unreachable `pub` item
+  --> crates/vb_storage/src/executor/issuance_test_support.rs:17:1
+   |
+17 | pub type TestResult = Result<(), BoxError>;
+   | ---^^^^^^^^^^^^^^^^
+   | |
+   | help: consider restricting its visibility: `pub(super)`
+   |
+   = help: or consider exporting it for use by other crates
+   = note: requested on the command line with `-D unreachable-pub`
+
+error: unreachable `pub` item
+  --> crates/vb_storage/src/executor/issuance_test_support.rs:20:1
+   |
+20 | pub fn open_test_journal() -> Result<(tempfile::TempDir, FjallJournal), BoxError> {
+   | ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: consider restricting its visibility: `pub(super)`
+   |
+   = help: or consider exporting it for use by other crates
+
+error: unreachable `pub` item
+  --> crates/vb_storage/src/executor/issuance_test_support.rs:27:1
+   |
+27 | pub fn minimal_workflow() -> Result<CompiledWorkflow, BoxError> {
+   | ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: consider restricting its visibility: `pub(super)`
+   |
+   = help: or consider exporting it for use by other crates
+
+error: unreachable `pub` item
+  --> crates/vb_storage/src/executor/issuance_test_support.rs:36:1
+   |
+36 | pub fn action_workflow() -> Result<CompiledWorkflow, BoxError> {
+   | ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: consider restricting its visibility: `pub(super)`
+   |
+   = help: or consider exporting it for use by other crates
+
+error: unreachable `pub` item
+   --> crates/vb_storage/src/executor/issuance_test_support.rs:112:1
+    |
+112 | pub fn action_contract() -> Result<ActionContract, BoxError> {
+    | ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider restricting its visibility: `pub(super)`
+    |
+    = help: or consider exporting it for use by other crates
+
+error: unreachable `pub` item
+   --> crates/vb_storage/src/executor/issuance_test_support.rs:133:1
+    |
+133 | pub fn register_scope() -> CapabilityScopeSpec {
+    | ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider restricting its visibility: `pub(super)`
+    |
+    = help: or consider exporting it for use by other crates
+
+error: unreachable `pub` item
+   --> crates/vb_storage/src/executor/issuance_test_support.rs:141:1
+    |
+141 | pub fn read_counter(journal: &FjallJournal) -> Result<Option<u64>, BoxError> {
+    | ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider restricting its visibility: `pub(super)`
+    |
+    = help: or consider exporting it for use by other crates
+
+error: unreachable `pub` item
+   --> crates/vb_storage/src/executor/issuance_test_support.rs:150:1
+    |
+150 | pub fn write_counter(journal: &FjallJournal, value: u64) -> Result<(), BoxError> {
+    | ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider restricting its visibility: `pub(super)`
+    |
+    = help: or consider exporting it for use by other crates
+
+error: unreachable `pub` item
+   --> crates/vb_storage/src/executor/issuance_test_support.rs:158:1
+    |
+158 |   pub fn verify_artifact_readback(
+    |   ^--
+    |   |
+    |  _help: consider restricting its visibility: `pub(super)`
+    | |
+159 | |     journal: &FjallJournal,
+160 | |     digest: WorkflowDigest,
+161 | |     expected: &AcceptedArtifact,
+162 | | ) -> TestResult {
+    | |_______________^
+    |
+    = help: or consider exporting it for use by other crates
+
+error: unreachable `pub` item
+   --> crates/vb_storage/src/executor/issuance_test_support.rs:183:1
+    |
+183 | pub struct PackedFixture {
+    | ---^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider restricting its visibility: `pub(super)`
+    |
+    = help: or consider exporting it for use by other crates
+
+error: unreachable `pub` item
+   --> crates/vb_storage/src/executor/issuance_test_support.rs:192:5
+    |
+192 |     pub fn new() -> Result<Self, BoxError> {
+    |     ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     |
+    |     help: consider restricting its visibility: `pub(super)`
+
+error: unreachable `pub` item
+   --> crates/vb_storage/src/executor/issuance_test_support.rs:207:5
+    |
+207 |     pub fn prepare(&self, policy: RuntimePolicy) -> Result<AcceptedArtifact, super::ExecutorError> {
+    |     ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     |
+    |     help: consider restricting its visibility: `pub(super)`
+
+error: unreachable `pub` item
+   --> crates/vb_storage/src/executor/issuance_test_support.rs:217:5
+    |
+217 |       pub fn submit(
+    |       ^--
+    |       |
+    |  _____help: consider restricting its visibility: `pub(super)`
+    | |
+218 | |         &self,
+219 | |         journal: &FjallJournal,
+220 | |         policy: RuntimePolicy,
+221 | |     ) -> Result<AcceptedArtifact, super::ExecutorError> {
+    | |_______________________________________________________^
+
+error: unreachable `pub` item
+   --> crates/vb_storage/src/executor/issuance_test_support.rs:232:5
+    |
+232 |       pub fn check(
+    |       ^--
+    |       |
+    |  _____help: consider restricting its visibility: `pub(super)`
+    | |
+233 | |         &self,
+234 | |         journal: &FjallJournal,
+235 | |         artifact: &AcceptedArtifact,
+236 | |         policy: RuntimePolicy,
+237 | |     ) -> TestResult {
+    | |___________________^
+
+error: could not compile `vb_storage` (lib test) due to 14 previous errors
+error: command `/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/bin/cargo test --no-run --message-format json-render-diagnostics --package vb_storage --lib --all-features --locked` exited with code 101

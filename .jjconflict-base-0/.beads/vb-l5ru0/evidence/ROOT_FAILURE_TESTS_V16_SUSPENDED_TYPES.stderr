@@ -1,0 +1,40 @@
+error[E0599]: no associated function or constant named `default` found for struct `ActionTicket` in the current scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:54:48
+   |
+54 |         ticket: vb_core::action::ActionTicket::default(),
+   |                                                ^^^^^^^ associated function or constant not found in `ActionTicket`
+
+error[E0599]: no associated function or constant named `default` found for struct `RegisterGrant` in the current scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:55:53
+   |
+55 |         grant: vb_storage::executor::RegisterGrant::default(),
+   |                                                     ^^^^^^^ associated function or constant not found in `RegisterGrant`
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:162:49
+    |
+162 |                     assert_eq!(admitted_digest, expected.admission.clone());
+    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PolicyDigest`, found `PinnedAdmissionPolicy`
+
+error[E0277]: can't compare `vb_core::policy::DecisionRecord` with `&vb_core::policy::DecisionRecord`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:175:13
+    |
+175 | /             assert_eq!(
+176 | |                 decision.as_ref(),
+177 | |                 &expected,
+178 | |                 "returned decision must match full expected record"
+179 | |             );
+    | |_____________^ no implementation for `vb_core::policy::DecisionRecord == &vb_core::policy::DecisionRecord`
+    |
+help: the trait `PartialEq<&vb_core::policy::DecisionRecord>` is not implemented for `vb_core::policy::DecisionRecord`
+      but trait `PartialEq<vb_core::policy::DecisionRecord>` is implemented for it
+   --> crates/vb_core/src/policy.rs:164:24
+    |
+164 | #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    |                        ^^^^^^^^^
+    = help: for that trait implementation, expected `vb_core::policy::DecisionRecord`, found `&vb_core::policy::DecisionRecord`
+    = note: required for `&vb_core::policy::DecisionRecord` to implement `PartialEq<&&vb_core::policy::DecisionRecord>`
+
+Some errors have detailed explanations: E0277, E0308, E0599.
+For more information about an error, try `rustc --explain E0277`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_policy_dispatch_fail_closed") due to 4 previous errors

@@ -1,0 +1,14 @@
+```json
+[
+  {
+    "file": "crates/workspace_tests/tests/vb_test_validate_policy_enforce_behavior.rs",
+    "old": "        step_names: Box::new([]),",
+    "new": "        step_names: Box::new([]),\n        input_slots: Box::new([]),"
+  },
+  {
+    "file": "crates/vb_ipc/src/server/trace.rs",
+    "old": "            step_names: Box::from([]),",
+    "new": "            step_names: Box::from([]),\n            input_slots: Box::new([]),"
+  }
+]
+```

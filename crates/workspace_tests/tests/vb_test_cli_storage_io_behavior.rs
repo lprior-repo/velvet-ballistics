@@ -80,6 +80,7 @@ fn finish_workflow() -> Option<CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("finish"),
         digest: WorkflowDigest::from_bytes([9; 32]),

@@ -1,0 +1,188 @@
+[ WARN 2026-10-21 23:04:45.259] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 23:04:50.718] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 23:05:04.593] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+velvet-ballistics:test | ────────────
+velvet-ballistics:test |  Nextest run ID 79f9abd0-0cf3-4f80-b870-0432fbe4f66f with nextest profile: default
+velvet-ballistics:test |     Starting 14344 tests across 290 binaries (27 tests skipped)
+velvet-ballistics:test |         FAIL [   1.114s] ( 9195/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_journaled_gate_count_equals_fifteen
+velvet-ballistics:test |   stdout ───
+
+velvet-ballistics:test |     running 1 test
+velvet-ballistics:test |     test accepted_artifact_encoder_journaled_gate_count_equals_fifteen ... FAILED
+
+velvet-ballistics:test |     failures:
+
+velvet-ballistics:test |     failures:
+velvet-ballistics:test |         accepted_artifact_encoder_journaled_gate_count_equals_fifteen
+
+velvet-ballistics:test |     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 1.11s
+
+velvet-ballistics:test |   stderr ───
+
+velvet-ballistics:test |     thread 'accepted_artifact_encoder_journaled_gate_count_equals_fifteen' (1878468) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:199:5:
+velvet-ballistics:test |     assertion `left == right` failed: Journaled must have 15 gates
+velvet-ballistics:test |       left: 0
+velvet-ballistics:test |      right: 15
+velvet-ballistics:test |     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+velvet-ballistics:test |   Cancelling due to test failure: 31 tests still running
+velvet-ballistics:test |         FAIL [   1.217s] ( 9200/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_journaled
+velvet-ballistics:test |   stdout ───
+
+velvet-ballistics:test |     running 1 test
+velvet-ballistics:test |     test accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_journaled ... FAILED
+
+velvet-ballistics:test |     failures:
+
+velvet-ballistics:test |     failures:
+velvet-ballistics:test |         accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_journaled
+
+velvet-ballistics:test |     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 1.21s
+
+velvet-ballistics:test |   stderr ───
+
+velvet-ballistics:test |     thread 'accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_journaled' (1878476) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:105:5:
+velvet-ballistics:test |     assertion `left == right` failed
+velvet-ballistics:test |       left: 0
+velvet-ballistics:test |      right: 15
+velvet-ballistics:test |     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+velvet-ballistics:test |         FAIL [   1.223s] ( 9201/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_strict
+velvet-ballistics:test |   stdout ───
+
+velvet-ballistics:test |     running 1 test
+velvet-ballistics:test |     test accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_strict ... FAILED
+
+velvet-ballistics:test |     failures:
+
+velvet-ballistics:test |     failures:
+velvet-ballistics:test |         accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_strict
+
+velvet-ballistics:test |     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 1.22s
+
+velvet-ballistics:test |   stderr ───
+
+velvet-ballistics:test |     thread 'accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_strict' (1878475) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:113:5:
+velvet-ballistics:test |     assertion `left == right` failed
+velvet-ballistics:test |       left: 0
+velvet-ballistics:test |      right: 15
+velvet-ballistics:test |     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+velvet-ballistics:test |         FAIL [   1.383s] ( 9203/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_strict_gate_count_equals_fifteen
+velvet-ballistics:test |   stdout ───
+
+velvet-ballistics:test |     running 1 test
+velvet-ballistics:test |     test accepted_artifact_encoder_strict_gate_count_equals_fifteen ... FAILED
+
+velvet-ballistics:test |     failures:
+
+velvet-ballistics:test |     failures:
+velvet-ballistics:test |         accepted_artifact_encoder_strict_gate_count_equals_fifteen
+
+velvet-ballistics:test |     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 1.38s
+
+velvet-ballistics:test |   stderr ───
+
+velvet-ballistics:test |     thread 'accepted_artifact_encoder_strict_gate_count_equals_fifteen' (1878514) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:209:5:
+velvet-ballistics:test |     assertion `left == right` failed: Strict must have 15 gates
+velvet-ballistics:test |       left: 0
+velvet-ballistics:test |      right: 15
+velvet-ballistics:test |     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+velvet-ballistics:test |         FAIL [   1.395s] ( 9204/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_strict_proof_has_durable_true
+velvet-ballistics:test |   stdout ───
+
+velvet-ballistics:test |     running 1 test
+velvet-ballistics:test |     test accepted_artifact_encoder_strict_proof_has_durable_true ... FAILED
+
+velvet-ballistics:test |     failures:
+
+velvet-ballistics:test |     failures:
+velvet-ballistics:test |         accepted_artifact_encoder_strict_proof_has_durable_true
+
+velvet-ballistics:test |     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 1.39s
+
+velvet-ballistics:test |   stderr ───
+
+velvet-ballistics:test |     thread 'accepted_artifact_encoder_strict_proof_has_durable_true' (1878520) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:189:5:
+velvet-ballistics:test |     Strict policy must be durable
+velvet-ballistics:test |     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+velvet-ballistics:test |         FAIL [   1.480s] ( 9211/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_validator_produces_valid_verification_proof_with_all_flags_true
+velvet-ballistics:test |   stdout ───
+
+velvet-ballistics:test |     running 1 test
+velvet-ballistics:test |     test accepted_artifact_validator_produces_valid_verification_proof_with_all_flags_true ... FAILED
+
+velvet-ballistics:test |     failures:
+
+velvet-ballistics:test |     failures:
+velvet-ballistics:test |         accepted_artifact_validator_produces_valid_verification_proof_with_all_flags_true
+
+velvet-ballistics:test |     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 1.48s
+
+velvet-ballistics:test |   stderr ───
+
+velvet-ballistics:test |     thread 'accepted_artifact_validator_produces_valid_verification_proof_with_all_flags_true' (1878551) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:158:5:
+velvet-ballistics:test |     assertion `left == right` failed
+velvet-ballistics:test |       left: 0
+velvet-ballistics:test |      right: 15
+velvet-ballistics:test |     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+velvet-ballistics:test |         FAIL [   1.466s] ( 9212/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_validator_requires_all_proof_flags_true_under_journaled
+velvet-ballistics:test |   stdout ───
+
+velvet-ballistics:test |     running 1 test
+velvet-ballistics:test |     test accepted_artifact_validator_requires_all_proof_flags_true_under_journaled ... FAILED
+
+velvet-ballistics:test |     failures:
+
+velvet-ballistics:test |     failures:
+velvet-ballistics:test |         accepted_artifact_validator_requires_all_proof_flags_true_under_journaled
+
+velvet-ballistics:test |     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 1.46s
+
+velvet-ballistics:test |   stderr ───
+
+velvet-ballistics:test |     thread 'accepted_artifact_validator_requires_all_proof_flags_true_under_journaled' (1878577) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:405:5:
+velvet-ballistics:test |     assertion failed: p.bounded_claimed && p.taint_safe_claimed && p.retry_safe_claimed &&
+velvet-ballistics:test |             p.replayable_claimed && !p.durable
+velvet-ballistics:test |     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+velvet-ballistics:test |         FAIL [   1.546s] ( 9215/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_validator_requires_all_proof_flags_true_under_strict
+velvet-ballistics:test |   stdout ───
+
+velvet-ballistics:test |     running 1 test
+velvet-ballistics:test |     test accepted_artifact_validator_requires_all_proof_flags_true_under_strict ... FAILED
+
+velvet-ballistics:test |     failures:
+
+velvet-ballistics:test |     failures:
+velvet-ballistics:test |         accepted_artifact_validator_requires_all_proof_flags_true_under_strict
+
+velvet-ballistics:test |     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 1.54s
+
+velvet-ballistics:test |   stderr ───
+
+velvet-ballistics:test |     thread 'accepted_artifact_validator_requires_all_proof_flags_true_under_strict' (1878587) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:390:5:
+velvet-ballistics:test |     assertion failed: p.bounded_claimed && p.taint_safe_claimed && p.retry_safe_claimed &&
+velvet-ballistics:test |             p.replayable_claimed && p.durable
+velvet-ballistics:test |     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+velvet-ballistics:test | ────────────
+velvet-ballistics:test |      Summary [  76.780s] 9226/14344 tests run: 9218 passed (2 slow), 8 failed, 27 skipped
+velvet-ballistics:test |         FAIL [   1.114s] ( 9195/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_journaled_gate_count_equals_fifteen
+velvet-ballistics:test |         FAIL [   1.217s] ( 9200/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_journaled
+velvet-ballistics:test |         FAIL [   1.223s] ( 9201/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_strict
+velvet-ballistics:test |         FAIL [   1.383s] ( 9203/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_strict_gate_count_equals_fifteen
+velvet-ballistics:test |         FAIL [   1.395s] ( 9204/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_strict_proof_has_durable_true
+velvet-ballistics:test |         FAIL [   1.480s] ( 9211/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_validator_produces_valid_verification_proof_with_all_flags_true
+velvet-ballistics:test |         FAIL [   1.466s] ( 9212/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_validator_requires_all_proof_flags_true_under_journaled
+velvet-ballistics:test |         FAIL [   1.546s] ( 9215/14344) vb_storage::accepted_artifact_red_phase accepted_artifact_validator_requires_all_proof_flags_true_under_strict
+velvet-ballistics:test | warning: 5118/14344 tests were not run due to test failure (run with --no-fail-fast to run all tests, or run with --max-fail)
+velvet-ballistics:test | error: test run failed
+Error: task_runner::run_failed
+
+  × Task velvet-ballistics:test failed to run.
+  ╰─▶ Process set failed: exit code 100
+

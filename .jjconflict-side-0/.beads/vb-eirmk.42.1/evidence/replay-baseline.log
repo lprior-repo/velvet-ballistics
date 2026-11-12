@@ -1,0 +1,77 @@
+Running as unit: vb-has-replay-baseline-v2-20261110.scope; invocation ID: f958475e94084f3bb86fd3f82e963e7c
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-has-replay-tests-local3090/crates/vb_core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.28s
+────────────
+ Nextest run ID 7c717a77-d851-4255-aa72-41f2671f8f65 with nextest profile: default
+    Starting 4 tests across 28 binaries (3366 tests skipped)
+        FAIL [   0.003s] (1/4) vb_core replay::ops::tests::has_parity_replay_one_other_field_false
+  stdout ───
+
+    running 1 test
+    test replay::ops::tests::has_parity_replay_one_other_field_false ... FAILED
+
+    failures:
+
+    failures:
+        replay::ops::tests::has_parity_replay_one_other_field_false
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2848 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: InvalidProgramCounter { step: StepIdx(0) }
+
+        FAIL [   0.003s] (2/4) vb_core replay::ops::tests::has_parity_replay_empty_object_false
+  stdout ───
+
+    running 1 test
+    test replay::ops::tests::has_parity_replay_empty_object_false ... FAILED
+
+    failures:
+
+    failures:
+        replay::ops::tests::has_parity_replay_empty_object_false
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2848 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: InvalidProgramCounter { step: StepIdx(0) }
+
+        FAIL [   0.003s] (3/4) vb_core replay::ops::tests::has_parity_replay_missing_key_false
+  stdout ───
+
+    running 1 test
+    test replay::ops::tests::has_parity_replay_missing_key_false ... FAILED
+
+    failures:
+
+    failures:
+        replay::ops::tests::has_parity_replay_missing_key_false
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2848 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: InvalidProgramCounter { step: StepIdx(0) }
+
+        FAIL [   0.003s] (4/4) vb_core replay::ops::tests::has_parity_replay_valid_key_true
+  stdout ───
+
+    running 1 test
+    test replay::ops::tests::has_parity_replay_valid_key_true ... FAILED
+
+    failures:
+
+    failures:
+        replay::ops::tests::has_parity_replay_valid_key_true
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2848 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: InvalidProgramCounter { step: StepIdx(0) }
+
+────────────
+     Summary [   0.005s] 4 tests run: 0 passed, 4 failed, 3366 skipped
+        FAIL [   0.003s] (1/4) vb_core replay::ops::tests::has_parity_replay_one_other_field_false
+        FAIL [   0.003s] (2/4) vb_core replay::ops::tests::has_parity_replay_empty_object_false
+        FAIL [   0.003s] (3/4) vb_core replay::ops::tests::has_parity_replay_missing_key_false
+        FAIL [   0.003s] (4/4) vb_core replay::ops::tests::has_parity_replay_valid_key_true
+error: test run failed

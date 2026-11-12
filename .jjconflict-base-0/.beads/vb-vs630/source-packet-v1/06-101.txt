@@ -1,0 +1,15 @@
+crates/vb_storage/src/inputs/receipt_tests.rs:101:         MAX_RUN_INPUT_BYTES,
+crates/vb_storage/src/inputs/receipt_tests.rs:102:     )?;
+crates/vb_storage/src/inputs/receipt_tests.rs:103:     assert!(matches!(
+crates/vb_storage/src/inputs/receipt_tests.rs:104:         crate::decode_record::<RunInputsRecord>(&bytes, MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES),
+crates/vb_storage/src/inputs/receipt_tests.rs:105:         Err(JournalError::PayloadDigestMismatch)
+crates/vb_storage/src/inputs/receipt_tests.rs:106:     ));
+crates/vb_storage/src/inputs/receipt_tests.rs:107:     // A new internally consistent input record still cannot impersonate the committed receipt.
+crates/vb_storage/src/inputs/receipt_tests.rs:108:     let original = retained()?;
+crates/vb_storage/src/inputs/receipt_tests.rs:109:     record.input_digest = compute_input_digest(&record.inputs)?;
+crates/vb_storage/src/inputs/receipt_tests.rs:110:     assert!(matches!(
+crates/vb_storage/src/inputs/receipt_tests.rs:111:         record.validate_admission(&receipt(&original)),
+crates/vb_storage/src/inputs/receipt_tests.rs:112:         Err(JournalError::PayloadDigestMismatch)
+crates/vb_storage/src/inputs/receipt_tests.rs:113:     ));
+crates/vb_storage/src/inputs/receipt_tests.rs:114:     Ok(())
+crates/vb_storage/src/inputs/receipt_tests.rs:115: }

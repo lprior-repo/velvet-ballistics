@@ -1,0 +1,7 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/vb_runtime)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/vb_ipc)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.35s
+     Running ../workspace_tests/tests/cli/submit_input_boundary.rs (target/debug/deps/submit_input_boundary-922b6d66674e6523)
+     Running ../workspace_tests/tests/cli/submit_retained_inputs.rs (target/debug/deps/submit_retained_inputs-85efd7e6dbb40ed1)

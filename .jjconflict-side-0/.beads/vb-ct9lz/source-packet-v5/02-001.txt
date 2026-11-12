@@ -1,0 +1,16 @@
+crates/vb_storage/src/executor/mod.rs:1: #![forbid(unsafe_code)]
+crates/vb_storage/src/executor/mod.rs:2: //! Registered local execution. Serialized reports are audit data, never checked authority.
+crates/vb_storage/src/executor/mod.rs:3: mod authority;
+crates/vb_storage/src/executor/mod.rs:4: mod catalog;
+crates/vb_storage/src/executor/mod.rs:5: mod conformance;
+crates/vb_storage/src/executor/mod.rs:6: mod error;
+crates/vb_storage/src/executor/mod.rs:7: mod packed;
+crates/vb_storage/src/executor/mod.rs:8: mod receipt;
+crates/vb_storage/src/executor/mod.rs:9: mod register;
+crates/vb_storage/src/executor/mod.rs:10: 
+crates/vb_storage/src/executor/mod.rs:11: pub use authority::RegisterGrant;
+crates/vb_storage/src/executor/mod.rs:12: pub use catalog::ExecutorCatalog;
+crates/vb_storage/src/executor/mod.rs:13: pub use conformance::{ConformanceReport, ExecutedConformance};
+crates/vb_storage/src/executor/mod.rs:14: pub use error::ExecutorError;
+crates/vb_storage/src/executor/mod.rs:15: pub use receipt::RegisterReceipt;
+crates/vb_storage/src/executor/mod.rs:16: pub use register::FjallRegister;

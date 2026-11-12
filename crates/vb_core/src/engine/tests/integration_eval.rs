@@ -64,6 +64,7 @@ fn eval_expr_division_by_zero_returns_division_by_zero_error() -> Result<(), Str
     .map_err(|error| error.to_string())?;
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("div_zero"),
         digest: WorkflowDigest::from_bytes([0x11; 32]),
@@ -113,6 +114,7 @@ fn eval_expr_integer_overflow_returns_invalid_compiled_workflow() -> Result<(), 
     .map_err(|error| error.to_string())?;
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("int_overflow"),
         digest: WorkflowDigest::from_bytes([0x22; 32]),
@@ -159,6 +161,7 @@ fn eval_expr_not_on_non_bool_returns_type_mismatch() -> Result<(), String> {
     .map_err(|error| error.to_string())?;
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("not_on_int"),
         digest: WorkflowDigest::from_bytes([0x33; 32]),
@@ -180,7 +183,18 @@ fn eval_expr_not_on_non_bool_returns_type_mismatch() -> Result<(), String> {
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    if !matches!(
+        CompiledWorkflow::try_from_parts(parts.clone()),
+        Err(crate::WorkflowError::SlotFlow(
+            crate::workflow::SlotFlowError {
+                reason: crate::workflow::SlotFlowFailure::IncompatibleType,
+                ..
+            }
+        ))
+    ) {
+        return Err("invalid Not operand must fail compiled slot validation".into());
+    }
+    let workflow = CompiledWorkflow::from_parts_unchecked(parts);
     let mut run = test_frame(RunId::new(115), &workflow)?;
     let mut store = test_store();
 
@@ -207,6 +221,7 @@ fn eval_add_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
     .map_err(crate::WorkflowError::Expression)?;
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("eval_add"),
         digest: WorkflowDigest::from_bytes([7; 32]),

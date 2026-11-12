@@ -1,0 +1,23 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 9,
+  "sublane": "test-review-trace-eviction-stale-ask-after-black-hat",
+  "delegate": "test-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/black-hat-review.md",
+    ".beads/vb-vt2f/defects.md",
+    ".beads/vb-vt2f/test-writer-report.md",
+    ".beads/vb-vt2f/test-plan-review.md",
+    ".beads/vb-vt2f/test-suite-review.md",
+    "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/test-plan-review.md",
+    ".beads/vb-vt2f/test-suite-review.md",
+    ".beads/vb-vt2f/test-repair-guide.md"
+  ],
+  "attempt": 3,
+  "repair_route": "State 9 review after trace-eviction stale ask BDD test repair"
+}

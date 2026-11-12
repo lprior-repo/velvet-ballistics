@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-hz9v8-deepseek-boundaries",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics",
+    "--test",
+    "vb_md3w_retained_input_recovery",
+    "--test",
+    "vb_7x0ol_probe_c6_continue"
+  ],
+  "exit_code": 0,
+  "seconds": 1.539,
+  "timeout_seconds": 420,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-hz9v8/evidence/retained_recovery2"
+}

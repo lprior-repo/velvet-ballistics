@@ -1,0 +1,11 @@
+kind: nextest
+gate_name: nextest
+command: cargo nextest run --workspace
+exit_code: 101
+log: .evidence/vb-test/nextest.log
+status:
+  status: Fail
+why_failed:
+  gate_name: nextest
+  hint: Run 'cargo nextest run' to see test failures
+  repair_command: cargo nextest run --workspace

@@ -71,6 +71,7 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("finished"),
         digest: WorkflowDigest::from_bytes([2; 32]),
@@ -94,12 +95,17 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
             action: ActionId::new(0),
             input: SlotIdx::new(0),
         },
-        None,
+        Some(SlotIdx::ZERO),
         None,
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::workflow::InputSlotKind::Any,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -136,6 +142,7 @@ fn action_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> 
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("action_then_finish"),
         digest: WorkflowDigest::from_bytes([3; 32]),
@@ -176,8 +183,8 @@ fn ipc_commands_route_to_correct_shard_by_run_id() {
     let run2 = RunId::new(2); // hashes to different shard
 
     // Submit both runs
-    assert_eq!(runtime.submit_direct(run1, wf1), Ok(()));
-    assert_eq!(runtime.submit_direct(run2, wf2), Ok(()));
+    assert_eq!(submit_suspended(&runtime, run1, wf1), Ok(()));
+    assert_eq!(submit_suspended(&runtime, run2, wf2), Ok(()));
 
     // Tick once
     assert_eq!(runtime.tick_all(), Ok(true));
@@ -244,10 +251,13 @@ fn ipc_queue_full_does_not_corrupt_other_runs() {
     assert_eq!(runtime.tick_all(), Ok(true));
 
     // Queue should now be empty, but we fill it again
-    assert_eq!(runtime.submit_direct(RunId::new(2), wf2.clone()), Ok(()));
+    assert_eq!(
+        submit_suspended(&runtime, RunId::new(2), wf2.clone()),
+        Ok(())
+    );
 
     // Try to submit when queue is full
-    let err = runtime.submit_direct(RunId::new(3), wf2);
+    let err = submit_suspended(&runtime, RunId::new(3), wf2);
     assert_eq!(err, Err(RuntimeError::QueueFull));
 
     // Run 1 still completed successfully
@@ -321,7 +331,7 @@ fn ipc_cancel_after_submit_processed_in_order() {
     let run = RunId::new(20);
 
     // Submit then cancel (in that order)
-    assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+    assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
     assert_eq!(runtime.cancel_run(run), Ok(()));
 
     // First tick processes submit (run becomes active/suspended)
@@ -1234,4 +1244,32 @@ fn edge_frame_pool_rapid_cycle_never_exceeds_capacity() {
         .take(RunId::new(99), StepIdx::ZERO)
         .expect("take should succeed");
     assert_eq!(reused.run_id(), RunId::new(99));
+}
+
+fn submit_suspended(
+    runtime: &Runtime,
+    run: RunId,
+    workflow: vb_core::CompiledWorkflow,
+) -> vb_runtime::RuntimeResult<()> {
+    use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+    let contract = ActionContract {
+        id: ActionId::new(0),
+        name: ActionName::from_static_infallible("ipc-suspended"),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    };
+    runtime.submit_direct_with_inputs_grants_and_contracts(
+        run,
+        workflow,
+        Box::new([(SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
+        CapabilitySet::empty(),
+        Box::new([contract]),
+    )
 }

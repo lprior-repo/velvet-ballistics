@@ -1,0 +1,32 @@
+{
+  "bead": "vb-i15qt",
+  "status": "source-length lint-src check passed, fmt fails solely inherited registered_context_helpers.rs import ordering and legacy_admission_test.rs formatting. Focused tests after refactor pending integration.",
+  "gate": {
+    "cwd": "/home/lewis/src/isoloated/vb-i15qt-recovery-pin-fix-v1",
+    "argv": [
+      "env",
+      "TEST_INTEGRITY_BASE=58a1f9580ca8beb32f80118ce08df521688a249a",
+      "moon",
+      "ci",
+      ":fmt",
+      ":source-length",
+      ":lint-src",
+      ":check",
+      "--downstream",
+      "none",
+      "--force",
+      "--concurrency",
+      "2"
+    ],
+    "exit_code": 1,
+    "seconds": 48.779,
+    "timeout_seconds": 600,
+    "timed_out": false,
+    "env_overrides": {
+      "CARGO_BUILD_JOBS": "2"
+    },
+    "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_RECOVERY_FIX_V11_ACTUAL_GATES"
+  },
+  "gate_diagnostics": "V31 raw constructor32logical and nestedif failed. V10 helpers hadprivateimports+26logical. V11 correctpublic type imports plus named retry_admission extraction pass sourcebound. No gate or whitelist changes.",
+  "scope": "Types helper extraction preserves DTO values/errorstrings; collapse checkpoint pin nestedif toletchain. Root integration willformatallchangedRustfiles."
+}

@@ -5,6 +5,10 @@ use vb_core::{CompiledInputConstraint, InputSlotKind};
 #[path = "input_schema_constraints.rs"]
 mod constraints;
 use constraints::constraint_from_entries;
+#[path = "input_schema_defaults.rs"]
+pub(super) mod defaults;
+#[path = "input_schema_fields.rs"]
+mod fields;
 
 /// Derive a runtime `InputSlotKind` from a declared input schema.
 ///
@@ -73,27 +77,11 @@ pub(super) fn kind_from_input_schema(value: &AuthorValue) -> Result<InputSlotKin
 /// enforceable keyword (`optional`, `nullable`, `default`, `min`/`max`,
 /// `min_length`/`max_length`, `of`, `extra`, `secret`) and rejects
 /// unsupported combinations explicitly instead of erasing them.
-/// Non-scalar defaults and nested object field structures have no bounded
-/// numeric representation; their identity is carried by the canonical
-/// source digest, and a required slot with only such a default still
-/// requires a submitted value.
+/// Nested fields and portable defaults are retained and validated before IR emission.
 pub(super) fn constraint_from_input_schema(
     value: &AuthorValue,
 ) -> Result<CompiledInputConstraint, CompileError> {
-    match value {
-        AuthorValue::Text(_) => {
-            kind_from_input_schema(value)?;
-            Ok(CompiledInputConstraint::required())
-        }
-        AuthorValue::Mapping(entries) => {
-            let kind = kind_from_input_schema(&AuthorValue::Mapping(entries.to_vec()))?;
-            constraint_from_entries(entries, kind)
-        }
-        _ => Err(CompileError::InvalidInputSchema {
-            field: "inputs",
-            expected: "an allowed input schema",
-        }),
-    }
+    fields::lower(value)
 }
 
 #[cfg(test)]

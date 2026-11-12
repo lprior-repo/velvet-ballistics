@@ -57,6 +57,7 @@ fn startup_workflow(pending: bool) -> TestResult<vb_core::CompiledWorkflow> {
     };
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("ipc-startup-retained"),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([
@@ -76,7 +77,15 @@ fn startup_workflow(pending: bool) -> TestResult<vb_core::CompiledWorkflow> {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: vb_core::ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: if pending {
+            Box::from([vb_core::CompiledInputSlot {
+                slot: SlotIdx::ZERO,
+                kind: vb_core::InputSlotKind::I64,
+                constraint: vb_core::CompiledInputConstraint::required(),
+            }])
+        } else {
+            Box::from([])
+        },
     };
     parts.digest =
         WorkflowDigest::from_bytes(*blake3::hash(&postcard::to_allocvec(&parts)?).as_bytes());
@@ -127,7 +136,11 @@ fn seed_startup_run(
     producer.submit_direct_with_inputs_grants_and_contracts(
         run,
         workflow,
-        Box::from([(SlotIdx::ZERO, SlotValue::I64(7))]),
+        if pending {
+            Box::from([(SlotIdx::ZERO, SlotValue::I64(7))])
+        } else {
+            Box::from([])
+        },
         CapabilitySet::empty(),
         contracts,
     )?;

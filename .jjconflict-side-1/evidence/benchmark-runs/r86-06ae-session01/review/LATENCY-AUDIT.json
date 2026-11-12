@@ -1,0 +1,579 @@
+{
+  "bench_engine_step_once_save_const_single_transition": {
+    "runs": [
+      {
+        "label": "A1",
+        "role": "baseline",
+        "mean_ns": "10824088893568451/250000000000000",
+        "mean_ns_decimal": 43.296355574273804,
+        "sample_stddev_ns": 0.45969851074311346,
+        "cv_percent": 1.0617487422342333,
+        "min_ns": 42.41329254413542,
+        "max_ns": 44.268164919277034,
+        "quartile_index_means_ns": [
+          43.50648291432353,
+          43.740498110472664,
+          43.07971518115402,
+          42.858726091145044
+        ],
+        "mean_confidence_interval": {
+          "confidence_level": "0.95",
+          "lower_bound": "43.20760149657035",
+          "upper_bound": "43.386052705938134"
+        },
+        "sample_sum_time_ns": "3386739886.0",
+        "sample_sum_iters": "78512350.0",
+        "benchmark": {
+          "group_id": "runtime_core",
+          "function_id": "bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_step;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7",
+          "value_str": null,
+          "throughput": null,
+          "full_id": "runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_step;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7",
+          "directory_name": "runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc",
+          "title": "runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;du..."
+        },
+        "guard_max_iteration_us": 146,
+        "outlier_lines": []
+      },
+      {
+        "label": "B1",
+        "role": "candidate",
+        "mean_ns": "848723676715003/20000000000000",
+        "mean_ns_decimal": 42.43618383575015,
+        "sample_stddev_ns": 1.5746200991030517,
+        "cv_percent": 3.7105600852273644,
+        "min_ns": 40.11864487712271,
+        "max_ns": 44.45575995898599,
+        "quartile_index_means_ns": [
+          44.18575818835325,
+          41.92762544953343,
+          41.04289674275622,
+          42.58845496235776
+        ],
+        "mean_confidence_interval": {
+          "confidence_level": "0.95",
+          "lower_bound": "42.13101588847194",
+          "upper_bound": "42.74265761147448"
+        },
+        "sample_sum_time_ns": "2994416093.0",
+        "sample_sum_iters": "71225200.0",
+        "benchmark": {
+          "group_id": "runtime_core",
+          "function_id": "bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_step;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7",
+          "value_str": null,
+          "throughput": null,
+          "full_id": "runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_step;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7",
+          "directory_name": "runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc",
+          "title": "runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;du..."
+        },
+        "guard_max_iteration_us": 208,
+        "outlier_lines": []
+      },
+      {
+        "label": "B2",
+        "role": "candidate",
+        "mean_ns": "1966169300906329/50000000000000",
+        "mean_ns_decimal": 39.32338601812658,
+        "sample_stddev_ns": 3.6310705810119366,
+        "cv_percent": 9.233870601423163,
+        "min_ns": 37.8111177269882,
+        "max_ns": 61.539733949560514,
+        "quartile_index_means_ns": [
+          38.80439836040091,
+          38.29994749202629,
+          41.586019524548696,
+          38.6031786955304
+        ],
+        "mean_confidence_interval": {
+          "confidence_level": "0.95",
+          "lower_bound": "38.714186237308695",
+          "upper_bound": "40.10657997712691"
+        },
+        "sample_sum_time_ns": "3099156540.0",
+        "sample_sum_iters": "78754750.0",
+        "benchmark": {
+          "group_id": "runtime_core",
+          "function_id": "bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_step;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7",
+          "value_str": null,
+          "throughput": null,
+          "full_id": "runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_step;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7",
+          "directory_name": "runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc",
+          "title": "runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;du..."
+        },
+        "guard_max_iteration_us": 215,
+        "outlier_lines": [
+          "Found 6 outliers among 100 measurements (6.00%)",
+          "  2 (2.00%) high mild",
+          "  4 (4.00%) high severe"
+        ]
+      },
+      {
+        "label": "A2",
+        "role": "baseline",
+        "mean_ns": "109138580702849/2500000000000",
+        "mean_ns_decimal": 43.6554322811396,
+        "sample_stddev_ns": 0.22048488903890592,
+        "cv_percent": 0.5050571658963087,
+        "min_ns": 43.255470040377425,
+        "max_ns": 44.314248543104746,
+        "quartile_index_means_ns": [
+          43.828865938684714,
+          43.5635618006933,
+          43.705051599462244,
+          43.52424978571823
+        ],
+        "mean_confidence_interval": {
+          "confidence_level": "0.95",
+          "lower_bound": "43.61351258270961",
+          "upper_bound": "43.699592776567236"
+        },
+        "sample_sum_time_ns": "3413489475.0",
+        "sample_sum_iters": "78280050.0",
+        "benchmark": {
+          "group_id": "runtime_core",
+          "function_id": "bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_step;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7",
+          "value_str": null,
+          "throughput": null,
+          "full_id": "runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_step;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7",
+          "directory_name": "runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc",
+          "title": "runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;du..."
+        },
+        "guard_max_iteration_us": 144,
+        "outlier_lines": [
+          "Found 3 outliers among 100 measurements (3.00%)",
+          "  3 (3.00%) high mild"
+        ]
+      }
+    ],
+    "sides": {
+      "baseline": {
+        "mean_ns": 43.4758939277067,
+        "mean_exact_fraction": "21737946963853351/500000000000000",
+        "mean_ps": 43476,
+        "p50_ns": 43.522123694854486,
+        "p95_ns": 44.104552394469174,
+        "p99_ns": 44.203054374711286
+      },
+      "candidate": {
+        "mean_ns": 40.87978492693836,
+        "mean_exact_fraction": "8175956985387673/200000000000000",
+        "mean_ps": 40880,
+        "p50_ns": 40.58643390738707,
+        "p95_ns": 44.32312684007239,
+        "p99_ns": 51.54336695686487
+      }
+    },
+    "delta_percent": -5.971375781450846,
+    "limit_percent": 3,
+    "all_four_pairwise_deltas": [
+      {
+        "baseline": "A1",
+        "candidate": "B1",
+        "delta_percent": -1.9867070267566773
+      },
+      {
+        "baseline": "A1",
+        "candidate": "B2",
+        "delta_percent": -9.176221655265406
+      },
+      {
+        "baseline": "A2",
+        "candidate": "B1",
+        "delta_percent": -2.792890556065345
+      },
+      {
+        "baseline": "A2",
+        "candidate": "B2",
+        "delta_percent": -9.923269652021263
+      }
+    ],
+    "worst_pairwise_delta_percent": -1.9867070267566773
+  },
+  "ipc_frame_decode": {
+    "runs": [
+      {
+        "label": "A1",
+        "role": "baseline",
+        "mean_ns": "435247026290733/6250000000000",
+        "mean_ns_decimal": 69.63952420651728,
+        "sample_stddev_ns": 3.9656176520058017,
+        "cv_percent": 5.694492742721346,
+        "min_ns": 67.26167105462832,
+        "max_ns": 88.04259226696364,
+        "quartile_index_means_ns": [
+          73.25431732037485,
+          69.92515954065964,
+          67.61195258171374,
+          67.7666673833208
+        ],
+        "mean_confidence_interval": {
+          "confidence_level": "0.95",
+          "lower_bound": "68.94043230749321",
+          "upper_bound": "70.47803276285615"
+        },
+        "sample_sum_time_ns": "3937850193.0",
+        "sample_sum_iters": "57438700.0",
+        "benchmark": {
+          "group_id": "storage_ipc",
+          "function_id": "ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=submit_run_payload;surface=ipc_decode;fixture_bytes=63;fixture_digest=d1c47e658c7b6305990fd0ba79ec63c24378db7a1b90427ca4fe733358c9dc53",
+          "value_str": null,
+          "throughput": null,
+          "full_id": "storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=submit_run_payload;surface=ipc_decode;fixture_bytes=63;fixture_digest=d1c47e658c7b6305990fd0ba79ec63c24378db7a1b90427ca4fe733358c9dc53",
+          "directory_name": "storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix",
+          "title": "storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p..."
+        },
+        "guard_max_iteration_us": 162,
+        "outlier_lines": [
+          "Found 5 outliers among 100 measurements (5.00%)",
+          "  5 (5.00%) high severe"
+        ]
+      },
+      {
+        "label": "B1",
+        "role": "candidate",
+        "mean_ns": "7028181194765789/100000000000000",
+        "mean_ns_decimal": 70.28181194765789,
+        "sample_stddev_ns": 0.9728930221846892,
+        "cv_percent": 1.3842742456743256,
+        "min_ns": 69.38142392849888,
+        "max_ns": 72.43494606946983,
+        "quartile_index_means_ns": [
+          69.74656551485718,
+          71.42314288174447,
+          69.5859678022952,
+          70.37157159173479
+        ],
+        "mean_confidence_interval": {
+          "confidence_level": "0.95",
+          "lower_bound": "70.0970180682746",
+          "upper_bound": "70.47694829180801"
+        },
+        "sample_sum_time_ns": "3885574170.0",
+        "sample_sum_iters": "55247000.0",
+        "benchmark": {
+          "group_id": "storage_ipc",
+          "function_id": "ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=submit_run_payload;surface=ipc_decode;fixture_bytes=63;fixture_digest=d1c47e658c7b6305990fd0ba79ec63c24378db7a1b90427ca4fe733358c9dc53",
+          "value_str": null,
+          "throughput": null,
+          "full_id": "storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=submit_run_payload;surface=ipc_decode;fixture_bytes=63;fixture_digest=d1c47e658c7b6305990fd0ba79ec63c24378db7a1b90427ca4fe733358c9dc53",
+          "directory_name": "storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix",
+          "title": "storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p..."
+        },
+        "guard_max_iteration_us": 208,
+        "outlier_lines": [
+          "Found 19 outliers among 100 measurements (19.00%)",
+          "  19 (19.00%) high mild"
+        ]
+      },
+      {
+        "label": "B2",
+        "role": "candidate",
+        "mean_ns": "3557298645416531/50000000000000",
+        "mean_ns_decimal": 71.14597290833062,
+        "sample_stddev_ns": 2.4199772447931367,
+        "cv_percent": 3.4014254719816712,
+        "min_ns": 69.54348441911964,
+        "max_ns": 87.75098057332515,
+        "quartile_index_means_ns": [
+          70.30700055865547,
+          71.44280547864095,
+          72.95247451468614,
+          69.88161108133987
+        ],
+        "mean_confidence_interval": {
+          "confidence_level": "0.95",
+          "lower_bound": "70.72929292950255",
+          "upper_bound": "71.66186546722092"
+        },
+        "sample_sum_time_ns": "3886810454.0",
+        "sample_sum_iters": "54656150.0",
+        "benchmark": {
+          "group_id": "storage_ipc",
+          "function_id": "ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=submit_run_payload;surface=ipc_decode;fixture_bytes=63;fixture_digest=d1c47e658c7b6305990fd0ba79ec63c24378db7a1b90427ca4fe733358c9dc53",
+          "value_str": null,
+          "throughput": null,
+          "full_id": "storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=submit_run_payload;surface=ipc_decode;fixture_bytes=63;fixture_digest=d1c47e658c7b6305990fd0ba79ec63c24378db7a1b90427ca4fe733358c9dc53",
+          "directory_name": "storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix",
+          "title": "storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p..."
+        },
+        "guard_max_iteration_us": 149,
+        "outlier_lines": [
+          "Found 6 outliers among 100 measurements (6.00%)",
+          "  2 (2.00%) high mild",
+          "  4 (4.00%) high severe"
+        ]
+      },
+      {
+        "label": "A2",
+        "role": "baseline",
+        "mean_ns": "1716805282781571/25000000000000",
+        "mean_ns_decimal": 68.67221131126284,
+        "sample_stddev_ns": 1.5990047360746509,
+        "cv_percent": 2.3284596571778082,
+        "min_ns": 67.5585,
+        "max_ns": 82.42171282798834,
+        "quartile_index_means_ns": [
+          69.0307683823548,
+          69.32245994323074,
+          68.2769638499419,
+          68.05865306952397
+        ],
+        "mean_confidence_interval": {
+          "confidence_level": "0.95",
+          "lower_bound": "68.42087621386611",
+          "upper_bound": "69.03200582541992"
+        },
+        "sample_sum_time_ns": "3872170616.0",
+        "sample_sum_iters": "56560000.0",
+        "benchmark": {
+          "group_id": "storage_ipc",
+          "function_id": "ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=submit_run_payload;surface=ipc_decode;fixture_bytes=63;fixture_digest=d1c47e658c7b6305990fd0ba79ec63c24378db7a1b90427ca4fe733358c9dc53",
+          "value_str": null,
+          "throughput": null,
+          "full_id": "storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=submit_run_payload;surface=ipc_decode;fixture_bytes=63;fixture_digest=d1c47e658c7b6305990fd0ba79ec63c24378db7a1b90427ca4fe733358c9dc53",
+          "directory_name": "storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix",
+          "title": "storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p..."
+        },
+        "guard_max_iteration_us": 156,
+        "outlier_lines": [
+          "Found 6 outliers among 100 measurements (6.00%)",
+          "  2 (2.00%) high mild",
+          "  4 (4.00%) high severe"
+        ]
+      }
+    ],
+    "sides": {
+      "baseline": {
+        "mean_ns": 69.15586775889005,
+        "mean_exact_fraction": "3457793387944503/50000000000000",
+        "mean_ps": 69156,
+        "p50_ns": 68.28819273399014,
+        "p95_ns": 71.28740150887153,
+        "p99_ns": 87.61259425521571
+      },
+      "candidate": {
+        "mean_ns": 70.71389242799425,
+        "mean_exact_fraction": "14142778485598851/200000000000000",
+        "mean_ps": 70714,
+        "p50_ns": 70.22672505420688,
+        "p95_ns": 72.58450850902895,
+        "p99_ns": 79.4456925777724
+      }
+    },
+    "delta_percent": 2.2529175319384365,
+    "limit_percent": 5,
+    "all_four_pairwise_deltas": [
+      {
+        "baseline": "A1",
+        "candidate": "B1",
+        "delta_percent": 0.922303459793743
+      },
+      {
+        "baseline": "A1",
+        "candidate": "B2",
+        "delta_percent": 2.1632093541390933
+      },
+      {
+        "baseline": "A2",
+        "candidate": "B1",
+        "delta_percent": 2.343889334070507
+      },
+      {
+        "baseline": "A2",
+        "candidate": "B2",
+        "delta_percent": 3.602274558853563
+      }
+    ],
+    "worst_pairwise_delta_percent": 3.602274558853563
+  },
+  "engine_run_until_blocked_budget_10_small_workflow": {
+    "runs": [
+      {
+        "label": "A1",
+        "role": "baseline",
+        "mean_ns": "6953549044486147/100000000000000",
+        "mean_ns_decimal": 69.53549044486147,
+        "sample_stddev_ns": 3.4297973486116256,
+        "cv_percent": 4.932441443454406,
+        "min_ns": 65.97827220580567,
+        "max_ns": 76.70196577279839,
+        "quartile_index_means_ns": [
+          68.3415599604809,
+          71.0274725887531,
+          66.79789584948298,
+          71.97503338072886
+        ],
+        "mean_confidence_interval": {
+          "confidence_level": "0.95",
+          "lower_bound": "68.86924145472777",
+          "upper_bound": "70.21760602186214"
+        },
+        "sample_sum_time_ns": "4069229844.0",
+        "sample_sum_iters": "58105300.0",
+        "benchmark": {
+          "group_id": "runtime_core",
+          "function_id": "engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_run;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7",
+          "value_str": null,
+          "throughput": null,
+          "full_id": "runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_run;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7",
+          "directory_name": "runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;",
+          "title": "runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;dura..."
+        },
+        "guard_max_iteration_us": 208,
+        "outlier_lines": []
+      },
+      {
+        "label": "B1",
+        "role": "candidate",
+        "mean_ns": "6008672306237707/100000000000000",
+        "mean_ns_decimal": 60.08672306237707,
+        "sample_stddev_ns": 1.9002190528157274,
+        "cv_percent": 3.1624607832966314,
+        "min_ns": 57.84776636713735,
+        "max_ns": 63.53171869918699,
+        "quartile_index_means_ns": [
+          61.130228324598875,
+          58.92295453818997,
+          61.294440491963115,
+          58.9992688947563
+        ],
+        "mean_confidence_interval": {
+          "confidence_level": "0.95",
+          "lower_bound": "59.72415335558146",
+          "upper_bound": "60.46007940943431"
+        },
+        "sample_sum_time_ns": "3710001386.0",
+        "sample_sum_iters": "62115000.0",
+        "benchmark": {
+          "group_id": "runtime_core",
+          "function_id": "engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_run;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7",
+          "value_str": null,
+          "throughput": null,
+          "full_id": "runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_run;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7",
+          "directory_name": "runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;",
+          "title": "runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;dura..."
+        },
+        "guard_max_iteration_us": 221,
+        "outlier_lines": []
+      },
+      {
+        "label": "B2",
+        "role": "candidate",
+        "mean_ns": "479903331225893/8000000000000",
+        "mean_ns_decimal": 59.987916403236625,
+        "sample_stddev_ns": 2.1546543760837427,
+        "cv_percent": 3.591813994005448,
+        "min_ns": 58.351195274235764,
+        "max_ns": 77.2613992159339,
+        "quartile_index_means_ns": [
+          59.88764817898526,
+          59.421899555450665,
+          59.44690669076568,
+          61.1952111877449
+        ],
+        "mean_confidence_interval": {
+          "confidence_level": "0.95",
+          "lower_bound": "59.640158837197475",
+          "upper_bound": "60.46564174615857"
+        },
+        "sample_sum_time_ns": "3850025007.0",
+        "sample_sum_iters": "63978450.0",
+        "benchmark": {
+          "group_id": "runtime_core",
+          "function_id": "engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_run;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7",
+          "value_str": null,
+          "throughput": null,
+          "full_id": "runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_run;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7",
+          "directory_name": "runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;",
+          "title": "runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;dura..."
+        },
+        "guard_max_iteration_us": 224,
+        "outlier_lines": [
+          "Found 2 outliers among 100 measurements (2.00%)",
+          "  2 (2.00%) high severe"
+        ]
+      },
+      {
+        "label": "A2",
+        "role": "baseline",
+        "mean_ns": "657688780493479/10000000000000",
+        "mean_ns_decimal": 65.7688780493479,
+        "sample_stddev_ns": 0.7319046581024419,
+        "cv_percent": 1.1128434600226522,
+        "min_ns": 64.43655352480418,
+        "max_ns": 68.49206792559758,
+        "quartile_index_means_ns": [
+          65.45447973979863,
+          66.500692320316,
+          65.52226294307638,
+          65.59807719420061
+        ],
+        "mean_confidence_interval": {
+          "confidence_level": "0.95",
+          "lower_bound": "65.63134140972214",
+          "upper_bound": "65.9159610083319"
+        },
+        "sample_sum_time_ns": "3816196836.0",
+        "sample_sum_iters": "58024500.0",
+        "benchmark": {
+          "group_id": "runtime_core",
+          "function_id": "engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_run;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7",
+          "value_str": null,
+          "throughput": null,
+          "full_id": "runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence;fixture=small_workflow;surface=engine_run;fixture_bytes=187;fixture_digest=fe397fe5493044211a952f53dbd940c9d9babd7fd4972db04726ed05d8c5cbe7",
+          "directory_name": "runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;",
+          "title": "runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;dura..."
+        },
+        "guard_max_iteration_us": 153,
+        "outlier_lines": [
+          "Found 4 outliers among 100 measurements (4.00%)",
+          "  3 (3.00%) high mild",
+          "  1 (1.00%) high severe"
+        ]
+      }
+    ],
+    "sides": {
+      "baseline": {
+        "mean_ns": 67.65218424710469,
+        "mean_exact_fraction": "13530436849420937/200000000000000",
+        "mean_ps": 67652,
+        "p50_ns": 66.56230755382285,
+        "p95_ns": 74.53873078077841,
+        "p99_ns": 75.90626440647223
+      },
+      "candidate": {
+        "mean_ns": 60.03731973280685,
+        "mean_exact_fraction": "24014927893122739/400000000000000",
+        "mean_ps": 60037,
+        "p50_ns": 59.51620436525758,
+        "p95_ns": 63.17404127579737,
+        "p99_ns": 63.53171869918699
+      }
+    },
+    "delta_percent": -11.255903411017703,
+    "limit_percent": 3,
+    "all_four_pairwise_deltas": [
+      {
+        "baseline": "A1",
+        "candidate": "B1",
+        "delta_percent": -13.588409777560782
+      },
+      {
+        "baseline": "A1",
+        "candidate": "B2",
+        "delta_percent": -13.730505070925823
+      },
+      {
+        "baseline": "A2",
+        "candidate": "B1",
+        "delta_percent": -8.639580232321096
+      },
+      {
+        "baseline": "A2",
+        "candidate": "B2",
+        "delta_percent": -8.789813385251435
+      }
+    ],
+    "worst_pairwise_delta_percent": -8.639580232321096
+  }
+}

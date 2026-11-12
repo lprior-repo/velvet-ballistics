@@ -79,6 +79,7 @@ fn finish_node(id: u16, result: u16) -> CompiledNode {
 fn parts_from(name: &'static str) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::<str>::from(name),
         input_slots: Box::new([]),
         digest: WorkflowDigest::from_bytes([0u8; 32]),

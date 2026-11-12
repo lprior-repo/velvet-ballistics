@@ -1,0 +1,26 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 5,
+  "sublane": "proof-writing-repair",
+  "delegate": "proof-writer",
+  "attempt": 2,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "attempt 1 evidence used source-checkout paths for missing-test discovery; repair must recapture State 5 proof evidence from the isolated worktree only",
+  "input_artifacts": [
+    ".beads/vb-vt2f/STATE.md",
+    ".beads/vb-vt2f/baseline-report.md",
+    ".beads/vb-vt2f/codebase-map.md",
+    ".beads/vb-vt2f/delivery-scope.jsonl",
+    ".beads/vb-vt2f/contract.md",
+    ".beads/vb-vt2f/verification-layers.md",
+    ".beads/vb-vt2f/proof-obligations.jsonl",
+    ".beads/vb-vt2f/proof-strategy.md",
+    ".beads/vb-vt2f/proof-obligations.planned.jsonl"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/proof-writer-report.md",
+    ".beads/vb-vt2f/proof-evidence.md"
+  ],
+  "status": "QUEUED"
+}

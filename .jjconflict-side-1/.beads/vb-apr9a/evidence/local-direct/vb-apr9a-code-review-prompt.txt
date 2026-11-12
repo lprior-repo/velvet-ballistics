@@ -1,0 +1,211 @@
+Independent CODE REVIEW vb-apr9a fuzz lint-only repair. Existing scalar oracle weak and tracked separately vb-mvvrr, no productionintegrationassuranceclaim. Return STATUS APPROVED only no actionable findings in scoped checkedconversion/splitfirst change; no inventedwaivers. Max500finalwords.
+# Fuzz Contract: vb-apr9a PS007 Core/Storage Bridge
+
+**Scope:** Checked conversion and safe selector split. Behavior unchanged.
+
+**Domain:**
+- Input: arbitrary byte slice.
+- Routing: first byte is selector; remainder is payload.
+- Policy value: u64 in [1, 100000000].
+- Event length: u64 in [1, 10000].
+
+**Boundary Conditions:**
+- Empty input returns immediately.
+- Short payload under 8 bytes returns immediately.
+- Malformed conversion returns immediately.
+- Out-of-range policy or event length returns immediately.
+
+**Routing:**
+- Selector byte modulo 3 on remainder payload.
+- Case 0: bridge value conversion.
+- Case 1: bridge defaults constants.
+- Case 2: multiple events count.
+
+**Error Taxonomy:**
+- Fallible conversion handled by return.
+- No silent truncation; checked division used.
+- No panic on malformed input.
+
+**Assertions:**
+- Storage limit positive.
+- Storage limit equals policy.
+- U32 round-trip for values within u32 range.
+- Storage default equals core policy.
+- Max encoded within storage default.
+- Max count positive or encoded length exceeds limit.
+
+**Hazards:**
+- Integer conversion between u64 and u32.
+- Slice indexing and length validation.
+- Division by zero guarded by length check.
+
+**Oracle Strength:**
+- Weak scalar checks only.
+- Does not prove storage crash or core integration correctness.
+- Validates conversion invariants and constant alignment.
+
+**Non-Goals:**
+- No proof planning.
+- No integration test coverage.
+- No performance guarantees.
+DIFF
+diff --git a/fuzz/fuzz_targets/vb_vzcuf_PS_007.rs b/fuzz/fuzz_targets/vb_vzcuf_PS_007.rs
+index 4e935a7f41..17e275dc01 100644
+--- a/fuzz/fuzz_targets/vb_vzcuf_PS_007.rs
++++ b/fuzz/fuzz_targets/vb_vzcuf_PS_007.rs
+@@ -3,7 +3,9 @@
+ use libfuzzer_sys::fuzz_target;
+ 
+ fn fuzz_bridge_value(data: &[u8]) {
+-    if data.len() < 8 { return; }
++    if data.len() < 8 {
++        return;
++    }
+     let policy_bytes: [u8; 8] = match data.get(0..8) {
+         Some(slice) => match slice.try_into() {
+             Ok(arr) => arr,
+@@ -12,11 +14,18 @@
+         None => return,
+     };
+     let policy = u64::from_le_bytes(policy_bytes);
+-    if policy == 0 || policy > 100_000_000 { return; }
++    if policy == 0 || policy > 100_000_000 {
++        return;
++    }
+     let storage_limit = policy;
+     assert!(storage_limit > 0);
+     assert_eq!(storage_limit, policy);
+-    if storage_limit <= u32::MAX as u64 { let as_u32: u32 = storage_limit as u32; assert_eq!(as_u32 as u64, storage_limit); }
++    if storage_limit <= u64::from(u32::MAX) {
++        assert_eq!(
++            u32::try_from(storage_limit).map(u64::from),
++            Ok(storage_limit)
++        );
++    }
+ }
+ 
+ fn fuzz_bridge_defaults(_data: &[u8]) {
+@@ -39,7 +48,9 @@
+ }
+ 
+ fn fuzz_multiple_events(data: &[u8]) {
+-    if data.len() < 8 { return; }
++    if data.len() < 8 {
++        return;
++    }
+     let encoded_len_bytes: [u8; 8] = match data.get(0..8) {
+         Some(slice) => match slice.try_into() {
+             Ok(arr) => arr,
+@@ -48,17 +59,22 @@
+         None => return,
+     };
+     let encoded_len = u64::from_le_bytes(encoded_len_bytes);
+-    if encoded_len == 0 || encoded_len > 10_000 { return; }
++    if encoded_len == 0 || encoded_len > 10_000 {
++        return;
++    }
+     let limit: u64 = 1_048_576;
+     let max_count = limit.checked_div(encoded_len).unwrap_or(0);
+     assert!(max_count > 0 || encoded_len > limit);
+ }
+ 
+ fuzz_target!(|data: &[u8]| {
+-    if data.is_empty() { return; }
+-    match data[0] % 3 {
+-        0 => fuzz_bridge_value(&data[1..]),
+-        1 => fuzz_bridge_defaults(&data[1..]),
+-        _ => fuzz_multiple_events(&data[1..]),
++    let (first, rest) = match data.split_first() {
++        Some(pair) => pair,
++        None => return,
++    };
++    match first % 3 {
++        0 => fuzz_bridge_value(rest),
++        1 => fuzz_bridge_defaults(rest),
++        _ => fuzz_multiple_events(rest),
+     }
+ });
+
+FULLTARGET
+// Cargo-fuzz target for core/storage bridge (PS-007, C8).
+#![no_main]
+use libfuzzer_sys::fuzz_target;
+
+fn fuzz_bridge_value(data: &[u8]) {
+    if data.len() < 8 {
+        return;
+    }
+    let policy_bytes: [u8; 8] = match data.get(0..8) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let policy = u64::from_le_bytes(policy_bytes);
+    if policy == 0 || policy > 100_000_000 {
+        return;
+    }
+    let storage_limit = policy;
+    assert!(storage_limit > 0);
+    assert_eq!(storage_limit, policy);
+    if storage_limit <= u64::from(u32::MAX) {
+        assert_eq!(
+            u32::try_from(storage_limit).map(u64::from),
+            Ok(storage_limit)
+        );
+    }
+}
+
+fn fuzz_bridge_defaults(_data: &[u8]) {
+    use vb_storage::constants::{
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_JOURNAL_EVENT_RECORD_BYTES, RECORD_HEADER_LEN,
+    };
+    // The storage default record budget is authoritative and derived from the
+    // storage constants, not a hand-copied magic number. `MAX_JOURNAL_EVENT_RECORD_BYTES`
+    // is defined in `vb_storage::constants` as `RECORD_HEADER_LEN + MAX_JOURNAL_EVENT_PAYLOAD_BYTES`,
+    // so the budget always accommodates a full header-plus-max-payload record.
+    // Both the storage default and the core policy derive from that single
+    // source of truth, keeping the `max_encoded <= storage_default` invariant
+    // structurally true even if either underlying constant is bumped later.
+    let storage_default: u64 = u64::from(MAX_JOURNAL_EVENT_RECORD_BYTES);
+    let core_policy: u64 = u64::from(MAX_JOURNAL_EVENT_RECORD_BYTES);
+    assert_eq!(storage_default, core_policy);
+    let max_encoded =
+        u64::from(RECORD_HEADER_LEN).saturating_add(u64::from(MAX_JOURNAL_EVENT_PAYLOAD_BYTES));
+    assert!(max_encoded <= storage_default);
+}
+
+fn fuzz_multiple_events(data: &[u8]) {
+    if data.len() < 8 {
+        return;
+    }
+    let encoded_len_bytes: [u8; 8] = match data.get(0..8) {
+        Some(slice) => match slice.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return,
+        },
+        None => return,
+    };
+    let encoded_len = u64::from_le_bytes(encoded_len_bytes);
+    if encoded_len == 0 || encoded_len > 10_000 {
+        return;
+    }
+    let limit: u64 = 1_048_576;
+    let max_count = limit.checked_div(encoded_len).unwrap_or(0);
+    assert!(max_count > 0 || encoded_len > limit);
+}
+
+fuzz_target!(|data: &[u8]| {
+    let (first, rest) = match data.split_first() {
+        Some(pair) => pair,
+        None => return,
+    };
+    match first % 3 {
+        0 => fuzz_bridge_value(rest),
+        1 => fuzz_bridge_defaults(rest),
+        _ => fuzz_multiple_events(rest),
+    }
+});
+
+Actual scoped clippy target -Dwarnings -Dindexing_slicing -Das_conversions exits0. Bounded1000run fuzzsmoke ongoing, no passclaimyet.

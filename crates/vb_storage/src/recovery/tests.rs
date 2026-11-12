@@ -31,6 +31,7 @@ fn deterministic_plan() -> Result<CompiledWorkflow, Box<dyn std::error::Error>> 
 fn deterministic_parts() -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: "recovery_replay".into(),
         input_slots: Box::new([]),
         digest: sample_digest(44),

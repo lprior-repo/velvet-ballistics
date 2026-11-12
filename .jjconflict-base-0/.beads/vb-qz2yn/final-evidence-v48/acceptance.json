@@ -1,0 +1,12 @@
+{
+  "source_commit": "48ef265727dbbe1426c8349ce09bdcbde0e8ae11",
+  "main_base": "0210e36fc8961f7d4454eb4ca53b6a39948a28b8",
+  "canonical_tasks": 17,
+  "all_tasks_passed": true,
+  "tests_passed": 14490,
+  "tests_skipped": 27,
+  "seconds": 585.983,
+  "nextest_seconds": 540.39,
+  "metrics": "metrics-v46-counter-flux",
+  "limits": "No speedup, Fjall latency, power loss, all interleavings, other producer or full v1 acceptance claim."
+}

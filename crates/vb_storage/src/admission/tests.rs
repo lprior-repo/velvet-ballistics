@@ -197,6 +197,7 @@ fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, String> {
 
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::<str>::from("test_admission"),
         input_slots: Box::new([]),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
@@ -487,8 +488,8 @@ fn prepared_artifact_carries_current_ir_version() -> Result<(), String> {
     );
     assert_eq!(
         artifact.artifact_version,
-        crate::compat::SchemaVersion::new(1, 0, 0),
-        "current IR version is 1.0.0"
+        crate::compat::SchemaVersion::new(2, 0, 0),
+        "current IR version is 2.0.0"
     );
     Ok(())
 }

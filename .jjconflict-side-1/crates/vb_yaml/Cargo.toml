@@ -1,0 +1,23 @@
+[package]
+name = "vb_yaml"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+vb_core = { path = "../vb_core" }
+arrayvec.workspace = true
+saphyr.workspace = true
+saphyr-parser.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+criterion = { workspace = true }
+proptest = { workspace = true }
+
+[features]
+test-util = []
+default = []
+
+[lints]
+workspace = true

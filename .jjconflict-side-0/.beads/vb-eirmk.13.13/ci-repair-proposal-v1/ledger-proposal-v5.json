@@ -1,0 +1,1500 @@
+{
+  "schema_version": 5,
+  "artifact_kind": "current-source test-integrity finding and protected-ledger proposal",
+  "state": "PROPOSAL_ONLY_NOT_APPLIED_NOT_APPROVED",
+  "source_context": {
+    "workspace_root": "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna",
+    "git_root": "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna",
+    "jj_root": "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna",
+    "source_revision": "2e67416679b4c8f6fd4abe93c365841a8370cfdb",
+    "source_revision_note": "Frozen complete integrated source pin 2e67416679b4c8f6fd4abe93c365841a8370cfdb; JJ working copy a975a09b55fc0ca424a833d5218af5b1aaeaedd8 is an empty child and source-tree-equal. Explicit checker base 69bcabd8fba0250d2f6dbd3953fb2604a8ba1178.",
+    "test_integrity_base": "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178",
+    "base_resolution": "Explicit --base and origin/main resolve to 69bcabd8fba0250d2f6dbd3953fb2604a8ba1178; base is ancestor of frozen source pin.",
+    "checker_source_path": "scripts/check-test-integrity.rs",
+    "checker_source_sha256": "461cf1a5bab360748745cfad9a59a6a9ea5f7d3dcfb696aad91e956a187b0c1e",
+    "checker_finding_semantics": "Per-file diff scanner counts test markers and exact assertion macro lines in crates/vb_core/src/replay/ops/tests.rs; it does not match #[test] declarations moved into included files.",
+    "provided_moon_log": {
+      "path": "has-integrated-validation/target/core-build-20261110/evidence/contains-has-test-integrity-live.log",
+      "provenance": "parent-reported path, not read for this V4 refresh"
+    },
+    "checker_preview": {
+      "performed": true,
+      "scope": "Copied checker, explicit base, current 57-row ledger plus two proposal rows in scratch only; four controls.",
+      "copied_checker_source_path": "target/core-build-20261110/evidence/test-integrity-v5-2e674/check-test-integrity-v5.rs",
+      "copied_checker_source_sha256": "5e4a57cbc98579088ca34159ff374a534542255a93a853b528e30774e5815cb3",
+      "copied_checker_binary_path": "target/core-build-20261110/evidence/test-integrity-v5-2e674/check-test-integrity-v5",
+      "copied_checker_binary_sha256": "600983909809c29cb7e590c06429734643719b1f2026f6f2f2e2db9e187313e4",
+      "original_checker_source_path": "scripts/check-test-integrity.rs",
+      "original_checker_source_sha256": "d2a64ab1a4d8ded0bf005dc0704a8dbe815a2721",
+      "only_checker_change": "One JUSTIFICATIONS_REL constant substitution to scratch-ledger.tsv; reverse substitution byte-identical.",
+      "source_revision": "2e67416679b4c8f6fd4abe93c365841a8370cfdb",
+      "working_copy_revision": "a975a09b55fc0ca424a833d5218af5b1aaeaedd8",
+      "working_copy_parent": "2e67416679b4c8f6fd4abe93c365841a8370cfdb",
+      "working_tree_equal_to_source_revision": true,
+      "base": "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178",
+      "command_argv": [
+        "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/target/core-build-20261110/evidence/test-integrity-v5-2e674/check-test-integrity-v5",
+        "--base",
+        "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178"
+      ],
+      "four_controls": {
+        "main-ledger-plus-two": {
+          "argv": [
+            "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/target/core-build-20261110/evidence/test-integrity-v5-2e674/check-test-integrity-v5",
+            "--base",
+            "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178"
+          ],
+          "exit_code": 0,
+          "emitted_total": 0,
+          "distinct_findings": 0,
+          "duplicate_emissions": 0,
+          "findings_by_kind": {},
+          "findings_by_path": {},
+          "findings": [],
+          "justified_lines": [
+            "JUSTIFIED|DeletedTestDeclaration|crates/vb_core/src/replay/ops/tests.rs|removed_declarations=90 added_declarations=0|bead=vb-eirmk.13.3",
+            "JUSTIFIED|WeakenedAssertion|crates/vb_core/src/replay/ops/tests.rs|removed_exact=4 added_exact=0 added_weak=0|bead=vb-eirmk.13.3"
+          ],
+          "stdout_log": "target/core-build-20261110/evidence/test-integrity-v5-2e674/main-ledger-plus-two.stdout.log",
+          "stdout_sha256": "5f5ad7827b600974ba488321ba68791f9a34973f5e8decb45f3a54a7c1dc64bd",
+          "stderr_log": "target/core-build-20261110/evidence/test-integrity-v5-2e674/main-ledger-plus-two.stderr.log",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_bytes": 0,
+          "stdout_bytes": 332,
+          "case_name": "proposal_rows_both"
+        },
+        "main-ledger-plus-weakened-only": {
+          "argv": [
+            "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/target/core-build-20261110/evidence/test-integrity-v5-2e674/check-test-integrity-v5",
+            "--base",
+            "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178"
+          ],
+          "exit_code": 1,
+          "emitted_total": 1,
+          "distinct_findings": 1,
+          "duplicate_emissions": 0,
+          "findings_by_kind": {
+            "DeletedTestDeclaration": 1
+          },
+          "findings_by_path": {
+            "crates/vb_core/src/replay/ops/tests.rs": [
+              "DeletedTestDeclaration|removed_declarations=90 added_declarations=0"
+            ]
+          },
+          "findings": [
+            {
+              "kind": "DeletedTestDeclaration",
+              "path": "crates/vb_core/src/replay/ops/tests.rs",
+              "detail": "removed_declarations=90 added_declarations=0"
+            }
+          ],
+          "justified_lines": [
+            "JUSTIFIED|WeakenedAssertion|crates/vb_core/src/replay/ops/tests.rs|removed_exact=4 added_exact=0 added_weak=0|bead=vb-eirmk.13.3"
+          ],
+          "stdout_log": "target/core-build-20261110/evidence/test-integrity-v5-2e674/main-ledger-plus-weakened-only.stdout.log",
+          "stdout_sha256": "dc226ed4b5f8a2c17340cd80a0b65f0297ef856817e5bdf2e3d9d884fe0a79bc",
+          "stderr_log": "target/core-build-20261110/evidence/test-integrity-v5-2e674/main-ledger-plus-weakened-only.stderr.log",
+          "stderr_sha256": "c1bb671ebec8eaa2ca8090e1c937a73cf3b2c883a4555b5c64a5f3d849f54a90",
+          "stderr_bytes": 201,
+          "stdout_bytes": 129,
+          "case_name": "declaration_row_omitted"
+        },
+        "main-ledger-plus-declaration-only": {
+          "argv": [
+            "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/target/core-build-20261110/evidence/test-integrity-v5-2e674/check-test-integrity-v5",
+            "--base",
+            "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178"
+          ],
+          "exit_code": 1,
+          "emitted_total": 1,
+          "distinct_findings": 1,
+          "duplicate_emissions": 0,
+          "findings_by_kind": {
+            "WeakenedAssertion": 1
+          },
+          "findings_by_path": {
+            "crates/vb_core/src/replay/ops/tests.rs": [
+              "WeakenedAssertion|removed_exact=4 added_exact=0 added_weak=0"
+            ]
+          },
+          "findings": [
+            {
+              "kind": "WeakenedAssertion",
+              "path": "crates/vb_core/src/replay/ops/tests.rs",
+              "detail": "removed_exact=4 added_exact=0 added_weak=0"
+            }
+          ],
+          "justified_lines": [
+            "JUSTIFIED|DeletedTestDeclaration|crates/vb_core/src/replay/ops/tests.rs|removed_declarations=90 added_declarations=0|bead=vb-eirmk.13.3"
+          ],
+          "stdout_log": "target/core-build-20261110/evidence/test-integrity-v5-2e674/main-ledger-plus-declaration-only.stdout.log",
+          "stdout_sha256": "9b6e444ae050b5e214586498c30e852bee01d30c7bde2695596d83ca6b0a0191",
+          "stderr_log": "target/core-build-20261110/evidence/test-integrity-v5-2e674/main-ledger-plus-declaration-only.stderr.log",
+          "stderr_sha256": "870c93628971294e143e34d8d3e47674137e529f04eac6e24bb049f9fd6f6606",
+          "stderr_bytes": 194,
+          "stdout_bytes": 136,
+          "case_name": "assertion_row_omitted"
+        },
+        "main-ledger-no-append": {
+          "argv": [
+            "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/target/core-build-20261110/evidence/test-integrity-v5-2e674/check-test-integrity-v5",
+            "--base",
+            "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178"
+          ],
+          "exit_code": 1,
+          "emitted_total": 2,
+          "distinct_findings": 2,
+          "duplicate_emissions": 0,
+          "findings_by_kind": {
+            "DeletedTestDeclaration": 1,
+            "WeakenedAssertion": 1
+          },
+          "findings_by_path": {
+            "crates/vb_core/src/replay/ops/tests.rs": [
+              "DeletedTestDeclaration|removed_declarations=90 added_declarations=0",
+              "WeakenedAssertion|removed_exact=4 added_exact=0 added_weak=0"
+            ]
+          },
+          "findings": [
+            {
+              "kind": "DeletedTestDeclaration",
+              "path": "crates/vb_core/src/replay/ops/tests.rs",
+              "detail": "removed_declarations=90 added_declarations=0"
+            },
+            {
+              "kind": "WeakenedAssertion",
+              "path": "crates/vb_core/src/replay/ops/tests.rs",
+              "detail": "removed_exact=4 added_exact=0 added_weak=0"
+            }
+          ],
+          "justified_lines": [],
+          "stdout_log": "target/core-build-20261110/evidence/test-integrity-v5-2e674/main-ledger-no-append.stdout.log",
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_log": "target/core-build-20261110/evidence/test-integrity-v5-2e674/main-ledger-no-append.stderr.log",
+          "stderr_sha256": "c394df48fa48f85331718569e7f17124bf3702d1f0f119910d4654b4555d9100",
+          "stderr_bytes": 301,
+          "stdout_bytes": 0,
+          "case_name": "no_proposal_rows"
+        }
+      },
+      "all_rows_preview_exit_code": 0,
+      "all_rows_preview_emitted_findings": 0,
+      "all_rows_preview_passes_scoped_checker": true,
+      "negative_controls_fail_as_expected": true,
+      "raw_case_results_path": "target/core-build-20261110/evidence/test-integrity-v5-2e674/case-results-corrected.json",
+      "raw_case_results_sha256": "c0f400e793e0c1b3e82fdf29ab7951174e57532cc52434c837f1dc05722de277",
+      "raw_logs_directory": "target/core-build-20261110/evidence/test-integrity-v5-2e674",
+      "live_ledger_sha256_unchanged": "096df4425e06980160297b3fcdb126532d1f015af2329c37f4c475d5e507cafb",
+      "live_ledger_rows": 57,
+      "live_checker_modified": false,
+      "live_ledger_modified": false,
+      "beads_written": false,
+      "count_correction_note": "The preliminary case-results.json had parser-produced zero counts for failures; corrected raw-line parsing is authoritative in case-results-corrected.json and its hashes."
+    }
+  },
+  "source_file_fingerprints": {
+    "baseline_tests_rs": {
+      "baseline_blob": "6178f772bbca4f510f386f71172165ce430531b1",
+      "current_blob": "1ee4c0c6c8a57387d466f2ca085a41940afd8c38",
+      "baseline_sha256": "a0cd56b7a50943a4eae030045ab7c17f5cc351ea008165c343b383532edfd08a",
+      "current_sha256": "5a2f9c1dff840db36a643414323a2edcc067b3e7a741fdfdbc616c0831b4bdd8"
+    },
+    "checker_finding_detail": {
+      "deleted_test_declaration": "removed_declarations=90 added_declarations=0",
+      "weakened_assertion": "removed_exact=4 added_exact=0 added_weak=0"
+    },
+    "baseline_function_count": 90,
+    "retained_test_id_count": 90,
+    "retained_ids_missing": [],
+    "function_body_identity_count": 88,
+    "function_body_changed_count": 2,
+    "body_identity_claim_scope": "88 of 90 function bodies byte-identical; no 100% claim. The only two changed bodies are the contract-authorized Contains and Has cases below.",
+    "retained_test_ids": [
+      {
+        "test_id": "expr_stack_push_pop_roundtrip",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 92,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 1,
+        "baseline_body_sha256": "7b1af9bdc92d5234d13a9fd802098d3647520b3c26f323827ecb7ef60f4f8e6e",
+        "current_body_sha256": "7b1af9bdc92d5234d13a9fd802098d3647520b3c26f323827ecb7ef60f4f8e6e",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "expr_stack_pop_empty_returns_error",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 116,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 25,
+        "baseline_body_sha256": "5f8de3dfc72710638134722bf01d2e5a31a1d66d06cebfa0eb15bfdca2931222",
+        "current_body_sha256": "5f8de3dfc72710638134722bf01d2e5a31a1d66d06cebfa0eb15bfdca2931222",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "expr_stack_push_overflow_returns_error",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 127,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 36,
+        "baseline_body_sha256": "2386268cdacecdafc149d8d2799407ddde2216386457ab006cc2693970f5119e",
+        "current_body_sha256": "2386268cdacecdafc149d8d2799407ddde2216386457ab006cc2693970f5119e",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "expr_stack_max_capacity_boundary",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 139,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 48,
+        "baseline_body_sha256": "24a8c079b6769f2a6bb8a433a42941b145b81f14c6ed02c6a20b5f7f929355ed",
+        "current_body_sha256": "24a8c079b6769f2a6bb8a433a42941b145b81f14c6ed02c6a20b5f7f929355ed",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "pop_pair_returns_left_then_right",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 160,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 69,
+        "baseline_body_sha256": "b8680f34fc65504b1c110879c65f9483705e504c522d3167a9c31e7f1094d514",
+        "current_body_sha256": "b8680f34fc65504b1c110879c65f9483705e504c522d3167a9c31e7f1094d514",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "pop_i64_pair_succeeds_for_i64_values",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 175,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 84,
+        "baseline_body_sha256": "ca76f3d981bf6865d99585deb6cde30a263cb74faec93335a1d5d8585b4f2875",
+        "current_body_sha256": "ca76f3d981bf6865d99585deb6cde30a263cb74faec93335a1d5d8585b4f2875",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "pop_i64_pair_rejects_non_i64_left",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 190,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 99,
+        "baseline_body_sha256": "30c647b8427a38b1a7cd1863e11e1bda64e685d06eca26f1af685b3e8e6436a5",
+        "current_body_sha256": "30c647b8427a38b1a7cd1863e11e1bda64e685d06eca26f1af685b3e8e6436a5",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "pop_i64_pair_rejects_non_i64_right",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 206,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 115,
+        "baseline_body_sha256": "fc3a3bfea4eebc7cb45252cc2d7074dbfb227501139341ba224c43760fb22c7e",
+        "current_body_sha256": "fc3a3bfea4eebc7cb45252cc2d7074dbfb227501139341ba224c43760fb22c7e",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "pop_pair_underflow_returns_error",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 222,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 131,
+        "baseline_body_sha256": "447724423fbc664698dc78315c7c0ac8705de571ea195db14c3a3c2b9fcaef34",
+        "current_body_sha256": "447724423fbc664698dc78315c7c0ac8705de571ea195db14c3a3c2b9fcaef34",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_add_succeeds",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 238,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 147,
+        "baseline_body_sha256": "60312c07078f00c4d3019c81227f8d3404219fa4a892661548a3fe5a60d5aec4",
+        "current_body_sha256": "60312c07078f00c4d3019c81227f8d3404219fa4a892661548a3fe5a60d5aec4",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_add_overflow_returns_error",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 260,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 169,
+        "baseline_body_sha256": "7ee5a01eb8321b17d53aedeb051eef6046a337a695b8fa83bb1707804407d882",
+        "current_body_sha256": "7ee5a01eb8321b17d53aedeb051eef6046a337a695b8fa83bb1707804407d882",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_sub_succeeds",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 282,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 191,
+        "baseline_body_sha256": "a110e44920e8456aa8fcb7df27232ff8a749c9e86d08cb86a02e94df0607a5b6",
+        "current_body_sha256": "a110e44920e8456aa8fcb7df27232ff8a749c9e86d08cb86a02e94df0607a5b6",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_sub_underflow_returns_error",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 306,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 215,
+        "baseline_body_sha256": "efb4b12b37b9e78320a3f75c46e2a2fc8ed66969a334b6d6fb3bece2b5367c6d",
+        "current_body_sha256": "efb4b12b37b9e78320a3f75c46e2a2fc8ed66969a334b6d6fb3bece2b5367c6d",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_mul_succeeds",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 326,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 235,
+        "baseline_body_sha256": "8e52f883272890f833af85e0923f78b8ed4f06a6476ca07e3faa2346c46f5893",
+        "current_body_sha256": "8e52f883272890f833af85e0923f78b8ed4f06a6476ca07e3faa2346c46f5893",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_mul_overflow_returns_error",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 348,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 257,
+        "baseline_body_sha256": "fc0b5626fb4edf9c0b54ef98710ec15627656e22763e508213885b754b1e129a",
+        "current_body_sha256": "fc0b5626fb4edf9c0b54ef98710ec15627656e22763e508213885b754b1e129a",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_div_succeeds",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 368,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 277,
+        "baseline_body_sha256": "2594e72c8ed83f2f5258b3de89592cee6aca87b3ff037a1ee262530dfc70b455",
+        "current_body_sha256": "2594e72c8ed83f2f5258b3de89592cee6aca87b3ff037a1ee262530dfc70b455",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_div_by_zero_returns_error",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 390,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 299,
+        "baseline_body_sha256": "9c66fb80f8b547e8208f13a9924a4d7d2a1dc68fb30bd13dcb9fa1a146d50abc",
+        "current_body_sha256": "9c66fb80f8b547e8208f13a9924a4d7d2a1dc68fb30bd13dcb9fa1a146d50abc",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_add_underflow_returns_error",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 408,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 317,
+        "baseline_body_sha256": "d5dad7287f87e157eb23aec1532b8d24ab77aa0592b9b5259139c2ab4780ad19",
+        "current_body_sha256": "d5dad7287f87e157eb23aec1532b8d24ab77aa0592b9b5259139c2ab4780ad19",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_sub_negative_result",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 428,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 337,
+        "baseline_body_sha256": "c5ad20cc76132cf0739591f8e8486ab09ad4e2a275da8760c2c7ef9761299433",
+        "current_body_sha256": "c5ad20cc76132cf0739591f8e8486ab09ad4e2a275da8760c2c7ef9761299433",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_mul_zero",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 450,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 359,
+        "baseline_body_sha256": "b481d29c7c0dad6f7a800d2ce6268237a3e838c4d1968d570d9cf588a80c7d95",
+        "current_body_sha256": "b481d29c7c0dad6f7a800d2ce6268237a3e838c4d1968d570d9cf588a80c7d95",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_div_negative",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 474,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 383,
+        "baseline_body_sha256": "9c798cf8d2190bffeeb63707f031f1b7c820534d3658da5196c21c72919539fa",
+        "current_body_sha256": "9c798cf8d2190bffeeb63707f031f1b7c820534d3658da5196c21c72919539fa",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_gt_true",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 500,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 409,
+        "baseline_body_sha256": "c4e0b1d7cbc85f0d7526f9064e31f44f534d5eb1c4f893ee116ad340f855c4c2",
+        "current_body_sha256": "c4e0b1d7cbc85f0d7526f9064e31f44f534d5eb1c4f893ee116ad340f855c4c2",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_gt_false_when_equal",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 522,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 431,
+        "baseline_body_sha256": "6cb45b6d8fa850d62b1dc996e7411cf29f4758e47e319ce223ec5cc7369608c7",
+        "current_body_sha256": "6cb45b6d8fa850d62b1dc996e7411cf29f4758e47e319ce223ec5cc7369608c7",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_lt_true",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 544,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 453,
+        "baseline_body_sha256": "955538be6faa63acdf65e73da2498a128ebd17e498ee5821c96045ce8c0d8b37",
+        "current_body_sha256": "955538be6faa63acdf65e73da2498a128ebd17e498ee5821c96045ce8c0d8b37",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_lt_false_when_greater",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 566,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 475,
+        "baseline_body_sha256": "6ec4d4f41f4dbe6122cf18e169ab7f1a8672c2cf1090cc590a74888a576e0c5f",
+        "current_body_sha256": "6ec4d4f41f4dbe6122cf18e169ab7f1a8672c2cf1090cc590a74888a576e0c5f",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_gte_true_when_equal",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 588,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 497,
+        "baseline_body_sha256": "6e2c684b6911a35d635ec2d817ec482a0e9e1bf5f32c6266f6f6a1afeb68a3c2",
+        "current_body_sha256": "6e2c684b6911a35d635ec2d817ec482a0e9e1bf5f32c6266f6f6a1afeb68a3c2",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_gte_false_when_less",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 610,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 519,
+        "baseline_body_sha256": "acd6a9135e697fa3b5de988707c22847136f557430502f0a060c537d00b16739",
+        "current_body_sha256": "acd6a9135e697fa3b5de988707c22847136f557430502f0a060c537d00b16739",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_lte_true_when_equal",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 632,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 541,
+        "baseline_body_sha256": "001b49f271a0c924d17a10c5dc379c325ded3e245867747d1248e9bcd5d05238",
+        "current_body_sha256": "001b49f271a0c924d17a10c5dc379c325ded3e245867747d1248e9bcd5d05238",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_lte_false_when_greater",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 654,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 563,
+        "baseline_body_sha256": "5ee6271f4883c552cf03e9567fd96c2447127d2b13073f6e548e6e4445c4ea2f",
+        "current_body_sha256": "5ee6271f4883c552cf03e9567fd96c2447127d2b13073f6e548e6e4445c4ea2f",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_eq_same_i64",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 678,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 587,
+        "baseline_body_sha256": "410aeb035a7f4570bcb23dc05e7c9ef0b4177b0b6725c7a3243db9f0ed8748d4",
+        "current_body_sha256": "410aeb035a7f4570bcb23dc05e7c9ef0b4177b0b6725c7a3243db9f0ed8748d4",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_eq_different_types_returns_false",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 700,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 609,
+        "baseline_body_sha256": "655fddb3d6311bfbac93dec54dff7f16da8dd7544969c6ef990fb9f77da266c6",
+        "current_body_sha256": "655fddb3d6311bfbac93dec54dff7f16da8dd7544969c6ef990fb9f77da266c6",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_eq_null_null_returns_true",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 724,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 633,
+        "baseline_body_sha256": "1e57c9134ffee41784850d542a9a9e6e20b621f6244b017da8b56e02190d8c0a",
+        "current_body_sha256": "1e57c9134ffee41784850d542a9a9e6e20b621f6244b017da8b56e02190d8c0a",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_not_eq_true",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 746,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 655,
+        "baseline_body_sha256": "998cafe4cd4e16f977a0d6197db1fd8573656b1ae09709116495ad08a31f7a5e",
+        "current_body_sha256": "998cafe4cd4e16f977a0d6197db1fd8573656b1ae09709116495ad08a31f7a5e",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_and_true_true",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 775,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 684,
+        "baseline_body_sha256": "57045dc2d4aac755395450e4beb93d81fa2aa8b6a9a54023a1156eb2b264719a",
+        "current_body_sha256": "57045dc2d4aac755395450e4beb93d81fa2aa8b6a9a54023a1156eb2b264719a",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_and_true_false",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 801,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 710,
+        "baseline_body_sha256": "1efc1d189b5901c0bb677217f11354cd64bb7ca99d80772b7196a722352fd17f",
+        "current_body_sha256": "1efc1d189b5901c0bb677217f11354cd64bb7ca99d80772b7196a722352fd17f",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_or_false_true",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 827,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 736,
+        "baseline_body_sha256": "21c8c5a730b86c763000ea6daf80d25493aaca6af2679208a1429e1fc5f6f31e",
+        "current_body_sha256": "21c8c5a730b86c763000ea6daf80d25493aaca6af2679208a1429e1fc5f6f31e",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_or_false_false",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 853,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 762,
+        "baseline_body_sha256": "93b5c8c31adae7e48ad22cf5da026b893e49f6c04f95a2f258b6e5284869ea42",
+        "current_body_sha256": "93b5c8c31adae7e48ad22cf5da026b893e49f6c04f95a2f258b6e5284869ea42",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_not_true",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 879,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 788,
+        "baseline_body_sha256": "69507f32d6215bb8ffe02535be83d48886c57b91a6ad04d0f60ccf3b2c8f1ee8",
+        "current_body_sha256": "69507f32d6215bb8ffe02535be83d48886c57b91a6ad04d0f60ccf3b2c8f1ee8",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_not_false",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 902,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 811,
+        "baseline_body_sha256": "cf4e9db503c9e87ddab4be47ade1484b3fed3c046d6f1d4496e916a43f6b2445",
+        "current_body_sha256": "cf4e9db503c9e87ddab4be47ade1484b3fed3c046d6f1d4496e916a43f6b2445",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_and_rejects_non_bool",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 925,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 834,
+        "baseline_body_sha256": "66a8e41020e0b99655a07144f79e01e6d60b683b25cba73d06499b820fdf2bb0",
+        "current_body_sha256": "66a8e41020e0b99655a07144f79e01e6d60b683b25cba73d06499b820fdf2bb0",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_or_rejects_non_bool",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 945,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 854,
+        "baseline_body_sha256": "fffc7b2e6b17ee1eb36d4ec63dbf073ccb8e5455b7f0b8e03de2cf77bb0ab5aa",
+        "current_body_sha256": "fffc7b2e6b17ee1eb36d4ec63dbf073ccb8e5455b7f0b8e03de2cf77bb0ab5aa",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_not_rejects_non_bool",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 965,
+        "current_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "current_test_attr_line": 874,
+        "baseline_body_sha256": "5d98fdc67ae5d13fb09c7f45eed75dcae47a91c69c5691c04ce91448cd5a623c",
+        "current_body_sha256": "5d98fdc67ae5d13fb09c7f45eed75dcae47a91c69c5691c04ce91448cd5a623c",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_load_slot_succeeds",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 984,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 1,
+        "baseline_body_sha256": "2ec6f159fb99e78a3674a9737272849709a9bf7fe4b0ffe70fcdd0b512cb17dd",
+        "current_body_sha256": "2ec6f159fb99e78a3674a9737272849709a9bf7fe4b0ffe70fcdd0b512cb17dd",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_load_slot_out_of_bounds_returns_error",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1012,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 29,
+        "baseline_body_sha256": "ba5ad70c096f53a32049ff3c6cbd3d13aa3e768b74f7d99df3783a57c798c4aa",
+        "current_body_sha256": "ba5ad70c096f53a32049ff3c6cbd3d13aa3e768b74f7d99df3783a57c798c4aa",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_load_slot_propagates_taint",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1035,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 52,
+        "baseline_body_sha256": "c68b9e32e38e4b9cc8f2da394712128c232115bc193bcd8fe8c49d2c0e54707c",
+        "current_body_sha256": "c68b9e32e38e4b9cc8f2da394712128c232115bc193bcd8fe8c49d2c0e54707c",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_load_const_i64",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1062,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 79,
+        "baseline_body_sha256": "f73cd4e2dac2a737f91672d8674ebb05f4dc134f482894fd10e812875319cac1",
+        "current_body_sha256": "f73cd4e2dac2a737f91672d8674ebb05f4dc134f482894fd10e812875319cac1",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_load_const_bool",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1089,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 106,
+        "baseline_body_sha256": "9d29ce40355fc934a58bfad3e80d41e32241da28200babebd6531b0e8a508d57",
+        "current_body_sha256": "9d29ce40355fc934a58bfad3e80d41e32241da28200babebd6531b0e8a508d57",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_load_const_null",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1116,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 133,
+        "baseline_body_sha256": "55951e27e3639ad3012e51f36edf81a0139b09f95cb64ef38a9bc72924e71fda",
+        "current_body_sha256": "55951e27e3639ad3012e51f36edf81a0139b09f95cb64ef38a9bc72924e71fda",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_load_const_out_of_bounds_returns_error",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1143,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 160,
+        "baseline_body_sha256": "4fcc92fd6547db60f5655b65b27b896162e02c7c9b69a1b20764b9bda9ea5793",
+        "current_body_sha256": "4fcc92fd6547db60f5655b65b27b896162e02c7c9b69a1b20764b9bda9ea5793",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_load_accessor_object_field",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1168,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 185,
+        "baseline_body_sha256": "beb6462745a800846c5cc04ad583e513c3e82a3804de6ebba27b6fa1c1d84113",
+        "current_body_sha256": "beb6462745a800846c5cc04ad583e513c3e82a3804de6ebba27b6fa1c1d84113",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_load_accessor_list_index",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1227,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 244,
+        "baseline_body_sha256": "da2db6d2db900dc781a8ef21dce4b9be3a0ed45371587ef43d51b17c9bbbece5",
+        "current_body_sha256": "da2db6d2db900dc781a8ef21dce4b9be3a0ed45371587ef43d51b17c9bbbece5",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_load_accessor_empty_path_returns_root",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1282,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 299,
+        "baseline_body_sha256": "a6c2381fea0a92d1dcf13fb120cb1f7f8cb664540d949a2ec66c5135fa6b71b7",
+        "current_body_sha256": "a6c2381fea0a92d1dcf13fb120cb1f7f8cb664540d949a2ec66c5135fa6b71b7",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_load_accessor_out_of_bounds_returns_error",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1334,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 351,
+        "baseline_body_sha256": "0ea17519d27b38b88e5f584b638ca51c88c58e7453f6985493acb92468b80cf7",
+        "current_body_sha256": "0ea17519d27b38b88e5f584b638ca51c88c58e7453f6985493acb92468b80cf7",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_helper_op_with_wrong_types_returns_eval_failed",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1359,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 376,
+        "baseline_body_sha256": "a4f7e35fd836d8d6cc478a8614263e80f68a81314ffa76f5d6c3e73e0c514b3f",
+        "current_body_sha256": "a4f7e35fd836d8d6cc478a8614263e80f68a81314ffa76f5d6c3e73e0c514b3f",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_expr_for_replay_addition",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1386,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 403,
+        "baseline_body_sha256": "03eb82c4e93098d0f92da7d980430a3b6cbb637f0a0f5b836d587d2b8e08061e",
+        "current_body_sha256": "03eb82c4e93098d0f92da7d980430a3b6cbb637f0a0f5b836d587d2b8e08061e",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_expr_for_replay_comparison_chain",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1432,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 449,
+        "baseline_body_sha256": "242b33b83e1a31277899dbbc2f472610e022d4ec7deb6658d58141626df2e60c",
+        "current_body_sha256": "242b33b83e1a31277899dbbc2f472610e022d4ec7deb6658d58141626df2e60c",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_expr_for_replay_with_uninitialized_slot",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1485,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 502,
+        "baseline_body_sha256": "f39c855e496af1de1f176c9d5e5253ae5f28f1b7a832bcb879846d4ebd469aef",
+        "current_body_sha256": "f39c855e496af1de1f176c9d5e5253ae5f28f1b7a832bcb879846d4ebd469aef",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "eval_expr_for_replay_out_of_bounds_expr",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1524,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 541,
+        "baseline_body_sha256": "82097606e65c51b2dc7ff5df26ff9636f12ac7173989d5c9befd0baf047fc317",
+        "current_body_sha256": "82097606e65c51b2dc7ff5df26ff9636f12ac7173989d5c9befd0baf047fc317",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_eval_div_min_by_neg_one_returns_error",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1547,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 564,
+        "baseline_body_sha256": "eeb68302540e3716023780fcf67817cb9e5fdba03cb23e4ab1f799d9a53304ad",
+        "current_body_sha256": "eeb68302540e3716023780fcf67817cb9e5fdba03cb23e4ab1f799d9a53304ad",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_eval_sub_min_by_one_returns_error",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1569,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 586,
+        "baseline_body_sha256": "3b938df20b65e5b55b4e3f02a96577eca1fa5d0b38c14b824e021e2687158a0f",
+        "current_body_sha256": "3b938df20b65e5b55b4e3f02a96577eca1fa5d0b38c14b824e021e2687158a0f",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_eval_add_max_plus_one_returns_error",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1591,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 608,
+        "baseline_body_sha256": "af8efe36edadccd1b8c62a8b8d7b24612fb26a1c559a343ca4a11cb4f4941505",
+        "current_body_sha256": "af8efe36edadccd1b8c62a8b8d7b24612fb26a1c559a343ca4a11cb4f4941505",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_eval_mul_boundary_overflow",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1613,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 630,
+        "baseline_body_sha256": "9fb71fd7dbaa7d79a910fbb795d114727ebd28fb57a6f7c6ca2bbf0d751b3b28",
+        "current_body_sha256": "9fb71fd7dbaa7d79a910fbb795d114727ebd28fb57a6f7c6ca2bbf0d751b3b28",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_taint_joins_across_expression",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1638,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 655,
+        "baseline_body_sha256": "75c8d31e641ab2fea6b4609f011337e101c8bc4b1c0babe0ede43a1725e12c65",
+        "current_body_sha256": "75c8d31e641ab2fea6b4609f011337e101c8bc4b1c0babe0ede43a1725e12c65",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_expression_stack_overflow_is_safe",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1693,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 710,
+        "baseline_body_sha256": "08d69647d646d98fa8e7cae15d21b4257e811c2437ff6de260e4e3e85e101b30",
+        "current_body_sha256": "08d69647d646d98fa8e7cae15d21b4257e811c2437ff6de260e4e3e85e101b30",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_helper_contains_matches_engine",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1763,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 780,
+        "baseline_body_sha256": "8d349564456a7a361ba8816f5d1a12da050a88f939c882a5dc8664eb7ad06630",
+        "current_body_sha256": "4244cdf399db52f04665d436e25588ba7574a9ec556e72d0f1e34bbc51a289c3",
+        "body_byte_identical": false
+      },
+      {
+        "test_id": "blackhat_helper_starts_with_matches_engine",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1792,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 809,
+        "baseline_body_sha256": "cb494078d76e0183d183184bb36949537b1bb91f8eb815598315bf2a09c5bef2",
+        "current_body_sha256": "cb494078d76e0183d183184bb36949537b1bb91f8eb815598315bf2a09c5bef2",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_helper_ends_with_matches_engine",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1810,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 827,
+        "baseline_body_sha256": "cef3cdeef13b6cfa5224e4a10376e1ae9c9d33b7f430d85795bf91459e4148cc",
+        "current_body_sha256": "cef3cdeef13b6cfa5224e4a10376e1ae9c9d33b7f430d85795bf91459e4148cc",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_helper_has_matches_engine_list_membership",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1828,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 875,
+        "baseline_body_sha256": "cc8dc70751720c8ae96958106a4124dd1c492fee97b5bfe1789a2e8f63ef7d12",
+        "current_body_sha256": "e8181f03f40b8743525148be50bcb1307429a549922c9281bf57934e834db7b8",
+        "body_byte_identical": false
+      },
+      {
+        "test_id": "blackhat_helper_exists_matches_engine",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1855,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 886,
+        "baseline_body_sha256": "5577e69d94d8aa0288018e3794d8c36ca6fc305bffbc96bfa43a118323192700",
+        "current_body_sha256": "5577e69d94d8aa0288018e3794d8c36ca6fc305bffbc96bfa43a118323192700",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_helper_length_matches_engine",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1885,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 916,
+        "baseline_body_sha256": "86d8318db46d37d0bfd68904b14c1903eb8d3ff9138097f6a532ce36b92751e6",
+        "current_body_sha256": "86d8318db46d37d0bfd68904b14c1903eb8d3ff9138097f6a532ce36b92751e6",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_helper_empty_matches_engine",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1905,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 936,
+        "baseline_body_sha256": "395874e9f57302776c5b296273ae2dcd33bda5f3bbb0d5c5b0e8dcbd15171938",
+        "current_body_sha256": "395874e9f57302776c5b296273ae2dcd33bda5f3bbb0d5c5b0e8dcbd15171938",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_helper_append_matches_engine",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1931,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 962,
+        "baseline_body_sha256": "098840a2235f394c3b2b0e7273685bd15d5c53f0074b1779a29977155f6f0ab5",
+        "current_body_sha256": "098840a2235f394c3b2b0e7273685bd15d5c53f0074b1779a29977155f6f0ab5",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_helper_append_if_matches_engine",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 1961,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 992,
+        "baseline_body_sha256": "fd9147065e2759eb609c678ab3ef81aed1f78dc025c1eb3369165be8996fccff",
+        "current_body_sha256": "fd9147065e2759eb609c678ab3ef81aed1f78dc025c1eb3369165be8996fccff",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_helper_merge_matches_engine",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2022,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 1053,
+        "baseline_body_sha256": "80f3996afef51b300dd163074e52d5c4bbf6efd595dd6451dd6a121ad5c20da0",
+        "current_body_sha256": "80f3996afef51b300dd163074e52d5c4bbf6efd595dd6451dd6a121ad5c20da0",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_helper_sum_matches_engine",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2075,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 1106,
+        "baseline_body_sha256": "7b53fa0ef04e0e2fc38f663d1469771b1ea870bd370358f7cb97b9db03188acb",
+        "current_body_sha256": "7b53fa0ef04e0e2fc38f663d1469771b1ea870bd370358f7cb97b9db03188acb",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_helper_count_matches_engine",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2088,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 1119,
+        "baseline_body_sha256": "dc2c80d8a1f12c576f2fd7248e76437f67b2a93db18ab8c411e65075e7841533",
+        "current_body_sha256": "dc2c80d8a1f12c576f2fd7248e76437f67b2a93db18ab8c411e65075e7841533",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_helper_unique_matches_engine",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2101,
+        "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "current_test_attr_line": 1132,
+        "baseline_body_sha256": "980a35010d900d68a927bc968af7a011872360caade407025387760a10054df4",
+        "current_body_sha256": "980a35010d900d68a927bc968af7a011872360caade407025387760a10054df4",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "replay_mixed_add_promotes_both_directions",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2133,
+        "current_path": "crates/vb_core/src/replay/ops/tests_ce003.rs",
+        "current_test_attr_line": 5,
+        "baseline_body_sha256": "3008a2b511407fd2024832f9f84c19827919124ce833a5876ccd8797557e6b24",
+        "current_body_sha256": "3008a2b511407fd2024832f9f84c19827919124ce833a5876ccd8797557e6b24",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "replay_mixed_sub_mul_div_promote",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2159,
+        "current_path": "crates/vb_core/src/replay/ops/tests_ce003.rs",
+        "current_test_attr_line": 31,
+        "baseline_body_sha256": "04482ee59a7e19c0435916894300e26a060ae518720a2c2fafb79e09f0c148c4",
+        "current_body_sha256": "04482ee59a7e19c0435916894300e26a060ae518720a2c2fafb79e09f0c148c4",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "replay_mixed_div_by_zero_fails",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2195,
+        "current_path": "crates/vb_core/src/replay/ops/tests_ce003.rs",
+        "current_test_attr_line": 67,
+        "baseline_body_sha256": "21042a287707199a031383c180022a94d049d6eacf988de3cbcb17d6d4fd638c",
+        "current_body_sha256": "21042a287707199a031383c180022a94d049d6eacf988de3cbcb17d6d4fd638c",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "replay_f64_add_and_div_by_zero",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2201,
+        "current_path": "crates/vb_core/src/replay/ops/tests_ce003.rs",
+        "current_test_attr_line": 73,
+        "baseline_body_sha256": "0f90990c635ade80731019e27bd7ca870f311a5bf44f5bf77032fc5d14a62130",
+        "current_body_sha256": "0f90990c635ade80731019e27bd7ca870f311a5bf44f5bf77032fc5d14a62130",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "replay_mixed_comparisons_promote_operands",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2213,
+        "current_path": "crates/vb_core/src/replay/ops/tests_ce003.rs",
+        "current_test_attr_line": 85,
+        "baseline_body_sha256": "db60913655ce124e3c5b92f644a40c31f0d5cbed74ff7d72abdccb1208d85f27",
+        "current_body_sha256": "db60913655ce124e3c5b92f644a40c31f0d5cbed74ff7d72abdccb1208d85f27",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "replay_integer_error_contract_preserved",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2249,
+        "current_path": "crates/vb_core/src/replay/ops/tests_ce003.rs",
+        "current_test_attr_line": 121,
+        "baseline_body_sha256": "33a65b2dbf7f1487de95f723cd49d2968d6b592a07e922789c4ce42aebb47a22",
+        "current_body_sha256": "33a65b2dbf7f1487de95f723cd49d2968d6b592a07e922789c4ce42aebb47a22",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "replay_mixed_add_via_expr_program",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2258,
+        "current_path": "crates/vb_core/src/replay/ops/tests_ce003.rs",
+        "current_test_attr_line": 130,
+        "baseline_body_sha256": "c40d136b2bac4b43d1df26190a4f9bbe1eeceb23ec0ccbb9a4e5e1b9137b0088",
+        "current_body_sha256": "c40d136b2bac4b43d1df26190a4f9bbe1eeceb23ec0ccbb9a4e5e1b9137b0088",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "ce003_replay_object_field_taint_joins_segment",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2312,
+        "current_path": "crates/vb_core/src/replay/ops/tests_ce003.rs",
+        "current_test_attr_line": 184,
+        "baseline_body_sha256": "cf2700e733496ff2c31c0b746a3bda81d27183aa956212c6d8ad139ea59f170b",
+        "current_body_sha256": "cf2700e733496ff2c31c0b746a3bda81d27183aa956212c6d8ad139ea59f170b",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "ce003_replay_list_item_taint_joins_segment",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2379,
+        "current_path": "crates/vb_core/src/replay/ops/tests_ce003.rs",
+        "current_test_attr_line": 251,
+        "baseline_body_sha256": "4ce3854f625f9869499bbade20bb6aa9eb7dd8f2930acf7c24b2033e714c728f",
+        "current_body_sha256": "4ce3854f625f9869499bbade20bb6aa9eb7dd8f2930acf7c24b2033e714c728f",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "ce003_replay_multi_segment_path_joins_every_segment_taint",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2441,
+        "current_path": "crates/vb_core/src/replay/ops/tests_ce003.rs",
+        "current_test_attr_line": 313,
+        "baseline_body_sha256": "851810c3c257a3a5b56a19687d06f487107e212a00f2679d28a3a90976dcbad7",
+        "current_body_sha256": "851810c3c257a3a5b56a19687d06f487107e212a00f2679d28a3a90976dcbad7",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "ce003_replay_root_taint_joins_into_accumulator",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2524,
+        "current_path": "crates/vb_core/src/replay/ops/tests_ce003.rs",
+        "current_test_attr_line": 396,
+        "baseline_body_sha256": "7f0a2dec37af71cd2d3940b77e37d15389938f2839042b3803ec2a2c0f27bb4e",
+        "current_body_sha256": "7f0a2dec37af71cd2d3940b77e37d15389938f2839042b3803ec2a2c0f27bb4e",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "ce003_replay_lattice_random_respected",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2604,
+        "current_path": "crates/vb_core/src/replay/ops/tests_ce003.rs",
+        "current_test_attr_line": 476,
+        "baseline_body_sha256": "e11767e5cbd59d46b9e87880403335a720f2427fa769dcae427b99b16125b005",
+        "current_body_sha256": "e11767e5cbd59d46b9e87880403335a720f2427fa769dcae427b99b16125b005",
+        "body_byte_identical": true
+      },
+      {
+        "test_id": "blackhat_helper_unique_rejects_non_list",
+        "baseline_path": "crates/vb_core/src/replay/ops/tests.rs",
+        "baseline_test_attr_line": 2697,
+        "current_path": "crates/vb_core/src/replay/ops/tests_ce003.rs",
+        "current_test_attr_line": 569,
+        "baseline_body_sha256": "5eeb86f48efcca5388252ce10042ab4410c33642ce1e795b4da4b248a75db5da",
+        "current_body_sha256": "5eeb86f48efcca5388252ce10042ab4410c33642ce1e795b4da4b248a75db5da",
+        "body_byte_identical": true
+      }
+    ],
+    "replacement_file_blobs": [
+      {
+        "path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "blob": "99cc11f167ddbe5e0b424d3bdce36281c54a051f"
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "blob": "ff4078edd5fda6cb47c5adbfeb316c90772e559b"
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/tests_ce003.rs",
+        "blob": "acb8a177acf3e0c04e34f8c0da9a64053d942165"
+      }
+    ],
+    "additional_current_tests": [
+      {
+        "test_id": "eval_replay_op_uses_actual_step_index",
+        "path": "crates/vb_core/src/replay/ops/context_tests.rs",
+        "test_attr_line": 2
+      },
+      {
+        "test_id": "eval_replay_op_preserves_load_slot_error",
+        "path": "crates/vb_core/src/replay/ops/context_tests.rs",
+        "test_attr_line": 71
+      }
+    ],
+    "test_module_context": {
+      "owner_path": "crates/vb_core/src/replay/ops.rs",
+      "registration_at_966": "#[path = \"ops/tests.rs\"] mod tests;",
+      "tests_rs_direct_replay_split_includes": [
+        "tests_stack.rs",
+        "tests_expr.rs",
+        "tests_ce003.rs"
+      ],
+      "tests_ce003_nested_include": "context_tests.rs",
+      "all_remain_in_same_lexical_module": true
+    },
+    "current_source_pin": "ce6646a421bcb684128364b281091605162a6917",
+    "finding_counts_verified_by_preview": {
+      "DeletedTestDeclaration": "removed_declarations=90 added_declarations=0",
+      "WeakenedAssertion": "removed_exact=4 added_exact=0 added_weak=0"
+    },
+    "replacement_blobs_ce664": {
+      "crates/vb_core/src/replay/ops/tests_stack.rs": {
+        "git_blob": "99cc11f167ddbe5e0b424d3bdce36281c54a051f",
+        "sha256": "460dc884bd7d2e433ae3456054c1c090c88e1cbad0c58cd05e37f46825fd5270"
+      },
+      "crates/vb_core/src/replay/ops/tests_expr.rs": {
+        "git_blob": "ff4078edd5fda6cb47c5adbfeb316c90772e559b",
+        "sha256": "2acc098de86f639b7a62ba6f6e7707ddd0fa70ea34e23e75639655c95e8f698f"
+      },
+      "crates/vb_core/src/replay/ops/tests_ce003.rs": {
+        "git_blob": "acb8a177acf3e0c04e34f8c0da9a64053d942165",
+        "sha256": "18a818654bfc5ee3e1d37c525396978074baa8d78133f6060d5dd5b3db267302"
+      },
+      "crates/vb_core/src/replay/ops/context_tests.rs": {
+        "git_blob": "707d2b4b9ff4f087eb2b46ef21bbf7f112d784c0",
+        "sha256": "140204b004929a1555437ce3fbf93793fbda38a06611f30ca765cae9f2facaf2"
+      }
+    },
+    "landing_base_commit": "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178",
+    "landing_base_old_blob_match": true,
+    "current_replacement_file_blobs": [
+      {
+        "path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+        "blob": "99cc11f167ddbe5e0b424d3bdce36281c54a051f"
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+        "blob": "ff4078edd5fda6cb47c5adbfeb316c90772e559b"
+      },
+      {
+        "path": "crates/vb_core/src/replay/ops/tests_ce003.rs",
+        "blob": "acb8a177acf3e0c04e34f8c0da9a64053d942165"
+      }
+    ]
+  },
+  "exact_assertion_oracles": [
+    {
+      "test_id": "pop_pair_underflow_returns_error",
+      "old_path": "crates/vb_core/src/replay/ops/tests.rs",
+      "new_path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+      "old_assertions": [
+        {
+          "line": 227,
+          "expression": "assert_eq!(\n        result,\n        Err(ReplayError::ExpressionEvalFailed {\n            step: StepIdx::ZERO\n        })\n    )"
+        }
+      ],
+      "current_assertions": [
+        {
+          "line": 136,
+          "expression": "assert_eq!(\n        result,\n        Err(ReplayError::ExpressionEvalFailed {\n            step: StepIdx::ZERO\n        })\n    )"
+        }
+      ],
+      "exact_assertions_preserved": true
+    },
+    {
+      "test_id": "blackhat_taint_joins_across_expression",
+      "old_path": "crates/vb_core/src/replay/ops/tests.rs",
+      "new_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+      "old_assertions": [
+        {
+          "line": 1676,
+          "expression": "assert_eq!(\n        value,\n        SlotValue::I64(30),\n        \"BLACKHAT BH-OPS-05: value must be 30\"\n    )"
+        },
+        {
+          "line": 1681,
+          "expression": "assert_eq!(\n        taint,\n        Taint::Secret,\n        \"BLACKHAT BH-OPS-05: taint must be Secret when one operand is Secret\"\n    )"
+        }
+      ],
+      "current_assertions": [
+        {
+          "line": 693,
+          "expression": "assert_eq!(\n        value,\n        SlotValue::I64(30),\n        \"BLACKHAT BH-OPS-05: value must be 30\"\n    )"
+        },
+        {
+          "line": 698,
+          "expression": "assert_eq!(\n        taint,\n        Taint::Secret,\n        \"BLACKHAT BH-OPS-05: taint must be Secret when one operand is Secret\"\n    )"
+        }
+      ],
+      "exact_assertions_preserved": true
+    },
+    {
+      "test_id": "blackhat_expression_stack_overflow_is_safe",
+      "old_path": "crates/vb_core/src/replay/ops/tests.rs",
+      "new_path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+      "old_assertions": [
+        {
+          "line": 1706,
+          "expression": "assert_eq!(\n        first,\n        SlotValue::I64(2),\n        \"BLACKHAT BH-OPS-06: stack must remain consistent after overflow\"\n    )"
+        }
+      ],
+      "current_assertions": [
+        {
+          "line": 723,
+          "expression": "assert_eq!(\n        first,\n        SlotValue::I64(2),\n        \"BLACKHAT BH-OPS-06: stack must remain consistent after overflow\"\n    )"
+        }
+      ],
+      "exact_assertions_preserved": true
+    }
+  ],
+  "normative_body_corrections": [
+    {
+      "test_id": "blackhat_helper_contains_matches_engine",
+      "baseline_path": "crates/vb_core/src/replay/ops/tests.rs:1764",
+      "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs:781",
+      "baseline_body_sha256": "8d349564456a7a361ba8816f5d1a12da050a88f939c882a5dc8664eb7ad06630",
+      "current_body_sha256": "4244cdf399db52f04665d436e25588ba7574a9ec556e72d0f1e34bbc51a289c3",
+      "baseline_behavior": "Symbol text substring search for hello world contains world and misses xyz.",
+      "current_behavior": "List of I64 values contains 7 and misses 13.",
+      "normative_basis": "vb-rihha.1.3 live acceptance requires Contains List membership and prohibits substring overload; V6 contract proposal quotes master §46 contains(List,T)->Bool. This body delta is intentional contract correction, not a deleted test ID.",
+      "bead_id": "vb-rihha.1.3"
+    },
+    {
+      "test_id": "blackhat_helper_has_matches_engine_list_membership",
+      "baseline_path": "crates/vb_core/src/replay/ops/tests.rs:1829",
+      "current_path": "crates/vb_core/src/replay/ops/tests_expr.rs:876",
+      "baseline_body_sha256": "cc8dc70751720c8ae96958106a4124dd1c492fee97b5bfe1789a2e8f63ef7d12",
+      "current_body_sha256": "e8181f03f40b8743525148be50bcb1307429a549922c9281bf57934e834db7b8",
+      "baseline_behavior": "Has was incorrectly exercised as List membership with I64 2 present and 9 absent.",
+      "current_behavior": "Has uses an Object with present/absent Symbol keys, matching the existing Has object-key parity contract.",
+      "normative_basis": "vb-rihha.1.3 live acceptance explicitly preserves Has Object-key parity; V6 says preserve Has behavior. No Has implementation contract is broadened.",
+      "bead_id": "vb-rihha.1.3"
+    }
+  ],
+  "bead_evidence": [
+    {
+      "id": "vb-eirmk.13.3",
+      "title": "Split landed replay test files without changing coverage",
+      "status": "in_progress",
+      "description": "Source cdba6ee1 replay/ops/tests.rs is2700physical lines above test_in_src1500 gate limit. Preserve every registered case/helper/assertion and split into focused include chunks in same lexical test module; no snapshots/suppressions/allowlist/gate modifications. Source-only changes, local5090 author, independent CODE/TEST reviews. Verify before/after test inventory/count and pinned nextest; broader source-length violations remain separately identified, never hidden.",
+      "acceptance_criteria": "Actual source-length gate passes for touched files, all existing/new tests execute with identical cases and strengthened new regressions retained. Canonical CI remains required; no deletion or ignored cases."
+    },
+    {
+      "id": "vb-rihha.1.3",
+      "title": "Restore Contains list-membership parity across expression evaluators",
+      "status": "in_progress",
+      "description": "Master section46 declares contains(List,T)->Bool while current store, hot and replay implementations perform Symbol substring search. Dedicated bounded slice; sibling vb-rihha.1.1 explicitly excludes Contains, search contains returned no existing dedicated owner. Contract proposal V4 .beads/vb-rihha.1/contains-parity-contract-proposal-v4.md SHA256 c65bd161f0c8bbf468ae92d5c27ac38404b693df3a3cea372c133ccd7d4276ad in has-hot-fixtures-luna. Parent-selected minimal membership uses existing tagged SlotValue::PartialEq, validates receiver list only, no item/needle deep resolution or coercion. List|Unknown static receiver, unconstrained needle T, existing canonical arity and cold parse_AST positional behavior. Preserve Has Object-key parity. No public API, persisted format, dependency, gate or parser changes. Contract -> local GPU implementation -> actual native behavior tests -> independent CODE -> independent TEST. No source acceptance from this issue creation.\n\n## Required Skills\nholzman-rust,scott-ddd-refactor,functional-rust",
+      "acceptance_criteria": "Independent literal true/false/empty/other-member cases on store/hot/public replay; typed wrong-receiver and invalid-list errors with actual replay PC; symbol and compound-handle ID identity and unrestricted needle tags; known wrong static receiver rejects, List/Unknown accepts, exact canonical arity errors. Preserve all unrelated helper behavior and add no substring overload. Real native RED then GREEN, independent CODE and TEST PASS, current-source canonical verification; whole parent/master stays open."
+    }
+  ],
+  "proposed_ledger_rows": [
+    {
+      "base_commit": "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178",
+      "old_path": "crates/vb_core/src/replay/ops/tests.rs",
+      "old_blob": "6178f772bbca4f510f386f71172165ce430531b1",
+      "new_path": "crates/vb_core/src/replay/ops/tests.rs",
+      "new_blob": "1ee4c0c6c8a57387d466f2ca085a41940afd8c38",
+      "finding_kind": "DeletedTestDeclaration",
+      "finding_detail": "removed_declarations=90 added_declarations=0",
+      "replacement_paths": [
+        {
+          "path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+          "blob": "99cc11f167ddbe5e0b424d3bdce36281c54a051f"
+        },
+        {
+          "path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+          "blob": "ff4078edd5fda6cb47c5adbfeb316c90772e559b"
+        },
+        {
+          "path": "crates/vb_core/src/replay/ops/tests_ce003.rs",
+          "blob": "acb8a177acf3e0c04e34f8c0da9a64053d942165"
+        }
+      ],
+      "bead_id": "vb-eirmk.13.3",
+      "bead_justification": "Live issue is the scoped replay test split task; acceptance says preserve every registered case/helper/assertion and split into focused include chunks in the same lexical module. All 90 old test IDs are present at the exact current include locations listed; this row accounts only for the checker’s per-file declaration relocation signal.",
+      "supporting_normative_bead_id": "vb-rihha.1.3",
+      "review_artifact_path": ".beads/vb-eirmk.13.3/replay-test-relocation-justification-v4.md",
+      "review_artifact_blob": "be5acdfb8520dc666747986cbc3d7379adc72805",
+      "review_artifact_role": "author justification proposal only; not independent CODE/TEST approval",
+      "tsv_fields_ordered": [
+        "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178",
+        "crates/vb_core/src/replay/ops/tests.rs",
+        "6178f772bbca4f510f386f71172165ce430531b1",
+        "crates/vb_core/src/replay/ops/tests.rs",
+        "1ee4c0c6c8a57387d466f2ca085a41940afd8c38",
+        "DeletedTestDeclaration",
+        "removed_declarations=90 added_declarations=0",
+        "crates/vb_core/src/replay/ops/tests_stack.rs:99cc11f167ddbe5e0b424d3bdce36281c54a051f;crates/vb_core/src/replay/ops/tests_expr.rs:ff4078edd5fda6cb47c5adbfeb316c90772e559b;crates/vb_core/src/replay/ops/tests_ce003.rs:acb8a177acf3e0c04e34f8c0da9a64053d942165",
+        ".beads/vb-eirmk.13.3/replay-test-relocation-justification-v4.md",
+        "be5acdfb8520dc666747986cbc3d7379adc72805",
+        "vb-eirmk.13.3"
+      ]
+    },
+    {
+      "base_commit": "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178",
+      "old_path": "crates/vb_core/src/replay/ops/tests.rs",
+      "old_blob": "6178f772bbca4f510f386f71172165ce430531b1",
+      "new_path": "crates/vb_core/src/replay/ops/tests.rs",
+      "new_blob": "1ee4c0c6c8a57387d466f2ca085a41940afd8c38",
+      "finding_kind": "WeakenedAssertion",
+      "finding_detail": "removed_exact=4 added_exact=0 added_weak=0",
+      "replacement_paths": [
+        {
+          "path": "crates/vb_core/src/replay/ops/tests_stack.rs",
+          "blob": "99cc11f167ddbe5e0b424d3bdce36281c54a051f"
+        },
+        {
+          "path": "crates/vb_core/src/replay/ops/tests_expr.rs",
+          "blob": "ff4078edd5fda6cb47c5adbfeb316c90772e559b"
+        }
+      ],
+      "bead_id": "vb-eirmk.13.3",
+      "bead_justification": "All four exact equality oracles remain byte-identical inside their original named scenario functions after relocation: typed underflow error, I64(30), Secret taint, and I64(2) stack top. This row accounts only for their movement out of the parent file.",
+      "supporting_normative_bead_id": "vb-rihha.1.3",
+      "review_artifact_path": ".beads/vb-eirmk.13.3/replay-test-relocation-justification-v4.md",
+      "review_artifact_blob": "be5acdfb8520dc666747986cbc3d7379adc72805",
+      "review_artifact_role": "author justification proposal only; not independent CODE/TEST approval",
+      "tsv_fields_ordered": [
+        "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178",
+        "crates/vb_core/src/replay/ops/tests.rs",
+        "6178f772bbca4f510f386f71172165ce430531b1",
+        "crates/vb_core/src/replay/ops/tests.rs",
+        "1ee4c0c6c8a57387d466f2ca085a41940afd8c38",
+        "WeakenedAssertion",
+        "removed_exact=4 added_exact=0 added_weak=0",
+        "crates/vb_core/src/replay/ops/tests_stack.rs:99cc11f167ddbe5e0b424d3bdce36281c54a051f;crates/vb_core/src/replay/ops/tests_expr.rs:ff4078edd5fda6cb47c5adbfeb316c90772e559b",
+        ".beads/vb-eirmk.13.3/replay-test-relocation-justification-v4.md",
+        "be5acdfb8520dc666747986cbc3d7379adc72805",
+        "vb-eirmk.13.3"
+      ]
+    }
+  ],
+  "application_controls": {
+    "protected_ledger_modified": false,
+    "gate_modified": false,
+    "beads_written": false,
+    "fresh_code_test_reviews_required": true,
+    "review_exact_proposal_sha_required": true,
+    "apply_only_after_review_and_exact_readback": true,
+    "no_test_skip_or_assertion_weakening": true,
+    "checker_preview_or_gate_run": true,
+    "checker_modified": false,
+    "approval_required_before_live_application": true,
+    "protected_live_ledger_modified": false,
+    "protected_live_ledger_sha256_before_and_after": "096df4425e06980160297b3fcdb126532d1f015af2329c37f4c475d5e507cafb",
+    "protected_checker_modified": false,
+    "two_rows_only": true,
+    "review_artifact_relative_path": ".beads/vb-eirmk.13.3/replay-test-relocation-justification-v4.md",
+    "independent_CODE_review_required": true,
+    "independent_TEST_review_required": true,
+    "explicit_user_approval_before_live_application_required": true,
+    "no_live_application_or_gate_change": true,
+    "live_application_or_gate_change": false,
+    "independent_CODE_and_TEST_review_of_exact_V5_hash_required": true
+  },
+  "body_identity_summary": {
+    "baseline_test_ids": 90,
+    "byte_identical_bodies": 88,
+    "normatively_changed_bodies": 2,
+    "claim": "88 of 90 bodies are byte-identical; Contains and Has changes are explicitly normative, based on open parity qualification contracts."
+  },
+  "origin_v3": {
+    "path": "target/core-build-20261110/evidence/test-integrity-current-proposal-v3.json",
+    "sha256": "526d7a5c3bc29845b164d791fa437504da6b09833bb4149f9efbb02cbd48004e",
+    "preserved_unchanged": true
+  },
+  "landing_context": {
+    "origin_main": "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178",
+    "candidate": "2e67416679b4c8f6fd4abe93c365841a8370cfdb",
+    "candidate_parent": "2e67416679b4c8f6fd4abe93c365841a8370cfdb",
+    "candidate_descends_from_landing_base": true,
+    "merge_base": "69bcabd8fba0250d2f6dbd3953fb2604a8ba1178",
+    "source_tree_equals_frozen_pin": true
+  },
+  "normative_contract_references": [
+    {
+      "path": ".beads/vb-rihha.1.3/contains-parity-contract-proposal-v6.md",
+      "git_blob": "0bb9ef710cb4a684d44df80eb977282cbbecf545",
+      "sha256": "4b5f05df3803dc88504425e9c2700922f9a3cec31c847fee21d4bf7c492f5477"
+    },
+    {
+      "path": ".beads/vb-rihha.1.3/expression-parity-evidence-v1/has-contract-v3.md",
+      "git_blob": "408e3d50acb7fd9c466c7cee7c4e01b756a039b4",
+      "sha256": "2f3329582a76616ad9b02e83ea0b5036a66c616fa5b49e39afcd71b33339d860"
+    },
+    {
+      "path": "velvet-ballistics-MASTER.md",
+      "sha256": "fc0282bb901030dd1b195ebbce964d560fbf409c9f5e49c8c6e5203da3a46536",
+      "lines": "2448,2451",
+      "qualification_state": "master signature plus open parity evidence; these are normative proposal references, not acceptance receipts"
+    }
+  ],
+  "proposal_tsv": {
+    "path": "target/core-build-20261110/evidence/test-integrity-justifications-proposal-v4.tsv",
+    "sha256": "9cec042ed6830352329401448fd397067619c88814a897663b408639b0c62ce3",
+    "bytes_unchanged_from_v4": true,
+    "row_count": 2,
+    "review_artifact_path_relative": ".beads/vb-eirmk.13.3/replay-test-relocation-justification-v4.md",
+    "review_artifact_git_blob": "be5acdfb8520dc666747986cbc3d7379adc72805"
+  },
+  "author_justification_document": {
+    "path": ".beads/vb-eirmk.13.3/replay-test-relocation-justification-v4.md",
+    "git_blob": "be5acdfb8520dc666747986cbc3d7379adc72805",
+    "sha256": "793f54a027b054f6b4cb504532d14a538d4f7843f4bf2d595ee499ade2ba5bea",
+    "lines_with_baseline_id_mappings": 90
+  },
+  "origin_v4": {
+    "path": "target/core-build-20261110/evidence/test-integrity-current-proposal-v4.json",
+    "sha256": "b5b4be2bb1ce99a86ea059584f07e745aea6b9fabc64a2d5f14e8804ff7e68a2",
+    "preserved_unchanged": true
+  },
+  "complete_source_blob_verification": {
+    "source_pin": "2e67416679b4c8f6fd4abe93c365841a8370cfdb",
+    "paths": {
+      "crates/vb_core/src/replay/ops/tests.rs": "1ee4c0c6c8a57387d466f2ca085a41940afd8c38",
+      "crates/vb_core/src/replay/ops/tests_stack.rs": "99cc11f167ddbe5e0b424d3bdce36281c54a051f",
+      "crates/vb_core/src/replay/ops/tests_expr.rs": "ff4078edd5fda6cb47c5adbfeb316c90772e559b",
+      "crates/vb_core/src/replay/ops/tests_ce003.rs": "acb8a177acf3e0c04e34f8c0da9a64053d942165",
+      "crates/vb_core/src/replay/ops/context_tests.rs": "707d2b4b9ff4f087eb2b46ef21bbf7f112d784c0",
+      "scripts/check-test-integrity.rs": "d2a64ab1a4d8ded0bf005dc0704a8dbe815a2721",
+      "scripts/test-integrity-justifications.tsv": "89a24a525bb583d7b0025bf3adbe7585b1b6ac3f"
+    }
+  },
+  "current_ledger_context": {
+    "row_count": 57,
+    "sha256_before_and_after": "096df4425e06980160297b3fcdb126532d1f015af2329c37f4c475d5e507cafb",
+    "git_blob": "89a24a525bb583d7b0025bf3adbe7585b1b6ac3f",
+    "proposal_rows_added_only_to_scratch": 2
+  },
+  "v4_provenance_correction": {
+    "historical_v4_empty_ledger_emitted": 233,
+    "historical_v4_empty_ledger_distinct": 214,
+    "historical_v4_empty_ledger_duplicate_emissions": 19,
+    "historical_v4_empty_ledger_findings_by_kind": {
+      "IgnoredOrSkippedTest": 33,
+      "WeakenedAssertion": 63,
+      "DeletedTestDeclaration": 71,
+      "DeletedTestFile": 66
+    },
+    "historical_v4_after_two_rows_emitted": 231,
+    "historical_v4_after_two_rows_distinct": 212,
+    "historical_v4_after_two_rows_duplicate_emissions": 19,
+    "historical_v4_after_two_rows_findings_by_kind": {
+      "IgnoredOrSkippedTest": 33,
+      "WeakenedAssertion": 62,
+      "DeletedTestDeclaration": 70,
+      "DeletedTestFile": 66
+    },
+    "note": "Historical V4 cross-lineage counts; current counts are only the four raw controls above."
+  },
+  "origin_v5_interim": {
+    "path": "target/core-build-20261110/evidence/test-integrity-current-proposal-v5.json",
+    "sha256": "41a83b239a2fda2e460b70edfe455722480eeb63ca5363a6d176a2163fe5c8eb",
+    "note": "653a interim V5 preserved unchanged; superseded by this 2e674 refresh."
+  }
+}

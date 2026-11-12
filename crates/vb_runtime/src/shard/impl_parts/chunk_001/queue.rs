@@ -9,6 +9,25 @@ impl Shard {
         if self.shutting_down {
             return Err(RuntimeError::ShutdownInProgress);
         }
+        self.validate_secret_submission(&cmd)?;
+        match &cmd {
+            ShardCommand::Submit { workflow, .. }
+            | ShardCommand::SubmitPrePersisted { workflow, .. }
+            | ShardCommand::SubmitWithContracts { workflow, .. } => {
+                let inputs = self.prepare_secret_inputs(workflow, &[])?;
+                crate::shard::helpers::prepare_input_slots(&inputs, workflow)?;
+            }
+            ShardCommand::SubmitWithInputs {
+                workflow, inputs, ..
+            }
+            | ShardCommand::SubmitWithInputsAndContracts {
+                workflow, inputs, ..
+            } => {
+                let inputs = self.prepare_secret_inputs(workflow, inputs)?;
+                crate::shard::helpers::prepare_input_slots(&inputs, workflow)?;
+            }
+            _ => {}
+        }
         match &cmd {
             ShardCommand::Submit { .. }
             | ShardCommand::ActivateOwnedSubmission { .. }

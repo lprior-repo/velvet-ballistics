@@ -1,0 +1,105 @@
+Final adversarial independent review of TESTS changed for numericIR vs sourceidentity in vb-86nyq. STATUS APPROVED only no unresolvedfindings. DoNOTchange/waiveconstantvalueorbranchcountorfinishslotorfinishpositionassertions; allretained. Publiccompilerstorespostcardparts selfdigestzero hash; sourcecanonical_digestlegacyhelper separate. Actualcompiler497tests pass afterconstantpoolbugfix, originalbugmutant7failuresrestore497pass. Oldtestsrequiredinconsistentidentitysource-onlylabels/outputnames; nowchecksfullcompiledparts equalANDdigest equalANDlegacyASTdigest different. Top-levelstep_names serialized; doNOTrecommendallnameserased. Reviewactualtestdiff, no proofclaims.
+diff --git a/crates/vb_compile/src/proptest_finish_digest.rs b/crates/vb_compile/src/proptest_finish_digest.rs
+index fc1849c53..f10be2367 100644
+--- a/crates/vb_compile/src/proptest_finish_digest.rs
++++ b/crates/vb_compile/src/proptest_finish_digest.rs
+@@ -131,7 +131,7 @@ proptest! {
+     }
+ 
+     #[test]
+-    fn finish_result_change_changes_digest_string(
++    fn finish_output_rename_preserves_ir_and_changes_authoring_digest(
+         id in step_id_strategy(),
+         out_a in step_id_strategy(),
+         out_b in step_id_strategy(),
+@@ -156,8 +156,19 @@ proptest! {
+         let db = digest_from_yaml(&yaml_b)
+             .map_err(|e| TestCaseError::fail(e))?;
+ 
+-        prop_assert_ne!(da, db,
+-            "different Finish result output names must produce different digests");
++        prop_assert_eq!(da, db, "consistent output renames preserve compiled IR digest");
++        let source_a = crate::canonical_digest(&crate::parse_workflow_source(&yaml_a).map_err(|e| TestCaseError::fail(e.to_string()))?)
++            .map_err(|e| TestCaseError::fail(format!("canonical_digest(a): {}", e)))?;
++        let source_b = crate::canonical_digest(&crate::parse_workflow_source(&yaml_b).map_err(|e| TestCaseError::fail(e.to_string()))?)
++            .map_err(|e| TestCaseError::fail(format!("canonical_digest(b): {}", e)))?;
++        prop_assert_ne!(source_a, source_b, "authoring digest preserves output spelling");
++        let parts_a = crate::compile_workflow(yaml_a.as_bytes())
++            .map_err(|e| TestCaseError::fail(format!("compile(a): {}", e)))?
++            .to_parts();
++        let parts_b = crate::compile_workflow(yaml_b.as_bytes())
++            .map_err(|e| TestCaseError::fail(format!("compile(b): {}", e)))?
++            .to_parts();
++        prop_assert_eq!(parts_a, parts_b, "consistent output renames preserve compiled IR parts");
+     }
+ }
+ 
+@@ -205,9 +216,11 @@ fn compile_and_expect_max_slots_error(yaml: &str) -> Result<(), String> {
+         Err(errors) => {
+             let slice = errors.as_slice();
+             match slice {
+-                [crate::CompileError::Workflow(
+-                    vb_core::workflow::WorkflowError::ResourceContractExceeded { resource },
+-                )] => {
++                [
++                    crate::CompileError::Workflow(
++                        vb_core::workflow::WorkflowError::ResourceContractExceeded { resource },
++                    ),
++                ] => {
+                     if *resource == "max_slots" {
+                         Ok(())
+                     } else {
+diff --git a/crates/vb_compile/src/tests/error_variant_tests.rs b/crates/vb_compile/src/tests/error_variant_tests.rs
+index 97e147404..8c5493ac9 100644
+--- a/crates/vb_compile/src/tests/error_variant_tests.rs
++++ b/crates/vb_compile/src/tests/error_variant_tests.rs
+@@ -1369,10 +1369,22 @@ steps:
+     let wf_la = crate::compile_source(&source_la).expect("compile label-a");
+     let wf_lb = crate::compile_source(&source_lb).expect("compile label-b");
+ 
+-    assert_ne!(
++    assert_eq!(
++        wf_la.to_parts(),
++        wf_lb.to_parts(),
++        "consistent branch renames preserve compiled IR parts"
++    );
++    assert_eq!(
+         wf_la.digest(),
+         wf_lb.digest(),
+-        "different branch labels must produce different digests"
++        "consistent branch renames preserve compiled IR digest"
++    );
++    assert!(
++        matches!(
++            (crate::canonical_digest(&source_la), crate::canonical_digest(&source_lb)),
++            (Ok(a), Ok(b)) if a != b
++        ),
++        "authoring digest preserves branch label spelling"
+     );
+ 
+     // (c) Different sub-step IDs
+@@ -1432,10 +1444,22 @@ steps:
+     let wf_ida = crate::compile_source(&source_ida).expect("compile id-a");
+     let wf_idb = crate::compile_source(&source_idb).expect("compile id-b");
+ 
+-    assert_ne!(
++    assert_eq!(
++        wf_ida.to_parts(),
++        wf_idb.to_parts(),
++        "consistent sub-step ID renames preserve compiled IR parts"
++    );
++    assert_eq!(
+         wf_ida.digest(),
+         wf_idb.digest(),
+-        "different sub-step IDs must produce different digests"
++        "consistent sub-step ID renames preserve compiled IR digest"
++    );
++    assert!(
++        matches!(
++            (crate::canonical_digest(&source_ida), crate::canonical_digest(&source_idb)),
++            (Ok(a), Ok(b)) if a != b
++        ),
++        "authoring digest preserves sub-step ID spelling"
+     );
+ }
+ 

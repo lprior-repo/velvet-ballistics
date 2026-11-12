@@ -1,0 +1,14 @@
+COMMAND: rg -n velvet-ballastics/v1 with source/evidence classification
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+
+SOURCE_SCAN_EXCLUDING_EVIDENCE:
+no source/corpus/test/non-evidence exact stale version occurrences
+
+ALL_WORKTREE_SCAN_INCLUDING_EVIDENCE:
+evidence/fuzz-wave25-closure-local/evidence-package.md:74:| `67-cargo-test-workspace-all-features-after-recovery-lock-repair.txt` | root `cargo test --workspace --all-features` after recovery lock repair | FAIL: recovery flake cleared; later `velvet-ballistics --test ir_artifact_admission` rejects stale corpus version `velvet-ballastics/v1` |
+evidence/fuzz-wave25-closure-local/evidence-package.md:91:| `84-stale-corpus-version-and-name-scan-after-repair.txt` | stale corpus typo/name scan for `vb_f04l_yaml_compiler_compile` | PASS: no `velvet-ballastics/v1` or `name: fuzz-` remains in that corpus |
+evidence/fuzz-wave25-closure-local/evidence-package.md:97:| `90-stale-corpus-and-fuzz-generator-version-name-scan-after-repair.txt` | stale typo/name scan for repaired corpus and fuzz generator files | PASS: no `velvet-ballastics/v1` or `name: fuzz-` remains in those files |
+evidence/fuzz-wave25-closure-local/67-cargo-test-workspace-all-features-after-recovery-lock-repair.txt:11952:for_each corpus workflow should compile: stdout= stderr=compile error: unsupported workflow version: velvet-ballastics/v1
+
+SOURCE_SCAN_STATUS=0
+EXIT_STATUS=0

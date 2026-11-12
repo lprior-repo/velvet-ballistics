@@ -1,0 +1,23 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-s4hfc-v11",
+  "argv": [
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_eepg_bdd_tests",
+    "--all-features"
+  ],
+  "exit_code": 0,
+  "seconds": 45.456,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-s4hfc/evidence/FIXTURE_V11_01"
+}

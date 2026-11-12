@@ -1,0 +1,17 @@
+**Findings:**
+
+1. **All 9 fixtures addressed** — `input_slots: Box::new([])` added to: admission/tests.rs (1), proptests.rs (5), recovery/tests.rs (2), vb_2bok_durability_gate_tests.rs (1). Correct count.
+
+2. **Empty array semantics correct** — `Box::new([])` is appropriate for self-contained workflows with no external CLI input ports.
+
+3. **Digest construction preserved** — All fixtures maintain the pattern: build parts with zeroed digest → compute correct digest → set it. The new `input_slots` field is included in the struct before hashing, so digests will account for it. Wrong-digest rejection tests (checksum_mismatch, stale_digest) remain intact.
+
+4. **Snapshot mismatch test strengthened** — hydrate_tests.rs changed from `matches!` with wildcard `snapshot_seq: _` to `assert_eq!` with exact fields: `expected_run: requested_run`, `snapshot_run`, `snapshot_seq: EventSeq::new(5)`. This eliminates the risk of swallowing `expected_run` mismatches. No assertion weakening.
+
+5. **No production changes** — All modified files are test fixtures (`tests.rs`, `proptests.rs`, `*_tests.rs`).
+
+6. **No new unsafe constructs** — No unwrap, panic, index, cast, or allowance additions visible in the diff.
+
+**Risk noted:** The `assert_eq!` in hydrate_tests.rs requires `SnapshotRecoveryInputViolation` to implement `PartialEq`. This will be caught at compile time during the scoped test compilation.
+
+**STATUS: APPROVED**

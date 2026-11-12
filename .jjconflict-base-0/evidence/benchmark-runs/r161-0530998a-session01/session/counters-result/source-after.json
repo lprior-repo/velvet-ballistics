@@ -1,0 +1,19 @@
+{
+  "role": "candidate",
+  "root": "/home/lewis/src/isoloated/velvet-ballistics-f1f5-landing-20261111",
+  "pin": "0530998a5636fafb32b2602c33d14b38e983f1a6",
+  "head": "0530998a5636fafb32b2602c33d14b38e983f1a6",
+  "performance_input_sha256": "7c6ba6259034fd37c700377a07e2d8f039c70ba457ef04b7be326ec08587d7c3",
+  "tracked_input_count": 2760,
+  "small_workflow_sha256": "6af18531f9e21a93c1929e44cb7bdd7ca6a78096a5c0af892775a51cd6d81585",
+  "benchmark_preimage_sha256": "1df54a81bd34b742765897507bb6736805f6cbf1184800f523d5e07f0cb74cfc",
+  "benchmark_guard_default_us": 100000,
+  "benchmark_guard_export_us": 100000,
+  "benchmark_source_sha256": "1df54a81bd34b742765897507bb6736805f6cbf1184800f523d5e07f0cb74cfc",
+  "baseline_overlay_sha256": null,
+  "relevant_git_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "cargo_lock_sha256": "7fd781c6b2061b94fd629f919d0d24b74f0698d591b6a7bd3941f54e12726f73",
+  "jj_cached_working_copy": "b9a53bf5097d8f8b33913e7e48d936654b2cafea",
+  "jj_cached_parent": "0530998a5636fafb32b2602c33d14b38e983f1a6",
+  "snapshot_authority": "actual tracked bytes checked against exact Git blobs plus the single pinned overlay; cached JJ state is recorded, not assumed current"
+}

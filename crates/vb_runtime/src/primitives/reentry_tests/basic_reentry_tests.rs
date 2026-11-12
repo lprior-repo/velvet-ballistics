@@ -88,6 +88,7 @@ fn vb_y4pa_002_reduce_reentry() {
         input,
         accumulator,
         vb_core::ids::ConstIdx::new(0),
+        65_535,
         body,
         done,
         Some(iterator_slot), // tail goes here
@@ -283,6 +284,7 @@ fn minimal_workflow() -> vb_core::workflow::CompiledWorkflow {
 
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("reentry_test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([7; 32]),
         nodes: vec![node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
@@ -454,6 +456,7 @@ fn tc007_reduce_three_item_accumulator() {
         input,
         accumulator,
         vb_core::ids::ConstIdx::new(0),
+        65_535,
         body,
         done,
         Some(iterator_slot),
@@ -540,6 +543,7 @@ fn tc008_reduce_body_succeeded_resets_on_reentry() {
         input,
         accumulator,
         vb_core::ids::ConstIdx::new(0),
+        65_535,
         body,
         done,
         Some(iterator_slot),
@@ -842,4 +846,3 @@ fn tc014_reduce_next_jumps_to_done_when_remaining_empty() {
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), done);
 }
-

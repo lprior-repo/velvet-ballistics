@@ -1,0 +1,10 @@
+reading file "/home/lewis/tmp/vb-f1f5-benchmark-sessions-r86/session01/counters-result/ipc_frame_decode/heaptrack.data.zst" - please wait, this might take some time...
+Debuggee command was: /home/lewis/tmp/vb-f1f5-candidate-build-r84/target/release/deps/velvet_ballistics-3ab5658af4672291 ipc_frame_decode; --bench --noplot --sample-size 10 --warm-up-time 1 --measurement-time 1
+finished reading file, now analyzing data:
+
+total runtime: 2.357000s.
+calls to allocation functions: 8454037 (3586778/s)
+temporary memory allocations: 126471 (53657/s)
+peak heap memory consumption: 5.26M
+peak RSS (including heaptrack overhead): 21.88M
+total memory leaked: 18.29K

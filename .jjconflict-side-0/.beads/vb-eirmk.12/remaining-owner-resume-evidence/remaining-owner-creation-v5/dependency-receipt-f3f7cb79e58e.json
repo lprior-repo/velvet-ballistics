@@ -1,0 +1,12 @@
+{
+  "from": "vb-eirmk.11",
+  "depends_on_actual_issue_id": "vb-eirmk.70",
+  "dependency_type": "blocks",
+  "response": {
+    "depends_on_id": "vb-eirmk.70",
+    "issue_id": "vb-eirmk.11",
+    "schema_version": 1,
+    "status": "added",
+    "type": "blocks"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-policy-dispatch-v1",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "--quiet",
+    "-p",
+    "vb_runtime",
+    "--all-features",
+    "--lib",
+    "strict_policy_port_tests"
+  ],
+  "exit_code": 101,
+  "seconds": 7.891,
+  "timeout_seconds": 240,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-z7ky4/evidence/ROOT_V5_JOURNAL_TESTS"
+}

@@ -1,0 +1,120 @@
+[ WARN 2026-10-22 01:09:53.771] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 01:09:53.774] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 01:09:55.845] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 01:10:20.712] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 01:10:20.935] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 01:10:30.770] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 01:10:36.388] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 01:10:40.004] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 01:10:40.024] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 01:10:47.916] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |  Nextest run ID fc640520-26e8-4945-b998-4914fb3f3162 with nextest profile: default
+                       velvet-ballistics:test |     Starting 14358 tests across 290 binaries (27 tests skipped)
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |      Summary [ 262.381s] 14358 tests run: 14358 passed (29 slow), 27 skipped
+[ WARN 01:15:52.578] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features` on vb_core (1/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features bench` on vb_core (2/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features default` on vb_core (3/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-diagnostic-codes` on vb_core (4/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features test-util` on vb_core (5/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features verus-kernels` on vb_core (6/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features volatile` on vb_core (7/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features` on vb_yaml (8/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features default` on vb_yaml (9/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features test-util` on vb_yaml (10/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features` on vb_validate (11/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features default` on vb_validate (12/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features verus` on vb_validate (13/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features` on vb_expr (14/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features default` on vb_expr (15/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features` on vb_compile (16/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features default` on vb_compile (17/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features test-util` on vb_compile (18/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features` on vb_storage (19/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features default` on vb_storage (20/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-recovery` on vb_storage (21/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-typed-partitioned-ids` on vb_storage (22/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-vb-u8gi-decode-taxonomy` on vb_storage (23/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-vb-vzcuf` on vb_storage (24/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features legacy-kani` on vb_storage (25/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features` on vb_runtime (26/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features default` on vb_runtime (27/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-admission-store` on vb_runtime (28/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-capability-harnesses` on vb_runtime (29/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-engine-yaml-admission` on vb_runtime (30/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-shard-command-queue` on vb_runtime (31/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-sxkz6-answer-ask` on vb_runtime (32/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-sxkz6-capture-timer` on vb_runtime (33/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-sxkz6-list-events` on vb_runtime (34/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-sxkz6-shard-for-run` on vb_runtime (35/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-sxkz6-take-inspect` on vb_runtime (36/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-sxkz6-timer-fired` on vb_runtime (37/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-trace-ring` on vb_runtime (38/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-vb-4969v-aggregate-invariant` on vb_runtime (39/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-vb-4969v-runtime-a3` on vb_runtime (40/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-vt2f-runtime-facade` on vb_runtime (41/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-vt2f-shard-lower-semantics` on vb_runtime (42/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-yaml-e2e-admission-matrix` on vb_runtime (43/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features vb-y9d3v-attempt-fence` on vb_runtime (44/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features vb-y9d3v-flux-refinements` on vb_runtime (45/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet` on vb_ipc (46/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet` on velvet-ballistics (47/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet` on velvet-ballistics-workspace-tests (48/48)
+[ WARN 01:16:12.266] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                   velvet-ballistics:coverage | info: cargo-llvm-cov currently setting cfg(coverage) and cfg(coverage_nightly); you can opt-out it by passing --no-cfg-coverage and --no-cfg-coverage-nightly
+
+                   velvet-ballistics:coverage |     Finished report saved to target/llvm-cov/lcov.info
+              velvet-ballistics:mutants-smoke |  WARN No mutants were viable: perhaps there is a problem with building in a scratch directory. Look in mutants.out/log/* for more information.
+[ WARN 01:16:26.672] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 01:16:31.342] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 01:16:32.891] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+velvet-ballistics:benchmark-regression-policy | Error: benchmark evidence line 1 commit is stale: evidence=2990ccb0e5db2f15046562adb20a5ea4e2d9591f current_head=f003129c2e9c1c502c7c236e16c9e72592d4c967

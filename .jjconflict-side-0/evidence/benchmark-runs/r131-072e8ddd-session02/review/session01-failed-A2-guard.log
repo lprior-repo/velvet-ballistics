@@ -1,0 +1,9 @@
+SESSION_PLAN_OK
+latency_RUN_COMPLETE; inspect all logs and host load before accepting results
+latency_RUN_COMPLETE; inspect all logs and host load before accepting results
+latency_RUN_COMPLETE; inspect all logs and host load before accepting results
+host busy; no measurement started:
+2202039 cargo-nextest
+2202087 cargo
+2202296 rustc
+2202517 rustc

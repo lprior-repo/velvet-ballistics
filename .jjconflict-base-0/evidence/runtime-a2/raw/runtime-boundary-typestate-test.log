@@ -1,0 +1,6 @@
+COMMAND: rtk cargo test -p vb_runtime recovery_boundary_factory_preserves_storage_cannot_resume_witness_on_invalid_shape --all-features
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a2
+
+cargo test: 1 passed, 2377 filtered out (34 suites, 0.00s)
+
+EXIT_STATUS: 0

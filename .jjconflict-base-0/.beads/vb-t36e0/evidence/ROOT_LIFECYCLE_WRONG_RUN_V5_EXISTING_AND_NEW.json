@@ -1,0 +1,27 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-t36e0-wrong-run-test-v1",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "--quiet",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--all-features",
+    "--test",
+    "vb_vt2f_direct_runtime_api_acceptance"
+  ],
+  "exit_code": 0,
+  "seconds": 32.659,
+  "timeout_seconds": 240,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_LIFECYCLE_WRONG_RUN_V5_EXISTING_AND_NEW"
+}

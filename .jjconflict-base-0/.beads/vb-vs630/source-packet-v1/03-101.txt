@@ -1,0 +1,49 @@
+crates/vb_storage/src/inputs/mod.rs:101:     fn enforce_kind_parity(
+crates/vb_storage/src/inputs/mod.rs:102:         envelope: &crate::RecordEnvelope,
+crates/vb_storage/src/inputs/mod.rs:103:         value: &Self,
+crates/vb_storage/src/inputs/mod.rs:104:     ) -> Result<(), JournalError> {
+crates/vb_storage/src/inputs/mod.rs:105:         if envelope.record_kind != RecordKind::RunInputs.id() {
+crates/vb_storage/src/inputs/mod.rs:106:             return Err(JournalError::RecordKindPayloadMismatch {
+crates/vb_storage/src/inputs/mod.rs:107:                 envelope_kind: envelope.record_kind,
+crates/vb_storage/src/inputs/mod.rs:108:                 payload_kind: RecordKind::RunInputs.id(),
+crates/vb_storage/src/inputs/mod.rs:109:             });
+crates/vb_storage/src/inputs/mod.rs:110:         }
+crates/vb_storage/src/inputs/mod.rs:111:         if envelope.sequence != value.run.get()
+crates/vb_storage/src/inputs/mod.rs:112:             || compute_input_digest(&value.inputs)? != value.input_digest
+crates/vb_storage/src/inputs/mod.rs:113:         {
+crates/vb_storage/src/inputs/mod.rs:114:             return Err(JournalError::PayloadDigestMismatch);
+crates/vb_storage/src/inputs/mod.rs:115:         }
+crates/vb_storage/src/inputs/mod.rs:116:         Ok(())
+crates/vb_storage/src/inputs/mod.rs:117:     }
+crates/vb_storage/src/inputs/mod.rs:118: }
+crates/vb_storage/src/inputs/mod.rs:119: 
+crates/vb_storage/src/inputs/mod.rs:120: impl FjallJournal {
+crates/vb_storage/src/inputs/mod.rs:121:     /// Reads retained inputs with envelope checksum and run identity validation.
+crates/vb_storage/src/inputs/mod.rs:122:     /// The consumer must validate the workflow and artifact binding before use.
+crates/vb_storage/src/inputs/mod.rs:123:     pub fn run_inputs(&self, run: RunId) -> Result<Option<RunInputsRecord>, JournalError> {
+crates/vb_storage/src/inputs/mod.rs:124:         let key = crate::keys::run_header_key(run)?;
+crates/vb_storage/src/inputs/mod.rs:125:         self.decode_optional_with(
+crates/vb_storage/src/inputs/mod.rs:126:             &self.run_inputs,
+crates/vb_storage/src/inputs/mod.rs:127:             &key,
+crates/vb_storage/src/inputs/mod.rs:128:             MAGIC_INDEX_RECORD,
+crates/vb_storage/src/inputs/mod.rs:129:             MAX_RUN_INPUT_BYTES,
+crates/vb_storage/src/inputs/mod.rs:130:             |_, record: &RunInputsRecord| {
+crates/vb_storage/src/inputs/mod.rs:131:                 if record.run == run {
+crates/vb_storage/src/inputs/mod.rs:132:                     Ok(())
+crates/vb_storage/src/inputs/mod.rs:133:                 } else {
+crates/vb_storage/src/inputs/mod.rs:134:                     Err(JournalError::WrongRun {
+crates/vb_storage/src/inputs/mod.rs:135:                         expected: run,
+crates/vb_storage/src/inputs/mod.rs:136:                         actual: record.run,
+crates/vb_storage/src/inputs/mod.rs:137:                     })
+crates/vb_storage/src/inputs/mod.rs:138:                 }
+crates/vb_storage/src/inputs/mod.rs:139:             },
+crates/vb_storage/src/inputs/mod.rs:140:         )
+crates/vb_storage/src/inputs/mod.rs:141:     }
+crates/vb_storage/src/inputs/mod.rs:142: }
+crates/vb_storage/src/inputs/mod.rs:143: 
+crates/vb_storage/src/inputs/mod.rs:144: #[cfg(test)]
+crates/vb_storage/src/inputs/mod.rs:145: mod receipt_tests;
+crates/vb_storage/src/inputs/mod.rs:146: #[cfg(test)]
+crates/vb_storage/src/inputs/mod.rs:147: mod submission_tests;
+crates/vb_storage/src/inputs/mod.rs:148: #[cfg(test)]
+crates/vb_storage/src/inputs/mod.rs:149: mod tests;

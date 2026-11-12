@@ -1,0 +1,180 @@
+181:      }
+182: +
+183: +    /// Stages a tombstone for the action index marker into the batch.
+184: +    ///
+185: +    /// The tombstone is part of the same atomic batch as the surrounding
+186: +    /// event writes; a successful `commit()` removes the index entry
+187: +    /// exactly when the corresponding terminal event (completion,
+188: +    /// failure, or abandonment) becomes durable.
+189: +    pub fn delete_action_index(
+190: +        &mut self,
+191: +        action: vb_core::ActionId,
+192: +        run: vb_core::RunId,
+193: +        step: vb_core::StepIdx,
+194: +    ) -> Result<(), JournalError> {
+195: +        let key = index_action_key(action, run, step)?;
+196: +        self.inner.remove(&self.journal.index_action, key);
+197: +        Ok(())
+198: +    }
+199:  }
+200: diff --git a/crates/vb_storage/src/index_maintenance_tests.rs b/crates/vb_storage/src/index_maintenance_tests.rs
+201: new file mode 100644
+202: index 000000000..0dde39127
+203: --- /dev/null
+204: +++ b/crates/vb_storage/src/index_maintenance_tests.rs
+205: @@ -0,0 +1,601 @@
+206: +#![forbid(unsafe_code)]
+207: +//! Contract tests for vb-3wn7x: pending action index maintenance in the
+208: +//! runtime journal path.
+209: +//!
+210: +//! Master §18 requires `index_action` to be the authoritative pending
+211: +//! action cursor. The defect captured under vb-3wn7x was that the
+212: +//! runtime's `append_journaled` / `append_strict` path only wrote the
+213: +//! `run_event` record, leaving the index keyspace out of sync with the
+214: +//! durable event log.
+215: +//!
+216: +//! These tests exercise every action-lifecycle event variant through
+217: +//! every admission path that previously missed the index update:
+218: +//!
+219: +//! - `FjallJournal::append_journaled` (journaled profile)
+220: +//! - `FjallJournal::append_strict` (strict profile)
+221: +//! - `FjallJournal::append_strict_batch` (atomic batch insert)
+222: +//! - `JournalWriteBatch::append_event` (cross-keyspace batch)
+223: +//! - `JournalWriterQueue::drain_all` (queued writer)
+224: +//!
+225: +//! Insert-side events:
+226: +//! - `JournalEvent::ActionScheduled`
+227: +//! - `JournalEvent::ActionScheduledTicket`
+228: +//!
+229: +//! Remove-side events:
+230: +//! - `JournalEvent::ActionCompletedEvent`
+231: +//! - `JournalEvent::ActionCompletedEnvelope`
+232: +//! - `JournalEvent::ActionFailedEvent`
+233: +//! - `JournalEvent::ActionAbandoned`
+234: +//!
+235: +//! No-op events (run/step/wait/ask/slot/lifecycle): leave the index
+236: +//! untouched.
+237: +
+238: +#[cfg(test)]
+239: +#[allow(
+240: +    clippy::as_conversions,
+241: +    clippy::cast_possible_truncation,
+242: +    clippy::expect_used,
+243: +    clippy::indexing_slicing,
+244: +    clippy::panic,
+245: +    clippy::panic_in_result_fn,
+246: +    clippy::unwrap_used
+247: +)]
+248: +mod tests {
+249: +    use crate::{
+250: +        DurableActionOutcome, EventSeq, FjallJournal, JournalError, JournalEvent,
+251: +        JournalWriteBatch, JournalWriterQueue, StorageLimits,
+252: +    };
+253: +    use std::sync::Arc;
+254: +    use vb_core::{
+255: +        ActionId, ActionTicket, RunId, SeqNo, SlotIdx, StepIdx as CoreStepIdx, Taint,
+256: +        WorkflowDigest, ids::StepIdx,
+257: +    };
+258: +
+259: +    fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
+260: +        let temp = tempfile::tempdir().expect("tempdir creation must succeed");
+261: +        let journal = FjallJournal::open(temp.path(), None).expect("journal open must succeed");
+262: +        (temp, journal)
+263: +    }
+264: +
+265: +    fn temp_journal_with_queue() -> (tempfile::TempDir, FjallJournal, Arc<JournalWriterQueue>) {
+266: +        let (temp, journal) = temp_journal();
+267: +        let queue = Arc::new(
+268: +            JournalWriterQueue::new(8, 4, StorageLimits::DEFAULT)
+269: +                .expect("queue construction must succeed"),
+270: +        );
+271: +        (temp, journal, queue)
+272: +    }
+273: +
+274: +    fn count_action_index_entries(journal: &FjallJournal) -> usize {
+275: +        journal.index_action.iter().count()
+276: +    }
+277: +
+278: +    fn has_index_entry(
+279: +        journal: &FjallJournal,
+280: +        action: ActionId,
+281: +        run: RunId,
+282: +        step: CoreStepIdx,
+283: +    ) -> bool {
+284: +        let key = crate::keys::index_action_key(action, run, step)
+285: +            .expect("index_action_key must succeed for valid inputs");
+286: +        journal
+287: +            .has_action_index_entry(key)
+288: +            .expect("has_action_index_entry must succeed")
+289: +    }
+290: +
+291: +    fn minimal_action_ticket(run: RunId, step: StepIdx, action: ActionId) -> ActionTicket {
+292: +        ActionTicket {
+293: +            run,
+294: +            step,
+295: +            seq: SeqNo::ZERO,
+296: +            action,
+297: +            attempt: 1,
+298: +            idempotency_key: 0,
+299: +            capacity: 1,
+300: +        }
+301: +    }
+302: +
+303: +    // -----------------------------------------------------------------
+304: +    // Direct journal path: append_journaled (write_lock-bound)
+305: +    // -----------------------------------------------------------------
+306: +
+307: +    #[test]
+308: +    fn append_journaled_action_scheduled_creates_index_entry() {
+309: +        let (_temp, journal) = temp_journal();
+310: +        let run = RunId::new(1);
+311: +        let step = StepIdx::new(2);
+312: +        let action = ActionId::new(3);
+313: +
+314: +        let event = JournalEvent::ActionScheduled {
+315: +            run,
+316: +            seq: EventSeq::new(0),
+317: +            step,
+318: +            action,
+319: +            attempt: 1,
+320: +        };
+321: +        journal
+322: +            .append_journaled(&event)
+323: +            .expect("append_journaled must succeed");
+324: +
+325: +        assert!(
+326: +            has_index_entry(&journal, action, run, step),
+327: +            "ActionScheduled must add a pending action marker at (action, run, step)"
+328: +        );
+329: +        assert_eq!(
+330: +            count_action_index_entries(&journal),
+331: +            1,
+332: +            "index_action must contain exactly one entry",
+333: +        );
+334: +    }
+335: +
+336: +    #[test]
+337: +    fn append_journaled_action_completed_removes_index_entry() {
+338: +        let (_temp, journal) = temp_journal();
+339: +        let run = RunId::new(2);
+340: +        let step = StepIdx::new(5);
+341: +        let action = ActionId::new(11);
+342: +
+343: +        journal
+344: +            .append_journaled(&JournalEvent::ActionScheduled {
+345: +                run,
+346: +                seq: EventSeq::new(0),
+347: +                step,
+348: +                action,
+349: +                attempt: 1,
+350: +            })
+351: +            .expect("schedule must succeed");
+352: +        assert!(
+353: +            has_index_entry(&journal, action, run, step),
+354: +            "marker must exist before completion"
+355: +        );
+356: +
+357: +        journal
+358: +            .append_journaled(&JournalEvent::ActionCompletedEvent {
+359: +                run,
+360: +                seq: EventSeq::new(1),

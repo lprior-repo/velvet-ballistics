@@ -1,0 +1,582 @@
+//! Tests for nested `do` primitive body lowering.
+//!
+//! These tests verify that `do` primitives inside scoped primitive bodies
+//! (repeat, collect, for_each, reduce) are correctly lowered to final IR.
+
+use vb_compile::{CompileError, CompileErrors, compile_workflow};
+use vb_core::CompiledWorkflow;
+
+const HEADER: &str =
+    "version: velvet-ballistics/v1\nname: nested_do_lowering\nwhen:\n  manual: {}\nsteps:\n";
+
+/// Tests that a `repeat` primitive with a `do` body lowers to final IR.
+#[test]
+fn nested_do_in_repeat_body_lowers_to_final_ir() -> Result<(), String> {
+    let yaml = workflow_yaml(
+        "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: action_step\n          do:\n            action: \"0\"\n            input: \"0\"\n  - id: done\n    finish:\n      result: 0\n",
+    );
+    let workflow = compile_yaml(&yaml)?;
+    let parts = workflow.to_parts();
+    use vb_core::{ActionId, CompiledNodeKind as K, SlotIdx, StepIdx};
+    assert_eq!(parts.entry, StepIdx::ZERO);
+    assert_eq!(parts.slot_count, 4);
+    assert_eq!(parts.nodes.len(), 6);
+    for (index, kind, output, next) in [
+        (
+            0,
+            K::RepeatStart {
+                max_attempts: 3.into(),
+                body: StepIdx::new(1),
+                done: StepIdx::new(4),
+            },
+            Some(SlotIdx::new(1)),
+            None,
+        ),
+        (
+            1,
+            K::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::new(0),
+            },
+            Some(SlotIdx::new(2)),
+            Some(StepIdx::new(2)),
+        ),
+        (
+            2,
+            K::Copy {
+                source: SlotIdx::new(2),
+            },
+            Some(SlotIdx::new(3)),
+            Some(StepIdx::new(3)),
+        ),
+        (
+            3,
+            K::RepeatCheck {
+                attempt_slot: SlotIdx::new(1),
+                done: StepIdx::new(4),
+            },
+            Some(SlotIdx::new(1)),
+            Some(StepIdx::new(1)),
+        ),
+        (
+            4,
+            K::RepeatFinish {
+                result: SlotIdx::new(3),
+            },
+            Some(SlotIdx::new(3)),
+            Some(StepIdx::new(5)),
+        ),
+        (
+            5,
+            K::Finish {
+                result: SlotIdx::new(0),
+            },
+            None,
+            None,
+        ),
+    ] {
+        assert_node(&parts.nodes, index, kind, output, next, None, None)?;
+    }
+
+    Ok(())
+}
+
+/// Tests that a `collect` primitive with a `do` body lowers to final IR.
+#[test]
+fn nested_do_in_collect_body_lowers_to_final_ir() -> Result<(), String> {
+    let yaml = workflow_yaml(
+        "  - id: collect_pages\n    collect:\n      variable: batch\n      source: \"0\"\n      pages: 3\n      items: 5\n      steps:\n        - id: process\n          do:\n            action: \"0\"\n            input: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
+    );
+    let workflow = compile_yaml(&yaml)?;
+    let parts = workflow.to_parts();
+    assert_eq!(parts.entry, vb_core::StepIdx::new(0));
+    assert_eq!(parts.slot_count, 5);
+    assert_eq!(parts.nodes.len(), 5);
+    assert_node(
+        &parts.nodes,
+        0,
+        vb_core::CompiledNodeKind::CollectStart {
+            source: vb_core::SlotIdx::new(0),
+            limit: 15.into(),
+            page_size: 5,
+            body: vb_core::StepIdx::new(1),
+            done: vb_core::StepIdx::new(3),
+        },
+        Some(vb_core::SlotIdx::new(2)),
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        1,
+        vb_core::CompiledNodeKind::Do {
+            action: vb_core::ActionId::new(0),
+            input: vb_core::SlotIdx::new(1),
+        },
+        Some(vb_core::SlotIdx::new(4)),
+        Some(vb_core::StepIdx::new(2)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        2,
+        vb_core::CompiledNodeKind::CollectNext {
+            collector_slot: vb_core::SlotIdx::new(2),
+            body: vb_core::StepIdx::new(1),
+            done: vb_core::StepIdx::new(3),
+        },
+        None,
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        3,
+        vb_core::CompiledNodeKind::CollectFinish {
+            collector_slot: vb_core::SlotIdx::new(2),
+        },
+        Some(vb_core::SlotIdx::new(3)),
+        Some(vb_core::StepIdx::new(4)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        4,
+        vb_core::CompiledNodeKind::Finish {
+            result: vb_core::SlotIdx::new(0),
+        },
+        None,
+        None,
+        None,
+        None,
+    )?;
+
+    Ok(())
+}
+
+/// Tests that a `for_each` primitive with a `do` body lowers to final IR.
+#[test]
+fn nested_do_in_for_each_body_lowers_to_final_ir() -> Result<(), String> {
+    let yaml = workflow_yaml(
+        "  - id: loop\n    for_each:\n      variable: entry\n      input: \"$input.items\"\n      at_once: 1\n      steps:\n        - id: process\n          do:\n            action: \"0\"\n            input: \"$input.payload\"\n  - id: done\n    finish:\n      result: $input.items\n",
+    );
+    let workflow = compile_yaml(&yaml)?;
+    let parts = workflow.to_parts();
+    use vb_core::{ActionId, CompiledNodeKind as K, ExprIdx, SlotIdx, StepIdx};
+    assert_eq!(parts.entry, StepIdx::ZERO);
+    assert_eq!(parts.slot_count, 7);
+    assert_eq!(parts.nodes.len(), 8);
+    for (index, kind, output, next) in [
+        (
+            0,
+            K::BuildList {
+                items: Box::new([]),
+            },
+            Some(SlotIdx::new(2)),
+            Some(StepIdx::new(1)),
+        ),
+        (
+            1,
+            K::EvalExpr {
+                expr: ExprIdx::new(0),
+            },
+            Some(SlotIdx::new(2)),
+            Some(StepIdx::new(2)),
+        ),
+        (
+            2,
+            K::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(4),
+                limit: 2.into(),
+                body: StepIdx::new(3),
+                done: StepIdx::new(6),
+            },
+            Some(SlotIdx::new(3)),
+            None,
+        ),
+        (
+            3,
+            K::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::new(1),
+            },
+            Some(SlotIdx::new(6)),
+            Some(StepIdx::new(4)),
+        ),
+        (
+            4,
+            K::EvalExpr {
+                expr: ExprIdx::new(1),
+            },
+            Some(SlotIdx::new(2)),
+            Some(StepIdx::new(5)),
+        ),
+        (
+            5,
+            K::ForEachNext {
+                iterator_slot: SlotIdx::new(3),
+                body: StepIdx::new(3),
+                done: StepIdx::new(6),
+            },
+            Some(SlotIdx::new(4)),
+            None,
+        ),
+        (
+            6,
+            K::ForEachJoin {
+                output: SlotIdx::new(2),
+            },
+            Some(SlotIdx::new(5)),
+            Some(StepIdx::new(7)),
+        ),
+        (
+            7,
+            K::Finish {
+                result: SlotIdx::new(0),
+            },
+            None,
+            None,
+        ),
+    ] {
+        assert_node(&parts.nodes, index, kind, output, next, None, None)?;
+    }
+    assert_eq!(parts.expressions.len(), 2);
+    assert_eq!(
+        parts.expressions.get(1).ok_or("append")?.ops.as_ref(),
+        &[
+            vb_core::ExprOp::LoadSlot(SlotIdx::new(2)),
+            vb_core::ExprOp::LoadSlot(SlotIdx::new(6)),
+            vb_core::ExprOp::Append
+        ]
+    );
+    Ok(())
+}
+
+/// Tests that a `reduce` primitive with a `do` body lowers to final IR.
+#[test]
+fn nested_do_in_reduce_body_lowers_to_final_ir() -> Result<(), String> {
+    let yaml = workflow_yaml(
+        "  - id: fold\n    reduce:\n      variable: acc\n      input: \"0\"\n      initial: \"10\"\n      steps:\n        - id: add\n          do:\n            action: \"0\"\n            input: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
+    );
+    let workflow = compile_yaml(&yaml)?;
+    let parts = workflow.to_parts();
+    assert_eq!(parts.entry, vb_core::StepIdx::new(0));
+    assert_eq!(parts.slot_count, 7);
+    assert_eq!(parts.nodes.len(), 7);
+    assert_eq!(parts.constants.get(0), Some(&vb_core::ConstValue::I64(10)));
+    assert_node(
+        &parts.nodes,
+        0,
+        vb_core::CompiledNodeKind::Copy {
+            source: vb_core::SlotIdx::new(0),
+        },
+        Some(vb_core::SlotIdx::new(2)),
+        Some(vb_core::StepIdx::new(1)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        1,
+        vb_core::CompiledNodeKind::ReduceStart {
+            limit: 65_535,
+            input: vb_core::SlotIdx::new(2),
+            accumulator: vb_core::SlotIdx::new(5),
+            initial: vb_core::ConstIdx::new(0),
+            body: vb_core::StepIdx::new(2),
+            done: vb_core::StepIdx::new(5),
+        },
+        Some(vb_core::SlotIdx::new(4)),
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        2,
+        vb_core::CompiledNodeKind::Do {
+            action: vb_core::ActionId::new(0),
+            input: vb_core::SlotIdx::new(1),
+        },
+        Some(vb_core::SlotIdx::new(6)),
+        Some(vb_core::StepIdx::new(3)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        3,
+        vb_core::CompiledNodeKind::Copy {
+            source: vb_core::SlotIdx::new(6),
+        },
+        Some(vb_core::SlotIdx::new(5)),
+        Some(vb_core::StepIdx::new(4)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        4,
+        vb_core::CompiledNodeKind::ReduceNext {
+            iterator_slot: vb_core::SlotIdx::new(4),
+            accumulator: vb_core::SlotIdx::new(5),
+            body: vb_core::StepIdx::new(2),
+            done: vb_core::StepIdx::new(5),
+        },
+        Some(vb_core::SlotIdx::new(3)),
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        5,
+        vb_core::CompiledNodeKind::ReduceFinish {
+            accumulator: vb_core::SlotIdx::new(5),
+        },
+        Some(vb_core::SlotIdx::new(5)),
+        Some(vb_core::StepIdx::new(6)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        6,
+        vb_core::CompiledNodeKind::Finish {
+            result: vb_core::SlotIdx::new(0),
+        },
+        None,
+        None,
+        None,
+        None,
+    )?;
+
+    Ok(())
+}
+
+/// Tests that nested do body with invalid input slot reference returns appropriate error.
+#[test]
+fn nested_do_with_invalid_input_slot_returns_error() -> Result<(), String> {
+    // The input "99999" is out of range for slot index
+    let yaml = workflow_yaml(
+        "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: action_step\n          do:\n            action: \"0\"\n            input: \"99999\"\n  - id: done\n    finish:\n      result: 0\n",
+    );
+    let result = compile_workflow(yaml.as_bytes());
+    assert!(
+        result.is_err(),
+        "nested do with out-of-range input slot should fail"
+    );
+    let errors = result.err().unwrap();
+    let first = errors
+        .first()
+        .ok_or_else(|| String::from("expected at least one error"))?;
+    match first {
+        CompileError::SlotIndexOutOfRange { value } => {
+            assert_eq!(*value, 99999, "should report exact out-of-range value");
+        }
+        other => {
+            return Err(format!(
+                "expected SlotIndexOutOfRange error for invalid input, got {other:?}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Tests that together branches can contain do primitives.
+#[test]
+fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
+    let yaml = workflow_yaml(
+        "  - id: fanout\n    together:\n      branches:\n        - label: left\n          steps:\n            - id: left_action\n              do:\n                action: \"0\"\n                input: \"0\"\n        - label: right\n          steps:\n            - id: right_action\n              do:\n                action: \"1\"\n                input: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
+    );
+    let workflow = compile_yaml(&yaml)?;
+    let parts = workflow.to_parts();
+    assert_eq!(parts.entry, vb_core::StepIdx::new(0));
+    assert_eq!(parts.slot_count, 6);
+    assert_eq!(parts.nodes.len(), 9);
+    assert_node(
+        &parts.nodes,
+        0,
+        vb_core::CompiledNodeKind::TogetherStart {
+            branches: vec![vb_core::StepIdx::new(1), vb_core::StepIdx::new(4)].into_boxed_slice(),
+            join: vb_core::StepIdx::new(7),
+        },
+        Some(vb_core::SlotIdx::new(2)),
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        1,
+        vb_core::CompiledNodeKind::TogetherBranch {
+            branch: 0.into(),
+            accumulator: vb_core::SlotIdx::new(2),
+            entry: vb_core::StepIdx::new(2),
+            join: vb_core::StepIdx::new(7),
+        },
+        None,
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        2,
+        vb_core::CompiledNodeKind::Do {
+            action: vb_core::ActionId::new(0),
+            input: vb_core::SlotIdx::new(0),
+        },
+        Some(vb_core::SlotIdx::new(4)),
+        Some(vb_core::StepIdx::new(3)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        3,
+        vb_core::CompiledNodeKind::Copy {
+            source: vb_core::SlotIdx::new(4),
+        },
+        Some(vb_core::SlotIdx::new(3)),
+        Some(vb_core::StepIdx::new(4)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        4,
+        vb_core::CompiledNodeKind::TogetherBranch {
+            branch: 1.into(),
+            accumulator: vb_core::SlotIdx::new(2),
+            entry: vb_core::StepIdx::new(5),
+            join: vb_core::StepIdx::new(7),
+        },
+        Some(vb_core::SlotIdx::new(3)),
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        5,
+        vb_core::CompiledNodeKind::Do {
+            action: vb_core::ActionId::new(1),
+            input: vb_core::SlotIdx::new(1),
+        },
+        Some(vb_core::SlotIdx::new(5)),
+        Some(vb_core::StepIdx::new(6)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        6,
+        vb_core::CompiledNodeKind::Copy {
+            source: vb_core::SlotIdx::new(5),
+        },
+        Some(vb_core::SlotIdx::new(3)),
+        Some(vb_core::StepIdx::new(7)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        7,
+        vb_core::CompiledNodeKind::TogetherJoin {
+            branch_count: 2.into(),
+            accumulator: vb_core::SlotIdx::new(2),
+        },
+        Some(vb_core::SlotIdx::new(3)),
+        Some(vb_core::StepIdx::new(8)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        8,
+        vb_core::CompiledNodeKind::Finish {
+            result: vb_core::SlotIdx::new(0),
+        },
+        None,
+        None,
+        None,
+        None,
+    )?;
+
+    Ok(())
+}
+
+// =============================================================================
+// Helper functions
+// =============================================================================
+
+fn compile_yaml(yaml: &str) -> Result<CompiledWorkflow, String> {
+    compile_workflow(yaml.as_bytes()).map_err(|errors| format_compile_errors(&errors))
+}
+
+fn format_compile_errors(errors: &CompileErrors) -> String {
+    let mut message = String::new();
+    for error in errors.iter() {
+        if !message.is_empty() {
+            message.push_str("; ");
+        }
+        message.push_str(error.code().as_str());
+        message.push_str(": ");
+        message.push_str(&error.to_string());
+    }
+    message
+}
+
+fn workflow_yaml(steps: &str) -> String {
+    let header = if steps.contains("$input.items") {
+        HEADER.replace(
+            "steps:\n",
+            "inputs:\n  items: {is: list, of: any, max: 2}\n  payload: {is: number}\nsteps:\n",
+        )
+    } else {
+        HEADER.to_string()
+    };
+    let mut yaml = header;
+    yaml.push_str(steps);
+    yaml
+}
+
+fn assert_node(
+    nodes: &[vb_core::CompiledNode],
+    id: u16,
+    kind: vb_core::CompiledNodeKind,
+    output: Option<vb_core::SlotIdx>,
+    next: Option<vb_core::StepIdx>,
+    error_slot: Option<vb_core::SlotIdx>,
+    on_error: Option<vb_core::StepIdx>,
+) -> Result<(), String> {
+    let actual = nodes
+        .get(usize::from(id))
+        .ok_or_else(|| format!("node {} not found", id))?;
+    let error = match (on_error, error_slot) {
+        (Some(handler), error_slot) => vb_core::workflow::ErrorRouting::Handler {
+            handler,
+            error_slot,
+        },
+        (None, None) => vb_core::workflow::ErrorRouting::None,
+        (None, Some(_)) => panic!("error_slot without handler is unrepresentable"),
+    };
+    let expected = vb_core::CompiledNode {
+        retry: None,
+        id: vb_core::StepIdx::new(id),
+        kind,
+        output: output.into(),
+        routing: vb_core::workflow::NodeRouting {
+            next: next.into(),
+            error,
+        },
+    };
+    assert_eq!(*actual, expected);
+    Ok(())
+}

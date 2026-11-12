@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-policy-integration-v18",
+  "argv": [
+    "python3",
+    ".beads/vb-j3e3s/collect_benchmark_evidence.py",
+    "--root",
+    "/home/lewis/src/isoloated/vb-policy-integration-v18",
+    "--commit",
+    "6e958d14ecc4c0900fa319b8182f8f11faf2bfc3",
+    "--output-dir",
+    ".beads/vb-ny068/evidence/actual-collection-v19"
+  ],
+  "exit_code": 0,
+  "seconds": 85.156,
+  "timeout_seconds": 1200,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ny068/evidence/FINAL_V19_MEASUREMENT"
+}

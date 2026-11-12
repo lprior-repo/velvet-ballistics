@@ -1,0 +1,475 @@
+#![forbid(unsafe_code)]
+//! Journal event enum types and outcome discriminant.
+//!
+//! Extracted from the parent `events` module so the impl-block host stays
+//! below the production source-length limit while preserving the public
+//! API contract (`pub use events::{JournalEvent, DurableActionOutcome}`).
+
+use crate::EventSeq;
+use chrono::{DateTime, Utc};
+use vb_core::manual_gate::{ApproverId, ManualGate};
+use vb_core::{
+    ActionId, ActionTicket, AggregateResourceBudget, CapabilitySet, ConstValue, RunId,
+    RuntimePolicy, SlotIdx, StepIdx, Taint, TenantId, WorkflowDigest,
+};
+
+/// Terminal action outcome captured by durable completion envelopes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[repr(u8)]
+#[non_exhaustive]
+pub enum DurableActionOutcome {
+    /// Action completed successfully and wrote an output slot.
+    Ready = 1,
+}
+
+/// Compact binary journal event. JSONL is a projection, not this durable format.
+///
+/// The postcard payload wire format is a stable newtype variant whose encoded
+/// variant index is the unique `RecordKind` tag, followed by that event
+/// variant's fields in documented order. Persisted schema-1 legacy ordinal
+/// payloads are decoded as an exact-consumption compatibility fallback while
+/// new writes use these stable record-kind tags. For schema-1 records written
+/// before the split, `StepSucceeded`, `ActionScheduledTicket`, and
+/// `ActionCompletedEnvelope` may still appear under their old shared envelope
+/// kinds; those are accepted only through the named schema-one shared-envelope
+/// compatibility path.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum JournalEvent {
+    /// Versioned full action-failure state and durable retry timer authority.
+    RetryTimerScheduled {
+        /// Owning run.
+        run: RunId,
+        /// Per-run journal sequence.
+        seq: EventSeq,
+        /// Failed action step.
+        step: StepIdx,
+        /// Current run attempt, distinct from the action attempt.
+        attempt: u16,
+        /// Deadline, ticket, and complete checkpoint bound to this failure.
+        timer: crate::retry_timer::RetryTimerV1,
+    },
+    /// Run was accepted after input mapping.
+    RunAccepted {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Compiled workflow digest.
+        workflow: WorkflowDigest,
+    },
+    /// Run admission metadata persisted after admission control succeeds.
+    RunAdmission {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Compiled artifact digest admitted for this run.
+        artifact_digest: WorkflowDigest,
+        /// Canonical typed input identity, or explicit historical absence.
+        input_digest: crate::RunInputBinding,
+        /// Actual policy identity from the accepted artifact, or explicit historical absence.
+        policy_pin: crate::RunPolicyPin,
+        /// Capabilities granted for this run.
+        granted_capabilities: CapabilitySet,
+        /// Policy used to admit this run.
+        policy: RuntimePolicy,
+    },
+    /// Full runtime checkpoint persisted immediately before a retry attempt.
+    RetryCheckpoint {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// New run attempt authorized by this checkpoint.
+        attempt: u16,
+        /// Failed step to be re-executed.
+        step: StepIdx,
+        /// BLAKE3 digest of the encoded checkpoint payload.
+        payload_digest: [u8; 32],
+        /// Versioned checkpoint payload encoded by the runtime.
+        payload: Vec<u8>,
+    },
+    /// Step began execution.
+    StepStarted {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
+    /// Step completed and wrote an output slot.
+    StepSucceeded {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Output slot index.
+        output: SlotIdx,
+    },
+    /// Step failed and recovery must retain the failed step identity.
+    StepFailed {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
+    /// Action was scheduled.
+    ActionScheduled {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Action identifier.
+        action: ActionId,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
+    /// Action completed successfully.
+    ActionCompletedEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Action identifier.
+        action: ActionId,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
+    /// Action was scheduled with the full replay ticket preserved.
+    ActionScheduledTicket {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Full action ticket issued by the runtime.
+        ticket: ActionTicket,
+        /// Input slot consumed by the action.
+        input: SlotIdx,
+        /// Output slot expected to receive the result.
+        output: SlotIdx,
+        /// Digest of the persisted action ABI contract used for this action.
+        action_abi_digest: WorkflowDigest,
+    },
+    /// Action completed successfully with an atomic durable envelope.
+    ActionCompletedEnvelope {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Full action ticket completed by the runtime.
+        ticket: ActionTicket,
+        /// Output slot written by the action.
+        output: SlotIdx,
+        /// Terminal outcome discriminant for this completion.
+        outcome: DurableActionOutcome,
+        /// Encoded output value bytes.
+        value: Vec<u8>,
+        /// Encoded output byte length validated before persistence.
+        encoded_len: u32,
+        /// Taint written with the output value.
+        taint: Taint,
+        /// BLAKE3 digest of `value` used to reject divergent duplicate evidence.
+        value_digest: [u8; 32],
+        /// Digest of the persisted action ABI contract used for this action.
+        action_abi_digest: WorkflowDigest,
+    },
+    /// Action failed.
+    ActionFailedEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Action identifier.
+        action: ActionId,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
+    /// Action was abandoned because the run was cancelled or killed
+    /// before the action boundary completed. Distinct from
+    /// `ActionFailedEvent` because no `ActionFailureCode` was ever
+    /// produced by the action — the suspension itself was terminated
+    /// by run-level cancellation. Master §45 Do-node "Resume" sub-row
+    /// requires this event so recovery can finalize the step without
+    /// re-running the external action.
+    ActionAbandoned {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Full action ticket that was abandoned. Preserves all seven
+        /// required `ActionTicket` fields plus the journal position so
+        /// recovery can deterministically drop the pending action from
+        /// the resume queue without re-executing it.
+        ticket: ActionTicket,
+    },
+    /// Slot was written during execution.
+    SlotWrittenEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Slot index.
+        slot: SlotIdx,
+        /// Encoded slot value bytes (postcard-encoded `SlotValue`), if captured.
+        value: Option<Vec<u8>>,
+        /// Versioned slot-write extra envelope, or legacy encoded frame extra data.
+        extra: Option<Vec<u8>>,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
+    /// Wait was scheduled.
+    WaitScheduledEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
+    /// Ask was scheduled.
+    AskScheduledEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
+    /// Ask was answered.
+    AskAnsweredEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
+    /// Wait was resolved by an external timer.
+    ///
+    /// Distinct from `RetryScheduledEvent` because a wait resolution is not a
+    /// retry: the suspended run resumes from a satisfied external condition
+    /// rather than from a bounded retry attempt. See bug-hunt RE-009.
+    WaitResolvedEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
+    /// Retry was scheduled.
+    RetryScheduledEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
+    /// Run cancelled.
+    RunCancelled {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Attempt number (1-based).
+        attempt: u16,
+        /// Optional cancellation reason.
+        reason: Option<String>,
+    },
+    /// Run killed.
+    RunKilled {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
+    /// Run completed.
+    RunFinished {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Result slot index.
+        result: SlotIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
+    /// Full typed policy decision persisted with complete identity and
+    /// influence factor retention. Carries the immutable public record
+    /// without minting new effect authority.
+    PolicyDecisionEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Complete policy decision record.
+        decision: vb_core::policy::DecisionRecord,
+    },
+    /// Run failed.
+    RunFailedEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
+    /// Run was resumed from a waiting state.
+    RunResumed {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// When the run was resumed.
+        timestamp: DateTime<Utc>,
+    },
+    /// Run was retried after failure.
+    RunRetried {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// When the run was retried.
+        timestamp: DateTime<Utc>,
+    },
+    /// Run received an answer to a waiting question.
+    RunAnswered {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Slot that received the answer.
+        slot_idx: SlotIdx,
+        /// The answer value.
+        answer: ConstValue,
+        /// When the answer was received.
+        timestamp: DateTime<Utc>,
+    },
+    /// Ask timed out and resumed along the ask timeout path.
+    AskTimedOutEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
+    /// Cold opaque continuation carrier, never context-free Serde or replay authority.
+    RunContinuation {
+        /// Validated scalar identity and shared immutable complete component.
+        carrier: crate::OwnedContinuationCarrier,
+    },
+    /// Manual gate outcome record (MASTER §77.15). Appended at the end
+    /// of the enum; no existing variant was renumbered. Carries the
+    /// durable gate decision or escalation without minting new effect
+    /// authority: approval receipts inside the record bind digests only.
+    GateDecisionEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Complete gate outcome record, boxed to keep the enum small.
+        record: Box<vb_core::manual_gate::GateOutcomeRecord>,
+    },
+    /// Journaled MASTER §77.17 compatibility decision. Appended at the end
+    /// of the enum so no existing variant changes position. Carries no
+    /// effect authority: replay treats it as informational, and live-effect
+    /// dispatch re-checks the decision record before acting.
+    CompatibilityDecisionEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Complete compatibility decision record.
+        decision: crate::compat::CompatDecision,
+    },
+    /// Run admission receipt carrying the admitted aggregate budget
+    /// (MASTER §77.18). Appended at the end of the enum; no existing
+    /// variant was renumbered. Identical in meaning to `RunAdmission`
+    /// plus the budget, so journal-replay recovery reconstructs the
+    /// admitted budget instead of dropping it. Old `RunAdmission`
+    /// receipts keep their meaning: no admitted budget.
+    RunAdmissionBudget {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Compiled artifact digest admitted for this run.
+        artifact_digest: WorkflowDigest,
+        /// Canonical typed input identity, or explicit historical absence.
+        input_digest: crate::RunInputBinding,
+        /// Actual policy identity from the accepted artifact, or explicit historical absence.
+        policy_pin: crate::RunPolicyPin,
+        /// Capabilities granted for this run.
+        granted_capabilities: CapabilitySet,
+        /// Policy used to admit this run.
+        policy: RuntimePolicy,
+        /// Aggregate budget admitted for this run.
+        budget: AggregateResourceBudget,
+    },
+    /// Manual gate opened (MASTER §77.15). Appended at the end of the
+    /// enum; no existing variant was renumbered. The durable record that
+    /// a gate is open: recovery reconstructs the open gate from this event
+    /// unless a later `GateDecisionEvent` closes it. Carries no effect
+    /// authority: opening a gate suspends its run, it never authorizes a
+    /// live effect.
+    GateOpenedEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Gate definition as opened by the operator.
+        gate: ManualGate,
+        /// Opening time in milliseconds since the UNIX epoch.
+        opened_at_ms: u64,
+        /// Operator who requested the gated action.
+        requester: ApproverId,
+    },
+    /// Tenant-scoped admission receipt (MASTER §77.18). Appended at the
+    /// end of the enum; no existing variant was renumbered. Records the
+    /// tenant a run is charged to plus the admitted cost units, so
+    /// recovery can rebuild the per-tenant shard usage snapshot from the
+    /// journal. Carries no effect authority: replay treats it as
+    /// informational, and a later drive-path batch owns the snapshot.
+    TenantAdmissionEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Tenant the run is charged to.
+        tenant: TenantId,
+        /// Admitted cost units charged to the tenant.
+        cost_units: u64,
+    },
+}

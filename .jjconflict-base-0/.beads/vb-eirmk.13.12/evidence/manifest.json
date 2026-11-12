@@ -1,0 +1,126 @@
+{
+  "source_pin": "1a3a47754e04d69db27c43343a0b6c162c51483f",
+  "master_acceptance": false,
+  "full_moon_ci": false,
+  "entries": [
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-prebuilt-cli-local3090/.beads/vb-eirmk.13.12/contract.md",
+      "path": "../contract.md",
+      "uncompressed_sha256": "2d5dd05cb58fa4124b42b83abb908b5287150178b35c7b04d50991561f0d1331",
+      "archive_sha256": "2d5dd05cb58fa4124b42b83abb908b5287150178b35c7b04d50991561f0d1331",
+      "bytes": 4162
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/.beads/vb-eirmk.13.12/kyyf-runner-contract-v3.md",
+      "path": "../kyyf-runner-contract-v3.md",
+      "uncompressed_sha256": "49a9bc984a143fc946055d4dd51ebf7bf7c3c3de9861038e397f62e29589b55b",
+      "archive_sha256": "49a9bc984a143fc946055d4dd51ebf7bf7c3c3de9861038e397f62e29589b55b",
+      "bytes": 4158
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/.beads/vb-eirmk.13.12/relative-path-resolution-notes-v2.md",
+      "path": "../relative-path-resolution-notes-v2.md",
+      "uncompressed_sha256": "339d47dbac9afd6466cf8dc288a0ba7484c146c2a1c5cbbe44e0bd37b92cdad4",
+      "archive_sha256": "339d47dbac9afd6466cf8dc288a0ba7484c146c2a1c5cbbe44e0bd37b92cdad4",
+      "bytes": 1661
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-cli-moon-selected.log",
+      "path": "selected-moon.log.gz",
+      "uncompressed_sha256": "3e72e0be7e3eaecb49da79404732e1f914bcb9c9d9adc66fc7a31738a3e6eb59",
+      "archive_sha256": "194143411bb8e22c2403ff5fd7c37e0be4a03a36bf01c33b9aed09f7c01291e2",
+      "bytes": 3008331
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-cli-moon-selected.exit",
+      "path": "selected-moon.exit",
+      "uncompressed_sha256": "99378a3544b6469ba679bcb306beeb8701cb1c42ab78e520775593a310116115",
+      "archive_sha256": "99378a3544b6469ba679bcb306beeb8701cb1c42ab78e520775593a310116115",
+      "bytes": 12
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-cli-moon-selected-before.sha256",
+      "path": "selected-cli-before.sha256",
+      "uncompressed_sha256": "68191fc2a5a94a1d11cd0b4d03a7705cc7e119d3a81051570e7ff8b3c48aff33",
+      "archive_sha256": "68191fc2a5a94a1d11cd0b4d03a7705cc7e119d3a81051570e7ff8b3c48aff33",
+      "bytes": 161
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation/target/core-build-20261110/evidence/has-cli-moon-selected-after.sha256",
+      "path": "selected-cli-after.sha256",
+      "uncompressed_sha256": "68191fc2a5a94a1d11cd0b4d03a7705cc7e119d3a81051570e7ff8b3c48aff33",
+      "archive_sha256": "68191fc2a5a94a1d11cd0b4d03a7705cc7e119d3a81051570e7ff8b3c48aff33",
+      "bytes": 161
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-prebuilt-cli-integrated-local3090/target/core-build-20261110/evidence/kyyf-prebuilt-baseline-native.log",
+      "path": "kyyf-baseline.log",
+      "uncompressed_sha256": "8052584fbaefae57d5fc63d2fc444d7fa2306482a42de692e3e97f0ebb30fca4",
+      "archive_sha256": "8052584fbaefae57d5fc63d2fc444d7fa2306482a42de692e3e97f0ebb30fca4",
+      "bytes": 1482
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-prebuilt-cli-integrated-local3090/target/core-build-20261110/evidence/kyyf-prebuilt-baseline-native.exit",
+      "path": "kyyf-baseline.exit",
+      "uncompressed_sha256": "14b1cbad14fcd7c8b2a815b8fada920c736acf69bf3511e68d1ec48925b17722",
+      "archive_sha256": "14b1cbad14fcd7c8b2a815b8fada920c736acf69bf3511e68d1ec48925b17722",
+      "bytes": 16
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-prebuilt-cli-integrated-local3090/target/core-build-20261110/evidence/prebuilt-cli-two-targets-native.log",
+      "path": "first-two-target-compile-failure.log",
+      "uncompressed_sha256": "5d405388651d3f53d798abfb0cba5a88fa40cdf86b78e199a72f276290538959",
+      "archive_sha256": "5d405388651d3f53d798abfb0cba5a88fa40cdf86b78e199a72f276290538959",
+      "bytes": 3830
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-prebuilt-cli-integrated-local3090/target/core-build-20261110/evidence/prebuilt-cli-two-targets-native.exit",
+      "path": "first-two-target-compile-failure.exit",
+      "uncompressed_sha256": "80bdeef6ac46dfb13e2f6ad337fa5658fac05437447ff324f42b06783dcd78e9",
+      "archive_sha256": "80bdeef6ac46dfb13e2f6ad337fa5658fac05437447ff324f42b06783dcd78e9",
+      "bytes": 16
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-prebuilt-cli-integrated-local3090/target/core-build-20261110/evidence/prebuilt-cli-two-targets-native-v2.log",
+      "path": "two-targets-pass.log",
+      "uncompressed_sha256": "2584982088f9f6b8de8adf986e98b8eaaa348f0f1e14aef12851103ae2d0b567",
+      "archive_sha256": "2584982088f9f6b8de8adf986e98b8eaaa348f0f1e14aef12851103ae2d0b567",
+      "bytes": 6500
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-prebuilt-cli-integrated-local3090/target/core-build-20261110/evidence/prebuilt-cli-two-targets-native-v2.exit",
+      "path": "two-targets-pass.exit",
+      "uncompressed_sha256": "aa7b9032e30a23d35090c33991b13943c26862e4b514e29dd279ba1314572053",
+      "archive_sha256": "aa7b9032e30a23d35090c33991b13943c26862e4b514e29dd279ba1314572053",
+      "bytes": 14
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-prebuilt-cli-integrated-local3090/target/core-build-20261110/evidence/prebuilt-cli-two-targets-v2-before.sha256",
+      "path": "focused-cli-before.sha256",
+      "uncompressed_sha256": "aeea0414cdee9a52f8fab104259b11db9f8a5f95503235101398bf27af6ec084",
+      "archive_sha256": "aeea0414cdee9a52f8fab104259b11db9f8a5f95503235101398bf27af6ec084",
+      "bytes": 161
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-prebuilt-cli-integrated-local3090/target/core-build-20261110/evidence/prebuilt-cli-two-targets-v2-after.sha256",
+      "path": "focused-cli-after.sha256",
+      "uncompressed_sha256": "aeea0414cdee9a52f8fab104259b11db9f8a5f95503235101398bf27af6ec084",
+      "archive_sha256": "aeea0414cdee9a52f8fab104259b11db9f8a5f95503235101398bf27af6ec084",
+      "bytes": 161
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol/target/core-build-20261110/evidence/prebuilt-cli-shared-code-review-v3.json",
+      "path": "code-review.json",
+      "uncompressed_sha256": "7c6c0c6ab36db3b4d0b1e71d78c09f32b26e1d0b0399be75aacd98902dc7f082",
+      "archive_sha256": "7c6c0c6ab36db3b4d0b1e71d78c09f32b26e1d0b0399be75aacd98902dc7f082",
+      "bytes": 7896
+    },
+    {
+      "source": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol/target/core-build-20261110/evidence/prebuilt-cli-shared-test-review-v3.json",
+      "path": "test-review.json",
+      "uncompressed_sha256": "fcf127cb39346e4cfa0271476ac167fe7f1aecced8a3a375c70114fa8d94efbe",
+      "archive_sha256": "fcf127cb39346e4cfa0271476ac167fe7f1aecced8a3a375c70114fa8d94efbe",
+      "bytes": 7748
+    }
+  ]
+}

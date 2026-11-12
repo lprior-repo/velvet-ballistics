@@ -219,6 +219,7 @@ fn sequential_collect_reduce_repeat_wait_nodes() -> Vec<CompiledNode> {
             3,
             None,
             CompiledNodeKind::ReduceStart {
+                limit: 65_535,
                 input: SlotIdx::new(2),
                 accumulator: SlotIdx::new(3),
                 initial: ConstIdx::new(0),
@@ -495,6 +496,7 @@ fn reduce_start_body_accounting() -> Result<(), String> {
         node(
             StepIdx::new(0),
             CompiledNodeKind::ReduceStart {
+                limit: 65_535,
                 input: SlotIdx::new(0),
                 accumulator: SlotIdx::new(1),
                 initial: ConstIdx::new(0),

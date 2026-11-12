@@ -1,0 +1,1 @@
+{"old":"            JournalEvent::StepStarted { step, .. } => (last_successful, Some(step.get())),","new":"            JournalEvent::StepStarted { step, .. } => (last_successful, Some(step.get())),\n            JournalEvent::StepFailed { step, .. } => (last_successful, Some(step.get())),"}

@@ -19,6 +19,10 @@
             SlotValue::F64(make_f64(0.5)),
         )?;
         assert_eq!(result, SlotValue::F64(make_f64(3.5)));
+        let rounded = vb_core::value::FiniteF64::new(3.14)?;
+        let result = eval_binary_op(BinaryOp::Add, SlotValue::F64(rounded), SlotValue::I64(1))?;
+        assert_eq!(result, SlotValue::F64(vb_core::value::FiniteF64::new(4.140000000000001)?));
+        assert_eq!(eval_binary_op(BinaryOp::Add, SlotValue::I64(1), SlotValue::F64(rounded))?, result);
         Ok(())
     }
 
@@ -40,6 +44,7 @@
             SlotValue::F64(make_f64(2.0)),
         )?;
         assert_eq!(result, SlotValue::Bool(true));
+        assert_eq!(eval_binary_op(BinaryOp::Gt, SlotValue::I64(2), SlotValue::F64(make_f64(1.0)))?, SlotValue::Bool(true));
         Ok(())
     }
 
@@ -543,6 +548,7 @@
             SlotValue::I64(2),
         )?;
         assert_eq!(result, SlotValue::F64(make_f64(3.0)));
+        assert_eq!(eval_binary_op(BinaryOp::Add, SlotValue::I64(2), SlotValue::F64(make_f64(1.0)))?, SlotValue::F64(make_f64(3.0)));
         Ok(())
     }
 

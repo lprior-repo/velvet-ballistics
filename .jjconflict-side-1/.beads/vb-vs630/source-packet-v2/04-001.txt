@@ -1,0 +1,27 @@
+crates/vb_storage/src/batch/inputs.rs:1: use crate::constants::{MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES};
+crates/vb_storage/src/batch/inputs.rs:2: use crate::{JournalError, RunInputsRecord, codec::encode_record};
+crates/vb_storage/src/batch/inputs.rs:3: 
+crates/vb_storage/src/batch/inputs.rs:4: impl crate::JournalWriteBatch<'_> {
+crates/vb_storage/src/batch/inputs.rs:5:     pub(crate) fn put_run_inputs(&mut self, record: &RunInputsRecord) -> Result<(), JournalError> {
+crates/vb_storage/src/batch/inputs.rs:6:         let encoded = crate::keys::run_header_key(record.run()).and_then(|key| {
+crates/vb_storage/src/batch/inputs.rs:7:             encode_record(
+crates/vb_storage/src/batch/inputs.rs:8:                 MAGIC_INDEX_RECORD,
+crates/vb_storage/src/batch/inputs.rs:9:                 crate::RecordKind::RunInputs,
+crates/vb_storage/src/batch/inputs.rs:10:                 record.run().get(),
+crates/vb_storage/src/batch/inputs.rs:11:                 record,
+crates/vb_storage/src/batch/inputs.rs:12:                 MAX_RUN_INPUT_BYTES,
+crates/vb_storage/src/batch/inputs.rs:13:             )
+crates/vb_storage/src/batch/inputs.rs:14:             .map(|value| (key, value))
+crates/vb_storage/src/batch/inputs.rs:15:         });
+crates/vb_storage/src/batch/inputs.rs:16:         match encoded {
+crates/vb_storage/src/batch/inputs.rs:17:             Ok((key, value)) => {
+crates/vb_storage/src/batch/inputs.rs:18:                 self.inner.insert(&self.journal.run_inputs, key, value);
+crates/vb_storage/src/batch/inputs.rs:19:                 Ok(())
+crates/vb_storage/src/batch/inputs.rs:20:             }
+crates/vb_storage/src/batch/inputs.rs:21:             Err(error) => {
+crates/vb_storage/src/batch/inputs.rs:22:                 self.aborted = true;
+crates/vb_storage/src/batch/inputs.rs:23:                 Err(error)
+crates/vb_storage/src/batch/inputs.rs:24:             }
+crates/vb_storage/src/batch/inputs.rs:25:         }
+crates/vb_storage/src/batch/inputs.rs:26:     }
+crates/vb_storage/src/batch/inputs.rs:27: }

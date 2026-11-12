@@ -28,7 +28,7 @@ impl PossiblySkippedOutputs {
                 slots.insert(idx);
             }
         }
-        if !slots.is_empty() {
+        if !slots.is_empty() && source.result().is_none() {
             match source.steps().last() {
                 Some(last) if matches!(last.primitive, StepPrimitive::Finish { .. }) => {}
                 _ => return Err(CompileError::LastStepMustFinish),

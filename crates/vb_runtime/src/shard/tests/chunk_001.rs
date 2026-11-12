@@ -54,6 +54,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let node = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::new(0), }, Some(SlotIdx::ZERO), None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("suspended"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -65,7 +66,11 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         entry: vb_core::ids::StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }
@@ -77,6 +82,7 @@ fn action_with_error_handler_workflow() -> Option<vb_core::workflow::CompiledWor
     let finish = vb_core::workflow::node(vb_core::ids::StepIdx::new(3), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("action_with_error_handler"),
         digest: WorkflowDigest::from_bytes([3; 32]),
         nodes: Box::from([guard, action, handler, finish]),
@@ -88,7 +94,11 @@ fn action_with_error_handler_workflow() -> Option<vb_core::workflow::CompiledWor
         entry: vb_core::ids::StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
 }

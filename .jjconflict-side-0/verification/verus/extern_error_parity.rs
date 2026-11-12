@@ -1,0 +1,140 @@
+// SPDX-License-Identifier: MIT
+//
+// Extern surface for `error_parity.rs` Verus spec.
+//
+// ============================================================================
+// PRODUCTION BINDING (GOD RULE 2 compliance)
+// ============================================================================
+//
+// This file is a thin re-export surface for the production mirror at
+// `verification/verus/production_inner/error_parity_production.rs`,
+// which is a structural mirror of the production exec fns
+// `emit_single_body_set` at
+// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179` and
+// `canonical_primitive_name` at
+// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:125-141`.
+//
+// The mirror reproduces the production type surface
+// (`StepIdx`, `SlotIdx`, `StepAst`, `StepPrimitive`, `CompileError`,
+// `CompileErrors`, `CompiledNode`, `CompiledNodeKind`, `SlotCompiler`,
+// `ActionId`, `ChooseBranch`, `TogetherBranch`, `RetryPolicy`,
+// `ErrorHandlerAst`) and the production exec wrappers
+// (`canonical_primitive_name`, `lower_set`, `body_constant_index`,
+// `integer_error_value`, `emit_single_body_set`, plus the spec-side
+// helpers `is_set_primitive`, `is_do_primitive`, `make_set_primitive`,
+// `make_do_primitive`, `make_primitive_by_name`, `make_step_ast`).
+// The companion spec file (`error_parity.rs`) attaches spec contracts
+// to the production fns via `assume_specification`, and every proof
+// below the bridge exercises the production wrappers through exec
+// wrappers. There are zero vacuous proofs in the rewritten spec.
+//
+// ============================================================================
+// TRUST BOUNDARY
+// ============================================================================
+// The production bodies of `emit_single_body_set`, `lower_set`,
+// `body_constant_index`, `integer_error_value`, and `canonical_primitive_name`
+// are NOT verified by Verus. Each is `#[verifier::external]` in the
+// production_inner mirror so Verus skips body verification, and the
+// contracts attached via `assume_specification` in the companion spec
+// file (`error_parity.rs`) state the production behavior the spec
+// proofs discharge. Drift between the mirror and the production source
+// is reported as binding-debt outside Verus.
+#![forbid(unsafe_code)]
+#![allow(dead_code)]
+#![allow(non_snake_case)]
+#![allow(unused_imports)]
+
+use vstd::prelude::*;
+
+verus! {
+
+// ============================================================================
+// PRODUCTION MIRROR INCLUSION via #[path] (WEAK BINDING)
+// ============================================================================
+//
+// Direct `#[path]` inclusion of the in-tree production mirror at
+// `production_inner/error_parity_production.rs`. The mirror is marked
+// `#[verifier::external]` at each wrapper so Verus skips body
+// verification; the inclusion still validates Rust resolution (field
+// names, discriminant sets, fn signatures) at compile time. Any drift
+// in the production impl surface breaks this Verus build.
+#[path = "production_inner/error_parity_production.rs"]
+pub mod prod_src;
+
+/// Pins the `prod_src::CompiledNodeKind` payloads
+/// (`crates/vb_core/src/workflow/node_kind.rs:14-180`) so a field drift
+/// breaks the build. The `SetConst` / `Do` arms are the only kinds
+/// this mirror models; constructing each pins its field set.
+#[verifier::external]
+fn compiled_node_kind_drift_check() {
+    let _kind = prod_src::CompiledNodeKind::SetConst { value: prod_src::ConstIdx::new(0) };
+    let _kind = prod_src::CompiledNodeKind::Do {
+        action: prod_src::ActionId::new(0),
+        input: prod_src::SlotIdx::new(0),
+    };
+}
+
+pub use prod_src::{
+    ActionId,
+    body_constant_index,
+    canonical_primitive_name,
+    ChooseBranch,
+    CompileError,
+    CompileErrors,
+    CompiledNode,
+    CompiledNodeKind,
+    emit_single_body_set,
+    ErrorHandlerAst,
+    integer_error_value,
+    is_do_primitive,
+    is_set_primitive,
+    lower_set,
+    make_do_primitive,
+    make_primitive_by_name,
+    make_set_primitive,
+    make_step_ast,
+    RetryPolicy,
+    ScalarValue,
+    SlotCompiler,
+    SlotIdx,
+    StepAst,
+    StepIdx,
+    StepPrimitive,
+    TogetherBranch,
+};
+
+/// Pins the `prod_src::CompiledNode` struct shape
+/// (`crates/vb_core/src/workflow/node.rs:14-23`) so a field drift
+/// breaks the build. Constructing both routing shapes pins every
+/// variant of the `NodeOutput` / `NodeContinuation` / `ErrorRouting`
+/// mirrors.
+#[verifier::external]
+fn compiled_node_shape_drift_check() {
+    let node_step = prod_src::StepIdx::new(0);
+    let node_slot = prod_src::SlotIdx::new(0);
+    let _node = prod_src::CompiledNode {
+        retry: None,
+        id: node_step,
+        output: prod_src::NodeOutput::Slot(node_slot),
+        routing: prod_src::NodeRouting {
+            next: prod_src::NodeContinuation::Step(node_step),
+            error: prod_src::ErrorRouting::Handler {
+                handler: node_step,
+                error_slot: Some(node_slot),
+            },
+        },
+        kind: prod_src::CompiledNodeKind::SetConst { value: prod_src::ConstIdx::new(0) },
+    };
+    let _node = prod_src::CompiledNode {
+        retry: None,
+        id: node_step,
+        output: prod_src::NodeOutput::Discard,
+        routing: prod_src::NodeRouting {
+            next: prod_src::NodeContinuation::End,
+            error: prod_src::ErrorRouting::None,
+        },
+        kind: prod_src::CompiledNodeKind::SetConst { value: prod_src::ConstIdx::new(0) },
+    };
+}
+
+} // verus!

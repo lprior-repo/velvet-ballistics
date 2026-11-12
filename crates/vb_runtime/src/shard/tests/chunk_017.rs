@@ -80,6 +80,7 @@ fn bh_shd_04_find_error_handler_linear_scan_fallback() {
         .collect::<Vec<_>>();
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("bh_large_wf"),
         digest: WorkflowDigest::from_bytes([0xEE; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -260,4 +261,154 @@ fn bh_shd_09_ask_answer_for_nonexistent_run_errors() {
     };
     assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+}
+
+fn live_resume_fixture(
+    run: super::RunId,
+) -> Result<
+    (
+        Shard,
+        std::sync::Arc<crate::journal::VolatileRuntimeJournal>,
+        vb_core::action::ActionTicket,
+    ),
+    Box<dyn Error>,
+> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+        run,
+        workflow: action_with_error_handler_workflow().ok_or("workflow fixture must compile")?,
+        inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(7))]),
+        caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+        action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+    })?;
+    if !shard.tick()? {
+        return Err("submission command was not processed".into());
+    }
+    let ticket = shard
+        .pending_action_get(run)
+        .ok_or("action must be pending")?;
+    Ok((shard, journal, ticket))
+}
+
+#[test]
+fn repeated_resume_preserves_live_action_ticket_and_original_completion()
+-> Result<(), Box<dyn Error>> {
+    let run = super::RunId::new(882);
+    let (mut shard, journal, ticket) = live_resume_fixture(run)?;
+    let frame = shard
+        .run_state_get(run)
+        .ok_or("run must exist")?
+        .frame
+        .checkpoint_v1();
+    let before = journal.snapshot()?.len();
+    for _ in 0..2 {
+        assert_eq!(
+            shard
+                .handle_resume(run)
+                .map_err(|error| format!("resume failed: {error:?}"))?
+                .status,
+            super::ResumeStatus::Resumed
+        );
+        assert_eq!(shard.pending_action_get(run), Some(ticket));
+        let state = shard
+            .run_state_get(run)
+            .ok_or("live action must remain active")?;
+        assert_eq!(state.frame.checkpoint_v1(), frame);
+        assert_eq!(state.action_attempts.get(ticket.step.as_usize()), Some(&1));
+    }
+    let events = journal.snapshot()?;
+    assert_eq!(
+        events.len(),
+        before.checked_add(2).ok_or("event count overflow")?
+    );
+    assert!(events.iter().skip(before).all(|event| matches!(event, RuntimeJournalEvent::Resumed { run: resumed, .. } if *resumed == run)));
+    shard.enqueue(ShardCommand::ActionCompleted {
+        ticket,
+        output: vb_core::action::ActionOutputReady {
+            output_slot: SlotIdx::ZERO,
+            value: SlotValue::I64(99),
+            taint: vb_core::value::Taint::Clean,
+            encoded_len: u32::try_from(postcard::to_allocvec(&SlotValue::I64(99))?.len())?,
+        },
+    })?;
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    assert_eq!(shard.pending_action_get(run), None);
+    Ok(())
+}
+
+#[test]
+fn repeated_resume_rejects_missing_or_stale_live_action_authority() -> Result<(), Box<dyn Error>> {
+    enum InvalidAuthority {
+        Missing,
+        StaleAttempt,
+        StaleFence,
+    }
+    for invalid in [
+        InvalidAuthority::Missing,
+        InvalidAuthority::StaleAttempt,
+        InvalidAuthority::StaleFence,
+    ] {
+        let run = super::RunId::new(883);
+        let (mut shard, journal, ticket) = live_resume_fixture(run)?;
+        match invalid {
+            InvalidAuthority::Missing => {
+                shard.pending_action_remove(run);
+            }
+            InvalidAuthority::StaleAttempt => {
+                let attempts = &mut shard
+                    .run_state_get_mut(run)
+                    .ok_or("run must exist")?
+                    .action_attempts;
+                *attempts
+                    .get_mut(ticket.step.as_usize())
+                    .ok_or("action counter must exist")? = 2;
+            }
+            InvalidAuthority::StaleFence => {
+                let _token = shard.fencing_tokens.mint(run);
+            }
+        }
+        shard
+            .handle_resume(run)
+            .map_err(|error| format!("resume failed: {error:?}"))?;
+        assert_eq!(shard.active_run_count(), 0);
+        assert_eq!(shard.counters().snapshot().runs_failed, 1);
+        assert_eq!(shard.pending_action_get(run), None);
+        assert_eq!(
+            journal
+                .snapshot()?
+                .iter()
+                .filter(|event| matches!(event, RuntimeJournalEvent::ActionScheduledTicket { .. }))
+                .count(),
+            1
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn repeated_resume_enforces_live_action_budget() -> Result<(), Box<dyn Error>> {
+    let run = super::RunId::new(884);
+    let (mut shard, journal, _) = live_resume_fixture(run)?;
+    let state = shard.run_state_get_mut(run).ok_or("run must exist")?;
+    let admission = state.admission.clone().ok_or("admission must exist")?;
+    let mut budget = admission.budget().ok_or("admission budget must exist")?;
+    budget.max_cost_units = 0;
+    state.admission = Some(admission.with_attached_budget(budget));
+    shard
+        .handle_resume(run)
+        .map_err(|error| format!("resume failed: {error:?}"))?;
+    assert_eq!(shard.active_run_count(), 0);
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    assert_eq!(
+        journal
+            .snapshot()?
+            .iter()
+            .filter(|event| matches!(event, RuntimeJournalEvent::ActionScheduledTicket { .. }))
+            .count(),
+        1
+    );
+    Ok(())
 }

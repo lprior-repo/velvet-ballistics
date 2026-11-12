@@ -1,0 +1,18 @@
+{
+  "proposal_sha256": "9cef921c994a6bd6bbf706d597b3a244580970eba3a1d14139c566f9e011c155",
+  "proposal_key": "proposal:current-qualification:function:24:1",
+  "payload": {
+    "title": "Qualify checked raw access for every numeric ID type",
+    "issue_type": "task",
+    "status": "open",
+    "parent": "vb-eirmk",
+    "metadata": {
+      "master_requirement_ids": [
+        "function:24:1"
+      ],
+      "qualification_only": true
+    },
+    "description": "Qualification only. Positive: enumerate every current numeric ID wrapper and assert exact checked raw-access values and valid boundaries through current public APIs. Negative: every applicable out-of-range conversion has exact typed error; distinguish raw access from arithmetic/index conversion. Preserve vb-b5f as historical implementation and vb-jrco.9 as proof support; no implementation presumed missing.",
+    "acceptance_criteria": "Qualification only. Positive: enumerate every current numeric ID wrapper and assert exact checked raw-access values and valid boundaries through current public APIs. Negative: every applicable out-of-range conversion has exact typed error; distinguish raw access from arithmetic/index conversion. Preserve vb-b5f as historical implementation and vb-jrco.9 as proof support; no implementation presumed missing. Record exact current source pin, raw command/exit and production entrypoint/test mapping; keep unknown evidence unknown and obtain independent CODE plus separate TEST disposition."
+  }
+}

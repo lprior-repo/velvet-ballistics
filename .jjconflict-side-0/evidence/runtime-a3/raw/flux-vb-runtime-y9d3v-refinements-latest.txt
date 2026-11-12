@@ -1,0 +1,50 @@
+/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+nightly-2026-04-28-x86_64-unknown-linux-gnu (overridden by '/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/rust-toolchain.toml')
+/home/lewis/.cargo/bin/cargo
+/home/lewis/.cargo/bin/cargo-flux
+/home/lewis/.cargo/bin/flux
+/usr/bin/z3
+Z3 version 4.16.0 - 64 bit
+/home/lewis/.cargo/bin/fixpoint
+
+Liquid-Fixpoint Copyright 2009-25 Regents of the University of California.
+All Rights Reserved.
+
+fixpoint 0.9.6.3.6 (6f214fd7a67c1e61f3f165569b88dfdec2dda0d9)
+Flux's integration with Cargo
+
+Usage: cargo flux [OPTIONS] [COMMAND]
+
+Commands:
+  check  Check a local package and its dependencies for errors using Flux. This is the default command when no subcommand is provided
+  build  Compile a local package and its dependencies using Flux
+  clean  Remove artifacts that cargo-flux has generated in the past
+  help   Print this message or the help of the given subcommand(s)
+
+Options:
+      --message-format <FMT>  Error format [possible values: human, short, json, json-diagnostic-short, json-diagnostic-rendered-ansi, json-render-diagnostics]
+  -h, --help                  Print help
+
+Package Selection:
+  -p, --package <SPEC>  Package to process (see `cargo help pkgid`)
+      --workspace       Process all packages in the workspace
+      --exclude <SPEC>  Exclude packages from being processed
+
+Feature Selection:
+  -F, --features <FEATURES>  Space-separated list of features to activate
+      --all-features         Activate all available features
+      --no-default-features  Do not activate the `default` feature
+
+Compilation Options:
+  -j, --jobs <N>         Number of parallel jobs, defaults to # of CPUs
+      --keep-going       Do not abort the build as soon as there is an error
+      --target <TRIPLE>  Check for the target triple
+
+Manifest Options:
+      --manifest-path <PATH>  Path to Cargo.toml
+      --offline               Run without accessing the network
+  -V, --version               Print version information
+  -v, --verbose...            Use verbose output (-Vv for more verbose output)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/crates/vb_runtime)
+    Finished `flux` profile [unoptimized + debuginfo] target(s) in 0.63s
+# exit_status=0

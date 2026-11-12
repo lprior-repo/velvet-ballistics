@@ -1,0 +1,1315 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090/crates/vb_runtime)
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_001.rs:315:12
+    |
+312 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+315 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_001.rs:315:49
+    |
+312 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+315 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+315 -     vb_core::capability::CapabilitySet::empty(),,
+315 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected identifier, found keyword `super`
+  --> crates/vb_runtime/src/shard/tests/chunk_004.rs:18:5
+   |
+17 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+18 |     super::RunId::new(1),
+   |     ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `super`
+  --> crates/vb_runtime/src/shard/tests/chunk_004.rs:32:5
+   |
+31 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+32 |     super::RunId::new(2),
+   |     ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `super`
+  --> crates/vb_runtime/src/shard/tests/chunk_006.rs:39:5
+   |
+38 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+39 |     super::RunId::new(100),
+   |     ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `super`
+  --> crates/vb_runtime/src/shard/tests/chunk_006.rs:48:5
+   |
+47 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+48 |     super::RunId::new(101),
+   |     ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `super`
+  --> crates/vb_runtime/src/shard/tests/chunk_010.rs:26:5
+   |
+25 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+26 |     super::RunId::new(402),
+   |     ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `super`
+   --> crates/vb_runtime/src/shard/tests/chunk_010.rs:223:5
+    |
+222 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+223 |     super::RunId::new(1),
+    |     ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `super`
+   --> crates/vb_runtime/src/shard/tests/chunk_010.rs:233:5
+    |
+232 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+233 |     super::RunId::new(2),
+    |     ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `super`
+   --> crates/vb_runtime/src/shard/tests/chunk_010.rs:244:5
+    |
+243 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+244 |     super::RunId::new(3),
+    |     ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `super`
+   --> crates/vb_runtime/src/shard/tests/chunk_013.rs:154:5
+    |
+153 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+154 |     super::RunId::new(1),
+    |     ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `super`
+   --> crates/vb_runtime/src/shard/tests/chunk_018.rs:182:5
+    |
+181 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+182 |     super::RunId::new(900),
+    |     ^^^^^ expected identifier, found keyword
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_018.rs:184:12
+    |
+181 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+184 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_018.rs:184:49
+    |
+181 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+184 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+184 -     vb_core::capability::CapabilitySet::empty(),,
+184 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected identifier, found keyword `super`
+   --> crates/vb_runtime/src/shard/tests/chunk_018.rs:194:5
+    |
+193 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+194 |     super::RunId::new(901),
+    |     ^^^^^ expected identifier, found keyword
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_018.rs:196:12
+    |
+193 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+196 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_018.rs:196:49
+    |
+193 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+196 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+196 -     vb_core::capability::CapabilitySet::empty(),,
+196 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_018.rs:249:8
+    |
+246 |         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+    |                       ------------------------------------------ while parsing this struct
+...
+249 |     Box::from([]),
+    |     ---^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_018.rs:250:12
+    |
+246 |         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+    |                       ------------------------------------------ while parsing this struct
+...
+250 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_018.rs:250:49
+    |
+246 |         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+    |                       ------------------------------------------ while parsing this struct
+...
+250 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+250 -     vb_core::capability::CapabilitySet::empty(),,
+250 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+  --> crates/vb_runtime/src/shard/tests/chunk_019.rs:18:12
+   |
+15 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+...
+18 |     vb_core::capability::CapabilitySet::empty(),,
+   |     -------^^ expected one of `,`, `:`, or `}`
+   |     |
+   |     while parsing this struct field
+
+error: expected identifier, found `,`
+  --> crates/vb_runtime/src/shard/tests/chunk_019.rs:18:49
+   |
+15 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+...
+18 |     vb_core::capability::CapabilitySet::empty(),,
+   |                                                 ^ expected identifier
+   |
+help: remove this comma
+   |
+18 -     vb_core::capability::CapabilitySet::empty(),,
+18 +     vb_core::capability::CapabilitySet::empty(),
+   |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+  --> crates/vb_runtime/src/shard/tests/chunk_019.rs:35:12
+   |
+32 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+...
+35 |     vb_core::capability::CapabilitySet::empty(),,
+   |     -------^^ expected one of `,`, `:`, or `}`
+   |     |
+   |     while parsing this struct field
+
+error: expected identifier, found `,`
+  --> crates/vb_runtime/src/shard/tests/chunk_019.rs:35:49
+   |
+32 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+...
+35 |     vb_core::capability::CapabilitySet::empty(),,
+   |                                                 ^ expected identifier
+   |
+help: remove this comma
+   |
+35 -     vb_core::capability::CapabilitySet::empty(),,
+35 +     vb_core::capability::CapabilitySet::empty(),
+   |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+  --> crates/vb_runtime/src/shard/tests/chunk_019.rs:75:12
+   |
+72 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+...
+75 |     vb_core::capability::CapabilitySet::empty(),,
+   |     -------^^ expected one of `,`, `:`, or `}`
+   |     |
+   |     while parsing this struct field
+
+error: expected identifier, found `,`
+  --> crates/vb_runtime/src/shard/tests/chunk_019.rs:75:49
+   |
+72 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+...
+75 |     vb_core::capability::CapabilitySet::empty(),,
+   |                                                 ^ expected identifier
+   |
+help: remove this comma
+   |
+75 -     vb_core::capability::CapabilitySet::empty(),,
+75 +     vb_core::capability::CapabilitySet::empty(),
+   |
+
+error: expected identifier, found keyword `super`
+  --> crates/vb_runtime/src/shard/tests/chunk_019.rs:88:5
+   |
+87 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+88 |     super::RunId::new(931),
+   |     ^^^^^ expected identifier, found keyword
+
+error: expected one of `,`, `:`, or `}`, found `::`
+  --> crates/vb_runtime/src/shard/tests/chunk_019.rs:90:12
+   |
+87 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+...
+90 |     vb_core::capability::CapabilitySet::empty(),,
+   |     -------^^ expected one of `,`, `:`, or `}`
+   |     |
+   |     while parsing this struct field
+
+error: expected identifier, found `,`
+  --> crates/vb_runtime/src/shard/tests/chunk_019.rs:90:49
+   |
+87 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+...
+90 |     vb_core::capability::CapabilitySet::empty(),,
+   |                                                 ^ expected identifier
+   |
+help: remove this comma
+   |
+90 -     vb_core::capability::CapabilitySet::empty(),,
+90 +     vb_core::capability::CapabilitySet::empty(),
+   |
+
+error: expected identifier, found keyword `super`
+   --> crates/vb_runtime/src/shard/tests/chunk_019.rs:109:5
+    |
+108 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+109 |     super::RunId::new(932),
+    |     ^^^^^ expected identifier, found keyword
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_019.rs:111:12
+    |
+108 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+111 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_019.rs:111:49
+    |
+108 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+111 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+111 -     vb_core::capability::CapabilitySet::empty(),,
+111 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_019.rs:135:12
+    |
+132 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+135 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_019.rs:135:49
+    |
+132 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+135 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+135 -     vb_core::capability::CapabilitySet::empty(),,
+135 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_019.rs:216:12
+    |
+213 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+216 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_019.rs:216:49
+    |
+213 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+216 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+216 -     vb_core::capability::CapabilitySet::empty(),,
+216 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_019.rs:268:12
+    |
+265 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+268 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_019.rs:268:49
+    |
+265 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+268 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+268 -     vb_core::capability::CapabilitySet::empty(),,
+268 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected identifier, found keyword `super`
+  --> crates/vb_runtime/src/shard/tests/chunk_020.rs:19:5
+   |
+18 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+19 |     super::RunId::new(980),
+   |     ^^^^^ expected identifier, found keyword
+
+error: expected one of `,`, `:`, or `}`, found `::`
+  --> crates/vb_runtime/src/shard/tests/chunk_020.rs:21:12
+   |
+18 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+...
+21 |     vb_core::capability::CapabilitySet::empty(),,
+   |     -------^^ expected one of `,`, `:`, or `}`
+   |     |
+   |     while parsing this struct field
+
+error: expected identifier, found `,`
+  --> crates/vb_runtime/src/shard/tests/chunk_020.rs:21:49
+   |
+18 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+...
+21 |     vb_core::capability::CapabilitySet::empty(),,
+   |                                                 ^ expected identifier
+   |
+help: remove this comma
+   |
+21 -     vb_core::capability::CapabilitySet::empty(),,
+21 +     vb_core::capability::CapabilitySet::empty(),
+   |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_020.rs:109:12
+    |
+106 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+109 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_020.rs:109:49
+    |
+106 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+109 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+109 -     vb_core::capability::CapabilitySet::empty(),,
+109 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_020.rs:129:12
+    |
+126 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+129 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_020.rs:129:49
+    |
+126 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+129 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+129 -     vb_core::capability::CapabilitySet::empty(),,
+129 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_020.rs:154:12
+    |
+151 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+154 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_020.rs:154:49
+    |
+151 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+154 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+154 -     vb_core::capability::CapabilitySet::empty(),,
+154 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_020.rs:185:12
+    |
+182 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+185 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_020.rs:185:49
+    |
+182 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+185 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+185 -     vb_core::capability::CapabilitySet::empty(),,
+185 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_022.rs:286:12
+    |
+283 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+286 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_022.rs:286:49
+    |
+283 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+286 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+286 -     vb_core::capability::CapabilitySet::empty(),,
+286 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+  --> crates/vb_runtime/src/shard/tests/chunk_023.rs:14:12
+   |
+11 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+...
+14 |     vb_core::capability::CapabilitySet::empty(),,
+   |     -------^^ expected one of `,`, `:`, or `}`
+   |     |
+   |     while parsing this struct field
+
+error: expected identifier, found `,`
+  --> crates/vb_runtime/src/shard/tests/chunk_023.rs:14:49
+   |
+11 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+...
+14 |     vb_core::capability::CapabilitySet::empty(),,
+   |                                                 ^ expected identifier
+   |
+help: remove this comma
+   |
+14 -     vb_core::capability::CapabilitySet::empty(),,
+14 +     vb_core::capability::CapabilitySet::empty(),
+   |
+
+error: expected identifier, found keyword `super`
+   --> crates/vb_runtime/src/shard/tests/chunk_025.rs:136:5
+    |
+135 |             shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                           --------------------------------- while parsing this struct
+136 |     super::RunId::new(i as u64),
+    |     ^^^^^ expected identifier, found keyword
+
+error: expected one of `,`, `:`, or `}`, found `.`
+   --> crates/vb_runtime/src/shard/tests/chunk_025.rs:137:13
+    |
+135 |             shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                           --------------------------------- while parsing this struct
+136 |     super::RunId::new(i as u64),
+137 |     workflow.clone(),
+    |     --------^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+    |
+help: try naming a field
+    |
+137 |     workflow: workflow.clone(),
+    |     +++++++++
+
+error: expected identifier, found keyword `super`
+   --> crates/vb_runtime/src/shard/tests/chunk_025.rs:189:5
+    |
+188 |             shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                           --------------------------------- while parsing this struct
+189 |     super::RunId::new(i as u64),
+    |     ^^^^^ expected identifier, found keyword
+
+error: expected one of `,`, `:`, or `}`, found `.`
+   --> crates/vb_runtime/src/shard/tests/chunk_025.rs:190:13
+    |
+188 |             shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                           --------------------------------- while parsing this struct
+189 |     super::RunId::new(i as u64),
+190 |     workflow.clone(),
+    |     --------^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+    |
+help: try naming a field
+    |
+190 |     workflow: workflow.clone(),
+    |     +++++++++
+
+error: expected one of `,`, `:`, or `}`, found `.`
+   --> crates/vb_runtime/src/shard/tests/chunk_025.rs:255:13
+    |
+253 |             shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                           --------------------------------- while parsing this struct
+254 |     run_id,
+255 |     workflow.clone(),
+    |     --------^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+    |
+help: try naming a field
+    |
+255 |     workflow: workflow.clone(),
+    |     +++++++++
+
+error: expected one of `,`, `:`, or `}`, found `::`
+  --> crates/vb_runtime/src/shard/tests/chunk_029.rs:15:12
+   |
+12 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+...
+15 |     vb_core::capability::CapabilitySet::empty(),,
+   |     -------^^ expected one of `,`, `:`, or `}`
+   |     |
+   |     while parsing this struct field
+
+error: expected identifier, found `,`
+  --> crates/vb_runtime/src/shard/tests/chunk_029.rs:15:49
+   |
+12 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+...
+15 |     vb_core::capability::CapabilitySet::empty(),,
+   |                                                 ^ expected identifier
+   |
+help: remove this comma
+   |
+15 -     vb_core::capability::CapabilitySet::empty(),,
+15 +     vb_core::capability::CapabilitySet::empty(),
+   |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+  --> crates/vb_runtime/src/shard/tests/chunk_029.rs:98:12
+   |
+95 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+...
+98 |     vb_core::capability::CapabilitySet::empty(),,
+   |     -------^^ expected one of `,`, `:`, or `}`
+   |     |
+   |     while parsing this struct field
+
+error: expected identifier, found `,`
+  --> crates/vb_runtime/src/shard/tests/chunk_029.rs:98:49
+   |
+95 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+   |                       --------------------------------- while parsing this struct
+...
+98 |     vb_core::capability::CapabilitySet::empty(),,
+   |                                                 ^ expected identifier
+   |
+help: remove this comma
+   |
+98 -     vb_core::capability::CapabilitySet::empty(),,
+98 +     vb_core::capability::CapabilitySet::empty(),
+   |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_029.rs:142:12
+    |
+139 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+142 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_029.rs:142:49
+    |
+139 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+142 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+142 -     vb_core::capability::CapabilitySet::empty(),,
+142 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_029.rs:241:12
+    |
+238 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+241 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_029.rs:241:49
+    |
+238 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+241 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+241 -     vb_core::capability::CapabilitySet::empty(),,
+241 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_029.rs:395:12
+    |
+392 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+395 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_029.rs:395:49
+    |
+392 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+395 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+395 -     vb_core::capability::CapabilitySet::empty(),,
+395 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_029.rs:445:12
+    |
+442 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+445 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_029.rs:445:49
+    |
+442 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+445 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+445 -     vb_core::capability::CapabilitySet::empty(),,
+445 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_029.rs:486:12
+    |
+483 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+486 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_029.rs:486:49
+    |
+483 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+486 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+486 -     vb_core::capability::CapabilitySet::empty(),,
+486 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error: expected one of `,`, `:`, or `}`, found `::`
+   --> crates/vb_runtime/src/shard/tests/chunk_029.rs:528:12
+    |
+525 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+528 |     vb_core::capability::CapabilitySet::empty(),,
+    |     -------^^ expected one of `,`, `:`, or `}`
+    |     |
+    |     while parsing this struct field
+
+error: expected identifier, found `,`
+   --> crates/vb_runtime/src/shard/tests/chunk_029.rs:528:49
+    |
+525 |         shard.enqueue(ShardCommand::SubmitWithContracts {
+    |                       --------------------------------- while parsing this struct
+...
+528 |     vb_core::capability::CapabilitySet::empty(),,
+    |                                                 ^ expected identifier
+    |
+help: remove this comma
+    |
+528 -     vb_core::capability::CapabilitySet::empty(),,
+528 +     vb_core::capability::CapabilitySet::empty(),
+    |
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf`
+  --> crates/vb_runtime/src/shard/tests/chunk_004.rs:19:5
+   |
+19 |     wf,
+   |     ^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+   |
+   = note: available fields are: `run`, `workflow`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf2`
+  --> crates/vb_runtime/src/shard/tests/chunk_004.rs:33:5
+   |
+33 |     wf2,
+   |     ^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+   |
+   = note: available fields are: `run`, `workflow`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf1`
+  --> crates/vb_runtime/src/shard/tests/chunk_006.rs:40:5
+   |
+40 |     wf1,
+   |     ^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+   |
+   = note: available fields are: `run`, `workflow`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf2`
+  --> crates/vb_runtime/src/shard/tests/chunk_006.rs:49:5
+   |
+49 |     wf2,
+   |     ^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+   |
+   = note: available fields are: `run`, `workflow`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `workflow2`
+  --> crates/vb_runtime/src/shard/tests/chunk_010.rs:27:5
+   |
+27 |     workflow2,
+   |     ^^^^^^^^^ unknown field
+   |
+help: a field with a similar name exists
+   |
+27 -     workflow2,
+27 +     workflow,
+   |
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `run1`
+   --> crates/vb_runtime/src/shard/tests/chunk_010.rs:126:5
+    |
+126 |     run1,
+    |     ^^^^ unknown field
+    |
+help: a field with a similar name exists
+    |
+126 -     run1,
+126 +     run,
+    |
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf1`
+   --> crates/vb_runtime/src/shard/tests/chunk_010.rs:127:5
+    |
+127 |     wf1,
+    |     ^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+    |
+    = note: available fields are: `run`, `workflow`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `run2`
+   --> crates/vb_runtime/src/shard/tests/chunk_010.rs:136:5
+    |
+136 |     run2,
+    |     ^^^^ unknown field
+    |
+help: a field with a similar name exists
+    |
+136 -     run2,
+136 +     run,
+    |
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf2`
+   --> crates/vb_runtime/src/shard/tests/chunk_010.rs:137:5
+    |
+137 |     wf2,
+    |     ^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+    |
+    = note: available fields are: `run`, `workflow`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf1`
+   --> crates/vb_runtime/src/shard/tests/chunk_010.rs:224:5
+    |
+224 |     wf1,
+    |     ^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+    |
+    = note: available fields are: `run`, `workflow`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf2`
+   --> crates/vb_runtime/src/shard/tests/chunk_010.rs:234:5
+    |
+234 |     wf2,
+    |     ^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+    |
+    = note: available fields are: `run`, `workflow`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf3`
+   --> crates/vb_runtime/src/shard/tests/chunk_010.rs:245:5
+    |
+245 |     wf3,
+    |     ^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+    |
+    = note: available fields are: `run`, `workflow`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf1`
+   --> crates/vb_runtime/src/shard/tests/chunk_013.rs:155:5
+    |
+155 |     wf1,
+    |     ^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+    |
+    = note: available fields are: `run`, `workflow`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf_finish`
+   --> crates/vb_runtime/src/shard/tests/chunk_018.rs:183:5
+    |
+183 |     wf_finish,
+    |     ^^^^^^^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+    |
+    = note: available fields are: `run`, `workflow`, `caps`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf_suspend`
+   --> crates/vb_runtime/src/shard/tests/chunk_018.rs:195:5
+    |
+195 |     wf_suspend,
+    |     ^^^^^^^^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+    |
+    = note: available fields are: `run`, `workflow`, `caps`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `run_a`
+  --> crates/vb_runtime/src/shard/tests/chunk_019.rs:16:5
+   |
+16 |     run_a,
+   |     ^^^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+   |
+   = note: available fields are: `run`, `workflow`, `caps`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf`
+  --> crates/vb_runtime/src/shard/tests/chunk_019.rs:17:5
+   |
+17 |     wf,
+   |     ^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+   |
+   = note: available fields are: `run`, `workflow`, `caps`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `run_b`
+  --> crates/vb_runtime/src/shard/tests/chunk_019.rs:33:5
+   |
+33 |     run_b,
+   |     ^^^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+   |
+   = note: available fields are: `run`, `workflow`, `caps`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf2`
+  --> crates/vb_runtime/src/shard/tests/chunk_019.rs:34:5
+   |
+34 |     wf2,
+   |     ^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+   |
+   = note: available fields are: `run`, `workflow`, `caps`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `run1`
+  --> crates/vb_runtime/src/shard/tests/chunk_019.rs:73:5
+   |
+73 |     run1,
+   |     ^^^^ unknown field
+   |
+help: a field with a similar name exists
+   |
+73 -     run1,
+73 +     run,
+   |
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf1`
+  --> crates/vb_runtime/src/shard/tests/chunk_019.rs:74:5
+   |
+74 |     wf1,
+   |     ^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+   |
+   = note: available fields are: `run`, `workflow`, `caps`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf2`
+  --> crates/vb_runtime/src/shard/tests/chunk_019.rs:89:5
+   |
+89 |     wf2,
+   |     ^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+   |
+   = note: available fields are: `run`, `workflow`, `caps`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf3`
+   --> crates/vb_runtime/src/shard/tests/chunk_019.rs:110:5
+    |
+110 |     wf3,
+    |     ^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+    |
+    = note: available fields are: `run`, `workflow`, `caps`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf`
+  --> crates/vb_runtime/src/shard/tests/chunk_020.rs:20:5
+   |
+20 |     wf,
+   |     ^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+   |
+   = note: available fields are: `run`, `workflow`, `caps`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `run1`
+   --> crates/vb_runtime/src/shard/tests/chunk_020.rs:107:5
+    |
+107 |     run1,
+    |     ^^^^ unknown field
+    |
+help: a field with a similar name exists
+    |
+107 -     run1,
+107 +     run,
+    |
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf1`
+   --> crates/vb_runtime/src/shard/tests/chunk_020.rs:108:5
+    |
+108 |     wf1,
+    |     ^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+    |
+    = note: available fields are: `run`, `workflow`, `caps`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `run2`
+   --> crates/vb_runtime/src/shard/tests/chunk_020.rs:127:5
+    |
+127 |     run2,
+    |     ^^^^ unknown field
+    |
+help: a field with a similar name exists
+    |
+127 -     run2,
+127 +     run,
+    |
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wf2`
+   --> crates/vb_runtime/src/shard/tests/chunk_020.rs:128:5
+    |
+128 |     wf2,
+    |     ^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+    |
+    = note: available fields are: `run`, `workflow`, `caps`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `run_id`
+   --> crates/vb_runtime/src/shard/tests/chunk_025.rs:254:5
+    |
+254 |     run_id,
+    |     ^^^^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+    |
+    = note: available fields are: `run`, `workflow`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `run_wait`
+  --> crates/vb_runtime/src/shard/tests/chunk_027.rs:21:5
+   |
+21 |     run_wait,
+   |     ^^^^^^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+   |
+   = note: available fields are: `run`, `workflow`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `wait_workflow`
+  --> crates/vb_runtime/src/shard/tests/chunk_027.rs:22:5
+   |
+22 |     wait_workflow,
+   |     ^^^^^^^^^^^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+   |
+   = note: available fields are: `run`, `workflow`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `run_ask`
+  --> crates/vb_runtime/src/shard/tests/chunk_027.rs:33:5
+   |
+33 |     run_ask,
+   |     ^^^^^^^ `shard::types::ShardCommand::SubmitWithContracts` does not have this field
+   |
+   = note: available fields are: `run`, `workflow`
+
+error[E0559]: variant `shard::types::ShardCommand::SubmitWithContracts` has no field named `ask_workflow`
+  --> crates/vb_runtime/src/shard/tests/chunk_027.rs:34:5
+   |
+34 |     ask_workflow,
+   |     ^^^^^^^^^^^^ unknown field
+   |
+help: a field with a similar name exists
+   |
+34 -     ask_workflow,
+34 +     workflow,
+   |
+
+warning: unused variable: `snap`
+   --> crates/vb_runtime/src/runtime_tests.rs:765:13
+    |
+765 |         let snap = runtime.counters_snapshot();
+    |             ^^^^ help: if this is intentional, prefix it with an underscore: `_snap`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:348:13
+    |
+348 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:387:13
+    |
+387 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:163:9
+    |
+163 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:182:9
+    |
+182 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:203:9
+    |
+203 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:224:9
+    |
+224 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:259:9
+    |
+259 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:291:9
+    |
+291 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:349:9
+    |
+349 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:367:9
+    |
+367 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:442:9
+    |
+442 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:462:9
+    |
+462 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:484:9
+    |
+484 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:505:9
+    |
+505 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:530:9
+    |
+530 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+For more information about this error, try `rustc --explain E0559`.
+warning: `vb_runtime` (lib test) generated 16 warnings
+error: could not compile `vb_runtime` (lib test) due to 107 previous errors; 16 warnings emitted

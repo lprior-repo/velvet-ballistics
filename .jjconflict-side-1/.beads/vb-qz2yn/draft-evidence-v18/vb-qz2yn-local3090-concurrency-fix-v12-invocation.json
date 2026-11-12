@@ -1,0 +1,11 @@
+{
+  "model": "local-3090-llama/qwen3.8-27b-uncensored",
+  "workspace": "/home/lewis/src/isoloated/vb-qz2yn-failure-tests-local3090-v10",
+  "prompt": "/tmp/vb-qz2yn-local3090-concurrency-fix-v12.txt",
+  "cloud_fallback": false,
+  "thinking": "high",
+  "runner": "mise exec -- omp",
+  "per_run_config": "/tmp/vb-omp-local-text-tools-guarded.yml",
+  "tools": "native text read exact replace edit write grep glob; NO shell",
+  "images_blocked": true
+}

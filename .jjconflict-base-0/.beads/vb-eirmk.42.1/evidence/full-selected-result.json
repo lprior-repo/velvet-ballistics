@@ -1,0 +1,16 @@
+{
+  "source_pin": "1a3a47754e04d69db27c43343a0b6c162c51483f",
+  "command": "moon run :fmt :check :test :ignored-fallible-results :workspace-assertions :lint-src",
+  "exit": 0,
+  "tests_run": 16488,
+  "tests_passed": 16488,
+  "tests_skipped": 7,
+  "tasks_completed": 12,
+  "cli_before_sha256": "879153585d3c5c7cf56c643b7c752bb5db28838390be7997737a96b65e31d7bd",
+  "cli_after_sha256": "879153585d3c5c7cf56c643b7c752bb5db28838390be7997737a96b65e31d7bd",
+  "full_moon_ci": false,
+  "master_acceptance": false,
+  "has_contract_closure": false,
+  "cli_selection_contract_verified": true,
+  "nonfatal_remote_cache_warning": true
+}

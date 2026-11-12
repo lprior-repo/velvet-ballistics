@@ -1,0 +1,3 @@
+=== compile evidence: action_tracker ===
+-rwxr-xr-x 2 lewis lewis 1305576 Oct 22 17:01 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/action_tracker
+OK: binary present

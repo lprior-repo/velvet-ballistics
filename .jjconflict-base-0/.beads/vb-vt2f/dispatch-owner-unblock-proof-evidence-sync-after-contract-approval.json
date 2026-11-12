@@ -1,0 +1,24 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 5,
+  "sublane": "owner-authorized-proof-evidence-sync-after-contract-approval",
+  "delegate": "proof-writer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/proof-review.md",
+    ".beads/vb-vt2f/proof-repair-guide.md",
+    ".beads/vb-vt2f/contract-verification-review.md",
+    ".beads/vb-vt2f/proof-evidence.md",
+    ".beads/vb-vt2f/proof-writer-report.md",
+    ".beads/vb-vt2f/machine-gate-report.md",
+    ".beads/vb-vt2f/formal-verification-report.md",
+    ".beads/vb-vt2f/verification-ledger.jsonl"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/proof-writer-report.md",
+    ".beads/vb-vt2f/proof-evidence.md"
+  ],
+  "attempt": 2,
+  "cap_context": "owner-authorized evidence sync after State 5 cap and State 6 contract approval; not attempt 8"
+}

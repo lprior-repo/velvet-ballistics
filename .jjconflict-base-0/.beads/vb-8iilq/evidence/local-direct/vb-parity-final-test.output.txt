@@ -1,0 +1,5 @@
+STATUS APPROVED
+
+The five regression tests close the previously identified input/contract-only sensitivity gaps. `bare_submit_no_input_fabrication` and `submit_with_inputs_no_fabrication` use a Nop->Do workflow with step budget 1 to freeze execution before the Do node, then assert: (1) absent input yields SlotUninitialized (not fabricated I64(0)), (2) supplied I64(7) is preserved exactly, (3) action_contracts remain empty when caller supplies none, and (4) granted capabilities match caller-supplied caps precisely. `submit_with_contracts_empty_caps_denied` confirms contracts require matching caps (no silent grant). The two empty-caps tests verify journal admission records reflect caller grants, not fabricated defaults.
+
+Mutation testing validates sensitivity: input-only mutation killed the slot-value assertion; contracts-only mutation killed the action_contracts-empty and caps assertions. No vacuity, no new unsafe/panic/unwrap, no API drift, no silent fixture failures. All 2454 package tests pass; the five regressions pass. No open findings.

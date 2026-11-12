@@ -1,0 +1,14 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_runtime)
+error[E0277]: `WorkflowDigest` doesn't implement `std::fmt::Display`
+   --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:416:29
+    |
+415 | ...                   "VB-DEBUG: validating pin {} vs artifact policy_digest {}",
+    |                                                 -- required by this formatting parameter
+416 | ...                   pin_digest, artifact.policy_digest
+    |                       ^^^^^^^^^^ `WorkflowDigest` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `WorkflowDigest`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `vb_runtime` (lib) due to 1 previous error

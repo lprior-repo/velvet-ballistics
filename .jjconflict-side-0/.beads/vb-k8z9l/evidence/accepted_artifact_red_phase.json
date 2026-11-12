@@ -1,0 +1,19 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-k8z9l-local5090-artifact-fixtures",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_storage",
+    "--test",
+    "accepted_artifact_red_phase"
+  ],
+  "exit_code": 0,
+  "seconds": 0.44,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-k8z9l/evidence/accepted_artifact_red_phase"
+}

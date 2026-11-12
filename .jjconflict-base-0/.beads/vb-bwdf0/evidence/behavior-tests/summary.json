@@ -1,0 +1,265 @@
+{
+  "vb_core": {
+    "actual_exit_code": 0,
+    "suites": [
+      {
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 30,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 123,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 17,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 22,
+        "failed": 0,
+        "ignored": 0
+      }
+    ],
+    "passed": 209,
+    "failed": 0,
+    "ignored": 0,
+    "failed_targets": [],
+    "failed_test_names": []
+  },
+  "vb_validate": {
+    "actual_exit_code": 0,
+    "suites": [
+      {
+        "status": "ok",
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 37,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0
+      }
+    ],
+    "passed": 77,
+    "failed": 0,
+    "ignored": 0,
+    "failed_targets": [],
+    "failed_test_names": []
+  },
+  "vb_storage": {
+    "actual_exit_code": 0,
+    "suites": [
+      {
+        "status": "ok",
+        "passed": 29,
+        "failed": 0,
+        "ignored": 0
+      }
+    ],
+    "passed": 29,
+    "failed": 0,
+    "ignored": 0,
+    "failed_targets": [],
+    "failed_test_names": []
+  },
+  "velvet-ballistics-workspace-tests": {
+    "actual_exit_code": 101,
+    "suites": [
+      {
+        "status": "FAILED",
+        "passed": 3,
+        "failed": 13,
+        "ignored": 2
+      },
+      {
+        "status": "ok",
+        "passed": 15,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 26,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "FAILED",
+        "passed": 14,
+        "failed": 5,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 16,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 21,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "FAILED",
+        "passed": 23,
+        "failed": 5,
+        "ignored": 1
+      },
+      {
+        "status": "ok",
+        "passed": 16,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 22,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 24,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 52,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 39,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 37,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "ok",
+        "passed": 35,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "status": "FAILED",
+        "passed": 31,
+        "failed": 6,
+        "ignored": 3
+      },
+      {
+        "status": "ok",
+        "passed": 61,
+        "failed": 0,
+        "ignored": 1
+      },
+      {
+        "status": "FAILED",
+        "passed": 6,
+        "failed": 7,
+        "ignored": 1
+      }
+    ],
+    "passed": 460,
+    "failed": 36,
+    "ignored": 8,
+    "failed_targets": [
+      "cancel_kill_lattice_tests",
+      "runtime_fjall_pending_action_recovery",
+      "vb_c1s0_orchestration_runtime_tests",
+      "vb_test_runtime_lifecycle_state_behavior",
+      "vb_vt2f_direct_runtime_api_acceptance"
+    ],
+    "failed_test_names": [
+      "action_completion_after_cancel_returns_error",
+      "action_completion_after_kill_returns_error",
+      "action_failure_after_cancel_returns_error",
+      "cancel_after_kill_is_idempotent",
+      "cancel_terminal_run_produces_no_side_effects",
+      "ec1_terminal_cancelled_state_does_not_regress",
+      "hp1_cancel_running_run_transitions_to_cancelled",
+      "inv1_terminal_never_regresses_after_cancel",
+      "kill_live_run_produces_runkilled_journal_event",
+      "kill_on_cancelled_run_is_idempotent",
+      "second_cancel_after_first_cancel_retains_one_event",
+      "second_kill_after_first_kill_produces_no_extra_event",
+      "stale_action_after_cancel_does_not_mutate_state",
+      "recovered_fjall_open_ask_can_answer_after_reopen",
+      "recovered_fjall_open_ask_with_scalar_prompt_can_answer_after_reopen",
+      "runtime_submit_drive_persists_recoverable_fjall_pending_action_abi_digest",
+      "runtime_submit_drive_without_action_abi_authority_fails_before_ticket_persist",
+      "strict_submit_rejects_unbound_action_abi_before_ticket_persist",
+      "complete_action_returns_invalid_ticket_error_when_ticket_unknown",
+      "fail_action_transitions_run_to_failed_state",
+      "run_reaches_cancelled_state_when_cancel_called",
+      "run_reaches_failed_state_when_action_fails",
+      "runtime_respects_step_budget_per_tick",
+      "cancel_run_transitions_run_to_failed",
+      "counters_updated_on_failure",
+      "fail_action_transitions_run_to_failed",
+      "run_failed_lifecycle_event_recorded",
+      "snapshot_run_returns_found_with_exact_fields",
+      "step_started_lifecycle_event_recorded",
+      "test_direct_api_action_failure_records_typed_failure",
+      "test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run",
+      "test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted",
+      "test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_run",
+      "test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelated_run",
+      "test_direct_api_cancel_known_run_records_cancellation",
+      "test_direct_api_inspect_known_and_unknown_run_returns_exact_state"
+    ]
+  }
+}

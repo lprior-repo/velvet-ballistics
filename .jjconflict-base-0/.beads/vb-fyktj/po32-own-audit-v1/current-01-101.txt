@@ -1,0 +1,100 @@
+crates/vb_core/src/engine/signals.rs:101:     /// The run made progress and can continue immediately.
+crates/vb_core/src/engine/signals.rs:102:     Continue,
+crates/vb_core/src/engine/signals.rs:103:     /// The run finished with a result value and its taint level.
+crates/vb_core/src/engine/signals.rs:104:     Finished(SlotValue, Taint),
+crates/vb_core/src/engine/signals.rs:105:     /// The caller's execution slice ended before completion.
+crates/vb_core/src/engine/signals.rs:106:     StepBudgetExhausted,
+crates/vb_core/src/engine/signals.rs:107:     /// The run suspended on an action.
+crates/vb_core/src/engine/signals.rs:108:     AwaitingAction,
+crates/vb_core/src/engine/signals.rs:109:     /// An action failed without an error handler and needs external policy.
+crates/vb_core/src/engine/signals.rs:110:     ActionFailureUnhandled,
+crates/vb_core/src/engine/signals.rs:111:     /// The run suspended on wait.
+crates/vb_core/src/engine/signals.rs:112:     AwaitingWait,
+crates/vb_core/src/engine/signals.rs:113:     /// The run suspended on ask.
+crates/vb_core/src/engine/signals.rs:114:     AwaitingAsk,
+crates/vb_core/src/engine/signals.rs:115: }
+crates/vb_core/src/engine/signals.rs:116: 
+crates/vb_core/src/engine/signals.rs:117: #[cfg(test)]
+crates/vb_core/src/engine/signals.rs:118: mod tests {
+crates/vb_core/src/engine/signals.rs:119:     use super::{EngineSignal, StepBudget};
+crates/vb_core/src/engine/signals.rs:120:     use crate::limits::MAX_STEP_BUDGET;
+crates/vb_core/src/engine/signals.rs:121:     use crate::value::{SlotValue, Taint};
+crates/vb_core/src/engine/signals.rs:122: 
+crates/vb_core/src/engine/signals.rs:123:     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
+crates/vb_core/src/engine/signals.rs:124:     where
+crates/vb_core/src/engine/signals.rs:125:         T: core::fmt::Debug + PartialEq,
+crates/vb_core/src/engine/signals.rs:126:     {
+crates/vb_core/src/engine/signals.rs:127:         if actual == expected {
+crates/vb_core/src/engine/signals.rs:128:             Ok(())
+crates/vb_core/src/engine/signals.rs:129:         } else {
+crates/vb_core/src/engine/signals.rs:130:             Err(format!("expected {expected:?}, found {actual:?}"))
+crates/vb_core/src/engine/signals.rs:131:         }
+crates/vb_core/src/engine/signals.rs:132:     }
+crates/vb_core/src/engine/signals.rs:133: 
+crates/vb_core/src/engine/signals.rs:134:     // ===== StepBudget tests =====
+crates/vb_core/src/engine/signals.rs:135: 
+crates/vb_core/src/engine/signals.rs:136:     #[test]
+crates/vb_core/src/engine/signals.rs:137:     fn budget_new_clamps_to_max_step_budget() -> Result<(), String> {
+crates/vb_core/src/engine/signals.rs:138:         let over = StepBudget::new(MAX_STEP_BUDGET + 100);
+crates/vb_core/src/engine/signals.rs:139:         ensure_equal(over.remaining(), MAX_STEP_BUDGET)
+crates/vb_core/src/engine/signals.rs:140:     }
+crates/vb_core/src/engine/signals.rs:141: 
+crates/vb_core/src/engine/signals.rs:142:     #[test]
+crates/vb_core/src/engine/signals.rs:143:     fn budget_new_zero_is_valid() -> Result<(), String> {
+crates/vb_core/src/engine/signals.rs:144:         let zero = StepBudget::new(0);
+crates/vb_core/src/engine/signals.rs:145:         ensure_equal(zero.remaining(), 0)
+crates/vb_core/src/engine/signals.rs:146:     }
+crates/vb_core/src/engine/signals.rs:147: 
+crates/vb_core/src/engine/signals.rs:148:     #[test]
+crates/vb_core/src/engine/signals.rs:149:     fn budget_max_equals_max_step_budget_constant() -> Result<(), String> {
+crates/vb_core/src/engine/signals.rs:150:         ensure_equal(StepBudget::MAX.remaining(), MAX_STEP_BUDGET)
+crates/vb_core/src/engine/signals.rs:151:     }
+crates/vb_core/src/engine/signals.rs:152: 
+crates/vb_core/src/engine/signals.rs:153:     #[test]
+crates/vb_core/src/engine/signals.rs:154:     fn budget_try_take_decrements_remaining() -> Result<(), String> {
+crates/vb_core/src/engine/signals.rs:155:         let mut b = StepBudget::new(3);
+crates/vb_core/src/engine/signals.rs:156:         ensure_equal(b.remaining(), 3)?;
+crates/vb_core/src/engine/signals.rs:157:         b.try_take().map_err(|e| e.to_string())?;
+crates/vb_core/src/engine/signals.rs:158:         ensure_equal(b.remaining(), 2)?;
+crates/vb_core/src/engine/signals.rs:159:         b.try_take().map_err(|e| e.to_string())?;
+crates/vb_core/src/engine/signals.rs:160:         ensure_equal(b.remaining(), 1)?;
+crates/vb_core/src/engine/signals.rs:161:         b.try_take().map_err(|e| e.to_string())?;
+crates/vb_core/src/engine/signals.rs:162:         ensure_equal(b.remaining(), 0)?;
+crates/vb_core/src/engine/signals.rs:163:         let taken = b.try_take().map_err(|e| e.to_string())?;
+crates/vb_core/src/engine/signals.rs:164:         ensure_equal(taken, false)?;
+crates/vb_core/src/engine/signals.rs:165:         ensure_equal(b.remaining(), 0)
+crates/vb_core/src/engine/signals.rs:166:     }
+crates/vb_core/src/engine/signals.rs:167: 
+crates/vb_core/src/engine/signals.rs:168:     #[test]
+crates/vb_core/src/engine/signals.rs:169:     fn budget_try_take_returns_true_while_available() -> Result<(), String> {
+crates/vb_core/src/engine/signals.rs:170:         let mut b = StepBudget::new(1);
+crates/vb_core/src/engine/signals.rs:171:         ensure_equal(b.try_take().map_err(|e| e.to_string())?, true)?;
+crates/vb_core/src/engine/signals.rs:172:         ensure_equal(b.try_take().map_err(|e| e.to_string())?, false)
+crates/vb_core/src/engine/signals.rs:173:     }
+crates/vb_core/src/engine/signals.rs:174: 
+crates/vb_core/src/engine/signals.rs:175:     #[test]
+crates/vb_core/src/engine/signals.rs:176:     fn budget_new_accepts_exact_max() -> Result<(), String> {
+crates/vb_core/src/engine/signals.rs:177:         let b = StepBudget::new(MAX_STEP_BUDGET);
+crates/vb_core/src/engine/signals.rs:178:         ensure_equal(b.remaining(), MAX_STEP_BUDGET)
+crates/vb_core/src/engine/signals.rs:179:     }
+crates/vb_core/src/engine/signals.rs:180: 
+crates/vb_core/src/engine/signals.rs:181:     // ===== EngineSignal variant tests =====
+crates/vb_core/src/engine/signals.rs:182: 
+crates/vb_core/src/engine/signals.rs:183:     #[test]
+crates/vb_core/src/engine/signals.rs:184:     fn engine_signal_continue_is_not_terminal() -> Result<(), String> {
+crates/vb_core/src/engine/signals.rs:185:         let signal = EngineSignal::Continue;
+crates/vb_core/src/engine/signals.rs:186:         ensure_equal(matches!(signal, EngineSignal::Continue), true)
+crates/vb_core/src/engine/signals.rs:187:     }
+crates/vb_core/src/engine/signals.rs:188: 
+crates/vb_core/src/engine/signals.rs:189:     #[test]
+crates/vb_core/src/engine/signals.rs:190:     fn engine_signal_finished_carries_value_and_taint() -> Result<(), String> {
+crates/vb_core/src/engine/signals.rs:191:         let signal = EngineSignal::Finished(SlotValue::I64(42), Taint::Clean);
+crates/vb_core/src/engine/signals.rs:192:         if let EngineSignal::Finished(value, taint) = signal {
+crates/vb_core/src/engine/signals.rs:193:             ensure_equal(value, SlotValue::I64(42))?;
+crates/vb_core/src/engine/signals.rs:194:             ensure_equal(taint, Taint::Clean)
+crates/vb_core/src/engine/signals.rs:195:         } else {
+crates/vb_core/src/engine/signals.rs:196:             Err("expected Finished variant".into())
+crates/vb_core/src/engine/signals.rs:197:         }
+crates/vb_core/src/engine/signals.rs:198:     }
+crates/vb_core/src/engine/signals.rs:199: 
+crates/vb_core/src/engine/signals.rs:200:     #[test]

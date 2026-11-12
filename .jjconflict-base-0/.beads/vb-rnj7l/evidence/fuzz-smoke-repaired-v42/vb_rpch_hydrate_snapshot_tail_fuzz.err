@@ -1,0 +1,36 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2926005282
+INFO: Loaded 1 modules   (6172 inline 8-bit counters): 6172 [0x555570f44fe3, 0x555570f467ff), 
+INFO: Loaded 1 PC tables (6172 PCs): 6172 [0x555570f46800,0x555570f5e9c0), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/vb_rpch_hydrate_snapshot_tail_fuzz
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 303 ft: 304 corp: 1/1b exec/s: 0 rss: 39Mb
+#5	NEW    cov: 305 ft: 306 corp: 2/3b lim: 4 exec/s: 0 rss: 39Mb L: 2/2 MS: 3 ShuffleBytes-CrossOver-InsertByte-
+	NEW_FUNC[1/2]: 0x555570e9acf0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_rpch_hydrate_snapshot_tail_fuzz+0x1a4cf0) (BuildId: 7f0cfcdd7c640cbc5bc672c3325448fdc5ecc4ab)
+	NEW_FUNC[2/2]: 0x555570ec95d0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_rpch_hydrate_snapshot_tail_fuzz+0x1d35d0) (BuildId: 7f0cfcdd7c640cbc5bc672c3325448fdc5ecc4ab)
+#6	NEW    cov: 323 ft: 325 corp: 3/5b lim: 4 exec/s: 0 rss: 39Mb L: 2/2 MS: 1 ShuffleBytes-
+#7	NEW    cov: 329 ft: 334 corp: 4/8b lim: 4 exec/s: 0 rss: 39Mb L: 3/3 MS: 1 CrossOver-
+#12	NEW    cov: 334 ft: 341 corp: 5/12b lim: 4 exec/s: 0 rss: 39Mb L: 4/4 MS: 5 CopyPart-InsertByte-InsertByte-ChangeByte-InsertByte-
+#13	NEW    cov: 347 ft: 354 corp: 6/14b lim: 4 exec/s: 0 rss: 39Mb L: 2/4 MS: 1 ChangeBit-
+#16	NEW    cov: 352 ft: 359 corp: 7/15b lim: 4 exec/s: 0 rss: 39Mb L: 1/4 MS: 3 EraseBytes-ShuffleBytes-ChangeByte-
+#21	NEW    cov: 355 ft: 362 corp: 8/18b lim: 4 exec/s: 0 rss: 39Mb L: 3/4 MS: 5 EraseBytes-ShuffleBytes-ChangeByte-InsertByte-InsertByte-
+#40	NEW    cov: 365 ft: 380 corp: 9/20b lim: 4 exec/s: 0 rss: 40Mb L: 2/4 MS: 4 ChangeByte-ChangeBinInt-EraseBytes-ChangeByte-
+#54	REDUCE cov: 365 ft: 380 corp: 9/19b lim: 4 exec/s: 0 rss: 40Mb L: 1/4 MS: 4 CopyPart-ChangeBinInt-EraseBytes-EraseBytes-
+#100	NEW    cov: 365 ft: 382 corp: 10/23b lim: 4 exec/s: 0 rss: 40Mb L: 4/4 MS: 1 CopyPart-
+#104	NEW    cov: 365 ft: 384 corp: 11/27b lim: 4 exec/s: 0 rss: 40Mb L: 4/4 MS: 4 CrossOver-ChangeBit-ChangeBinInt-ShuffleBytes-
+#138	NEW    cov: 365 ft: 386 corp: 12/30b lim: 4 exec/s: 0 rss: 41Mb L: 3/4 MS: 4 CopyPart-ShuffleBytes-CrossOver-InsertByte-
+#175	NEW    cov: 367 ft: 388 corp: 13/34b lim: 4 exec/s: 0 rss: 41Mb L: 4/4 MS: 2 CrossOver-ShuffleBytes-
+#198	NEW    cov: 367 ft: 389 corp: 14/38b lim: 4 exec/s: 0 rss: 42Mb L: 4/4 MS: 3 ChangeBit-ChangeBit-ChangeBinInt-
+#367	REDUCE cov: 367 ft: 389 corp: 14/37b lim: 4 exec/s: 0 rss: 43Mb L: 3/4 MS: 4 ChangeBit-ChangeByte-CrossOver-EraseBytes-
+#370	REDUCE cov: 367 ft: 389 corp: 14/36b lim: 4 exec/s: 0 rss: 43Mb L: 3/4 MS: 3 CopyPart-ShuffleBytes-EraseBytes-
+#378	REDUCE cov: 367 ft: 389 corp: 14/35b lim: 4 exec/s: 0 rss: 43Mb L: 3/4 MS: 3 EraseBytes-InsertByte-EraseBytes-
+#501	REDUCE cov: 367 ft: 389 corp: 14/34b lim: 4 exec/s: 0 rss: 43Mb L: 1/4 MS: 3 InsertByte-EraseBytes-EraseBytes-
+#573	NEW    cov: 367 ft: 390 corp: 15/37b lim: 4 exec/s: 0 rss: 44Mb L: 3/4 MS: 2 ChangeBit-ChangeBinInt-
+#604	REDUCE cov: 367 ft: 390 corp: 15/36b lim: 4 exec/s: 0 rss: 44Mb L: 1/4 MS: 1 EraseBytes-
+#1042	NEW    cov: 371 ft: 394 corp: 16/44b lim: 8 exec/s: 0 rss: 45Mb L: 8/8 MS: 3 ChangeByte-CrossOver-InsertRepeatedBytes-
+#1140	REDUCE cov: 371 ft: 394 corp: 16/43b lim: 8 exec/s: 0 rss: 45Mb L: 3/8 MS: 3 EraseBytes-CopyPart-CopyPart-
+#1141	REDUCE cov: 371 ft: 394 corp: 16/42b lim: 8 exec/s: 0 rss: 45Mb L: 2/8 MS: 1 EraseBytes-
+#3795	REDUCE cov: 371 ft: 396 corp: 17/45b lim: 33 exec/s: 0 rss: 50Mb L: 3/8 MS: 4 ChangeByte-EraseBytes-CopyPart-ChangeBit-
+#351030	DONE   cov: 371 ft: 396 corp: 17/45b lim: 3480 exec/s: 175515 rss: 444Mb
+Done 351030 runs in 2 second(s)

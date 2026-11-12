@@ -1,0 +1,48 @@
++ bash scripts/check-error-exhaustiveness.sh
+=== Checking fuzz harness error exhaustiveness ===
+  OK JournalError in fuzz/src/journal_target/errors.rs::assert_typed_journal_error: 60 variants
+  OK JournalError in fuzz/fuzz_targets/decode_record.rs::assert_typed_journal_error: 60 variants
+  OK JournalError in fuzz/fuzz_targets/journal_decode.rs::assert_typed_journal_error: 60 variants
+  OK JournalError in fuzz/tests/proptest_journal_error_exhaustiveness.rs::assert_known_journal_error: 60 variants
+  OK IpcError in fuzz/src/ipc_target.rs::assert_typed_ipc_error: 14 variants
+  OK IpcError in fuzz/tests/proptest_ipc_error_exhaustiveness.rs::assert_known_ipc_error: 14 variants
+  OK ValidationError in fuzz/src/validation_target/verifier.rs::assert_typed_validation_error: 58 variants
+=== All error exhaustiveness checks passed ===
++ cargo test --manifest-path fuzz/Cargo.toml --test proptest_journal_error_exhaustiveness --test proptest_ipc_error_exhaustiveness
+warning: function `optional_slot_field` is never used
+   --> /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile/src/mod_compile_validation/part_06.rs:117:15
+    |
+117 | pub(crate) fn optional_slot_field(
+    |               ^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `required_slot` is never used
+   --> /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile/src/mod_compile_validation/part_06.rs:182:15
+    |
+182 | pub(crate) fn required_slot(
+    |               ^^^^^^^^^^^^^
+
+warning: function `required_branch_targets` is never used
+  --> /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile/src/mod_compile_validation/part_07.rs:39:15
+   |
+39 | pub(crate) fn required_branch_targets(
+   |               ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `vb_compile` (lib) generated 3 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running tests/proptest_ipc_error_exhaustiveness.rs (fuzz/target/debug/deps/proptest_ipc_error_exhaustiveness-015f847c3ef37a53)
+
+running 2 tests
+test proptest_validate_frame_magic_typed ... ok
+test proptest_ipc_frame_errors_are_typed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.31s
+
+     Running tests/proptest_journal_error_exhaustiveness.rs (fuzz/target/debug/deps/proptest_journal_error_exhaustiveness-df4505e593a30867)
+
+running 1 test
+test proptest_decode_record_errors_are_typed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+

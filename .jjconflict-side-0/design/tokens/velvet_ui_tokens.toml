@@ -1,0 +1,72 @@
+[color]
+background_board = "#F4F6F8"
+shell = "#F8FAFC"
+surface = "#FFFFFF"
+surface_glass = "#FFFFFFCC"
+surface_muted = "#F2F5F8"
+line_hair = "#DDE3EA"
+line_soft = "#E8EDF2"
+text_primary = "#101828"
+text_secondary = "#475467"
+text_tertiary = "#7A8796"
+success = "#16A66A"
+running = "#1F7AF5"
+active_cyan = "#19A7CE"
+warning = "#F59E0B"
+failure = "#E5484D"
+taint = "#8B5CF6"
+durable = "#14B8A6"
+pending = "#98A2B3"
+
+[type]
+family_sans = "Inter, SF Pro, system-ui"
+family_mono = "JetBrains Mono, SF Mono, ui-monospace"
+size_11 = 11
+size_12 = 12
+size_13 = 13
+size_14 = 14
+size_16 = 16
+size_20 = 20
+size_24 = 24
+weight_regular = 400
+weight_medium = 500
+weight_semibold = 600
+
+[space]
+px_4 = 4
+px_8 = 8
+px_12 = 12
+px_16 = 16
+px_20 = 20
+px_24 = 24
+px_32 = 32
+px_40 = 40
+
+[radius]
+chip = 10
+control = 12
+card_min = 14
+card = 16
+card_max = 22
+panel = 20
+window = 24
+
+[shadow]
+card = "0 8 24 rgba(16,24,40,0.08)"
+window = "0 20 60 rgba(16,24,40,0.14)"
+focus = "0 0 0 4 rgba(31,122,245,0.14)"
+failure = "0 0 0 4 rgba(229,72,77,0.12)"
+taint = "0 0 0 4 rgba(139,92,246,0.12)"
+
+[layout]
+window_width = 1920
+window_height = 1080
+outer_margin = 32
+sidebar_width = 246
+top_bar_height = 78
+content_gutter = 16
+inspector_width_min = 360
+inspector_width_max = 420
+bottom_timeline_min = 220
+graph_canvas_min_width = 720
+graph_canvas_min_height = 520

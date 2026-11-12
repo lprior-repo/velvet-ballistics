@@ -1,0 +1,100 @@
+fuzz/src/yaml_target.rs:1: //! YAML parsing fuzzing targets.
+fuzz/src/yaml_target.rs:2: //
+fuzz/src/yaml_target.rs:3: // The strict fuzz clippy denies `indexing_slicing`, `as_conversions`,
+fuzz/src/yaml_target.rs:4: // `let_underscore_must_use`, and `arithmetic_side_effects`. The broad
+fuzz/src/yaml_target.rs:5: // `#![allow(...)]` lines that previously suppressed those lints have been
+fuzz/src/yaml_target.rs:6: // removed so the strict gate is enforceable. The remaining allows are
+fuzz/src/yaml_target.rs:7: // documentary lints the strict command does not deny.
+fuzz/src/yaml_target.rs:8: #![allow(clippy::missing_errors_doc)]
+fuzz/src/yaml_target.rs:9: #![allow(clippy::must_use_candidate)]
+fuzz/src/yaml_target.rs:10: #![allow(clippy::missing_panics_doc)]
+fuzz/src/yaml_target.rs:11: #![allow(clippy::too_many_lines)]
+fuzz/src/yaml_target.rs:12: #![allow(clippy::items_after_statements)]
+fuzz/src/yaml_target.rs:13: #![allow(clippy::doc_markdown)]
+fuzz/src/yaml_target.rs:14: #![allow(clippy::len_zero)]
+fuzz/src/yaml_target.rs:15: 
+fuzz/src/yaml_target.rs:16: const MAX_FUZZ_PAYLOAD_USIZE: usize = 100_000;
+fuzz/src/yaml_target.rs:17: 
+fuzz/src/yaml_target.rs:18: fn assert_typed_yaml_error(error: vb_compile::YamlError) {
+fuzz/src/yaml_target.rs:19:     use vb_compile::YamlError;
+fuzz/src/yaml_target.rs:20:     match error {
+fuzz/src/yaml_target.rs:21:         YamlError::UnsupportedTrigger { .. }
+fuzz/src/yaml_target.rs:22:         | YamlError::UnsupportedFeature { .. }
+fuzz/src/yaml_target.rs:23:         | YamlError::DuplicateKey { .. }
+fuzz/src/yaml_target.rs:24:         | YamlError::AnchorAliasMerge
+fuzz/src/yaml_target.rs:25:         | YamlError::CustomTag { .. }
+fuzz/src/yaml_target.rs:26:         | YamlError::BinaryScalar
+fuzz/src/yaml_target.rs:27:         | YamlError::MultipleDocuments { .. }
+fuzz/src/yaml_target.rs:28:         | YamlError::AmbiguousScalar { .. }
+fuzz/src/yaml_target.rs:29:         | YamlError::SourceTooLarge { .. }
+fuzz/src/yaml_target.rs:30:         | YamlError::NestingTooDeep { .. }
+fuzz/src/yaml_target.rs:31:         | YamlError::NodeLimitExceeded { .. }
+fuzz/src/yaml_target.rs:32:         | YamlError::ScalarTooLong { .. }
+fuzz/src/yaml_target.rs:33:         | YamlError::SequenceTooLong { .. }
+fuzz/src/yaml_target.rs:34:         | YamlError::MappingTooLarge { .. }
+fuzz/src/yaml_target.rs:35:         | YamlError::UnknownField { .. }
+fuzz/src/yaml_target.rs:36:         | YamlError::EmptySource
+fuzz/src/yaml_target.rs:37:         | YamlError::MissingField { .. }
+fuzz/src/yaml_target.rs:38:         | YamlError::FieldShape { .. }
+fuzz/src/yaml_target.rs:39:         | YamlError::ParseError { .. }
+fuzz/src/yaml_target.rs:40:         | YamlError::ForbiddenFeature { .. }
+fuzz/src/yaml_target.rs:41:         | YamlError::LegacyPrimitive { .. } => {}
+fuzz/src/yaml_target.rs:42:         _ => {}
+fuzz/src/yaml_target.rs:43:     }
+fuzz/src/yaml_target.rs:44: }
+fuzz/src/yaml_target.rs:45: 
+fuzz/src/yaml_target.rs:46: pub fn fuzz_yaml_events(data: &[u8]) {
+fuzz/src/yaml_target.rs:47:     if let Ok(text) = std::str::from_utf8(data) {
+fuzz/src/yaml_target.rs:48:         let profile_result = vb_compile::validate_yaml_profile(text);
+fuzz/src/yaml_target.rs:49:         match profile_result {
+fuzz/src/yaml_target.rs:50:             Ok(()) => {}
+fuzz/src/yaml_target.rs:51:             Err(e) => {
+fuzz/src/yaml_target.rs:52:                 assert_typed_yaml_error(e);
+fuzz/src/yaml_target.rs:53:             }
+fuzz/src/yaml_target.rs:54:         }
+fuzz/src/yaml_target.rs:55: 
+fuzz/src/yaml_target.rs:56:         let events_result = vb_compile::parse_yaml_events(text);
+fuzz/src/yaml_target.rs:57:         match events_result {
+fuzz/src/yaml_target.rs:58:             Ok(events) => {
+fuzz/src/yaml_target.rs:59:                 if !text.trim().is_empty() {
+fuzz/src/yaml_target.rs:60:                     assert!(
+fuzz/src/yaml_target.rs:61:                         !events.is_empty(),
+fuzz/src/yaml_target.rs:62:                         "non-empty YAML input must produce non-empty events"
+fuzz/src/yaml_target.rs:63:                     );
+fuzz/src/yaml_target.rs:64:                 }
+fuzz/src/yaml_target.rs:65:                 assert!(
+fuzz/src/yaml_target.rs:66:                     events.len() <= MAX_FUZZ_PAYLOAD_USIZE,
+fuzz/src/yaml_target.rs:67:                     "event count {} exceeds max payload bound",
+fuzz/src/yaml_target.rs:68:                     events.len()
+fuzz/src/yaml_target.rs:69:                 );
+fuzz/src/yaml_target.rs:70:             }
+fuzz/src/yaml_target.rs:71:             Err(e) => {
+fuzz/src/yaml_target.rs:72:                 assert_typed_yaml_error(e);
+fuzz/src/yaml_target.rs:73:             }
+fuzz/src/yaml_target.rs:74:         }
+fuzz/src/yaml_target.rs:75: 
+fuzz/src/yaml_target.rs:76:         let source_map_result = vb_compile::build_source_map(text);
+fuzz/src/yaml_target.rs:77:         match source_map_result {
+fuzz/src/yaml_target.rs:78:             Ok(source_map) => {
+fuzz/src/yaml_target.rs:79:                 assert!(
+fuzz/src/yaml_target.rs:80:                     source_map.len() <= MAX_FUZZ_PAYLOAD_USIZE,
+fuzz/src/yaml_target.rs:81:                     "source map entries {} exceeds max payload bound",
+fuzz/src/yaml_target.rs:82:                     source_map.len()
+fuzz/src/yaml_target.rs:83:                 );
+fuzz/src/yaml_target.rs:84:             }
+fuzz/src/yaml_target.rs:85:             Err(e) => {
+fuzz/src/yaml_target.rs:86:                 assert_typed_yaml_error(e);
+fuzz/src/yaml_target.rs:87:             }
+fuzz/src/yaml_target.rs:88:         }
+fuzz/src/yaml_target.rs:89:     }
+fuzz/src/yaml_target.rs:90: }
+fuzz/src/yaml_target.rs:91: 
+fuzz/src/yaml_target.rs:92: pub fn fuzz_strict_yaml_profile(data: &[u8]) {
+fuzz/src/yaml_target.rs:93:     let compile_result = vb_compile::compile_workflow(data);
+fuzz/src/yaml_target.rs:94:     if let Ok(ref workflow) = compile_result {
+fuzz/src/yaml_target.rs:95:         let text = String::from_utf8_lossy(data);
+fuzz/src/yaml_target.rs:96:         let unsupported =
+fuzz/src/yaml_target.rs:97:             text.contains("---") || text.contains('&') || text.contains('*') || text.contains('!');
+fuzz/src/yaml_target.rs:98:         assert!(
+fuzz/src/yaml_target.rs:99:             !unsupported,
+fuzz/src/yaml_target.rs:100:             "unsupported YAML features must cause compile error"

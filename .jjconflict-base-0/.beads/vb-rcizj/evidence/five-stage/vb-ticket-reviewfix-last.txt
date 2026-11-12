@@ -1,0 +1,37 @@
+All work is complete. Here's the summary:
+
+## Results
+
+**All 36 tests passing** across the three targeted test suites:
+- `durable_retry_red_phase`: 9/9 ✓
+- `ticket_authority_matrix`: 12/12 ✓ (new file)
+- `vb_jggy_lifecycle_tests`: 15/15 ✓
+
+## What I Did
+
+### Contract Addendum
+Created `contract-error-precedence-addendum.md` documenting the actual production error precedence after inspecting `61930db1` and current source. Key finding: the original contract incorrectly asserted `InvalidActionCompletion` for all wrong-run cases and `AttemptBeyondMax` for zero/capacity attempts. Actual behavior:
+1. Run not found → `RunNotFound` (not `InvalidActionCompletion`)
+2. Ownership check (exact ticket match) happens FIRST
+3. Attempt/capacity validation only occurs after ownership passes
+4. Forged tickets with wrong attempts/capacities fail at ownership check with `InvalidActionCompletion`
+
+### A. durable_retry_red_phase.rs (3 repairs)
+- Replaced panic fixtures with `Err` propagation in all three functions
+- Strengthened `apply_error_handler_writes_step_index_to_error_slot_integration_gap` with actual slot inspection using `shard.run_state_get(run)` + `frame.read_slot(SlotIdx::new(1))` — verifies error_slot[1] contains I64(1) per POST-002
+- Strengthened `action_failure_preserves_action_completed_slots_integration_gap` with slot inspection — verifies slot 0 contains I64(42) after completion
+- The comment "cannot inspect slots" was incorrect; public interfaces exist
+
+### B. ticket_authority_matrix.rs (new, 12 tests)
+Comprehensive authority validation matrix for both ActionCompleted and ActionFailed:
+- Wrong run/step/action → `RunNotFound`/`InvalidActionCompletion`
+- Attempt=0, capacity=0, future attempt → `InvalidActionCompletion` (ownership fails first)
+- Invalid idempotency key, advanced sequence → `InvalidActionCompletion`
+- Valid ticket accepted with exact value/attempt behavior verified
+
+### Evidence
+- Raw test output saved to `.beads/vb-rcizj/evidence/review-fix.log`
+- Implementation report at `.beads/vb-rcizj/evidence/implementation-report.md`
+- No production source changes (frozen at 5effa8615)
+- Changes are in working copy, not committed/pushed (per instructions)
+

@@ -1,0 +1,5 @@
+PASS exact-same-path
+PASS unrelated-new-path
+PASS absent-while-old-exists
+PASS subsequent-source-change
+hash-probe: ALL PASS

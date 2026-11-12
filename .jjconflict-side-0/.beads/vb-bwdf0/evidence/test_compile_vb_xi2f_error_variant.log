@@ -1,0 +1,15 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/vb_xi2f_error_variant_proptest.rs (target/debug/deps/vb_xi2f_error_variant_proptest-ac60453674a5099c)
+
+running 8 tests
+test empty_nodes_returns_error ... ok
+test entry_out_of_bounds_returns_error ... ok
+test step_out_of_bounds_returns_error ... ok
+test slot_out_of_bounds_returns_error ... ok
+test backward_edge_returns_error ... ok
+test unreachable_node_returns_error ... ok
+test arbitrary_invalid_slot_returns_slot_error ... ok
+test arbitrary_invalid_entry_returns_typed_error ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

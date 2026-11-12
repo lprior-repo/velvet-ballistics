@@ -106,6 +106,7 @@ pub(crate) fn classify_metadata_event(event: &JournalEvent) -> RecoveryResult<bo
         | JournalEvent::StepSucceeded { .. }
         | JournalEvent::StepFailed { .. }
         | JournalEvent::SlotWrittenEvent { .. }
+        | JournalEvent::RetryTimerScheduled { .. }
         | JournalEvent::WaitScheduledEvent { .. }
         | JournalEvent::AskScheduledEvent { .. }
         | JournalEvent::AskTimedOutEvent { .. }

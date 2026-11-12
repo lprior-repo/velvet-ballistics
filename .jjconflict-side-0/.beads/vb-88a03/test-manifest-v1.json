@@ -1,0 +1,26 @@
+{
+  "scope": "Independent TEST review of current9publicRuntimeBDD+8matchingstrictpolicy tests; missingfailurecases remain open",
+  "source_commit": "b59f6a297a10ded5e2b51fb73dc012a92fc9d139",
+  "files": [
+    {
+      "path": "crates/vb_runtime/src/journal/tests/strict_policy_port.rs",
+      "sha256": "245231738602c145ec41e4b3e10c05cf62f22e60ba67ea86d477b0677c86f372"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs",
+      "sha256": "a4bf38ad0779428880ee5d96e938b758f2478e0f588fbc093fef436077187089"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs",
+      "sha256": "d965f02ff2bf46173a896e68b40634e1cd0abd2be5d1efb4b28dd007249b41dc"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch.rs",
+      "sha256": "62faf8d077abfbd10baca7de06919cdf8aeed0f3a775ec49170776e6d8a65369"
+    }
+  ],
+  "actual_gates": [
+    ".beads/vb-l5ru0/evidence/ROOT_TESTS_V8_ORACLES.json",
+    ".beads/vb-z7ky4/evidence/ROOT_V10_COMBINED_PORT_TESTS.json"
+  ]
+}

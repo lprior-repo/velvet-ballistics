@@ -160,20 +160,26 @@ pub(crate) fn tog(id: u16, accumulator: u16, branches: Box<[u16]>, join: u16) ->
     )
 }
 
-pub(crate) fn mkwf(nodes: Vec<CompiledNode>, sc: u16) -> Result<CompiledWorkflow, String> {
-    mkwfc(nodes, sc, vec![])
+pub(crate) fn mkwf(
+    nodes: Vec<CompiledNode>,
+    sc: u16,
+    inputs: &[u16],
+) -> Result<CompiledWorkflow, String> {
+    mkwfc(nodes, sc, vec![], inputs)
 }
 
 pub(crate) fn mkwfc(
     nodes: Vec<CompiledNode>,
     sc: u16,
     consts: Vec<ConstValue>,
+    inputs: &[u16],
 ) -> Result<CompiledWorkflow, String> {
     let names: Box<[Box<str>]> = (0..nodes.len())
         .map(|i| format!("s{i}").into_boxed_str())
         .collect();
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: "test".into(),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: nodes.into_boxed_slice(),
@@ -184,7 +190,14 @@ pub(crate) fn mkwfc(
         symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: inputs
+            .iter()
+            .map(|slot| vb_core::CompiledInputSlot {
+                slot: SlotIdx::new(*slot),
+                kind: vb_core::InputSlotKind::Any,
+                constraint: vb_core::CompiledInputConstraint::required(),
+            })
+            .collect(),
         step_names: names,
     };
     CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("{e}"))

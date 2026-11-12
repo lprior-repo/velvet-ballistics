@@ -1,0 +1,17 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tjnjt-local3090-original-tests",
+  "argv": [
+    "env",
+    "TEST_INTEGRITY_BASE=8707f8e976f9a1f936a65341c924468be57f2920",
+    "bash",
+    "scripts/check-test-integrity.sh"
+  ],
+  "exit_code": 0,
+  "seconds": 0.318,
+  "timeout_seconds": 60,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-tjnjt/evidence/02-integrity-gate"
+}

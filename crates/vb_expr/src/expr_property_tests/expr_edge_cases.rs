@@ -44,7 +44,7 @@ proptest! {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn add_i64_to_f64_promotes_to_f64() {
+fn add_i64_to_f64_promotes_to_finite_float() {
     let result = eval_binary_op(
         BinaryOp::Add,
         SlotValue::I64(10),
@@ -52,8 +52,9 @@ fn add_i64_to_f64_promotes_to_f64() {
     );
     assert_eq!(
         result,
-        Ok(SlotValue::F64(FiniteF64::new(15.0).unwrap())),
-        "I64 + F64 should promote to F64"
+        FiniteF64::new(15.0)
+            .map(SlotValue::F64)
+            .map_err(crate::ExprError::from)
     );
 }
 

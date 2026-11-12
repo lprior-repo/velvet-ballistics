@@ -1,0 +1,91 @@
+#![forbid(unsafe_code)]
+//! Trigger parsing logic.
+
+use crate::yaml_error::{YamlError, YamlResult};
+
+use super::parse::{lookup, mapping, reject_unknown_fields, require_str_in};
+use super::types::*;
+
+/// Parse the trigger declaration from a workflow node.
+pub(super) fn parse_trigger(node: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
+    if let Some(when_val) = lookup(node, "when") {
+        return parse_when_trigger(when_val);
+    }
+    Err(YamlError::MissingField { field: "when" })
+}
+
+fn parse_when_trigger(when_val: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
+    let map = mapping(when_val, "when")?;
+    if map.len() != 1 {
+        return Err(YamlError::FieldShape {
+            field: "when",
+            expected: "exactly one trigger",
+        });
+    }
+    let Some((key, body)) = map.iter().next() else {
+        return Err(YamlError::FieldShape {
+            field: "when",
+            expected: "exactly one trigger",
+        });
+    };
+    let Some(kind) = key.as_str() else {
+        return Err(YamlError::FieldShape {
+            field: "when key",
+            expected: "string",
+        });
+    };
+    match kind {
+        "manual" => empty_body(body, "when.manual").map(|()| TriggerAst::Manual),
+        "webhook" => empty_body(body, "when.webhook").map(|()| TriggerAst::Webhook),
+        "schedule" => parse_schedule(body),
+        "event" => parse_event(body),
+        "ipc" => Err(YamlError::UnsupportedTrigger { trigger: "ipc" }),
+        "http" => Err(YamlError::UnsupportedTrigger { trigger: "http" }),
+        other => Err(YamlError::UnknownField {
+            field: other.into(),
+        }),
+    }
+}
+
+fn empty_body(body: &saphyr::Yaml<'_>, field: &'static str) -> YamlResult<()> {
+    let map = mapping(body, field)?;
+    if map.is_empty() {
+        Ok(())
+    } else {
+        Err(YamlError::FieldShape {
+            field,
+            expected: "empty mapping",
+        })
+    }
+}
+
+fn parse_schedule(body: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
+    reject_unknown_fields(body, &["cron"])?;
+    let Some(cron_node) = lookup(body, "cron") else {
+        return Err(YamlError::MissingField {
+            field: "when.schedule.cron",
+        });
+    };
+    let Some(cron) = cron_node.as_str() else {
+        return Err(YamlError::FieldShape {
+            field: "when.schedule.cron",
+            expected: "string",
+        });
+    };
+    if cron.is_empty() {
+        return Err(YamlError::FieldShape {
+            field: "when.schedule.cron",
+            expected: "non-empty string",
+        });
+    }
+    Ok(TriggerAst::Schedule {
+        cron: cron.to_string(),
+    })
+}
+
+fn parse_event(body: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
+    mapping(body, "when.event")?;
+    reject_unknown_fields(body, &["type"])?;
+    let event_type = require_str_in(body, "type", "when.event.type")?;
+    Ok(TriggerAst::Event { event_type })
+}

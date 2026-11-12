@@ -1,0 +1,66 @@
+error[E0425]: cannot find type `ActionTicket` in this scope
+   --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:130:13
+    |
+130 |     ticket: ActionTicket,
+    |             ^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this struct
+    |
+ 10 + use vb_core::ActionTicket;
+    |
+
+error[E0609]: no field `sequence` on type `&ActionTicket`
+   --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:101:40
+    |
+101 |     hash_seq_field(&mut hasher, ticket.sequence);
+    |                                        ^^^^^^^^ unknown field
+    |
+    = note: available fields are: `run`, `step`, `seq`, `action`, `run_attempt` ... and 3 others
+
+error[E0614]: type `[u8; 32]` cannot be dereferenced
+   --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:233:58
+    |
+233 |     let expected_admission = admission_pin_from_artifact(*artifact.digest.as_bytes());
+    |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't be dereferenced
+
+error[E0061]: this method takes 1 argument but 0 arguments were supplied
+    --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:246:35
+     |
+ 246 |     let boundary = runtime_reopen.pending_boundary_snapshot();
+     |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^-- argument #1 of type `usize` is missing
+     |
+note: method defined here
+    --> crates/vb_runtime/src/runtime.rs:1004:12
+     |
+1004 |     pub fn pending_boundary_snapshot(
+     |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: provide the argument
+     |
+ 246 |     let boundary = runtime_reopen.pending_boundary_snapshot(/* usize */);
+     |                                                             +++++++++++
+
+error[E0616]: field `active_run_count` of struct `RuntimePendingBoundarySnapshot` is private
+   --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:247:25
+    |
+247 |     assert_eq!(boundary.active_run_count, 1);
+    |                         ^^^^^^^^^^^^^^^^ private field
+    |
+help: a method `active_run_count` also exists, call it with parentheses
+    |
+247 |     assert_eq!(boundary.active_run_count(), 1);
+    |                                         ++
+
+error[E0616]: field `pending_timer_count` of struct `RuntimePendingBoundarySnapshot` is private
+   --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:248:25
+    |
+248 |     assert_eq!(boundary.pending_timer_count, 0);
+    |                         ^^^^^^^^^^^^^^^^^^^ private field
+    |
+help: a method `pending_timer_count` also exists, call it with parentheses
+    |
+248 |     assert_eq!(boundary.pending_timer_count(), 0);
+    |                                            ++
+
+Some errors have detailed explanations: E0061, E0425, E0609, E0614, E0616.
+For more information about an error, try `rustc --explain E0061`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_c4hzw_emergency_reopen") due to 6 previous errors

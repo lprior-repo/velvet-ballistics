@@ -1,0 +1,18 @@
+{"id":"VERUS-INV-004","layer":"verus","status":"PASS","evidence":"vb_rpch_replay_refinement.rs: 7 proofs verified, 0 errors. Refinement proof: Rust ActionReplayTracker refines TLA+ ReplayEvent semantics.","attempt":18}
+{"id":"VERUS-INV-002","layer":"verus","status":"blocked_tooling","blocker":"nightly-2026-04-28 not installed","evidence":"proof-evidence.md lines 11-31","attempt":6}
+{"id":"VERUS-INV-005","layer":"verus","status":"blocked_tooling","blocker":"nightly-2026-04-28 not installed","evidence":"proof-evidence.md lines 11-31","attempt":6}
+{"id":"VERUS-PRE-001","layer":"verus","status":"blocked_tooling","blocker":"nightly-2026-04-28 not installed","evidence":"proof-evidence.md lines 11-31","attempt":6}
+{"id":"VERUS-PRE-002","layer":"verus","status":"blocked_tooling","blocker":"nightly-2026-04-28 not installed","evidence":"proof-evidence.md lines 11-31","attempt":6}
+{"id":"VERUS-POST-009","layer":"verus","status":"blocked_tooling","blocker":"nightly-2026-04-28 not installed","evidence":"proof-evidence.md lines 11-31","attempt":6}
+{"id":"VERUS-INV-003","layer":"verus","status":"blocked_tooling","blocker":"nightly-2026-04-28 not installed","evidence":"proof-evidence.md lines 11-31","attempt":6}
+{"id":"KANI-PRE-001","layer":"kani","status":"blocked_tooling","blocker":"kani-compiler missing librustc_driver from nightly-2026-04-28","evidence":"Arbitrary impls added to kani_recovery_hydrate.rs; toolchain broken","attempt":18}
+{"id":"KANI-PRE-002","layer":"kani","status":"blocked_tooling","blocker":"kani-compiler missing librustc_driver from nightly-2026-04-28","evidence":"Arbitrary impls added to kani_recovery_hydrate.rs; toolchain broken","attempt":18}
+{"id":"KANI-POST-009","layer":"kani","status":"blocked_tooling","blocker":"kani-compiler missing librustc_driver from nightly-2026-04-28","evidence":"Arbitrary impls added to kani_recovery_hydrate.rs; toolchain broken","attempt":18}
+{"id":"TLA-REPLAY-001","layer":"tla-plus","status":"PASS","reason":"443k states, 0 violations","evidence":"formal-verification-report.md","attempt":17}
+{"id":"TLA-INCOMPLETE-001","layer":"tla-plus","status":"PASS","reason":"443k states, 0 violations","evidence":"formal-verification-report.md","attempt":17}
+{"id":"TLA-NONIDEM-001","layer":"tla-plus","status":"PASS","reason":"443k states, 0 violations","evidence":"formal-verification-report.md","attempt":17}
+{"id":"BDD-ALL","layer":"bdd","status":"pass","evidence":"184 vb_storage recovery tests pass, 65 vb_runtime recovery_bdd_tests pass","attempt":17}
+{"id":"WAIVER-TERM-MISMATCH","layer":"waiver","status":"approved","evidence":"formal-waivers.jsonl VB-RPCH-TERM-MISMATCH-001","attempt":13}
+{"id":"WAIVER-GAP3-ABI","layer":"waiver","status":"approved","evidence":"proof-obligations.jsonl WAIVER-GAP3-ABI","attempt":6}
+{"id":"WAIVER-GAP3-POL","layer":"waiver","status":"approved","evidence":"proof-obligations.jsonl WAIVER-GAP3-POL","attempt":6}
+{"id":"REFINEMENT-PROOF","layer":"verus","status":"PASS","evidence":"vb_rpch_replay_refinement.rs: 7 verified proofs establishing Rust ActionReplayTracker refines TLA+ ReplayEvent","attempt":18}

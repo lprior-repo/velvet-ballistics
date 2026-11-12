@@ -243,6 +243,7 @@ fn validate_action_completion_rejects_when_node_is_not_do() {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("label_first"),
         digest: WorkflowDigest::from_bytes([0xBB; 32]),
         nodes: Box::from([label_node, action_node]),
@@ -254,7 +255,11 @@ fn validate_action_completion_rejects_when_node_is_not_do() {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
         .expect("validate_action_completion_rejects_when_node_is_not_do");
@@ -501,6 +506,7 @@ mod proptest_tests {
         );
         let parts = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             name: Box::from("proptest"),
             digest: WorkflowDigest::from_bytes([0xEE; 32]),
             nodes: Box::from([node]),
@@ -512,7 +518,11 @@ mod proptest_tests {
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
-            input_slots: Box::from([]),
+            input_slots: Box::from([vb_core::CompiledInputSlot {
+                slot: vb_core::SlotIdx::new(0),
+                kind: vb_core::InputSlotKind::Any,
+                constraint: vb_core::CompiledInputConstraint::required(),
+            }]),
         };
         let wf =
             vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("make_simple_state");
@@ -525,6 +535,15 @@ mod proptest_tests {
     }
 
     proptest! {
+        #![proptest_config(ProptestConfig {
+            failure_persistence: Some(Box::new(
+                proptest::test_runner::FileFailurePersistence::Direct(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/proptest-regressions/shard/helpers/tests.txt"
+                )),
+            )),
+            ..ProptestConfig::default()
+        })]
         /// Property: validate_action_completion never panics for arbitrary u16 inputs.
         #[test]
         fn prop_validate_action_completion_never_panics(

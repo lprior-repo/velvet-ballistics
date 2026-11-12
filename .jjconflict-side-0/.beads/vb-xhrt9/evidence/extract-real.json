@@ -1,0 +1,15 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-xhrt9-deepseek-gate-review",
+  "argv": [
+    "bash",
+    "/tmp/vb-xhrt9-extract-test.sh"
+  ],
+  "exit_code": 1,
+  "seconds": 1.108,
+  "timeout_seconds": 60,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-xhrt9/evidence/extract-real"
+}

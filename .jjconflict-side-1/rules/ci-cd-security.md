@@ -1,0 +1,26 @@
+# CI/CD pipeline security
+
+Read this when writing or changing CI workflows, release automation, or anything that runs with repository credentials — on any CI platform.
+
+- Pin every third-party pipeline component — actions, orbs, included templates — to an immutable revision (a full commit SHA), never a tag or branch: a tag is mutable and repointing it is the documented supply-chain vector. Keep the human-readable version in a trailing comment and let the update bot bump both.
+- A workflow that runs with repository secrets and write scope against input from an untrusted fork never checks out or executes the fork's code — that combination is what a poisoned pipeline execution attack exploits. A fork contribution that genuinely needs a secret goes through a gated environment with a required reviewer.
+- Know which of the platform's triggers run with secrets and write scope in response to a fork event; those are the jobs where fork code must never run.
+- Least-privilege pipeline token: read-only at the top level, escalated per job to exactly what that job writes. Never rely on the default token scope.
+- Cloud credentials come from OIDC federation with a short-lived, audience-scoped token — not long-lived cloud keys or service-account files stored as pipeline secrets.
+- The CI template language expands its expressions before the shell sees the line, so an expression interpolated into a script step is code, not a string: pass untrusted values through environment variables and reference them as quoted shell variables.
+- Treat every field of the triggering event as attacker-controlled — PR titles, branch names, issue bodies, and commit messages reach workflows on public repos and are the standard script-injection source.
+- A file or variable one step writes and a later step trusts (the step environment and output files) never carries an untrusted value as written: a newline in it injects a variable into the next step. Keep untrusted content out of it, or write it with a random delimiter.
+- Untrusted and trusted jobs never share a cache key or an artifact: a fork-writable cache restored into a release job, or an artifact uploaded by a PR job and consumed by a signing job, is code execution across the trust boundary.
+- Self-hosted runners never serve public-fork PRs, and are ephemeral (one job per instance) — a persistent runner leaks the previous job's state to the next.
+- Lint the pipeline definitions themselves in CI — they are the least-reviewed executable code in most repos.
+- Reusable pipeline definitions — included templates, composite steps — run with the caller's secrets and token: pin them by revision like any other component, and treat one owned by another org as third-party code holding write access to this repo.
+- Release artifacts carry provenance: attest at build time (sigstore/cosign or the platform's attestation step) and make the consumer verify before install or deploy. An unsigned artifact in a registry is indistinguishable from one an attacker pushed. Rollout strategy and rollback for what those artifacts ship: `rules/deployment.md`.
+- Review the lockfile diff on every PR: a new transitive package, a changed integrity hash, or a rewritten registry URL is a supply-chain event, not noise (`rules/dependencies.md`).
+- A step that downloads a binary into the runner (a `curl`/`wget` of a release archive, an installer script piped to a shell) pins the exact version and verifies a checksum the workflow supplies; an empty checksum fails the step rather than defaulting to trust. Component pinning covers the pipeline steps, not the software they fetch.
+- Secrets are never printed, echoed, or written to an artifact for debugging; a masked value still leaks through base64, reversal, or a crash dump.
+- An AI-agent step (a Claude, Gemini, or Codex action) is an injection sink, not just a tool: issue and PR text, review comments, error logs, and env values all reach its prompt as attacker-controlled input. A prompt with no template expressions in it proves nothing when the payload arrives through an env var or an issue the agent fetches itself.
+- Agent output is untrusted code: never pipe it into `eval`, a shell, or an auto-merged commit. It gets the same review gate as PR-head code before anything executes it with repository credentials.
+- Scope what the agent may run: no wildcard tool allowlists, no full-access or auto-approve sandbox flags in CI. Allowlist argument shapes, not bare tool names — `echo $(env)` exfiltrates through an allowed `echo`.
+- Sandbox and permission weaknesses do not exploit themselves, they amplify: a permissive agent config turns an otherwise-contained prompt injection into repository write access, so rate the two findings together, not separately.
+- The gates that block a merge run in CI, not only in a git hook — hooks are bypassable by design (`rules/git-hooks.md`).
+- The pipeline's credentials also sit on developer machines, where none of the above protects them: a laptop that can deploy needs full-disk encryption and a screen lock, and its tokens belong in the OS keychain or a credential helper rather than a plaintext `.npmrc`, `.netrc`, `.env`, or shell history. Prefer a short-lived login (`gh auth login`, `aws sso login`) over a long-lived token pasted into a dotfile — the long-lived one outlives the laptop.

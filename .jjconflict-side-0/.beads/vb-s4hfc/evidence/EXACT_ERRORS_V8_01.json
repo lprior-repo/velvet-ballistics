@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-exact-errors",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_storage",
+    "--test",
+    "policy_decision_full_record"
+  ],
+  "exit_code": 101,
+  "seconds": 7.467,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-s4hfc/evidence/EXACT_ERRORS_V8_01",
+  "coordinator_message": "Coordinator actual canonical static evidence: V7 fails cargo fmt check at the valid decoder match formatting; rustfmt your changed test file before final test. Test-integrity also rejects weak assertions in new file (added_weak=2), so remove all weak forms as instructed. Do NOT change scripts or add any allowance. Exact error replacement must keep or strengthen all original checks. Full workspace nextest precompile already passed on unchanged V7; source behavior is not the current blocker.\n"
+}

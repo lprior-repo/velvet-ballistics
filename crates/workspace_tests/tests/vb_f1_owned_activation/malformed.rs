@@ -161,8 +161,8 @@ fn unsupported_owned_version_and_complete_digest_corruption_are_refused() -> Tes
         wire::owned_payload(&case, |bytes| {
             if wrong_version {
                 let version = bytes.first_mut().ok_or("version missing")?;
-                assert_eq!(*version, 1);
-                *version = 2;
+                assert_eq!(*version, 2);
+                *version = 3;
             } else {
                 *bytes.last_mut().ok_or("digest missing")? ^= 1;
             }
@@ -172,7 +172,7 @@ fn unsupported_owned_version_and_complete_digest_corruption_are_refused() -> Tes
         if wrong_version {
             assert!(
                 matches!(error, RuntimeError::StorageJournalAppend { source }
-                if matches!(*source, vb_storage::JournalError::OwnedInputs(vb_storage::OwnedInputError::UnsupportedVersion { version: 2 })))
+                if matches!(*source, vb_storage::JournalError::OwnedInputs(vb_storage::OwnedInputError::UnsupportedVersion { version: 3 })))
             );
         } else {
             assert!(

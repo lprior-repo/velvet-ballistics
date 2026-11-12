@@ -1,0 +1,100 @@
+xtask/src/lanes.rs:1: //! Proof/test lane definitions and command generation.
+xtask/src/lanes.rs:2: //!
+xtask/src/lanes.rs:3: //! Each lane maps to a shell command with crate-specific arguments.
+xtask/src/lanes.rs:4: 
+xtask/src/lanes.rs:5: use std::path::Path;
+xtask/src/lanes.rs:6: 
+xtask/src/lanes.rs:7: #[derive(Debug, Clone)]
+xtask/src/lanes.rs:8: pub struct Lane {
+xtask/src/lanes.rs:9:     pub name: String,
+xtask/src/lanes.rs:10:     pub required: bool,
+xtask/src/lanes.rs:11: }
+xtask/src/lanes.rs:12: 
+xtask/src/lanes.rs:13: pub fn lane_command(lane: &Lane, crate_name: &str, workspace_root: &Path) -> Vec<String> {
+xtask/src/lanes.rs:14:     match lane.name.as_str() {
+xtask/src/lanes.rs:15:         "test" => vec![
+xtask/src/lanes.rs:16:             "cargo".into(),
+xtask/src/lanes.rs:17:             "test".into(),
+xtask/src/lanes.rs:18:             "-p".into(),
+xtask/src/lanes.rs:19:             crate_name.into(),
+xtask/src/lanes.rs:20:         ],
+xtask/src/lanes.rs:21:         "clippy" => vec![
+xtask/src/lanes.rs:22:             "cargo".into(),
+xtask/src/lanes.rs:23:             "clippy".into(),
+xtask/src/lanes.rs:24:             "-p".into(),
+xtask/src/lanes.rs:25:             crate_name.into(),
+xtask/src/lanes.rs:26:             "--".into(),
+xtask/src/lanes.rs:27:             "-D".into(),
+xtask/src/lanes.rs:28:             "warnings".into(),
+xtask/src/lanes.rs:29:         ],
+xtask/src/lanes.rs:30:         "nextest" => vec![
+xtask/src/lanes.rs:31:             "cargo".into(),
+xtask/src/lanes.rs:32:             "nextest".into(),
+xtask/src/lanes.rs:33:             "run".into(),
+xtask/src/lanes.rs:34:             "-p".into(),
+xtask/src/lanes.rs:35:             crate_name.into(),
+xtask/src/lanes.rs:36:         ],
+xtask/src/lanes.rs:37:         "kani" => vec![
+xtask/src/lanes.rs:38:             "cargo".into(),
+xtask/src/lanes.rs:39:             "kani".into(),
+xtask/src/lanes.rs:40:             "-p".into(),
+xtask/src/lanes.rs:41:             crate_name.into(),
+xtask/src/lanes.rs:42:         ],
+xtask/src/lanes.rs:43:         "miri" => vec![
+xtask/src/lanes.rs:44:             "cargo".into(),
+xtask/src/lanes.rs:45:             "+nightly".into(),
+xtask/src/lanes.rs:46:             "miri".into(),
+xtask/src/lanes.rs:47:             "test".into(),
+xtask/src/lanes.rs:48:             "-p".into(),
+xtask/src/lanes.rs:49:             crate_name.into(),
+xtask/src/lanes.rs:50:         ],
+xtask/src/lanes.rs:51:         "loom" => vec![
+xtask/src/lanes.rs:52:             "cargo".into(),
+xtask/src/lanes.rs:53:             "test".into(),
+xtask/src/lanes.rs:54:             "-p".into(),
+xtask/src/lanes.rs:55:             crate_name.into(),
+xtask/src/lanes.rs:56:             "--features".into(),
+xtask/src/lanes.rs:57:             "loom".into(),
+xtask/src/lanes.rs:58:         ],
+xtask/src/lanes.rs:59:         "fuzz" => vec![
+xtask/src/lanes.rs:60:             "cargo".into(),
+xtask/src/lanes.rs:61:             "fuzz".into(),
+xtask/src/lanes.rs:62:             "run".into(),
+xtask/src/lanes.rs:63:             format!("{crate_name}_fuzz"),
+xtask/src/lanes.rs:64:         ],
+xtask/src/lanes.rs:65:         "mutants" => vec![
+xtask/src/lanes.rs:66:             "cargo".into(),
+xtask/src/lanes.rs:67:             "mutants".into(),
+xtask/src/lanes.rs:68:             "-p".into(),
+xtask/src/lanes.rs:69:             crate_name.into(),
+xtask/src/lanes.rs:70:             "--no-times".into(),
+xtask/src/lanes.rs:71:         ],
+xtask/src/lanes.rs:72:         "coverage" => vec![
+xtask/src/lanes.rs:73:             "cargo".into(),
+xtask/src/lanes.rs:74:             "llvm-cov".into(),
+xtask/src/lanes.rs:75:             "--no-report".into(),
+xtask/src/lanes.rs:76:             "-p".into(),
+xtask/src/lanes.rs:77:             crate_name.into(),
+xtask/src/lanes.rs:78:         ],
+xtask/src/lanes.rs:79:         "verus" => verus_command(crate_name, workspace_root),
+xtask/src/lanes.rs:80:         "tla" => tla_command(crate_name, workspace_root),
+xtask/src/lanes.rs:81:         "flux" => flux_command(crate_name, workspace_root),
+xtask/src/lanes.rs:82:         _ => vec!["echo".into(), format!("unknown lane: {}", lane.name)],
+xtask/src/lanes.rs:83:     }
+xtask/src/lanes.rs:84: }
+xtask/src/lanes.rs:85: 
+xtask/src/lanes.rs:86: fn verus_command(crate_name: &str, workspace_root: &Path) -> Vec<String> {
+xtask/src/lanes.rs:87:     let verus_dir = workspace_root.join("verification").join("verus");
+xtask/src/lanes.rs:88:     vec![
+xtask/src/lanes.rs:89:         "verus".into(),
+xtask/src/lanes.rs:90:         format!("{}/{crate_name}.rs", verus_dir.display()),
+xtask/src/lanes.rs:91:     ]
+xtask/src/lanes.rs:92: }
+xtask/src/lanes.rs:93: 
+xtask/src/lanes.rs:94: fn tla_command(crate_name: &str, workspace_root: &Path) -> Vec<String> {
+xtask/src/lanes.rs:95:     let tla_file = workspace_root
+xtask/src/lanes.rs:96:         .join("verification")
+xtask/src/lanes.rs:97:         .join("tla")
+xtask/src/lanes.rs:98:         .join(format!("{crate_name}.tla"));
+xtask/src/lanes.rs:99:     vec!["tla2tools".into(), format!("{}", tla_file.display())]
+xtask/src/lanes.rs:100: }

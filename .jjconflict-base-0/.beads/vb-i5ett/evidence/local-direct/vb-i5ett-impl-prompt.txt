@@ -1,0 +1,1 @@
+Implement accepted contract, exact one manifest key rename only. Return ONLY JSON {"file":"crates/workspace_tests/Cargo.toml","old":...,"new":...}. Old exact line: vb_cli = { package = "velvet-ballistics", path = "../velvet_ballistics" }. New key must be velvet_ballistics. Preserve package/path values, all other source and assertions. No shell commands or extra code.

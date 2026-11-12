@@ -1,0 +1,9 @@
+rust:
+  version: 'nightly-2026-04-28'
+  bins:
+    - 'cargo-nextest'
+    - 'cargo-hack'
+    - 'cargo-mutants'
+    - 'cargo-llvm-cov'
+    - 'cargo-fuzz'
+  syncToolchainConfig: true

@@ -1,0 +1,5 @@
+runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;dura...
+                        time:   [17.004 ns 17.015 ns 17.029 ns]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) low mild
+

@@ -1,0 +1,2719 @@
+You are the Rust contract stage for vb-yx3ux. Write only a concise contract.md (no implementation or tests yet). User workflow rust contract -> implementation -> tests -> independent code review -> test review. No Go skill or full proof planning. Fix four exact Rust clippy blockers without behavior changes or lint allowances: unused crate-private RecoveredPendingActionTicket getters input/output/action_abi_digest; collapsible if in input kind validation; .ok_or_else(|| RuntimeError::RunNotFound) should be .ok_or; doc list continuation needs blank doc line. Preserve all stored ticket fields/constructors/production validation. Remove genuinely unused crate-private getters only, not their data or checks; no arbitrary getter call to suppress warning. Describe exact observational equivalence/error precedence and actual test scope. No claims tests ran. Source context below.
+
+FILE crates/vb_runtime/src/recovery/full.rs
+#![forbid(unsafe_code)]
+
+mod admission;
+mod pending;
+mod product;
+
+use vb_core::action::ActionTicket;
+use vb_core::frame::RunFrame;
+use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::value::SlotValue;
+use vb_core::{CompiledNodeKind, CompiledWorkflow};
+use vb_storage::recovery::{RecoveredStepState, RecoveryFrameSeed};
+
+pub(crate) use admission::{
+    action_contract_abi_digest,
+    RecoveredAdmissionContext, RecoveredAdmissionEvidence, action_abi_digests_from_contracts,
+    validate_recovered_admission_evidence,
+};
+pub(crate) use pending::pending_action_ticket_from_events;
+pub(crate) use product::ResumableRecoveryParts;
+pub use product::{
+    NonResumableRecoveryProduct, RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind,
+    ResumableRecoveryProduct, RuntimeRecoveryProduct, SummaryRecoveryProduct,
+};
+
+use crate::{RuntimeError, RuntimeResult};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct RecoveredPendingActionTicket {
+    event_seq: vb_storage::EventSeq,
+    ticket: ActionTicket,
+    input: SlotIdx,
+    output: SlotIdx,
+    action_abi_digest: WorkflowDigest,
+}
+
+impl RecoveredPendingActionTicket {
+    #[must_use]
+    pub(crate) const fn new(
+        event_seq: vb_storage::EventSeq,
+        ticket: ActionTicket,
+        input: SlotIdx,
+        output: SlotIdx,
+        action_abi_digest: WorkflowDigest,
+    ) -> Self {
+        Self {
+            event_seq,
+            ticket,
+            input,
+            output,
+            action_abi_digest,
+        }
+    }
+
+    #[must_use]
+    pub(crate) const fn ticket(self) -> ActionTicket {
+        self.ticket
+    }
+
+    #[must_use]
+    pub(crate) const fn event_seq(self) -> vb_storage::EventSeq {
+        self.event_seq
+    }
+
+    #[must_use]
+    pub(crate) const fn input(self) -> SlotIdx {
+        self.input
+    }
+
+    #[must_use]
+    pub(crate) const fn output(self) -> SlotIdx {
+        self.output
+    }
+
+    #[must_use]
+    pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+        self.action_abi_digest
+    }
+}
+
+/// Hydrates a frame for the full runtime recovery path.
+///
+/// Unlike `RuntimeRecoveryBoundary::hydrate_run_frame`, this path is allowed
+/// to proceed when a pending action has durable ticket authority and the
+/// caller will hydrate the surrounding `RunState` components from artifacts.
+pub(crate) fn hydrate_frame_for_full_recovery(
+    seed: &RecoveryFrameSeed,
+    boundary: RecoveredRunBoundary,
+) -> RuntimeResult<RunFrame> {
+    super::frame::validate_recovery_seed_shape(seed)?;
+    reject_unrecoverable_full_recovery_state(seed, boundary)?;
+    super::frame::hydrate_shape_checked_run_frame(seed)
+}
+
+pub(crate) fn recovered_run_boundary_from_seed(
+    seed: &RecoveryFrameSeed,
+    pending_action: Option<RecoveredPendingActionTicket>,
+    workflow: &CompiledWorkflow,
+) -> RecoveredRunBoundary {
+    if let Some(ticket) = pending_action {
+        return RecoveredRunBoundary::from_pending_action(ticket);
+    }
+    match recoverable_open_ask_boundary(seed, workflow) {
+        Some(ask) => RecoveredRunBoundary::from_open_ask(ask),
+        None => RecoveredRunBoundary::none(),
+    }
+}
+
+pub(crate) fn classify_full_recovery_resume(
+    seed: &RecoveryFrameSeed,
+    boundary: RecoveredRunBoundary,
+) -> vb_storage::recovery::RecoveryCannotResumeState {
+    let mut state = initial_full_recovery_resume_state(seed, boundary);
+    mark_pending_action_range(seed, boundary, &mut state);
+    mark_step_recovery_boundaries(seed, boundary, &mut state);
+    state
+}
+
+fn initial_full_recovery_resume_state(
+    seed: &RecoveryFrameSeed,
+    boundary: RecoveredRunBoundary,
+) -> vb_storage::recovery::RecoveryCannotResumeState {
+    let mut state = vb_storage::recovery::RecoveryCannotResumeState {
+        slot_values: seed.unsupported.slot_values,
+        slot_taint: seed.unsupported.slot_taint,
+        action_payloads: seed.unsupported.action_payloads,
+        pending_actions: !seed.pending_actions.is_empty()
+            && boundary.kind() != RecoveredRunBoundaryKind::PendingAction,
+        ..vb_storage::recovery::RecoveryCannotResumeState::RESUMABLE
+    };
+    state.store_missing = state.store_missing || recovered_slots_require_value_store(seed);
+    state
+}
+
+fn mark_pending_action_range(
+    seed: &RecoveryFrameSeed,
+    boundary: RecoveredRunBoundary,
+    state: &mut vb_storage::recovery::RecoveryCannotResumeState,
+) {
+    if let Some(evidence) = boundary.pending_action_ticket()
+        && (evidence.event_seq() < seed.summary.first_seq
+            || evidence.event_seq() > seed.summary.last_seq)
+    {
+        state.pending_actions = true;
+    }
+}
+
+fn mark_step_recovery_boundaries(
+    seed: &RecoveryFrameSeed,
+    boundary: RecoveredRunBoundary,
+    state: &mut vb_storage::recovery::RecoveryCannotResumeState,
+) {
+    for entry in &seed.steps {
+        mark_step_recovery_boundary(entry.state, entry.step, boundary, state);
+    }
+}
+
+fn mark_step_recovery_boundary(
+    recovered: RecoveredStepState,
+    step: StepIdx,
+    boundary: RecoveredRunBoundary,
+    state: &mut vb_storage::recovery::RecoveryCannotResumeState,
+) {
+    match recovered {
+        RecoveredStepState::Waiting => {
+            state.pending_timers = true;
+        }
+        RecoveredStepState::Asking if !boundary.is_open_ask_step(step) => {
+            state.pending_asks = true;
+        }
+        RecoveredStepState::Asking
+        | RecoveredStepState::Running
+        | RecoveredStepState::Succeeded
+        | RecoveredStepState::Failed => {}
+        _ => {
+            state.pending_asks = true;
+        }
+    }
+}
+
+fn recovered_slots_require_value_store(seed: &RecoveryFrameSeed) -> bool {
+    seed.slots
+        .iter()
+        .any(|entry| slot_value_requires_value_store(entry.value))
+}
+
+const fn slot_value_requires_value_store(value: SlotValue) -> bool {
+    matches!(
+        value,
+        SlotValue::List(_) | SlotValue::Object(_) | SlotValue::Blob(_)
+    )
+}
+
+fn reject_unrecoverable_full_recovery_state(
+    seed: &RecoveryFrameSeed,
+    boundary: RecoveredRunBoundary,
+) -> RuntimeResult<()> {
+    let state = classify_full_recovery_resume(seed, boundary);
+    if state.is_resumable() {
+        Ok(())
+    } else {
+        Err(cannot_resume_error(state.unsupported_reason()))
+    }
+}
+
+fn recoverable_open_ask_boundary(
+    seed: &RecoveryFrameSeed,
+    workflow: &CompiledWorkflow,
+) -> Option<RecoveredOpenAsk> {
+    let mut current = None;
+    for entry in seed
+        .steps
+        .iter()
+        .filter(|entry| entry.state == RecoveredStepState::Asking)
+    {
+        let ask = recoverable_open_ask(seed, workflow, entry.step)?;
+        if let Some(existing) = current
+            && existing != ask
+        {
+            return None;
+        }
+        current = Some(ask);
+    }
+    current
+}
+
+fn recoverable_open_ask(
+    seed: &RecoveryFrameSeed,
+    workflow: &CompiledWorkflow,
+    step: StepIdx,
+) -> Option<RecoveredOpenAsk> {
+    if seed.pc != step {
+        return None;
+    }
+    let node = workflow.node(step)?;
+    let CompiledNodeKind::Ask {
+        timeout_slot: None, ..
+    } = node.kind
+    else {
+        return None;
+    };
+    let resume_step = node.next?;
+    match workflow.node(resume_step).map(|resume| &resume.kind) {
+        Some(CompiledNodeKind::AskResume { .. }) => Some(RecoveredOpenAsk::new(step)),
+        _ => None,
+    }
+}
+
+fn cannot_resume_error(reason: &'static str) -> RuntimeError {
+    RuntimeError::RecoveryCannotResume {
+        reason: String::from(reason),
+    }
+}
+
+FILE crates/vb_runtime/src/recovery/full/pending.rs
+use vb_core::action::{ActionTicket, action_ticket_has_valid_key};
+use vb_core::ids::{ActionId, RunId, SlotIdx, WorkflowDigest};
+use vb_core::{CompiledNodeKind, CompiledWorkflow};
+use vb_storage::recovery::RecoveredPendingAction;
+
+use super::RecoveredPendingActionTicket;
+use crate::{RuntimeError, RuntimeResult};
+
+/// Returns the single durable pending-action ticket needed by live recovery.
+pub(crate) fn pending_action_ticket_from_events(
+    seed: &vb_storage::recovery::RecoveryFrameSeed,
+    events: &[vb_storage::JournalEvent],
+    workflow: &CompiledWorkflow,
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
+) -> RuntimeResult<Option<RecoveredPendingActionTicket>> {
+    let Some((entry, rest)) = seed.pending_actions.split_first() else {
+        return Ok(None);
+    };
+    if !rest.is_empty() {
+        return Err(cannot_resume_error("pending_actions"));
+    }
+    matching_pending_action_ticket(entry, events, workflow, expected_action_abi_digests).map(Some)
+}
+
+fn matching_pending_action_ticket(
+    entry: &RecoveredPendingAction,
+    events: &[vb_storage::JournalEvent],
+    workflow: &CompiledWorkflow,
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
+) -> RuntimeResult<RecoveredPendingActionTicket> {
+    let mut recovered = None;
+    for event in events {
+        match pending_action_event_effect(entry, event, workflow, expected_action_abi_digests)? {
+            PendingActionEventEffect::Scheduled(evidence) => {
+                if let Some(existing) = recovered
+                    && existing != evidence
+                {
+                    return Err(cannot_resume_error("pending_actions"));
+                }
+                recovered = Some(evidence);
+            }
+            PendingActionEventEffect::Resolved => {
+                recovered = None;
+            }
+            PendingActionEventEffect::Irrelevant => {}
+        }
+    }
+    recovered.ok_or_else(|| cannot_resume_error("pending_actions"))
+}
+
+enum PendingActionEventEffect {
+    Scheduled(RecoveredPendingActionTicket),
+    Resolved,
+    Irrelevant,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PendingActionTicketEvent {
+    run: RunId,
+    ticket: ActionTicket,
+    input: SlotIdx,
+    output: SlotIdx,
+    action_abi_digest: WorkflowDigest,
+}
+
+fn pending_action_event_effect(
+    entry: &RecoveredPendingAction,
+    event: &vb_storage::JournalEvent,
+    workflow: &CompiledWorkflow,
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
+) -> RuntimeResult<PendingActionEventEffect> {
+    if let Some(effect) =
+        scheduled_pending_action_effect(entry, event, workflow, expected_action_abi_digests)?
+    {
+        return Ok(effect);
+    }
+    Ok(resolved_pending_action_effect(entry, event))
+}
+
+fn scheduled_pending_action_effect(
+    entry: &RecoveredPendingAction,
+    event: &vb_storage::JournalEvent,
+    workflow: &CompiledWorkflow,
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
+) -> RuntimeResult<Option<PendingActionEventEffect>> {
+    let Some((seq, ticket_event)) = scheduled_ticket_event_for_entry(entry, event) else {
+        return Ok(None);
+    };
+    validate_pending_action_ticket_event(
+        entry,
+        ticket_event,
+        workflow,
+        expected_action_abi_digests,
+    )?;
+    Ok(Some(scheduled_ticket_effect(seq, ticket_event)))
+}
+
+fn scheduled_ticket_event_for_entry(
+    entry: &RecoveredPendingAction,
+    event: &vb_storage::JournalEvent,
+) -> Option<(vb_storage::EventSeq, PendingActionTicketEvent)> {
+    let vb_storage::JournalEvent::ActionScheduledTicket {
+        run,
+        seq,
+        ticket,
+        input,
+        output,
+        action_abi_digest,
+    } = event
+    else {
+        return None;
+    };
+    if ticket.step != entry.step || ticket.action != entry.action {
+        return None;
+    }
+    Some((
+        *seq,
+        PendingActionTicketEvent {
+            run: *run,
+            ticket: *ticket,
+            input: *input,
+            output: *output,
+            action_abi_digest: *action_abi_digest,
+        },
+    ))
+}
+
+fn scheduled_ticket_effect(
+    seq: vb_storage::EventSeq,
+    event: PendingActionTicketEvent,
+) -> PendingActionEventEffect {
+    PendingActionEventEffect::Scheduled(RecoveredPendingActionTicket::new(
+        seq,
+        event.ticket,
+        event.input,
+        event.output,
+        event.action_abi_digest,
+    ))
+}
+
+fn resolved_pending_action_effect(
+    entry: &RecoveredPendingAction,
+    event: &vb_storage::JournalEvent,
+) -> PendingActionEventEffect {
+    match event {
+        vb_storage::JournalEvent::ActionCompletedEvent { action, step, .. }
+        | vb_storage::JournalEvent::ActionFailedEvent { action, step, .. }
+            if *action == entry.action && *step == entry.step =>
+        {
+            PendingActionEventEffect::Resolved
+        }
+        vb_storage::JournalEvent::ActionCompletedEnvelope { ticket, .. }
+        | vb_storage::JournalEvent::ActionAbandoned { ticket, .. }
+            if ticket.action == entry.action && ticket.step == entry.step =>
+        {
+            PendingActionEventEffect::Resolved
+        }
+        _ => PendingActionEventEffect::Irrelevant,
+    }
+}
+
+fn validate_pending_action_ticket_event(
+    entry: &RecoveredPendingAction,
+    event: PendingActionTicketEvent,
+    workflow: &CompiledWorkflow,
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
+) -> RuntimeResult<()> {
+    if event.ticket.run != event.run
+        || event.ticket.step != entry.step
+        || event.ticket.action != entry.action
+        || event.ticket.attempt == 0
+        || event.ticket.capacity == 0
+        || !action_ticket_has_valid_key(event.ticket)
+    {
+        return Err(cannot_resume_error("pending_actions"));
+    }
+    validate_pending_action_slots(event.ticket, event.input, event.output, workflow)?;
+    validate_pending_action_abi(
+        event.ticket.action,
+        event.action_abi_digest,
+        expected_action_abi_digests,
+    )
+}
+
+fn validate_pending_action_slots(
+    ticket: ActionTicket,
+    input: SlotIdx,
+    output: SlotIdx,
+    workflow: &CompiledWorkflow,
+) -> RuntimeResult<()> {
+    let Some(node) = workflow.node(ticket.step) else {
+        return Err(cannot_resume_error("pending_actions"));
+    };
+    match node.kind {
+        CompiledNodeKind::Do {
+            action,
+            input: expected_input,
+        } if action == ticket.action && expected_input == input && node.output == Some(output) => {
+            Ok(())
+        }
+        _ => Err(cannot_resume_error("pending_actions")),
+    }
+}
+
+fn validate_pending_action_abi(
+    action: ActionId,
+    found: WorkflowDigest,
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
+) -> RuntimeResult<()> {
+    if found.as_bytes() == [0u8; 32] {
+        return Err(cannot_resume_error("action_abi_digests_missing"));
+    }
+    let Some(expected) = expected_action_abi_digest(action, expected_action_abi_digests) else {
+        return Err(cannot_resume_error("action_abi_digests_missing"));
+    };
+    if expected.as_bytes() == [0u8; 32] || expected != found {
+        return Err(cannot_resume_error("action_abi_digest_mismatch"));
+    }
+    Ok(())
+}
+
+fn expected_action_abi_digest(
+    action: ActionId,
+    expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
+) -> Option<WorkflowDigest> {
+    expected_action_abi_digests.iter().find_map(
+        |(id, digest)| {
+            if *id == action { Some(*digest) } else { None }
+        },
+    )
+}
+
+fn cannot_resume_error(reason: &'static str) -> RuntimeError {
+    RuntimeError::RecoveryCannotResume {
+        reason: String::from(reason),
+    }
+}
+
+FILE crates/vb_runtime/src/shard/helpers.rs
+#![forbid(unsafe_code)]
+//! Pure helper functions for shard operations.
+
+use vb_core::action::ActionTicket;
+use vb_core::frame::{RunFrame, StepState};
+use vb_core::ids::{RunId, SlotIdx, StepIdx};
+use vb_core::value::{SlotValue, Taint};
+use vb_core::value_store::ValueStore;
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
+
+use crate::primitives::collect::CollectStates;
+
+use crate::engine::RetryPolicy;
+use crate::{RuntimeError, RuntimeResult};
+
+use crate::shard::types::{InspectSnapshot, PendingTimer, PendingTimerKind};
+
+/// Seeds input slots on a frame before deterministic execution.
+pub fn seed_input_slots(
+    frame: &mut RunFrame,
+    inputs: &[(SlotIdx, SlotValue)],
+    workflow: &CompiledWorkflow,
+) -> RuntimeResult<()> {
+    for (slot, value) in inputs {
+        let declared = workflow
+            .input_slots()
+            .iter()
+            .find(|cs| cs.slot == *slot)
+            .map(|cs| cs.kind);
+        if let Some(kind) = declared {
+            if !slot_value_matches_kind(value, kind) {
+                return Err(RuntimeError::RuntimeInputSlotKindMismatch {
+                    slot: *slot,
+                    expected: kind,
+                    actual: slot_value_kind(value),
+                });
+            }
+        }
+        frame
+            .write_slot_with_taint(*slot, *value, Taint::Clean)
+            .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
+    }
+    Ok(())
+}
+
+fn slot_value_matches_kind(value: &SlotValue, kind: vb_core::InputSlotKind) -> bool {
+    matches!(
+        (value, kind),
+        (SlotValue::Null, vb_core::InputSlotKind::Null)
+            | (SlotValue::Bool(_), vb_core::InputSlotKind::Bool)
+            | (SlotValue::I64(_), vb_core::InputSlotKind::I64)
+            | (SlotValue::F64(_), vb_core::InputSlotKind::F64)
+            | (SlotValue::Symbol(_), vb_core::InputSlotKind::Symbol)
+            | (SlotValue::List(_), vb_core::InputSlotKind::List)
+            | (SlotValue::Object(_), vb_core::InputSlotKind::Object)
+            | (SlotValue::Blob(_), vb_core::InputSlotKind::Blob)
+    )
+}
+
+fn slot_value_kind(value: &SlotValue) -> vb_core::InputSlotKind {
+    match value {
+        SlotValue::Null => vb_core::InputSlotKind::Null,
+        SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
+        SlotValue::I64(_) => vb_core::InputSlotKind::I64,
+        SlotValue::F64(_) => vb_core::InputSlotKind::F64,
+        SlotValue::Symbol(_) => vb_core::InputSlotKind::Symbol,
+        SlotValue::List(_) => vb_core::InputSlotKind::List,
+        SlotValue::Object(_) => vb_core::InputSlotKind::Object,
+        SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
+        &_ => vb_core::InputSlotKind::Blob,
+    }
+}
+
+/// Validates that an action completion matches the expected ticket.
+pub fn validate_action_completion(
+    state: &crate::shard::types::RunState,
+    ticket: ActionTicket,
+) -> RuntimeResult<()> {
+    validate_ticket_attempt(state, ticket)?;
+    if state.frame.step_state(ticket.step) != Ok(StepState::Running) {
+        return Err(RuntimeError::InvalidActionCompletion);
+    }
+    let Some(node) = state.workflow.node(ticket.step) else {
+        return Err(RuntimeError::InvalidActionCompletion);
+    };
+    match node.kind {
+        CompiledNodeKind::Do { action, .. } if action == ticket.action => Ok(()),
+        _ => Err(RuntimeError::InvalidActionCompletion),
+    }
+}
+
+/// Returns the input slot for a suspended Do step.
+pub fn action_input_slot(
+    state: &crate::shard::types::RunState,
+    step: StepIdx,
+) -> RuntimeResult<SlotIdx> {
+    let Some(node) = state.workflow.node(step) else {
+        return Err(RuntimeError::InvalidActionCompletion);
+    };
+    match node.kind {
+        CompiledNodeKind::Do { input, .. } => Ok(input),
+        _ => Err(RuntimeError::InvalidActionCompletion),
+    }
+}
+
+/// Returns the output slot for a suspended Do step.
+pub fn action_output_slot(
+    state: &crate::shard::types::RunState,
+    step: StepIdx,
+) -> RuntimeResult<SlotIdx> {
+    state
+        .workflow
+        .node(step)
+        .and_then(|node| node.output)
+        .ok_or(RuntimeError::InvalidActionCompletion)
+}
+
+fn validate_ticket_attempt(
+    state: &crate::shard::types::RunState,
+    ticket: ActionTicket,
+) -> RuntimeResult<()> {
+    if ticket.attempt == 0 || ticket.capacity == 0 || ticket.attempt > ticket.capacity {
+        return Err(RuntimeError::AttemptBeyondMax {
+            attempt: ticket.attempt,
+            max: ticket.capacity,
+        });
+    }
+    let current = state
+        .action_attempts
+        .get(ticket.step.as_usize())
+        .copied()
+        .ok_or(RuntimeError::InvalidActionCompletion)?;
+    if ticket.attempt < current {
+        return Err(RuntimeError::StaleAttempt {
+            incoming: ticket.attempt,
+            current,
+        });
+    }
+    // Future-attempt rejection (G005): only the scheduled attempt may complete.
+    // A zero current attempt means no ticket has been issued for this step yet.
+    if ticket.attempt > current {
+        return Err(RuntimeError::InvalidActionCompletion);
+    }
+    Ok(())
+}
+
+/// Promotes an engine-issued ticket to the live per-step attempt counter.
+pub fn normalize_scheduled_ticket(
+    state: &crate::shard::types::RunState,
+    ticket: ActionTicket,
+) -> RuntimeResult<ActionTicket> {
+    let current = state
+        .action_attempts
+        .get(ticket.step.as_usize())
+        .copied()
+        .ok_or(RuntimeError::InvalidActionCompletion)?;
+    let attempt = current.max(ticket.attempt).max(1);
+    if ticket.capacity == 0 || attempt > ticket.capacity {
+        return Err(RuntimeError::AttemptBeyondMax {
+            attempt,
+            max: ticket.capacity,
+        });
+    }
+    Ok(ActionTicket { attempt, ..ticket })
+}
+
+/// Advances PC after an action completes successfully.
+pub fn advance_after_action_completion(
+    state: &mut crate::shard::types::RunState,
+    step: StepIdx,
+) -> RuntimeResult<()> {
+    let Some(node) = state.workflow.node(step) else {
+        return Err(RuntimeError::InvalidActionCompletion);
+    };
+    match node.next {
+        Some(next) => {
+            state
+                .frame
+                .set_pc(next)
+                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+            Ok(())
+        }
+        None => Ok(()),
+    }
+}
+
+/// Returns true if a timer must be registered for the given step.
+pub fn timer_registration_required(state: &crate::shard::types::RunState, step: StepIdx) -> bool {
+    let Some(node) = state.workflow.node(step) else {
+        return false;
+    };
+    match node.kind {
+        CompiledNodeKind::WaitUntil { .. } => true,
+        CompiledNodeKind::WaitEvent { timeout_slot, .. }
+        | CompiledNodeKind::Ask { timeout_slot, .. } => timeout_slot.is_some(),
+        _ => false,
+    }
+}
+
+/// Advances state after a timer fires.
+pub fn advance_after_timer_fire(
+    state: &mut crate::shard::types::RunState,
+    timer: PendingTimer,
+) -> RuntimeResult<()> {
+    validate_timer_fire(state, timer)?;
+    let next = state
+        .workflow
+        .node(timer.step)
+        .and_then(|node| node.next)
+        .ok_or(RuntimeError::InvalidTimerFire)?;
+    state
+        .frame
+        .mark_running(timer.step)
+        .map_err(|_| RuntimeError::InvalidTimerFire)?;
+    state
+        .frame
+        .mark_succeeded(timer.step)
+        .map_err(|_| RuntimeError::InvalidTimerFire)?;
+    state
+        .frame
+        .set_pc(next)
+        .map_err(|_| RuntimeError::InvalidTimerFire)?;
+    Ok(())
+}
+
+/// Validates a timer fire without mutating the run frame.
+pub fn validate_timer_fire(
+    state: &crate::shard::types::RunState,
+    timer: PendingTimer,
+) -> RuntimeResult<()> {
+    let Some(node) = state.workflow.node(timer.step) else {
+        return Err(RuntimeError::InvalidTimerFire);
+    };
+    match (timer.kind, &node.kind) {
+        (
+            PendingTimerKind::Wait,
+            CompiledNodeKind::WaitUntil { .. } | CompiledNodeKind::WaitEvent { .. },
+        )
+        | (PendingTimerKind::Ask, CompiledNodeKind::Ask { .. }) => {}
+        _ => return Err(RuntimeError::InvalidTimerFire),
+    }
+    if node.next.is_none() {
+        return Err(RuntimeError::InvalidTimerFire);
+    }
+    Ok(())
+}
+
+/// Creates a new action attempts tracker.
+pub fn new_action_attempts(step_count: u16) -> Box<[u16]> {
+    vec![0; usize::from(step_count)].into_boxed_slice()
+}
+
+pub fn make_run_state(
+    workflow: CompiledWorkflow,
+    run_id: RunId,
+) -> Option<crate::shard::types::RunState> {
+    let step_count = workflow.node_count();
+    let slot_count = workflow.slot_count();
+    let frame = RunFrame::new(run_id, workflow.entry(), step_count, slot_count).ok()?;
+    Some(crate::shard::types::RunState {
+        frame,
+        workflow,
+        store: ValueStore::new(),
+        action_attempts: new_action_attempts(step_count),
+        admission: None,
+        collect_states: CollectStates::new(),
+        action_contracts: Box::new([]),
+    })
+}
+
+/// Records a scheduled action attempt.
+pub fn record_scheduled_attempt(state: &mut crate::shard::types::RunState, ticket: ActionTicket) {
+    if ticket.attempt == 0 {
+        return;
+    }
+    if let Some(attempt) = state.action_attempts.get_mut(ticket.step.as_usize())
+        && (*attempt == 0 || *attempt < ticket.attempt)
+    {
+        *attempt = ticket.attempt;
+    }
+}
+
+fn validate_retry_attempt(ticket: ActionTicket, policy: RetryPolicy) -> RuntimeResult<()> {
+    if policy.max_attempts == 0 || ticket.attempt == 0 || ticket.attempt > policy.max_attempts {
+        return Err(RuntimeError::AttemptBeyondMax {
+            attempt: ticket.attempt,
+            max: policy.max_attempts,
+        });
+    }
+    Ok(())
+}
+
+/// Returns true if retry metadata exists for the given step.
+pub fn retry_metadata_exists(state: &crate::shard::types::RunState, step: StepIdx) -> bool {
+    let Some(node) = state.workflow.node(step) else {
+        return false;
+    };
+    let Some(next) = node.next else {
+        return false;
+    };
+    matches!(
+        state.workflow.node(next).map(|next_node| &next_node.kind),
+        Some(CompiledNodeKind::RetryCheck { .. })
+    )
+}
+
+/// Extracts retry policy from the step's retry check node.
+pub fn retry_policy_after_action(
+    state: &crate::shard::types::RunState,
+    step: StepIdx,
+) -> RuntimeResult<RetryPolicy> {
+    let Some(node) = state.workflow.node(step) else {
+        return Err(RuntimeError::InvalidActionCompletion);
+    };
+    let Some(next) = node.next else {
+        return Err(RuntimeError::UnsupportedOperation {
+            operation: "retry_metadata_missing",
+        });
+    };
+    let Some(retry_node) = state.workflow.node(next) else {
+        return Err(RuntimeError::InvalidActionCompletion);
+    };
+    let CompiledNodeKind::RetryCheck { policy_slot, .. } = retry_node.kind else {
+        return Err(RuntimeError::UnsupportedOperation {
+            operation: "retry_metadata_missing",
+        });
+    };
+    let SlotValue::I64(max_attempts) =
+        *state
+            .frame
+            .read_slot(policy_slot)
+            .map_err(|_| RuntimeError::UnsupportedOperation {
+                operation: "retry_policy_slot_unreadable",
+            })?
+    else {
+        return Err(RuntimeError::UnsupportedOperation {
+            operation: "retry_policy_slot_not_i64",
+        });
+    };
+    let max_attempts =
+        u16::try_from(max_attempts).map_err(|_| RuntimeError::UnsupportedOperation {
+            operation: "retry_policy_attempts_out_of_range",
+        })?;
+    if max_attempts == 0 {
+        return Err(RuntimeError::UnsupportedOperation {
+            operation: "retry_policy_attempts_zero",
+        });
+    }
+    Ok(RetryPolicy {
+        max_attempts,
+        base_delay_ms: 0,
+        exponential_backoff: false,
+    })
+}
+
+/// Records a retry attempt and returns true if more retries are allowed.
+pub fn record_retry_attempt(
+    state: &mut crate::shard::types::RunState,
+    ticket: ActionTicket,
+    policy: RetryPolicy,
+) -> RuntimeResult<bool> {
+    validate_retry_attempt(ticket, policy)?;
+    let attempt = state
+        .action_attempts
+        .get_mut(ticket.step.as_usize())
+        .ok_or(RuntimeError::InvalidActionCompletion)?;
+    *attempt = (*attempt).max(ticket.attempt);
+    if *attempt >= policy.max_attempts {
+        return Ok(false);
+    }
+    *attempt = attempt
+        .checked_add(1)
+        .ok_or(RuntimeError::UnsupportedOperation {
+            operation: "retry_attempt_overflow",
+        })?;
+    Ok(true)
+}
+
+/// Finds the error handler step and error slot for a failed step.
+pub fn find_error_handler_for_failure(
+    workflow: &CompiledWorkflow,
+    failed: StepIdx,
+) -> Option<(StepIdx, Option<SlotIdx>)> {
+    if let Some(result) = error_handler_on_node(workflow, failed, failed) {
+        return Some(result);
+    }
+
+    if failed.get() > 0 {
+        let previous = StepIdx::new(failed.get().saturating_sub(1));
+        if let Some(result) = error_handler_on_node(workflow, previous, failed) {
+            return Some(result);
+        }
+    }
+
+    let mut index = 0usize;
+    let count = usize::from(workflow.node_count());
+    while index < count {
+        let Ok(raw) = u16::try_from(index) else {
+            return None;
+        };
+        if let Some(result) = error_handler_on_node(workflow, StepIdx::new(raw), failed) {
+            return Some(result);
+        }
+        index = index.checked_add(1)?;
+    }
+
+    None
+}
+
+fn error_handler_on_node(
+    workflow: &CompiledWorkflow,
+    candidate: StepIdx,
+    failed: StepIdx,
+) -> Option<(StepIdx, Option<SlotIdx>)> {
+    let node = workflow.node(candidate)?;
+    match node.kind {
+        CompiledNodeKind::ErrorHandler {
+            body,
+            handler,
+            error_slot,
+        } if candidate == failed || body == failed => Some((handler, error_slot)),
+        _ => None,
+    }
+}
+
+/// Returns the result slot for a finished run.
+pub fn result_slot_for_finished_run(state: &crate::shard::types::RunState) -> Option<SlotIdx> {
+    state
+        .workflow
+        .node(state.frame.pc())
+        .and_then(|node| match node.kind {
+            CompiledNodeKind::Finish { result } => Some(result),
+            _ => None,
+        })
+}
+
+/// Creates a snapshot from run state.
+pub fn snapshot_from_state(
+    run: RunId,
+    correlation: u64,
+    state: &crate::shard::types::RunState,
+) -> InspectSnapshot {
+    InspectSnapshot {
+        run,
+        correlation,
+        pc: state.frame.pc(),
+        executed: state.frame.executed(),
+    }
+}
+
+#[cfg(test)]
+#[path = "helpers/tests.rs"]
+mod tests;
+
+FILE crates/vb_runtime/src/shard/impl_parts/chunk_001.rs
+use crate::shard::types::{RunAggregate, RuntimeState};
+
+impl Shard {
+    /// Creates a new shard with the given configuration.
+    pub fn new(config: ShardConfig) -> Self {
+        Self::new_with_journal_and_artifact_store(
+            config,
+            VolatileRuntimeJournal::shared(),
+            crate::admission::AlwaysPresentArtifactStore::shared(),
+        )
+    }
+
+    /// Creates a new shard with the given configuration, journal sink, and artifact store.
+    pub fn new_with_journal_and_artifact_store(
+        config: ShardConfig,
+        journal: SharedRuntimeJournal,
+        artifact_store: crate::admission::SharedAcceptedArtifactStore,
+    ) -> Self {
+        Self {
+            command_queue: ShardCommandQueue::from_config(config),
+            runs: IndexMap::new(),
+            run_aggregate: RunAggregate::new(),
+            journal_sequences: IndexMap::new(),
+            accounted_executed_steps: IndexMap::new(),
+            frame_pools: IndexMap::new(),
+            trace_ring: TraceRing::new(config.trace_capacity),
+            counters: ShardCounters::new(),
+            step_budget_per_tick: config.step_budget_per_tick,
+            max_active_runs: config.max_active_runs,
+            policy: config.policy,
+            artifact_store,
+            inspect_response: None,
+            shutting_down: false,
+            current_tick: TimerTick::new(0),
+            journal,
+        }
+    }
+
+    /// Creates a new shard with the given configuration and journal sink.
+    ///
+    /// For storage-backed journals (e.g., `StorageRuntimeJournal`), the shard uses
+    /// `StorageArtifactStore` so that strict/journaled admission can validate artifacts
+    /// against real durable storage. For noop/volatile strict and journaled journals,
+    /// `MissingAcceptedArtifactStore` is used so direct runtime construction without a
+    /// storage-backed accepted-artifact source rejects admission instead of silently
+    /// accepting unbacked artifacts.
+    pub fn new_with_journal(config: ShardConfig, journal: SharedRuntimeJournal) -> Self {
+        let artifact_store: crate::admission::SharedAcceptedArtifactStore =
+            if let Some(fjall_journal) = journal.storage_journal() {
+                // Storage-backed journal: use StorageArtifactStore for strict/journaled
+                // artifact validation. This ensures the shard can load and validate
+                // accepted artifacts from durable storage before admission.
+                std::sync::Arc::new(crate::admission::StorageArtifactStore::new(fjall_journal))
+            } else {
+                match config.policy {
+                    vb_core::policy::RuntimePolicy::Relaxed => {
+                        crate::admission::AlwaysPresentArtifactStore::shared()
+                    }
+                    vb_core::policy::RuntimePolicy::Strict
+                    | vb_core::policy::RuntimePolicy::Journaled => {
+                        crate::admission::MissingAcceptedArtifactStore::shared()
+                    }
+                    _ => crate::admission::MissingAcceptedArtifactStore::shared(),
+                }
+            };
+        Self::new_with_journal_and_artifact_store(config, journal, artifact_store)
+    }
+
+    /// Enqueues a command. Returns `QueueFull` on overflow.
+    /// For submit variants, validates journal health before enqueueing
+    /// because handle_submit writes to journal before returning.
+    pub fn enqueue(&self, cmd: ShardCommand) -> RuntimeResult<()> {
+        if self.shutting_down {
+            return Err(RuntimeError::ShutdownInProgress);
+        }
+        match &cmd {
+            ShardCommand::Submit { .. }
+            | ShardCommand::SubmitPrePersisted { .. }
+            | ShardCommand::SubmitWithInputs { .. }
+            | ShardCommand::SubmitWithContracts { .. }
+            | ShardCommand::SubmitWithInputsAndContracts { .. } => {
+                // Probe journal health before accepting the command.
+                self.journal.probe()?;
+            }
+            _ => {}
+        }
+        self.command_queue.enqueue(cmd)
+    }
+
+    /// Returns the number of commands currently in the queue.
+    #[must_use]
+    pub fn command_queue_len(&self) -> usize {
+        self.command_queue.len()
+    }
+
+    /// Returns the remaining free slots in the command queue.
+    #[must_use]
+    pub fn remaining_capacity(&self) -> usize {
+        self.command_queue.remaining_capacity()
+    }
+
+    /// Returns true if the command queue is full.
+    #[must_use]
+    pub fn is_queue_full(&self) -> bool {
+        self.command_queue.is_full()
+    }
+
+    /// Returns the command queue capacity.
+    #[must_use]
+    pub fn command_queue_capacity(&self) -> usize {
+        self.command_queue.capacity()
+    }
+
+    /// Returns the number of active runs on this shard.
+    #[must_use]
+    pub fn active_run_count(&self) -> usize {
+        self.runs
+            .len()
+            .saturating_add(self.run_aggregate.checked_out_len())
+    }
+
+    fn run_capacity_error(capacity: usize) -> RuntimeError {
+        RuntimeError::ActiveRunCapacityExceeded { capacity }
+    }
+
+    pub(crate) fn prepare_run_slots(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        self.reserve_run_state_slot(run_id)?;
+        self.reserve_checked_out_run_slot(run_id)?;
+        self.reserve_runtime_state_slot(run_id)?;
+        self.reserve_journal_sequence_slot(run_id)?;
+        self.reserve_pending_timer_slot(run_id)?;
+        self.reserve_pending_action_slot(run_id)
+    }
+
+    fn reserve_index_map_slot<T>(
+        slots: &mut IndexMap<RunId, T>,
+        run_id: RunId,
+        capacity: usize,
+    ) -> RuntimeResult<()> {
+        if slots.contains_key(&run_id) {
+            return Ok(());
+        }
+        if slots.len() >= capacity {
+            return Err(Self::run_capacity_error(capacity));
+        }
+        slots
+            .try_reserve(1)
+            .map_err(|_| Self::run_capacity_error(capacity))
+    }
+
+    fn reserve_run_state_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        Self::reserve_index_map_slot(&mut self.runs, run_id, self.max_active_runs)
+    }
+
+    pub(crate) fn reserve_checked_out_run_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        self.run_aggregate
+            .reserve_checked_out_slot(run_id, self.max_active_runs)
+    }
+
+    fn reserve_runtime_state_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        self.run_aggregate
+            .reserve_runtime_state_slot(run_id, self.max_active_runs)
+    }
+
+    fn reserve_journal_sequence_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        Self::reserve_index_map_slot(&mut self.journal_sequences, run_id, self.max_active_runs)
+    }
+
+    pub(crate) fn reserve_pending_timer_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        self.run_aggregate
+            .reserve_pending_timer_slot(run_id, self.max_active_runs)
+    }
+
+    fn reserve_pending_action_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        self.run_aggregate
+            .reserve_pending_action_slot(run_id, self.max_active_runs)
+    }
+
+    #[cfg(not(kani))]
+    pub(crate) fn append_journal_event(&mut self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
+        let run = event.run_id();
+        let seq = self.journal_sequence_for(run);
+        self.journal.append_sequenced(event, seq)?;
+        self.advance_journal_sequence(run, seq)
+    }
+
+    #[cfg(not(kani))]
+    pub(crate) fn append_journal_event_batch(
+        &mut self,
+        events: &[RuntimeJournalEvent],
+    ) -> RuntimeResult<()> {
+        let Some((first, rest)) = events.split_first() else {
+            return Ok(());
+        };
+        let run = first.run_id();
+        for event in rest {
+            if event.run_id() != run {
+                return Err(RuntimeError::UnsupportedOperation {
+                    operation: "mixed_run_journal_batch",
+                });
+            }
+        }
+        let seq = self.journal_sequence_for(run);
+        let next = Self::journal_sequence_after(seq, events.len())?;
+        self.reserve_journal_sequence_slot(run)?;
+        self.journal.append_sequenced_batch(events, seq)?;
+        let _previous = self.journal_sequences.insert(run, next);
+        Ok(())
+    }
+
+    #[cfg(not(kani))]
+    pub(crate) fn append_journal_events_atomically<const N: usize>(
+        &mut self,
+        events: [RuntimeJournalEvent; N],
+    ) -> RuntimeResult<()> {
+        self.append_journal_event_batch(&events)
+    }
+
+    /// `#[cfg(kani)]` replacement for `append_journal_event` that returns
+    /// nondeterministic Ok or Err. Trust boundary TB-vb282my-journal-stub-001.
+    /// Production journal append uses Fjall-backed persistence; stubbed version
+    /// exercises error paths and ordering verification without real I/O.
+    #[cfg(kani)]
+    pub(crate) fn append_journal_event(
+        &mut self,
+        _event: RuntimeJournalEvent,
+    ) -> RuntimeResult<()> {
+        Ok(())
+    }
+
+    #[cfg(kani)]
+    pub(crate) fn append_journal_event_batch(
+        &mut self,
+        _events: &[RuntimeJournalEvent],
+    ) -> RuntimeResult<()> {
+        Ok(())
+    }
+
+    #[cfg(kani)]
+    pub(crate) fn append_journal_events_atomically<const N: usize>(
+        &mut self,
+        _events: [RuntimeJournalEvent; N],
+    ) -> RuntimeResult<()> {
+        Ok(())
+    }
+
+    /// `#[cfg(kani)]`-only accessor for the per-run journal sequence.
+    /// Returns the current `EventSeq` recorded for `run_id`, or `None`
+    /// if no sequence has been allocated yet. Used by kani harnesses
+    /// (e.g. `kani_ask_answer_lifecycle::kani_ask_answer_journal_monotonicity`)
+    /// to inspect monotonicity invariants without exposing the field
+    /// outside the `kani` build.
+    #[cfg(kani)]
+    pub(crate) fn journal_seq_get(&self, run_id: RunId) -> Option<EventSeq> {
+        self.journal_sequences.get(&run_id).copied()
+    }
+
+    fn journal_sequence_for(&self, run: RunId) -> EventSeq {
+        self.journal_sequences
+            .get(&run)
+            .copied()
+            .unwrap_or(EventSeq::ZERO)
+    }
+
+    #[cfg(not(kani))]
+    fn journal_sequence_after(seq: EventSeq, count: usize) -> RuntimeResult<EventSeq> {
+        let count = u64::try_from(count)
+            .map_err(|_| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
+        seq.get()
+            .checked_add(count)
+            .map(EventSeq::new)
+            .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
+    }
+
+    fn advance_journal_sequence(&mut self, run: RunId, seq: EventSeq) -> RuntimeResult<()> {
+        let next = seq
+            .get()
+            .checked_add(1)
+            .map(EventSeq::new)
+            .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
+        self.reserve_journal_sequence_slot(run)?;
+        let _previous = self.journal_sequences.insert(run, next);
+        Ok(())
+    }
+
+    pub(crate) fn discard_journal_sequence(&mut self, run: RunId) {
+        let _removed = self.journal_sequences.swap_remove(&run);
+    }
+
+    /// Seeds a journal sequence for a run being recovered.
+    ///
+    /// Recovery provides the next durable sequence from journal replay;
+    /// this sets it as the current sequence so future events advance
+    /// from the correct position.
+    pub(crate) fn seed_journal_sequence(&mut self, run: RunId, seq: EventSeq) -> RuntimeResult<()> {
+        self.reserve_journal_sequence_slot(run)?;
+        let _previous = self.journal_sequences.insert(run, seq);
+        Ok(())
+    }
+
+    /// Re-injects a pending action ticket recovered from journal replay.
+    ///
+    /// When a run was suspended with a pending action (sided effect in
+    /// flight), recovery must restore that action to the shard's pending
+    /// action map so it can be matched with a completion event.
+    pub(crate) fn reinject_pending_action(
+        &mut self,
+        run: RunId,
+        ticket: vb_core::action::ActionTicket,
+    ) -> RuntimeResult<()> {
+        self.pending_action_insert(run, ticket)?;
+        Ok(())
+    }
+
+    pub(crate) fn add_executed_step_delta(&mut self, run: RunId, executed: u64) {
+        let previous = self
+            .accounted_executed_steps
+            .get(&run)
+            .copied()
+            .map_or(0, |value| value);
+        let Some(delta) = executed.checked_sub(previous) else {
+            return;
+        };
+        if delta == 0 {
+            return;
+        }
+        self.counters.add_steps(delta);
+        self.accounted_executed_steps.insert(run, executed);
+    }
+
+    pub(crate) fn clear_executed_step_accounting(&mut self, run: RunId) {
+        self.accounted_executed_steps.swap_remove(&run);
+    }
+
+    /// Returns the number of pending timers on this shard.
+    #[must_use]
+    pub fn pending_timer_count(&self) -> usize {
+        self.run_aggregate.pending_timer_len()
+    }
+
+    /// Returns the run state for the given run ID, if it exists.
+    #[must_use]
+    pub fn run_state_get(&self, run_id: RunId) -> Option<&RunState> {
+        self.runs.get(&run_id)
+    }
+
+    /// Returns a mutable reference to the run state for the given run ID, if it exists.
+    #[must_use]
+    pub fn run_state_get_mut(&mut self, run_id: RunId) -> Option<&mut RunState> {
+        self.runs.get_mut(&run_id)
+    }
+
+    /// Iterates active run state without exposing direct map mutation.
+    pub(crate) fn active_runs_iter(&self) -> impl Iterator<Item = (&RunId, &RunState)> {
+        self.runs.iter()
+    }
+
+    /// Returns true if a run with the given ID exists.
+    #[must_use]
+    pub fn run_state_contains(&self, run_id: RunId) -> bool {
+        self.runs.contains_key(&run_id)
+    }
+
+    /// Removes and returns the run state for the given run ID.
+    pub(crate) fn run_state_remove(&mut self, run_id: RunId) -> Option<RunState> {
+        let state = self.runs.swap_remove(&run_id)?;
+        if !self.checked_out_run_contains(run_id) {
+            self.runtime_state_remove(run_id);
+            let _removed_timer = self.pending_timer_remove(run_id);
+            let _removed_action = self.pending_action_remove(run_id);
+        }
+        Some(state)
+    }
+
+    /// Computes the ABI digest for a specific action on a run.
+    ///
+    /// Looks up the action contract for the given action ID from the run's
+    /// action contracts, serializes it, and returns the blake3 digest.
+    pub(crate) fn action_abi_digest_for_run_action(
+        &self,
+        run: RunId,
+        action: ActionId,
+    ) -> RuntimeResult<WorkflowDigest> {
+        let state = self
+            .run_state_get(run)
+            .ok_or_else(|| RuntimeError::RunNotFound)?;
+        // Find the contract for this action
+        let contract = state
+            .action_contracts
+            .iter()
+            .find(|c| c.id == action)
+            .ok_or(RuntimeError::UnsupportedOperation {
+                operation: "action_contract_not_found",
+            })?;
+        // Compute ABI digest from the contract
+        crate::recovery::action_contract_abi_digest(contract)
+    }
+
+    /// Returns the runtime state for the given run ID, if it exists.
+    #[must_use]
+    pub fn runtime_state_get(&self, run_id: RunId) -> Option<RuntimeState> {
+        self.run_aggregate.runtime_state_get(run_id)
+    }
+
+    /// Inserts a non-terminal runtime state for the given run ID.
+    pub(crate) fn runtime_state_insert(
+        &mut self,
+        run_id: RunId,
+        state: RuntimeState,
+    ) -> RuntimeResult<Option<RuntimeState>> {
+        self.run_aggregate
+            .runtime_state_insert(&self.runs, run_id, state, self.max_active_runs)
+    }
+
+    /// Removes the runtime state for the given run ID, if it exists.
+    pub(crate) fn runtime_state_remove(&mut self, run_id: RunId) {
+        if self.run_state_contains(run_id) || self.checked_out_run_contains(run_id) {
+            return;
+        }
+        self.run_aggregate.runtime_state_remove(run_id);
+    }
+
+    /// Clears runtime state for a terminal event apply path, including when
+    /// the run is checked out of `runs` for deterministic drive cleanup.
+    pub(crate) fn runtime_state_terminal_clear(&mut self, run_id: RunId) {
+        self.run_aggregate.runtime_state_terminal_clear(run_id);
+    }
+
+    /// Returns true if the given run ID is in the terminal state.
+    #[must_use]
+    pub fn terminal_runs_contains(&self, run_id: RunId) -> bool {
+        self.run_aggregate.terminal_contains(run_id)
+    }
+
+    /// Inserts a run state for the given run ID.
+    pub(crate) fn run_state_insert(
+        &mut self,
+        run_id: RunId,
+        state: RunState,
+    ) -> RuntimeResult<Option<RunState>> {
+        if self.terminal_runs_contains(run_id) || self.run_state_contains(run_id) {
+            return Err(RuntimeError::RunAlreadyExists);
+        }
+        if !self.run_state_has_aggregate_visibility(run_id) {
+            return Err(RuntimeError::RunNotFound);
+        }
+        self.reserve_run_state_slot(run_id)?;
+        let previous = self.runs.insert(run_id, state);
+        self.run_aggregate.checked_out_remove(run_id);
+        Ok(previous)
+    }
+
+    fn run_state_has_aggregate_visibility(&self, run_id: RunId) -> bool {
+        self.runtime_state_get(run_id).is_some() || self.checked_out_run_contains(run_id)
+    }
+
+    pub(crate) fn admit_run_state(
+        &mut self,
+        run_id: RunId,
+        state: RunState,
+        runtime_state: RuntimeState,
+    ) -> RuntimeResult<()> {
+        self.validate_new_active_run(run_id, runtime_state)?;
+        self.reserve_run_state_slot(run_id)?;
+        self.reserve_runtime_state_slot(run_id)?;
+        let _previous = self.runs.insert(run_id, state);
+        match self.runtime_state_insert(run_id, runtime_state) {
+            Ok(_) => Ok(()),
+            Err(error) => {
+                let _removed = self.runs.swap_remove(&run_id);
+                Err(error)
+            }
+        }
+    }
+
+    fn validate_new_active_run(
+        &self,
+        run_id: RunId,
+        runtime_state: RuntimeState,
+    ) -> RuntimeResult<()> {
+        if runtime_state == RuntimeState::Failed {
+            return Err(RuntimeError::UnsupportedOperation {
+                operation: "runtime_state_failed_terminal_split",
+            });
+        }
+        if self.run_state_contains(run_id)
+            || self.checked_out_run_contains(run_id)
+            || self.runtime_state_get(run_id).is_some()
+            || self.terminal_runs_contains(run_id)
+        {
+            return Err(RuntimeError::RunAlreadyExists);
+        }
+        Ok(())
+    }
+
+    pub(crate) fn checked_out_run_insert(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        self.run_aggregate
+            .checked_out_insert(run_id, self.max_active_runs)
+    }
+
+    pub(crate) fn checked_out_run_remove(&mut self, run_id: RunId) {
+        self.run_aggregate.checked_out_remove(run_id);
+    }
+
+    pub(crate) fn checked_out_run_contains(&self, run_id: RunId) -> bool {
+        self.run_aggregate.checked_out_contains(run_id)
+    }
+
+    pub(crate) fn checked_out_run_iter(&self) -> impl Iterator<Item = &RunId> {
+        self.run_aggregate.checked_out_iter()
+    }
+
+    /// Inserts a run into the terminal runs set.
+    pub fn terminal_runs_insert(&mut self, run_id: RunId) -> RuntimeResult<bool> {
+        self.run_aggregate
+            .terminal_insert(&self.runs, run_id, self.max_active_runs)
+    }
+
+    pub(crate) fn reserve_terminal_run_slot(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        self.run_aggregate
+            .reserve_terminal_insert_slot(run_id, self.max_active_runs)
+    }
+
+    /// Removes a run from the terminal runs set.
+    pub fn terminal_runs_remove(&mut self, run_id: RunId) {
+        self.run_aggregate.terminal_remove(run_id);
+    }
+
+    /// Inserts a pending timer for the given run ID.
+    pub fn pending_timer_insert(
+        &mut self,
+        run_id: RunId,
+        timer: PendingTimer,
+    ) -> RuntimeResult<Option<PendingTimer>> {
+        self.run_aggregate.pending_timer_insert(
+            &self.runs,
+            self.max_active_runs,
+            run_id,
+            timer,
+        )
+    }
+
+    /// Returns the pending timer for the given run ID, if it exists.
+    #[must_use]
+    pub fn pending_timer_get(&self, run_id: RunId) -> Option<PendingTimer> {
+        self.run_aggregate.pending_timer_get(run_id)
+    }
+
+    /// Returns a clone of all pending timers.
+    #[must_use]
+    pub fn pending_timer_clone(&self) -> IndexMap<RunId, PendingTimer> {
+        self.run_aggregate.pending_timer_clone()
+    }
+
+    /// Removes and returns the pending timer for the given run ID.
+    pub fn pending_timer_remove(&mut self, run_id: RunId) -> Option<PendingTimer> {
+        self.run_aggregate.pending_timer_remove(run_id)
+    }
+
+    /// Returns true if a pending timer exists for the given run ID.
+    #[must_use]
+    pub fn pending_timer_contains(&self, run_id: RunId) -> bool {
+        self.run_aggregate.pending_timer_contains(run_id)
+    }
+
+    pub(crate) fn pending_timer_iter(&self) -> impl Iterator<Item = (&RunId, &PendingTimer)> {
+        self.run_aggregate.pending_timer_iter()
+    }
+
+    pub(crate) fn clear_pending_timers(&mut self) {
+        self.run_aggregate.pending_timer_clear();
+    }
+
+    /// Inserts an in-flight action ticket for the given run ID.
+    pub fn pending_action_insert(
+        &mut self,
+        run_id: RunId,
+        ticket: vb_core::action::ActionTicket,
+    ) -> RuntimeResult<Option<vb_core::action::ActionTicket>> {
+        self.run_aggregate.pending_action_insert(
+            &self.runs,
+            self.max_active_runs,
+            run_id,
+            ticket,
+        )
+    }
+
+    /// Returns the in-flight action ticket for the given run, if any.
+    #[must_use]
+    pub fn pending_action_get(
+        &self,
+        run_id: RunId,
+    ) -> Option<vb_core::action::ActionTicket> {
+        self.run_aggregate.pending_action_get(run_id)
+    }
+
+    #[must_use]
+    pub(crate) fn pending_action_len(&self) -> usize {
+        self.run_aggregate.pending_action_len()
+    }
+
+    /// Returns a clone of all pending action tickets.
+    #[must_use]
+    pub fn pending_action_clone(&self) -> IndexMap<RunId, vb_core::action::ActionTicket> {
+        self.run_aggregate.pending_action_clone()
+    }
+
+    /// Removes and returns the in-flight action ticket for the given
+    /// run ID.
+    pub fn pending_action_remove(
+        &mut self,
+        run_id: RunId,
+    ) -> Option<vb_core::action::ActionTicket> {
+        self.run_aggregate.pending_action_remove(run_id)
+    }
+
+    pub(crate) fn pending_action_iter(
+        &self,
+    ) -> impl Iterator<Item = (&RunId, &vb_core::action::ActionTicket)> {
+        self.run_aggregate.pending_action_iter()
+    }
+
+    /// Advances the deterministic clock to the given tick.
+    ///
+    /// The new tick must be >= the current tick. Returns an error if
+    /// the supplied tick is in the past, preventing backward clock jumps.
+    ///
+    /// This operates the numeric timer seam alongside the existing
+    /// wall-clock `Instant`-based timers; it does not modify or affect
+    /// `Instant`-derived deadlines.
+    pub fn advance_clock_to(&mut self, new_tick: TimerTick) -> RuntimeResult<()> {
+        if new_tick < self.current_tick {
+            return Err(RuntimeError::InvalidTimerFire);
+        }
+        self.current_tick = new_tick;
+        Ok(())
+    }
+
+    /// Returns the current tick of the deterministic clock.
+    #[must_use]
+    pub fn current_tick(&self) -> TimerTick {
+        self.current_tick
+    }
+
+    /// Returns the next freshness generation for a run's pending timer.
+    ///
+    /// - `Some(n)` where `n > 0` is the next generation to use.
+    /// - `None` if generation would overflow `u64`.
+    ///
+    /// If no timer exists for the run, returns `Some(1)`.
+    #[must_use]
+    pub fn next_pending_timer_generation(&self, run: RunId) -> Option<u64> {
+        match self.pending_timer_get(run) {
+            Some(timer) => timer.generation.checked_add(1),
+            None => Some(1),
+        }
+    }
+
+    /// Returns frame pool metrics across all pools: (free, total_capacity).
+    #[must_use]
+    pub fn frame_pool_metrics(&self) -> (usize, usize) {
+        let mut free = 0usize;
+        let mut total = 0usize;
+        for pool in self.frame_pools.values() {
+            free = free.saturating_add(pool.available());
+            total = total.saturating_add(pool.capacity());
+        }
+        (free, total)
+    }
+
+    /// Processes one command from the queue. Returns false if the shard should shut down.
+    pub fn tick(&mut self) -> RuntimeResult<bool> {
+        if self.shutting_down {
+            return Ok(false);
+        }
+
+        let Some(cmd) = self.command_queue.pop() else {
+            return Ok(true);
+        };
+
+        match cmd {
+            ShardCommand::Submit {
+                run,
+                workflow,
+                caps,
+            } => self.handle_submit(run, workflow, caps)?,
+            ShardCommand::SubmitPrePersisted {
+                run,
+                workflow,
+                caps,
+            } => self.handle_submit_pre_persisted(run, workflow, caps)?,
+            ShardCommand::SubmitWithInputs {
+                run,
+                workflow,
+                inputs,
+                caps,
+            } => self.handle_submit_with_inputs(run, workflow, &inputs, caps)?,
+            ShardCommand::SubmitWithContracts {
+                run,
+                workflow,
+                caps,
+                action_contracts,
+            } => self.handle_submit_with_contracts(run, workflow, caps, &action_contracts)?,
+            ShardCommand::SubmitWithInputsAndContracts {
+                run,
+                workflow,
+                inputs,
+                caps,
+                action_contracts,
+            } => self.handle_submit_with_inputs_and_contracts(
+                run,
+                workflow,
+                &inputs,
+                caps,
+                &action_contracts,
+            )?,
+            ShardCommand::Resume { run } => {
+                self.handle_resume(run).map_err(RuntimeError::from)?;
+            }
+            ShardCommand::ActionCompleted { ticket, output } => {
+                self.handle_action_completion(ticket, output)?;
+            }
+            ShardCommand::ActionCompletedLegacy { run, step } => {
+                self.handle_legacy_action_completion(run, step)?;
+            }
+            ShardCommand::ActionFailed { ticket, failure } => {
+                self.handle_action_failure(ticket, failure)?;
+            }
+            ShardCommand::RuntimeActionFailed { ticket, failure } => {
+                self.handle_action_failure(ticket, failure)
+                    .map_err(Self::runtime_action_failure_error)?;
+            }
+            ShardCommand::AskAnswered { answer } => self.handle_ask_answer(answer)?,
+            ShardCommand::TimerFired {
+                run,
+                generation,
+                deadline,
+                kind,
+            } => self.handle_timer(run, generation, deadline, kind)?,
+            ShardCommand::Cancel { run, reason } => self.handle_cancel(run, reason)?,
+            ShardCommand::Kill { run, reason } => self.handle_kill(run, reason)?,
+            ShardCommand::Inspect { run, correlation } => {
+                self.handle_inspect(run, correlation);
+            }
+            ShardCommand::Recover { command } => {
+                self.handle_recover(command)?;
+            }
+            ShardCommand::Shutdown => {
+                self.shutting_down = true;
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
+    }
+
+    fn runtime_action_failure_error(error: RuntimeError) -> RuntimeError {
+        match error {
+            RuntimeError::RunNotFound => RuntimeError::InvalidActionCompletion,
+            other => other,
+        }
+    }
+
+    /// Returns a reference to the shard counters.
+    #[must_use]
+    pub const fn counters(&self) -> &ShardCounters {
+        &self.counters
+    }
+
+    /// Builds a fail-closed legacy timer-fired command without fabricating authority.
+    #[must_use]
+    pub fn timer_fired_command(&self, run: RunId) -> ShardCommand {
+        ShardCommand::TimerFired {
+            run,
+            generation: 0,
+            deadline: std::time::Instant::now(),
+            kind: PendingTimerKind::Wait,
+        }
+    }
+
+    /// Returns the current typed timer authority for explicit capture.
+    #[must_use]
+    pub fn timer_entry(&self, run: RunId) -> Option<crate::shard::timer_wheel::TimerEntry> {
+        self.pending_timer_get(run)
+            .map(|timer| crate::shard::timer_wheel::TimerEntry {
+                run,
+                generation: timer.generation,
+                deadline: timer.deadline,
+                kind: timer.kind,
+            })
+    }
+
+    /// Returns a mutable reference to the trace ring.
+    pub fn trace_ring_mut(&mut self) -> &mut TraceRing {
+        &mut self.trace_ring
+    }
+
+    /// Returns an immutable reference to the trace ring.
+    #[must_use]
+    pub const fn trace_ring(&self) -> &TraceRing {
+        &self.trace_ring
+    }
+
+    /// Returns a direct non-queued diagnostic snapshot for a run.
+    #[must_use]
+    pub fn snapshot_run(&self, run: RunId, correlation: u64) -> InspectResponse {
+        match self.run_state_get(run) {
+            Some(state) => InspectResponse::Found(crate::shard::helpers::snapshot_from_state(
+                run,
+                correlation,
+                state,
+            )),
+            None => InspectResponse::NotFound { run, correlation },
+        }
+    }
+
+    /// Takes the latest inspect response, if one is available.
+    pub fn take_inspect_response(&mut self) -> Option<InspectResponse> {
+        self.inspect_response.take()
+    }
+
+    /// Returns true if the shard is shutting down.
+    #[must_use]
+    pub const fn is_shutting_down(&self) -> bool {
+        self.shutting_down
+    }
+
+    /// Returns a read-only status snapshot without draining queues or mutating shard state.
+    #[must_use]
+    pub fn status(&self) -> ShardStatus {
+        let shutting_down = self.shutting_down;
+        ShardStatus {
+            health: if shutting_down {
+                ShardHealth::ShuttingDown
+            } else {
+                ShardHealth::Running
+            },
+            running: !shutting_down,
+            shutting_down,
+            command_queue_depth: self.command_queue.len(),
+            command_queue_capacity: self.command_queue.capacity(),
+            active_runs: self.active_run_count(),
+            max_active_runs: self.max_active_runs,
+            trace_capacity: self.trace_ring.capacity(),
+            trace_dropped: self.trace_ring.dropped(),
+            step_budget_per_tick: self.step_budget_per_tick,
+            runtime_policy: self.policy,
+        }
+    }
+
+    /// Drains evidence events from the collector and emits them to the
+    /// journal and trace ring. This satisfies the Phase 40/44 evidence
+    /// chain requirement: StepStarted before SlotWritten for every step,
+    /// followed by StepSucceeded.
+    pub(crate) fn prepare_evidence_events(
+        &self,
+        run: RunId,
+        evidence: &mut EvidenceCollector,
+    ) -> RuntimeResult<(Vec<RuntimeJournalEvent>, Vec<TraceEvent>)> {
+        let event_count = evidence.len();
+        let mut journal_events = Vec::new();
+        Self::reserve_drive_vec(&mut journal_events, event_count)?;
+        let mut trace_events = Vec::new();
+        Self::reserve_drive_vec(&mut trace_events, event_count)?;
+        for event in evidence.drain() {
+            Self::prepare_evidence_event(run, event, &mut journal_events, &mut trace_events)?;
+        }
+        Ok((journal_events, trace_events))
+    }
+
+    fn reserve_drive_vec<T>(items: &mut Vec<T>, additional: usize) -> RuntimeResult<()> {
+        items
+            .try_reserve(additional)
+            .map_err(|_| RuntimeError::from(vb_storage::JournalError::QueueFull))
+    }
+
+    pub(crate) fn push_drive_journal_event(
+        events: &mut Vec<RuntimeJournalEvent>,
+        event: RuntimeJournalEvent,
+    ) -> RuntimeResult<()> {
+        Self::reserve_drive_vec(events, 1)?;
+        events.push(event);
+        Ok(())
+    }
+
+    fn prepare_evidence_event(
+        run: RunId,
+        event: EvidenceEvent,
+        journal_events: &mut Vec<RuntimeJournalEvent>,
+        trace_events: &mut Vec<TraceEvent>,
+    ) -> RuntimeResult<()> {
+        match event {
+            EvidenceEvent::StepStarted { step } => {
+                Self::push_drive_journal_event(
+                    journal_events,
+                    RuntimeJournalEvent::StepStarted { run, step },
+                )?;
+                trace_events.push(TraceEvent::StepStarted { run, step });
+                Ok(())
+            }
+            EvidenceEvent::StepSucceeded { step, output } => {
+                Self::push_drive_journal_event(
+                    journal_events,
+                    RuntimeJournalEvent::StepSucceeded {
+                        run,
+                        step,
+                        output: match output {
+                            Some(slot) => slot,
+                            None => SlotIdx::ZERO,
+                        },
+                        attempt: 1,
+                    },
+                )
+            }
+            EvidenceEvent::SlotWritten {
+                slot,
+                value,
+                taint,
+                extra,
+            } => Self::prepare_slot_written_event(
+                run,
+                slot,
+                value,
+                taint,
+                extra,
+                journal_events,
+                trace_events,
+            ),
+        }
+    }
+
+    fn prepare_slot_written_event(
+        run: RunId,
+        slot: SlotIdx,
+        value: vb_core::value::SlotValue,
+        taint: vb_core::Taint,
+        extra: Option<crate::primitives::collect::CollectPaginationState>,
+        journal_events: &mut Vec<RuntimeJournalEvent>,
+        trace_events: &mut Vec<TraceEvent>,
+    ) -> RuntimeResult<()> {
+        let encoded = postcard::to_allocvec(&value).map_err(|_| RuntimeError::EncodeFailed)?;
+        let encoded_extra = extra
+            .map(|state| postcard::to_allocvec(&state))
+            .transpose()
+            .map_err(|_| RuntimeError::EncodeFailed)?;
+        trace_events.push(TraceEvent::SlotWritten {
+            run,
+            slot,
+            value: encoded.clone(),
+        });
+        Self::push_drive_journal_event(
+            journal_events,
+            RuntimeJournalEvent::SlotWritten {
+                run,
+                slot,
+                value: encoded,
+                taint,
+                extra: encoded_extra,
+            },
+        )
+    }
+
+    pub(crate) fn push_trace_events(&mut self, trace_events: Vec<TraceEvent>) {
+        for event in trace_events {
+            self.trace_ring.push(event);
+        }
+    }
+}
+
+FILE crates/vb_runtime/src/shard/lifecycle/chunk_001.rs
+impl Shard {
+    #[cfg(not(test))]
+    pub(crate) fn handle_submit(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run,
+            workflow,
+            &[],
+            caps,
+            &[],
+            true,
+        )
+    }
+
+    #[cfg(test)]
+    pub(crate) fn handle_submit(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
+        let Some(action) = test_first_do_action(&workflow) else {
+            return self.handle_submit_with_inputs_contracts_and_header_mode(
+                run,
+                workflow,
+                &[],
+                caps,
+                &[],
+                true,
+            );
+        };
+        let inputs = [(SlotIdx::new(0), SlotValue::I64(0))];
+        let test_caps = test_contract_grants(action);
+        let contracts = test_contracts_through(action);
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run, workflow, &inputs, test_caps, &contracts, true,
+        )
+    }
+
+    pub(crate) fn handle_submit_pre_persisted(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run,
+            workflow,
+            &[],
+            caps,
+            &[],
+            false,
+        )
+    }
+
+    #[cfg(not(test))]
+    pub(crate) fn handle_submit_with_inputs(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: &[(SlotIdx, SlotValue)],
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run,
+            workflow,
+            inputs,
+            caps,
+            &[],
+            true,
+        )
+    }
+
+    #[cfg(test)]
+    pub(crate) fn handle_submit_with_inputs(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: &[(SlotIdx, SlotValue)],
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
+        let Some(action) = test_first_do_action(&workflow) else {
+            return self.handle_submit_with_inputs_contracts_and_header_mode(
+                run,
+                workflow,
+                inputs,
+                caps,
+                &[],
+                true,
+            );
+        };
+        let test_caps = test_contract_grants(action);
+        let contracts = test_contracts_through(action);
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run, workflow, inputs, test_caps, &contracts, true,
+        )
+    }
+
+    pub(crate) fn handle_submit_with_contracts(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        caps: CapabilitySet,
+        action_contracts: &[vb_core::action::ActionContract],
+    ) -> RuntimeResult<()> {
+        self.validate_submit_admission_with_contracts(
+            run,
+            &workflow,
+            caps.clone(),
+            action_contracts,
+        )?;
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run,
+            workflow,
+            &[],
+            caps,
+            action_contracts,
+            true,
+        )
+    }
+
+    pub(crate) fn handle_submit_with_inputs_and_contracts(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: &[(SlotIdx, SlotValue)],
+        caps: CapabilitySet,
+        action_contracts: &[vb_core::action::ActionContract],
+    ) -> RuntimeResult<()> {
+        self.validate_submit_admission_with_contracts(
+            run,
+            &workflow,
+            caps.clone(),
+            action_contracts,
+        )?;
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run,
+            workflow,
+            inputs,
+            caps,
+            action_contracts,
+            true,
+        )
+    }
+
+    fn handle_submit_with_inputs_contracts_and_header_mode(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: &[(SlotIdx, SlotValue)],
+        caps: CapabilitySet,
+        action_contracts: &[vb_core::action::ActionContract],
+        persist_header: bool,
+    ) -> RuntimeResult<()> {
+        if self.run_state_contains(run) {
+            return Err(RuntimeError::RunAlreadyExists);
+        }
+        if self.active_run_count() >= self.max_active_runs {
+            return Err(RuntimeError::ActiveRunCapacityExceeded {
+                capacity: self.max_active_runs,
+            });
+        }
+        self.prepare_run_slots(run)?;
+        let digest = workflow.digest();
+        let admission = self.build_admission(run, digest, caps)?;
+        let mut frame = self.take_frame_for(run, &workflow)?;
+        crate::shard::helpers::seed_input_slots(&mut frame, inputs, &workflow)?;
+        self.trace_ring.push(TraceEvent::RunSubmitted { run });
+        if persist_header {
+            self.append_admission_header_journal_event(
+                run,
+                RuntimeJournalEvent::RunSubmitted {
+                    run,
+                    workflow: digest,
+                },
+            )?;
+        }
+        if let Some(admission) = admission.as_ref() {
+            self.append_admission_header_journal_event(
+                run,
+                RuntimeJournalEvent::RunAdmission {
+                    admission: admission.clone(),
+                },
+            )?;
+        }
+        self.counters.inc_submitted();
+        let frame_step_count = frame.step_count();
+        let max_slots = workflow.resource_contract().max_slots;
+        let state = RunState {
+            frame,
+            workflow,
+            store: ValueStore::with_max_slots(max_slots),
+            action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
+            admission,
+            collect_states: CollectStates::new(),
+            action_contracts: action_contracts.to_vec().into_boxed_slice(),
+        };
+        self.terminal_runs_remove(run);
+        if let Err(error) = self.admit_run_state(run, state, RuntimeState::Initial) {
+            let removed = self.run_state_remove(run);
+            if let Some(state) = removed {
+                self.release_frame(state.frame);
+            }
+            self.discard_journal_sequence(run);
+            return Err(error);
+        }
+        match self.drive_run(run) {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                if !self.run_state_contains(run) {
+                    self.discard_journal_sequence(run);
+                }
+                Err(error)
+            }
+        }
+    }
+
+    fn append_admission_header_journal_event(
+        &mut self,
+        run: RunId,
+        event: RuntimeJournalEvent,
+    ) -> RuntimeResult<()> {
+        match self.append_journal_event(event) {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                self.discard_journal_sequence(run);
+                Err(RuntimeError::admission_header_persistence_failed(error))
+            }
+        }
+    }
+
+    fn build_admission(
+        &self,
+        run: RunId,
+        digest: vb_core::ids::WorkflowDigest,
+        caps: CapabilitySet,
+    ) -> RuntimeResult<Option<crate::admission::RunAdmission>> {
+        use crate::admission::{AdmissionError, admit_artifact_run};
+
+        match admit_artifact_run(self.artifact_store.as_ref(), self.policy, run, digest, caps) {
+            Ok(admission) => Ok(Some(admission)),
+            Err(AdmissionError::ArtifactNotFound { digest }) => {
+                Err(RuntimeError::AdmissionArtifactNotFound { digest })
+            }
+            Err(AdmissionError::CapabilityDenied {
+                action,
+                required,
+                granted,
+            }) => Err(RuntimeError::AdmissionCapabilityDenied {
+                action,
+                required,
+                granted,
+            }),
+            Err(AdmissionError::ResourceCapacityExceeded { available, .. }) => {
+                Err(RuntimeError::ActiveRunCapacityExceeded {
+                    capacity: usize::try_from(available).map_or(usize::MAX, |value| value),
+                })
+            }
+            Err(AdmissionError::BudgetPolicyExceeded { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
+            Err(AdmissionError::ResourceBudgetOverflow { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
+            Err(AdmissionError::ResourceBudgetUnderflow { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
+            Err(AdmissionError::ResourceBudgetInvalidCapacity { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
+            Err(AdmissionError::ResourceStepCeilingExceeded { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
+            Err(AdmissionError::ResourcePerTickCeilingExceeded { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
+            Err(AdmissionError::ArtifactEnvelopeDecodeFailed) => {
+                Err(RuntimeError::AdmissionArtifactInvalid {
+                    digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
+                })
+            }
+            Err(AdmissionError::ArtifactInvalidGateCount { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
+            Err(AdmissionError::ArtifactInvalidProofFlag { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
+            Err(AdmissionError::ArtifactDigestMismatch { requested, found }) => {
+                Err(RuntimeError::AdmissionArtifactDigestMismatch { requested, found })
+            }
+            Err(AdmissionError::ArtifactCertificateStale { digest, .. }) => {
+                Err(RuntimeError::AdmissionArtifactStale { digest })
+            }
+            Err(AdmissionError::CapabilityCountMismatch {
+                required_count,
+                granted_count,
+            }) => Err(RuntimeError::AdmissionCapabilityCountMismatch {
+                required_count,
+                granted_count,
+            }),
+        }
+    }
+
+    pub(crate) fn validate_submit_admission(
+        &self,
+        run: RunId,
+        digest: vb_core::ids::WorkflowDigest,
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
+        self.build_admission(run, digest, caps)?;
+        Ok(())
+    }
+
+    /// Validates admission requirements for a submitted run with action contracts.
+    ///
+    /// Checks: contract ID matches its registry index, duplicate action IDs,
+    /// well-formed contract names, that granted capabilities cover the required
+    /// capabilities declared by the contracts, and that each workflow Do action
+    /// has a corresponding contract at its registry index.
+    pub(crate) fn validate_submit_admission_with_contracts(
+        &self,
+        run: RunId,
+        workflow: &CompiledWorkflow,
+        caps: CapabilitySet,
+        action_contracts: &[vb_core::action::ActionContract],
+    ) -> RuntimeResult<()> {
+        let digest = workflow.digest();
+        self.build_admission(run, digest, caps.clone())?;
+        super::contract_validation::validate_contract_ids(action_contracts)?;
+        super::contract_validation::validate_contract_capabilities(
+            action_contracts,
+            &caps,
+        )?;
+        super::contract_validation::validate_workflow_action_binding(
+            workflow,
+            action_contracts,
+        )?;
+        Ok(())
+    }
+    pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {
+
+        self.validate_run_exists(run)?;
+        let current_state = self.get_runtime_state_or_running(run);
+        if current_state == RuntimeState::Running {
+            return Ok(ResumeResult {
+                run_id: run,
+                status: ResumeStatus::AlreadyRunning,
+                timestamp: current_timestamp(),
+            });
+        }
+        if current_state != RuntimeState::Resumable {
+            return Err(ResumeError::NotResumable {
+                run_id: run,
+                current_state,
+            });
+        }
+        let timestamp = self.append_resumed_event(run)?;
+        let drive_result = self.drive_run(run);
+        self.observe_resume_drive_result(run, drive_result)?;
+        Ok(ResumeResult {
+            run_id: run,
+            status: ResumeStatus::Resumed,
+            timestamp,
+        })
+    }
+
+    /// Recovers a run from a pre-hydrated `RunFrame` by loading the
+    /// compiled workflow from the artifact store and constructing a full
+    /// `RunState`.
+    ///
+    /// The workflow digest comes from the journal recovery summary and is
+    /// used to look up the `AcceptedArtifact` whose `ir` field contains the
+    /// postcard-encoded `WorkflowParts`. The parts are deserialized and
+    /// validated via `CompiledWorkflow::try_from_parts`.
+    ///
+    /// Recovery differs from submit in three ways:
+    /// - No `prepare_run_slots` / `take_frame_for` — the frame is pre-hydrated.
+    /// - The artifact store is queried by digest rather than the workflow being
+    ///   passed directly.
+    /// - Admission is built with empty capabilities (caps are not persisted
+    ///   per-run in the journal; runs requiring non-empty caps will fail
+    ///   admission during recovery, which is the correct fail-closed behavior).
+    /// Recovers a run from full recovery context provided by journal replay.
+    ///
+    /// The typed `RecoverRunCommand` carries all recovery evidence: artifact
+    /// digest for verification, workflow digest for identity validation,
+    /// journal sequence for sequencing, collect states for pagination
+    /// resumption, and boundary classification for suspended operations.
+    ///
+    /// Recovery flow:
+    /// 1. Load artifact by artifact_digest (verification)
+    /// 2. Deserialize and compile workflow from artifact IR
+    /// 3. Verify workflow identity matches command workflow_digest
+    /// 4. Seed journal sequence from command next_seq
+    /// 5. Build admission with artifact's required capabilities
+    /// 6. Construct RunState restoring collect_states
+    /// 7. Handle boundary (pending action / open ask)
+    /// 8. Drive run from recovered state
+    pub(crate) fn handle_recover(
+        &mut self,
+        command: crate::shard::types::RecoverRunCommand,
+    ) -> RuntimeResult<()> {
+        let run = command.run;
+        let frame = command.frame;
+        let artifact_digest = command.artifact_digest;
+        let workflow_digest = command.workflow_digest;
+        let next_seq = command.next_seq;
+        let collect_states = command.collect_states;
+        let boundary = command.boundary;
+
+        // Step 1: Load artifact by artifact_digest for verification
+        let artifact = self
+            .artifact_store
+            .load_accepted_artifact(artifact_digest)
+            .map_err(|e| match e {
+                crate::admission::ArtifactEnvelopeError::ArtifactNotFound { digest } => {
+                    RuntimeError::Recovery {
+                        error: format!("artifact not found during recovery: {digest:?}"),
+                    }
+                }
+                other => RuntimeError::Recovery {
+                    error: format!("artifact load failed: {other}"),
+                },
+            })?;
+
+        // Step 2: Deserialize and compile workflow from artifact IR
+        let parts: vb_core::workflow::WorkflowParts = postcard::from_bytes(&artifact.ir)
+            .map_err(|_| RuntimeError::Recovery {
+                error: "artifact IR decode failed".to_string(),
+            })?;
+
+        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+            .map_err(|e| RuntimeError::Recovery {
+                error: format!("workflow compile failed: {e}"),
+            })?;
+
+        // Step 3: Verify workflow identity matches command workflow_digest
+        if workflow.digest() != workflow_digest {
+            return Err(RuntimeError::Recovery {
+                error: format!(
+                    "workflow digest mismatch: expected {workflow_digest:?}, got {:?}",
+                    workflow.digest()
+                ),
+            });
+        }
+
+        // Step 4: Seed journal sequence from recovered next_seq
+        self.seed_journal_sequence(run, next_seq)?;
+
+        // Step 5: Build admission with artifact's required capabilities
+        let granted_caps =
+            vb_core::capability::CapabilitySet::from_grants(
+                artifact.required_capabilities.clone(),
+            );
+        let admission = self.build_admission(run, workflow.digest(), granted_caps)?;
+
+        // Step 6: Prepare run slots and construct RunState with restored collect_states
+        let frame_step_count = frame.step_count();
+        let max_slots = workflow.resource_contract().max_slots;
+        self.prepare_run_slots(run)?;
+
+        let state = crate::shard::types::RunState {
+            frame,
+            workflow,
+            store: vb_core::value_store::ValueStore::with_max_slots(max_slots),
+            action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
+            admission,
+            collect_states,
+            action_contracts: artifact.action_contracts.clone(),
+        };
+
+        self.terminal_runs_remove(run);
+        self.admit_run_state(run, state, crate::shard::types::RuntimeState::Initial)?;
+
+        // Step 7: Handle boundary for suspended operations
+        match boundary.kind() {
+            crate::recovery::RecoveredRunBoundaryKind::None => {}
+            crate::recovery::RecoveredRunBoundaryKind::PendingAction => {
+                // Re-inject pending action ticket from boundary
+                let ticket = boundary
+                    .pending_action_ticket()
+                    .map(|t| t.ticket());
+                if let Some(t) = ticket {
+                    self.reinject_pending_action(run, t)?;
+                }
+            }
+            crate::recovery::RecoveredRunBoundaryKind::OpenAsk => {
+                // Open ask boundary: resume at ask step, no side effects
+            }
+        }
+
+        // Step 8: Drive run from recovered state
+        match self.drive_run(run) {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                if !self.run_state_contains(run) {
+                    self.discard_journal_sequence(run);
+                }
+                Err(error)
+            }
+        }
+    }
+
+    fn validate_run_exists(&self, run: RunId) -> Result<(), ResumeError> {
+        if !self.run_state_contains(run) {
+            return Err(ResumeError::RunIdNotFound { run_id: run });
+        }
+        Ok(())
+    }
+
+    fn get_runtime_state_or_running(&self, run: RunId) -> RuntimeState {
+        self.runtime_state_get(run).unwrap_or(RuntimeState::Running)
+    }
+
+    fn append_resumed_event(&mut self, run: RunId) -> Result<u64, ResumeError> {
+        if !self.is_run_tracked(run) {
+            return Err(ResumeError::IncompleteHydration { run_id: run });
+        }
+        self.apply(run, RuntimeEvent::Resume)
+            .map_err(ResumeError::journal_append_failed_with_source)?;
+        let timestamp = current_timestamp();
+        let resumed_event = RuntimeJournalEvent::Resumed { run, timestamp };
+        if let Err(source) = self.append_journal_event(resumed_event) {
+            self.apply(run, RuntimeEvent::ResumeRollback)
+                .map_err(ResumeError::journal_append_failed_with_source)?;
+            return Err(ResumeError::journal_append_failed_with_source(source));
+        }
+        Ok(timestamp)
+    }
+
+    fn is_run_tracked(&self, run: RunId) -> bool {
+        self.runtime_state_get(run).is_some()
+    }
+
+    fn observe_resume_drive_result(
+        &mut self,
+        run: RunId,
+        result: RuntimeResult<()>,
+    ) -> Result<(), ResumeError> {
+        if let Err(source) = result {
+            return Err(self.restore_resumable_after_drive_failure(run, source));
+        }
+        Ok(())
+    }
+
+    fn restore_resumable_after_drive_failure(
+        &mut self,
+        run: RunId,
+        source: RuntimeError,
+    ) -> ResumeError {
+        match self.apply(run, RuntimeEvent::ResumeRollback) {
+            Ok(()) => ResumeError::journal_append_failed_with_source(source),
+            Err(rollback_error) => ResumeError::journal_append_failed_with_source(rollback_error),
+        }
+    }
+
+    #[allow(clippy::needless_pass_by_value)]
+    pub(crate) fn handle_action_completion(
+        &mut self,
+        ticket: ActionTicket,
+        output: ActionOutputReady,
+    ) -> RuntimeResult<()> {
+        let run = ticket.run;
+        self.require_pending_action_ownership(ticket)?;
+        let preflight = {
+            let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+            preflight_action_completion(state, ticket, output)?
+        };
+        self.append_journal_event(RuntimeJournalEvent::ActionCompletedEnvelope {
+            ticket: preflight.ticket,
+            output: preflight.output_slot,
+            value: preflight.encoded_value.clone(),
+            encoded_len: preflight.encoded_len,
+            taint: preflight.taint,
+            value_digest: preflight.value_digest,
+            action_abi_digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
+        })?;
+        let state = self
+            .run_state_get_mut(run)
+            .ok_or(RuntimeError::RunNotFound)?;
+        state
+            .frame
+            .write_slot_with_taint(preflight.output_slot, preflight.value, preflight.taint)
+            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+        state
+            .frame
+            .mark_succeeded(preflight.ticket.step)
+            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+        crate::shard::helpers::advance_after_action_completion(state, preflight.ticket.step)?;
+        let _removed_ticket = self.pending_action_remove(run);
+        self.trace_ring.push(TraceEvent::SlotWritten {
+            run,
+            slot: preflight.output_slot,
+            value: preflight.encoded_value,
+        });
+        self.trace_ring.push(TraceEvent::ActionCompleted {
+            run,
+            step: preflight.ticket.step,
+        });
+        self.drive_run(run)
+    }
+
+    pub(crate) fn handle_legacy_action_completion(
+        &mut self,
+        run: RunId,
+        step: StepIdx,
+    ) -> RuntimeResult<()> {
+        let ticket = self.require_legacy_pending_action_ownership(run, step)?;
+        let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+        state
+            .frame
+            .step_state(ticket.step)
+            .map_err(|_| RuntimeError::RunNotFound)?;
+        // Evidence chain: emit StepSucceeded for legacy action completion.
+        // Legacy path has no output slot information.
+        // Journal append FIRST so a journal failure does not diverge frame and journal.
+        self.append_journal_event(RuntimeJournalEvent::StepSucceeded {
+            run,
+            step: ticket.step,
+            output: SlotIdx::ZERO,
+            attempt: ticket.attempt,
+        })?;
+        let state = self
+            .run_state_get_mut(run)
+            .ok_or(RuntimeError::RunNotFound)?;
+        state
+            .frame
+            .mark_succeeded(ticket.step)
+            .map_err(|_| RuntimeError::RunNotFound)?;
+        crate::shard::helpers::advance_after_action_completion(state, ticket.step)?;
+        let _removed_ticket = self.pending_action_remove(run);
+        self.trace_ring.push(TraceEvent::ActionCompleted {
+            run,
+            step: ticket.step,
+        });
+        self.drive_run(run)
+    }
+
+    #[allow(clippy::needless_pass_by_value)]
+    pub(crate) fn handle_action_failure(
+        &mut self,
+        ticket: ActionTicket,
+        failure: ActionFailure,
+    ) -> RuntimeResult<()> {
+        let run = ticket.run;
+        let code = failure.code;
+        self.require_pending_action_ownership(ticket)?;
+        let ticket = self.ticket_with_retry_capacity(ticket, failure.retry_policy)?;
+        // 1. Preflight (read-only): validate and decide the failure outcome.
+        //    No mutation has occurred yet, so a journal append failure
+        //    below cannot diverge memory-only state from durable evidence.
+        let preflight = {
+            let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+            preflight_action_failure(state, ticket, &failure)?
+        };
+        // 2. Journal append FIRST. FailRun needs both ActionFailed and
+        //    RunFailed to append as one same-run batch before any pending
+        //    action, trace, frame, counter, or terminal-state mutation. If
+        //    the batch is rejected by a bounded queued journal, no partial
+        //    ActionFailed prefix can consume the last queue slot.
+        let action_failed_event = RuntimeJournalEvent::ActionFailed {
+            run,
+            step: preflight.ticket.step,
+            action: preflight.ticket.action,
+            attempt: preflight.ticket.attempt,
+        };
+        if preflight.outcome == ActionFailureOutcome::FailRun {
+            self.append_journal_events_atomically([
+                action_failed_event,
+                RuntimeJournalEvent::RunFailed { run },
+            ])?;
+        } else {
+            self.append_journal_event(action_failed_event)?;
+        }
+        // 3. Apply preflight mutations to the run frame / action_attempts.
+        //    Held in a narrow scope so `pending_action_remove` and
+        //    `trace_ring.push` can borrow `self` after the mutable
+        //    state borrow ends.
+        {
+            let state = self
+                .run_state_get_mut(run)
+                .ok_or(RuntimeError::RunNotFound)?;
+            apply_action_failure_preflight(state, &preflight)?;
+        }
+        let _removed_ticket = self.pending_action_remove(run);
+        self.trace_ring.push(TraceEvent::ActionFailed {
+            run,
+            step: preflight.ticket.step,
+            code,
+        });
+        // 4. Drive the run state machine forward using the preflighted outcome.
+        match preflight.outcome {
+            ActionFailureOutcome::RetryNow | ActionFailureOutcome::DriveHandler => {
+                self.drive_run(run)
+            }
+            ActionFailureOutcome::FailRun => {
+                let state = self.take_run_state(run)?;
+                self.fail_run_state_after_journaled(run, state)
+            }
+        }
+    }
+
+    pub fn ticket_with_retry_capacity(
+        &self,
+        ticket: ActionTicket,
+        retry_policy: VbCoreRetryPolicy,
+    ) -> RuntimeResult<ActionTicket> {
+        let Some(state) = self.run_state_get(ticket.run) else {
+            return Err(RuntimeError::RunNotFound);
+        };
+        if retry_policy != VbCoreRetryPolicy::Retryable
+            || !crate::shard::helpers::retry_metadata_exists(state, ticket.step)
+        {
+            return Ok(ticket);
+        }
+        let policy = crate::shard::helpers::retry_policy_after_action(state, ticket.step)?;
+        Ok(ActionTicket {
+            capacity: ticket.capacity.max(policy.max_attempts),
+            ..ticket
+        })
+    }
+}
+
+#[cfg(test)]
+fn test_first_do_action(workflow: &CompiledWorkflow) -> Option<vb_core::ids::ActionId> {
+    let mut index = 0u16;
+    let count = workflow.node_count();
+    while index < count {
+        let step = StepIdx::new(index);
+        if let Some(node) = workflow.node(step) {
+            if let vb_core::workflow::CompiledNodeKind::Do { action, .. } = node.kind {
+                return Some(action);
+            }
+        }
+        index = index.saturating_add(1);
+    }
+    None
+}
+
+#[cfg(test)]
+fn test_contract_required_capability(
+    action: vb_core::ids::ActionId,
+) -> vb_core::capability::Capability {
+    vb_core::capability::Capability::new("__contract_required__".into(), action)
+}
+
+#[cfg(test)]
+fn test_contract_grants(action: vb_core::ids::ActionId) -> CapabilitySet {
+    CapabilitySet::from_grants(Box::from([test_contract_required_capability(action)]))
+}
+
+#[cfg(test)]
+fn test_action_contract(
+    action: vb_core::ids::ActionId,
+    required: bool,
+) -> vb_core::action::ActionContract {
+    let required_capabilities = if required {
+        Box::from([test_contract_required_capability(action)])
+    } else {
+        Box::from([])
+    };
+    vb_core::action::ActionContract {
+        id: action,
+        name: vb_core::action::ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: vb_core::action::Idempotency::DeterministicPure,
+        side_effect: vb_core::action::SideEffect::None,
+        retry_safety: vb_core::action::RetrySafety::Safe,
+        required_capabilities,
+    }
+}
+
+#[cfg(test)]
+fn test_contracts_through(
+    action: vb_core::ids::ActionId,
+) -> Box<[vb_core::action::ActionContract]> {
+    let target = action.get();
+    let mut contracts = Vec::with_capacity(usize::from(target).saturating_add(1));
+    let mut id = 0u16;
+    loop {
+        let current = vb_core::ids::ActionId::new(id);
+        contracts.push(test_action_contract(current, id == target));
+        if id == target {
+            break;
+        }
+        id = id.saturating_add(1);
+    }
+    contracts.into_boxed_slice()
+}

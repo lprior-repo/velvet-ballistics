@@ -1,0 +1,220 @@
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:132: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:133: pub(super) fn admission_pin_unverified() -> PinnedAdmissionPolicy {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:134:     PinnedAdmissionPolicy::Unverified
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:135: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:136: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:137: pub(super) fn current_live_configured(digest: [u8; 32]) -> CurrentPolicyIdentity {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:138:     CurrentPolicyIdentity::Configured {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:139:         digest: PolicyDigest::from_bytes(digest),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:140:     }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:141: }
+FILE crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs SHA256 6b2781bac0b472bb94426452a8272570d1aeeb21d0b22200682680b3329f1247
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:1: #![forbid(unsafe_code)]
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:2: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:3: use std::num::NonZeroUsize;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:4: use std::sync::Arc;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:5: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:6: use vb_core::action::{
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:7:     ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:8:     Idempotency, RetryPolicy, RetrySafety, SideEffect,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:9: };
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:10: use vb_core::capability::{Capability, CapabilitySet};
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:11: use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:12: use vb_core::policy::RuntimePolicy;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:13: use vb_core::value::{ConstValue, SlotValue, Taint};
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:14: use vb_core::workflow::{
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:15:     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:16: };
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:17: use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:18: use vb_runtime::runtime::Runtime;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:19: use vb_runtime::shard::{AskAnswer, AskTicket, InspectResponse, ShardConfig};
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:20: use vb_runtime::trace::TraceEvent;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:21: use vb_runtime::{RuntimeError, RuntimeResult};
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:22: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:23: const DIRECT_API_TARGET: &str =
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:24:     "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs";
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:25: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:26: fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:27:     NonZeroUsize::new(value).ok_or_else(|| format!("expected non-zero shard count, got {value}"))
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:28: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:29: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:30: fn relaxed_config() -> ShardConfig {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:31:     ShardConfig {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:32:         command_queue_capacity: 32,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:33:         trace_capacity: 64,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:34:         step_budget_per_tick: 16,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:35:         max_active_runs: 8,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:36:         policy: RuntimePolicy::Relaxed,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:37:     }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:38: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:39: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:40: fn strict_config() -> ShardConfig {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:41:     ShardConfig {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:42:         policy: RuntimePolicy::Strict,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:43:         ..relaxed_config()
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:44:     }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:45: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:46: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:47: fn trace_starved_config() -> ShardConfig {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:48:     ShardConfig {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:49:         trace_capacity: 1,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:50:         ..relaxed_config()
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:51:     }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:52: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:53: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:54: fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:55:     CompiledNode {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:56:         id: StepIdx::new(id),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:57:         output: output.map(SlotIdx::new),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:58:         next: next.map(StepIdx::new),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:59:         on_error: None,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:60:         error_slot: None,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:61:         kind,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:62:     }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:63: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:64: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:65: fn workflow_from_parts(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:66:     name: &str,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:67:     digest_byte: u8,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:68:     nodes: Box<[CompiledNode]>,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:69:     constants: Box<[ConstValue]>,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:70:     slot_count: u16,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:71: ) -> Result<CompiledWorkflow, String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:72:     let parts = WorkflowParts {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:73:         semantic_source_identity: None,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:74:         input_slots: Box::new([]),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:75:         name: Box::from(name),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:76:         digest: WorkflowDigest::from_bytes([digest_byte; 32]),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:77:         nodes,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:78:         expressions: Box::from([]),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:79:         accessors: Box::from([]),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:80:         constants,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:81:         slot_count,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:82:         symbols_count: 0,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:83:         entry: StepIdx::ZERO,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:84:         step_names: Box::from([]),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:85:         resource_contract: ResourceContract::DEFAULT,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:86:     };
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:87:     CompiledWorkflow::try_from_parts(parts)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:88:         .map_err(|err| format!("workflow fixture {name} invalid: {err:?}"))
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:89: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:90: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:91: fn finished_workflow() -> Result<CompiledWorkflow, String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:92:     workflow_from_parts(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:93:         "vt2f_finished",
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:94:         0x21,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:95:         Box::from([
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:96:             node(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:97:                 0,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:98:                 Some(0),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:99:                 Some(1),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:100:                 CompiledNodeKind::SetConst {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:101:                     value: ConstIdx::new(0),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:102:                 },
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:103:             ),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:104:             node(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:105:                 1,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:106:                 None,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:107:                 None,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:108:                 CompiledNodeKind::Finish {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:109:                     result: SlotIdx::ZERO,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:110:                 },
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:111:             ),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:112:         ]),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:113:         Box::from([ConstValue::Bool(true)]),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:114:         1,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:115:     )
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:116: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:117: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:118: fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:119:     workflow_from_parts(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:120:         "vt2f_action_then_finish",
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:121:         0x22,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:122:         Box::from([
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:123:             node(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:124:                 0,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:125:                 Some(1),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:126:                 Some(1),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:127:                 CompiledNodeKind::Do {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:128:                     action: ActionId::new(7),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:129:                     input: SlotIdx::ZERO,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:130:                 },
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:131:             ),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:132:             node(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:133:                 1,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:134:                 Some(1),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:135:                 None,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:136:                 CompiledNodeKind::Finish {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:137:                     result: SlotIdx::new(1),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:138:                 },
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:139:             ),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:140:         ]),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:141:         Box::from([]),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:142:         2,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:143:     )
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:144: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:145: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:146: fn ask_then_finish_workflow() -> Result<CompiledWorkflow, String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:147:     workflow_from_parts(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:148:         "vt2f_ask_then_finish",
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:149:         0x23,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:150:         Box::from([
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:151:             node(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:152:                 0,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:153:                 Some(0),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:154:                 Some(1),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:155:                 CompiledNodeKind::SetConst {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:156:                     value: ConstIdx::new(0),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:157:                 },
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:158:             ),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:159:             node(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:160:                 1,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:161:                 Some(1),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:162:                 Some(2),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:163:                 CompiledNodeKind::SetConst {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:164:                     value: ConstIdx::new(1),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:165:                 },
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:166:             ),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:167:             node(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:168:                 2,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:169:                 None,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:170:                 Some(3),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:171:                 CompiledNodeKind::Ask {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:172:                     prompt: SlotIdx::ZERO,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:173:                     timeout_slot: Some(SlotIdx::new(1)),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:174:                 },
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:175:             ),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:176:             node(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:177:                 3,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:178:                 None,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:179:                 Some(4),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:180:                 CompiledNodeKind::AskResume {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:181:                     answer: SlotIdx::new(2),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:182:                 },
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:183:             ),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:184:             node(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:185:                 4,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:186:                 None,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:187:                 None,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:188:                 CompiledNodeKind::Finish {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:189:                     result: SlotIdx::new(2),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:190:                 },
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:191:             ),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:192:         ]),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:193:         Box::from([ConstValue::I64(11), ConstValue::I64(30)]),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:194:         3,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:195:     )
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:196: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:197: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:198: fn required_capability(action: ActionId) -> Capability {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:199:     Capability::new(Box::from("vt2f.contract.required"), action)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:200: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:201: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:202: fn action_contract(action: ActionId, output_slots: u16) -> ActionContract {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:203:     ActionContract {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:204:         id: action,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:205:         name: ActionName::new("test-action").unwrap(),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:206:         input_slot_count: 1,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:207:         output_slot_count: output_slots,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:208:         max_input_bytes: 1024,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:209:         max_output_bytes: 1024,

@@ -1,0 +1,100 @@
+[
+  {
+    "proposal_key": "proposal:current-qualification:function:24:1",
+    "actual_issue_id": "vb-eirmk.68",
+    "response": {
+      "acceptance_criteria": "Qualification only. Positive: enumerate every current numeric ID wrapper and assert exact checked raw-access values and valid boundaries through current public APIs. Negative: every applicable out-of-range conversion has exact typed error; distinguish raw access from arithmetic/index conversion. Preserve vb-b5f as historical implementation and vb-jrco.9 as proof support; no implementation presumed missing. Record exact current source pin, raw command/exit and production entrypoint/test mapping; keep unknown evidence unknown and obtain independent CODE plus separate TEST disposition.",
+      "created_at": "2026-11-10T22:59:55.520542952Z",
+      "created_by": "Lewis",
+      "description": "Qualification only. Positive: enumerate every current numeric ID wrapper and assert exact checked raw-access values and valid boundaries through current public APIs. Negative: every applicable out-of-range conversion has exact typed error; distinguish raw access from arithmetic/index conversion. Preserve vb-b5f as historical implementation and vb-jrco.9 as proof support; no implementation presumed missing.",
+      "id": "vb-eirmk.68",
+      "issue_type": "task",
+      "metadata": {
+        "master_requirement_ids": [
+          "function:24:1"
+        ],
+        "qualification_only": true
+      },
+      "owner": "priorlewis43@gmail.com",
+      "priority": 2,
+      "schema_version": 1,
+      "status": "open",
+      "title": "Qualify checked raw access for every numeric ID type",
+      "updated_at": "2026-11-10T22:59:55.520542952Z"
+    }
+  },
+  {
+    "proposal_key": "proposal:current-qualification:function:29:storage-keyspace-key-digest",
+    "actual_issue_id": "vb-eirmk.69",
+    "response": {
+      "acceptance_criteria": "Qualification only across three separate families. 29:3 positive: exact put/get payload roundtrip and separation for source, IR, run header, snapshot, blob and indexes; negative: exact missing/wrong-key/index outcomes, preserve neighbors. 29:6 positive: exact bytes/namespace/order for every named key constructor; negative: malformed IDs and prefix/length boundaries. 29:8 positive: matching source/IR digest acceptance; negative: independently mutate each digest and assert exact typed mismatch. Map every API to source and registered checks with raw receipts, separate CODE and TEST; no duplicate implementation. Record exact current source pin, raw command/exit and production entrypoint/test mapping; keep unknown evidence unknown and obtain independent CODE plus separate TEST disposition.",
+      "created_at": "2026-11-10T22:59:56.401918119Z",
+      "created_by": "Lewis",
+      "description": "Qualification only across three separate families. 29:3 positive: exact put/get payload roundtrip and separation for source, IR, run header, snapshot, blob and indexes; negative: exact missing/wrong-key/index outcomes, preserve neighbors. 29:6 positive: exact bytes/namespace/order for every named key constructor; negative: malformed IDs and prefix/length boundaries. 29:8 positive: matching source/IR digest acceptance; negative: independently mutate each digest and assert exact typed mismatch. Map every API to source and registered checks with raw receipts, separate CODE and TEST; no duplicate implementation.",
+      "id": "vb-eirmk.69",
+      "issue_type": "task",
+      "metadata": {
+        "master_requirement_ids": [
+          "function:29:3",
+          "function:29:6",
+          "function:29:8"
+        ],
+        "qualification_only": true
+      },
+      "owner": "priorlewis43@gmail.com",
+      "priority": 2,
+      "schema_version": 1,
+      "status": "open",
+      "title": "Qualify current storage keyspace, key construction, and digest function clusters",
+      "updated_at": "2026-11-10T22:59:56.401918119Z"
+    }
+  },
+  {
+    "proposal_key": "qualify-v1min-version-compatibility-algebra",
+    "actual_issue_id": "vb-eirmk.70",
+    "response": {
+      "acceptance_criteria": "Qualification only for the six compatibility classes across every master 77.17 version surface. Assert independent exact boundary outcomes and journaled class/rule digest/old-new digests/decision code for admission, replay and live dispatch. Negative: unknown fails closed, ReplayOnly cannot authorize live effects, MigrationRequired never silently defaults. Preserve strict-profile/target/deferred exclusions. Record exact current source pin, raw command/exit and production entrypoint/test mapping; keep unknown evidence unknown and obtain independent CODE plus separate TEST disposition.",
+      "created_at": "2026-11-10T22:59:57.24542102Z",
+      "created_by": "Lewis",
+      "description": "Qualification only for the six compatibility classes across every master 77.17 version surface. Assert independent exact boundary outcomes and journaled class/rule digest/old-new digests/decision code for admission, replay and live dispatch. Negative: unknown fails closed, ReplayOnly cannot authorize live effects, MigrationRequired never silently defaults. Preserve strict-profile/target/deferred exclusions.",
+      "id": "vb-eirmk.70",
+      "issue_type": "task",
+      "metadata": {
+        "master_requirement_ids": [
+          "77.17"
+        ],
+        "qualification_only": true
+      },
+      "owner": "priorlewis43@gmail.com",
+      "priority": 2,
+      "schema_version": 1,
+      "status": "open",
+      "title": "Qualify V1-min version compatibility algebra",
+      "updated_at": "2026-11-10T22:59:57.24542102Z"
+    }
+  },
+  {
+    "proposal_key": "qualify-v1min-capability-grant-lifecycle",
+    "actual_issue_id": "vb-eirmk.71",
+    "response": {
+      "acceptance_criteria": "Qualification only for required grant fields, all three admission modes, narrowed executor tokens, journaled time/revocation facts, replay/live-effect distinction. Negative: exact pre-dispatch errors for missing/overgrant, wrong bindings/scopes, expiry/not-yet-valid/revocation/delegation; human approval cannot broaden authority. Preserve V1-MIN exclusions and vb-hk1j8 historical ownership. Record exact current source pin, raw command/exit and production entrypoint/test mapping; keep unknown evidence unknown and obtain independent CODE plus separate TEST disposition.",
+      "created_at": "2026-11-10T22:59:58.123200962Z",
+      "created_by": "Lewis",
+      "description": "Qualification only for required grant fields, all three admission modes, narrowed executor tokens, journaled time/revocation facts, replay/live-effect distinction. Negative: exact pre-dispatch errors for missing/overgrant, wrong bindings/scopes, expiry/not-yet-valid/revocation/delegation; human approval cannot broaden authority. Preserve V1-MIN exclusions and vb-hk1j8 historical ownership.",
+      "id": "vb-eirmk.71",
+      "issue_type": "task",
+      "metadata": {
+        "master_requirement_ids": [
+          "77.10"
+        ],
+        "qualification_only": true
+      },
+      "owner": "priorlewis43@gmail.com",
+      "priority": 2,
+      "schema_version": 1,
+      "status": "open",
+      "title": "Qualify V1-min capability grant lifecycle",
+      "updated_at": "2026-11-10T22:59:58.123200962Z"
+    }
+  }
+]

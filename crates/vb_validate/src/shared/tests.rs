@@ -39,7 +39,12 @@ fn pipeline_no_gates_disables_all() {
 
 #[test]
 fn validate_convenience_passes_valid_parts() {
-    let parts = make_parts(vec![finish_node(0, 0)], 1);
+    let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+    parts.input_slots = Box::new([vb_core::workflow::CompiledInputSlot {
+        slot: SlotIdx::new(0),
+        kind: vb_core::workflow::InputSlotKind::Any,
+        constraint: vb_core::workflow::CompiledInputConstraint::required(),
+    }]);
     assert_eq!(validate(&parts), Ok(()));
 }
 

@@ -1,0 +1,23 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-deepseek-repair",
+  "argv": [
+    "cargo",
+    "clippy",
+    "-p",
+    "vb_compile",
+    "-p",
+    "vb_runtime",
+    "--lib",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "exit_code": 0,
+  "seconds": 4.861,
+  "timeout_seconds": 900,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-2lyiw/evidence/clippy-lib"
+}

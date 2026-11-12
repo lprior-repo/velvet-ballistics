@@ -1,0 +1,2035 @@
+Rust contract stage, vb-0hzo1. Do NOT implement yet. Authoritative master requires crate/module and bead database velvet_ballistics. After dev-dependency alias correction, actual76-test naming suite exposes14 failures. Production CANONICAL_UNDERSCORE still vb_cli. Negative fixtures also seem rewritten to canonical velvet_ballistics while expecting legacy. Audit actual code + tests below; propose minimum production repair and restore true invalid tokens only in negative test inputs. All exact error/remediation assertions must remain; do not weaken naming gate. No liveDB rename. Local five-stage workflow, no proof planning. Actual package velvet-ballistics for unit tests and velvet-ballistics-workspace-tests for integration (currently needs dev dep alias fix vb-i5ett).
+
+FILE crates/velvet_ballistics/src/naming_scan/types.rs
+use std::path::PathBuf;
+
+pub(crate) const CANONICAL_HYPHEN: &str = "velvet-ballistics";
+pub(crate) const CANONICAL_UNDERSCORE: &str = "vb_cli";
+pub(crate) const CANONICAL_LANGUAGE_VERSION: &str = "velvet-ballistics/v1";
+pub(crate) const LEGACY_PROJECT: &str = concat!("velvet-", "ballastics");
+pub(crate) const LEGACY_CRATE: &str = "velvet_ballistics";
+pub(crate) const LEGACY_LANGUAGE_VERSION: &str = concat!("velvet-", "ballastics/v1");
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CanonicalSpellingTable {
+    pub product: String,
+FILE crates/velvet_ballistics/src/naming_scan/config.rs
+use std::path::PathBuf;
+
+use super::types::*;
+
+#[must_use]
+pub fn canonical_spelling_table() -> CanonicalSpellingTable {
+    CanonicalSpellingTable {
+        product: CANONICAL_HYPHEN.to_owned(),
+        binary: CANONICAL_HYPHEN.to_owned(),
+        package: CANONICAL_HYPHEN.to_owned(),
+        bead_rig: CANONICAL_HYPHEN.to_owned(),
+        crate_module: CANONICAL_UNDERSCORE.to_owned(),
+        bead_database: CANONICAL_UNDERSCORE.to_owned(),
+        language_version: CANONICAL_LANGUAGE_VERSION.to_owned(),
+    }
+}
+
+pub fn validate_scan_config(config: RawScanConfig) -> Result<ScanConfig, NamingScanError> {
+    if config.canonical_entries.is_empty() {
+        return invalid_config("empty scan configuration");
+    }
+    validate_patterns(&config.scan_patterns)?;
+    validate_allowlist(&config.legacy_allowlist)?;
+    let table = table_from_entries(&config.canonical_entries)?;
+    Ok(ScanConfig {
+        canonical_table: table,
+        allowlist_policy: AllowlistPolicy::Exact(config.legacy_allowlist),
+        scan_patterns: config.scan_patterns,
+        excluded_path_rules: config.excluded_path_rules,
+        config_fingerprint: fingerprint_for_destination(config.report_destination.as_ref()),
+        report_destination: config.report_destination,
+    })
+}
+
+fn invalid_config<T>(reason: &str) -> Result<T, NamingScanError> {
+    Err(NamingScanError::InvalidConfiguration {
+        reason: reason.to_owned(),
+    })
+}
+
+fn validate_patterns(patterns: &[String]) -> Result<(), NamingScanError> {
+    for pattern in patterns {
+        if pattern.starts_with('[') && !pattern.contains(']') {
+            return Err(NamingScanError::PatternCompilationFailed {
+                pattern: pattern.clone(),
+                source: "unclosed character class".to_owned(),
+            });
+        }
+    }
+    Ok(())
+}
+
+fn validate_allowlist(rules: &[LegacyAllowRule]) -> Result<(), NamingScanError> {
+    for rule in rules {
+        match rule {
+            LegacyAllowRule::Wildcard { pattern } => {
+                return invalid_config(&format!("broad wildcard allowlist rule: {pattern}"));
+            }
+            LegacyAllowRule::PrefixOnly { prefix } => {
+                return invalid_config(&format!("prefix-only allowlist rule: {prefix}"));
+            }
+            LegacyAllowRule::Substring { needle } => {
+                return invalid_config(&format!("substring allowlist rule: {needle}"));
+            }
+            LegacyAllowRule::RepositoryPath { .. }
+            | LegacyAllowRule::MasterFilename { .. }
+            | LegacyAllowRule::MigrationReference { .. } => {}
+        }
+    }
+    Ok(())
+}
+
+fn table_from_entries(
+    entries: &[CanonicalEntry],
+) -> Result<CanonicalSpellingTable, NamingScanError> {
+    let mut seen = Vec::new();
+    for entry in entries {
+        if seen.contains(&entry.kind) {
+            return duplicate_error(entry.kind);
+        }
+        seen.push(entry.kind);
+        validate_entry(entry)?;
+    }
+    for kind in required_kinds() {
+        if !seen.contains(&kind) {
+            return missing_error(kind);
+        }
+    }
+    Ok(canonical_spelling_table())
+}
+
+fn validate_entry(entry: &CanonicalEntry) -> Result<(), NamingScanError> {
+    let expected = expected_token(entry.kind);
+    if entry.token == expected {
+        Ok(())
+    } else {
+        invalid_config(&format!(
+            "contradictory token for {}: {}",
+            kind_name(entry.kind),
+            entry.token
+        ))
+    }
+}
+
+fn duplicate_error(kind: CanonicalNameKind) -> Result<CanonicalSpellingTable, NamingScanError> {
+    if kind == CanonicalNameKind::LanguageVersion {
+        invalid_config("canonical kind count one above required: duplicate language_version")
+    } else {
+        invalid_config(&format!("duplicate canonical kind: {}", kind_name(kind)))
+    }
+}
+
+fn missing_error(kind: CanonicalNameKind) -> Result<CanonicalSpellingTable, NamingScanError> {
+    if kind == CanonicalNameKind::BeadDatabase {
+        invalid_config("canonical kind count one below required: bead_database missing")
+    } else {
+        invalid_config(&format!("missing canonical kind: {}", kind_name(kind)))
+    }
+}
+
+fn required_kinds() -> [CanonicalNameKind; 7] {
+    [
+        CanonicalNameKind::Product,
+        CanonicalNameKind::Binary,
+        CanonicalNameKind::Package,
+        CanonicalNameKind::BeadRig,
+        CanonicalNameKind::CrateModule,
+        CanonicalNameKind::BeadDatabase,
+        CanonicalNameKind::LanguageVersion,
+    ]
+}
+
+fn kind_name(kind: CanonicalNameKind) -> &'static str {
+    match kind {
+        CanonicalNameKind::Product => "product",
+        CanonicalNameKind::Binary => "binary",
+        CanonicalNameKind::Package => "package",
+        CanonicalNameKind::BeadRig => "bead_rig",
+        CanonicalNameKind::CrateModule => "crate_module",
+        CanonicalNameKind::BeadDatabase => "bead_database",
+        CanonicalNameKind::LanguageVersion => "language_version",
+    }
+}
+
+fn expected_token(kind: CanonicalNameKind) -> &'static str {
+    match kind {
+        CanonicalNameKind::CrateModule | CanonicalNameKind::BeadDatabase => CANONICAL_UNDERSCORE,
+        CanonicalNameKind::LanguageVersion => CANONICAL_LANGUAGE_VERSION,
+        CanonicalNameKind::Product
+        | CanonicalNameKind::Binary
+        | CanonicalNameKind::Package
+        | CanonicalNameKind::BeadRig => CANONICAL_HYPHEN,
+    }
+}
+
+fn fingerprint_for_destination(destination: Option<&PathBuf>) -> String {
+    if destination.is_some() {
+        "vb-37lc-maximum-bounded-config".to_owned()
+    } else {
+        "vb-37lc-minimum-config".to_owned()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn canonical_spelling_table_uses_correct_names() {
+        let table = canonical_spelling_table();
+        assert_eq!(table.product, CANONICAL_HYPHEN);
+        assert_eq!(table.binary, CANONICAL_HYPHEN);
+        assert_eq!(table.package, CANONICAL_HYPHEN);
+        assert_eq!(table.bead_rig, CANONICAL_HYPHEN);
+        assert_eq!(table.crate_module, CANONICAL_UNDERSCORE);
+        assert_eq!(table.bead_database, CANONICAL_UNDERSCORE);
+        assert_eq!(table.language_version, CANONICAL_LANGUAGE_VERSION);
+    }
+
+    fn valid_entries() -> Vec<CanonicalEntry> {
+        vec![
+            CanonicalEntry::new(CanonicalNameKind::Product, CANONICAL_HYPHEN),
+            CanonicalEntry::new(CanonicalNameKind::Binary, CANONICAL_HYPHEN),
+            CanonicalEntry::new(CanonicalNameKind::Package, CANONICAL_HYPHEN),
+            CanonicalEntry::new(CanonicalNameKind::BeadRig, CANONICAL_HYPHEN),
+            CanonicalEntry::new(CanonicalNameKind::CrateModule, CANONICAL_UNDERSCORE),
+            CanonicalEntry::new(CanonicalNameKind::BeadDatabase, CANONICAL_UNDERSCORE),
+            CanonicalEntry::new(
+                CanonicalNameKind::LanguageVersion,
+                CANONICAL_LANGUAGE_VERSION,
+            ),
+        ]
+    }
+
+    fn valid_config() -> RawScanConfig {
+        RawScanConfig {
+            canonical_entries: valid_entries(),
+            legacy_allowlist: vec![],
+            scan_patterns: vec!["test".into()],
+            excluded_path_rules: vec![],
+            workspace_root: PathBuf::from("/tmp"),
+            report_destination: None,
+        }
+    }
+
+    #[test]
+    fn validate_scan_config_rejects_empty_entries() {
+        let raw = RawScanConfig::empty();
+        let result = validate_scan_config(raw);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            NamingScanError::InvalidConfiguration { reason } => {
+                assert_eq!(reason, "empty scan configuration");
+            }
+            _ => panic!("wrong error variant"),
+        }
+    }
+
+    #[test]
+    fn validate_scan_config_rejects_wildcard_allowlist() {
+        let mut raw = valid_config();
+        raw.legacy_allowlist = vec![LegacyAllowRule::Wildcard {
+            pattern: "*".into(),
+        }];
+        let result = validate_scan_config(raw);
+        assert!(matches!(
+            result.unwrap_err(),
+            NamingScanError::InvalidConfiguration { .. }
+        ));
+    }
+
+    #[test]
+    fn validate_scan_config_rejects_prefix_only_allowlist() {
+        let mut raw = valid_config();
+        raw.legacy_allowlist = vec![LegacyAllowRule::PrefixOnly {
+            prefix: "old".into(),
+        }];
+        let result = validate_scan_config(raw);
+        assert!(matches!(
+            result.unwrap_err(),
+            NamingScanError::InvalidConfiguration { .. }
+        ));
+    }
+
+    #[test]
+    fn validate_scan_config_rejects_substring_allowlist() {
+        let mut raw = valid_config();
+        raw.legacy_allowlist = vec![LegacyAllowRule::Substring {
+            needle: "bad".into(),
+        }];
+        let result = validate_scan_config(raw);
+        assert!(matches!(
+            result.unwrap_err(),
+            NamingScanError::InvalidConfiguration { .. }
+        ));
+    }
+
+    #[test]
+    fn validate_scan_config_accepts_repository_path_allowlist() {
+        let mut raw = valid_config();
+        raw.legacy_allowlist = vec![LegacyAllowRule::RepositoryPath {
+            path: "src/main.rs".into(),
+        }];
+        let result = validate_scan_config(raw);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn validate_scan_config_accepts_migration_reference_allowlist() {
+        let mut raw = valid_config();
+        raw.legacy_allowlist = vec![LegacyAllowRule::MigrationReference {
+            label: "mig".into(),
+            artifact: "file".into(),
+            legacy_text: "old".into(),
+        }];
+        let result = validate_scan_config(raw);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn validate_scan_config_rejects_unclosed_character_class() {
+        let mut raw = valid_config();
+        raw.scan_patterns = vec!["[abc".into()];
+        let result = validate_scan_config(raw);
+        assert!(matches!(
+            result.unwrap_err(),
+            NamingScanError::PatternCompilationFailed { .. }
+        ));
+    }
+
+    #[test]
+    fn validate_scan_config_accepts_closed_character_class() {
+        let mut raw = valid_config();
+        raw.scan_patterns = vec!["[abc]".into()];
+        let result = validate_scan_config(raw);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn validate_scan_config_rejects_contradictory_token() {
+        let mut raw = valid_config();
+        raw.canonical_entries[0] = CanonicalEntry::new(CanonicalNameKind::Product, "wrong-name");
+        let result = validate_scan_config(raw);
+        assert!(matches!(
+            result.unwrap_err(),
+            NamingScanError::InvalidConfiguration { .. }
+        ));
+    }
+
+    #[test]
+    fn validate_scan_config_rejects_duplicate_kind() {
+        let mut raw = valid_config();
+        raw.canonical_entries = vec![
+            CanonicalEntry::new(CanonicalNameKind::Product, CANONICAL_HYPHEN),
+            CanonicalEntry::new(CanonicalNameKind::Product, CANONICAL_HYPHEN),
+        ];
+        let result = validate_scan_config(raw);
+        assert!(matches!(
+            result.unwrap_err(),
+            NamingScanError::InvalidConfiguration { .. }
+        ));
+    }
+
+    #[test]
+    fn validate_scan_config_rejects_missing_kind() {
+        let mut raw = valid_config();
+        raw.canonical_entries = vec![CanonicalEntry::new(
+            CanonicalNameKind::Product,
+            CANONICAL_HYPHEN,
+        )];
+        let result = validate_scan_config(raw);
+        assert!(matches!(
+            result.unwrap_err(),
+            NamingScanError::InvalidConfiguration { .. }
+        ));
+    }
+
+    #[test]
+    fn fingerprint_for_destination_yields_minimum_when_none() {
+        assert_eq!(fingerprint_for_destination(None), "vb-37lc-minimum-config");
+    }
+
+    #[test]
+    fn fingerprint_for_destination_yields_maximum_when_some() {
+        let dst = PathBuf::from("/tmp/report.txt");
+        assert_eq!(
+            fingerprint_for_destination(Some(&dst)),
+            "vb-37lc-maximum-bounded-config"
+        );
+    }
+}
+
+FILE crates/velvet_ballistics/src/naming_scan/classify.rs
+use super::allowlist::exact_exception;
+use super::legacy::{class_for_text, contains_legacy};
+use super::types::*;
+
+pub fn classify_occurrence(
+    _path: RepoPath,
+    _line: LineNumber,
+    _column: ColumnNumber,
+    text: &str,
+    config: &ScanConfig,
+) -> Result<OccurrenceClass, NamingScanError> {
+    if text.is_empty() {
+        return Ok(OccurrenceClass::NoOccurrence);
+    }
+    if let Some(exception) = exact_exception(text, config) {
+        return Ok(OccurrenceClass::AllowedLegacy { exception });
+    }
+    if let Some(canonical) = canonical_occurrence(text, &config.canonical_table) {
+        return Ok(canonical);
+    }
+    if contains_legacy(text) {
+        return Ok(class_for_text(text));
+    }
+    Ok(OccurrenceClass::NoOccurrence)
+}
+
+fn canonical_occurrence(text: &str, table: &CanonicalSpellingTable) -> Option<OccurrenceClass> {
+    if text == table.language_version {
+        return Some(canonical_language_version(text));
+    }
+    if text == table.crate_module || text == table.bead_database {
+        return Some(canonical_crate_module(text));
+    }
+    if text == table.product
+        || text == table.binary
+        || text == table.package
+        || text == table.bead_rig
+    {
+        return Some(canonical_product(text));
+    }
+    None
+}
+
+fn canonical_language_version(text: &str) -> OccurrenceClass {
+    OccurrenceClass::CanonicalLanguageVersion {
+        canonical: text.to_owned(),
+        kind: CanonicalNameKind::LanguageVersion,
+    }
+}
+
+fn canonical_crate_module(text: &str) -> OccurrenceClass {
+    OccurrenceClass::CanonicalCrateModule {
+        canonical: text.to_owned(),
+        kind: CanonicalNameKind::CrateModule,
+    }
+}
+
+fn canonical_product(text: &str) -> OccurrenceClass {
+    OccurrenceClass::CanonicalProduct {
+        canonical: text.to_owned(),
+        kind: CanonicalNameKind::Product,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_config() -> ScanConfig {
+        ScanConfig {
+            canonical_table: CanonicalSpellingTable {
+                product: CANONICAL_HYPHEN.to_owned(),
+                binary: CANONICAL_HYPHEN.to_owned(),
+                package: CANONICAL_HYPHEN.to_owned(),
+                bead_rig: CANONICAL_HYPHEN.to_owned(),
+                crate_module: CANONICAL_UNDERSCORE.to_owned(),
+                bead_database: CANONICAL_UNDERSCORE.to_owned(),
+                language_version: CANONICAL_LANGUAGE_VERSION.to_owned(),
+            },
+            allowlist_policy: AllowlistPolicy::Exact(vec![]),
+            scan_patterns: vec![],
+            excluded_path_rules: vec![],
+            config_fingerprint: "test".into(),
+            report_destination: None,
+        }
+    }
+
+    #[test]
+    fn classify_occurrence_returns_no_occurrence_for_empty_text() {
+        let result = classify_occurrence(
+            RepoPath::new("test"),
+            LineNumber::new(1),
+            ColumnNumber::new(1),
+            "",
+            &test_config(),
+        )
+        .unwrap();
+        assert_eq!(result, OccurrenceClass::NoOccurrence);
+    }
+
+    #[test]
+    fn classify_occurrence_returns_canonical_for_product_spelling() {
+        let result = classify_occurrence(
+            RepoPath::new("test.rs"),
+            LineNumber::new(1),
+            ColumnNumber::new(1),
+            CANONICAL_HYPHEN,
+            &test_config(),
+        )
+        .unwrap();
+        match result {
+            OccurrenceClass::CanonicalProduct { canonical, .. } => {
+                assert_eq!(canonical, CANONICAL_HYPHEN);
+            }
+            _ => panic!("expected CanonicalProduct"),
+        }
+    }
+
+    #[test]
+    fn classify_occurrence_returns_canonical_for_crate_module_spelling() {
+        let result = classify_occurrence(
+            RepoPath::new("test.rs"),
+            LineNumber::new(1),
+            ColumnNumber::new(1),
+            CANONICAL_UNDERSCORE,
+            &test_config(),
+        )
+        .unwrap();
+        match result {
+            OccurrenceClass::CanonicalCrateModule { canonical, .. } => {
+                assert_eq!(canonical, CANONICAL_UNDERSCORE);
+            }
+            _ => panic!("expected CanonicalCrateModule"),
+        }
+    }
+
+    #[test]
+    fn classify_occurrence_returns_canonical_for_language_version_spelling() {
+        let result = classify_occurrence(
+            RepoPath::new("test.rs"),
+            LineNumber::new(1),
+            ColumnNumber::new(1),
+            CANONICAL_LANGUAGE_VERSION,
+            &test_config(),
+        )
+        .unwrap();
+        match result {
+            OccurrenceClass::CanonicalLanguageVersion { canonical, .. } => {
+                assert_eq!(canonical, CANONICAL_LANGUAGE_VERSION);
+            }
+            _ => panic!("expected CanonicalLanguageVersion"),
+        }
+    }
+
+    #[test]
+    fn classify_occurrence_returns_allowed_legacy_for_exact_exception() {
+        let mut cfg = test_config();
+        let legacy_path = "legacy/path/velvet_ballistics";
+        cfg.allowlist_policy = AllowlistPolicy::Exact(vec![LegacyAllowRule::RepositoryPath {
+            path: legacy_path.into(),
+        }]);
+        let result = classify_occurrence(
+            RepoPath::new("test.rs"),
+            LineNumber::new(1),
+            ColumnNumber::new(1),
+            legacy_path,
+            &cfg,
+        )
+        .unwrap();
+        match result {
+            OccurrenceClass::AllowedLegacy { .. } => {}
+            _ => panic!("expected AllowedLegacy"),
+        }
+    }
+
+    #[test]
+    fn classify_occurrence_returns_invalid_legacy_for_unrecognized_legacy_text() {
+        let cfg = test_config();
+        let result = classify_occurrence(
+            RepoPath::new("test.rs"),
+            LineNumber::new(1),
+            ColumnNumber::new(1),
+            LEGACY_PROJECT,
+            &cfg,
+        )
+        .unwrap();
+        match result {
+            OccurrenceClass::InvalidLegacy { .. } => {}
+            _ => panic!("expected InvalidLegacy"),
+        }
+    }
+
+    #[test]
+    fn classify_occurrence_returns_no_occurrence_for_unrelated_text() {
+        let cfg = test_config();
+        let result = classify_occurrence(
+            RepoPath::new("test.rs"),
+            LineNumber::new(1),
+            ColumnNumber::new(1),
+            "completely unrelated text",
+            &cfg,
+        )
+        .unwrap();
+        assert_eq!(result, OccurrenceClass::NoOccurrence);
+    }
+}
+
+FILE crates/velvet_ballistics/src/naming_scan/legacy.rs
+use super::types::*;
+
+pub(crate) fn contains_legacy(text: &str) -> bool {
+    text.contains(LEGACY_PROJECT)
+        || text.contains(LEGACY_CRATE)
+        || text.contains(LEGACY_LANGUAGE_VERSION)
+        || text.contains("Velvet-Ballastics")
+        || text.contains("VELVET-BALLASTICS")
+        || text.contains("velvet‐ballistics")
+}
+
+pub(crate) fn class_for_text(text: &str) -> OccurrenceClass {
+    if text.contains(LEGACY_CRATE) {
+        OccurrenceClass::InvalidLegacy {
+            spelling_class: SpellingClass::LegacyCrateModuleSpelling,
+            remediation: CANONICAL_UNDERSCORE.to_owned(),
+        }
+    } else if text.contains(LEGACY_LANGUAGE_VERSION) {
+        OccurrenceClass::InvalidLegacy {
+            spelling_class: SpellingClass::LegacyLanguageVersionSpelling,
+            remediation: CANONICAL_LANGUAGE_VERSION.to_owned(),
+        }
+    } else {
+        OccurrenceClass::InvalidLegacy {
+            spelling_class: SpellingClass::LegacyProjectSpelling,
+            remediation: CANONICAL_HYPHEN.to_owned(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn contains_legacy_returns_true_for_legacy_project() {
+        assert!(contains_legacy(LEGACY_PROJECT));
+    }
+
+    #[test]
+    fn contains_legacy_returns_true_for_legacy_crate() {
+        assert!(contains_legacy("velvet_ballistics crate"));
+    }
+
+    #[test]
+    fn contains_legacy_returns_true_for_legacy_language_version() {
+        assert!(contains_legacy(LEGACY_LANGUAGE_VERSION));
+    }
+
+    #[test]
+    fn contains_legacy_returns_true_for_pascal_case_legacy() {
+        assert!(contains_legacy("Velvet-Ballastics rule"));
+    }
+
+    #[test]
+    fn contains_legacy_returns_true_for_uppercase_legacy() {
+        assert!(contains_legacy("VELVET-BALLASTICS"));
+    }
+
+    #[test]
+    fn contains_legacy_returns_false_for_clean_text() {
+        assert!(!contains_legacy("this is clean"));
+    }
+
+    #[test]
+    fn contains_legacy_returns_false_for_canonical_hyphen() {
+        assert!(!contains_legacy("velvet-ballistics"));
+    }
+
+    #[test]
+    fn class_for_text_returns_legacy_crate_module_spelling() {
+        let result = class_for_text("velvet_ballistics is wrong");
+        match result {
+            OccurrenceClass::InvalidLegacy {
+                spelling_class,
+                remediation,
+            } => {
+                assert_eq!(spelling_class, SpellingClass::LegacyCrateModuleSpelling);
+                assert_eq!(remediation, CANONICAL_UNDERSCORE);
+            }
+            _ => panic!("wrong occurrence class"),
+        }
+    }
+
+    #[test]
+    fn class_for_text_returns_legacy_language_version_spelling() {
+        let text = format!("use {LEGACY_LANGUAGE_VERSION} here");
+        let result = class_for_text(&text);
+        match result {
+            OccurrenceClass::InvalidLegacy {
+                spelling_class,
+                remediation,
+            } => {
+                assert_eq!(spelling_class, SpellingClass::LegacyLanguageVersionSpelling);
+                assert_eq!(remediation, CANONICAL_LANGUAGE_VERSION);
+            }
+            _ => panic!("wrong occurrence class"),
+        }
+    }
+
+    #[test]
+    fn class_for_text_returns_legacy_project_spelling() {
+        let result = class_for_text(LEGACY_PROJECT);
+        match result {
+            OccurrenceClass::InvalidLegacy {
+                spelling_class,
+                remediation,
+            } => {
+                assert_eq!(spelling_class, SpellingClass::LegacyProjectSpelling);
+                assert_eq!(remediation, CANONICAL_HYPHEN);
+            }
+            _ => panic!("wrong occurrence class"),
+        }
+    }
+}
+
+FILE crates/velvet_ballistics/src/naming_scan/line_scan.rs
+use std::fs;
+
+use super::classify_occurrence;
+use super::ordering::compare_finding;
+use super::types::*;
+
+pub fn scan_file(
+    input: ScanInput,
+    config: &ScanConfig,
+) -> Result<Vec<NamingFinding>, NamingScanError> {
+    let (path, text) = input_text(input)?;
+    let mut findings = Vec::new();
+    for (line_index, raw_line) in text.lines().enumerate() {
+        let line_number = one_based_line(line_index)?;
+        scan_line(&path, line_number, raw_line, config, &mut findings)?;
+    }
+    findings.sort_by(compare_finding);
+    Ok(findings)
+}
+
+fn input_text(input: ScanInput) -> Result<(RepoPath, String), NamingScanError> {
+    match input {
+        ScanInput::Text { path, contents } => Ok((path, contents)),
+        ScanInput::Bytes { path, bytes } => String::from_utf8(bytes)
+            .map(|contents| (path.clone(), contents))
+            .map_err(|_source| NamingScanError::InputReadFailed {
+                path,
+                source: "input is not supported UTF-8 text".to_owned(),
+            }),
+        ScanInput::File {
+            path,
+            absolute_path,
+        } => fs::read_to_string(&absolute_path)
+            .map(|contents| (path.clone(), contents))
+            .map_err(|source| NamingScanError::InputReadFailed {
+                path,
+                source: source.to_string(),
+            }),
+    }
+}
+
+fn scan_line(
+    path: &RepoPath,
+    line: LineNumber,
+    text: &str,
+    config: &ScanConfig,
+    findings: &mut Vec<NamingFinding>,
+) -> Result<(), NamingScanError> {
+    for pattern in &config.scan_patterns {
+        scan_pattern(path, line, text, pattern, config, findings)?;
+    }
+    Ok(())
+}
+
+fn scan_pattern(
+    path: &RepoPath,
+    line: LineNumber,
+    text: &str,
+    pattern: &str,
+    config: &ScanConfig,
+    findings: &mut Vec<NamingFinding>,
+) -> Result<(), NamingScanError> {
+    let mut search_start = 0usize;
+    while let Some(relative) = find_from(text, pattern, search_start) {
+        let offset = search_start.checked_add(relative).ok_or_else(count_error)?;
+        handle_match(path, line, text, pattern, offset, config, findings)?;
+        search_start = next_search_start(offset, pattern)?;
+    }
+    Ok(())
+}
+
+fn handle_match(
+    path: &RepoPath,
+    line: LineNumber,
+    text: &str,
+    token: &str,
+    offset: usize,
+    config: &ScanConfig,
+    findings: &mut Vec<NamingFinding>,
+) -> Result<(), NamingScanError> {
+    let end = offset.checked_add(token.len()).ok_or_else(count_error)?;
+    if occurrence_is_allowed_in_line(text, offset, end, config)? {
+        return Ok(());
+    }
+    push_invalid_occurrence(path, line, offset, token, config, findings)
+}
+
+fn push_invalid_occurrence(
+    path: &RepoPath,
+    line: LineNumber,
+    offset: usize,
+    token: &str,
+    config: &ScanConfig,
+    findings: &mut Vec<NamingFinding>,
+) -> Result<(), NamingScanError> {
+    let column = one_based(offset)?;
+    let occurrence = classify_occurrence(path.clone(), line, column, token, config)?;
+    if matches!(occurrence, OccurrenceClass::InvalidLegacy { .. }) {
+        findings.push(finding_for_token(path.clone(), line, column, token));
+    }
+    Ok(())
+}
+
+fn next_search_start(offset: usize, pattern: &str) -> Result<usize, NamingScanError> {
+    let step = pattern.len().max(1usize);
+    offset.checked_add(step).ok_or_else(count_error)
+}
+
+fn occurrence_is_allowed_in_line(
+    line: &str,
+    occurrence_start: usize,
+    occurrence_end: usize,
+    config: &ScanConfig,
+) -> Result<bool, NamingScanError> {
+    match &config.allowlist_policy {
+        AllowlistPolicy::Exact(rules) => rules.iter().try_fold(false, |allowed, rule| {
+            if allowed {
+                Ok(true)
+            } else {
+                allowed_rule_covers_occurrence(line, occurrence_start, occurrence_end, rule)
+            }
+        }),
+    }
+}
+
+fn allowed_rule_covers_occurrence(
+    line: &str,
+    occurrence_start: usize,
+    occurrence_end: usize,
+    rule: &LegacyAllowRule,
+) -> Result<bool, NamingScanError> {
+    let Some(allowed_text) = allowed_rule_text(rule) else {
+        return Ok(false);
+    };
+    let mut search_start = 0usize;
+    while let Some(relative) = find_from(line, &allowed_text, search_start) {
+        let allowed_start = search_start.checked_add(relative).ok_or_else(count_error)?;
+        let allowed_end = allowed_start
+            .checked_add(allowed_text.len())
+            .ok_or_else(count_error)?;
+        if allowed_start <= occurrence_start
+            && occurrence_end <= allowed_end
+            && has_allowlist_boundaries(line, allowed_start, allowed_end)
+        {
+            return Ok(true);
+        }
+        search_start = next_search_start(allowed_start, &allowed_text)?;
+    }
+    Ok(false)
+}
+
+fn allowed_rule_text(rule: &LegacyAllowRule) -> Option<String> {
+    match rule {
+        LegacyAllowRule::RepositoryPath { path } => Some(path.clone()),
+        LegacyAllowRule::MasterFilename { filename } => Some(filename.clone()),
+        LegacyAllowRule::MigrationReference {
+            label,
+            artifact,
+            legacy_text,
+        } => Some(format!("{label} {artifact} {legacy_text}")),
+        LegacyAllowRule::Wildcard { .. }
+        | LegacyAllowRule::PrefixOnly { .. }
+        | LegacyAllowRule::Substring { .. } => None,
+    }
+}
+
+fn has_allowlist_boundaries(line: &str, start: usize, end: usize) -> bool {
+    boundary_before(line, start) && boundary_after(line, end)
+}
+
+fn boundary_before(line: &str, start: usize) -> bool {
+    line.get(..start)
+        .and_then(|prefix| prefix.chars().next_back())
+        .is_none_or(is_allowlist_boundary)
+}
+
+fn boundary_after(line: &str, end: usize) -> bool {
+    line.get(end..)
+        .and_then(|suffix| suffix.chars().next())
+        .is_none_or(is_allowlist_boundary)
+}
+
+fn is_allowlist_boundary(ch: char) -> bool {
+    !(ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '/' | ':'))
+}
+
+fn find_from(text: &str, pattern: &str, start: usize) -> Option<usize> {
+    text.get(start..).and_then(|tail| tail.find(pattern))
+}
+
+fn finding_for_token(
+    path: RepoPath,
+    line: LineNumber,
+    column: ColumnNumber,
+    token: &str,
+) -> NamingFinding {
+    let (spelling_class, remediation) = token_class_and_remediation(token);
+    NamingFinding {
+        path,
+        line,
+        column,
+        spelling_class,
+        remediation: remediation.to_owned(),
+    }
+}
+
+fn token_class_and_remediation(token: &str) -> (SpellingClass, &'static str) {
+    if token == LEGACY_CRATE {
+        return (
+            SpellingClass::LegacyCrateModuleSpelling,
+            CANONICAL_UNDERSCORE,
+        );
+    }
+    if token == LEGACY_LANGUAGE_VERSION {
+        return (
+            SpellingClass::LegacyLanguageVersionSpelling,
+            CANONICAL_LANGUAGE_VERSION,
+        );
+    }
+    (SpellingClass::LegacyProjectSpelling, CANONICAL_HYPHEN)
+}
+
+fn one_based(zero_based: usize) -> Result<ColumnNumber, NamingScanError> {
+    let base =
+        u64::try_from(zero_based).map_err(|source| NamingScanError::InvalidConfiguration {
+            reason: source.to_string(),
+        })?;
+    let value = base.checked_add(1).ok_or_else(count_error)?;
+    Ok(ColumnNumber::new(value))
+}
+
+fn one_based_line(zero_based: usize) -> Result<LineNumber, NamingScanError> {
+    let base =
+        u64::try_from(zero_based).map_err(|source| NamingScanError::InvalidConfiguration {
+            reason: source.to_string(),
+        })?;
+    let value = base.checked_add(1).ok_or_else(count_error)?;
+    Ok(LineNumber::new(value))
+}
+
+pub(crate) fn count_error() -> NamingScanError {
+    NamingScanError::InvalidConfiguration {
+        reason: "scan count overflow".to_owned(),
+    }
+}
+
+FILE crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/common.rs
+#![allow(dead_code)]
+
+pub(crate) use std::path::PathBuf;
+
+pub(crate) use velvet_ballistics::naming_scan::{
+    AllowlistPolicy, CanonicalEntry, CanonicalNameKind, CanonicalSpellingTable, ColumnNumber,
+    LegacyAllowRule, LegacyException, LineNumber, NamingFinding, NamingScanError, OccurrenceClass,
+    RawScanConfig, RenderedReport, RepoPath, RepoRoot, ScanConfig, ScanInput, ScanReport,
+    SpellingClass, canonical_spelling_table, classify_occurrence, discover_scan_inputs,
+    render_scan_report, scan_file, scan_repository, validate_scan_config,
+};
+
+pub(crate) const CANONICAL_HYPHEN: &str = "velvet-ballistics";
+pub(crate) const CANONICAL_UNDERSCORE: &str = "velvet_ballistics";
+pub(crate) const CANONICAL_LANGUAGE_VERSION: &str = "velvet-ballistics/v1";
+pub(crate) const LEGACY_LANGUAGE_VERSION: &str = concat!("velvet-", "ballastics/v1");
+pub(crate) const LEGACY_PROJECT: &str = concat!("velvet-", "ballastics");
+pub(crate) const LEGACY_PROJECT_TITLE: &str = "Velvet-Ballastics";
+pub(crate) const CURRENT_REPOSITORY_PATH: &str =
+    "https://github.com/priorlewis43/Velvet-Ballastics";
+pub(crate) const CURRENT_MASTER_FILENAME: &str = "velvet-ballistics-MASTER.md";
+pub(crate) const MIGRATION_LABEL: &str = "MIGRATION-REFERENCE";
+pub(crate) const MIGRATION_ARTIFACT: &str = "external-preexisting-artifact";
+
+#[path = "common_part_01.rs"]
+mod common_part_01;
+pub(crate) use common_part_01::*;
+#[path = "common_part_02.rs"]
+mod common_part_02;
+pub(crate) use common_part_02::*;
+
+FILE crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs
+use super::*;
+
+#[test]
+fn canonical_table_returns_ballistics_for_product_when_loaded() {
+    let table = canonical_spelling_table();
+
+    assert_eq!(table.product, CANONICAL_HYPHEN);
+}
+
+#[test]
+fn canonical_table_returns_ballistics_for_binary_when_loaded() {
+    let table = canonical_spelling_table();
+
+    assert_eq!(table.binary, CANONICAL_HYPHEN);
+}
+
+#[test]
+fn canonical_table_returns_ballistics_for_package_when_loaded() {
+    let table = canonical_spelling_table();
+
+    assert_eq!(table.package, CANONICAL_HYPHEN);
+}
+
+#[test]
+fn canonical_table_returns_ballistics_for_bead_rig_when_loaded() {
+    let table = canonical_spelling_table();
+
+    assert_eq!(table.bead_rig, CANONICAL_HYPHEN);
+}
+
+#[test]
+fn canonical_table_returns_underscore_module_for_crate_module_and_database_when_loaded() {
+    let table = canonical_spelling_table();
+
+    assert_eq!(table.crate_module, CANONICAL_UNDERSCORE);
+    assert_eq!(table.bead_database, CANONICAL_UNDERSCORE);
+}
+
+#[test]
+fn canonical_table_returns_ballistics_v1_when_language_version_is_loaded() {
+    let table = canonical_spelling_table();
+
+    assert_eq!(table.language_version, CANONICAL_LANGUAGE_VERSION);
+}
+
+#[test]
+fn validate_scan_config_returns_scan_config_when_minimum_valid_config_is_supplied() {
+    let raw = minimum_valid_raw_config();
+    let expected = minimum_valid_scan_config();
+
+    let result = validate_scan_config(raw);
+
+    assert_eq!(result, Ok(expected));
+}
+
+#[test]
+fn canonical_entry_replaces_token_only_when_kind_matches() {
+    let entry = CanonicalEntry::new(CanonicalNameKind::Product, CANONICAL_HYPHEN);
+
+    let replaced = entry
+        .clone()
+        .replace_token_when_kind_matches(CanonicalNameKind::Product, "replacement-token");
+    let preserved = entry
+        .replace_token_when_kind_matches(CanonicalNameKind::LanguageVersion, "replacement-token");
+
+    assert_eq!(
+        replaced,
+        CanonicalEntry::new(CanonicalNameKind::Product, "replacement-token")
+    );
+    assert_eq!(
+        preserved,
+        CanonicalEntry::new(CanonicalNameKind::Product, CANONICAL_HYPHEN)
+    );
+}
+
+#[test]
+fn validate_scan_config_returns_scan_config_when_maximum_bounded_valid_config_is_supplied() {
+    let raw = maximum_bounded_valid_raw_config();
+    let expected = maximum_bounded_scan_config();
+
+    let result = validate_scan_config(raw);
+
+    assert_eq!(result, Ok(expected));
+}
+
+#[test]
+fn validate_scan_config_returns_invalid_configuration_when_config_is_empty() {
+    let raw = RawScanConfig::empty();
+
+    let result = validate_scan_config(raw);
+
+    assert_eq!(
+        result,
+        Err(NamingScanError::InvalidConfiguration {
+            reason: "empty scan configuration".to_string()
+        })
+    );
+}
+
+#[test]
+fn validate_scan_config_returns_invalid_configuration_when_product_kind_is_missing() {
+    let raw = raw_config_missing_kind(CanonicalNameKind::Product);
+
+    let result = validate_scan_config(raw);
+
+    assert_eq!(
+        result,
+        Err(NamingScanError::InvalidConfiguration {
+            reason: "missing canonical kind: product".to_string()
+        })
+    );
+}
+
+#[test]
+fn validate_scan_config_returns_invalid_configuration_when_crate_module_kind_is_missing() {
+    let raw = raw_config_missing_kind(CanonicalNameKind::CrateModule);
+
+    let result = validate_scan_config(raw);
+
+    assert_eq!(
+        result,
+        Err(NamingScanError::InvalidConfiguration {
+            reason: "missing canonical kind: crate_module".to_string()
+        })
+    );
+}
+
+#[test]
+fn validate_scan_config_returns_invalid_configuration_when_language_version_kind_is_missing() {
+    let raw = raw_config_missing_kind(CanonicalNameKind::LanguageVersion);
+
+    let result = validate_scan_config(raw);
+
+    assert_eq!(
+        result,
+        Err(NamingScanError::InvalidConfiguration {
+            reason: "missing canonical kind: language_version".to_string()
+        })
+    );
+}
+
+#[test]
+fn validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_below_required() {
+    let raw = raw_config_missing_kind(CanonicalNameKind::BeadDatabase);
+
+    let result = validate_scan_config(raw);
+
+    assert_eq!(
+        result,
+        Err(NamingScanError::InvalidConfiguration {
+            reason: "canonical kind count one below required: bead_database missing".to_string()
+        })
+    );
+}
+
+#[test]
+fn validate_scan_config_returns_invalid_configuration_when_kind_is_duplicated() {
+    let raw = raw_config_with_duplicate_kind(CanonicalNameKind::Product, CANONICAL_HYPHEN);
+
+    let result = validate_scan_config(raw);
+
+    assert_eq!(
+        result,
+        Err(NamingScanError::InvalidConfiguration {
+            reason: "duplicate canonical kind: product".to_string()
+        })
+    );
+}
+
+#[test]
+fn validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_above_required() {
+    let raw = raw_config_with_duplicate_kind(
+        CanonicalNameKind::LanguageVersion,
+        CANONICAL_LANGUAGE_VERSION,
+    );
+
+    let result = validate_scan_config(raw);
+
+    assert_eq!(
+        result,
+        Err(NamingScanError::InvalidConfiguration {
+            reason: "canonical kind count one above required: duplicate language_version"
+                .to_string()
+        })
+    );
+}
+
+#[test]
+fn validate_scan_config_returns_invalid_configuration_when_canonical_token_contradicts_kind() {
+    let raw = raw_config_with_contradictory_token(CanonicalNameKind::CrateModule, LEGACY_PROJECT);
+
+    let result = validate_scan_config(raw);
+
+    assert_eq!(
+        result,
+        Err(NamingScanError::InvalidConfiguration {
+            reason: format!("contradictory token for crate_module: {LEGACY_PROJECT}")
+        })
+    );
+}
+
+#[test]
+fn validate_scan_config_names_binary_package_and_bead_rig_when_tokens_contradict_kind() {
+    assert_contradictory_token_reason(
+        CanonicalNameKind::Binary,
+        "not-the-binary",
+        "contradictory token for binary: not-the-binary",
+    );
+    assert_contradictory_token_reason(
+        CanonicalNameKind::Package,
+        "not-the-package",
+        "contradictory token for package: not-the-package",
+    );
+    assert_contradictory_token_reason(
+        CanonicalNameKind::BeadRig,
+        "not-the-rig",
+        "contradictory token for bead_rig: not-the-rig",
+    );
+}
+
+fn assert_contradictory_token_reason(kind: CanonicalNameKind, token: &str, reason: &str) {
+    let result = validate_scan_config(raw_config_with_contradictory_token(kind, token));
+
+    assert_eq!(
+        result,
+        Err(NamingScanError::InvalidConfiguration {
+            reason: reason.to_string()
+        })
+    );
+}
+
+FILE crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_02.rs
+use super::*;
+
+#[test]
+fn validate_scan_config_names_bead_database_when_token_contradicts_kind() {
+    let result = validate_scan_config(raw_config_with_contradictory_token(
+        CanonicalNameKind::BeadDatabase,
+        "not_the_database",
+    ));
+
+    assert_eq!(
+        result,
+        Err(NamingScanError::InvalidConfiguration {
+            reason: "contradictory token for bead_database: not_the_database".to_string()
+        })
+    );
+}
+
+#[test]
+fn validate_scan_config_returns_invalid_configuration_when_allowlist_contains_wildcard() {
+    let raw = raw_config_with_allow_rule(LegacyAllowRule::Wildcard {
+        pattern: "*".to_string(),
+    });
+
+    let result = validate_scan_config(raw);
+
+    assert_eq!(
+        result,
+        Err(NamingScanError::InvalidConfiguration {
+            reason: "broad wildcard allowlist rule: *".to_string()
+        })
+    );
+}
+
+#[test]
+fn validate_scan_config_returns_invalid_configuration_when_allowlist_contains_prefix_only_rule() {
+    let raw = raw_config_with_allow_rule(LegacyAllowRule::PrefixOnly {
+        prefix: "https://github.com/priorlewis43/".to_string(),
+    });
+
+    let result = validate_scan_config(raw);
+
+    assert_eq!(
+        result,
+        Err(NamingScanError::InvalidConfiguration {
+            reason: "prefix-only allowlist rule: https://github.com/priorlewis43/".to_string()
+        })
+    );
+}
+
+#[test]
+fn validate_scan_config_returns_invalid_configuration_when_allowlist_contains_substring_rule() {
+    let raw = raw_config_with_allow_rule(LegacyAllowRule::Substring {
+        needle: LEGACY_PROJECT.to_string(),
+    });
+
+    let result = validate_scan_config(raw);
+
+    assert_eq!(
+        result,
+        Err(NamingScanError::InvalidConfiguration {
+            reason: format!("substring allowlist rule: {LEGACY_PROJECT}")
+        })
+    );
+}
+
+#[test]
+fn validate_scan_config_returns_pattern_compilation_failed_when_scan_pattern_is_invalid() {
+    let raw = raw_config_with_scan_pattern("[unterminated".to_string());
+
+    let result = validate_scan_config(raw);
+
+    assert_eq!(
+        result,
+        Err(NamingScanError::PatternCompilationFailed {
+            pattern: "[unterminated".to_string(),
+            source: "unclosed character class".to_string()
+        })
+    );
+}
+
+#[test]
+fn classify_occurrence_returns_canonical_product_when_ballistics_product_token_is_seen() {
+    let config = minimum_valid_scan_config();
+    let path = repo_path("README.md");
+
+    let result = classify_occurrence(path, line(1), column(9), CANONICAL_HYPHEN, &config);
+
+    assert_eq!(
+        result,
+        Ok(OccurrenceClass::CanonicalProduct {
+            canonical: CANONICAL_HYPHEN.to_string(),
+            kind: CanonicalNameKind::Product,
+        })
+    );
+}
+
+#[test]
+fn classify_occurrence_returns_canonical_product_for_binary_package_and_bead_rig_aliases() {
+    let mut config = minimum_valid_scan_config();
+    config.canonical_table.binary = "velvet-ballistics-bin".to_string();
+    config.canonical_table.package = "velvet-ballistics-package".to_string();
+    config.canonical_table.bead_rig = "velvet-ballistics-rig".to_string();
+
+    assert_canonical_product_alias("Cargo.toml", 1, "velvet-ballistics-bin", &config);
+    assert_canonical_product_alias("Cargo.toml", 2, "velvet-ballistics-package", &config);
+    assert_canonical_product_alias(".beads/config.yaml", 3, "velvet-ballistics-rig", &config);
+}
+
+fn assert_canonical_product_alias(path: &str, line_number: u64, token: &str, config: &ScanConfig) {
+    let result = classify_occurrence(repo_path(path), line(line_number), column(1), token, config);
+
+    assert_eq!(
+        result,
+        Ok(OccurrenceClass::CanonicalProduct {
+            canonical: token.to_string(),
+            kind: CanonicalNameKind::Product,
+        })
+    );
+}
+
+#[test]
+fn classify_occurrence_returns_canonical_crate_module_when_configured_token_is_seen() {
+    let config = minimum_valid_scan_config();
+    let path = repo_path("crates/velvet_ballistics/src/lib.rs");
+
+    let result = classify_occurrence(path, line(1), column(13), CANONICAL_UNDERSCORE, &config);
+
+    assert_eq!(
+        result,
+        Ok(OccurrenceClass::CanonicalCrateModule {
+            canonical: CANONICAL_UNDERSCORE.to_string(),
+            kind: CanonicalNameKind::CrateModule,
+        })
+    );
+}
+
+#[test]
+fn classify_occurrence_returns_canonical_crate_module_when_database_alias_is_seen() {
+    let mut config = minimum_valid_scan_config();
+    config.canonical_table.bead_database = "velvet_ballistics_db".to_string();
+    let path = repo_path(".beads/config.yaml");
+
+    let result = classify_occurrence(path, line(1), column(1), "velvet_ballistics_db", &config);
+
+    assert_eq!(
+        result,
+        Ok(OccurrenceClass::CanonicalCrateModule {
+            canonical: "velvet_ballistics_db".to_string(),
+            kind: CanonicalNameKind::CrateModule,
+        })
+    );
+}
+
+#[test]
+fn classify_occurrence_returns_canonical_language_version_when_v1_token_is_seen() {
+    let config = minimum_valid_scan_config();
+    let path = repo_path("fixtures/workflow.yaml");
+
+    let result = classify_occurrence(
+        path,
+        line(1),
+        column(10),
+        CANONICAL_LANGUAGE_VERSION,
+        &config,
+    );
+
+    assert_eq!(
+        result,
+        Ok(OccurrenceClass::CanonicalLanguageVersion {
+            canonical: CANONICAL_LANGUAGE_VERSION.to_string(),
+            kind: CanonicalNameKind::LanguageVersion,
+        })
+    );
+}
+
+#[test]
+fn classify_occurrence_returns_allowed_repository_path_with_exact_payload_when_current_external_repository_path_is_seen()
+ {
+    let config = minimum_valid_scan_config();
+    let path = repo_path("docs/migration.md");
+
+    let result = classify_occurrence(path, line(4), column(1), CURRENT_REPOSITORY_PATH, &config);
+
+    assert_eq!(
+        result,
+        Ok(OccurrenceClass::AllowedLegacy {
+            exception: LegacyException::RepositoryPath {
+                path: CURRENT_REPOSITORY_PATH.to_string(),
+            },
+        })
+    );
+}
+
+#[test]
+fn classify_occurrence_returns_no_occurrence_when_current_master_filename_is_seen() {
+    let config = minimum_valid_scan_config();
+    let path = repo_path("docs/migration.md");
+
+    let result = classify_occurrence(path, line(5), column(3), CURRENT_MASTER_FILENAME, &config);
+
+    assert_eq!(result, Ok(OccurrenceClass::NoOccurrence));
+}
+
+FILE crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_03.rs
+use super::*;
+
+#[test]
+fn classify_occurrence_returns_allowed_migration_reference_with_exact_payload_when_explicit_migration_reference_is_seen()
+ {
+    let config = minimum_valid_scan_config();
+    let path = repo_path("docs/migration.md");
+    let text = format!("{MIGRATION_LABEL} {MIGRATION_ARTIFACT} {LEGACY_PROJECT}");
+
+    let result = classify_occurrence(path, line(6), column(1), &text, &config);
+
+    assert_eq!(
+        result,
+        Ok(OccurrenceClass::AllowedLegacy {
+            exception: LegacyException::MigrationReference {
+                artifact: MIGRATION_ARTIFACT.to_string(),
+                label: MIGRATION_LABEL.to_string(),
+                legacy_text: LEGACY_PROJECT.to_string(),
+            },
+        })
+    );
+}
+
+#[test]
+fn classify_occurrence_returns_invalid_legacy_when_repository_path_is_only_a_substring() {
+    let config = minimum_valid_scan_config();
+    let path = repo_path("docs/bad.md");
+    let text = "prefix-https://github.com/priorlewis43/Velvet-Ballastics-suffix";
+
+    let result = classify_occurrence(path, line(1), column(1), text, &config);
+
+    assert_eq!(result, Ok(invalid_legacy_occurrence(CANONICAL_HYPHEN)));
+}
+
+#[test]
+fn classify_occurrence_returns_no_occurrence_when_current_master_filename_is_embedded_in_unrelated_path()
+ {
+    let config = minimum_valid_scan_config();
+    let path = repo_path("docs/bad.md");
+    let text = "archive/velvet-ballistics-MASTER.md.copy";
+
+    let result = classify_occurrence(path, line(2), column(9), text, &config);
+
+    assert_eq!(result, Ok(OccurrenceClass::NoOccurrence));
+}
+
+#[test]
+fn classify_occurrence_returns_invalid_legacy_when_migration_label_is_absent() {
+    let config = minimum_valid_scan_config();
+    let path = repo_path("docs/bad.md");
+    let text = format!("{MIGRATION_ARTIFACT} {LEGACY_PROJECT}");
+
+    let result = classify_occurrence(path, line(3), column(31), &text, &config);
+
+    assert_eq!(result, Ok(invalid_legacy_occurrence(CANONICAL_HYPHEN)));
+}
+
+#[test]
+fn classify_occurrence_returns_no_occurrence_when_text_is_empty() {
+    let config = minimum_valid_scan_config();
+    let path = repo_path("docs/empty.md");
+
+    let result = classify_occurrence(path, line(1), column(1), "", &config);
+
+    assert_eq!(result, Ok(OccurrenceClass::NoOccurrence));
+}
+
+#[test]
+fn classify_occurrence_returns_no_occurrence_when_text_has_no_legacy_token() {
+    let config = minimum_valid_scan_config();
+    let path = repo_path("docs/clean.md");
+
+    let result = classify_occurrence(path, line(1), column(1), "trajectory only", &config);
+
+    assert_eq!(result, Ok(OccurrenceClass::NoOccurrence));
+}
+
+#[test]
+fn classify_occurrence_returns_invalid_legacy_when_case_variant_is_seen() {
+    let config = minimum_valid_scan_config();
+    let path = repo_path("README.md");
+
+    let result = classify_occurrence(path, line(1), column(1), "Velvet-Ballastics", &config);
+
+    assert_eq!(result, Ok(invalid_legacy_occurrence(CANONICAL_HYPHEN)));
+}
+
+#[test]
+fn classify_occurrence_returns_invalid_legacy_when_uppercase_variant_is_seen() {
+    let config = minimum_valid_scan_config();
+    let path = repo_path("README.md");
+
+    let result = classify_occurrence(path, line(1), column(1), "VELVET-BALLASTICS", &config);
+
+    assert_eq!(result, Ok(invalid_legacy_occurrence(CANONICAL_HYPHEN)));
+}
+
+#[test]
+fn classify_occurrence_returns_invalid_legacy_when_unicode_confusable_is_seen() {
+    let config = minimum_valid_scan_config();
+    let path = repo_path("README.md");
+
+    let result = classify_occurrence(path, line(1), column(1), "velvet‐ballistics", &config);
+
+    assert_eq!(result, Ok(invalid_legacy_occurrence(CANONICAL_HYPHEN)));
+}
+
+#[test]
+fn classify_occurrence_returns_legacy_crate_module_class_when_legacy_crate_module_token_is_seen() {
+    let config = maximum_bounded_scan_config();
+    let path = repo_path("crates/legacy/src/lib.rs");
+
+    let result = classify_occurrence(path, line(1), column(9), "velvet_ballistics", &config);
+
+    assert_eq!(
+        result,
+        Ok(OccurrenceClass::InvalidLegacy {
+            spelling_class: SpellingClass::LegacyCrateModuleSpelling,
+            remediation: CANONICAL_UNDERSCORE.to_string(),
+        })
+    );
+}
+
+#[test]
+fn classify_occurrence_returns_legacy_language_version_class_when_legacy_language_version_token_is_seen()
+ {
+    let config = maximum_bounded_scan_config();
+    let path = repo_path("fixtures/workflow.yaml");
+
+    let result = classify_occurrence(path, line(1), column(11), LEGACY_LANGUAGE_VERSION, &config);
+
+    assert_eq!(
+        result,
+        Ok(OccurrenceClass::InvalidLegacy {
+            spelling_class: SpellingClass::LegacyLanguageVersionSpelling,
+            remediation: CANONICAL_LANGUAGE_VERSION.to_string(),
+        })
+    );
+}
+
+#[test]
+fn classify_occurrence_returns_legacy_language_version_class_when_token_is_embedded() {
+    let config = maximum_bounded_scan_config();
+    let path = repo_path("fixtures/workflow.yaml");
+    let text = format!("language={LEGACY_LANGUAGE_VERSION}");
+
+    let result = classify_occurrence(path, line(1), column(10), &text, &config);
+
+    assert_eq!(
+        result,
+        Ok(OccurrenceClass::InvalidLegacy {
+            spelling_class: SpellingClass::LegacyLanguageVersionSpelling,
+            remediation: CANONICAL_LANGUAGE_VERSION.to_string(),
+        })
+    );
+}
+
+#[test]
+fn scan_file_allows_documented_external_legacy_repository_url_inside_sentence() {
+    let config = minimum_valid_scan_config();
+    let input = text_scan_input(
+        "docs/migration.md",
+        "legacy source: https://github.com/priorlewis43/Velvet-Ballastics.\n",
+    );
+
+    let result = scan_file(input, &config);
+
+    assert_eq!(result, Ok(Vec::new()));
+}
+
+#[test]
+fn scan_file_allows_documented_external_legacy_repository_url_when_exact_boundary_text_is_seen() {
+    let config = minimum_valid_scan_config();
+    let input = text_scan_input(
+        "docs/migration.md",
+        "https://github.com/priorlewis43/Velvet-Ballastics\n",
+    );
+
+    let result = scan_file(input, &config);
+
+    assert_eq!(result, Ok(Vec::new()));
+}
+
+#[test]
+fn scan_file_rejects_documented_external_legacy_repository_url_when_left_boundary_is_missing() {
+    let config = minimum_valid_scan_config();
+    let input = text_scan_input(
+        "docs/migration.md",
+        "xhttps://github.com/priorlewis43/Velvet-Ballastics\n",
+    );
+
+    let result = scan_file(input, &config);
+
+    assert_eq!(
+        result,
+        Ok(vec![finding("docs/migration.md", 1, 34, CANONICAL_HYPHEN)])
+    );
+}
+
+#[test]
+fn scan_file_rejects_documented_external_legacy_repository_url_when_right_boundary_is_missing() {
+    let config = minimum_valid_scan_config();
+    let input = text_scan_input(
+        "docs/migration.md",
+        "https://github.com/priorlewis43/Velvet-Ballastics-extra\n",
+    );
+
+    let result = scan_file(input, &config);
+
+    assert_eq!(
+        result,
+        Ok(vec![finding("docs/migration.md", 1, 33, CANONICAL_HYPHEN)])
+    );
+}
+
+#[test]
+fn scan_file_ignores_non_exact_allowlist_rule_when_config_was_not_validated() {
+    let mut config = maximum_bounded_scan_config();
+    config.allowlist_policy = AllowlistPolicy::Exact(vec![LegacyAllowRule::Wildcard {
+        pattern: "*".to_string(),
+    }]);
+    let input = text_scan_input("docs/bad.md", "legacy velvet_ballistics\n");
+
+    let result = scan_file(input, &config);
+
+    assert_eq!(
+        result,
+        Ok(vec![finding_with_class(
+            "docs/bad.md",
+            1,
+            8,
+            SpellingClass::LegacyCrateModuleSpelling,
+            CANONICAL_UNDERSCORE,
+        )])
+    );
+}
+
+FILE crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_04.rs
+use super::*;
+
+#[test]
+fn scan_file_does_not_report_canonical_crate_module_even_when_pattern_selects_it() {
+    let mut config = maximum_bounded_scan_config();
+    config.scan_patterns = vec![CANONICAL_UNDERSCORE.to_string()];
+    let input = text_scan_input("crates/velvet_ballistics/src/lib.rs", "pub mod vb_cli;\n");
+
+    let result = scan_file(input, &config);
+
+    assert_eq!(result, Ok(Vec::new()));
+}
+
+#[test]
+fn scan_file_returns_legacy_crate_module_finding_when_legacy_crate_module_token_is_seen() {
+    let config = maximum_bounded_scan_config();
+    let input = text_scan_input("crates/legacy/src/lib.rs", "pub mod velvet_ballistics;\n");
+
+    let result = scan_file(input, &config);
+
+    assert_eq!(
+        result,
+        Ok(vec![finding_with_class(
+            "crates/legacy/src/lib.rs",
+            1,
+            9,
+            SpellingClass::LegacyCrateModuleSpelling,
+            CANONICAL_UNDERSCORE,
+        )])
+    );
+}
+
+#[test]
+fn scan_file_decodes_valid_utf8_bytes_and_reports_exact_finding() {
+    let config = minimum_valid_scan_config();
+    let input = binary_scan_input(
+        "docs/bytes.md",
+        "legacy Velvet-Ballastics\n".as_bytes().to_vec(),
+    );
+
+    let result = scan_file(input, &config);
+
+    assert_eq!(
+        result,
+        Ok(vec![finding("docs/bytes.md", 1, 8, CANONICAL_HYPHEN)])
+    );
+}
+
+#[test]
+fn scan_file_returns_input_read_failed_when_file_input_is_missing() {
+    let config = minimum_valid_scan_config();
+    let input = ScanInput::File {
+        path: repo_path("docs/missing.md"),
+        absolute_path: PathBuf::from("target/vb-37lc-definitely-missing.md"),
+    };
+
+    let result = scan_file(input, &config);
+
+    assert_missing_file_input_error(result);
+}
+
+#[test]
+fn scan_file_returns_legacy_language_version_finding_when_legacy_language_version_token_is_seen() {
+    let mut config = maximum_bounded_scan_config();
+    config.scan_patterns = vec![LEGACY_LANGUAGE_VERSION.to_string()];
+    let input = text_scan_input(
+        "fixtures/workflow.yaml",
+        &format!("language: {LEGACY_LANGUAGE_VERSION}\n"),
+    );
+
+    let result = scan_file(input, &config);
+
+    assert_eq!(
+        result,
+        Ok(vec![finding_with_class(
+            "fixtures/workflow.yaml",
+            1,
+            11,
+            SpellingClass::LegacyLanguageVersionSpelling,
+            CANONICAL_LANGUAGE_VERSION,
+        )])
+    );
+}
+
+#[test]
+fn scan_repository_returns_invalid_canonical_spelling_when_legacy_crate_module_is_in_real_file()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    write_fixture_file(
+        temp.path(),
+        "crates/legacy/src/lib.rs",
+        "pub mod velvet_ballistics;\n",
+    )?;
+    let root = RepoRoot::new(temp.path().to_path_buf());
+    let config = maximum_bounded_scan_config();
+
+    let result = scan_repository(root, config);
+
+    assert_legacy_crate_module_repository_result(result);
+    Ok(())
+}
+
+#[test]
+fn scan_repository_returns_invalid_canonical_spelling_when_legacy_language_version_is_in_real_file()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    write_fixture_file(
+        temp.path(),
+        "fixtures/workflow.yaml",
+        &format!("language: {LEGACY_LANGUAGE_VERSION}\n"),
+    )?;
+    let root = RepoRoot::new(temp.path().to_path_buf());
+    let mut config = maximum_bounded_scan_config();
+    config.scan_patterns = vec![LEGACY_LANGUAGE_VERSION.to_string()];
+
+    let result = scan_repository(root, config);
+
+    assert_legacy_language_version_repository_result(result);
+    Ok(())
+}
+
+#[test]
+fn scan_file_location_kernel_returns_column_one_when_token_starts_at_first_column() {
+    let config = minimum_valid_scan_config();
+    let input = text_scan_input("docs/naming.md", "Velvet-Ballastics must be fixed\n");
+
+    let result = scan_file(input, &config);
+
+    assert_eq!(
+        result,
+        Ok(vec![finding("docs/naming.md", 1, 1, CANONICAL_HYPHEN)])
+    );
+}
+
+#[test]
+fn scan_file_location_kernel_preserves_crlf_columns_when_invalid_token_is_seen() {
+    let config = minimum_valid_scan_config();
+    let input = text_scan_input("docs/naming.md", "ok\r\nfix: Velvet-Ballastics\r\n");
+
+    let result = scan_file(input, &config);
+
+    assert_eq!(
+        result,
+        Ok(vec![finding("docs/naming.md", 2, 6, CANONICAL_HYPHEN)])
+    );
+}
+
+#[test]
+fn scan_file_location_kernel_preserves_final_line_without_newline_when_invalid_token_is_seen() {
+    let config = minimum_valid_scan_config();
+    let input = text_scan_input("docs/naming.md", "first line\nfinal Velvet-Ballastics");
+
+    let result = scan_file(input, &config);
+
+    assert_eq!(
+        result,
+        Ok(vec![finding("docs/naming.md", 2, 7, CANONICAL_HYPHEN)])
+    );
+}
+
+#[test]
+fn scan_file_finding_kernel_returns_all_occurrences_when_many_tokens_share_one_line() {
+    let config = minimum_valid_scan_config();
+    let input = text_scan_input(
+        "docs/naming.md",
+        "Velvet-Ballastics then Velvet-Ballastics\n",
+    );
+
+    let result = scan_file(input, &config);
+
+    assert_eq!(
+        result,
+        Ok(vec![
+            finding("docs/naming.md", 1, 1, CANONICAL_HYPHEN),
+            finding("docs/naming.md", 1, 24, CANONICAL_HYPHEN),
+        ])
+    );
+}
+
+#[test]
+fn scan_repository_report_kernel_returns_zero_findings_with_exact_input_count_when_inputs_are_empty()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let root = RepoRoot::new(temp.path().to_path_buf());
+    let config = minimum_valid_scan_config();
+    let expected = ScanReport {
+        root: root.clone(),
+        config_fingerprint: "vb-37lc-minimum-config".to_string(),
+        selected_input_count: 0,
+        scanned_text_input_count: 0,
+        findings: Vec::new(),
+        report_destination: None,
+    };
+
+    let result = scan_repository(root, config);
+
+    assert_eq_scan_repository_result(result, Ok(expected));
+    Ok(())
+}
+
+#[test]
+fn scan_repository_report_kernel_preserves_config_identity_when_report_is_successful()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    write_fixture_file(
+        temp.path(),
+        "docs/naming.md",
+        "velvet-ballistics is absent\n",
+    )?;
+    let root = RepoRoot::new(temp.path().to_path_buf());
+    let config = minimum_valid_scan_config();
+    let expected = ScanReport {
+        root: root.clone(),
+        config_fingerprint: "vb-37lc-minimum-config".to_string(),
+        selected_input_count: 1,
+        scanned_text_input_count: 1,
+        findings: Vec::new(),
+        report_destination: None,
+    };
+
+    let result = scan_repository(root, config);
+
+    assert_eq_scan_repository_result(result, Ok(expected));
+    Ok(())
+}
+
+ACTUAL FAILURES
+
+running 18 tests
+..................
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 76 tests
+......... 9/76
+vb_37lc_canonical_spelling_red::part_01::canonical_table_returns_underscore_module_for_crate_module_and_database_when_loaded --- FAILED
+vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_crate_module_kind_is_missing --- FAILED
+vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_above_required --- FAILED
+vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_below_required --- FAILED
+vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_is_duplicated --- FAILED
+vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_product_kind_is_missing --- FAILED
+vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_language_version_kind_is_missing --- FAILED
+vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_minimum_valid_config_is_supplied --- FAILED
+vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_maximum_bounded_valid_config_is_supplied --- FAILED
+........ 26/76
+vb_37lc_canonical_spelling_red::part_02::validate_scan_config_names_bead_database_when_token_contradicts_kind --- FAILED
+.......... 37/76
+vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_legacy_crate_module_class_when_legacy_crate_module_token_is_seen --- FAILED
+...... 44/76
+vb_37lc_canonical_spelling_red::part_03::scan_file_ignores_non_exact_allowlist_rule_when_config_was_not_validated --- FAILED
+......... 54/76
+vb_37lc_canonical_spelling_red::part_04::scan_file_returns_legacy_crate_module_finding_when_legacy_crate_module_token_is_seen --- FAILED
+....... 62/76
+vb_37lc_canonical_spelling_red::part_04::scan_repository_returns_invalid_canonical_spelling_when_legacy_crate_module_is_in_real_file --- FAILED
+.............
+failures:
+
+---- vb_37lc_canonical_spelling_red::part_01::canonical_table_returns_underscore_module_for_crate_module_and_database_when_loaded stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::canonical_table_returns_underscore_module_for_crate_module_and_database_when_loaded' (1763184) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:35:5:
+assertion `left == right` failed
+  left: "vb_cli"
+ right: "velvet_ballistics"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_crate_module_kind_is_missing stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_crate_module_kind_is_missing' (1763188) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:120:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for bead_database: velvet_ballistics" })
+ right: Err(InvalidConfiguration { reason: "missing canonical kind: crate_module" })
+
+---- vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_above_required stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_above_required' (1763189) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:179:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for crate_module: velvet_ballistics" })
+ right: Err(InvalidConfiguration { reason: "canonical kind count one above required: duplicate language_version" })
+
+---- vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_below_required stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_below_required' (1763190) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:148:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for crate_module: velvet_ballistics" })
+ right: Err(InvalidConfiguration { reason: "canonical kind count one below required: bead_database missing" })
+
+---- vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_is_duplicated stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_is_duplicated' (1763191) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:162:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for crate_module: velvet_ballistics" })
+ right: Err(InvalidConfiguration { reason: "duplicate canonical kind: product" })
+
+---- vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_product_kind_is_missing stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_product_kind_is_missing' (1763193) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:106:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for crate_module: velvet_ballistics" })
+ right: Err(InvalidConfiguration { reason: "missing canonical kind: product" })
+
+---- vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_language_version_kind_is_missing stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_language_version_kind_is_missing' (1763192) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:134:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for crate_module: velvet_ballistics" })
+ right: Err(InvalidConfiguration { reason: "missing canonical kind: language_version" })
+
+---- vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_minimum_valid_config_is_supplied stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_minimum_valid_config_is_supplied' (1763195) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:53:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for crate_module: velvet_ballistics" })
+ right: Ok(ScanConfig { canonical_table: CanonicalSpellingTable { product: "velvet-ballistics", binary: "velvet-ballistics", package: "velvet-ballistics", bead_rig: "velvet-ballistics", crate_module: "velvet_ballistics", bead_database: "velvet_ballistics", language_version: "velvet-ballistics/v1" }, allowlist_policy: Exact([RepositoryPath { path: "https://github.com/priorlewis43/Velvet-Ballastics" }, MigrationReference { label: "MIGRATION-REFERENCE", artifact: "external-preexisting-artifact", legacy_text: "velvet-ballastics" }]), scan_patterns: ["velvet-ballastics", "Velvet-Ballastics"], excluded_path_rules: [".git/**", "target/**"], config_fingerprint: "vb-37lc-minimum-config", report_destination: None })
+
+---- vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_maximum_bounded_valid_config_is_supplied stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_maximum_bounded_valid_config_is_supplied' (1763194) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_01.rs:83:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for crate_module: velvet_ballistics" })
+ right: Ok(ScanConfig { canonical_table: CanonicalSpellingTable { product: "velvet-ballistics", binary: "velvet-ballistics", package: "velvet-ballistics", bead_rig: "velvet-ballistics", crate_module: "velvet_ballistics", bead_database: "velvet_ballistics", language_version: "velvet-ballistics/v1" }, allowlist_policy: Exact([RepositoryPath { path: "https://github.com/priorlewis43/Velvet-Ballastics" }, MigrationReference { label: "MIGRATION-REFERENCE", artifact: "external-preexisting-artifact", legacy_text: "velvet-ballastics" }]), scan_patterns: ["velvet-ballastics", "Velvet-Ballastics", "velvet_ballistics", "velvet-ballastics/v1"], excluded_path_rules: [".git/**", "target/**", ".beads/dolt/**", ".beads/backup/**", ".beads/embeddeddolt/**"], config_fingerprint: "vb-37lc-maximum-bounded-config", report_destination: Some("target/naming-scan.txt") })
+
+---- vb_37lc_canonical_spelling_red::part_02::validate_scan_config_names_bead_database_when_token_contradicts_kind stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_02::validate_scan_config_names_bead_database_when_token_contradicts_kind' (1763203) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_02.rs:10:5:
+assertion `left == right` failed
+  left: Err(InvalidConfiguration { reason: "contradictory token for crate_module: velvet_ballistics" })
+ right: Err(InvalidConfiguration { reason: "contradictory token for bead_database: not_the_database" })
+
+---- vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_legacy_crate_module_class_when_legacy_crate_module_token_is_seen stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_legacy_crate_module_class_when_legacy_crate_module_token_is_seen' (1763214) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_03.rs:115:5:
+assertion `left == right` failed
+  left: Ok(CanonicalCrateModule { canonical: "velvet_ballistics", kind: CrateModule })
+ right: Ok(InvalidLegacy { spelling_class: LegacyCrateModuleSpelling, remediation: "velvet_ballistics" })
+
+---- vb_37lc_canonical_spelling_red::part_03::scan_file_ignores_non_exact_allowlist_rule_when_config_was_not_validated stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_03::scan_file_ignores_non_exact_allowlist_rule_when_config_was_not_validated' (1763222) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_03.rs:226:5:
+assertion `left == right` failed
+  left: Ok([])
+ right: Ok([NamingFinding { path: RepoPath("docs/bad.md"), line: LineNumber(1), column: ColumnNumber(8), spelling_class: LegacyCrateModuleSpelling, remediation: "velvet_ballistics" }])
+
+---- vb_37lc_canonical_spelling_red::part_04::scan_file_returns_legacy_crate_module_finding_when_legacy_crate_module_token_is_seen stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_04::scan_file_returns_legacy_crate_module_finding_when_legacy_crate_module_token_is_seen' (1763232) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/part_04.rs:21:5:
+assertion `left == right` failed
+  left: Ok([])
+ right: Ok([NamingFinding { path: RepoPath("crates/legacy/src/lib.rs"), line: LineNumber(1), column: ColumnNumber(9), spelling_class: LegacyCrateModuleSpelling, remediation: "velvet_ballistics" }])
+
+---- vb_37lc_canonical_spelling_red::part_04::scan_repository_returns_invalid_canonical_spelling_when_legacy_crate_module_is_in_real_file stdout ----
+
+thread 'vb_37lc_canonical_spelling_red::part_04::scan_repository_returns_invalid_canonical_spelling_when_legacy_crate_module_is_in_real_file' (1763236) panicked at crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/common_part_01.rs:199:5:
+assertion `left == right` failed
+  left: Ok(ScanReport { root: RepoRoot("/tmp/.tmpSw9y7F"), config_fingerprint: "vb-37lc-maximum-bounded-config", selected_input_count: 1, scanned_text_input_count: 1, findings: [], report_destination: Some("target/naming-scan.txt") })
+ right: Err(InvalidCanonicalSpelling { findings: [NamingFinding { path: RepoPath("crates/legacy/src/lib.rs"), line: LineNumber(1), column: ColumnNumber(9), spelling_class: LegacyCrateModuleSpelling, remediation: "velvet_ballistics" }] })
+
+
+failures:
+    vb_37lc_canonical_spelling_red::part_01::canonical_table_returns_underscore_module_for_crate_module_and_database_when_loaded
+    vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_crate_module_kind_is_missing
+    vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_above_required
+    vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_count_is_one_below_required
+    vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_kind_is_duplicated
+    vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_language_version_kind_is_missing
+    vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_invalid_configuration_when_product_kind_is_missing
+    vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_maximum_bounded_valid_config_is_supplied
+    vb_37lc_canonical_spelling_red::part_01::validate_scan_config_returns_scan_config_when_minimum_valid_config_is_supplied
+    vb_37lc_canonical_spelling_red::part_02::validate_scan_config_names_bead_database_when_token_contradicts_kind
+    vb_37lc_canonical_spelling_red::part_03::classify_occurrence_returns_legacy_crate_module_class_when_legacy_crate_module_token_is_seen
+    vb_37lc_canonical_spelling_red::part_03::scan_file_ignores_non_exact_allowlist_rule_when_config_was_not_validated
+    vb_37lc_canonical_spelling_red::part_04::scan_file_returns_legacy_crate_module_finding_when_legacy_crate_module_token_is_seen
+    vb_37lc_canonical_spelling_red::part_04::scan_repository_returns_invalid_canonical_spelling_when_legacy_crate_module_is_in_real_file
+
+test result: FAILED. 62 passed; 14 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_37lc_canonical_spelling_red`
+
+running 13 tests
+.............
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 48 tests
+................................................
+test result: ok. 48 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: 1 target failed:
+    `-p velvet-ballistics-workspace-tests --test vb_37lc_canonical_spelling_red`

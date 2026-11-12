@@ -1,0 +1,14 @@
+{
+  "raw_v1": "rejected factual invented API/ordering/universal rollback; retained",
+  "raw_v2": "retained with remaining contradictory rollback row corrected in normalized contract",
+  "corrections": [
+    "Registry batch rollback row removed; uncertain IO cancommit",
+    "Successful submissions exactly1; errors not no-commit guarantee",
+    "Current fullbinding validation in RunSubmission.new explicitlyrequiredretained",
+    "Exact detailed behavior acceptance added; no tests/proof execution claimed",
+    "Research counter-read failure label narrowed: malformed row is decode error, Fjall read errors remain Fjall",
+    "Raw reviewer claimed120line count is not authoritative; actuallinecount not acceptancegate",
+    "Proposed helper/type/batch signatures unimplemented and must be compiler checked"
+  ],
+  "status": "bounded contract only, source implementation pending"
+}

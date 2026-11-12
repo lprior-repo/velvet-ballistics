@@ -1,0 +1,184 @@
+{
+  "verdict": "PASS",
+  "readiness": "Bounded controlled-executor TEST readiness only; fresh exact V6 CODE and TEST approvals plus fresh live fail-closed guards remain required. No live apply authorized or performed by reviewer.",
+  "proposal_sha256": "6ea5bbee36dc5fd9bf0421aab85d7ab74f90f804e43b9617e29e0d71b4e91f1b",
+  "executor_sha256": "dd180d8cc9f9a100b54a5c816dd245c90ba2762597ef513cafe3dca29c684946",
+  "contract_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-apply-contract-v6.json",
+  "executor_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/executor.rb",
+  "planning_proposal_sha256": "e16e633cb711bc58eddd5c67049272214b59b856720355a77469964273f0d8f4",
+  "roots": {
+    "git": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+    "jj": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol"
+  },
+  "findings": [],
+  "v5_corrections": [
+    {
+      "id": "NONVACUOUS-REJECTION",
+      "status": "fixed_with_evidence",
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/executor.rb",
+      "line": 518,
+      "evidence": "Unexpected acceptance raises after the rescued yielded guard. Exact full offline evaluation exits0. Reviewer no-op expect_reject override exits1 at meta-control; independently bypassed CODE and TEST planning-validation each exits1 on wrong V5 binding before any process attempt."
+    },
+    {
+      "id": "PLANNING-BINDING-NEGATIVES",
+      "status": "fixed_with_evidence",
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/executor.rb",
+      "line": 564,
+      "evidence": "For each CODE/TEST role actual wrong binding, missing binding, missing verdict, REJECT verdict and altered-byte controls execute. Ten traced labels; complete offline suite passes only when each is rejected."
+    }
+  ],
+  "independent_execution": {
+    "fresh_by_reviewer": true,
+    "method": "Ruby eval of exact final source with original filename/__FILE__, offline-only ARGV, no author-file writes; process-blocking Open3/Kernel wrappers and TracePoint observation. Local runtime overrides only in separate negative runs; original source unchanged.",
+    "exact_exit": 0,
+    "observed_scalar_mutants": 98,
+    "observed_edge_mutants": 137,
+    "observed_planning_mutants": 10,
+    "process_attempts_all_runs": 0,
+    "no_op_rejection_mutant_exit": 1,
+    "accept_code_planning_mutant_exit": 1,
+    "accept_test_planning_mutant_exit": 1,
+    "author_claimed_counts_not_used_as_sole_evidence": true
+  },
+  "bindings": {
+    "final_contract_and_executor_hashes_rechecked": true,
+    "both_nested_executor_values_match": true,
+    "contract_self_hash_external_marker": "SHA256_OF_EXACT_CONTRACT_FILE_EXTERNAL; actual report contract digest checked at runtime",
+    "executor_review_paths_and_fields": "CODE artifact_sha256, TEST proposal_sha256; both require PASS and executor_sha256 exact final bytes",
+    "planning_reviews": "Exact two V5 files hashed by executor and their proposal fields validated; no CODE reasoning relied upon",
+    "raw_snapshot_file_hashes_verified": true,
+    "script_verify_artifacts_lines": [
+      416,
+      490
+    ]
+  },
+  "patch_audit": {
+    "contract_sha256": "6ea5bbee36dc5fd9bf0421aab85d7ab74f90f804e43b9617e29e0d71b4e91f1b",
+    "executor_sha256": "dd180d8cc9f9a100b54a5c816dd245c90ba2762597ef513cafe3dca29c684946",
+    "proposal_sha256": "e16e633cb711bc58eddd5c67049272214b59b856720355a77469964273f0d8f4",
+    "raw_snapshots_hashes_verified": true,
+    "before_sha256": "c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9",
+    "after_sha256": "91693b0972b9cc82ccc573ac7615ab599bd6ccbcd1609a74f9fca2b0c5c36392",
+    "independent_semantic_scalar_paths": 49,
+    "selected_rows": 7,
+    "checks": 14,
+    "typed_edges": 137,
+    "all190_false_null": true,
+    "full_issue11_business_snapshot_equal": true,
+    "nested_executor_bindings_equal": true,
+    "test_planning_bypass_control_exit": 1,
+    "test_planning_bypass_caught": "test wrong V5 proposal binding",
+    "no_self_edge": true,
+    "outside_target_bytes_identical": true,
+    "outside_target_bytes_sha256": "b04c294f84c5af8ae5e4f117350c88353865ff62ad6f9ec138dc0f5c98b602dd"
+  },
+  "mutation_review": [
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/executor.rb",
+      "lines": [
+        94,
+        105,
+        386,
+        394
+      ],
+      "assessment": "Exact argv allowlist admits only metadata update11 and design-file update12, plus three readonly commands. Uses argument-vector Open3, no shell interpolation; fixed per-process ports37225, backupfalse and RUN TMPDIR. No task/status/edge/history writes."
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/executor.rb",
+      "lines": [
+        636,
+        695
+      ],
+      "assessment": "Absent output directory and verified isolated author root required; exact artifact/master/proposal/review checks precede live reads. Full issue11 including historical dependency expansion and exact137typed edges checked twice before first mutation. Raw command stdout/stderr and exit/hash receipts fsynced, as are raw design and seven-ID metadata before first write."
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/executor.rb",
+      "lines": [
+        696,
+        708
+      ],
+      "assessment": "First update only exact seven-ID qualification metadata from prior null/absent. Response timestamp required and tied to strict full after-readback; every other full issue11 field, including nested history/dependencies, remains equal. Failure stops before design update."
+    },
+    {
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v6/executor.rb",
+      "lines": [
+        710,
+        735
+      ],
+      "assessment": "Fresh issue12 design-only guard immediately before second update. Only raw precomputed49scalar design file submitted; response/final exact bytes required. Final full issue11 and137typed edges unchanged except approved metadata/server timestamp. No11selfedge. No edge mutation, so no new dependency cycle introduced; no independent full graph health audit claimed."
+    }
+  ],
+  "controls_and_limits": [
+    "Independent Python byte splicing and recursive semantic diff confirm exactly49scalar paths across7rows/14checks; full190false/null retained. Removing token spans from before/after gives byte-identical outside content, not just matching audit booleans.",
+    "Only offline control execution occurred; no BD calls, live reads/writes, builds, Rust native tests, source/gate/config changes, or author-workspace writes.",
+    "Non-atomic two-update flow deliberately stops without retry/rollback on any error; partial application remains possible if second write fails.",
+    "Review is of final frozen executor/contract readiness. Successful live mutation/readbacks and postapply audit are not supplied by this review.",
+    "No gate execution, full190plan acceptance, qualification closure, backup health/recovery guarantee, or full CI claim."
+  ],
+  "evidence": {
+    "target/core-build-20261110/evidence/gate-v6-test-offline/exact.stdout.log": {
+      "sha256": "67aea2f31ccff73f95db6a2ecba12529dbe44e9ab9ab223eda5b98b958bfe63f",
+      "bytes": 441
+    },
+    "target/core-build-20261110/evidence/gate-v6-test-offline/exact.stderr.log": {
+      "sha256": "09fd711dd69eb2f329b585a25a160616a45b084a2b2c4e35f9e9d0e9035c923d",
+      "bytes": 4555
+    },
+    "target/core-build-20261110/evidence/gate-v6-test-offline/exact.exit": {
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    "target/core-build-20261110/evidence/gate-v6-test-offline/noop_reject.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "target/core-build-20261110/evidence/gate-v6-test-offline/noop_reject.stderr.log": {
+      "sha256": "6ea2e4cb09888aa5a251dc6418e1c8f6a341964e5a0495ebae91727565f6de89",
+      "bytes": 218
+    },
+    "target/core-build-20261110/evidence/gate-v6-test-offline/noop_reject.exit": {
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "bytes": 2
+    },
+    "target/core-build-20261110/evidence/gate-v6-test-offline/accept_planning.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "target/core-build-20261110/evidence/gate-v6-test-offline/accept_planning.stderr.log": {
+      "sha256": "8eea84d4e8f202cb4544c24a1ee6bb3931894e49eabb996a27ad2654dee76cb8",
+      "bytes": 282
+    },
+    "target/core-build-20261110/evidence/gate-v6-test-offline/accept_planning.exit": {
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "bytes": 2
+    },
+    "target/core-build-20261110/evidence/gate-v6-test-offline/wrapper.rb": {
+      "sha256": "554cc9af80cb7cffb49a02590ee4e8f06d08aff0be2316d4d15349b13ea0c9ee",
+      "bytes": 1114
+    },
+    "target/core-build-20261110/evidence/gate-v6-test-offline/results.json": {
+      "sha256": "0395003dc523932292d09393d3fd1b7dd6883de62caa4837fc4eb8f7660d89e7",
+      "bytes": 1284
+    },
+    "target/core-build-20261110/evidence/gate-v6-test-offline/accept_test_planning.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "target/core-build-20261110/evidence/gate-v6-test-offline/accept_test_planning.stderr.log": {
+      "sha256": "d3467e6be4514f56b96b3dd0928d7c1bf521ee5c95aef2913b92e41787d4712d",
+      "bytes": 439
+    },
+    "target/core-build-20261110/evidence/gate-v6-test-offline/accept_test_planning.exit": {
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "bytes": 2
+    },
+    "target/core-build-20261110/evidence/gate-v6-test-offline/wrapper-with-test-mutant.rb": {
+      "sha256": "7e038b470ce882a1aa40072e4e52c027e847f3af2b1cc678b07edfa59cd2891d",
+      "bytes": 1323
+    },
+    "target/core-build-20261110/evidence/gate-v6-test-offline/independent-raw-audit.json": {
+      "sha256": "001516272894f693af8fe1b3e2180dbba2315e534ed72d67f0cbc59b31462e8e",
+      "bytes": 839
+    }
+  }
+}

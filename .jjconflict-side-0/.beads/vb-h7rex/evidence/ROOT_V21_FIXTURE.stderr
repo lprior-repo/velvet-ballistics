@@ -1,0 +1,21 @@
+error[E0069]: `return;` in a function whose return type is not `()`
+    --> crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1341:21
+     |
+1307 | / proptest! {
+1308 | |     #[test]
+1309 | |     fn proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted(
+1310 | |         name_suffix in 1u8..10,
+...    |
+1341 | |                     return;
+     | |                     ^^^^^^ return type is not `()`
+...    |
+1491 | | }
+     | |_- expected `` because of this return type
+     |
+help: give the `return` a value of the expected type
+     |
+1341 |                     return Ok(());
+     |                            ++++++
+
+For more information about this error, try `rustc --explain E0069`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_qi37_4_2_strict_runtime_admission") due to 1 previous error

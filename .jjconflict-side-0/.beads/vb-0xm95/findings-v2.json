@@ -1,0 +1,72 @@
+{
+  "bead": "vb-0xm95",
+  "version": 2,
+  "supersedes": "code-review-v1.md",
+  "verdict": "APPROVED",
+  "corrections": [
+    {
+      "type": "line_number",
+      "target": "RuntimeJournal::append_policy_decision_strict trait default",
+      "v1_claimed": "journal/chunk_001.rs:573-577",
+      "v2_verified": "crates/vb_runtime/src/journal/chunk_001.rs:341-350"
+    },
+    {
+      "type": "line_number",
+      "target": "StorageRuntimeJournal::append_policy_decision_strict",
+      "v1_claimed": "journal/chunk_002.rs:394-404",
+      "v2_verified": "crates/vb_runtime/src/journal/chunk_002.rs:456-470"
+    },
+    {
+      "type": "line_number",
+      "target": "QueuedStorageRuntimeJournal::append_policy_decision_strict",
+      "v1_claimed": "journal/chunk_003.rs:423-437",
+      "v2_verified": "crates/vb_runtime/src/journal/chunk_003.rs:70-90"
+    },
+    {
+      "type": "line_number",
+      "target": "Shard::append_policy_decision_strict",
+      "v1_claimed": "shard/impl_parts/policy_decision.rs:1-36",
+      "v2_verified": "crates/vb_runtime/src/shard/impl_parts/policy_decision.rs:8-29"
+    },
+    {
+      "type": "line_number",
+      "target": "Shard::checked_next_seq",
+      "v1_claimed": "6 lines",
+      "v2_verified": "crates/vb_runtime/src/shard/impl_parts/policy_decision.rs:30-40 (11 lines)"
+    },
+    {
+      "type": "file_count",
+      "v1_claimed": "16 production files",
+      "v2_verified": "14 production + 2 runtime internal test files = 16 total"
+    },
+    {
+      "type": "test_count",
+      "target": "ROOT_TESTS_V5_BEHAVIOR",
+      "v1_claimed": "8 matching, 0 failed",
+      "v2_verified": "9 passed, 0 failed, 0 ignored"
+    },
+    {
+      "type": "claim_removed",
+      "target": "checked_mul",
+      "v1_claimed": "checked arithmetic includes checked_mul",
+      "v2_verified": "only checked_add used in checked_next_seq"
+    },
+    {
+      "type": "claim_corrected",
+      "target": "forbid(unsafe_code) location",
+      "v1_claimed": "all files have #![forbid(unsafe_code)]",
+      "v2_verified": "crate-level in journal.rs:1 only"
+    }
+  ],
+  "files_reviewed": 16,
+  "production_files": 14,
+  "test_files": 2,
+  "gates_verified": [
+    "ROOT_V9_COMBINED_CHECK.json",
+    "ROOT_V9_CLIPPY.json",
+    "ROOT_V9_SOURCE_LENGTH.json",
+    "ROOT_V9_COMBINED_PORT_TESTS.json",
+    "ROOT_TESTS_V5_BEHAVIOR.json"
+  ],
+  "scope_note": "Static source review only. Future test oracles and Shard test helper changes outside scope. TEST reviewer owns final test suite acceptance."
+}

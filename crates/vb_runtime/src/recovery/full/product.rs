@@ -127,6 +127,7 @@ pub struct ResumableRecoveryProduct {
     next_seq: EventSeq,
     collect_states: crate::primitives::collect::CollectStates,
     boundary: RecoveredRunBoundary,
+    retry_checkpoint: Option<crate::run_checkpoint::RunCheckpointV1>,
     open_gates: Vec<crate::shard::types::OpenGate>,
     /// Original historical admission validated against the durable artifact;
     /// must be restored verbatim rather than rebuilt from current policy.
@@ -149,6 +150,7 @@ impl ResumableRecoveryProduct {
             next_seq: parts.next_seq,
             collect_states: parts.collect_states,
             boundary: parts.boundary,
+            retry_checkpoint: parts.retry_checkpoint,
             open_gates: parts.open_gates,
             admission: parts.admission,
             restored_store: parts.restored_store,
@@ -172,7 +174,7 @@ impl ResumableRecoveryProduct {
 
     #[must_use]
     pub(crate) fn into_recover_command(self) -> crate::shard::types::RecoverRunCommand {
-        crate::shard::types::RecoverRunCommand::new(
+        let command = crate::shard::types::RecoverRunCommand::new(
             self.run,
             self.frame,
             self.artifact_digest,
@@ -183,7 +185,11 @@ impl ResumableRecoveryProduct {
         )
         .with_open_gates(self.open_gates)
         .with_validated_admission(self.admission)
-        .with_restored_store(self.restored_store)
+        .with_restored_store(self.restored_store);
+        match self.retry_checkpoint {
+            Some(checkpoint) => command.with_retry_checkpoint(checkpoint),
+            None => command,
+        }
     }
 }
 
@@ -197,6 +203,7 @@ pub(crate) struct ResumableRecoveryParts {
     pub(crate) next_seq: EventSeq,
     pub(crate) collect_states: crate::primitives::collect::CollectStates,
     pub(crate) boundary: RecoveredRunBoundary,
+    pub(crate) retry_checkpoint: Option<crate::run_checkpoint::RunCheckpointV1>,
     pub(crate) open_gates: Vec<crate::shard::types::OpenGate>,
     /// Original historical admission validated against the durable artifact;
     /// must be restored verbatim rather than rebuilt from current policy.

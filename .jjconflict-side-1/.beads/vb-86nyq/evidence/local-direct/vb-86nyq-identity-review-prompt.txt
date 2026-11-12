@@ -1,0 +1,508 @@
+Independent semantic/code review. Give concrete recommendation; no code and no proofplanning. Compiler now hashes actual postpacked WorkflowParts with selfdigestzero to match existing Strict storagechecksum; old compile_source used ASTcanonical_digest. Master requires numericIR+rawsourcedigestseparate. Two assertions require source-only name sensitivity: consistently renaming a Set output and its Finishreference yields sameIR, Together branch labelrename yields sameIR. Should tests explicitly check unchangedcompiledIRdigest plus changedcanonical_digest(AST) while preserving actualbranchvaluesensitivity? Existing branchvaluesensitivityfails because body_constant_index reusesfirstconstantregardlessvalue; thatproductionbugisbeingfixedvb-s105z; doNOTweakenitsassertions. Evaluate source identity vs runtimeartifactidentitycarefully, noapprovalofv1.
+
+FILE crates/vb_compile/src/tests/error_variant_tests.rs
+fn test_different_together_configurations_produce_different_digests() {
+    // (a) Different branch counts
+    let yaml_2_branch = "\
+version: velvet-ballistics/v1
+name: config-test
+when:
+  manual: {}
+steps:
+  - id: fanout
+    together:
+      branches:
+        - label: a
+          steps:
+            - id: set-a
+              set:
+                output: \"x\"
+                value: \"1\"
+        - label: b
+          steps:
+            - id: set-b
+              set:
+                output: \"z\"
+                value: \"2\"
+  - id: done
+    finish:
+      result: 0
+";
+    let yaml_3_branch = "\
+version: velvet-ballistics/v1
+name: config-test
+when:
+  manual: {}
+steps:
+  - id: fanout
+    together:
+      branches:
+        - label: a
+          steps:
+            - id: set-a
+              set:
+                output: \"x\"
+                value: \"1\"
+        - label: b
+          steps:
+            - id: set-b
+              set:
+                output: \"z\"
+                value: \"2\"
+        - label: c
+          steps:
+            - id: set-c
+              set:
+                output: \"w\"
+                value: \"3\"
+  - id: done
+    finish:
+      result: 0
+";
+
+    let source_2 = crate::parse_workflow_source(yaml_2_branch).expect("parse 2-branch");
+    let source_3 = crate::parse_workflow_source(yaml_3_branch).expect("parse 3-branch");
+    let wf_2 = crate::compile_source(&source_2).expect("compile 2-branch");
+    let wf_3 = crate::compile_source(&source_3).expect("compile 3-branch");
+
+    assert_ne!(
+        wf_2.digest(),
+        wf_3.digest(),
+        "different branch counts must produce different digests"
+    );
+
+    // (b) Different branch labels
+    let yaml_label_a = "\
+version: velvet-ballistics/v1
+name: config-test
+when:
+  manual: {}
+steps:
+  - id: fanout
+    together:
+      branches:
+        - label: label-a
+          steps:
+            - id: set-x
+              set:
+                output: \"x\"
+                value: \"1\"
+        - label: common
+          steps:
+            - id: set-z
+              set:
+                output: \"z\"
+                value: \"2\"
+  - id: done
+    finish:
+      result: 0
+";
+    let yaml_label_b = "\
+version: velvet-ballistics/v1
+name: config-test
+when:
+  manual: {}
+steps:
+  - id: fanout
+    together:
+      branches:
+        - label: label-b
+          steps:
+            - id: set-x
+              set:
+                output: \"x\"
+                value: \"1\"
+        - label: common
+          steps:
+            - id: set-z
+              set:
+                output: \"z\"
+                value: \"2\"
+  - id: done
+    finish:
+      result: 0
+";
+
+    let source_la = crate::parse_workflow_source(yaml_label_a).expect("parse label-a");
+    let source_lb = crate::parse_workflow_source(yaml_label_b).expect("parse label-b");
+    let wf_la = crate::compile_source(&source_la).expect("compile label-a");
+    let wf_lb = crate::compile_source(&source_lb).expect("compile label-b");
+
+    assert_ne!(
+        wf_la.digest(),
+        wf_lb.digest(),
+        "different branch labels must produce different digests"
+    );
+
+    // (c) Different sub-step IDs
+    let yaml_id_a = "\
+version: velvet-ballistics/v1
+name: config-test
+when:
+  manual: {}
+steps:
+  - id: fanout
+    together:
+      branches:
+        - label: work
+          steps:
+            - id: sub-a
+              set:
+                output: \"x\"
+                value: \"1\"
+        - label: rest
+          steps:
+            - id: sub-b
+              set:
+                output: \"z\"
+                value: \"2\"
+  - id: done
+    finish:
+      result: 0
+";
+    let yaml_id_b = "\
+version: velvet-ballistics/v1
+name: config-test
+when:
+  manual: {}
+steps:
+  - id: fanout
+    together:
+      branches:
+        - label: work
+          steps:
+            - id: sub-c
+              set:
+                output: \"x\"
+                value: \"1\"
+        - label: rest
+          steps:
+            - id: sub-d
+              set:
+                output: \"z\"
+                value: \"2\"
+  - id: done
+    finish:
+      result: 0
+";
+
+    let source_ida = crate::parse_workflow_source(yaml_id_a).expect("parse id-a");
+    let source_idb = crate::parse_workflow_source(yaml_id_b).expect("parse id-b");
+    let wf_ida = crate::compile_source(&source_ida).expect("compile id-a");
+    let wf_idb = crate::compile_source(&source_idb).expect("compile id-b");
+
+    assert_ne!(
+        wf_ida.digest(),
+        wf_idb.digest(),
+        "different sub-step IDs must produce different digests"
+    );
+}
+
+// =========================================================================
+// PO-xi2f29-015: Canonical Primitive Name Together Returns "together"
+// =========================================================================
+
+/// Unit test: canonical_primitive_name(Together) returns "together" (not "parallel").
+///
+/// This test indirectly verifies the canonical name fix by checking that
+/// the compiled workflow digest is deterministic and that together steps
+/// are recognized. The canonical_primitive_name function is `pub(super)`
+/// and cannot be directly called from this test module; the Kani harness in
+/// `kani_canonical_name.rs` provides direct verification.
+///
+/// The canonical name fix (part_05.rs line 105) now returns "together".
+/// The direct assertion is in `canonical_primitive_name_together_returns_together_direct`.
+/// Kani harness `canonical_name_together_harness` provides formal verification.
+#[test]
+fn test_canonical_primitive_name_together_returns_together() {
+    // Construct a StepPrimitive::Together via YAML parsing
+    let yaml = "\
+version: velvet-ballistics/v1
+name: name-test
+when:
+  manual: {}
+steps:
+  - id: fanout
+    together:
+      branches:
+        - label: branch-x
+          steps:
+            - id: set-x
+              set:
+                output: v
+                value: \"1\"
+        - label: branch-y
+          steps:
+            - id: set-y
+              set:
+                output: w
+                value: \"2\"
+  - id: done
+    finish:
+      result: 0
+";
+
+    let source = crate::parse_workflow_source(yaml).expect("parse should succeed");
+
+    // Verify that a Together step exists in the parsed source
+    let steps = source.steps();
+    assert_eq!(steps.len(), 2, "workflow should have 2 steps");
+    assert!(
+        matches!(steps[0].primitive, crate::StepPrimitive::Together { .. }),
+        "first step should be Together (parsed from 'together' key)"
+    );
+
+    // Compile the workflow - digest comp
+FILE crates/vb_compile/src/proptest_finish_digest.rs
+// Verification artifact: proptest_finish_digest.rs
+// Bead: vb-jei3u — Repair ignored finish-digest property fixtures
+// Proof obligations:
+//   PO-PROPTEST-FINISH-001: Canonical digest determinism
+//   PO-PROPTEST-FINISH-002: Finish result sensitivity (defense-in-depth)
+//   PO-PROPTEST-FINISH-003: Finish step position sensitivity
+//   PO-PROPTEST-FINISH-004: Digest is pre-validation (AST scope)
+//
+// GOD RULE 1: Uses proptest strategies to generate varied YAML-based inputs.
+// GOD RULE 2: Binds to actual compile_source() and CompiledWorkflow::digest() APIs.
+// GOD RULE 4: Exhaustive property testing; no loop oscillations.
+
+#![cfg(test)]
+#![forbid(unsafe_code)]
+
+use crate::compile_source;
+use proptest::prelude::*;
+use vb_core::ids::WorkflowDigest;
+
+// ─────────────────────────────────────────────────────────────────
+// Constants — derived from actual ResourceContract data
+// ─────────────────────────────────────────────────────────────────
+
+/// Actual max_slots from the production ResourceContract::DEFAULT constant.
+fn max_slots() -> u16 {
+    vb_core::workflow::ResourceContract::DEFAULT.max_slots
+}
+
+/// Boundary value: one below max_slots (checked subtraction).
+fn slot_below_max() -> Result<u16, String> {
+    max_slots()
+        .checked_sub(1)
+        .ok_or_else(|| "max_slots must be > 0 for checked_sub(1)".to_string())
+}
+
+/// Boundary value: one above max_slots (checked addition).
+fn slot_above_max() -> Result<u16, String> {
+    max_slots()
+        .checked_add(1)
+        .ok_or_else(|| "max_slots + 1 must fit in u16".to_string())
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────
+
+fn digest_from_yaml(yaml: &str) -> Result<WorkflowDigest, String> {
+    let source = crate::parse_workflow_source(yaml).map_err(|e| format!("parse error: {e:?}"))?;
+    let compiled = compile_source(&source).map_err(|e| format!("compile error: {e:?}"))?;
+    Ok(compiled.digest())
+}
+
+fn yaml_with_steps(steps_yaml: &str) -> String {
+    format!(
+        "version: velvet-ballistics/v1    fn finish_result_change_changes_digest_string(
+        id in step_id_strategy(),
+        out_a in step_id_strategy(),
+        out_b in step_id_strategy(),
+    ) {
+        if out_a == out_b {
+            return Ok(());
+        }
+        if id == "s" {
+            return Ok(());
+        }
+        let sid = "s";
+
+        let yaml_a = yaml_with_steps(&format!(
+            "  - id: {sid}\n    set:\n      output: {out_a}\n      value: \"10\"\n  - id: {id}\n    finish:\n      result: \"{out_a}\""
+        ));
+        let yaml_b = yaml_with_steps(&format!(
+            "  - id: {sid}\n    set:\n      output: {out_b}\n      value: \"10\"\n  - id: {id}\n    finish:\n      result: \"{out_b}\""
+        ));
+
+        let da = digest_from_yaml(&yaml_a)
+            .map_err(|e| TestCaseError::fail(e))?;
+        let db = digest_from_yaml(&yaml_b)
+            .map_err(|e| TestCaseError::fail(e))?;
+
+        prop_assert_ne!(da, db,
+            "different Finish result output names must produce different digests");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PO-PROPTEST-FINISH-003: Finish step position sensitivity
+// ─────────────────────────────────────────────────────────────────
+
+proptest! {
+    #[test]
+    fn finish_position_change_changes_digest(
+        id1 in step_id_strategy(),
+        id2 in step_id_strategy(),
+        slot in 0u16..max_slots(),
+    ) {
+        if id1 == id2 {
+            return Ok(());
+        }
+
+        let yaml_a = yaml_with_steps(&format!(
+            "  - id: {id1}\n    finish:\n      result: {slot}"
+        ));
+        let yaml_b = yaml_with_steps(&format!(
+            "  - id: {id2}\n    finish:\n      result: {slot}"
+        ));
+
+        let da = digest_from_yaml(&yaml_a)
+            .map_err(|e| TestCaseError::fail(e))?;
+        let db = digest_from_yaml(&yaml_b)
+            .map_err(|e| TestCaseError::fail(e))?;
+
+        prop_assert_ne!(da, db,
+            "different step IDs must produce different digests");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Negative boundary tests: invalid slot values
+// ─────────────────────────────────────────────────────────────────
+
+/// Compile and expect ResourceContractExceeded with resource="max_slots".
+fn compile_and_expect_max_slots_error(yaml: &str) -> Result<(), String> {
+    let source = crate::parse_workflow_source(yaml).map_err(|e| format!("parse error: {e:?}"))?;
+    let result = compile_source(&source);
+    match result {
+        Err(errors) => {
+            let slice = errors.as_slice();
+            match slice {
+                [crate::CompileError::Workflow(
+                    vb_core::workflow::WorkflowError::ResourceContractExceeded { resource },
+                )] => {
+                    if *resource == "max_slots" {
+                        Ok(())
+                    } else {
+                        Err(format!("expected max_slots error, got: {resource}"))
+                    }
+                }
+                other => Err(format!(
+                    "expected exactly [ResourceContractExceeded max_slots], got: {other:?}"
+                )),
+            }
+        }
+        Ok(compiled) => Err(format!(
+            "expected compile error, got compiled workflow with digest {:?}",
+            compiled.digest()
+        )),
+    }
+}
+
+/// Compile and expect SlotIndexOutOfRange error for u16::MAX.
+fn compile_and_expect_slot_index_out_of_range(yaml: &str) -> Result<(), String> {
+    let source = crate::parse_workflow_source(yaml).map_err(|e| format!("parse error: {e:?}"))?;
+    let result = compile_source(&source);
+    match result {
+        Err(errors) => {
+            let slice = errors.as_slice();
+            match slice {
+                [crate::CompileError::SlotIndexOutOfRange { value }] => {
+                    if *value == i64::from(u16::MAX) {
+                        Ok(())
+                    } else {
+                        Err(format!(
+                            "expected SlotIndexOutOfRange {{ value: 65535 }}, got value: {value}"
+                        ))
+                    }
+                }
+                other => Err(format!(
+                    "expected exactly [SlotIndexOutOfRange {{ value: 65535 }}], got: {other:?}"
+                )),
+            }
+        }
+        Ok(compiled) => Err(format!(
+            "expected compile error, got compiled workflow with digest {:?}",
+            compiled.digest()
+        )),
+    }
+}
+
+#[test]
+fn slot_at_max_minus_one_compiles() -> Result<(), String> {
+    let slot = slot_below_max()?;
+    let yaml = yaml_with_steps(&format!(
+        "  - id: step_a\n    finish:\n      result: {}",
+        slot
+    ));
+    digest_from_yaml(&yaml)
+        .map(|_| ())
+        .map_err(|e| format!("slot {} must compile: {}", slot, e))
+}
+
+#[test]
+fn slot_at_max_fails_with_max_slots_error() -> Result<(), String> {
+    let slot = max_slots();
+    let yaml = yaml_with_steps(&format!(
+        "  - id: step_a\n    finish:\n      result: {}",
+        slot
+    ));
+    compile_and_expect_max_slots_error(&yaml)
+        .map_err(|e| format!("slot {} must produce max_slots error: {}", slot, e))
+}
+
+#[test]
+fn slot_at_max_plus_one_fails_with_max_slots_error() -> Result<(), String> {
+    let slot = slot_above_max()?;
+    let yaml = yaml_with_steps(&format!(
+        "  - id: step_a\n    finish:\n      result: {}",
+        slot
+    ));
+    compile_and_expect_max_slots_error(&yaml)
+        .map_err(|e| format!("slot {} must produce max_slots error: {}", slot, e))
+}
+
+#[test]
+fn slot_at_u16_max_fails_with_slot_index_out_of_range() -> Result<(), String> {
+    let yaml = yaml_with_steps(&format!(
+        "  - id: step_a\n    finish:\n      result: {}",
+        u16::MAX
+    ));
+    compile_and_expect_slot_index_out_of_range(&yaml).map_err(|e| {
+        format!(
+            "slot {} must produce SlotIndexOutOfRange error: {}",
+            u16::MAX,
+            e
+        )
+    })
+}
+
+#[test]
+fn slot_5000_fails_with_max_slots_error() -> Result<(), String> {
+    let yaml = yaml_with_steps(&format!("  - id: step_a\n    finish:\n      result: 5000"));
+    compile_and_expect_max_slots_error(&yaml)
+        .map_err(|e| format!("slot 5000 must produce max_slots error: {}", e))
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Proptest: invalid slot values in (max_slots, u16::MAX) range
+// produce ResourceContractExceeded errors
+// ─────────────────────────────────────────────────────────────────
+
+proptest! {
+    #[test]
+    fn invalid_slot_values_rejected(
+        slot in max_slots()..u16::MAX,
+    ) {
+        let yaml = yaml_with_steps(&format!(
+            "  - id: step_a\n    finish:\n      result: {}",
+            slot
+        ));
+        compile_and_expect_max_slots_error(&yaml)
+            .map_err(|e| TestCaseError::fail(format!("slot {}: {}", slot, e)))?;
+    }
+}

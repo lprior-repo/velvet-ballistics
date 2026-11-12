@@ -1,0 +1,5 @@
+.beads/vb-eyij7/evidence/final-focused/vb_compile_lib.log:test result: ok. 479 passed; 0 failed; 4 ignored; 0 measured; 0 filtered out; finished in 2.47s
+.beads/vb-eyij7/evidence/final-focused/vb_expr_lib.log:test result: ok. 857 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+.beads/vb-eyij7/evidence/final-focused/vb_eyij7_migration_regression.log:test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+.beads/vb-eyij7/evidence/final-focused/vb_qi37_25_quality_gates.log:test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+.beads/vb-eyij7/evidence/final-focused/vb_yaml_lib.log:test result: ok. 158 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s

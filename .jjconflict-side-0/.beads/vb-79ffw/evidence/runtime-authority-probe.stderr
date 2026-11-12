@@ -1,0 +1,467 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local3090-authority-review/crates/workspace_tests)
+error[E0603]: module `error` is private
+  --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:25:17
+   |
+25 | use vb_runtime::error::RuntimeError;
+   |                 ^^^^^ private module
+   |
+note: the module `error` is defined here
+  --> crates/vb_runtime/src/lib.rs:57:1
+   |
+57 | mod error;
+   | ^^^^^^^^^
+help: consider importing this enum instead
+   |
+25 - use vb_runtime::error::RuntimeError;
+25 + use vb_runtime::RuntimeError;
+   |
+
+error[E0599]: no variant, associated function, or constant named `BusinessLogic` found for enum `ActionFailureCode` in the current scope
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:109:34
+    |
+109 |         code: ActionFailureCode::BusinessLogic,
+    |                                  ^^^^^^^^^^^^^ variant, associated function, or constant not found in `ActionFailureCode`
+
+error[E0560]: struct `ActionFailure` has no field named `message`
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:110:9
+    |
+110 |         message: Box::from("non-retryable failure"),
+    |         ^^^^^^^ `ActionFailure` does not have this field
+    |
+    = note: available fields are: `retry_policy`, `taint`, `detail`, `encoded_len`
+
+error[E0560]: struct `ActionFailure` has no field named `retryable`
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:111:9
+    |
+111 |         retryable: false,
+    |         ^^^^^^^^^ `ActionFailure` does not have this field
+    |
+    = note: available fields are: `retry_policy`, `taint`, `detail`, `encoded_len`
+
+error[E0560]: struct `ActionFailure` has no field named `metadata`
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:112:9
+    |
+112 |         metadata: Box::from([]),
+    |         ^^^^^^^^ `ActionFailure` does not have this field
+    |
+    = note: available fields are: `retry_policy`, `taint`, `detail`, `encoded_len`
+
+error[E0560]: struct `ActionOutputReady` has no field named `slot`
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:120:9
+    |
+120 |         slot: SlotIdx::new(1),
+    |         ^^^^ `ActionOutputReady` does not have this field
+    |
+    = note: available fields are: `output_slot`, `encoded_len`
+
+error[E0599]: no variant, associated function, or constant named `Untainted` found for enum `vb_core::Taint` in the current scope
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:122:23
+    |
+122 |         taint: Taint::Untainted,
+    |                       ^^^^^^^^^ variant, associated function, or constant not found in `vb_core::Taint`
+
+error[E0560]: struct `ActionOutputReady` has no field named `encoded`
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:123:9
+    |
+123 |         encoded,
+    |         ^^^^^^^ `ActionOutputReady` does not have this field
+    |
+    = note: available fields are: `output_slot`, `encoded_len`
+
+error[E0599]: no method named `pending_action` found for reference `&vb_runtime::runtime::Runtime` in the current scope
+    --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:129:10
+     |
+ 128 | /     runtime
+ 129 | |         .pending_action(run)
+     | |_________-^^^^^^^^^^^^^^
+     |
+help: there is a method `lookup_pending_action_ticket` with a similar name, but with different arguments
+    --> crates/vb_runtime/src/runtime.rs:1167:5
+     |
+1167 | /     pub fn lookup_pending_action_ticket(
+1168 | |         &self,
+1169 | |         run: RunId,
+1170 | |         ticket_wire: u64,
+1171 | |     ) -> Option<vb_core::action::ActionTicket> {
+     | |______________________________________________^
+
+error[E0599]: no variant named `RetryCheckpointEvent` found for enum `JournalEvent`
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:139:27
+    |
+139 |             JournalEvent::RetryCheckpointEvent { checkpoint, .. } => Some(checkpoint.clone()),
+    |                           ^^^^^^^^^^^^^^^^^^^^
+    |
+help: there is a variant with a similar name
+    |
+139 -             JournalEvent::RetryCheckpointEvent { checkpoint, .. } => Some(checkpoint.clone()),
+139 +             JournalEvent::RetryCheckpoint { checkpoint, .. } => Some(checkpoint.clone()),
+    |
+
+error[E0599]: no method named `ok_or` found for struct `vb_storage::EventSeq` in the current scope
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:149:32
+    |
+149 |     EventSeq::new(max_seq + 1).ok_or("sequence overflow")
+    |                                ^^^^^ method not found in `vb_storage::EventSeq`
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:287:28
+    |
+287 |                 return Err("stale completion (run_attempt=1 vs current=3) must be rejected");
+    |                        --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+    |                        |
+    |                        arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:287:24
+    |
+287 |                 return Err("stale completion (run_attempt=1 vs current=3) must be rejected");
+    |                        ^^^^----------------------------------------------------------------^
+    |                            |
+    |                            this argument influences the type of `Err`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:566:5
+    |
+566 |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+    |     ^^^
+help: try using a conversion method
+    |
+287 |                 return Err("stale completion (run_attempt=1 vs current=3) must be rejected".to_string());
+    |                                                                                            ++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:296:24
+    |
+296 |             return Err("state mutated after stale completion rejection");
+    |                    --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+    |                    |
+    |                    arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:296:20
+    |
+296 |             return Err("state mutated after stale completion rejection");
+    |                    ^^^^------------------------------------------------^
+    |                        |
+    |                        this argument influences the type of `Err`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:566:5
+    |
+566 |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+    |     ^^^
+help: try using a conversion method
+    |
+296 |             return Err("state mutated after stale completion rejection".to_string());
+    |                                                                        ++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:323:16
+    |
+311 |         match tick_result {
+    |               ----------- this expression has type `Result<bool, RuntimeError>`
+...
+323 |             Ok(()) => {
+    |                ^^ expected `bool`, found `()`
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:324:28
+    |
+324 |                 return Err("tick must reject queued stale failure");
+    |                        --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+    |                        |
+    |                        arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:324:24
+    |
+324 |                 return Err("tick must reject queued stale failure");
+    |                        ^^^^---------------------------------------^
+    |                            |
+    |                            this argument influences the type of `Err`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:566:5
+    |
+566 |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+    |     ^^^
+help: try using a conversion method
+    |
+324 |                 return Err("tick must reject queued stale failure".to_string());
+    |                                                                   ++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:333:24
+    |
+333 |             return Err("state mutated after stale failure tick");
+    |                    --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+    |                    |
+    |                    arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:333:20
+    |
+333 |             return Err("state mutated after stale failure tick");
+    |                    ^^^^----------------------------------------^
+    |                        |
+    |                        this argument influences the type of `Err`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:566:5
+    |
+566 |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+    |     ^^^
+help: try using a conversion method
+    |
+333 |             return Err("state mutated after stale failure tick".to_string());
+    |                                                                ++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:357:24
+    |
+357 |             return Err("run must have reached RunFinished state after current ticket completion");
+    |                    --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+    |                    |
+    |                    arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:357:20
+    |
+357 |             return Err("run must have reached RunFinished state after current ticket completion");
+    |                    ^^^^-------------------------------------------------------------------------^
+    |                        |
+    |                        this argument influences the type of `Err`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:566:5
+    |
+566 |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+    |     ^^^
+help: try using a conversion method
+    |
+357 |             return Err("run must have reached RunFinished state after current ticket completion".to_string());
+    |                                                                                                 ++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:422:24
+    |
+422 |             return Err("future completion (run_attempt=99 vs current=1) must be rejected");
+    |                    --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+    |                    |
+    |                    arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:422:20
+    |
+422 |             return Err("future completion (run_attempt=99 vs current=1) must be rejected");
+    |                    ^^^^------------------------------------------------------------------^
+    |                        |
+    |                        this argument influences the type of `Err`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:566:5
+    |
+566 |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+    |     ^^^
+help: try using a conversion method
+    |
+422 |             return Err("future completion (run_attempt=99 vs current=1) must be rejected".to_string());
+    |                                                                                          ++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:483:24
+    |
+483 |             return Err("zero run-attempt must be rejected");
+    |                    --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+    |                    |
+    |                    arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:483:20
+    |
+483 |             return Err("zero run-attempt must be rejected");
+    |                    ^^^^-----------------------------------^
+    |                        |
+    |                        this argument influences the type of `Err`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:566:5
+    |
+566 |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+    |     ^^^
+help: try using a conversion method
+    |
+483 |             return Err("zero run-attempt must be rejected".to_string());
+    |                                                           ++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:571:28
+    |
+571 |                 return Err("old ticket from run_attempt=1 must be rejected after cold recovery");
+    |                        --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+    |                        |
+    |                        arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:571:24
+    |
+571 |                 return Err("old ticket from run_attempt=1 must be rejected after cold recovery");
+    |                        ^^^^--------------------------------------------------------------------^
+    |                            |
+    |                            this argument influences the type of `Err`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:566:5
+    |
+566 |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+    |     ^^^
+help: try using a conversion method
+    |
+571 |                 return Err("old ticket from run_attempt=1 must be rejected after cold recovery".to_string());
+    |                                                                                                ++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:591:20
+    |
+591 |         return Err("keys must differ between run_attempt 1 and 2");
+    |                --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+    |                |
+    |                arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:591:16
+    |
+591 |         return Err("keys must differ between run_attempt 1 and 2");
+    |                ^^^^----------------------------------------------^
+    |                    |
+    |                    this argument influences the type of `Err`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:566:5
+    |
+566 |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+    |     ^^^
+help: try using a conversion method
+    |
+591 |         return Err("keys must differ between run_attempt 1 and 2".to_string());
+    |                                                                  ++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:594:20
+    |
+594 |         return Err("keys must differ between run_attempt 2 and 3");
+    |                --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+    |                |
+    |                arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:594:16
+    |
+594 |         return Err("keys must differ between run_attempt 2 and 3");
+    |                ^^^^----------------------------------------------^
+    |                    |
+    |                    this argument influences the type of `Err`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:566:5
+    |
+566 |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+    |     ^^^
+help: try using a conversion method
+    |
+594 |         return Err("keys must differ between run_attempt 2 and 3".to_string());
+    |                                                                  ++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:597:20
+    |
+597 |         return Err("keys must differ between run_attempt 1 and 3");
+    |                --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+    |                |
+    |                arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:597:16
+    |
+597 |         return Err("keys must differ between run_attempt 1 and 3");
+    |                ^^^^----------------------------------------------^
+    |                    |
+    |                    this argument influences the type of `Err`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:566:5
+    |
+566 |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+    |     ^^^
+help: try using a conversion method
+    |
+597 |         return Err("keys must differ between run_attempt 1 and 3".to_string());
+    |                                                                  ++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:624:20
+    |
+624 |         return Err("ticket must have valid key");
+    |                --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+    |                |
+    |                arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:624:16
+    |
+624 |         return Err("ticket must have valid key");
+    |                ^^^^----------------------------^
+    |                    |
+    |                    this argument influences the type of `Err`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:566:5
+    |
+566 |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+    |     ^^^
+help: try using a conversion method
+    |
+624 |         return Err("ticket must have valid key".to_string());
+    |                                                ++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:634:20
+    |
+634 |         return Err("roundtrip must preserve ticket");
+    |                --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+    |                |
+    |                arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:634:16
+    |
+634 |         return Err("roundtrip must preserve ticket");
+    |                ^^^^--------------------------------^
+    |                    |
+    |                    this argument influences the type of `Err`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:566:5
+    |
+566 |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+    |     ^^^
+help: try using a conversion method
+    |
+634 |         return Err("roundtrip must preserve ticket".to_string());
+    |                                                    ++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:637:20
+    |
+637 |         return Err("deserialized ticket must have valid key");
+    |                --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+    |                |
+    |                arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs:637:16
+    |
+637 |         return Err("deserialized ticket must have valid key");
+    |                ^^^^-----------------------------------------^
+    |                    |
+    |                    this argument influences the type of `Err`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:566:5
+    |
+566 |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+    |     ^^^
+help: try using a conversion method
+    |
+637 |         return Err("deserialized ticket must have valid key".to_string());
+    |                                                             ++++++++++++
+
+Some errors have detailed explanations: E0308, E0560, E0599, E0603.
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_79ffw_ticket_authority_probe") due to 26 previous errors

@@ -1,0 +1,80 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_runtime)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/vb_ipc)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.27s
+     Running tests/cross_crate_adversarial.rs (target/debug/deps/cross_crate_adversarial-af7feeb96856866f)
+
+running 70 tests
+test compile_pipeline_empty_steps_rejected ... ok
+test compile_to_core_rejects_non_utf8_input_at_compilation_boundary ... ok
+test compile_to_core_rejects_empty_input_at_compilation_boundary ... ok
+test compile_pipeline_reserved_step_id_rejected ... ok
+test compile_pipeline_invalid_trigger_rejected_with_correct_error ... ok
+test core_to_runtime_choose_with_empty_branches_is_rejected ... ok
+test core_to_runtime_jump_to_out_of_bounds_step_is_rejected ... ok
+test compile_pipeline_uppercase_step_id_rejected ... ok
+test core_to_runtime_step_budget_exhaustion_returns_correct_signal ... ok
+test core_to_runtime_simple_set_workflow_runs_deterministic ... ok
+test diagnostic_code_supported_ranges_are_parseable ... ok
+test error_core_workflow_error_provides_stable_diagnostic_code ... ok
+test diagnostic_code_unsupported_codes_are_rejected ... ok
+test error_validation_error_type_mismatch_preserves_both_types ... ok
+test compile_to_core_valid_workflow_produces_valid_compiled_workflow ... ok
+test expr_compile_to_eval_boolean_and_produces_false ... ok
+test error_yaml_to_compile_pipeline_preserves_error_information ... ok
+test expr_compile_to_eval_division_by_zero_returns_error ... ok
+test compile_to_core_step_count_matches_yaml_step_count ... ok
+test expr_compile_to_eval_variable_reference_with_slot ... ok
+test compile_pipeline_valid_workflow_produces_deterministic_digest ... ok
+test limits_expression_stack_depth_is_bounded ... ok
+test expr_compile_to_eval_simple_arithmetic_produces_correct_result ... ok
+test compile_to_artifact_serialization_roundtrip ... ok
+test limits_max_steps_per_workflow_is_65535 ... ok
+test limits_resource_contract_default_max_input_bytes_is_one_mib ... ok
+test limits_resource_contract_default_max_steps_is_10000 ... ok
+test limits_max_expression_ops_is_256 ... ok
+test runtime_to_ipc_answer_ask_wire_code_is_stable ... ok
+test runtime_to_ipc_cancel_run_wire_code_is_stable ... ok
+test runtime_to_ipc_complete_action_wire_code_is_stable ... ok
+test error_compile_duplicate_step_id_rejected_with_exact_id ... ok
+test runtime_to_ipc_drain_trace_wire_code_is_stable ... ok
+test runtime_to_ipc_fail_action_wire_code_is_stable ... ok
+test runtime_to_ipc_health_wire_code_is_stable ... ok
+test runtime_to_ipc_frame_header_roundtrip_preserves_all_fields ... ok
+test runtime_to_ipc_inspect_run_wire_code_is_stable ... ok
+test runtime_to_ipc_invalid_command_id_preserves_unknown_command_variant ... ok
+test runtime_rejects_duplicate_run_id_on_tick ... ok
+test runtime_to_ipc_list_events_wire_code_is_stable ... ok
+test runtime_submit_and_tick_simple_workflow ... ok
+test runtime_to_ipc_payload_too_large_returns_typed_error ... ok
+test runtime_to_ipc_shutdown_wire_code_is_stable ... ok
+test runtime_to_ipc_memory_ingress_submit_and_receive_roundtrip ... ok
+test runtime_to_ipc_memory_ingress_queue_full_returns_error ... ok
+test runtime_to_ipc_submit_run_inline_wire_code_is_stable ... ok
+test runtime_to_ipc_submit_run_wire_code_is_stable ... ok
+test runtime_to_storage_journal_event_carries_correct_record_kind ... ok
+test runtime_to_storage_run_finished_event_carries_correct_kind ... ok
+test taint_clean_stays_clean_through_pure_action ... ok
+test runtime_to_storage_journal_event_encode_decode_roundtrip ... ok
+test taint_derived_propagates_through_idempotent_external ... ok
+test taint_secret_in_action_output_ready_carries_through ... ok
+test taint_secret_propagates_through_deterministic_pure_action ... ok
+test taint_secret_upgrades_clean_to_secret_in_merge ... ok
+test runtime_to_storage_corrupted_record_fails_integrity_check ... ok
+test validate_control_flow_cycle_detection_error_exists ... ok
+test validate_references_future_reference_contains_reference_name ... ok
+test validate_references_unknown_reference_contains_reference_name ... ok
+test validate_schema_id_grammar_enforced_across_seam ... ok
+test validate_schema_step_without_primitive_rejected_across_seam ... ok
+test validate_type_taint_secret_result_leak_detection ... ok
+test yaml_to_validate_empty_string_propagates_empty_source_error ... ok
+test yaml_to_validate_ambiguous_scalar_propagates_exact_scalar_value ... ok
+test yaml_to_validate_anchor_rejection_propagates_exact_variant ... ok
+test yaml_to_validate_field_shape_error_has_field_and_expected ... ok
+test yaml_to_validate_parse_invalid_yaml_propagates_parse_error_code ... ok
+test yaml_to_validate_missing_required_field_has_correct_field_name ... ok
+test validate_then_compile_bad_version_rejected_by_both_crates ... ok
+test runtime_to_storage_fjall_journal_open_and_close_temp_dir ... ok
+
+test result: ok. 70 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+

@@ -1,0 +1,42 @@
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:335:    use std::thread;
+crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs:340:    let handle = thread::spawn(move || {
+crates/workspace_tests/tests/vb_te1i_binary_ipc_acceptance.rs:90:                std::thread::yield_now();
+crates/workspace_tests/src/test_util/temp_keyspace.rs:81:        use std::thread;
+crates/workspace_tests/src/test_util/temp_keyspace.rs:85:                thread::spawn(|| {
+crates/vb_ipc/src/server/impl_tests.rs:97:                std::thread::yield_now();
+crates/vb_runtime/src/journal/tests/chunk_004.rs:712:        let handle = std::thread::spawn(move || {
+crates/vb_runtime/src/journal/tests/chunk_004.rs:748:        let handle = std::thread::spawn(move || {
+crates/vb_storage/src/edge_case_tests.rs:20:    use std::thread;
+crates/vb_storage/src/edge_case_tests.rs:176:            let handle = thread::spawn(move || {
+crates/vb_storage/src/edge_case_tests.rs:224:            let handle = thread::spawn(move || {
+crates/vb_storage/src/edge_case_tests.rs:260:            let handle = thread::spawn(move || {
+crates/vb_storage/src/edge_case_tests.rs:305:        let read_handle = thread::spawn(move || {
+crates/vb_storage/src/edge_case_tests.rs:315:        let write_handle = thread::spawn(move || {
+crates/vb_runtime/src/shard/types.rs:2167:    use std::thread;
+crates/vb_runtime/src/shard/types.rs:2174:        let handle = thread::spawn(move || {
+crates/velvet_ballistics/src/doctor/mod.rs:20:            Err(vb_storage::JournalError::ProcessLockHeld { .. }) => std::thread::sleep(delay),
+crates/vb_runtime/src/models/sync.rs:16:    pub use std::thread;
+crates/vb_runtime/src/models/loom/timer_fired_cancel.rs:186:        let cancel = loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/timer_fired_cancel.rs:192:        let delivery = loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/timer_fired_cancel.rs:225:        let replace = loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/timer_fired_cancel.rs:235:        let delivery = loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/timer_fired_cancel.rs:269:        let terminal = loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/timer_fired_cancel.rs:276:        let delivery = loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/shutdown_drain.rs:23:        let work = loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/shutdown_drain.rs:26:        let shutdown = loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/journal_writer_queue.rs:65:        loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/journal_writer_queue.rs:84:        loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/journal_writer_queue.rs:91:        loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/journal_writer_queue.rs:116:        loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/journal_writer_queue.rs:123:        loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/bounded_queue.rs:82:        loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/bounded_queue.rs:102:        loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/bounded_queue.rs:107:        loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/action_completion_cancel.rs:66:        loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/action_completion_cancel.rs:87:        loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/action_completion_cancel.rs:92:        loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/action_completion_cancel.rs:97:        loom::thread::spawn(move || {
+crates/vb_runtime/src/models/loom/idempotency_retry_eviction.rs:77:            handles.push(thread::spawn(move || {
+crates/vb_runtime/src/models/loom/idempotency_retry_eviction.rs:97:        handles.push(thread::spawn(move || {
+crates/vb_runtime/src/models/loom/idempotency_retry_eviction.rs:167:        let evict = thread::spawn(move || {
+crates/vb_runtime/src/models/loom/idempotency_retry_eviction.rs:177:        let conflict = thread::spawn(move || {

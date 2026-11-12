@@ -1,0 +1,50 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_core/src/policy/new_tests.rs:110:
+     assert_ne!(InfluenceState::NotEvaluated, InfluenceState::Active);
+     assert_ne!(InfluenceState::Inactive, InfluenceState::Active);
+ }
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_core/src/policy/original_tests.rs:46:
+     let cloned = original.clone();
+     assert_eq!(original, cloned, "clone must produce equal value");
+ }
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy/tests.rs:274:
+     );
+     assert!(matches!(r2.admission, PinnedAdmissionPolicy::Artifact(_)));
+ }
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_core/src/policy/new_tests.rs:110:
+     assert_ne!(InfluenceState::NotEvaluated, InfluenceState::Active);
+     assert_ne!(InfluenceState::Inactive, InfluenceState::Active);
+ }
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_core/src/policy/original_tests.rs:46:
+     let cloned = original.clone();
+     assert_eq!(original, cloned, "clone must produce equal value");
+ }
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_core/src/policy/original_tests.rs:46:
+     let cloned = original.clone();
+     assert_eq!(original, cloned, "clone must produce equal value");
+ }
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_core/src/policy/new_tests.rs:110:
+     assert_ne!(InfluenceState::NotEvaluated, InfluenceState::Active);
+     assert_ne!(InfluenceState::Inactive, InfluenceState::Active);
+ }
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy/tests.rs:274:
+     );
+     assert!(matches!(r2.admission, PinnedAdmissionPolicy::Artifact(_)));
+ }
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy/tests.rs:274:
+     );
+     assert!(matches!(r2.admission, PinnedAdmissionPolicy::Artifact(_)));
+ }
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy/tests.rs:274:
+     );
+     assert!(matches!(r2.admission, PinnedAdmissionPolicy::Artifact(_)));
+ }
++

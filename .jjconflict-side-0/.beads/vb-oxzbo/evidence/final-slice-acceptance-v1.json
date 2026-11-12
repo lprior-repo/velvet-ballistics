@@ -1,0 +1,140 @@
+{
+  "bead": "vb-8li6d",
+  "source_sha256": "ccac03cccff3787bcd57aab6603dd61709c1be85cd236a89c5a511ce84f1d1ba",
+  "author": "9531760cf607cd634f7b82c0916ae9f371d88538",
+  "formatted_source": "36ba70788954338bbffbf38cc70e4dd260ff6dfb",
+  "measured_source": "2fea0dcec4bc12c9d8c34fcf894398b3e8f38c9d",
+  "code_review": "vb-hz0p6/code-review-v3.md",
+  "test_review": "vb-ef0hg/test-suite-review.md",
+  "tests": {
+    "target": "vb_test_cli_run_lifecycle_behavior",
+    "passed": 80,
+    "original_preserved": 79,
+    "new_regression": 1,
+    "independent_mutation": {
+      "executed": 1,
+      "failed": 1,
+      "exit": 101
+    }
+  },
+  "canonical_static": {
+    "argv": [
+      "moon",
+      "ci",
+      ":fmt",
+      ":source-length",
+      ":lint-src",
+      ":benchmark-regression-policy",
+      "--downstream",
+      "none",
+      "--force",
+      "--concurrency",
+      "2"
+    ],
+    "exit": 0,
+    "tasks": 16,
+    "evidence_prefix": ".beads/vb-oxzbo/evidence/formatted-cli-canonical-static-v1"
+  },
+  "benchmarks": {
+    "metrics": 3,
+    "raw_collection": "actual-collection-v3",
+    "speedup_claim": false,
+    "instructions_allocations_bytes_scope": "whole benchmark process",
+    "percentiles_scope": "Criterion samples, not per-operation tail",
+    "independent_review": {
+      "bead": "vb-9qdjg",
+      "checks": 66,
+      "errors": 0,
+      "review": "measurement-review.md",
+      "script": "verify_measurements.py",
+      "actual_runner": "REVIEW-FINAL.json",
+      "coordinator_rerun_prefix": ".beads/vb-oxzbo/evidence/coordinator-independent-measurement-rerun-v1"
+    }
+  },
+  "limitations": [
+    "Not an unrestricted whole moon ci run or full v1 acceptance.",
+    "vb-ny068 live-policy implementation remains separate WIP, not included.",
+    "Old rejected/superseded reports remain historical; current review files above apply."
+  ],
+  "assembled_validation": {
+    "assembled-cli-suite-v1": {
+      "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "velvet-ballistics-workspace-tests",
+        "--test",
+        "vb_test_cli_run_lifecycle_behavior"
+      ],
+      "exit_code": 0,
+      "seconds": 1.505,
+      "timeout_seconds": 300,
+      "timed_out": false,
+      "env_overrides": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "log_prefix": ".beads/vb-oxzbo/evidence/assembled-cli-suite-v1"
+    },
+    "assembled-canonical-static-v1": {
+      "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing",
+      "argv": [
+        "env",
+        "TEST_INTEGRITY_BASE=da633fe0bbde9e414173d5f7aabe314a37f8752d",
+        "moon",
+        "ci",
+        ":fmt",
+        ":source-length",
+        ":lint-src",
+        ":benchmark-regression-policy",
+        "--downstream",
+        "none",
+        "--force",
+        "--concurrency",
+        "2"
+      ],
+      "exit_code": 0,
+      "seconds": 35.889,
+      "timeout_seconds": 1200,
+      "timed_out": false,
+      "env_overrides": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "log_prefix": ".beads/vb-oxzbo/evidence/assembled-canonical-static-v1"
+    },
+    "coordinator-independent-measurement-rerun-v1": {
+      "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing",
+      "argv": [
+        "python3",
+        "/home/lewis/src/isoloated/velvet-ballistics-vb-9qdjg-local5090-benchmark-review/.beads/vb-9qdjg/verify_measurements.py"
+      ],
+      "exit_code": 0,
+      "seconds": 8.416,
+      "timeout_seconds": 180,
+      "timed_out": false,
+      "env_overrides": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "log_prefix": ".beads/vb-oxzbo/evidence/coordinator-independent-measurement-rerun-v1"
+    },
+    "final-assembled-benchmark-policy-v1": {
+      "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing",
+      "argv": [
+        "moon",
+        "run",
+        ":benchmark-regression-policy",
+        "--force"
+      ],
+      "exit_code": 0,
+      "seconds": 15.364,
+      "timeout_seconds": 300,
+      "timed_out": false,
+      "env_overrides": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "log_prefix": ".beads/vb-oxzbo/evidence/final-assembled-benchmark-policy-v1"
+    }
+  },
+  "actual_source_sha256": "ccac03cccff3787bcd57aab6603dd61709c1be85cd236a89c5a511ce84f1d1ba",
+  "delivery_acceptance": "CLI test cwd isolation scope accepted; no unrestricted CI or v1 completion claim"
+}

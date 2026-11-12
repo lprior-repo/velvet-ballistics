@@ -1,0 +1,46 @@
+Dictionary: 36 entries
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 660658974
+INFO: Loaded 1 modules   (54287 inline 8-bit counters): 54287 [0x55632c626063, 0x55632c633472), 
+INFO: Loaded 1 PC tables (54287 PCs): 54287 [0x55632c633478,0x55632c707568), 
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 45 ft: 46 corp: 1/1b exec/s: 0 rss: 36Mb
+#3	NEW    cov: 47 ft: 49 corp: 2/2b lim: 4 exec/s: 0 rss: 36Mb L: 1/1 MS: 1 ChangeByte-
+	NEW_FUNC[1/77]: 0x55632c2e91f0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x2e81f0) (BuildId: 2b749b498dc191be63612900b4eeb1368f57cb7b)
+	NEW_FUNC[2/77]: 0x55632c2ed3e0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x2ec3e0) (BuildId: 2b749b498dc191be63612900b4eeb1368f57cb7b)
+#19	NEW    cov: 798 ft: 802 corp: 3/3b lim: 4 exec/s: 0 rss: 38Mb L: 1/1 MS: 1 ChangeBinInt-
+#20	NEW    cov: 799 ft: 803 corp: 4/4b lim: 4 exec/s: 0 rss: 38Mb L: 1/1 MS: 1 ChangeByte-
+	NEW_FUNC[1/2]: 0x55632c504e10  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x503e10) (BuildId: 2b749b498dc191be63612900b4eeb1368f57cb7b)
+	NEW_FUNC[2/2]: 0x55632c53b5e0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x53a5e0) (BuildId: 2b749b498dc191be63612900b4eeb1368f57cb7b)
+#21	NEW    cov: 829 ft: 845 corp: 5/6b lim: 4 exec/s: 0 rss: 38Mb L: 2/2 MS: 1 CrossOver-
+#26	NEW    cov: 829 ft: 847 corp: 6/8b lim: 4 exec/s: 0 rss: 38Mb L: 2/2 MS: 5 CrossOver-ShuffleBytes-ChangeByte-ShuffleBytes-CopyPart-
+	NEW_FUNC[1/7]: 0x55632c2f68d0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x2f58d0) (BuildId: 2b749b498dc191be63612900b4eeb1368f57cb7b)
+	NEW_FUNC[2/7]: 0x55632c2f7ec0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x2f6ec0) (BuildId: 2b749b498dc191be63612900b4eeb1368f57cb7b)
+#31	NEW    cov: 899 ft: 1009 corp: 7/9b lim: 4 exec/s: 0 rss: 39Mb L: 1/2 MS: 5 ChangeBinInt-ChangeBit-CopyPart-CrossOver-ChangeBit-
+#33	NEW    cov: 899 ft: 1014 corp: 8/12b lim: 4 exec/s: 0 rss: 39Mb L: 3/3 MS: 2 CopyPart-CrossOver-
+#38	NEW    cov: 899 ft: 1018 corp: 9/16b lim: 4 exec/s: 0 rss: 39Mb L: 4/4 MS: 5 InsertByte-ChangeBinInt-CopyPart-ChangeBinInt-CopyPart-
+#46	NEW    cov: 911 ft: 1030 corp: 10/18b lim: 4 exec/s: 0 rss: 39Mb L: 2/4 MS: 3 ShuffleBytes-ShuffleBytes-CrossOver-
+	NEW_FUNC[1/2]: 0x55632c2f78f0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x2f68f0) (BuildId: 2b749b498dc191be63612900b4eeb1368f57cb7b)
+	NEW_FUNC[2/2]: 0x55632c2f9860  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x2f8860) (BuildId: 2b749b498dc191be63612900b4eeb1368f57cb7b)
+#47	NEW    cov: 935 ft: 1106 corp: 11/22b lim: 4 exec/s: 0 rss: 39Mb L: 4/4 MS: 1 InsertByte-
+#51	NEW    cov: 962 ft: 1143 corp: 12/24b lim: 4 exec/s: 0 rss: 39Mb L: 2/4 MS: 4 CopyPart-CrossOver-CopyPart-ChangeByte-
+	NEW_FUNC[1/2]: 0x55632c4ff0e0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x4fe0e0) (BuildId: 2b749b498dc191be63612900b4eeb1368f57cb7b)
+	NEW_FUNC[2/2]: 0x55632c535dc0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x534dc0) (BuildId: 2b749b498dc191be63612900b4eeb1368f57cb7b)
+#52	NEW    cov: 1029 ft: 1283 corp: 13/27b lim: 4 exec/s: 0 rss: 40Mb L: 3/4 MS: 1 InsertByte-
+#55	NEW    cov: 1038 ft: 1296 corp: 14/29b lim: 4 exec/s: 0 rss: 40Mb L: 2/4 MS: 3 ChangeByte-ChangeByte-EraseBytes-
+#62	NEW    cov: 1058 ft: 1323 corp: 15/33b lim: 4 exec/s: 0 rss: 41Mb L: 4/4 MS: 2 ShuffleBytes-CrossOver-
+#64	NEW    cov: 1065 ft: 1339 corp: 16/37b lim: 4 exec/s: 0 rss: 41Mb L: 4/4 MS: 2 InsertByte-CrossOver-
+#67	NEW    cov: 1071 ft: 1362 corp: 17/40b lim: 4 exec/s: 0 rss: 41Mb L: 3/4 MS: 3 ChangeBit-ShuffleBytes-CMP- DE: "\001\000"-
+#70	NEW    cov: 1080 ft: 1371 corp: 18/42b lim: 4 exec/s: 0 rss: 41Mb L: 2/4 MS: 3 CopyPart-ShuffleBytes-ChangeByte-
+#71	NEW    cov: 1081 ft: 1379 corp: 19/46b lim: 4 exec/s: 0 rss: 41Mb L: 4/4 MS: 1 ShuffleBytes-
+#72	NEW    cov: 1085 ft: 1390 corp: 20/50b lim: 4 exec/s: 0 rss: 42Mb L: 4/4 MS: 1 InsertByte-
+#81	NEW    cov: 1085 ft: 1391 corp: 21/54b lim: 4 exec/s: 0 rss: 42Mb L: 4/4 MS: 4 ShuffleBytes-PersAutoDict-EraseBytes-CopyPart- DE: "\001\000"-
+#82	NEW    cov: 1089 ft: 1395 corp: 22/58b lim: 4 exec/s: 0 rss: 42Mb L: 4/4 MS: 1 CMP- DE: "-}"-
+#88	NEW    cov: 1091 ft: 1397 corp: 23/62b lim: 4 exec/s: 0 rss: 42Mb L: 4/4 MS: 1 ChangeBit-
+#100	DONE   cov: 1091 ft: 1397 corp: 23/62b lim: 4 exec/s: 0 rss: 42Mb
+###### Recommended dictionary. ######
+"\001\000" # Uses: 1
+"-}" # Uses: 1
+###### End of recommended dictionary. ######
+Done 100 runs in 0 second(s)

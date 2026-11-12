@@ -1,0 +1,82 @@
+{
+  "verdict": "REJECT",
+  "readiness": "NOT_READY; negative-control harness fails to distinguish acceptance from rejection on exact final bytes",
+  "proposal_sha256": "fd8ee490bf63a2db8e4d5ca8c48f3c815d20e5a690013d9f46cc9f8bcecace1b",
+  "executor_sha256": "5a071b4d4a7c86bf83d6525c32b8e4f37c5f63d58bd3db2be5e480a0a1d8cbc6",
+  "gate_proposal_sha256": "e16e633cb711bc58eddd5c67049272214b59b856720355a77469964273f0d8f4",
+  "contract_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-apply-contract-v5.json",
+  "executor_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v5/executor.rb",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+  "roots_verified": {
+    "git": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+    "jj": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol"
+  },
+  "final_hash_binding_verification": {
+    "contract_sha256": "fd8ee490bf63a2db8e4d5ca8c48f3c815d20e5a690013d9f46cc9f8bcecace1b",
+    "actual_executor_sha256": "5a071b4d4a7c86bf83d6525c32b8e4f37c5f63d58bd3db2be5e480a0a1d8cbc6",
+    "contract_top_executor_sha256": "5a071b4d4a7c86bf83d6525c32b8e4f37c5f63d58bd3db2be5e480a0a1d8cbc6",
+    "nested_CODE_executor_binding": "5a071b4d4a7c86bf83d6525c32b8e4f37c5f63d58bd3db2be5e480a0a1d8cbc6",
+    "nested_TEST_executor_binding": "5a071b4d4a7c86bf83d6525c32b8e4f37c5f63d58bd3db2be5e480a0a1d8cbc6",
+    "all_match": true,
+    "transient_draft_mismatch": "Not current; report covers user-published final bytes only."
+  },
+  "findings": [
+    {
+      "id": "GATE5-NEGATIVE-HARNESS",
+      "severity": "blocker",
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v5/executor.rb",
+      "line": 494,
+      "related_lines": [
+        496,
+        497
+      ],
+      "finding": "expect_reject raises GuardError if the supplied bad-input block returns normally, but its own rescue GuardError catches that failure and returns true. Both correctly rejected and incorrectly accepted cases count as success. Thus full-title, missing-edge, forbidden-target, missing-target and stale-design exception-based negative checks cannot establish fail-closed behavior.",
+      "independent_execution": {
+        "method": "Extracted this exact helper definition only; ruby -e defines GuardError and JSON plus the helper, then runs one normally accepting block and one deliberately rejecting block. No executor main/apply/offline mode, Open3, BD function or file-write helper included.",
+        "exit": 0,
+        "stdout": {
+          "accepting_block_reported_success": true,
+          "rejecting_block_reported_success": true,
+          "bd_calls": 0
+        },
+        "stderr": "",
+        "snippet_sha256": "22b1d8d9edf37fa122ab8848567839b9dcd17d44177bc518fa5f1d9c234c383c",
+        "BD_calls": 0
+      },
+      "required_correction": "Limit rescue to the yielded block, returning true only when THAT block raised GuardError. Raise the unexpected-acceptance failure outside the rescued region. Add a self-negative test proving a normally returning block causes harness failure, then rerun the frozen offline controls and issue newly bound contract/executor artifacts. Do not reuse these final PASS binding fields for changed bytes."
+    },
+    {
+      "id": "GATE5-PLANNING-NEGATIVE-COVERAGE",
+      "severity": "blocker_for_claimed_offline_controls",
+      "path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v5/executor.rb",
+      "line": 501,
+      "contract_path": "offline_controls.checks[1]",
+      "finding": "Contract requires V5 planning-review altered-binding negative controls, but exercise_offline_negatives only verifies real planning reports through the positive setup and tests executor review_valid? with wrong contract/executor values. No altered V5 planning binding is passed through current_planning_reviews as a negative.",
+      "required_correction": "Add pure/no-BD controls that reject wrong V5 proposal binding, rejected/missing verdict and stale planning-review artifact identity using the actual planning guard path. Keep CODE and TEST binding fields independently checked. Retain controls and observed exits as raw evidence; generic executor-review predicate negatives are not a substitute."
+    }
+  ],
+  "reviewed_safety_boundaries": {
+    "strict_BD_argv": "Source allows only show11/show12/deplist11 reads and exact update11metadata/@OUTfile plus update12design/OUTfile writes. No create/status/edge/delete mutation appears in approved flow.",
+    "environment": {
+      "BEADS_DOLT_SERVER_PORT": "37225",
+      "BD_DOLT_SERVER_PORT": "37225",
+      "BD_BACKUP_ENABLED": "false",
+      "TMPDIR": "/run/user/1000/vbs"
+    },
+    "sequence": "Source validates metadata response and response-bound updated_at/full11postreadback/137edges before the second design write; design guarded separately from12progress notes; no retries or rollback.",
+    "raw_patch": "Contract and source bind49scalar targets, c1b35before/91693after, source/proposal/review hashes and all190false/null. This report does not promote their offline booleans to accepted negative-control evidence.",
+    "receipts": "Source has per-process raw stdout/stderr+exit/hash persistence and fsync before writes; no execution of this flow by reviewer.",
+    "scope_limit": "Failure of guard-test harness blocks approval regardless of matching artifact hashes. Complete live/history preservation and actual2write postconditions have not been executed/accepted."
+  },
+  "offline_evidence_assessment": {
+    "author_report": "User reports final syntax/offline PASS with49targets137edgeszeroBD; full raw offline receipt not independently executed/read here.",
+    "observed_reviewer": "Actual isolated helper execution above disproves exception-negative harness. A full command PASS cannot cure this because the harness absorbs its own failure.",
+    "no_live_commands": true
+  },
+  "limits": [
+    "Reviewer made no BD call, full executor invocation, native build, liveapply/source/tracker/gate change or agent call. Only pure isolated Ruby control ran; requested own report is sole written artifact.",
+    "Other CODE report reasoning not read. Matching planning/contract source bindings are inspected metadata, not self-approval.",
+    "No first/second DB mutation authorization or fullplan/master/gate/backup-health/remote-sync acceptance. Parent must not execute this frozen version on the basis of this report.",
+    "Changed executor bytes require newly frozen contract top and both nested executor bindings, new independent reviews and genuine offline rejection controls."
+  ]
+}

@@ -1,0 +1,42 @@
+[ WARN 2026-10-22 11:50:36.014] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:50:36.161] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+       velvet-ballistics:workspace-assertions | crates/vb_runtime/Cargo.toml: forbidden runtime format dependency in vb_runtime: ["serde_json"]
+[ WARN 11:50:38.239] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:50:38.756] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+             velvet-ballistics:test-integrity | test integrity: FAIL
+             velvet-ballistics:test-integrity | WeakenedAssertion|crates/vb_runtime/src/run_checkpoint_tests.rs|removed_exact=0 added_exact=8 added_weak=2
+             velvet-ballistics:test-integrity | Add equal-or-stronger replacement coverage or bead-linked justification.
+[ WARN 11:50:40.477] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:50:40.952] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:50:48.181] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:51:08.943] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                      velvet-ballistics:check | error[E0063]: missing field `policy_pin` in initializer of `JournalEvent`
+                      velvet-ballistics:check |    --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:737:27
+                      velvet-ballistics:check |     |
+                      velvet-ballistics:check | 737 |     let admission_event = JournalEvent::RunAdmission {
+                      velvet-ballistics:check |     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy_pin`
+
+                      velvet-ballistics:check | For more information about this error, try `rustc --explain E0063`.
+                      velvet-ballistics:check | error: could not compile `velvet-ballistics-workspace-tests` (test "vb_ko29_5_public_idempotency") due to 1 previous error
+                   velvet-ballistics:lint-src | error: this `if` statement can be collapsed
+                   velvet-ballistics:lint-src |    --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:406:9
+                   velvet-ballistics:lint-src |     |
+                   velvet-ballistics:lint-src | 406 | /         if let Some(checkpoint) = &retry_checkpoint {
+                   velvet-ballistics:lint-src | 407 | |             if let Some(admission) = &checkpoint.admission {
+                   velvet-ballistics:lint-src | 408 | |                 crate::recovery::validate_recovered_policy_pin(admission, &artifact)?;
+                   velvet-ballistics:lint-src | 409 | |             }
+                   velvet-ballistics:lint-src | 410 | |         }
+                   velvet-ballistics:lint-src |     | |_________^
+                   velvet-ballistics:lint-src |     |
+                   velvet-ballistics:lint-src |     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
+                   velvet-ballistics:lint-src |     = note: `-D clippy::collapsible-if` implied by `-D warnings`
+                   velvet-ballistics:lint-src |     = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+                   velvet-ballistics:lint-src | help: collapse nested if block
+                   velvet-ballistics:lint-src |     |
+                   velvet-ballistics:lint-src | 406 ~         if let Some(checkpoint) = &retry_checkpoint
+                   velvet-ballistics:lint-src | 407 ~             && let Some(admission) = &checkpoint.admission {
+                   velvet-ballistics:lint-src | 408 |                 crate::recovery::validate_recovered_policy_pin(admission, &artifact)?;
+                   velvet-ballistics:lint-src | 409 ~             }
+                   velvet-ballistics:lint-src |     |
+
+                   velvet-ballistics:lint-src | error: could not compile `vb_runtime` (lib) due to 1 previous error

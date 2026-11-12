@@ -1,0 +1,562 @@
+{
+  "schema_version": 2,
+  "bead": "vb-eirmk.12",
+  "artifact_kind": "bounded qualification-owner proposal repair; planning only",
+  "source_manifest": {
+    "path": "target/core-build-20261110/evidence/vb-eirmk.12-normalized-current-190-ownership.json",
+    "serialized_file_sha256": "6272148b4bd5d0a2690c12c61cf6274af6d34d24388c198e63ae1d6307c65b7f",
+    "requirement_count": 190,
+    "actual_current_row_shape": [
+      "requirement_id",
+      "category",
+      "requirement",
+      "required_surface_or_delivery",
+      "master_ref",
+      "scope_disposition",
+      "excluded_scope_disposition",
+      "canonical_qualification_owner_id",
+      "preferred_existing_owner_id",
+      "proposed_owner_key",
+      "owner_scope_status",
+      "owner_scope_rationale",
+      "supporting_existing_owner_ids",
+      "source_evidence",
+      "registered_check_evidence",
+      "unresolved_checks",
+      "completion_verified",
+      "implementation_missing",
+      "implementation_missing_disposition",
+      "resolved_from_proposal_key",
+      "current_owner_status",
+      "exact_native_check_audit"
+    ],
+    "canonical_owner_populated_rows": 190,
+    "proposal_source_hash_matches_serialized_file": true
+  },
+  "review_provenance": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/ownership-repair-code-review.json",
+    "sha256": "b40b4043c83d072ef869025527d0db8991592766d89abcbc88daf2957c951d33",
+    "addressed_findings": [
+      "P1",
+      "P2"
+    ],
+    "source_proposal_path": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/ownership-repair/qualification-owner-proposals.json",
+    "source_proposal_sha256": "d8353f84d3949a875902db7edabfc15c0f4c46b4b1736508e0a9f33bd5b9652a",
+    "tracker_constraint_source": {
+      "path": "target/core-build-20261110/evidence/vb-eirmk-root-live.json",
+      "sha256": "5cfa5ad23f9873b2dc648719ad67c25e4f77ace03eb5a55bb69e3112026603dd",
+      "root_issue_type": "epic",
+      "root_design_rule": "Existing epic trackers are tracks edges because Beads forbids a task depending on an epic; closure contract still requires all current-scope children accepted.",
+      "bd_help_inspected": true,
+      "bd_help_override_found": false,
+      "existing_final_issue_and_qualification_parent_types": {
+        "vb-eirmk.11": {
+          "issue_type": "task",
+          "status": "open",
+          "parent": "vb-eirmk"
+        },
+        "vb-eirmk.14": {
+          "issue_type": "task",
+          "status": "open",
+          "parent": "vb-eirmk"
+        },
+        "vb-eirmk.26": {
+          "issue_type": "task",
+          "status": "in_progress",
+          "parent": "vb-eirmk"
+        }
+      }
+    }
+  },
+  "requirements_unchanged": 190,
+  "source_changes": false,
+  "metadata_changes_only": true,
+  "scope": [
+    "phase:4",
+    "phase:17",
+    "phase:20",
+    "phase:21"
+  ],
+  "proposals": [
+    {
+      "requirement_id": "phase:4",
+      "requirement": "AST",
+      "scope": "Typed workflow, trigger, step, primitive, expression, result AST.",
+      "historical_owner": "vb-core-yaml-ast",
+      "proposal_key": "proposal:current-qualification:phase:4",
+      "parent": "vb-eirmk",
+      "issue_type": "task",
+      "qualification_only": true,
+      "supporting_owners": [
+        "vb-xvu",
+        "vb-core-yaml-ast"
+      ],
+      "source_commit": "23749f4b5b0b1822243a956ae22dd1b59912a0e1",
+      "graph_change": "New current qualification owner blocks vb-eirmk.11; historical implementation record/status is retained.",
+      "phase_acceptance": [
+        "Inventory actual typed workflow, trigger, step, active primitive, expression, and result AST variants and representations; map each family separately to its canonical parser-validator-compiler handoffs.",
+        "For each named domain, retain positive typed-shape preservation and rejected invalid shapes/references; constructor/API-only coverage does not qualify all source primitives.",
+        "Bind every family to current production entry points and exact registered behavior/proof/property/fuzz/benchmark checks, with source-bound receipts and applicable CODE plus separate independent TEST disposition."
+      ],
+      "existing_owner_primitive_allocations": [
+        {
+          "family": "typed workflow AST",
+          "existing_owner_id": "vb-core-yaml-ast",
+          "allocation": "reuse only its inspected current scope; retain a separate family mapping and qualification evidence"
+        },
+        {
+          "family": "trigger AST",
+          "existing_owner_id": "vb-core-yaml-ast",
+          "allocation": "reuse only its inspected current scope; retain a separate family mapping and qualification evidence"
+        },
+        {
+          "family": "step AST",
+          "existing_owner_id": "vb-core-yaml-ast",
+          "allocation": "reuse only its inspected current scope; retain a separate family mapping and qualification evidence"
+        },
+        {
+          "family": "each active primitive AST family",
+          "existing_owner_id": "vb-core-yaml-ast",
+          "supporting_existing_owner_id": "vb-xvu",
+          "allocation": "enumerate actual variants first and preserve one mapping per primitive family; vb-xvu remains support-only unless its live contract proves exact ownership"
+        },
+        {
+          "family": "expression AST",
+          "existing_owner_id": "vb-core-yaml-ast",
+          "allocation": "reuse only its inspected current scope; retain a separate family mapping and qualification evidence"
+        },
+        {
+          "family": "result AST",
+          "existing_owner_id": "vb-core-yaml-ast",
+          "allocation": "reuse only its inspected current scope; retain a separate family mapping and qualification evidence"
+        }
+      ],
+      "historical_owner_status": "closed",
+      "planned_issue": {
+        "status": "open",
+        "issue_type": "task",
+        "parent": "vb-eirmk",
+        "scope_classification": "full_scope_current_phase_qualification_only",
+        "metadata": {
+          "qualification_only": true,
+          "master_requirement_ids": [
+            "phase:4"
+          ]
+        },
+        "graph_change": {
+          "blocking_issue": "vb-eirmk.11",
+          "direction": "vb-eirmk.11 depends on the newly created actual qualifier ID",
+          "edge_kind": "depends_on",
+          "dependency_target_type": "task",
+          "epic_membership_is_hierarchy_only": true,
+          "tracks_substitution": false
+        },
+        "creation_receipt_required": {
+          "actual_issue_id": "record only after successful create",
+          "master_requirement_ids": [
+            "phase:4"
+          ],
+          "status": "open",
+          "metadata_qualification_only": true,
+          "parent": "vb-eirmk",
+          "issue_type": "task"
+        }
+      },
+      "child_allocation_control": {
+        "allocation_granularity": "separate family row for every named phase clause and every discovered primitive family",
+        "before_child_creation": "inspect current implementation, evidence, and live owner contracts; classify each clause as qualified, unresolved evidence gap, or demonstrated defect",
+        "child_policy": "create a bounded evidence/test/repair child only for a demonstrated gap; assign its actual existing owner or actual created ID in the receipt; do not create placeholder implementation children",
+        "reusable_owners_are_not_full_phase_owners": true
+      },
+      "canonical_remapping": {
+        "trigger": "successful creation receipt containing the actual bd issue ID",
+        "allowlist": [
+          "this requirement row canonical_qualification_owner_id := actual created issue ID",
+          "this requirement row current_owner_status := open, reflecting the actual qualifier status",
+          "this row owned qualify:phase:4 check accountable_bead_id := actual created issue ID",
+          "this row owned qualify:phase:4 check proposal_key := this stable proposal_key",
+          "this row resolved_from_proposal_key := this stable proposal_key"
+        ],
+        "invariants": [
+          "proposal_key is never written as a canonical bead ID",
+          "all unrelated rows and checks remain byte-for-byte unchanged",
+          "preserve historical and supporting owner IDs and their statuses",
+          "completion_verified remains false",
+          "implementation_missing remains null",
+          "do not edit the owned check status or assertions during remapping",
+          "verify exact edit footprint and dependency graph is acyclic"
+        ]
+      },
+      "preserve_current_row_state": {
+        "historical_owner_status": "closed",
+        "completion_verified": false,
+        "implementation_missing": null,
+        "implementation_missing_disposition": "Not assessed; missing receipts or historical status do not establish missing implementation.",
+        "existing_required_surface_or_delivery": "Typed workflow, trigger, step, primitive, expression, result AST."
+      },
+      "acceptance": [
+        "Qualify only this full phase; do not infer missing implementation from historical closure or missing receipts.",
+        "Inventory actual typed workflow, trigger, step, active primitive, expression, and result AST variants and representations; map each family separately to its canonical parser-validator-compiler handoffs.",
+        "For each named domain, retain positive typed-shape preservation and rejected invalid shapes/references; constructor/API-only coverage does not qualify all source primitives.",
+        "Bind every family to current production entry points and exact registered behavior/proof/property/fuzz/benchmark checks, with source-bound receipts and applicable CODE plus separate independent TEST disposition.",
+        "Keep completion false until every exact phase obligation qualifies; attach current source revision, registered checks and raw receipts, plus same-revision CODE and separate independent TEST where applicable.",
+        "Final canonical moon ci remains with vb-eirmk.11."
+      ]
+    },
+    {
+      "requirement_id": "phase:17",
+      "requirement": "Snapshots/recovery base",
+      "scope": "Snapshot format, snapshot-plus-tail recovery, corruption handling.",
+      "historical_owner": "vb-tzsfr",
+      "proposal_key": "proposal:current-qualification:phase:17",
+      "parent": "vb-eirmk",
+      "issue_type": "task",
+      "qualification_only": true,
+      "supporting_owners": [
+        "vb-0dg1",
+        "vb-tzsfr"
+      ],
+      "source_commit": "23749f4b5b0b1822243a956ae22dd1b59912a0e1",
+      "graph_change": "New current qualification owner blocks vb-eirmk.11; historical implementation record/status is retained.",
+      "phase_acceptance": [
+        "Separate snapshot envelope/format, snapshot-plus-tail public recovery, and corruption refusal; use vb-0dg1, vb-tzsfr, and vb-eirmk.9 only for their inspected scopes.",
+        "Qualify persist/drop/reopen recovery parity with the full journal, source-bound format/version/length/checksum-digest handling, malformed/truncated input outcomes, and duplicate external-effect prevention; bind exact APIs and errors from current source.",
+        "Map each family to exact registered checks and raw source-bound receipts, with applicable CODE and separate independent TEST disposition."
+      ],
+      "existing_owner_primitive_allocations": [
+        {
+          "family": "snapshot envelope and format/version/length/checksum-digest",
+          "existing_owner_id": "vb-0dg1",
+          "allocation": "reuse only for its inspected format/storage obligations; record exact checks"
+        },
+        {
+          "family": "snapshot-plus-tail public recovery and reopen parity",
+          "existing_owner_id": "vb-tzsfr",
+          "allocation": "reuse recovery scope; separately map full-journal replay and external-effect behavior"
+        },
+        {
+          "family": "journal-driven suspension/retry/error recovery",
+          "existing_owner_id": "vb-eirmk.9",
+          "allocation": "support only for this scoped recovery behavior; not the entire phase owner"
+        },
+        {
+          "family": "corruption refusal and malformed/truncated input",
+          "existing_owner_id": "vb-tzsfr",
+          "supporting_existing_owner_id": "vb-0dg1",
+          "allocation": "separate refusal/error outcomes from successful recovery"
+        }
+      ],
+      "historical_owner_status": "closed",
+      "planned_issue": {
+        "status": "open",
+        "issue_type": "task",
+        "parent": "vb-eirmk",
+        "scope_classification": "full_scope_current_phase_qualification_only",
+        "metadata": {
+          "qualification_only": true,
+          "master_requirement_ids": [
+            "phase:17"
+          ]
+        },
+        "graph_change": {
+          "blocking_issue": "vb-eirmk.11",
+          "direction": "vb-eirmk.11 depends on the newly created actual qualifier ID",
+          "edge_kind": "depends_on",
+          "dependency_target_type": "task",
+          "epic_membership_is_hierarchy_only": true,
+          "tracks_substitution": false
+        },
+        "creation_receipt_required": {
+          "actual_issue_id": "record only after successful create",
+          "master_requirement_ids": [
+            "phase:17"
+          ],
+          "status": "open",
+          "metadata_qualification_only": true,
+          "parent": "vb-eirmk",
+          "issue_type": "task"
+        }
+      },
+      "child_allocation_control": {
+        "allocation_granularity": "separate family row for every named phase clause and every discovered primitive family",
+        "before_child_creation": "inspect current implementation, evidence, and live owner contracts; classify each clause as qualified, unresolved evidence gap, or demonstrated defect",
+        "child_policy": "create a bounded evidence/test/repair child only for a demonstrated gap; assign its actual existing owner or actual created ID in the receipt; do not create placeholder implementation children",
+        "reusable_owners_are_not_full_phase_owners": true
+      },
+      "canonical_remapping": {
+        "trigger": "successful creation receipt containing the actual bd issue ID",
+        "allowlist": [
+          "this requirement row canonical_qualification_owner_id := actual created issue ID",
+          "this requirement row current_owner_status := open, reflecting the actual qualifier status",
+          "this row owned qualify:phase:17 check accountable_bead_id := actual created issue ID",
+          "this row owned qualify:phase:17 check proposal_key := this stable proposal_key",
+          "this row resolved_from_proposal_key := this stable proposal_key"
+        ],
+        "invariants": [
+          "proposal_key is never written as a canonical bead ID",
+          "all unrelated rows and checks remain byte-for-byte unchanged",
+          "preserve historical and supporting owner IDs and their statuses",
+          "completion_verified remains false",
+          "implementation_missing remains null",
+          "do not edit the owned check status or assertions during remapping",
+          "verify exact edit footprint and dependency graph is acyclic"
+        ]
+      },
+      "preserve_current_row_state": {
+        "historical_owner_status": "closed",
+        "completion_verified": false,
+        "implementation_missing": null,
+        "implementation_missing_disposition": "Not assessed; missing receipts or historical status do not establish missing implementation.",
+        "existing_required_surface_or_delivery": "Snapshot format, snapshot-plus-tail recovery, corruption handling."
+      },
+      "acceptance": [
+        "Qualify only this full phase; do not infer missing implementation from historical closure or missing receipts.",
+        "Separate snapshot envelope/format, snapshot-plus-tail public recovery, and corruption refusal; use vb-0dg1, vb-tzsfr, and vb-eirmk.9 only for their inspected scopes.",
+        "Qualify persist/drop/reopen recovery parity with the full journal, source-bound format/version/length/checksum-digest handling, malformed/truncated input outcomes, and duplicate external-effect prevention; bind exact APIs and errors from current source.",
+        "Map each family to exact registered checks and raw source-bound receipts, with applicable CODE and separate independent TEST disposition.",
+        "Keep completion false until every exact phase obligation qualifies; attach current source revision, registered checks and raw receipts, plus same-revision CODE and separate independent TEST where applicable.",
+        "Final canonical moon ci remains with vb-eirmk.11."
+      ]
+    },
+    {
+      "requirement_id": "phase:20",
+      "requirement": "`retry`/`try_again`",
+      "scope": "Bounded retry policies, delay state, exhaustion semantics.",
+      "historical_owner": "vb-2bbo",
+      "proposal_key": "proposal:current-qualification:phase:20",
+      "parent": "vb-eirmk",
+      "issue_type": "task",
+      "qualification_only": true,
+      "supporting_owners": [
+        "vb-2bbo",
+        "vb-sfhyj"
+      ],
+      "source_commit": "23749f4b5b0b1822243a956ae22dd1b59912a0e1",
+      "graph_change": "New current qualification owner blocks vb-eirmk.11; historical implementation record/status is retained.",
+      "phase_acceptance": [
+        "Enumerate actual retry policies and RetrySafety restrictions, attempt bounds, delay/deadline state, exhaustion outcome, and routing.",
+        "Cover initial attempt, delayed retry, final permitted attempt/exhaustion, invalid and boundary policies, and prevention of unsafe duplicate external redrive; bind counters, deadlines, terminal/error routing, and exact check identities to current source.",
+        "Reuse vb-sfhyj and vb-eirmk.4.6 only for their precise inspected portions; attach source-bound receipts and applicable CODE plus separate independent TEST disposition."
+      ],
+      "existing_owner_primitive_allocations": [
+        {
+          "family": "bounded retry policy and attempt bounds",
+          "existing_owner_id": "vb-2bbo",
+          "allocation": "inspect and reuse exact policy ownership; preserve historical closure and requalify current behavior"
+        },
+        {
+          "family": "RetrySafety restrictions",
+          "existing_owner_id": "vb-sfhyj",
+          "allocation": "reuse only exact safety restrictions it owns; do not treat as full-phase owner"
+        },
+        {
+          "family": "delay/deadline state and wait/ask/error-retry controls",
+          "existing_owner_id": "vb-eirmk.4.6",
+          "allocation": "reuse only scoped controls after checking open prerequisites and exact contract"
+        },
+        {
+          "family": "exhaustion, terminal outcome, and routing",
+          "existing_owner_id": "vb-2bbo",
+          "supporting_existing_owner_id": "vb-sfhyj",
+          "allocation": "map each outcome separately; create no child absent a demonstrated gap"
+        }
+      ],
+      "historical_owner_status": "closed",
+      "planned_issue": {
+        "status": "open",
+        "issue_type": "task",
+        "parent": "vb-eirmk",
+        "scope_classification": "full_scope_current_phase_qualification_only",
+        "metadata": {
+          "qualification_only": true,
+          "master_requirement_ids": [
+            "phase:20"
+          ]
+        },
+        "graph_change": {
+          "blocking_issue": "vb-eirmk.11",
+          "direction": "vb-eirmk.11 depends on the newly created actual qualifier ID",
+          "edge_kind": "depends_on",
+          "dependency_target_type": "task",
+          "epic_membership_is_hierarchy_only": true,
+          "tracks_substitution": false
+        },
+        "creation_receipt_required": {
+          "actual_issue_id": "record only after successful create",
+          "master_requirement_ids": [
+            "phase:20"
+          ],
+          "status": "open",
+          "metadata_qualification_only": true,
+          "parent": "vb-eirmk",
+          "issue_type": "task"
+        }
+      },
+      "child_allocation_control": {
+        "allocation_granularity": "separate family row for every named phase clause and every discovered primitive family",
+        "before_child_creation": "inspect current implementation, evidence, and live owner contracts; classify each clause as qualified, unresolved evidence gap, or demonstrated defect",
+        "child_policy": "create a bounded evidence/test/repair child only for a demonstrated gap; assign its actual existing owner or actual created ID in the receipt; do not create placeholder implementation children",
+        "reusable_owners_are_not_full_phase_owners": true
+      },
+      "canonical_remapping": {
+        "trigger": "successful creation receipt containing the actual bd issue ID",
+        "allowlist": [
+          "this requirement row canonical_qualification_owner_id := actual created issue ID",
+          "this requirement row current_owner_status := open, reflecting the actual qualifier status",
+          "this row owned qualify:phase:20 check accountable_bead_id := actual created issue ID",
+          "this row owned qualify:phase:20 check proposal_key := this stable proposal_key",
+          "this row resolved_from_proposal_key := this stable proposal_key"
+        ],
+        "invariants": [
+          "proposal_key is never written as a canonical bead ID",
+          "all unrelated rows and checks remain byte-for-byte unchanged",
+          "preserve historical and supporting owner IDs and their statuses",
+          "completion_verified remains false",
+          "implementation_missing remains null",
+          "do not edit the owned check status or assertions during remapping",
+          "verify exact edit footprint and dependency graph is acyclic"
+        ]
+      },
+      "preserve_current_row_state": {
+        "historical_owner_status": "closed",
+        "completion_verified": false,
+        "implementation_missing": null,
+        "implementation_missing_disposition": "Not assessed; missing receipts or historical status do not establish missing implementation.",
+        "existing_required_surface_or_delivery": "Bounded retry policies, delay state, exhaustion semantics."
+      },
+      "acceptance": [
+        "Qualify only this full phase; do not infer missing implementation from historical closure or missing receipts.",
+        "Enumerate actual retry policies and RetrySafety restrictions, attempt bounds, delay/deadline state, exhaustion outcome, and routing.",
+        "Cover initial attempt, delayed retry, final permitted attempt/exhaustion, invalid and boundary policies, and prevention of unsafe duplicate external redrive; bind counters, deadlines, terminal/error routing, and exact check identities to current source.",
+        "Reuse vb-sfhyj and vb-eirmk.4.6 only for their precise inspected portions; attach source-bound receipts and applicable CODE plus separate independent TEST disposition.",
+        "Keep completion false until every exact phase obligation qualifies; attach current source revision, registered checks and raw receipts, plus same-revision CODE and separate independent TEST where applicable.",
+        "Final canonical moon ci remains with vb-eirmk.11."
+      ]
+    },
+    {
+      "requirement_id": "phase:21",
+      "requirement": "`on_error`/`then`",
+      "scope": "Handler routing, typed error slots, forward transitions.",
+      "historical_owner": "vb-heqb",
+      "proposal_key": "proposal:current-qualification:phase:21",
+      "parent": "vb-eirmk",
+      "issue_type": "task",
+      "qualification_only": true,
+      "supporting_owners": [
+        "vb-heqb",
+        "vb-ekkau"
+      ],
+      "source_commit": "23749f4b5b0b1822243a956ae22dd1b59912a0e1",
+      "graph_change": "New current qualification owner blocks vb-eirmk.11; historical implementation record/status is retained.",
+      "phase_acceptance": [
+        "Separate on_error dispatch, typed error-slot identity/value/taint, then/successor forward transitions, and handler outcome propagation.",
+        "Distinguish handled from unhandled failure, correct handler/continuation selection, and exact error-slot/routing state, including relevant invalid-handler/transition boundaries; bind exact current APIs and registered asserted outcomes.",
+        "Reuse vb-ekkau and scoped compiler/recovery owners only for inspected portions; preserve separate primitive-family mappings. Attach source-bound receipts and applicable CODE plus separate independent TEST disposition."
+      ],
+      "existing_owner_primitive_allocations": [
+        {
+          "family": "on_error dispatch and handler outcome propagation",
+          "existing_owner_id": "vb-heqb",
+          "allocation": "reuse exact handler-routing scope and map dispatch outcomes separately"
+        },
+        {
+          "family": "typed error-slot identity, value, and taint",
+          "existing_owner_id": "vb-heqb",
+          "supporting_existing_owner_id": "vb-ekkau",
+          "allocation": "preserve slot and primitive-replay family mapping; vb-ekkau is supporting scope only"
+        },
+        {
+          "family": "then/successor forward transitions",
+          "existing_owner_id": "vb-heqb",
+          "allocation": "reuse exact transition scope; bind forward and invalid-transition checks separately"
+        },
+        {
+          "family": "scoped compiler/recovery behavior, if applicable to a named clause",
+          "existing_owner_id": "resolve_from_live_current_owner_inventory_before_allocation",
+          "allocation": "record exact existing bead ID and contract before assigning; unresolved until verified; no placeholder implementation child"
+        }
+      ],
+      "historical_owner_status": "closed",
+      "planned_issue": {
+        "status": "open",
+        "issue_type": "task",
+        "parent": "vb-eirmk",
+        "scope_classification": "full_scope_current_phase_qualification_only",
+        "metadata": {
+          "qualification_only": true,
+          "master_requirement_ids": [
+            "phase:21"
+          ]
+        },
+        "graph_change": {
+          "blocking_issue": "vb-eirmk.11",
+          "direction": "vb-eirmk.11 depends on the newly created actual qualifier ID",
+          "edge_kind": "depends_on",
+          "dependency_target_type": "task",
+          "epic_membership_is_hierarchy_only": true,
+          "tracks_substitution": false
+        },
+        "creation_receipt_required": {
+          "actual_issue_id": "record only after successful create",
+          "master_requirement_ids": [
+            "phase:21"
+          ],
+          "status": "open",
+          "metadata_qualification_only": true,
+          "parent": "vb-eirmk",
+          "issue_type": "task"
+        }
+      },
+      "child_allocation_control": {
+        "allocation_granularity": "separate family row for every named phase clause and every discovered primitive family",
+        "before_child_creation": "inspect current implementation, evidence, and live owner contracts; classify each clause as qualified, unresolved evidence gap, or demonstrated defect",
+        "child_policy": "create a bounded evidence/test/repair child only for a demonstrated gap; assign its actual existing owner or actual created ID in the receipt; do not create placeholder implementation children",
+        "reusable_owners_are_not_full_phase_owners": true
+      },
+      "canonical_remapping": {
+        "trigger": "successful creation receipt containing the actual bd issue ID",
+        "allowlist": [
+          "this requirement row canonical_qualification_owner_id := actual created issue ID",
+          "this requirement row current_owner_status := open, reflecting the actual qualifier status",
+          "this row owned qualify:phase:21 check accountable_bead_id := actual created issue ID",
+          "this row owned qualify:phase:21 check proposal_key := this stable proposal_key",
+          "this row resolved_from_proposal_key := this stable proposal_key"
+        ],
+        "invariants": [
+          "proposal_key is never written as a canonical bead ID",
+          "all unrelated rows and checks remain byte-for-byte unchanged",
+          "preserve historical and supporting owner IDs and their statuses",
+          "completion_verified remains false",
+          "implementation_missing remains null",
+          "do not edit the owned check status or assertions during remapping",
+          "verify exact edit footprint and dependency graph is acyclic"
+        ]
+      },
+      "preserve_current_row_state": {
+        "historical_owner_status": "closed",
+        "completion_verified": false,
+        "implementation_missing": null,
+        "implementation_missing_disposition": "Not assessed; missing receipts or historical status do not establish missing implementation.",
+        "existing_required_surface_or_delivery": "Handler routing, typed error slots, forward transitions."
+      },
+      "acceptance": [
+        "Qualify only this full phase; do not infer missing implementation from historical closure or missing receipts.",
+        "Separate on_error dispatch, typed error-slot identity/value/taint, then/successor forward transitions, and handler outcome propagation.",
+        "Distinguish handled from unhandled failure, correct handler/continuation selection, and exact error-slot/routing state, including relevant invalid-handler/transition boundaries; bind exact current APIs and registered asserted outcomes.",
+        "Reuse vb-ekkau and scoped compiler/recovery owners only for inspected portions; preserve separate primitive-family mappings. Attach source-bound receipts and applicable CODE plus separate independent TEST disposition.",
+        "Keep completion false until every exact phase obligation qualifies; attach current source revision, registered checks and raw receipts, plus same-revision CODE and separate independent TEST where applicable.",
+        "Final canonical moon ci remains with vb-eirmk.11."
+      ]
+    }
+  ],
+  "limits": [
+    "Planning artifact only; no bead creation, canonical remapping, tracker/source/database mutation, or implementation/acceptance claim.",
+    "No implementation children are pre-created; existing owners and exact clause gaps must be inspected before any child allocation."
+  ],
+  "tracker_edge_consistency_resolution": {
+    "finding": "The prior v2 draft proposed epic qualifier issues. The live root contract says task issues cannot depend on epics; an epic qualifier would make the final vb-eirmk.11 prerequisite edge invalid.",
+    "resolution": "Create each full-phase qualification-only qualifier as an open task under epic vb-eirmk. Keep vb-eirmk.11 as a task and require vb-eirmk.11 depends_on the actual created qualifier task ID. This is task-to-task; root membership is hierarchy only.",
+    "no_workaround": "Do not substitute tracks edges or closure-only tracking for the required dependency.",
+    "creation_status": "No issue created and no tracker edge changed."
+  }
+}
