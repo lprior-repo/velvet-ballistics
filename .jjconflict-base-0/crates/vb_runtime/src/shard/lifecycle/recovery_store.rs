@@ -23,3 +23,7 @@ pub(super) fn restore(
         RecoveredStateSource::Retry(_) => Err(RuntimeError::InvalidRecoveryHydration),
     }
 }
+
+#[cfg(test)]
+#[path = "recovery_store/integrity_tests.rs"]
+mod integrity_tests;
