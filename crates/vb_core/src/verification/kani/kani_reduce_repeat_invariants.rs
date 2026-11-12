@@ -173,10 +173,7 @@ fn frame_write_taint_preserves_value() {
         frame.read_slot(slot) == Ok(&value),
         "value preserved across taint rewrite",
     );
-    kani::assert(
-        frame.read_taint(slot) == Ok(new_taint),
-        "new taint sticks",
-    );
+    kani::assert(frame.read_taint(slot) == Ok(new_taint), "new taint sticks");
 }
 
 /// H6: Out-of-bounds slot access returns `SlotOutOfBounds` on every accessor
@@ -269,7 +266,11 @@ fn loop_regions_disjoint_or_nested() {
     let node_count = plan.node_count();
     kani::assume(node_count <= 8);
     let controls: Vec<StepIdx> = kani::bounded_any::<Vec<StepIdx>, 4>();
-    kani::assume(controls.iter().all(|&c| c.as_usize() < usize::from(node_count)));
+    kani::assume(
+        controls
+            .iter()
+            .all(|&c| c.as_usize() < usize::from(node_count)),
+    );
     for &first in &controls {
         for &second in &controls {
             let (Some(first_region), Some(second_region)) =

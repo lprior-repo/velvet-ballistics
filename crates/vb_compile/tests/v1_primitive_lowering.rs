@@ -2035,7 +2035,13 @@ fn assert_exact_for_each(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
             done,
         } => {
             assert_eq!(
-                (input.get(), item_slot.get(), limit.get(), body.get(), done.get()),
+                (
+                    input.get(),
+                    item_slot.get(),
+                    limit.get(),
+                    body.get(),
+                    done.get()
+                ),
                 (0, 2, 2, 1, 3)
             );
         }
@@ -2141,7 +2147,13 @@ fn assert_exact_collect(nodes: &[CompiledNode], constants: &[ConstValue]) -> Res
             done,
         } => {
             assert_eq!(
-                (source.get(), limit.get(), *page_size, body.get(), done.get()),
+                (
+                    source.get(),
+                    limit.get(),
+                    *page_size,
+                    body.get(),
+                    done.get()
+                ),
                 (0, 15, 5, 1, 3)
             );
         }
@@ -2297,7 +2309,9 @@ fn assert_exact_wait_event(nodes: &[CompiledNode]) -> Result<(), String> {
             event,
             timeout_slot,
         } => {
-            let timeout = timeout_slot.slot().ok_or_else(|| String::from("missing wait timeout slot"))?;
+            let timeout = timeout_slot
+                .slot()
+                .ok_or_else(|| String::from("missing wait timeout slot"))?;
             assert_eq!((event.get(), timeout.get()), (0, 1));
         }
         other => return Err(format!("expected WaitEvent, got {other:?}")),
@@ -2312,7 +2326,9 @@ fn assert_exact_ask(nodes: &[CompiledNode]) -> Result<(), String> {
             prompt,
             timeout_slot,
         } => {
-            let timeout = timeout_slot.slot().ok_or_else(|| String::from("missing ask timeout slot"))?;
+            let timeout = timeout_slot
+                .slot()
+                .ok_or_else(|| String::from("missing ask timeout slot"))?;
             assert_eq!((prompt.get(), timeout.get()), (0, 1));
         }
         other => return Err(format!("expected Ask, got {other:?}")),
@@ -2477,7 +2493,12 @@ fn assert_kind_targets_in_range(
                     "choose_slot.branch.target",
                 )?;
             }
-            assert_optional_target(otherwise.step(), node_count, case_name, "choose_slot.otherwise")?;
+            assert_optional_target(
+                otherwise.step(),
+                node_count,
+                case_name,
+                "choose_slot.otherwise",
+            )?;
         }
         CompiledNodeKind::ForEachStart { body, done, .. }
         | CompiledNodeKind::ForEachNext { body, done, .. }
@@ -2877,10 +2898,7 @@ fn assert_two_set_reduce_contract(workflow: &CompiledWorkflow) -> Result<(), Str
         return Err(format!("expected 7 nodes, got {}", nodes.len()));
     }
     if constants.len() != 3 {
-        return Err(format!(
-            "expected 3 constants, got {}",
-            constants.len()
-        ));
+        return Err(format!("expected 3 constants, got {}", constants.len()));
     }
     if parts.entry != StepIdx::new(0) {
         return Err(format!("expected entry_step 0, got {:?}", parts.entry));
@@ -2922,8 +2940,13 @@ fn assert_two_set_reduce_contract(workflow: &CompiledWorkflow) -> Result<(), Str
             body,
             done,
         } => {
-            if (input.get(), accumulator.get(), initial.get(), body.get(), done.get())
-                != (1, 4, 0, 2, 5)
+            if (
+                input.get(),
+                accumulator.get(),
+                initial.get(),
+                body.get(),
+                done.get(),
+            ) != (1, 4, 0, 2, 5)
             {
                 return Err("ReduceStart fields mismatch".to_string());
             }
@@ -2942,8 +2965,12 @@ fn assert_two_set_reduce_contract(workflow: &CompiledWorkflow) -> Result<(), Str
             body,
             done,
         } => {
-            if (iterator_slot.get(), accumulator.get(), body.get(), done.get())
-                != (3, 4, 2, 5)
+            if (
+                iterator_slot.get(),
+                accumulator.get(),
+                body.get(),
+                done.get(),
+            ) != (3, 4, 2, 5)
             {
                 return Err("ReduceNext fields mismatch".to_string());
             }

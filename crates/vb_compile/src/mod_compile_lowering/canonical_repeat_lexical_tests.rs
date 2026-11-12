@@ -7,20 +7,31 @@ fn compile(text: &str) -> Result<CompiledWorkflow, String> {
     compile_workflow(text.as_bytes()).map_err(|e| format!("compile: {e:?}"))
 }
 fn node(workflow: &CompiledWorkflow, id: u16) -> Result<&CompiledNode, String> {
-    workflow.node(StepIdx::new(id)).ok_or_else(|| format!("missing node {id}"))
+    workflow
+        .node(StepIdx::new(id))
+        .ok_or_else(|| format!("missing node {id}"))
 }
 fn output(workflow: &CompiledWorkflow, id: u16) -> Result<SlotIdx, String> {
-    node(workflow, id)?.output.slot().ok_or_else(|| format!("missing output {id}"))
+    node(workflow, id)?
+        .output
+        .slot()
+        .ok_or_else(|| format!("missing output {id}"))
 }
 fn rejects(text: &str, predicate: impl Fn(&CompileError) -> bool) -> Result<(), String> {
     let errors = match compile_workflow(text.as_bytes()) {
         Ok(_) => return Err("unexpected source acceptance".to_owned()),
         Err(errors) => errors,
     };
-    if errors.0.iter().any(predicate) { Ok(()) } else { Err(format!("wrong diagnostic: {errors:?}")) }
+    if errors.0.iter().any(predicate) {
+        Ok(())
+    } else {
+        Err(format!("wrong diagnostic: {errors:?}"))
+    }
 }
 fn repeat_source(body: &str, attempts: u16) -> String {
-    format!("{HEADER}steps:\n  - id: s\n    set: {{output: seed, value: '1'}}\n  - id: r\n    repeat:\n      max_attempts: {attempts}\n      steps:\n{body}  - id: done\n    finish: {{result: '$seed'}}\n")
+    format!(
+        "{HEADER}steps:\n  - id: s\n    set: {{output: seed, value: '1'}}\n  - id: r\n    repeat:\n      max_attempts: {attempts}\n      steps:\n{body}  - id: done\n    finish: {{result: '$seed'}}\n"
+    )
 }
 #[test]
 fn nested_repeat_counters_do_not_alias_body_outputs() -> Result<(), String> {
@@ -42,9 +53,10 @@ fn nested_repeat_counters_do_not_alias_body_outputs() -> Result<(), String> {
 #[test]
 fn repeat_duplicate_output_inside_body_is_rejected() -> Result<(), String> {
     let body = "        - id: a\n          set: {output: dup, value: '1'}\n        - id: b\n          set: {output: dup, value: '2'}\n";
-    rejects(&repeat_source(body, 1), |e| {
-        matches!(e, CompileError::DuplicateOutputName { name } if name.as_ref() == "dup")
-    })
+    rejects(
+        &repeat_source(body, 1),
+        |e| matches!(e, CompileError::DuplicateOutputName { name } if name.as_ref() == "dup"),
+    )
 }
 
 // Lexical: duplicate step id inside repeat body.
@@ -60,18 +72,20 @@ fn repeat_duplicate_step_id_inside_body_is_rejected() -> Result<(), String> {
 #[test]
 fn nested_repeat_forward_reference_is_rejected() -> Result<(), String> {
     let body = "        - id: outer_inner\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: a\n                set: {output: x, value: '$later'}\n              - id: b\n                set: {output: later, value: '7'}\n";
-    rejects(&repeat_source(body, 1), |e| {
-        matches!(e, CompileError::UnknownReferenceName { name, .. } if name.as_ref() == "later")
-    })
+    rejects(
+        &repeat_source(body, 1),
+        |e| matches!(e, CompileError::UnknownReferenceName { name, .. } if name.as_ref() == "later"),
+    )
 }
 
 // Lexical: inner alias must not escape to outer body.
 #[test]
 fn nested_repeat_inner_alias_does_not_escape() -> Result<(), String> {
     let body = "        - id: inner\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: leaf\n                set: {output: secret, value: '7'}\n        - id: grab\n          set: {output: grabbed, value: '$secret'}\n";
-    rejects(&repeat_source(body, 1), |e| {
-        matches!(e, CompileError::UnknownReferenceName { name, .. } if name.as_ref() == "secret")
-    })
+    rejects(
+        &repeat_source(body, 1),
+        |e| matches!(e, CompileError::UnknownReferenceName { name, .. } if name.as_ref() == "secret"),
+    )
 }
 
 // Lexical: unknown $step reference inside nested repeat.
@@ -91,15 +105,17 @@ fn nested_repeat_unknown_step_reference_is_rejected() -> Result<(), String> {
 #[test]
 fn repeat_zero_attempts_and_empty_body_are_rejected() -> Result<(), String> {
     let valid = "        - id: a\n          set: {output: x, value: '1'}\n";
-    rejects(&repeat_source(valid, 0), |e| {
-        matches!(e, CompileError::StepFieldShape { field, .. } if *field == "repeat.max_attempts")
-    })?;
+    rejects(
+        &repeat_source(valid, 0),
+        |e| matches!(e, CompileError::StepFieldShape { field, .. } if *field == "repeat.max_attempts"),
+    )?;
     let empty_source = format!(
         "{HEADER}steps:\n  - id: s\n    set: {{output: seed, value: '1'}}\n  - id: r\n    repeat:\n      max_attempts: 2\n      steps: []\n  - id: done\n    finish: {{result: '$seed'}}\n"
     );
-    rejects(&empty_source, |e| {
-        matches!(e, CompileError::StepFieldShape { field, .. } if *field == "steps")
-    })
+    rejects(
+        &empty_source,
+        |e| matches!(e, CompileError::StepFieldShape { field, .. } if *field == "steps"),
+    )
 }
 
 // Check routes: outer check loops to outer body, inner check loops to inner body.

@@ -293,7 +293,11 @@ fn collect_defaults_missing_items_to_one() {
         CompiledNodeKind::CollectStart {
             limit, page_size, ..
         } => {
-            assert_eq!(limit.get(), 1, "default limit (pages) should be 1 when omitted");
+            assert_eq!(
+                limit.get(),
+                1,
+                "default limit (pages) should be 1 when omitted"
+            );
             assert_eq!(
                 *page_size, 1,
                 "default page_size (items) should be 1 when omitted"

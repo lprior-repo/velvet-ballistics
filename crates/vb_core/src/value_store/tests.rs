@@ -1364,12 +1364,9 @@ fn security_insert_list_with_taint_mismatch_does_not_mutate() -> Result<(), Stri
     let taints = vec![Taint::Clean].into_boxed_slice(); // wrong length
 
     match store.insert_list_with_taint(values, taints) {
-        Err(CoreError::InternalInvariantViolation {
-            reason,
-        }) => assert_eq!(
-            reason.as_str(),
-            "list values and taints length mismatch"
-        ),
+        Err(CoreError::InternalInvariantViolation { reason }) => {
+            assert_eq!(reason.as_str(), "list values and taints length mismatch")
+        }
         other => return Err(format!("expected length mismatch error, got {other:?}")),
     }
 

@@ -968,7 +968,9 @@ fn error_display_all_variants_produce_non_empty_string() {
         EngineError::BlobOutOfBounds {
             blob: crate::ids::BlobId::new(0),
         },
-        EngineError::UnsupportedPrimitive { primitive: "test".into() },
+        EngineError::UnsupportedPrimitive {
+            primitive: "test".into(),
+        },
         EngineError::UnsupportedAccessorTraversal {
             segment: "idx",
             found: "obj",
@@ -976,7 +978,9 @@ fn error_display_all_variants_produce_non_empty_string() {
         EngineError::ObjectFieldNotFound {
             field: crate::ids::SymbolId::new(0),
         },
-        EngineError::InternalInvariantViolation { reason: "test".into() },
+        EngineError::InternalInvariantViolation {
+            reason: "test".into(),
+        },
         EngineError::InvalidCompiledWorkflow { reason: "test" },
         EngineError::ExpressionStackOverflow { max: 1 },
         EngineError::IterationLimitExceeded { resource: "test" },
@@ -1056,7 +1060,9 @@ fn error_debug_all_variants_produce_non_empty_string() {
         EngineError::BlobOutOfBounds {
             blob: crate::ids::BlobId::new(0),
         },
-        EngineError::UnsupportedPrimitive { primitive: "test".into() },
+        EngineError::UnsupportedPrimitive {
+            primitive: "test".into(),
+        },
         EngineError::UnsupportedAccessorTraversal {
             segment: "idx",
             found: "obj",
@@ -1064,7 +1070,9 @@ fn error_debug_all_variants_produce_non_empty_string() {
         EngineError::ObjectFieldNotFound {
             field: crate::ids::SymbolId::new(0),
         },
-        EngineError::InternalInvariantViolation { reason: "test".into() },
+        EngineError::InternalInvariantViolation {
+            reason: "test".into(),
+        },
         EngineError::InvalidCompiledWorkflow { reason: "test" },
         EngineError::ExpressionStackOverflow { max: 1 },
         EngineError::IterationLimitExceeded { resource: "test" },

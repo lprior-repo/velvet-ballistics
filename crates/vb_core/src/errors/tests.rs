@@ -372,11 +372,17 @@ fn core_error_runtime_codes_cover_section_17_core_mappings() {
         Some("INVALID_COMPILED_WORKFLOW")
     );
     assert_eq!(
-        CoreError::InternalInvariantViolation { reason: "bad".into() }.runtime_code(),
+        CoreError::InternalInvariantViolation {
+            reason: "bad".into()
+        }
+        .runtime_code(),
         Some("INTERNAL_INVARIANT_VIOLATION")
     );
     assert_eq!(
-        CoreError::UnsupportedPrimitive { primitive: "op".into() }.runtime_code(),
+        CoreError::UnsupportedPrimitive {
+            primitive: "op".into()
+        }
+        .runtime_code(),
         Some("UNSUPPORTED_PRIMITIVE")
     );
     assert_eq!(CoreError::QueueFull.runtime_code(), Some("QUEUE_FULL"));

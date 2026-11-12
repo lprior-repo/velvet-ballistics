@@ -19,7 +19,10 @@ pub struct Bound {
 
 impl Bound {
     /// Fully unbounded range.
-    pub const UNBOUNDED: Self = Self { min: None, max: None };
+    pub const UNBOUNDED: Self = Self {
+        min: None,
+        max: None,
+    };
 
     /// Constructs a bounded range.
     #[must_use]
@@ -209,6 +212,10 @@ impl<'de> Deserialize<'de> for Secretness {
 #[cfg(kani)]
 impl kani::Arbitrary for Secretness {
     fn any() -> Self {
-        if kani::any() { Self::Secret } else { Self::NonSecret }
+        if kani::any() {
+            Self::Secret
+        } else {
+            Self::NonSecret
+        }
     }
 }

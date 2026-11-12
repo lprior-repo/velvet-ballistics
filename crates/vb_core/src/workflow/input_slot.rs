@@ -132,7 +132,11 @@ impl<'de> Deserialize<'de> for Presence {
 #[cfg(kani)]
 impl kani::Arbitrary for Presence {
     fn any() -> Self {
-        if kani::any() { Self::Optional } else { Self::Required }
+        if kani::any() {
+            Self::Optional
+        } else {
+            Self::Required
+        }
     }
 }
 
@@ -196,6 +200,10 @@ impl<'de> Deserialize<'de> for Nullability {
 #[cfg(kani)]
 impl kani::Arbitrary for Nullability {
     fn any() -> Self {
-        if kani::any() { Self::Nullable } else { Self::NonNullable }
+        if kani::any() {
+            Self::Nullable
+        } else {
+            Self::NonNullable
+        }
     }
 }

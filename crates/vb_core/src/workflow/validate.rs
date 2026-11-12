@@ -91,8 +91,14 @@ fn validate_input_constraint(
             InputConstraintIssue::MinLengthExceedsMaxLength,
         ));
     }
-    if constraint.length_bound().lower().is_some_and(|bound| bound < 0)
-        || constraint.length_bound().upper().is_some_and(|bound| bound < 0)
+    if constraint
+        .length_bound()
+        .lower()
+        .is_some_and(|bound| bound < 0)
+        || constraint
+            .length_bound()
+            .upper()
+            .is_some_and(|bound| bound < 0)
     {
         return Err(inconsistent(InputConstraintIssue::NegativeLengthBound));
     }

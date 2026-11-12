@@ -41,8 +41,12 @@ fn core_error_symbolic_codes_are_registered() {
         CoreError::StepStateOutOfBounds {
             step: StepIdx::new(0),
         },
-        CoreError::UnsupportedPrimitive { primitive: "wait".into() },
-        CoreError::InternalInvariantViolation { reason: "test".into() },
+        CoreError::UnsupportedPrimitive {
+            primitive: "wait".into(),
+        },
+        CoreError::InternalInvariantViolation {
+            reason: "test".into(),
+        },
         CoreError::UnsupportedAccessorTraversal {
             segment: "field",
             found: "map",

@@ -34,8 +34,7 @@ impl CompiledWorkflow {
     pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
         validate_parts(&parts)?;
         let loop_regions = loop_regions::validate(&parts)?;
-        let nested_activation_entries =
-            loop_regions::nested_activation_map(&parts, &loop_regions)?;
+        let nested_activation_entries = loop_regions::nested_activation_map(&parts, &loop_regions)?;
         let loop_slots = loop_regions::merge_slots(&loop_regions, &nested_activation_entries);
         validate_budget(&parts)?;
         validate_input_slots(&parts)?;
