@@ -1,27 +1,9 @@
 //! Private translation from interning failures to existing compiler errors.
 
 use crate::CompileError;
-use crate::expression_bytecode::ExpressionReferenceResolver;
 use crate::source_symbols::{SourceSymbolError, SourceSymbolTable};
 use vb_core::workflow::source_metadata::SourceMetadataError;
-use vb_core::{ExprOp, SymbolId, WorkflowError};
-
-pub(crate) struct SymbolReferenceResolver<'a, R> {
-    pub(crate) references: &'a mut R,
-    pub(crate) symbols: &'a mut SourceSymbolTable,
-}
-
-impl<R: ExpressionReferenceResolver> ExpressionReferenceResolver
-    for SymbolReferenceResolver<'_, R>
-{
-    fn resolve_reference(&mut self, reference: &str) -> Result<ExprOp, CompileError> {
-        self.references.resolve_reference(reference)
-    }
-
-    fn intern_text(&mut self, text: &str) -> Result<SymbolId, CompileError> {
-        intern_source_text(self.symbols, text)
-    }
-}
+use vb_core::{SymbolId, WorkflowError};
 
 pub(crate) fn intern_source_text(
     symbols: &mut SourceSymbolTable,

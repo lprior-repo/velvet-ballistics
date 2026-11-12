@@ -77,6 +77,7 @@ fn apply_display_names(builder: &SlotCompiler, names: &mut [Box<str>]) {
 fn finish_symbols(builder: &mut SlotCompiler) -> Result<Symbols, CompileError> {
     let count = checked_symbol_count(builder.source_symbols.len())?;
     let bytes = builder.source_symbols.symbol_bytes();
+    let empty = builder.source_symbols.is_empty();
     let table = std::mem::take(&mut builder.source_symbols);
     let payloads = table
         .finish()
@@ -87,7 +88,7 @@ fn finish_symbols(builder: &mut SlotCompiler) -> Result<Symbols, CompileError> {
         .map_err(metadata_error)?;
     validate_measurements(&metadata, count, bytes)?;
     let payloads = copy_payloads(metadata.symbols())?;
-    let metadata = (count != 0).then(|| Box::new(metadata));
+    let metadata = (!empty).then(|| Box::new(metadata));
     Ok(Symbols {
         metadata,
         payloads,

@@ -17,6 +17,17 @@ pub(super) fn prepare_source_declarations(
     for_each_inputs: &mut ForEachInputs,
 ) -> Result<Vec<Box<str>>, CompileErrors> {
     prepare_inputs(source, outputs, types, builder, for_each_inputs)?;
+    let names = prepare_variables(source, outputs, types, builder)?;
+    prepare_secrets(source, outputs, types, builder)?;
+    Ok(names)
+}
+
+fn prepare_variables(
+    source: &WorkflowSource,
+    outputs: &mut HashMap<String, SlotIdx>,
+    types: &mut HashMap<SlotIdx, ExprType>,
+    builder: &mut SlotCompiler,
+) -> Result<Vec<Box<str>>, CompileErrors> {
     let mut names = Vec::with_capacity(source.vars().len());
     for variable in source.vars() {
         let first = builder.nodes.len();
@@ -27,32 +38,54 @@ pub(super) fn prepare_source_declarations(
             slot_types: types,
             parent: None,
         };
-        let (slot, ty) = super::canonical_values::emit(&variable.value, false, scope, builder)?;
+        let (slot, ty) = emit_declaration(&variable.key, &variable.value, scope, builder)?;
         bind_declaration(outputs, format!("$vars.{}", variable.key), slot)?;
         types.insert(slot, ty);
-        names.extend(
-            builder
-                .nodes
-                .iter()
-                .skip(first)
-                .map(|_| format!("$vars.{}", variable.key).into_boxed_str()),
-        );
+        append_variable_names(&mut names, builder, first, &variable.key);
     }
+    Ok(names)
+}
+
+fn append_variable_names(
+    names: &mut Vec<Box<str>>,
+    builder: &SlotCompiler,
+    first: usize,
+    key: &str,
+) {
+    names.extend(
+        builder
+            .nodes
+            .iter()
+            .skip(first)
+            .map(|_| format!("$vars.{key}").into_boxed_str()),
+    );
+}
+
+fn emit_declaration(
+    key: &str,
+    value: &AuthorValue,
+    scope: super::CanonicalScope<'_>,
+    builder: &mut SlotCompiler,
+) -> Result<(SlotIdx, ExprType), CompileErrors> {
+    match value {
+        AuthorValue::Null | AuthorValue::Bool(_) | AuthorValue::I64(_) | AuthorValue::Text(_) => {
+            let (value, ty) = scalar_variable(key, value, builder)?;
+            Ok((emit_variable(value, builder)?, ty))
+        }
+        _ => super::canonical_values::emit(value, false, scope, builder),
+    }
+}
+
+fn prepare_secrets(
+    source: &WorkflowSource,
+    outputs: &mut HashMap<String, SlotIdx>,
+    types: &mut HashMap<SlotIdx, ExprType>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileError> {
     for secret in source.secrets() {
         let alias = builder.intern(&secret.key)?;
         let requirement = builder.intern(&secret.value)?;
-        let slot = builder.allocate_slot()?;
-        builder.record_input_slot(
-            slot,
-            InputSlotKind::Symbol,
-            vb_core::CompiledInputConstraint {
-                secretness: true.into(),
-                default_cold: Some(vb_core::InputDefaultValue::Text(
-                    secret.value.clone().into(),
-                )),
-                ..vb_core::CompiledInputConstraint::required()
-            },
-        );
+        let slot = allocate_secret_input(&secret.value, builder)?;
         builder.secret_requirements.push(
             vb_core::workflow::source_metadata::CompiledSecretRequirement::with_slot(
                 alias,
@@ -63,7 +96,21 @@ pub(super) fn prepare_source_declarations(
         bind_declaration(outputs, format!("$secrets.{}", secret.key), slot)?;
         types.insert(slot, ExprType::Text);
     }
-    Ok(names)
+    Ok(())
+}
+
+fn allocate_secret_input(value: &str, builder: &mut SlotCompiler) -> Result<SlotIdx, CompileError> {
+    let slot = builder.allocate_slot()?;
+    builder.record_input_slot(
+        slot,
+        InputSlotKind::Symbol,
+        vb_core::CompiledInputConstraint {
+            secretness: true.into(),
+            default_cold: Some(vb_core::InputDefaultValue::Text(value.to_owned().into())),
+            ..vb_core::CompiledInputConstraint::required()
+        },
+    );
+    Ok(slot)
 }
 
 fn prepare_inputs(
@@ -139,23 +186,18 @@ fn bind_declaration(
     Ok(())
 }
 
-fn emit_variable(
-    value: ConstValue,
-    slot: SlotIdx,
-    builder: &mut SlotCompiler,
-) -> Result<(), CompileError> {
-    let index = builder.nodes.len();
-    let next = index
-        .checked_add(1)
-        .ok_or(CompileError::StepIndexOutOfRange { value: index })?;
+fn emit_variable(value: ConstValue, builder: &mut SlotCompiler) -> Result<SlotIdx, CompileError> {
     let constant = builder.push_constant(value)?;
+    let slot = builder.allocate_slot()?;
+    let id = step_idx(builder.nodes.len())?;
+    let next = super::checked_step_offset(id, 1, "value", "next")?;
     builder.push_node(node(
-        step_idx(index)?,
+        id,
         CompiledNodeKind::SetConst { value: constant },
         Some(slot),
-        Some(step_idx(next)?),
+        Some(next),
     ));
-    Ok(())
+    Ok(slot)
 }
 
 fn scalar_variable(
@@ -195,6 +237,6 @@ fn input_type(kind: InputSlotKind) -> ExprType {
 #[path = "source_text_declaration_tests.rs"]
 mod source_text_tests;
 
-use vb_core::ConstValue;
 use vb_core::CompiledNodeKind;
+use vb_core::ConstValue;
 use vb_core::workflow::node;
