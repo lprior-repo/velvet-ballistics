@@ -102,39 +102,41 @@ impl BudgetAccumulator {
     }
 
     pub fn within_policy(&self, policy: &PolicyBounds) -> Vec<String> {
-        let mut violations = Vec::new();
-
-        if self.max_action_tickets > policy.absolute_max_action_tickets as u64 {
-            violations.push(format!(
-                "max_action_tickets {} exceeds policy {}",
-                self.max_action_tickets, policy.absolute_max_action_tickets
-            ));
-        }
-        if self.max_parallel_in_flight > policy.absolute_max_parallel as u64 {
-            violations.push(format!(
-                "max_parallel_in_flight {} exceeds policy {}",
-                self.max_parallel_in_flight, policy.absolute_max_parallel
-            ));
-        }
-        if self.max_run_time_seconds > policy.absolute_max_run_time_seconds {
-            violations.push(format!(
-                "max_run_time_seconds {} exceeds policy {}",
-                self.max_run_time_seconds, policy.absolute_max_run_time_seconds
-            ));
-        }
-        if self.max_result_bytes > policy.absolute_max_result_bytes as u64 {
-            violations.push(format!(
-                "max_result_bytes {} exceeds policy {}",
-                self.max_result_bytes, policy.absolute_max_result_bytes
-            ));
-        }
-        if self.max_steps_executable > policy.absolute_max_steps_executable as u64 {
-            violations.push(format!(
-                "max_steps_executable {} exceeds policy {}",
-                self.max_steps_executable, policy.absolute_max_steps_executable
-            ));
-        }
-
-        violations
+        let actual = [
+            self.max_action_tickets,
+            self.max_parallel_in_flight,
+            self.max_run_time_seconds,
+            self.max_result_bytes,
+            self.max_steps_executable,
+        ];
+        let limits = [
+            u64::from(policy.absolute_max_action_tickets),
+            u64::from(policy.absolute_max_parallel),
+            policy.absolute_max_run_time_seconds,
+            u64::from(policy.absolute_max_result_bytes),
+            u64::from(policy.absolute_max_steps_executable),
+        ];
+        collect_policy_violations(actual, limits)
     }
 }
+
+fn collect_policy_violations(actual: [u64; 5], limits: [u64; 5]) -> Vec<String> {
+    let names = [
+        "max_action_tickets",
+        "max_parallel_in_flight",
+        "max_run_time_seconds",
+        "max_result_bytes",
+        "max_steps_executable",
+    ];
+    names
+        .into_iter()
+        .zip(actual)
+        .zip(limits)
+        .filter(|((_, value), limit)| value > limit)
+        .map(|((name, value), limit)| format!("{name} {value} exceeds policy {limit}"))
+        .collect()
+}
+
+#[cfg(test)]
+#[path = "policy_lint_tests.rs"]
+mod lint_tests;
