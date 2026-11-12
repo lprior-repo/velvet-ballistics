@@ -551,7 +551,9 @@ for mirror in "$MIRROR_DIR"/*.rs; do
     # constructor/parts/error claims fail. The strict facade and real-crate
     # type/function identity probe above prevent replacement implementations.
     if [ "$native_facade" -eq 1 ]; then
-      if [ "$abs_path" != "$REPO_ROOT/crates/vb_core/src/workflow/mod.rs" ]; then
+      if [ "$abs_path" != "$REPO_ROOT/crates/vb_core/src/workflow/compiled.rs" ] \
+        && [ "$abs_path" != "$REPO_ROOT/crates/vb_core/src/workflow/parts.rs" ] \
+        && [ "$abs_path" != "$REPO_ROOT/crates/vb_core/src/workflow/error.rs" ]; then
         printf 'DRIFT: unexpected native source claim %s\n' "$range" | tee -a "$LOG"
         claim_drift=1
         continue

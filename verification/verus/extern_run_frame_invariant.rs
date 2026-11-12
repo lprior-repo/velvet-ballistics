@@ -25,8 +25,8 @@
 //   - `RunFrame`                                <- crates/vb_core/src/frame.rs:106-116
 //   - `StepState`                               <- crates/vb_core/src/frame.rs:51-68
 //   - `is_valid_step_state_transition`          <- crates/vb_core/src/frame.rs:72-102
-//   - `RunFrame::new`                           <- crates/vb_core/src/frame/parts/impl_001_construct.rs:3-30
-//   - `RunFrame::reinitialize`                  <- crates/vb_core/src/frame/parts/impl_001_construct.rs:33-67
+//   - `RunFrame::new`                           <- crates/vb_core/src/frame/parts/impl_001_construct.rs:3-33
+//   - `RunFrame::reinitialize`                  <- crates/vb_core/src/frame/parts/impl_001_construct.rs:36-70
 //   - `RunFrame::pc`                            <- crates/vb_core/src/frame/parts/impl_002_accessors.rs:10-12; returns StepIdx
 //   - `RunFrame::step_count`                    <- crates/vb_core/src/frame/parts/impl_002_accessors.rs:22-24
 //   - `RunFrame::slot_count`                    <- crates/vb_core/src/frame/parts/impl_002_accessors.rs:28-30
@@ -36,6 +36,7 @@
 //   - `RunFrame::slots_snapshot`                <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:50-55
 //   - `RunFrame::taint_snapshot`                <- crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:66-71
 //   - `Taint` discriminant set                  <- crates/vb_core/src/value/taint.rs:10-21
+//   - `SlotCell` representation                 <- crates/vb_core/src/value/taint.rs:31-41
 //   - `SlotValue` discriminant set              <- crates/vb_core/src/value/slot.rs:14-31
 //   - `CoreError` relevant variants             <- crates/vb_core/src/errors.rs
 //   - `RunId`, `StepIdx`, `SlotIdx`             <- crates/vb_core/src/ids/mod.rs
@@ -47,9 +48,9 @@
 // verified by Verus. Each exec fn is `#[verifier::external]` so Verus
 // skips body verification, and the contracts attached via
 // `assume_specification` in the companion spec file state the
-// production behavior the spec proofs discharge. Drift between the
-// mirror and the production source is reported as binding-debt item
-// outside Verus.
+// trusted mirror contracts. The proofs establish math-layer consequences;
+// they do not prove those contracts against production bodies. This is
+// a WEAK binding, with source correspondence maintained outside Verus.
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(non_snake_case)]
@@ -66,6 +67,7 @@ pub use run_frame_invariant_production::{
     CoreResult,
     RunFrame,
     RunId,
+    SlotCell,
     SlotIdx,
     SlotValue,
     StepIdx,

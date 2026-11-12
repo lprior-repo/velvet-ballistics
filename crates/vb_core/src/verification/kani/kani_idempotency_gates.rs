@@ -81,8 +81,7 @@ fn symbolic_frame() -> Result<RunFrame, RunFrameCheckpointV1Error> {
     let slot_count = bounded_nonzero_u16(MAX_SYMBOLIC_SLOTS);
     let step_raw: u16 = kani::any();
     kani::assume(step_raw < step_count);
-    let entries = (0..slot_count).map(|_| (kani::any::<SlotValue>(), kani::any::<Taint>()));
-    frame_seed::checked_frame_from_seed(run, StepIdx::new(step_raw), step_count, entries)
+    frame_seed::partitioned_frame(run, StepIdx::new(step_raw), step_count, slot_count)
 }
 
 fn one_slot_frame_with_taint(taint: Taint) -> RunFrame {
