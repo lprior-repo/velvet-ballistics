@@ -42,6 +42,7 @@ use crate::ids::{RunId, SlotIdx, StepIdx};
 use crate::value::{SlotCell, SlotValue, Taint};
 
 mod checkpoint;
+mod handled_failure_rearm;
 pub use checkpoint::{CheckpointStepState, RunFrameCheckpointV1, RunFrameCheckpointV1Error};
 
 /// Per-step execution state stored in the hot run frame.
@@ -124,6 +125,18 @@ include!("frame/parts/initialized_slot_entry.rs");
 #[path = "frame/tests_and_verification.rs"]
 mod tests_and_verification;
 
+
+
+#[cfg(test)]
+#[path = "frame/counter_boundary_tests.rs"]
+mod counter_boundary_tests;
+
+
+#[cfg(test)]
+#[path = "frame/taint_projection_tests.rs"]
+mod taint_projection_tests;
+
+
 #[cfg(kani)]
 include!("verification/kani/frame_parts_kani_helpers.rs");
 
@@ -141,3 +154,15 @@ include!("verification/kani/frame_parts_kani_slot_proofs.rs");
 
 #[cfg(kani)]
 include!("verification/kani/frame_parts_kani_parallel.rs");
+
+#[cfg(test)]
+#[path = "frame/constructor_pc_tests.rs"]
+mod constructor_pc_tests;
+
+#[cfg(test)]
+#[path = "frame/snapshot_enumeration_tests.rs"]
+mod snapshot_enumeration_tests;
+
+#[cfg(test)]
+#[path = "frame/state_transition_matrix_tests.rs"]
+mod state_transition_matrix_tests;

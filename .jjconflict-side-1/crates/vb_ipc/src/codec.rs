@@ -17,6 +17,7 @@ pub fn encode_payload(
 }
 
 /// Decodes a typed IPC payload with Postcard after frame-length validation.
+#[inline]
 pub fn decode_payload(payload: &BoundedPayload) -> Result<IpcPayload, IpcError> {
     postcard::from_bytes(payload.bytes()).map_err(|_| IpcError::PayloadDecodeFailed)
 }

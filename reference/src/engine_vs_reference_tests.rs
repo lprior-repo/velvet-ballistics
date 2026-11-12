@@ -22,13 +22,14 @@ use vb_core::workflow::{
     CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
 };
 use vb_core::{
-    ConstIdx, CoreResult, EngineError, EngineSignal, RunId, SlotIdx, StepBudget, StepIdx,
-    ValueStore, WorkflowDigest,
+    ConstIdx, CoreResult, EngineError, EngineSignal, InvariantKind, RunId, SlotIdx, StepBudget,
+    StepIdx, ValueStore, WorkflowDigest,
 };
 
 fn two_step_workflow(value: ConstValue) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("engine_vs_reference"),
         digest: WorkflowDigest::from_bytes([0x42; 32]),
@@ -178,7 +179,7 @@ fn assert_terminal_frame_divergence(workflow: &CompiledWorkflow) -> Result<(), S
         }
         match prod {
             Err(EngineError::InternalInvariantViolation { reason }) => {
-                assert_eq!(reason, vb_core::InvariantKind::InvalidStateTransition);
+                assert_eq!(reason, InvariantKind::InvalidStateTransition);
             }
             other => {
                 return Err(format!(

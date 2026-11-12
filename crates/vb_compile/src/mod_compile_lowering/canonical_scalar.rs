@@ -134,6 +134,7 @@ fn compile_canonical_expression_with_binding(
     let inferred = infer_canonical_expr_type_scoped(&parsed, scope, &resolver)
         .map_err(|e| CompileErrors(vec![e]))?;
     let program = compile_symbolic_program(&parsed, builder, &mut resolver)?;
+
     let index = builder
         .push_expression(program)
         .map_err(|e| CompileErrors(vec![e]))?;

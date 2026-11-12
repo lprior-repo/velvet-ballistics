@@ -42,13 +42,14 @@ impl RestartSession {
         Ok(Self {
             resolver: StorageWorkflowResolver {
                 journal: Arc::clone(&journal),
-            },
+                available_names: Default::default(),
+        ,
             service: IpcJournalService { journal, queue },
             runtime,
             server,
             client,
-        })
-    }
+    )
+
 
     fn request(
         &mut self,
@@ -76,13 +77,13 @@ impl RestartSession {
                 Ok(count) => {
                     let bytes = chunk.get(..count).ok_or("invalid response read count")?;
                     received.extend_from_slice(bytes);
-                }
+            
                 Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {}
                 Err(error) => return Err(error.into()),
-            }
+        
             if received.len() > 4096 {
                 return Err("unexpectedly large IPC response".into());
-            }
+        
             if received.len() >= vb_ipc::IPC_HEADER_LEN {
                 let header_bytes = received
                     .get(..vb_ipc::IPC_HEADER_LEN)
@@ -98,18 +99,18 @@ impl RestartSession {
                     .ok_or("response length overflow")?;
                 if end > 4096 {
                     return Err("unexpectedly large response payload".into());
-                }
+            
                 if received.len() >= end {
                     assert_eq!(received.len(), end);
                     let payload = received
                         .get(vb_ipc::IPC_HEADER_LEN..end)
                         .ok_or("response payload missing")?;
                     return Ok((postcard::from_bytes(payload)?, alive));
-                }
-            }
-        }
+            
+        
+    
         Err("IPC response did not arrive within bounded service turns".into())
-    }
+
 
     fn shutdown(&mut self, correlation: u64) -> TestResult {
         let (response, alive) = self.request(vb_ipc::IpcCommand::Shutdown, correlation, &[])?;
@@ -119,7 +120,7 @@ impl RestartSession {
         assert_eq!(pending.journaled, 0);
         assert_eq!(pending.strict, 0);
         Ok(())
-    }
+
 }
 
 fn scalar_ask_workflow() -> TestResult<vb_core::CompiledWorkflow> {
@@ -127,12 +128,13 @@ fn scalar_ask_workflow() -> TestResult<vb_core::CompiledWorkflow> {
         name: "ipc-restart-scalar-ask".into(),
         digest: vb_core::WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: Box::from([
             vb_core::workflow::node(
                 StepIdx::new(0),
                 CompiledNodeKind::SetConst {
                     value: vb_core::ConstIdx::new(0),
-                },
+            ,
                 Some(SlotIdx::new(0)),
                 Some(StepIdx::new(1)),
             ),
@@ -141,15 +143,15 @@ fn scalar_ask_workflow() -> TestResult<vb_core::CompiledWorkflow> {
                 CompiledNodeKind::Ask {
                     prompt: SlotIdx::new(0),
                     timeout_slot: None.into(),
-                },
-                None,
+            ,
+                Some(SlotIdx::new(1)),
                 Some(StepIdx::new(2)),
             ),
             vb_core::workflow::node(
                 StepIdx::new(2),
                 CompiledNodeKind::AskResume {
                     answer: SlotIdx::new(1),
-                },
+            ,
                 Some(SlotIdx::new(1)),
                 Some(StepIdx::new(3)),
             ),
@@ -157,7 +159,7 @@ fn scalar_ask_workflow() -> TestResult<vb_core::CompiledWorkflow> {
                 StepIdx::new(3),
                 CompiledNodeKind::Finish {
                     result: SlotIdx::new(1),
-                },
+            ,
                 None,
                 None,
             ),
@@ -171,7 +173,7 @@ fn scalar_ask_workflow() -> TestResult<vb_core::CompiledWorkflow> {
         step_names: Box::new([]),
         resource_contract: vb_core::ResourceContract::DEFAULT,
         input_slots: Box::new([]),
-    };
+;
     parts.digest = vb_core::WorkflowDigest::from_bytes(
         *blake3::hash(&postcard::to_allocvec(&parts)?).as_bytes(),
     );
@@ -199,9 +201,28 @@ fn assert_open_ask_history(events: &[vb_storage::JournalEvent]) {
 
 #[test]
 fn socket_submitted_scalar_ask_survives_graceful_close_and_fjall_reopen() -> TestResult {
-    let dir = tempfile::Builder::new()
-        .prefix("vb68-")
-        .tempdir_in(std::env::temp_dir())?;
+
+
+\\
+
+
+
++        .tempdir_in(std::env::temp_dir())?;
+
+
+
+
+
+
+
+
+
+
+
+   
+
+
+
     let db = dir.path().join("journal");
     let first_socket = dir.path().join("first.sock");
     let second_socket = dir.path().join("second.sock");
@@ -221,7 +242,7 @@ fn socket_submitted_scalar_ask_survives_graceful_close_and_fjall_reopen() -> Tes
                 run_id: run,
                 workflow: workflow.digest(),
                 input: Vec::new(),
-            }))?;
+        ))?;
         let (response, alive) = session.request(vb_ipc::IpcCommand::SubmitRun, 101, &payload)?;
         assert_eq!(response, IpcResponse::AcceptedRun { run_id: run.get() });
         assert!(alive);
@@ -239,7 +260,7 @@ fn socket_submitted_scalar_ask_survives_graceful_close_and_fjall_reopen() -> Tes
         assert_eq!(session.service.journal.events_for_run(run)?, history);
         assert!(session.service.journal.run_header(run)?.is_none());
         (ticket, history)
-    };
+;
     let mut session = RestartSession::open(&db, &second_socket)?;
     assert!(session.service.journal.run_header(run)?.is_none());
     assert_eq!(
@@ -271,7 +292,7 @@ fn socket_submitted_scalar_ask_survives_graceful_close_and_fjall_reopen() -> Tes
         ticket: u64::from(ask_step.get()),
         answer: postcard::to_allocvec(&SlotValue::I64(77))?,
         taint: Some(vb_core::Taint::Clean),
-    })?;
+)?;
     let (response, alive) = session.request(vb_ipc::IpcCommand::AnswerAsk, 103, &payload)?;
     assert_eq!(response, IpcResponse::AcceptedRun { run_id: run.get() });
     assert!(alive);
@@ -315,7 +336,7 @@ fn socket_submitted_scalar_ask_survives_graceful_close_and_fjall_reopen() -> Tes
         .find_map(|(index, event)| match event {
             vb_storage::JournalEvent::RunFinished { result, .. } => Some((index, *result)),
             _ => None,
-        })
+    )
         .ok_or("run completion missing")?;
     assert_eq!(result_slot, SlotIdx::new(1));
     let final_result_write = completed
@@ -326,11 +347,11 @@ fn socket_submitted_scalar_ask_survives_graceful_close_and_fjall_reopen() -> Tes
         .find_map(|event| match event {
             vb_storage::JournalEvent::SlotWrittenEvent { slot, value, .. }
                 if *slot == result_slot =>
-            {
+        
                 Some(value)
-            }
+        
             _ => None,
-        })
+    )
         .ok_or("result slot was not written before completion")?;
     let final_result = final_result_write
         .as_deref()

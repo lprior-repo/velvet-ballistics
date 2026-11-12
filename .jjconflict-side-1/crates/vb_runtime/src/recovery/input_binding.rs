@@ -6,6 +6,9 @@ use vb_storage::{FjallJournal, JournalEvent, RetainedRunInputs, RunInputsRecord}
 
 use crate::{RuntimeError, RuntimeResult};
 
+mod preparation;
+use preparation::{prepare_owned_record, prepare_scalar_roots, validate_owned_identity};
+
 /// Validates that a retained input record matches an admission event's binding.
 /// Returns Err if the binding is inconsistent or the record is for a different run.
 pub fn validate_input_record_binding(
@@ -166,6 +169,15 @@ pub(crate) fn load_retained_inputs_for_recovery(
     }
 }
 
+fn slot_taint(workflow: &CompiledWorkflow, slot: SlotIdx) -> Taint {
+    for slot_decl in workflow.input_slots().iter() {
+        if slot_decl.slot == slot && slot_decl.constraint.secretness.is_secret() {
+            return Taint::Secret;
+        }
+    }
+    Taint::Clean
+}
+
 fn scalar_retained_inputs(
     record: &RunInputsRecord,
     run: RunId,
@@ -176,11 +188,12 @@ fn scalar_retained_inputs(
     validate_input_record_binding(record, run, admission_event)?;
     validate_input_record_artifact(record, artifact_digest)?;
     validate_input_record_workflow(record, workflow)?;
-    let initial_inputs = scalar_roots(record, workflow)?;
-    Ok(RecoveredRetainedInputs {
-        initial_inputs,
-        store: None,
-    })
+    let initial_inputs = record
+        .inputs()
+        .iter()
+        .map(|(slot, value)| (*slot, *value, slot_taint(workflow, *slot)))
+        .collect();
+    prepare_scalar_roots(workflow, initial_inputs)
 }
 
 fn owned_retained_inputs(
@@ -189,65 +202,18 @@ fn owned_retained_inputs(
     run: RunId,
     admission_event: &JournalEvent,
 ) -> RuntimeResult<RecoveredRetainedInputs> {
-    if record.run() != run {
-        return Err(RuntimeError::Recovery {
-            error: format!(
-                "recovery: retained owned input run mismatch: expected {run:?}, got {:?}",
-                record.run()
-            ),
-        });
-    }
-    // Binds the record to the durable admission: the admission's input digest
-    // covers the record (including its embedded source digest), so the
-    // presented arenas are the admitted ones.
-    record.validate_admission(admission_event)?;
-    let bundle = record.restore(workflow)?;
-    let store = ValueStore::from_checkpoint_v1(bundle.checkpoint().clone())?;
-    Ok(RecoveredRetainedInputs {
-        initial_inputs: record.roots().to_vec(),
-        store: Some(store),
-    })
+    validate_owned_identity(record, run, admission_event)?;
+    // Revalidates the complete bundle (projection, roots, arenas, references,
+    // taints, caps, digest) against the independently loaded workflow before
+    // any arena handle is trusted.
+    record
+        .restore(workflow)
+        .map_err(|error| RuntimeError::Recovery {
+            error: format!("recovery: retained owned input validation failed: {error}"),
+        })?;
+    prepare_owned_record(record, workflow)
 }
 
-fn scalar_roots(
-    record: &vb_storage::RunInputsRecord,
-    workflow: &vb_core::CompiledWorkflow,
-) -> RuntimeResult<Vec<(SlotIdx, SlotValue, Taint)>> {
-    let mut taints = Vec::new();
-    let slots = usize::from(workflow.slot_count());
-    taints
-        .try_reserve_exact(slots)
-        .map_err(|_| invalid("retained declaration capacity"))?;
-    taints.resize(slots, None);
-    workflow.input_slots().iter().try_for_each(|input| {
-        let target = taints
-            .get_mut(input.slot.as_usize())
-            .ok_or_else(|| invalid("retained declaration slot"))?;
-        *target = Some(if input.constraint.secretness.is_secret() {
-            Taint::Secret
-        } else {
-            Taint::Clean
-        });
-        Ok::<(), RuntimeError>(())
-    })?;
-    let mut roots = Vec::new();
-    roots
-        .try_reserve_exact(record.inputs().len())
-        .map_err(|_| invalid("retained input capacity"))?;
-    record.inputs().iter().try_for_each(|(slot, value)| {
-        let taint = taints
-            .get(slot.as_usize())
-            .copied()
-            .flatten()
-            .ok_or_else(|| invalid("retained input declaration missing"))?;
-        roots.push((*slot, *value, taint));
-        Ok::<(), RuntimeError>(())
-    })?;
-    Ok(roots)
-}
-
-fn invalid(error: &str) -> RuntimeError {
-    RuntimeError::Recovery {
-        error: error.into(),
-    }
-}
+#[cfg(test)]
+#[path = "input_binding/bound_symbols_tests.rs"]
+mod bound_symbols_tests;

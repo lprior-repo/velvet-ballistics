@@ -17,20 +17,17 @@ use vb_core::{
 impl SlotCompiler {
     /// Interns a cold source literal in deterministic identifier order.
     pub fn intern(&mut self, text: &str) -> Result<vb_core::SymbolId, CompileError> {
-        self.symbols
-            .intern(text)
-            .map_err(|error| CompileError::ExpressionLoweringUnsupported {
-                feature: error.to_string().into(),
-            })
+        crate::source_symbol_binding::intern_source_text(&mut self.source_symbols, text)
     }
 
     /// Creates a new empty slot compiler.
     #[must_use]
     pub fn new() -> Self {
         Self {
-            symbols: crate::source_symbols::SourceSymbolTable::new(),
+            source_symbols: crate::source_symbols::SourceSymbolTable::new(),
             ..Self::default()
         }
+
     }
 
     /// Allocates one slot above every previously recorded or reserved slot.

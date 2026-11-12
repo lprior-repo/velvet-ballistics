@@ -45,7 +45,8 @@ fn lower_literal(
         ExpressionLiteral::Bool(value) => ConstValue::Bool(*value),
         ExpressionLiteral::I64(value) => ConstValue::I64(*value),
         ExpressionLiteral::F64(value) => ConstValue::F64(*value),
-        ExpressionLiteral::Text(text) => ConstValue::Symbol(resolver.resolve_text(text)?),
+        ExpressionLiteral::Text(text) => ConstValue::Symbol(resolver.intern_text(text)?),
+
     };
     let constant = push_expression_constant(value, constants)?;
     ops.push(ExprOp::LoadConst(constant));

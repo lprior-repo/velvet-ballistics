@@ -1,3 +1,4 @@
+use super::kani_harness_filter;
 #[cfg(test)]
 use super::types::RequiredProof;
 use super::types::{FuzzField, ObligationStatus, ProofEvidence, ProofObligation};

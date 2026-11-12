@@ -1,7 +1,10 @@
 #![forbid(unsafe_code)]
 //! Store-aware helper implementations for expression evaluation.
 
-use super::environment::{expect_bool, expect_i64, expect_list, expect_object, expect_symbol};
+use super::environment::{expect_i64, expect_list, expect_object, expect_symbol};
+pub(super) use super::helper_store_lists::{
+    eval_helper_append_if_with_store, eval_helper_append_with_store, eval_helper_unique_with_store,
+};
 use crate::{ExprError, ExprResult};
 use vb_core::SlotValue;
 use vb_core::value_store::{ObjectField, ValueStore};
@@ -99,38 +102,18 @@ pub(super) fn eval_helper_count_with_store(
     Ok(SlotValue::I64(count))
 }
 
-pub(super) fn eval_helper_unique_with_store(
-    value: &SlotValue,
-    store: &mut ValueStore,
-) -> ExprResult<SlotValue> {
-    let list_id = expect_list(*value)?;
-    let items = store
-        .list(list_id)
-        .map_err(|_| ExprError::InvalidReference {
-            reference: format!("list:{list_id:?}"),
-        })?;
-    let mut seen: Vec<SlotValue> = Vec::new();
-    for &item in items {
-        if !seen.contains(&item) {
-            seen.push(item);
-        }
-    }
-    let new_list = store
-        .insert_list(seen.into_boxed_slice())
-        .map_err(|_| ExprError::IntegerOverflow)?;
-    Ok(SlotValue::List(new_list))
-}
-
 pub(super) fn eval_helper_contains_with_store(
     haystack: &SlotValue,
     needle: &SlotValue,
     store: &mut ValueStore,
 ) -> ExprResult<SlotValue> {
-    if matches!(*haystack, SlotValue::F64(_)) || matches!(*needle, SlotValue::F64(_)) {
-        return Err(ExprError::TypeMismatch {
-            expected: "list, text, or object".into(),
-            found: "number".into(),
-        });
+    if let SlotValue::List(id) = *haystack {
+        let items = store
+            .list(id)
+            .map_err(|_| ExprError::InvalidReference {
+                reference: format!("list:{id:?}"),
+            })?;
+        return Ok(SlotValue::Bool(items.contains(needle)));
     }
     let haystack_id = expect_symbol(*haystack)?;
     let needle_id = expect_symbol(*needle)?;
@@ -199,50 +182,13 @@ pub(super) fn eval_helper_has_with_store(
         .map_err(|_| ExprError::InvalidReference {
             reference: format!("object:{obj_id:?}"),
         })?;
+    store
+        .symbol(key_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("symbol:{key_id:?}"),
+        })?;
     let found = fields.iter().any(|f| f.key == key_id);
     Ok(SlotValue::Bool(found))
-}
-
-pub(super) fn eval_helper_append_with_store(
-    list: &SlotValue,
-    item: &SlotValue,
-    store: &mut ValueStore,
-) -> ExprResult<SlotValue> {
-    let list_id = expect_list(*list)?;
-    let items = store
-        .list(list_id)
-        .map_err(|_| ExprError::InvalidReference {
-            reference: format!("list:{list_id:?}"),
-        })?;
-    let mut new_items: Vec<SlotValue> = items.to_vec();
-    new_items.push(*item);
-    let new_list = store
-        .insert_list(new_items.into_boxed_slice())
-        .map_err(|_| ExprError::IntegerOverflow)?;
-    Ok(SlotValue::List(new_list))
-}
-
-pub(super) fn eval_helper_append_if_with_store(
-    list: &SlotValue,
-    item: &SlotValue,
-    condition: &SlotValue,
-    store: &mut ValueStore,
-) -> ExprResult<SlotValue> {
-    let list_id = expect_list(*list)?;
-    let cond = expect_bool(*condition)?;
-    let items = store
-        .list(list_id)
-        .map_err(|_| ExprError::InvalidReference {
-            reference: format!("list:{list_id:?}"),
-        })?;
-    let mut new_items: Vec<SlotValue> = items.to_vec();
-    if cond {
-        new_items.push(*item);
-    }
-    let new_list = store
-        .insert_list(new_items.into_boxed_slice())
-        .map_err(|_| ExprError::IntegerOverflow)?;
-    Ok(SlotValue::List(new_list))
 }
 
 pub(super) fn eval_helper_merge_with_store(

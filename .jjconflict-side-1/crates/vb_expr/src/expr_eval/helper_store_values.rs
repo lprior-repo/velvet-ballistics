@@ -108,9 +108,11 @@ pub(super) fn eval_helper_contains_with_store(
     store: &mut ValueStore,
 ) -> ExprResult<SlotValue> {
     if let SlotValue::List(id) = *haystack {
-        let items = store.list(id).map_err(|_| ExprError::InvalidReference {
-            reference: format!("list:{id:?}"),
-        })?;
+        let items = store
+            .list(id)
+            .map_err(|_| ExprError::InvalidReference {
+                reference: format!("list:{id:?}"),
+            })?;
         return Ok(SlotValue::Bool(items.contains(needle)));
     }
     let haystack_id = expect_symbol(*haystack)?;
@@ -179,6 +181,11 @@ pub(super) fn eval_helper_has_with_store(
         .object(obj_id)
         .map_err(|_| ExprError::InvalidReference {
             reference: format!("object:{obj_id:?}"),
+        })?;
+    store
+        .symbol(key_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("symbol:{key_id:?}"),
         })?;
     let found = fields.iter().any(|f| f.key == key_id);
     Ok(SlotValue::Bool(found))

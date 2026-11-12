@@ -11,6 +11,35 @@ use thiserror::Error;
 #[derive(Debug, Clone, Error, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum WorkflowError {
+    /// Bound symbol payloads failed metadata validation.
+    #[error("invalid symbol metadata: {source}")]
+    InvalidSymbolMetadata {
+        /// Exact metadata validation failure.
+        source: super::source_metadata::SourceMetadataError,
+    },
+    /// A foreign step writes an active ForEach or Reduce cursor.
+    #[error("step {writer:?} writes loop cursor slot {slot:?} owned by step {owner:?}")]
+    LoopCursorForeignWrite {
+        /// Owning ForEachStart or ReduceStart.
+        owner: StepIdx,
+        /// Node with a foreign write inside the active loop body.
+        writer: StepIdx,
+        /// Reserved iterator slot.
+        slot: SlotIdx,
+    },
+    /// A retry policy is unbounded or attached to a non-action node.
+    #[error("invalid compiled retry policy at {step:?}")]
+    RetryPolicy {
+        /// Node carrying the invalid policy.
+        step: StepIdx,
+    },
+    /// Invalid immutable source payloads.
+    #[error("source metadata: {detail}")]
+    SourceMetadata { detail: Box<str> },
+    /// Compiled execution can read an absent slot or an incompatible operand.
+    #[error(transparent)]
+    SlotFlow(#[from] super::SlotFlowError),
+
     /// A step wrote to a repeat counter owned by a different step.
     #[error("step {writer:?} wrote to repeat counter slot {slot:?} owned by step {owner:?}")]
     RepeatCounterForeignWrite {

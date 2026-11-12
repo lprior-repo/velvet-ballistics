@@ -7,8 +7,8 @@
 // In-tree production-source mirror for the `Taint` enum and taint lattice
 // helper fns consumed by `verification/verus/taint_lattice.rs`.
 //
-// The `Taint` enum below is a VERBATIM copy of lines 14-25 of
-// `crates/vb_core/src/value.rs`:
+// The `Taint` enum below is a VERBATIM copy of lines 10-21 of
+// `crates/vb_core/src/value/taint.rs`:
 //
 //   - Variant set:        Clean, DerivedFromSecret, Secret, Random,
 //                         TimeDependent
@@ -16,8 +16,8 @@
 //   - Derives:            Debug, Clone, Copy, PartialEq, Eq
 //   - Attributes:         #[non_exhaustive]
 //
-// `join_taint(a, b)` is a VERBATIM copy of `crates/vb_core/src/value.rs`
-// lines 29-45 (the production free fn that picks the higher-ranked
+// `join_taint(a, b)` is a VERBATIM copy of `crates/vb_core/src/value/taint.rs`
+// lines 84-100 (the production free fn that picks the higher-ranked
 // variant). The verbatim copy preserves the inline discriminant-match
 // style production uses — production does NOT extract `rank` as a
 // method on `Taint`.
@@ -25,7 +25,7 @@
 // The other public helpers (`taint_rank`, `join_many`, `is_commutative`,
 // `is_associative`, `is_idempotent`, `has_identity`,
 // `secret_never_downgrades`, `derived_never_downgrades`,
-// `all_lattice_laws`) are NOT present in production `value.rs`. They
+// `all_lattice_laws`) are NOT present in production `value/taint.rs`. They
 // are spec-side observational helpers required by the spec file's
 // `assume_specification` bridges. They are modeled directly on
 // production's `join_taint` semantics — i.e., the higher-rank-wins
@@ -35,9 +35,9 @@
 // `taint_rank` is provided as a FREE FN (not a method on `Taint`)
 // because Verus 0.2026.05.05 panics in trait resolution on
 // `impl Enum { fn }` blocks inside spec-mode `verus!` modules.
-// Production `value.rs` does not export a method form either; the
+// Production `value/taint.rs` does not export a method form either; the
 // discriminant pattern is inlined inside `join_taint` (see lines
-// 30-35 and 37-43 of value.rs).
+// 85-91 and 92-98 of value/taint.rs).
 //
 // ============================================================================
 // DRIFT POLICY
@@ -95,7 +95,7 @@ pub enum Taint {
 }
 
 /// Free-fn form of the inline discriminant pattern that production's
-/// `value.rs:30-35` and `value.rs:37-43` use inside `join_taint`.
+/// `value/taint.rs:85-91` and `value/taint.rs:92-98` use inside `join_taint`.
 /// Kept as a free fn (not `impl Taint::rank(&self)`) because Verus
 /// 0.2026.05.05 panics on `impl Enum { fn }` inside spec-mode `verus!`.
 /// Models the production discriminant mapping byte-for-byte.
@@ -141,7 +141,7 @@ pub fn join_taint(a: Taint, b: Taint) -> Taint {
 // ----------------------------------------------------------------------------
 //
 // These are NOT verbatim copies of production code (production
-// `value.rs` does not export them). They are the spec-side surface
+// `value/taint.rs` does not export them). They are the spec-side surface
 // through which the spec file's `assume_specification` bridges observe
 // the lattice laws. Bodies match the higher-rank-wins semantics of
 // production `join_taint` so the bridge contracts discharge

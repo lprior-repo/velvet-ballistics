@@ -11,6 +11,8 @@ impl Runtime {
             prefix.admission.artifact_digest(),
         )?;
         Self::validate_recovery_admission(run, self.policy, &prefix, &recovered)?;
+        self.shard_for(run)?
+            .validate_secret_presence(&recovered.workflow)?;
         let retained_inputs = crate::recovery::load_retained_inputs_for_recovery(
             &prefix.events,
             fjall_journal.as_ref(),
@@ -130,12 +132,19 @@ impl Runtime {
         recovered: RecoveryArtifactWorkflow,
         retained_inputs: crate::recovery::RecoveredRetainedInputs,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+        if let Some(product) = self.retry_timer_recovery_product(run, &prefix, &recovered)? {
+            return Ok(product);
+        }
         let expected = crate::recovery::action_abi_digests_from_contracts(
             &recovered.artifact.action_contracts,
         )?;
-        let seed = Self::recover_seed_for_loaded_workflow(&prefix.events, &recovered.workflow)?;
+        let seed = Self::recover_seed_for_loaded_workflow(
+            &prefix.events,
+            &recovered.workflow,
+            &retained_inputs,
+        )?;
         let boundary = Self::recovered_boundary_from_events(
-            &seed,
+            &seed.seed,
             &prefix.events,
             &recovered.workflow,
             &expected,
@@ -144,6 +153,21 @@ impl Runtime {
         // a pending registered action must be reconciliable from the durable
         // receipt before the run is allowed to resume (no live re-execution).
         self.validate_registered_recovery(&recovered.artifact, boundary)?;
-        Self::product_from_recovered_seed(run, prefix, seed, boundary, retained_inputs)
+        let complete_frame = vb_storage::recovery::complete_scalar::replay_complete_scalar(
+            &prefix.events,
+            &recovered.workflow,
+        )
+        .map_err(|error| RuntimeError::Recovery {
+            error: error.to_string(),
+        })?
+        .map(|replayed| replayed.into_frame());
+        Self::product_from_recovered_seed(
+            run,
+            prefix,
+            seed,
+            boundary,
+            retained_inputs,
+            complete_frame,
+        )
     }
 }

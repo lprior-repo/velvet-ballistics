@@ -56,6 +56,7 @@ fn workflow(default_flag: bool) -> TestResult<CompiledWorkflow> {
     }
     Ok(CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("ipc-positional-inputs"),
         digest: WorkflowDigest::from_bytes([4; 32]),
         nodes: Box::from([
@@ -281,6 +282,12 @@ fn authority_workflow(kind: InputSlotKind) -> TestResult<CompiledWorkflow> {
         },
     }]);
     parts.symbols_count = 1;
+    parts.source_metadata = Some(Box::new(
+        vb_core::workflow::source_metadata::WorkflowSourceMetadata::try_new(
+            Box::new([Box::from("authority")]),
+            Box::new([]),
+        )?,
+    ));
     parts.constants = Box::from([vb_core::ConstValue::I64(91)]);
     parts.nodes = Box::from([
         vb_core::node(
@@ -399,9 +406,20 @@ fn malformed_inputs_fail_before_any_submission_is_enqueued_or_journaled() -> Tes
 }
 
 fn socket_dir() -> TestResult<tempfile::TempDir> {
-    Ok(tempfile::Builder::new()
-        .prefix("vb-ipc-owned-")
-        .tempdir_in(std::env::temp_dir())?)
+    let mut dir = tempfile::Builder::new().prefix("vb-ipc-owned-").tempdir()?;
+    if dir
+        .path()
+        .join("exchange.sock")
+        .as_os_str()
+        .as_encoded_bytes()
+        .len()
+        >= 108
+    {
+        dir = tempfile::Builder::new()
+            .prefix("vb-ipc-owned-")
+            .tempdir_in("/tmp")?;
+    }
+    Ok(dir)
 }
 
 fn assert_bind_refused(path: &std::path::Path) {

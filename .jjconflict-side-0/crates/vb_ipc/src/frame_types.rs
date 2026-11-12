@@ -164,6 +164,7 @@ impl IpcFrame {
 }
 
 /// Decodes a fixed header and already-read payload bytes into a bounded frame.
+#[inline]
 pub fn decode_frame(
     header: &[u8; IPC_HEADER_LEN],
     payload: Bytes,

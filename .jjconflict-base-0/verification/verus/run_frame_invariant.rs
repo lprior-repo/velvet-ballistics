@@ -41,7 +41,7 @@
 //   - `RunFrame::pc`                    <- extern::run_frame_pc
 //                                          (mirror of crates/vb_core/src/frame/parts/impl_002_accessors.rs:10-12; returns StepIdx)
 //   - `RunFrame::set_pc`                <- extern::run_frame_set_pc
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_002_accessors.rs:80-86)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_002_accessors.rs:80-85)
 //   - `RunFrame::states_snapshot`       <- extern::run_frame_states_snapshot
 //                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:75-77)
 //   - `RunFrame::slots_snapshot`        <- extern::run_frame_slots_snapshot
@@ -63,8 +63,8 @@
 //                                           TimeDependent=4)
 //   - `CoreError` relevant variants     <- extern::CoreError
 //     (InvalidCompiledWorkflow, InvalidProgramCounter)
-//                                          (mirror of crates/vb_core/src/errors.rs:264-268
-//                                          and crates/vb_core/src/errors.rs:169-173)
+//                                          (mirror of crates/vb_core/src/errors.rs:497-500
+//                                          and crates/vb_core/src/errors.rs:402-405)
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -398,7 +398,7 @@ pub assume_specification[ production::run_frame_reinitialize ](
 ;
 
 // ---------------------------------------------------------------------------
-// Bridge: `RunFrame::set_pc`  (crates/vb_core/src/frame/parts/impl_002_accessors.rs:80-86)
+// Bridge: `RunFrame::set_pc`  (crates/vb_core/src/frame/parts/impl_002_accessors.rs:80-85)
 // ---------------------------------------------------------------------------
 // Production contract:
 //   - Err(CoreError::InvalidProgramCounter { step: pc }) when
@@ -456,7 +456,7 @@ pub assume_specification[ production::run_frame_write_slot_with_taint ](
 ;
 
 // ---------------------------------------------------------------------------
-// Bridges: accessor fns (crates/vb_core/src/frame/parts/impl_002_accessors.rs:1-86, crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:1-74)
+// Bridges: accessor fns (crates/vb_core/src/frame/parts/impl_002_accessors.rs:1-85, crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:1-77)
 // ---------------------------------------------------------------------------
 // These are pure accessors — single spec invariant per bridge.
 pub assume_specification[ production::run_frame_pc ](frame: &RunFrame) -> (pc: StepIdx)

@@ -1,0 +1,35 @@
+{
+  "status": "PRESTART_QUIET_RAW_OBSERVATION_VERIFIED_NO_CONFIRMED_INFERENCE_OVERLAP",
+  "updated_at_utc": "2026-11-12T17:34:30.882282+00:00",
+  "initial_claim_excluded": true,
+  "correction_history": "Initial quiet claim corrected to immediate100/100 observation, parent reports that earlier query at17:27:23.615Z. No timing inference is made from acknowledgment arrival.",
+  "verified_raw_source": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-core-main-landing/target/core-build-20261110/evidence/main-landing/gpu-idle-observation-owned-raw-r320.jsonl",
+    "bytes": 4133,
+    "sha256": "a9d5646b3d1a70c0d34c146228d065a3b0d43594c5b67f16c858d36a1d818ad3"
+  },
+  "verbatim_flat_copy": "gpu-idle-observation-owned-raw-r320.jsonl",
+  "raw_call_id": "call_9b5bde815e2f4a0e9afc3f1561b0cc34",
+  "query_call_record_utc": "2026-11-12T17:27:43.196Z",
+  "query_result_record_utc": "2026-11-12T17:27:43.262Z",
+  "actual_exit": 0,
+  "actual_gpu_utilization_percent": [
+    0,
+    0
+  ],
+  "actual_a1_host_before_utc": "2026-11-12T17:27:48+00:00",
+  "observed_quiet_result_precedes_a1_seconds": 4.738,
+  "later_parent_reported_observation": {
+    "utc": "2026-11-12T17:28:39Z",
+    "gpu_utilization_percent": [
+      0,
+      0
+    ],
+    "scope": "parent report, not independently supplied raw GPU query transcript"
+  },
+  "acknowledgment_arrival_parent_reported": "2026-11-12T17:27:56.645Z",
+  "acknowledgment_not_used_as_query_time": true,
+  "no_continuous_GPU_trace": true,
+  "no_backend_request_or_drain_identifiers": true,
+  "disposition": "Pre-start timing gap resolved by actual raw zero-utilization observation before A1. No confirmed competing inference overlap; quiet is not inferred from the invalid initial assertion. Acceptance is limited to recorded-session mean evidence, without continuous GPU silence or causal optimization claims. Any later concrete overlap evidence would require an external correction and whole-session rejection, preserving this freeze."
+}

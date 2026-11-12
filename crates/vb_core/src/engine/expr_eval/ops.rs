@@ -1,10 +1,8 @@
 #![forbid(unsafe_code)]
 //! Expression operator evaluation.
 
-use core::cmp::Ordering;
-
 use crate::errors::EngineError;
-use crate::numeric;
+use crate::numeric::{self, NumericError};
 use crate::value::SlotValue;
 use crate::value_store::ValueStore;
 use crate::workflow::ExprOp;
@@ -33,74 +31,53 @@ fn eval_bool_pair(stack: &mut ExprStack, op: fn(bool, bool) -> bool) -> Result<(
     )
 }
 
-fn eval_numeric_op(
+fn eval_numeric_pair(
     stack: &mut ExprStack,
-    op: fn(SlotValue, SlotValue) -> Result<SlotValue, numeric::NumericError>,
-) -> Result<(), EngineError> {
-    eval_numeric_op_with_mapping(stack, op, map_numeric_error)
-}
-
-fn eval_numeric_op_with_mapping(
-    stack: &mut ExprStack,
-    op: fn(SlotValue, SlotValue) -> Result<SlotValue, numeric::NumericError>,
-    map_error: fn(numeric::NumericError) -> EngineError,
+    op: fn(SlotValue, SlotValue) -> Result<SlotValue, NumericError>,
 ) -> Result<(), EngineError> {
     let (left, right) = pop_pair(stack)?;
-    let result = op(left, right).map_err(map_error)?;
+    push_value(stack, op(left, right).map_err(map_numeric)?)
+}
+
+fn map_numeric(error: NumericError) -> EngineError {
+    match error {
+        NumericError::NotNumeric { found } => EngineError::TypeMismatch {
+            expected: "number",
+            found,
+        },
+        NumericError::Overflow => EngineError::InvalidCompiledWorkflow {
+            reason: "integer arithmetic overflow",
+        },
+        NumericError::DivisionByZero => EngineError::DivisionByZero,
+        NumericError::NonFinite => EngineError::NonFiniteNumber,
+    }
+}
+
+fn eval_div(stack: &mut ExprStack) -> Result<(), EngineError> {
+    let (left, right) = pop_pair(stack)?;
+    let result = numeric::div(left, right).map_err(|error| match error {
+        NumericError::Overflow => EngineError::InvalidCompiledWorkflow {
+            reason: "integer division overflow",
+        },
+        other => map_numeric(other),
+    })?;
     push_value(stack, result)
 }
 
-fn eval_numeric_cmp(stack: &mut ExprStack, op: fn(Ordering) -> bool) -> Result<(), EngineError> {
+fn eval_numeric_cmp(
+    stack: &mut ExprStack,
+    accept: fn(core::cmp::Ordering) -> bool,
+) -> Result<(), EngineError> {
     let (left, right) = pop_pair(stack)?;
-    let ordering = numeric::compare(left, right).map_err(map_numeric_error)?;
-    push_value(stack, SlotValue::Bool(op(ordering)))
-}
-
-fn map_numeric_error(err: numeric::NumericError) -> EngineError {
-    match err {
-        numeric::NumericError::NotNumeric { found } => EngineError::TypeMismatch {
-            expected: "number",
-            found,
-        },
-        numeric::NumericError::Overflow => EngineError::InvalidCompiledWorkflow {
-            reason: "integer arithmetic overflow",
-        },
-        numeric::NumericError::DivisionByZero => EngineError::DivisionByZero,
-        numeric::NumericError::NonFinite => EngineError::NonFiniteNumber,
-    }
-}
-
-fn map_div_error(err: numeric::NumericError) -> EngineError {
-    match err {
-        numeric::NumericError::NotNumeric { found } => EngineError::TypeMismatch {
-            expected: "number",
-            found,
-        },
-        numeric::NumericError::Overflow => EngineError::InvalidCompiledWorkflow {
-            reason: "integer division overflow",
-        },
-        numeric::NumericError::DivisionByZero => EngineError::DivisionByZero,
-        numeric::NumericError::NonFinite => EngineError::NonFiniteNumber,
-    }
+    let ordering = numeric::compare(left, right).map_err(map_numeric)?;
+    push_value(stack, SlotValue::Bool(accept(ordering)))
 }
 
 // ===== Object operations =====
 
-fn eval_exists(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
+fn eval_exists(stack: &mut ExprStack, _store: &ValueStore) -> Result<(), EngineError> {
     let value = super::stack::pop_value(stack)?;
-    match value {
-        SlotValue::Null => push_value(stack, SlotValue::Bool(false)),
-        SlotValue::Object(object_id) => {
-            let fields = store
-                .object(object_id)
-                .map_err(|_| EngineError::ObjectOutOfBounds { object: object_id })?;
-            push_value(stack, SlotValue::Bool(!fields.is_empty()))
-        }
-        other => Err(EngineError::TypeMismatch {
-            expected: "object or null",
-            found: other.type_name(),
-        }),
-    }
+    push_value(stack, SlotValue::Bool(!matches!(value, SlotValue::Null)))
 }
 
 fn eval_merge_get_fields(
@@ -173,14 +150,14 @@ pub(super) fn eval_expr_operator(
         ExprOp::And => eval_bool_pair(stack, |left, right| left && right),
         ExprOp::Or => eval_bool_pair(stack, |left, right| left || right),
         ExprOp::Not => eval_not(stack),
-        ExprOp::Add => eval_numeric_op(stack, numeric::add),
-        ExprOp::Sub => eval_numeric_op(stack, numeric::sub),
-        ExprOp::Mul => eval_numeric_op(stack, numeric::mul),
-        ExprOp::Div => eval_numeric_op_with_mapping(stack, numeric::div, map_div_error),
-        ExprOp::Gt => eval_numeric_cmp(stack, |o| o == Ordering::Greater),
-        ExprOp::Gte => eval_numeric_cmp(stack, |o| o != Ordering::Less),
-        ExprOp::Lt => eval_numeric_cmp(stack, |o| o == Ordering::Less),
-        ExprOp::Lte => eval_numeric_cmp(stack, |o| o != Ordering::Greater),
+        ExprOp::Add => eval_numeric_pair(stack, numeric::add),
+        ExprOp::Sub => eval_numeric_pair(stack, numeric::sub),
+        ExprOp::Mul => eval_numeric_pair(stack, numeric::mul),
+        ExprOp::Div => eval_div(stack),
+        ExprOp::Gt => eval_numeric_cmp(stack, core::cmp::Ordering::is_gt),
+        ExprOp::Gte => eval_numeric_cmp(stack, core::cmp::Ordering::is_ge),
+        ExprOp::Lt => eval_numeric_cmp(stack, core::cmp::Ordering::is_lt),
+        ExprOp::Lte => eval_numeric_cmp(stack, core::cmp::Ordering::is_le),
         ExprOp::Contains => eval_contains(stack, store),
         ExprOp::StartsWith => eval_starts_with(stack, store),
         ExprOp::EndsWith => eval_ends_with(stack, store),

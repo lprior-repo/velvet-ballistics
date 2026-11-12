@@ -86,16 +86,11 @@ fn eval_ops_with_slots(
     };
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("text_list_test"),
         digest: WorkflowDigest::from_bytes([0xFB; 32]),
-        nodes: vec![node(
-            StepIdx::new(0),
-            CompiledNodeKind::Nop,
-            Some(SlotIdx::new(0)),
-            None,
-        )]
-        .into_boxed_slice(),
+        nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
         expressions: vec![expr].into_boxed_slice(),
         accessors: Box::new([]),
         constants: constants.into_boxed_slice(),
@@ -236,7 +231,7 @@ fn ends_with_rejects_non_suffix() -> Result<(), String> {
 // ===== List operations =====
 
 #[test]
-fn has_finds_existing_element() -> Result<(), String> {
+fn contains_finds_existing_list_element() -> Result<(), String> {
     let mut store = ValueStore::new();
     let list = store
         .insert_list(vec![SlotValue::I64(10), SlotValue::I64(20)].into_boxed_slice())
@@ -245,7 +240,7 @@ fn has_finds_existing_element() -> Result<(), String> {
         vec![
             ExprOp::LoadSlot(SlotIdx::new(0)),
             ExprOp::LoadConst(ConstIdx::new(0)),
-            ExprOp::Has,
+            ExprOp::Contains,
         ],
         vec![SlotValue::List(list)],
         vec![ConstValue::I64(20)],
@@ -255,7 +250,7 @@ fn has_finds_existing_element() -> Result<(), String> {
 }
 
 #[test]
-fn has_returns_false_for_missing_element() -> Result<(), String> {
+fn contains_returns_false_for_missing_list_element() -> Result<(), String> {
     let mut store = ValueStore::new();
     let list = store
         .insert_list(vec![SlotValue::I64(10)].into_boxed_slice())
@@ -264,7 +259,7 @@ fn has_returns_false_for_missing_element() -> Result<(), String> {
         vec![
             ExprOp::LoadSlot(SlotIdx::new(0)),
             ExprOp::LoadConst(ConstIdx::new(0)),
-            ExprOp::Has,
+            ExprOp::Contains,
         ],
         vec![SlotValue::List(list)],
         vec![ConstValue::I64(99)],
@@ -657,12 +652,12 @@ fn ends_with_symbol_out_of_bounds_suffix() {
 }
 
 #[test]
-fn has_list_out_of_bounds() {
+fn contains_list_out_of_bounds() {
     let mut stack = ExprStack::new(4).expect("valid");
     let store = ValueStore::new();
     push_value(&mut stack, SlotValue::List(ListId::new(99))).expect("push");
     push_value(&mut stack, SlotValue::I64(1)).expect("push");
-    let result = eval_has(&mut stack, &store);
+    let result = eval_contains(&mut stack, &store);
     assert_eq!(
         result,
         Err(EngineError::ListOutOfBounds {
@@ -971,3 +966,9 @@ fn oom_inject_disarmed_happy_path_succeeds() -> Result<(), String> {
     let result = eval_append(&mut stack, &mut store);
     ensure_equal(result, Ok(()))
 }
+
+// ===== Has parity tests for object field lookup semantics =====
+include!("has_parity_tests.rs");
+include!("has_operand_errors.rs");
+include!("contains_list_parity_tests.rs");
+include!("contains_hot_parity_tests.rs");

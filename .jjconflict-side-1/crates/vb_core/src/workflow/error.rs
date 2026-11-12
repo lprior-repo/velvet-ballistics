@@ -11,6 +11,12 @@ use thiserror::Error;
 #[derive(Debug, Clone, Error, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum WorkflowError {
+    /// Bound symbol payloads failed metadata validation.
+    #[error("invalid symbol metadata: {source}")]
+    InvalidSymbolMetadata {
+        /// Exact metadata validation failure.
+        source: super::source_metadata::SourceMetadataError,
+    },
     /// A foreign step writes an active ForEach or Reduce cursor.
     #[error("step {writer:?} writes loop cursor slot {slot:?} owned by step {owner:?}")]
     LoopCursorForeignWrite {

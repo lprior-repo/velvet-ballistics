@@ -13,7 +13,54 @@ pub(super) fn check_helper_positions(helper: ExprHelper, arg_types: &[ExprType])
         ExprHelper::Merge => check_two_objects(helper, arg_types),
         ExprHelper::StartsWith | ExprHelper::EndsWith => check_two_text(helper, arg_types),
         ExprHelper::Has => check_object_text(helper, arg_types),
-        ExprHelper::Length | ExprHelper::Count | ExprHelper::Empty | ExprHelper::Contains => Ok(()),
+        ExprHelper::Length | ExprHelper::Empty => {
+            check_first_domain(helper, arg_types, "text, list, object, or null", |ty| {
+                matches!(
+                    ty,
+                    ExprType::Text | ExprType::List | ExprType::Object | ExprType::Null
+                )
+            })
+        }
+        ExprHelper::Count => check_first_domain(helper, arg_types, "list or null", |ty| {
+            matches!(ty, ExprType::List | ExprType::Null)
+        }),
+        ExprHelper::Contains => check_contains(arg_types),
+    }
+}
+
+fn check_first_domain(
+    helper: ExprHelper,
+    arg_types: &[ExprType],
+    expected: &str,
+    accepts: fn(ExprType) -> bool,
+) -> ExprResult<()> {
+    match arg_types.first().copied() {
+        Some(ExprType::Unknown) => Ok(()),
+        Some(ty) if accepts(ty) => Ok(()),
+        Some(ty) => Err(ExprError::TypeMismatch {
+            expected: expected.into(),
+            found: type_name(ty),
+        }),
+        None => Err(helper_arity_error(helper, 0)),
+    }
+}
+
+fn check_contains(arg_types: &[ExprType]) -> ExprResult<()> {
+    match arg_types.first() {
+        Some(ExprType::List | ExprType::Unknown) => Ok(()),
+        Some(ExprType::Text) => match arg_types.get(1) {
+            Some(ExprType::Text | ExprType::Unknown) => Ok(()),
+            Some(ty) => Err(ExprError::TypeMismatch {
+                expected: "text".into(),
+                found: type_name(*ty),
+            }),
+            None => Err(helper_arity_error(ExprHelper::Contains, arg_types.len())),
+        },
+        Some(ty) => Err(ExprError::TypeMismatch {
+            expected: "text or list".into(),
+            found: type_name(*ty),
+        }),
+        None => Err(helper_arity_error(ExprHelper::Contains, 0)),
     }
 }
 

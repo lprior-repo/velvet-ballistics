@@ -118,13 +118,13 @@ fn eval_ends_with(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result
 }
 
 fn eval_has(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {
-    let (list, item) = pop_pair(stack)?;
-    let list_id = expect_list(list)?;
-    let (found, taint) = store
-        .list_contains_with_taint(list_id, item)
-        .map_err(|_| failed())?;
-    stack.join_operand_taint(taint);
-    stack.push(SlotValue::Bool(found))
+    let (receiver, key) = pop_pair(stack)?;
+    let obj_id = expect_object(receiver)?;
+    let key_id = expect_symbol(key)?;
+    let fields = store.object(obj_id).map_err(|_| failed())?;
+    store.symbol(key_id).map_err(|_| failed())?;
+    let has = fields.iter().any(|field| field.key == key_id);
+    stack.push(SlotValue::Bool(has))
 }
 
 fn eval_exists(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {

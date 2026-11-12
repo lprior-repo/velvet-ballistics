@@ -65,6 +65,18 @@ impl Shard {
         guard.tick()
     }
 
+    fn drive_one_due_timer(&mut self) -> RuntimeResult<()> {
+        self.drive_one_due_timer_at(std::time::Instant::now())
+    }
+
+    pub(super) fn drive_one_due_timer_at(&mut self, now: std::time::Instant) -> RuntimeResult<()> {
+        let due = self.run_aggregate.pending_timer_due_peek(now);
+        let Some(entry) = due else {
+            return Ok(());
+        };
+        self.handle_timer_at(entry.run, entry.generation, entry.deadline, entry.kind, now)
+    }
+
     fn drive_one_ready_run(&mut self) -> RuntimeResult<()> {
         let now = std::time::Instant::now();
         let due = self
@@ -84,7 +96,7 @@ impl Shard {
         }
 
         let Some(cmd) = self.command_queue.pop() else {
-            self.drive_one_ready_run()?;
+            self.drive_one_due_timer()?;
             return Ok(true);
         };
 

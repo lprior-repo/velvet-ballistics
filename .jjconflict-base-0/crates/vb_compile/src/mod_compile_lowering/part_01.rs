@@ -28,6 +28,9 @@ use source_declarations::prepare_source_declarations;
 #[path = "compile_source_finish.rs"]
 mod compile_source_finish;
 use compile_source_finish::finalize_compiled_workflow;
+#[path = "body_width_walk.rs"]
+mod body_width_walk;
+
 #[path = "part_01/width.rs"]
 mod width;
 pub(super) use width::{body_width, canonical_body_step_width, choose_width, together_width};
@@ -36,6 +39,7 @@ mod layout;
 pub(super) use layout::{
     canonical_step_names, layout_start, layout_width, named_workflow_error, next_layout_start,
 };
+
 
 /// Compile the canonical cold YAML authoring AST into numeric runtime IR.
 pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, CompileErrors> {
@@ -49,6 +53,8 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
         .ok_or(CompileErrors(vec![CompileError::EmptySteps]))?;
     let mut builder = SlotCompiler::new();
     reserve_source_slots(source, &mut builder).map_err(|e| CompileErrors(vec![e]))?;
+    super::numeric_source_inputs::record_numeric_inputs(source, &mut builder)
+        .map_err(|e| CompileErrors(vec![e]))?;
     let mut outputs: HashMap<String, SlotIdx> = HashMap::new();
     let mut step_outputs: HashMap<String, SlotIdx> = HashMap::new();
     let mut slot_types: HashMap<SlotIdx, ExprType> = HashMap::new();
@@ -59,15 +65,29 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
         &mut slot_types,
         &mut builder,
         &mut for_each_inputs,
-    )
-    .map_err(|e| CompileErrors(vec![e]))?;
+    )?;
     let layout =
         canonical_layout(steps, builder.nodes.len()).map_err(|e| CompileErrors(vec![e]))?;
     step_names.extend(canonical_step_names(steps, &layout).map_err(|e| CompileErrors(vec![e]))?);
     for (index, step) in steps.iter().enumerate() {
         let id = layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
-        let next = next_layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
-        lower_canonical_step(
+        let mut next = next_layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
+        if index == last && source.result().is_some() {
+            if matches!(step.primitive, crate::StepPrimitive::Finish { .. }) {
+                return Err(CompileErrors(vec![CompileError::StepFieldShape {
+                    step: index,
+                    field: "finish",
+                    expected: "either finish or a top-level result mapping",
+                }]));
+            }
+            let width = canonical_step_width_with_condition(step)?;
+            let end = id
+                .as_usize()
+                .checked_add(width)
+                .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
+            next = Some(step_idx(end)?);
+        }
+        let _output = lower_canonical_step(
             step,
             index,
             last,
@@ -78,18 +98,47 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
             &mut step_names,
             &mut slot_types,
             &for_each_inputs,
+            None,
             &mut builder,
         )?;
+    }
+    if let Some(result) = source.result() {
+        let first = builder.nodes.len();
+        let scope = CanonicalScope {
+            outputs: &outputs,
+            step_outputs: &step_outputs,
+            slot_types: &slot_types,
+            parent: None,
+        };
+        let (slot, _) = super::canonical_values::emit(
+            &AuthorValue::Mapping(result.fields.clone()),
+            true,
+            scope,
+            &mut builder,
+        )?;
+        let id = step_idx(builder.nodes.len())?;
+        builder.push_node(vb_core::workflow::node(
+            id,
+            CompiledNodeKind::Finish { result: slot },
+            None,
+            None,
+        ));
+        step_names.extend(
+            builder
+                .nodes
+                .iter()
+                .skip(first)
+                .map(|_| Box::from("$result")),
+        );
     }
     super::skipped_outputs::PossiblySkippedOutputs::from_source(source)
         .and_then(|outputs| outputs.validate(&builder))
         .map_err(|error| CompileErrors(vec![error]))?;
-    finalize_compiled_workflow(
+    compile_source_finish::finalize_compiled_workflow(
         source,
         semantic_source_identity,
         builder,
         step_names,
-        steps,
         &layout,
     )
 }
@@ -98,32 +147,30 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
 mod input_schema;
 use input_schema::{constraint_from_input_schema, kind_from_input_schema};
 
+#[path = "part_01/width.rs"]
+mod width;
+pub(super) use width::{body_width, choose_width, together_width};
+#[path = "part_01/layout.rs"]
+mod layout;
+pub(super) use layout::{
+    canonical_layout, canonical_step_names, layout_start, layout_width, named_workflow_error,
+    next_layout_start,
+};
+
+/// Converts a bounded cold author literal into an arena-independent payload.
+pub fn author_value_to_owned(
+    value: &AuthorValue,
+) -> Result<vb_core::InputDefaultValue, CompileError> {
+    input_schema::defaults::owned(value)
+}
+
 #[derive(Clone, Copy)]
-pub(super) struct CanonicalStepLayout {
-    start: StepIdx,
-    width: usize,
+pub(in crate::mod_compile_lowering) struct CanonicalStepLayout {
+    pub(in crate::mod_compile_lowering) start: StepIdx,
+    pub(in crate::mod_compile_lowering) width: usize,
 }
 
-pub(super) fn canonical_layout(
-    steps: &[crate::StepAst],
-    prefix: usize,
-) -> Result<Vec<CanonicalStepLayout>, CompileError> {
-    let mut layout = Vec::with_capacity(steps.len());
-    let mut cursor = prefix;
-    for step in steps {
-        let width = canonical_step_width_with_condition(step)?;
-        layout.push(CanonicalStepLayout {
-            start: step_idx(cursor)?,
-            width,
-        });
-        cursor = cursor
-            .checked_add(width)
-            .ok_or(CompileError::StepIndexOutOfRange { value: cursor })?;
-    }
-    Ok(layout)
-}
-
-pub(super) fn canonical_step_width(
+pub(in crate::mod_compile_lowering) fn canonical_step_width(
     primitive: &crate::StepPrimitive,
 ) -> Result<usize, CompileError> {
     match primitive {
@@ -131,22 +178,49 @@ pub(super) fn canonical_step_width(
         | crate::StepPrimitive::Finish { .. }
         | crate::StepPrimitive::Wait { .. } => Ok(1),
         crate::StepPrimitive::Ask { .. } => Ok(2),
-        crate::StepPrimitive::ForEach { body, .. } => body_width(body, 2),
-        crate::StepPrimitive::Collect { body, .. } | crate::StepPrimitive::Repeat { body, .. } => {
-            body_width(body, 3)
+        crate::StepPrimitive::ForEach { input, body, .. } => {
+            super::part_14::iteration_body_width(body)?
+                .checked_add(
+                    6usize
+                        .checked_add(super::list_input::source_width(input))
+                        .ok_or(CompileError::StepIndexOutOfRange { value: 6 })?,
+                )
+                .ok_or(CompileError::StepIndexOutOfRange { value: 6 })
         }
-        crate::StepPrimitive::Aggregate { body, .. } => body_width(body, 4),
+        crate::StepPrimitive::Collect { body, .. } => body_width(body, 3),
+        crate::StepPrimitive::Repeat { body, .. } => body_width(body, 4),
+        crate::StepPrimitive::Aggregate { body, .. } => {
+            if !reduce_direct_body(body) {
+                body_width(body, 5)
+            } else {
+                body_width(body, 4)
+            }
+        }
         crate::StepPrimitive::Together { branches } => together_width(branches),
         crate::StepPrimitive::Choose { branches, .. } => choose_width(branches),
         _ => Ok(1),
     }
 }
 
-pub(super) fn canonical_step_width_with_condition(
+pub(in crate::mod_compile_lowering) fn reduce_direct_body(body: &[crate::StepAst]) -> bool {
+    matches!(body, [step] if matches!(step.primitive, crate::StepPrimitive::Set { .. })
+        && step.condition.is_none() && step.then.is_none() && step.on_error.is_none()
+        && step.retry.is_none() && step.with.is_none())
+}
+
+pub(in crate::mod_compile_lowering) fn canonical_step_width_with_condition(
     step: &crate::StepAst,
 ) -> Result<usize, CompileError> {
-    if step.condition.is_some() && matches!(step.primitive, crate::StepPrimitive::Do { .. }) {
-        return Ok(2);
+    let mut width = canonical_step_width(&step.primitive)?;
+    if let Some(value) = &step.with {
+        width = width
+            .checked_add(super::canonical_values::width(value)?)
+            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
     }
-    canonical_step_width(&step.primitive)
+    if step.condition.is_some() {
+        return width
+            .checked_add(1)
+            .ok_or(CompileError::StepIndexOutOfRange { value: width });
+    }
+    Ok(width)
 }

@@ -9,7 +9,10 @@
 # - No unsafe, no unwrap, no panic
 # - Must be obviously correct
 #
-# Use: cargo nextest run -p reference to run differential tests
+# Standalone: cargo nextest run --manifest-path reference/Cargo.toml
+# Workspace: cargo nextest run -p velvet-ballistics-workspace-tests --test reference_model_regressions
+
+[workspace]
 
 [package]
 name = "reference"

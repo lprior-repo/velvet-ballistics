@@ -48,6 +48,7 @@ struct RecoveredSeedProductContext {
     seed: vb_storage::recovery::RecoveryFrameSeedProduct,
     replay_cursor: Option<(StepIdx, u64)>,
     boundary: crate::recovery::RecoveredRunBoundary,
+    complete_frame: Option<vb_core::RunFrame>,
 }
 
 /// Lossless conversion of a `u32` integer to its exact `f32` representation.
@@ -234,3 +235,6 @@ mod shutdown_tests;
 #[cfg(test)]
 #[path = "runtime/bound_symbol_duplicate_retry_tests.rs"]
 mod bound_symbol_duplicate_retry_tests;
+
+#[path = "runtime/retry_recovery.rs"]
+mod retry_recovery;

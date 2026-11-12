@@ -83,7 +83,7 @@ pub fn admission_is_new_bound(event: &JournalEvent) -> bool {
 
 /// Retained inputs restored for cold startup recovery.
 ///
-/// Scalar runs carry plain slot values (taint `Clean`). Owned runs carry the
+/// Scalar roots retain declaration taint. Owned runs carry the
 /// complete validated bundle: canonical roots with their taints plus the full
 /// value-store checkpoint, so recovered `List`/`Object`/`Blob` handles
 /// resolve against a restored arena instead of dangling.
@@ -154,12 +154,7 @@ pub(crate) fn load_retained_inputs_for_recovery(
     // source digest is covered by the tamper-evident input digest the
     // admission event below binds.
     let retained = journal
-        .retained_run_inputs_for_recovery(run, artifact.digest, workflow)
-        .map_err(|error| RuntimeError::Recovery {
-            error: format!(
-                "recovery: retained input record missing for new-bound run {run:?}: {error}"
-            ),
-        })?
+        .admitted_run_inputs(run, artifact.digest, workflow, admission_event)?
         .ok_or(RuntimeError::Recovery {
             error: format!("recovery: retained input record missing for new-bound run {run:?}"),
         })?;
@@ -172,6 +167,15 @@ pub(crate) fn load_retained_inputs_for_recovery(
             owned_retained_inputs(&record, workflow, run, admission_event)
         }
     }
+}
+
+fn slot_taint(workflow: &CompiledWorkflow, slot: SlotIdx) -> Taint {
+    for slot_decl in workflow.input_slots().iter() {
+        if slot_decl.slot == slot && slot_decl.constraint.secretness.is_secret() {
+            return Taint::Secret;
+        }
+    }
+    Taint::Clean
 }
 
 fn scalar_retained_inputs(
@@ -187,7 +191,7 @@ fn scalar_retained_inputs(
     let initial_inputs = record
         .inputs()
         .iter()
-        .map(|(slot, value)| (*slot, *value, Taint::Clean))
+        .map(|(slot, value)| (*slot, *value, slot_taint(workflow, *slot)))
         .collect();
     prepare_scalar_roots(workflow, initial_inputs)
 }

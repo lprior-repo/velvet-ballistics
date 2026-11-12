@@ -2,6 +2,7 @@
 //! Expression operator evaluation.
 
 use crate::errors::EngineError;
+use crate::numeric::{self, NumericError};
 use crate::value::SlotValue;
 use crate::value_store::ValueStore;
 use crate::workflow::ExprOp;
@@ -10,7 +11,7 @@ use super::ops_text_list::{
     eval_append, eval_append_if, eval_contains, eval_count, eval_empty, eval_ends_with, eval_has,
     eval_length, eval_starts_with, eval_sum, eval_unique,
 };
-use super::stack::{ExprStack, expect_bool, expect_object, pop_i64_pair, pop_pair, push_value};
+use super::stack::{ExprStack, expect_bool, expect_object, pop_pair, push_value};
 
 fn eval_eq(stack: &mut ExprStack, positive: bool) -> Result<(), EngineError> {
     let (left, right) = pop_pair(stack)?;
@@ -30,57 +31,53 @@ fn eval_bool_pair(stack: &mut ExprStack, op: fn(bool, bool) -> bool) -> Result<(
     )
 }
 
-fn eval_i64_pair(
+fn eval_numeric_pair(
     stack: &mut ExprStack,
-    op: fn(i64, i64) -> Option<i64>,
+    op: fn(SlotValue, SlotValue) -> Result<SlotValue, NumericError>,
 ) -> Result<(), EngineError> {
-    let (left, right) = pop_i64_pair(stack)?;
-    let value = op(left, right).ok_or(EngineError::InvalidCompiledWorkflow {
-        reason: "integer arithmetic overflow",
-    })?;
-    push_value(stack, SlotValue::I64(value))
+    let (left, right) = pop_pair(stack)?;
+    push_value(stack, op(left, right).map_err(map_numeric)?)
 }
 
-/// Evaluates integer division.
-///
-/// Division uses `checked_div` which truncates toward zero (not floor).
-/// For example: `-7 / 2 = -3` (not `-4`), and `7 / -2 = -3` (not `-4`).
-/// This matches the IEEE 754 semantics for integer division in Rust.
-fn eval_div(stack: &mut ExprStack) -> Result<(), EngineError> {
-    let (left, right) = pop_i64_pair(stack)?;
-    if right == 0 {
-        return Err(EngineError::DivisionByZero);
+fn map_numeric(error: NumericError) -> EngineError {
+    match error {
+        NumericError::NotNumeric { found } => EngineError::TypeMismatch {
+            expected: "number",
+            found,
+        },
+        NumericError::Overflow => EngineError::InvalidCompiledWorkflow {
+            reason: "integer arithmetic overflow",
+        },
+        NumericError::DivisionByZero => EngineError::DivisionByZero,
+        NumericError::NonFinite => EngineError::NonFiniteNumber,
     }
-    let value = left
-        .checked_div(right)
-        .ok_or(EngineError::InvalidCompiledWorkflow {
-            reason: "integer division overflow",
-        })?;
-    push_value(stack, SlotValue::I64(value))
 }
 
-fn eval_i64_cmp(stack: &mut ExprStack, op: fn(&i64, &i64) -> bool) -> Result<(), EngineError> {
-    let (left, right) = pop_i64_pair(stack)?;
-    push_value(stack, SlotValue::Bool(op(&left, &right)))
+fn eval_div(stack: &mut ExprStack) -> Result<(), EngineError> {
+    let (left, right) = pop_pair(stack)?;
+    let result = numeric::div(left, right).map_err(|error| match error {
+        NumericError::Overflow => EngineError::InvalidCompiledWorkflow {
+            reason: "integer division overflow",
+        },
+        other => map_numeric(other),
+    })?;
+    push_value(stack, result)
+}
+
+fn eval_numeric_cmp(
+    stack: &mut ExprStack,
+    accept: fn(core::cmp::Ordering) -> bool,
+) -> Result<(), EngineError> {
+    let (left, right) = pop_pair(stack)?;
+    let ordering = numeric::compare(left, right).map_err(map_numeric)?;
+    push_value(stack, SlotValue::Bool(accept(ordering)))
 }
 
 // ===== Object operations =====
 
-fn eval_exists(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
+fn eval_exists(stack: &mut ExprStack, _store: &ValueStore) -> Result<(), EngineError> {
     let value = super::stack::pop_value(stack)?;
-    match value {
-        SlotValue::Null => push_value(stack, SlotValue::Bool(false)),
-        SlotValue::Object(object_id) => {
-            let fields = store
-                .object(object_id)
-                .map_err(|_| EngineError::ObjectOutOfBounds { object: object_id })?;
-            push_value(stack, SlotValue::Bool(!fields.is_empty()))
-        }
-        other => Err(EngineError::TypeMismatch {
-            expected: "object or null",
-            found: other.type_name(),
-        }),
-    }
+    push_value(stack, SlotValue::Bool(!matches!(value, SlotValue::Null)))
 }
 
 fn eval_merge_get_fields(
@@ -153,14 +150,14 @@ pub(super) fn eval_expr_operator(
         ExprOp::And => eval_bool_pair(stack, |left, right| left && right),
         ExprOp::Or => eval_bool_pair(stack, |left, right| left || right),
         ExprOp::Not => eval_not(stack),
-        ExprOp::Add => eval_i64_pair(stack, i64::checked_add),
-        ExprOp::Sub => eval_i64_pair(stack, i64::checked_sub),
-        ExprOp::Mul => eval_i64_pair(stack, i64::checked_mul),
+        ExprOp::Add => eval_numeric_pair(stack, numeric::add),
+        ExprOp::Sub => eval_numeric_pair(stack, numeric::sub),
+        ExprOp::Mul => eval_numeric_pair(stack, numeric::mul),
         ExprOp::Div => eval_div(stack),
-        ExprOp::Gt => eval_i64_cmp(stack, i64::gt),
-        ExprOp::Gte => eval_i64_cmp(stack, i64::ge),
-        ExprOp::Lt => eval_i64_cmp(stack, i64::lt),
-        ExprOp::Lte => eval_i64_cmp(stack, i64::le),
+        ExprOp::Gt => eval_numeric_cmp(stack, core::cmp::Ordering::is_gt),
+        ExprOp::Gte => eval_numeric_cmp(stack, core::cmp::Ordering::is_ge),
+        ExprOp::Lt => eval_numeric_cmp(stack, core::cmp::Ordering::is_lt),
+        ExprOp::Lte => eval_numeric_cmp(stack, core::cmp::Ordering::is_le),
         ExprOp::Contains => eval_contains(stack, store),
         ExprOp::StartsWith => eval_starts_with(stack, store),
         ExprOp::EndsWith => eval_ends_with(stack, store),

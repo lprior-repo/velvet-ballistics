@@ -203,41 +203,38 @@ fn unknown_var_is_not_a_numeric_slot_error() -> Result<(), String> {
 
 #[test]
 fn non_scalar_vars_are_not_faked_as_counts() -> Result<(), String> {
-    execute(
-        &scalar_source("vars: {text: hello}\n", "1"),
-        None,
-        SlotValue::I64(1),
-    )?;
-    let source = scalar_source("vars: {text: hello}\n", "$vars.text");
-    let workflow = compile(&source)?;
-    let mut frame = new_run_frame(RunId::new(1), &workflow).map_err(|error| error.to_string())?;
-    let mut store = ValueStore::new();
-    vb_core::workflow::source_metadata::seed_source_symbols(
-        workflow
-            .source_metadata()
-            .ok_or("source metadata missing")?,
-        &mut store,
-    )
-    .map_err(|error| error.to_string())?;
-    let signal = drive_deterministic_full(
-        &workflow,
-        &mut frame,
-        &mut StepBudget::new(128),
-        &mut store,
-        &[],
-        RetryPolicy::NEVER,
-        &mut EvidenceCollector::new(),
-        &mut CollectStates::new(),
-        &CapabilitySet::empty(),
-        1,
-    )
-    .map_err(|error| error.to_string())?;
-    let RuntimeSignal::Finished(SlotValue::Symbol(symbol)) = signal else {
-        return Err(format!("expected text, got {signal:?}"));
-    };
+    let list_source = scalar_source("vars: {text: []}\n", "1");
+    let obj_source = scalar_source("vars: {text: {}}\n", "1");
+    rejects(&list_source, |e| {
+        matches!(
+            e,
+            CompileError::ExpressionLoweringUnsupported { feature }
+                if feature.as_ref() == "vars.text currently requires a null, boolean, integer, or text static literal"
+        )
+    })?;
+    rejects(&obj_source, |e| {
+        matches!(
+            e,
+            CompileError::ExpressionLoweringUnsupported { feature }
+                if feature.as_ref() == "vars.text currently requires a null, boolean, integer, or text static literal"
+        )
+    })
+}
+
+#[test]
+fn text_var_is_bound_symbol_not_count() -> Result<(), String> {
+    let workflow = compile(&scalar_source("vars: {text: hello}\n", "1"))?;
+    let payloads = workflow
+        .symbol_payloads()
+        .ok_or("expected symbol payloads for text declaration")?;
+    assert_eq!(payloads, &[Box::<str>::from("hello")]);
+    let parts = workflow.to_parts();
     assert_eq!(
-        store.symbol(symbol).map_err(|error| error.to_string())?,
-        "hello"
+        parts.constants,
+        Box::from([
+            vb_core::ConstValue::Symbol(vb_core::SymbolId::new(0)),
+            vb_core::ConstValue::I64(1),
+        ])
     );
     Ok(())
 }

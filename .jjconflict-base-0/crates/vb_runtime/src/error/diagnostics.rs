@@ -2,6 +2,7 @@ use super::RuntimeError;
 use vb_core::{DiagnosticCode, HasSymbolicCode, SymbolicCode};
 
 impl RuntimeError {
+    pub const SECRET_UNAVAILABLE_CODE: DiagnosticCode = DiagnosticCode::new(0x2026);
     pub const QUEUE_FULL_RUNTIME_CODE: &str = "QUEUE_FULL";
     pub const STORAGE_ERROR_RUNTIME_CODE: &str = "STORAGE_ERROR";
     pub const ADMISSION_DURABILITY_ERROR_RUNTIME_CODE: &str = "ADMISSION_DURABILITY_ERROR";
@@ -53,6 +54,10 @@ impl RuntimeError {
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
         match self {
+            Self::InputSymbolBinding { source } => {
+                super::input_symbol_binding::diagnostic_code(source)
+            }
+            Self::SecretUnavailable => Self::SECRET_UNAVAILABLE_CODE,
             Self::QueueFull => Self::QUEUE_FULL_CODE,
             Self::PerRunQueueDepthExceeded { .. } => Self::PER_RUN_QUEUE_DEPTH_EXCEEDED_CODE,
             Self::RunNotFound => Self::RUN_NOT_FOUND_CODE,
@@ -145,6 +150,9 @@ impl RuntimeError {
     #[must_use]
     pub fn runtime_code(&self) -> Option<&'static str> {
         match self {
+            Self::InputSymbolBinding { source } => {
+                super::input_symbol_binding::runtime_code(source)
+            }
             Self::QueueFull
             | Self::PerRunQueueDepthExceeded { .. }
             | Self::ActiveRunCapacityExceeded { .. } => Some(Self::QUEUE_FULL_RUNTIME_CODE),
@@ -191,6 +199,7 @@ impl RuntimeError {
             Self::RetryBlockedOnUndrainedJournal { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
             Self::CompatGateBlocked { .. } => None,
             Self::RunNotFound
+            | Self::SecretUnavailable
             | Self::RunAlreadyExists
             | Self::UnsupportedOperation { .. }
             | Self::ShutdownInProgress
@@ -234,6 +243,9 @@ impl RuntimeError {
 
     fn legacy_unregistered_symbolic_code(&self) -> Option<SymbolicCode> {
         match self {
+            Self::InputSymbolBinding { source } => {
+                Some(super::input_symbol_binding::symbolic_code(source))
+            }
             Self::StorageJournalAppend { .. } | Self::Core { .. } => {
                 Some(Self::storage_append_symbolic_code())
             }

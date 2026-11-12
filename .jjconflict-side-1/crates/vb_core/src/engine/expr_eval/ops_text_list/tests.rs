@@ -966,3 +966,9 @@ fn oom_inject_disarmed_happy_path_succeeds() -> Result<(), String> {
     let result = eval_append(&mut stack, &mut store);
     ensure_equal(result, Ok(()))
 }
+
+// ===== Has parity tests for object field lookup semantics =====
+include!("has_parity_tests.rs");
+include!("has_operand_errors.rs");
+include!("contains_list_parity_tests.rs");
+include!("contains_hot_parity_tests.rs");

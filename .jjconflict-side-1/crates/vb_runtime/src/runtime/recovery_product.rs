@@ -138,9 +138,13 @@ impl Runtime {
         let expected = crate::recovery::action_abi_digests_from_contracts(
             &recovered.artifact.action_contracts,
         )?;
-        let seed = Self::recover_seed_for_loaded_workflow(&prefix.events, &recovered.workflow)?;
+        let seed = Self::recover_seed_for_loaded_workflow(
+            &prefix.events,
+            &recovered.workflow,
+            &retained_inputs,
+        )?;
         let boundary = Self::recovered_boundary_from_events(
-            &seed,
+            &seed.seed,
             &prefix.events,
             &recovered.workflow,
             &expected,

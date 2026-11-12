@@ -34,16 +34,53 @@ fn input_slot_parts() -> Result<WorkflowParts, Box<dyn std::error::Error>> {
         StepIdx::ZERO,
         CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
-        },
+   ,
         None,
         None,
     );
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\\
+
+
+
+
+
+
+     
+     
+-    
+
+    ]),
+
+
+
+
+
+
+
+
+
+
     let mut parts = minimal_parts(Box::from([finish]));
     parts.name = Box::from("cli-input");
     parts.input_slots = Box::from([vb_core::workflow::CompiledInputSlot {
         slot: SlotIdx::ZERO,
         kind: vb_core::workflow::InputSlotKind::I64,
-        constraint: vb_core::workflow::CompiledInputConstraint::unconstrained(),
+        constraint: vb_core::workflow::CompiledInputConstraint::required(),
     }]);
     parts.slot_count = 1;
     parts.digest = vb_compile::compute_compiled_ir_digest(
@@ -59,6 +96,7 @@ fn input_slot_parts() -> Result<WorkflowParts, Box<dyn std::error::Error>> {
 fn minimal_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("test"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         input_slots: Box::from([]),
@@ -102,7 +140,7 @@ fn write_test_file(path: &std::path::Path, contents: &[u8]) -> bool {
                 path.display()
             );
             false
-        }
+   
     }
 }
 
@@ -118,7 +156,7 @@ fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
                 "failed to execute velvet_ballistics: {err}"
             );
             None
-        }
+   
     }
 }
 

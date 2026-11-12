@@ -2,6 +2,9 @@
 //! Runtime admission requires checked artifact evidence bound to the actual payload.
 //! Historical proof flags and gate counts do not establish that authority.
 
+#[path = "runtime_version_barrier_tests/collect_region.rs"]
+mod collect_region;
+
 use proptest::{prop_assert_eq, proptest};
 use vb_core::artifact::ArtifactEvidence;
 use vb_core::{CapabilitySet, RunId, RuntimePolicy, WorkflowDigest};
@@ -151,8 +154,9 @@ fn relaxed_policy_skips_evidence_validation() -> TestResult {
         digest,
         CapabilitySet::empty(),
     );
-    assert!(
-        result.is_ok(),
+    assert_eq!(
+        result.as_ref().map(|_| ()),
+        Ok(()),
         "relaxed policy should accept artifact with any evidence"
     );
     let admission = result?;
@@ -186,11 +190,47 @@ fn missing_artifact_rejected_under_strict_policy() {
 
 #[test]
 fn unsupported_step_primitive_rejected_at_compile() {
+    let yaml = b"version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: collect_pages\n    collect:\n      variable: batch\n      source: \"zero\"\n      pages: 1\n      items: 1\n      steps:\n        - id: inner\n          together:\n            branches:\n              - label: first\n                steps:\n                  - id: f1\n                    set: { output: x, value: \"hello\" }\n              - label: second\n                steps:\n                  - id: f2\n                    set: { output: yy, value: \"world\" }\n  - id: done\n    finish:\n      result: zero\n";
+    let result = vb_compile::YamlCompiler::default().compile(yaml);
+    assert!(
+        matches!(
+            &result,
+            Err(errors) if matches!(
+                errors.as_slice(),
+                [vb_compile::CompileError::UnsupportedStepPrimitive { step: 0, primitive: "parallel", .. }]
+            )
+        ),
+        "together/parallel inside collect body must reject with exact single UnsupportedStepPrimitive payload using canonical primitive name 'parallel'"
+    );
+}
+
+#[test]
+fn malformed_nested_collect_missing_steps_field() {
     let yaml = b"version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: collect_pages\n    collect:\n      variable: batch\n      source: \"0\"\n      pages: 1\n      items: 1\n      steps:\n        - id: inner\n          collect:\n            variable: inner_page\n            source: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
     let result = vb_compile::YamlCompiler::default().compile(yaml);
-    assert!(matches!(result, Err(errors) if matches!(
-        errors.first(), Some(vb_compile::CompileError::UnsupportedStepPrimitive { .. })
-    )));
+    assert!(
+        matches!(
+            &result,
+            Err(errors) if matches!(
+                errors.as_slice(),
+                [vb_compile::CompileError::MissingStepField { step: 0, field: "collect.steps", .. }]
+            )
+        ),
+        "malformed nested collect must reject with exact single MissingStepField payload for field 'collect.steps'"
+    );
+}
+
+#[test]
+fn nested_collect_body_lowers_to_bounded_region() -> Result<(), Box<dyn std::error::Error>> {
+    let workflow = vb_compile::compile_workflow(collect_region::SOURCE)?;
+    let parts = workflow.to_parts();
+    let nodes = parts.nodes;
+    assert_eq!(nodes.len(), 8, "nested collect must emit exactly 8 nodes");
+    collect_region::assert_kind_counts(&nodes);
+    collect_region::assert_kind_order(&nodes);
+    collect_region::assert_collector_slots(&nodes);
+    collect_region::assert_loop_regions(&workflow);
+    Ok(())
 }
 
 proptest! {
