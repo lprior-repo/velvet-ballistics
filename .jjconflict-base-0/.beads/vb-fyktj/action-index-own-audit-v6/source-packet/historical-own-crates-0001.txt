@@ -1,0 +1,180 @@
+1: commit bd2920512 (origin/bead/vb-3wn7x, bead/vb-3wn7x)
+2: Author:     Lewis <priorlewis43@gmail.com>
+3: AuthorDate: Tue Jun 30 05:01:42 2026 -0500
+4: Commit:     Lewis <priorlewis43@gmail.com>
+5: CommitDate: Tue Jun 30 06:18:25 2026 -0500
+6: 
+7:     vb-3wn7x: black-hat review - APPROVED
+8: 
+9: diff --git a/crates/vb_storage/src/batch/action_index.rs b/crates/vb_storage/src/batch/action_index.rs
+10: new file mode 100644
+11: index 000000000..a96053833
+12: --- /dev/null
+13: +++ b/crates/vb_storage/src/batch/action_index.rs
+14: @@ -0,0 +1,127 @@
+15: +#![forbid(unsafe_code)]
+16: +//! Atomic staging of pending action index maintenance for journal appends.
+17: +//!
+18: +//! vb-3wn7x: the runtime journal path drives the lifecycle of pending
+19: +//! actions in three groups:
+20: +//!
+21: +//! 1. `ActionScheduled` / `ActionScheduledTicket` — emits the pending
+22: +//!    action to the external boundary; a marker must be inserted into
+23: +//!    the `index_action` keyspace so recovery, inspection, and lookup
+24: +//!    traffic see the action as still in flight.
+25: +//! 2. `ActionCompletedEvent` / `ActionCompletedEnvelope` — terminal
+26: +//!    success; the marker must be removed.
+27: +//! 3. `ActionFailedEvent` / `ActionAbandoned` — terminal failure or
+28: +//!    cancellation-driven abandonment; the marker must be removed.
+29: +//!
+30: +//! All other event kinds (runs, steps, waits, asks, slot writes, …) leave
+31: +//! the index untouched.
+32: +//!
+33: +//! [`stage_pending_action_index_op`] is the single staging entry point:
+34: +//! it stages either a value insert or a tombstone on the supplied
+35: +//! `fjall::OwnedWriteBatch`. Callers MUST commit the same batch that
+36: +//! holds the journal event so index and journal writes succeed or fail
+37: +//! together; partial writes would leave the index inconsistent with the
+38: +//! event log.
+39: +
+40: +use crate::{
+41: +    error::JournalError, events::JournalEvent, journal::FjallJournal, keys::index_action_key,
+42: +};
+43: +use vb_core::{ActionId, RunId, StepIdx};
+44: +
+45: +/// Discriminated pending-action-index mutation.
+46: +///
+47: +/// Internal-only: the variant layout is purely a refactoring of the
+48: +/// match arms in [`stage_pending_action_index_op`] so the encode paths
+49: +/// are not duplicated.
+50: +#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+51: +enum PendingActionIndexOp {
+52: +    /// Insert an empty marker at `(action, run, step)`.
+53: +    Insert {
+54: +        action: ActionId,
+55: +        run: RunId,
+56: +        step: StepIdx,
+57: +    },
+58: +    /// Tombstone the marker at `(action, run, step)`.
+59: +    Remove {
+60: +        action: ActionId,
+61: +        run: RunId,
+62: +        step: StepIdx,
+63: +    },
+64: +}
+65: +
+66: +/// Classifies a journal event into the pending-action-index mutation it
+67: +/// implies (if any). Returns `None` for events that leave the index
+68: +/// untouched.
+69: +fn pending_action_index_op_for(event: &JournalEvent) -> Option<PendingActionIndexOp> {
+70: +    match event {
+71: +        // Insert-side — pending actions enter the index.
+72: +        JournalEvent::ActionScheduled {
+73: +            action, run, step, ..
+74: +        } => Some(PendingActionIndexOp::Insert {
+75: +            action: *action,
+76: +            run: *run,
+77: +            step: *step,
+78: +        }),
+79: +        JournalEvent::ActionScheduledTicket { ticket, .. } => Some(PendingActionIndexOp::Insert {
+80: +            action: ticket.action,
+81: +            run: ticket.run,
+82: +            step: ticket.step,
+83: +        }),
+84: +        // Remove-side — terminal actions leave the index.
+85: +        JournalEvent::ActionCompletedEvent {
+86: +            action, run, step, ..
+87: +        }
+88: +        | JournalEvent::ActionFailedEvent {
+89: +            action, run, step, ..
+90: +        } => Some(PendingActionIndexOp::Remove {
+91: +            action: *action,
+92: +            run: *run,
+93: +            step: *step,
+94: +        }),
+95: +        JournalEvent::ActionCompletedEnvelope { ticket, .. }
+96: +        | JournalEvent::ActionAbandoned { ticket, .. } => Some(PendingActionIndexOp::Remove {
+97: +            action: ticket.action,
+98: +            run: ticket.run,
+99: +            step: ticket.step,
+100: +        }),
+101: +        // Everything else is a no-op for the index.
+102: +        _ => None,
+103: +    }
+104: +}
+105: +
+106: +impl FjallJournal {
+107: +    /// Stages the pending-action-index mutation implied by `event` onto
+108: +    /// the supplied `fjall::OwnedWriteBatch`.
+109: +    ///
+110: +    /// Callers MUST commit the same batch that stages the corresponding
+111: +    /// `JournalEvent` write so the index update is atomic with the event.
+112: +    /// Events that imply no index change are silently accepted (the
+113: +    /// helper returns `Ok(())` without staging any batch operation).
+114: +    ///
+115: +    /// # Errors
+116: +    ///
+117: +    /// Returns `JournalError::KeyCapacity` if the encoded
+118: +    /// `index_action` key would overflow the 13-byte fixed-length
+119: +    /// contract.
+120: +    pub(crate) fn stage_pending_action_index_op(
+121: +        &self,
+122: +        batch: &mut fjall::OwnedWriteBatch,
+123: +        event: &JournalEvent,
+124: +    ) -> Result<(), JournalError> {
+125: +        let Some(op) = pending_action_index_op_for(event) else {
+126: +            return Ok(());
+127: +        };
+128: +        match op {
+129: +            PendingActionIndexOp::Insert { action, run, step } => {
+130: +                let key = index_action_key(action, run, step)?;
+131: +                batch.insert(&self.index_action, key, Vec::<u8>::new());
+132: +                Ok(())
+133: +            }
+134: +            PendingActionIndexOp::Remove { action, run, step } => {
+135: +                let key = index_action_key(action, run, step)?;
+136: +                batch.remove(&self.index_action, key);
+137: +                Ok(())
+138: +            }
+139: +        }
+140: +    }
+141: +}
+142: diff --git a/crates/vb_storage/src/batch/append_event.rs b/crates/vb_storage/src/batch/append_event.rs
+143: index f7039e0d7..e7d9c9648 100644
+144: --- a/crates/vb_storage/src/batch/append_event.rs
+145: +++ b/crates/vb_storage/src/batch/append_event.rs
+146: @@ -102,6 +102,17 @@ impl<'j> JournalWriteBatch<'j> {
+147:          }
+148:  
+149:          self.inner.insert(&self.journal.events, key, value);
+150: +        // vb-3wn7x: maintain the pending action index atomically with
+151: +        // the event write. The action lifecycle map (see
+152: +        // `super::action_index`) translates each event variant into the
+153: +        // index mutation it implies (insert for scheduled events,
+154: +        // tombstone for completed/failed/abandoned events, no-op for
+155: +        // every other variant). The mutation lands in the SAME
+156: +        // OwnedWriteBatch, so committing this batch makes the event
+157: +        // and the index update durable together — recovery can rely on
+158: +        // the index as the authoritative pending-action cursor.
+159: +        self.journal
+160: +            .stage_pending_action_index_op(&mut self.inner, event)?;
+161:          // Record the key as staged so a subsequent append_event with
+162:          // the same `(run, seq)` is rejected by the same-batch
+163:          // duplicate guard above before the durable lookup.
+164: diff --git a/crates/vb_storage/src/batch/mod.rs b/crates/vb_storage/src/batch/mod.rs
+165: index 320da2065..e21d55d7a 100644
+166: --- a/crates/vb_storage/src/batch/mod.rs
+167: +++ b/crates/vb_storage/src/batch/mod.rs
+168: @@ -1,4 +1,5 @@
+169:  #![forbid(unsafe_code)]
+170: +mod action_index;
+171:  mod append_event;
+172:  mod commit;
+173:  mod putters;
+174: diff --git a/crates/vb_storage/src/batch/putters.rs b/crates/vb_storage/src/batch/putters.rs
+175: index c4fefd30c..b96ae30b9 100644
+176: --- a/crates/vb_storage/src/batch/putters.rs
+177: +++ b/crates/vb_storage/src/batch/putters.rs
+178: @@ -216,4 +216,21 @@ impl<'j> JournalWriteBatch<'j> {
+179:              .insert(&self.journal.index_action, key, Vec::<u8>::new());
+180:          Ok(())

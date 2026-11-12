@@ -135,7 +135,9 @@ fn gate_12_accepts_two_do_nodes_one_contract() {
 
 #[test]
 fn gate_14_accepts_empty_slots() {
-    let parts = make_parts(vec![nop_node(0)], 0);
+    let mut terminal = nop_node(0);
+    terminal.routing.next = None.into();
+    let parts = make_parts(vec![terminal], 0);
     assert_eq!(validate_gate_14_slot_type_consistency(&parts), Ok(()));
 }
 
@@ -172,7 +174,9 @@ fn gate_14_rejects_inconsistent_types() {
 
 #[test]
 fn gate_14_accepts_single_set_const() {
-    let mut parts = make_parts(vec![set_const_node(0, 0, 0)], 1);
+    let mut terminal = set_const_node(0, 0, 0);
+    terminal.routing.next = None.into();
+    let mut parts = make_parts(vec![terminal], 1);
     parts.constants = Box::new([ConstValue::I64(42)]);
     assert_eq!(validate_gate_14_slot_type_consistency(&parts), Ok(()));
 }

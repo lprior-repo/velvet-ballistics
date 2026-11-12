@@ -1,0 +1,17 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1",
+  "argv": [
+    "target/fuzz-dictionary-baseline/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile",
+    "-runs=100",
+    "-max_len=65536",
+    "/home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1/target/fuzz-dictionary-validation/absent"
+  ],
+  "exit_code": 0,
+  "seconds": 0.449,
+  "timeout_seconds": 30,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_FUZZ_DICTIONARY_V4_ABSENT"
+}

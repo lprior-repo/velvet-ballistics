@@ -1,0 +1,210 @@
+#![forbid(unsafe_code)]
+//! Timer wheel for wait/ask deadline tracking.
+//!
+//! Uses `BTreeMap<Instant, Vec<TimerEntry>>` as the primary time-index
+//! and `HashMap<RunId, TimerEntry>` as the run-index.
+//! This gives O(log n) insert/cancel and O(k) fire where k is expired timers.
+
+#[cfg(kani)]
+use std::collections::BTreeMap as Map;
+use std::collections::BTreeMap;
+#[cfg(not(kani))]
+use std::collections::HashMap as Map;
+use std::time::Instant;
+
+use vb_core::ids::RunId;
+
+use super::types::PendingTimerKind;
+
+/// A single timer entry keyed by its deadline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TimerEntry {
+    /// The run this timer belongs to.
+    pub run: RunId,
+    /// Freshness token incremented on replacement.
+    pub generation: u64,
+    /// The deadline that keyed this entry.
+    pub deadline: Instant,
+    /// The kind of timer (Wait or Ask).
+    pub kind: PendingTimerKind,
+}
+
+/// Timer wheel mutation error.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimerWheelError {
+    /// Replacing this run's timer would overflow the freshness generation.
+    GenerationExhausted,
+}
+
+/// Dual-index timer data structure for O(log n) operations.
+#[derive(Debug)]
+pub struct TimerWheel {
+    /// Time-indexed entries for efficient fire_expired.
+    by_deadline: BTreeMap<Instant, Vec<TimerEntry>>,
+    /// Run-indexed entries for O(1) cancel/lookup.
+    by_run: Map<RunId, TimerEntry>,
+}
+
+impl TimerWheel {
+    /// Creates an empty timer wheel.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            by_deadline: BTreeMap::new(),
+            by_run: Map::new(),
+        }
+    }
+
+    /// Inserts a timer for the given run with the specified deadline.
+    ///
+    /// If a timer already exists for this run, it is replaced.
+    pub fn insert(
+        &mut self,
+        run: RunId,
+        deadline: Instant,
+        kind: PendingTimerKind,
+    ) -> Result<(), TimerWheelError> {
+        let generation = self.next_generation(run)?;
+        self.cancel(run);
+        let entry = TimerEntry {
+            run,
+            generation,
+            deadline,
+            kind,
+        };
+        self.by_deadline.entry(deadline).or_default().push(entry);
+        self.by_run.insert(run, entry);
+        Ok(())
+    }
+
+    fn next_generation(&self, run: RunId) -> Result<u64, TimerWheelError> {
+        match self.by_run.get(&run).copied() {
+            Some(entry) => entry
+                .generation
+                .checked_add(1)
+                .ok_or(TimerWheelError::GenerationExhausted),
+            None => Ok(1),
+        }
+    }
+
+    /// Cancels the timer for the given run, if one exists.
+    ///
+    /// Returns true if a timer was removed.
+    pub fn cancel(&mut self, run: RunId) -> bool {
+        let Some(entry) = self.by_run.remove(&run) else {
+            return false;
+        };
+        if let Some(entries) = self.by_deadline.get_mut(&entry.deadline) {
+            entries.retain(|e| e.run != run);
+            if entries.is_empty() {
+                self.by_deadline.remove(&entry.deadline);
+            }
+        }
+        true
+    }
+
+    /// Fires all timers whose deadlines have passed.
+    ///
+    /// Returns the fired entries in deadline order.
+    pub fn fire_expired(&mut self, now: Instant) -> Vec<TimerEntry> {
+        let mut fired = Vec::new();
+        let expired_keys: Vec<Instant> = self
+            .by_deadline
+            .range(..=now)
+            .map(|(&deadline, _)| deadline)
+            .collect();
+
+        for deadline in expired_keys {
+            if let Some(entries) = self.by_deadline.remove(&deadline) {
+                for entry in entries {
+                    if self.by_run.get(&entry.run).copied() == Some(entry) {
+                        self.by_run.remove(&entry.run);
+                    }
+                    fired.push(entry);
+                }
+            }
+        }
+        fired
+    }
+
+    /// Returns the next deadline, if any timers are pending.
+    #[must_use]
+    pub fn next_deadline(&self) -> Option<Instant> {
+        self.by_deadline.first_key_value().map(|(k, _)| *k)
+    }
+
+    /// Returns true if no timers are pending.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.by_run.is_empty()
+    }
+
+    /// Returns the number of pending timers.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.by_run.len()
+    }
+
+    /// Gets the kind of timer for a run, if one exists.
+    #[must_use]
+    pub fn get_kind(&self, run: RunId) -> Option<PendingTimerKind> {
+        self.by_run.get(&run).map(|entry| entry.kind)
+    }
+
+    /// Gets the current timer entry for a run, if one exists.
+    #[must_use]
+    pub fn get_entry(&self, run: RunId) -> Option<TimerEntry> {
+        self.by_run.get(&run).copied()
+    }
+
+    /// Inserts a timer with a caller-supplied generation. Crate-private;
+    /// used by shard aggregate integration where the caller has already
+    /// computed the checked next generation.
+    pub(crate) fn insert_exact_generation(
+        &mut self,
+        run: RunId,
+        generation: u64,
+        deadline: Instant,
+        kind: PendingTimerKind,
+    ) {
+        self.cancel(run);
+        let entry = TimerEntry {
+            run,
+            generation,
+            deadline,
+            kind,
+        };
+        self.by_deadline.entry(deadline).or_default().push(entry);
+        self.by_run.insert(run, entry);
+    }
+
+    /// Peeks the earliest due entry without consuming it. Selects the
+    /// earliest deadline, then the smallest RunId within equal deadlines.
+    /// Returns None if no timers are due or the wheel is empty.
+    pub(crate) fn due_peek(&self, now: Instant) -> Option<TimerEntry> {
+        self.by_deadline
+            .range(..=now)
+            .find_map(|(_, entries)| Self::smallest_current_entry(entries, &self.by_run))
+    }
+
+    fn smallest_current_entry(
+        entries: &[TimerEntry],
+        by_run: &Map<RunId, TimerEntry>,
+    ) -> Option<TimerEntry> {
+        entries
+            .iter()
+            .copied()
+            .filter(|entry| by_run.get(&entry.run).copied() == Some(*entry))
+            .min_by_key(|entry| entry.run.get())
+    }
+}
+
+impl Default for TimerWheel {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+#[path = "timer_wheel/tests.rs"]
+mod tests;

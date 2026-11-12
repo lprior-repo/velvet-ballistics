@@ -1,0 +1,23 @@
+{
+  "required_reads": [
+    ".beads/vb-0xm95/complete-code-packet-v6/part-01.txt",
+    ".beads/vb-0xm95/complete-code-packet-v6/part-02.txt",
+    ".beads/vb-0xm95/complete-code-packet-v6/part-03.txt",
+    ".beads/vb-0xm95/complete-code-packet-v6/part-04.txt",
+    ".beads/vb-0xm95/complete-code-packet-v6/part-05.txt",
+    ".beads/vb-0xm95/complete-code-packet-v6/part-06.txt",
+    ".beads/vb-0xm95/complete-code-packet-v6/part-07.txt",
+    ".beads/vb-0xm95/complete-code-packet-v6/part-08.txt",
+    ".beads/vb-0xm95/complete-code-packet-v6/part-09.txt",
+    ".beads/vb-0xm95/complete-code-packet-v6/part-10.txt",
+    ".beads/vb-0xm95/complete-code-packet-v6/part-11.txt",
+    ".beads/vb-0xm95/complete-code-packet-v6/part-12.txt",
+    ".beads/vb-0xm95/complete-code-packet-v6/part-13.txt",
+    ".beads/vb-0xm95/complete-code-packet-v6/part-14.txt",
+    ".beads/vb-0xm95/complete-code-packet-v6/part-15.txt",
+    ".beads/vb-0xm95/complete-code-packet-v6/part-16.txt"
+  ],
+  "lines": 3305,
+  "production_paths": 24,
+  "scope": "Exact actual diff +35lines/context per hunk in all24sourcepaths, plus full existing admission validator and checkpoint reference. Whole new helper files included. Original unmodified code outside diff inspect as needed."
+}

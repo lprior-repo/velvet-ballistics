@@ -1,0 +1,25 @@
+[
+  {
+    "id": "vb-eirmk.42.1",
+    "title": "Align Has object-key semantics and operand failures across expression, hot execution and replay",
+    "description": "Source-confirmed current master discrepancy: has(Object,Symbol)-\u003eBool is implemented by vb_expr, while core hot evaluator and replay use list membership. vb_expr already enforces Object/Text/Unknown static helper positions; preserve that checker. Current workflow compiler helper_fact lacks Has-specific operand checks. Valid-key resolution and entrypoint-specific error precedence need exact contract review. Scope is the reviewed Has-only branches and independently expected native regressions; preserve Contains and unrelated helpers, API/error variants/schema/dependencies/gates. Contract proposal V3 in masterplan-locator-luna/.beads/vb-eirmk.42/has-parity-contract-proposal-v3.md sha2f3329582a76616ad9b02e83ea0b5036a66c616fa5b49e39afcd71b33339d860 awaiting renewed CODE and TEST review. Do not start implementation/test authoring before those review dispositions. Native RED before implementation; source commit/push not authorized.",
+    "acceptance_criteria": "Master Object/Symbol presence semantics with four independent Boolean oracles across each evaluator. Exact per-entrypoint wrong type/handle errors and phase precedence, dynamic Unknown/Any acceptance and arity/context boundaries from independently approved contract. Capture actual failing native current-source cases before repair; preserve existing static vb_expr guard and unrelated helper behavior. Strengthen provably conflicting list-membership Has tests into normative object cases with independent review. Postrepair tests, source lint, independent CODE and independent TEST, source/evidence/profile pin receipts and canonical gates before acceptance; no whole-expression or full-core closure implied.",
+    "notes": "Native hot-evaluator baseline now reproduced at cddd30e334a594f86afd6e0a9b979c4fd9ea309c:4registered Object/Symbol cases compiled and all4failed exit100 with expected list found object;3366skipped. Valid stored object/key handles and independent literal Bool oracles. Earlier5090 prototype78199 and modulepath-ae958 compilefailures retained, are not behavior evidence. Physical5090 implementing ONLYhot eval_has/expect_object import in uniquehas-hot-implementation-local5090. Replay4caseprototype7cb512 compilefailed101 duplicate/importpaths; no replay-native RED yet. Canonical compiler alreadyhasstaticHasguard; preserveproduction untilnativepublicdefect proven. Rawlogs eachworker target/core-build-20261110/evidence.\n2026-11-10 bounded current evidence: Has V3 contract 2f332958 approved CODE+TEST. Hot df196c897ec4c8d0304c0badd59f40d2f485f291 four new membership tests PASS, broader core3366pass4legacyListHasfail; source-only CODE PASS no whole-feature closure. Replay7830c8765b59654b77150fea05d0dc54d48b12b7 four membership tests PASS (3366 filtered), invalid-operand/nonzeroPC coverage pending. Store baseline8a899acfd1fb625cc157d85035186ad395aceaca actual14run12pass2fail0skip exit100: invalid SymbolMAX empty/nonempty returnsOk(false), expected exactInvalidReference. Independent TEST REJECT five missing direct-helper boundary cases; local5090 production/registered-fixture repair underway. No compilerproductionpatch, no fullCI or featureacceptance.\nFrozen boundedruntimecandidate1a3a47754e04d69db27c43343a0b6c162c51483f:14Haspaths+3separateCLIpaths, independentHasCODE+TEST PASS for40newruntimechecks; selectedMoon12tasks16488passed7skip exit0, CLIhash879153585d3c5c7cf56c643b7c752bb5db28838390be7997737a96b65e31d7bd stable. .beads/42.1/evidence manifest1418a86b3c5c7875bc95e5e6b5e31905d7810ad94beb762f2d9a07da234c4cfe rawbaseline/fixed/reviews/whole-run evidence. WholeHas remainsIN_PROGRESS: staticUnknown-position/aritycoverage and publiccanonical/parse_AST qualification notcomplete; new5090static5preservationtests and3090publiccompilerprobes isolated inprogress. Canonicalcompileralreadyguarded; no productiontype-taintpatchuntilpublicnativefailure. Bytecodeunderflow/non-single Has-specificclosure notclaimed. No fullmoonci/masterphaseclosure.",
+    "status": "in_progress",
+    "priority": 1,
+    "issue_type": "task",
+    "assignee": "Lewis",
+    "owner": "priorlewis43@gmail.com",
+    "created_at": "2026-11-10T21:33:04Z",
+    "created_by": "Lewis",
+    "updated_at": "2026-11-10T23:28:33Z",
+    "started_at": "2026-11-10T21:36:33Z",
+    "metadata": {
+      "discovered_from": "vb-eirmk.42",
+      "native_reproduction_pending": true,
+      "qualification_only": false,
+      "reproduction_confirmed_hot": true,
+      "semantic_contract": "has(Object, Symbol) -\u003e Bool"
+    }
+  }
+]

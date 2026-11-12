@@ -1,0 +1,82 @@
+error: the `Err`-variant returned from this function is very large
+  --> crates/vb_runtime/src/runtime/live_policy_dispatch.rs:61:10
+   |
+61 |     ) -> Result<DecisionRecord, RegisteredExecutionError> {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: crates/vb_runtime/src/runtime/registered_executor.rs:19:5
+   |
+19 |     PolicyDenied(DecisionRecord),
+   |     ---------------------------- the largest variant contains at least 160 bytes
+   |
+   = help: try reducing the size of `runtime::registered_executor::RegisteredExecutionError`, for example by boxing large elements or replacing it with `Box<runtime::registered_executor::RegisteredExecutionError>`
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+   = note: `-D clippy::result-large-err` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::result_large_err)]`
+
+error: the `Err`-variant returned from this function is very large
+  --> crates/vb_runtime/src/runtime/registered_executor.rs:31:10
+   |
+19 |     PolicyDenied(DecisionRecord),
+   |     ---------------------------- the largest variant contains at least 160 bytes
+...
+31 |     ) -> Result<RegisterReceipt, RegisteredExecutionError> {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try reducing the size of `runtime::registered_executor::RegisteredExecutionError`, for example by boxing large elements or replacing it with `Box<runtime::registered_executor::RegisteredExecutionError>`
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+
+error: using `clone` on type `ActionTicket` which implements the `Copy` trait
+  --> crates/vb_runtime/src/runtime/registered_executor.rs:37:21
+   |
+37 |             ticket: ticket.clone(),
+   |                     ^^^^^^^^^^^^^^ help: try removing the `clone` call: `ticket`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#clone_on_copy
+   = note: `-D clippy::clone-on-copy` implied by `-D clippy::complexity`
+   = help: to override `-D clippy::complexity` add `#[allow(clippy::clone_on_copy)]`
+
+error: the `Err`-variant returned from this function is very large
+  --> crates/vb_runtime/src/runtime/registered_executor.rs:56:10
+   |
+19 |     PolicyDenied(DecisionRecord),
+   |     ---------------------------- the largest variant contains at least 160 bytes
+...
+56 |     ) -> Result<RegisterReceipt, RegisteredExecutionError> {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try reducing the size of `runtime::registered_executor::RegisteredExecutionError`, for example by boxing large elements or replacing it with `Box<runtime::registered_executor::RegisteredExecutionError>`
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+
+error: the `Err`-variant returned from this function is very large
+   --> crates/vb_runtime/src/runtime/registered_executor.rs:103:10
+    |
+ 19 |       PolicyDenied(DecisionRecord),
+    |       ---------------------------- the largest variant contains at least 160 bytes
+...
+103 |       ) -> Result<
+    |  __________^
+104 | |         (
+105 | |             ActionTicket,
+106 | |             crate::shard::lifecycle::RegisteredActionContext,
+107 | |         ),
+108 | |         RegisteredExecutionError,
+109 | |     > {
+    | |_____^
+    |
+    = help: try reducing the size of `runtime::registered_executor::RegisteredExecutionError`, for example by boxing large elements or replacing it with `Box<runtime::registered_executor::RegisteredExecutionError>`
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+
+error: the `Err`-variant returned from this function is very large
+   --> crates/vb_runtime/src/runtime/registered_executor.rs:131:10
+    |
+ 19 |     PolicyDenied(DecisionRecord),
+    |     ---------------------------- the largest variant contains at least 160 bytes
+...
+131 |     ) -> Result<(), RegisteredExecutionError> {
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: try reducing the size of `runtime::registered_executor::RegisteredExecutionError`, for example by boxing large elements or replacing it with `Box<runtime::registered_executor::RegisteredExecutionError>`
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+
+error: could not compile `vb_runtime` (lib) due to 6 previous errors

@@ -1,0 +1,23 @@
+warning: constant `WORKSPACE_MANIFEST` is never used
+ --> crates/workspace_tests/tests/vb_kkvb_xtask_command_shell_coverage.rs:8:7
+  |
+8 | const WORKSPACE_MANIFEST: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../Cargo.toml");
+  |       ^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `velvet-ballistics-workspace-tests` (test "vb_kkvb_xtask_command_shell_coverage") generated 1 warning
+warning: unused import: `std::path::Path`
+  --> crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs:16:5
+   |
+16 | use std::path::Path;
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-5aw5i-local3090-tool-fixtures/crates/workspace_tests)
+warning: `velvet-ballistics-workspace-tests` (test "vb_nf2u_current_scope_tests") generated 1 warning (run `cargo fix --test "vb_nf2u_current_scope_tests" -p velvet-ballistics-workspace-tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.29s
+     Running tests/vb_8ma2_workspace_assertions.rs (target/debug/deps/vb_8ma2_workspace_assertions-483d8dbc9132505a)
+     Running tests/vb_eepg_bdd_tests.rs (target/debug/deps/vb_eepg_bdd_tests-625256d24407d814)
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_eepg_bdd_tests`

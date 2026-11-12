@@ -1,0 +1,25 @@
+{
+  "bead_id": "vb-njju",
+  "state": 3,
+  "sublane": "contract-and-verification-layers",
+  "delegate": "rust-contract",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/femdation-vb-njju",
+  "input_artifacts": [
+    ".beads/vb-njju/STATE.md",
+    ".beads/vb-njju/baseline-report.md",
+    ".beads/vb-njju/codebase-map.md",
+    ".beads/vb-njju/delivery-scope.jsonl"
+  ],
+  "output_artifacts": [
+    ".beads/vb-njju/contract.md",
+    ".beads/vb-njju/domain-model-review.md",
+    ".beads/vb-njju/tla-spec.md",
+    ".beads/vb-njju/lean-contract.md",
+    ".beads/vb-njju/verification-layers.md",
+    ".beads/vb-njju/proof-obligations.jsonl",
+    ".beads/vb-njju/traceability-matrix.jsonl"
+  ],
+  "attempt": "1-of-7",
+  "reason": "State 2 explore produced valid scope for BDD mutation/fuzz/property closure; derive contract and verification layers."
+}

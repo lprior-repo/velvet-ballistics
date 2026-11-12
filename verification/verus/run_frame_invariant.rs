@@ -7,18 +7,16 @@
 // verification/verus/run_frame_invariant.rs`.
 //
 // ============================================================================
-// STRONG PRODUCTION BINDING (GOD RULE 2 compliance)
+// WEAK/TRUSTED PRODUCTION MIRROR BINDING
 // ============================================================================
 // This file binds to `crates/vb_core/src/frame.rs` through the companion
 // extern surface `verification/verus/extern_run_frame_invariant.rs`,
-// which mirrors every production type (RunFrame, StepState, Taint,
-// SlotValue, CoreError, CoreResult, RunId, StepIdx, SlotIdx) with the
-// SAME name, SAME discriminant shape, and SAME field types, and wraps
-// every production exec fn with `#[verifier::external]`. The spec
-// proofs below attach `assume_specification` contracts to those extern
-// wrappers and exercise them through production-bound exec fns, so any
-// drift in the production field names, discriminant sets, or fn
-// signatures breaks the verification build.
+// which models RunFrame's SlotCell storage and explicitly abstracts
+// supporting payload/error types. Every mirrored entry point is
+// `#[verifier::external]`. The contracts below are assumed, and the
+// lemmas prove math-layer consequences. Production-body correctness
+// and correspondence to this mirror remain reviewed trust obligations;
+// a verifier pass does not establish either claim.
 //
 // Full `#[path = "../../crates/vb_core/src/frame.rs"]` inclusion is
 // intentionally NOT used here — see the header of
@@ -33,9 +31,9 @@
 //
 // BINDING LEDGER:
 //   - `RunFrame::new`                   <- extern::run_frame_new
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:3-31)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:3-33)
 //   - `RunFrame::reinitialize`          <- extern::run_frame_reinitialize
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:34-71)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:36-70)
 //   - `RunFrame::step_count`            <- extern::run_frame_step_count
 //                                          (mirror of crates/vb_core/src/frame/parts/impl_002_accessors.rs:22-24)
 //   - `RunFrame::slot_count`            <- extern::run_frame_slot_count
@@ -45,19 +43,21 @@
 //   - `RunFrame::set_pc`                <- extern::run_frame_set_pc
 //                                          (mirror of crates/vb_core/src/frame/parts/impl_002_accessors.rs:80-86)
 //   - `RunFrame::states_snapshot`       <- extern::run_frame_states_snapshot
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:72-74)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:75-77)
 //   - `RunFrame::slots_snapshot`        <- extern::run_frame_slots_snapshot
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:51-53)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:50-55)
 //   - `RunFrame::taint_snapshot`        <- extern::run_frame_taint_snapshot
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:66-68)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:66-71)
 //   - `RunFrame::write_slot_with_taint` <- extern::run_frame_write_slot_with_taint
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:21-37)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:25-37)
 //   - `is_valid_step_state_transition`  <- extern::is_valid_step_state_transition
-//                                          (mirror of crates/vb_core/src/frame.rs:71-101;
-//                                           pure decision fn, body verified
-//                                           by Verus, contract attached)
+//                                          (mirror of crates/vb_core/src/frame.rs:72-102;
+//                                           external pure-decision mirror;
+//                                           production table correspondence trusted)
+//   - `SlotCell` representation         <- extern::SlotCell
+//                                          (mirror of crates/vb_core/src/value/taint.rs:31-41)
 //   - `Taint` discriminant set          <- extern::Taint
-//                                          (mirror of value.rs:14-25;
+//                                          (mirror of value/taint.rs:10-21;
 //                                           Clean=0, DerivedFromSecret=1,
 //                                           Secret=2, Random=3,
 //                                           TimeDependent=4)
@@ -72,15 +72,10 @@
 // The production bodies of every exec fn in the binding ledger are
 // NOT verified by Verus. The exec wrappers in
 // `extern_run_frame_invariant.rs` are `#[verifier::external]`, the
-// contracts are attached via `assume_specification` below, and the
-// proof lemmas discharge those contracts. Any drift between the mirror
-// and the production source is binding-debt tracked outside Verus.
-//
-// The single exception is `is_valid_step_state_transition`, which is a
-// pure decision fn with no Result/error path; the mirror body is the
-// actual transition table from `crates/vb_core/src/frame.rs:71-101` and Verus verifies it
-// directly. Drift between the mirror's `VALID_TRANSITIONS` table and
-// the production table is a binding-debt item.
+// contracts are attached via `assume_specification` below. The proof
+// lemmas establish their stated math-layer properties, not the truth
+// of the external contracts. This includes the external transition
+// function. Source checks and review maintain the WEAK correspondence.
 use vstd::prelude::*;
 
 verus! {
@@ -95,6 +90,7 @@ pub use production::{
     CoreResult,
     RunFrame,
     RunId,
+    SlotCell,
     SlotIdx,
     SlotValue,
     StepIdx,
@@ -160,7 +156,7 @@ pub open spec fn spec_run_frame_new_postconditions(
     &&& frame.all_taint_clean
 }
 
-/// Math-layer projection of a production `RunFrame`.
+/// Math-layer snapshot view of the WEAK-bound RunFrame mirror.
 pub struct SpecRunFrame {
     pub step_count: int,
     pub slot_count: int,
@@ -172,31 +168,34 @@ pub struct SpecRunFrame {
     pub all_taint_clean: bool,
 }
 
-/// Project a production `RunFrame` into the math-layer `SpecRunFrame` so
+/// Project the RunFrame mirror into the math-layer `SpecRunFrame` so
 /// spec-side proofs can reason about its fields with `int` quantifiers.
 ///
-/// Note: per-element comparisons (`states@[i] == Pending`, `taint@[i] ==
-/// Clean`) use `match` instead of `==` because Verus's vstd does not
-/// model `core::intrinsics::discriminant_value`, which the auto-derived
-/// `PartialEq` impl on the mirror enums relies on.
+/// Empty projects to a None value and Clean snapshot taint. A Value
+/// cell projects to Some(value) and its attached marker, including Null.
+/// Enum comparisons use match because the derived PartialEq intrinsic
+/// is not modeled by this Verus version.
 pub open spec fn spec_from_run_frame(frame: RunFrame) -> SpecRunFrame {
     SpecRunFrame {
         step_count: frame.step_count as int,
         slot_count: frame.slot_count as int,
         states_len: frame.states@.len() as int,
-        slots_len: frame.slots@.len() as int,
-        taint_len: frame.taint@.len() as int,
+        slots_len: frame.cells@.len() as int,
+        taint_len: frame.cells@.len() as int,
         all_states_pending: forall|i: int|
             0 <= i < frame.step_count as int ==> match #[trigger] frame.states@[i] {
                 StepState::Pending => true,
                 _ => false,
             },
         all_slots_empty: forall|i: int|
-            0 <= i < frame.slot_count as int ==> #[trigger] frame.slots@[i].is_none(),
+            0 <= i < frame.slot_count as int ==> match #[trigger] frame.cells@[i] {
+                SlotCell::Empty => true,
+                SlotCell::Value { .. } => false,
+            },
         all_taint_clean: forall|i: int|
-            0 <= i < frame.slot_count as int ==> match #[trigger] frame.taint@[i] {
-                Taint::Clean => true,
-                _ => false,
+            0 <= i < frame.slot_count as int ==> match #[trigger] frame.cells@[i] {
+                SlotCell::Empty => true,
+                SlotCell::Value { taint, .. } => spec_taint_eq(taint, Taint::Clean),
             },
     }
 }
@@ -233,14 +232,14 @@ pub open spec fn spec_slot_value_eq(a: SlotValue, b: SlotValue) -> bool {
     }
 }
 
-/// Spec-side predicate: at index `idx` in `frame.slots`, the value
+/// Spec-side predicate: at index `idx` in the logical slot snapshot, the value
 /// equals `Some(value)`. Avoids direct `==` on `Option<SlotValue>` for
 /// the same reason as `spec_slot_value_eq` above. Takes a reference so
 /// it composes with `old(frame)` / `final(frame)` in postconditions.
 pub open spec fn spec_slot_at_value_eq(frame: &RunFrame, idx: int, value: SlotValue) -> bool {
-    0 <= idx < frame.slots@.len() && match frame.slots@[idx] {
-        Some(v) => spec_slot_value_eq(v, value),
-        None => false,
+    0 <= idx < frame.cells@.len() && match frame.cells@[idx] {
+        SlotCell::Value { value: v, .. } => spec_slot_value_eq(v, value),
+        SlotCell::Empty => false,
     }
 }
 
@@ -296,9 +295,9 @@ pub open spec fn spec_valid_step_index(step: int, step_count: int) -> bool {
 }
 
 /// `Taint` validity: every `Taint` variant is a valid write target. The
-/// production `Taint` enum at `crates/vb_core/src/value.rs:14-25` is a
+/// production `Taint` enum at `crates/vb_core/src/value/taint.rs:10-21` is a
 /// closed 5-variant `#[repr(u8)]` enum. `write_slot_with_taint` writes
-/// the input `taint: Taint` directly to `taint[index]` (no raw u8
+/// the input `taint: Taint` directly into a populated cell (no raw u8
 /// conversion), so any closed-enum variant is a valid write.
 pub open spec fn spec_taint_valid_write(taint: Taint) -> bool {
     match taint {
@@ -320,7 +319,7 @@ pub open spec fn spec_taint_valid_write(taint: Taint) -> bool {
 // exercise the contracts via the exec wrappers in the
 // "Production-bound exec fns" section.
 // ---------------------------------------------------------------------------
-// Bridge: `RunFrame::new`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:3-31)
+// Bridge: `RunFrame::new`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:3-33)
 // ---------------------------------------------------------------------------
 // Production contract:
 //   - Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" })
@@ -356,7 +355,7 @@ pub assume_specification[ production::run_frame_new ](
 ;
 
 // ---------------------------------------------------------------------------
-// Bridge: `RunFrame::reinitialize`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:34-71)
+// Bridge: `RunFrame::reinitialize`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:36-70)
 // ---------------------------------------------------------------------------
 // Production contract:
 //   - Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" })
@@ -421,16 +420,17 @@ pub assume_specification[ production::run_frame_set_pc ](
 ;
 
 // ---------------------------------------------------------------------------
-// Bridge: `RunFrame::write_slot_with_taint`  (crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:21-37)
+// Bridge: `RunFrame::write_slot_with_taint`  (crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:25-37)
 // ---------------------------------------------------------------------------
 // Production contract:
 //   - Err(CoreError::InvalidCompiledWorkflow { reason: "slot_index_out_of_bounds" })
-//     when slot.as_usize() >= frame.slots.len().
+//     when slot.as_usize() >= frame.cells.len().
 //     (Note: production returns CoreError::SlotOutOfBounds; the mirror
 //      maps that branch to "slot_index_out_of_bounds" for spec-side
-//      matching. The discriminant shape matches: InvalidCompiledWorkflow.)
-//   - Ok(()) AND frame.slots[slot] == Some(value) AND
-//     frame.taint[slot] == taint otherwise.
+//      matching; this is an explicit error abstraction.)
+//   - Ok(()) AND the cell's logical value is Some(value) and its taint
+//     is the requested taint. Empty projects to None/Clean, and a
+//     populated Null value remains distinct from Empty.
 pub assume_specification[ production::run_frame_write_slot_with_taint ](
     frame: &mut RunFrame,
     slot: SlotIdx,
@@ -441,13 +441,16 @@ pub assume_specification[ production::run_frame_write_slot_with_taint ](
         match result {
             Err(CoreError::InvalidCompiledWorkflow { reason: r }) => {
                 &&& r == "slot_index_out_of_bounds"
-                &&& (slot.0 as int) >= (old(frame).slots@.len() as int)
+                &&& (slot.0 as int) >= (old(frame).cells@.len() as int)
             },
             Err(_) => false,
             Ok(()) => {
-                &&& (slot.0 as int) < (final(frame).slots@.len() as int)
+                &&& (slot.0 as int) < (final(frame).cells@.len() as int)
                 &&& spec_slot_at_value_eq(final(frame), slot.0 as int, value)
-                &&& spec_taint_eq(final(frame).taint@[slot.0 as int], taint)
+                &&& match final(frame).cells@[slot.0 as int] {
+                    SlotCell::Empty => false,
+                    SlotCell::Value { taint: actual, .. } => spec_taint_eq(actual, taint),
+                }
             },
         },
 ;
@@ -482,14 +485,14 @@ pub assume_specification[ production::run_frame_slots_snapshot ](frame: &RunFram
     Option<SlotValue>,
 >)
     ensures
-        snap@.len() == frame.slots@.len(),
+        snap@.len() == frame.cells@.len(),
 ;
 
 pub assume_specification[ production::run_frame_taint_snapshot ](frame: &RunFrame) -> (snap: Vec<
     Taint,
 >)
     ensures
-        snap@.len() == frame.taint@.len(),
+        snap@.len() == frame.cells@.len(),
 ;
 
 // ============================================================================
@@ -572,8 +575,8 @@ pub exec fn exec_run_frame_taint_snapshot(frame: &RunFrame) -> Vec<Taint> {
 }
 
 // ============================================================================
-// Proof lemmas — discharge the assume_specification contracts on the
-// math layer (PRE-001, POST-001, INV-007, VB-INV001-VERUS, VB-INV006-VERUS).
+// Proof lemmas for the math-layer predicates used by the external
+// contracts (PRE-001, POST-001, INV-007, VB-INV001-VERUS, VB-INV006-VERUS).
 // ============================================================================
 /// PRE-001 rejection lemma: if `(first_step, step_count)` does NOT
 /// satisfy the valid-range condition, then `spec_run_frame_new_preconditions`
@@ -750,7 +753,7 @@ pub proof fn proof_valid_dimensions_accepted(first_step: int, step_count: int)
 
 // ============================================================================
 // VB-INV006-VERUS: Taint validity proofs. The production Taint enum at
-// `crates/vb_core/src/value.rs:14-25` has 5 closed variants (was 3 in
+// `crates/vb_core/src/value/taint.rs:10-21` has 5 closed variants (was 3 in
 // the prior vacuum spec; production was always 5). `write_slot_with_taint`
 // writes the input `Taint` directly with no raw u8 conversion, so any
 // variant is a valid write.

@@ -1,0 +1,94 @@
+verification/verus/extern_signals_invariant.rs:1: // SPDX-License-Identifier: MIT
+verification/verus/extern_signals_invariant.rs:2: //
+verification/verus/extern_signals_invariant.rs:3: // Extern surface for signals_invariant Verus spec.
+verification/verus/extern_signals_invariant.rs:4: //
+verification/verus/extern_signals_invariant.rs:5: // =============================================================================
+verification/verus/extern_signals_invariant.rs:6: // WEAK PRODUCTION BINDING (GOD RULE 2 compliance)
+verification/verus/extern_signals_invariant.rs:7: // =============================================================================
+verification/verus/extern_signals_invariant.rs:8: //
+verification/verus/extern_signals_invariant.rs:9: // This file is the production-binding surface for the
+verification/verus/extern_signals_invariant.rs:10: // `signals_invariant.rs` Verus spec. It includes the in-tree
+verification/verus/extern_signals_invariant.rs:11: // production mirror at
+verification/verus/extern_signals_invariant.rs:12: // `verification/verus/production_inner/signals_production.rs` via
+verification/verus/extern_signals_invariant.rs:13: // `#[path]` so that:
+verification/verus/extern_signals_invariant.rs:14: //
+verification/verus/extern_signals_invariant.rs:15: //   * The companion gate `scripts/check-verus-production-binding.sh`
+verification/verus/extern_signals_invariant.rs:16: //     classifies the spec file as WEAK-bound (spec uses
+verification/verus/extern_signals_invariant.rs:17: //     `#[path = "extern_signals_invariant.rs"]`; this file uses
+verification/verus/extern_signals_invariant.rs:18: //     `#[path = "production_inner/signals_production.rs"]`).
+verification/verus/extern_signals_invariant.rs:19: //   * Any drift in the production field names, discriminant sets, or
+verification/verus/extern_signals_invariant.rs:20: //     fn signatures breaks the
+verification/verus/extern_signals_invariant.rs:21: //     `production_inner/signals_production.rs` mirror and the spec
+verification/verus/extern_signals_invariant.rs:22: //     proofs that depend on it.
+verification/verus/extern_signals_invariant.rs:23: //   * The `scripts/check-production-inner-drift.sh` gate validates
+verification/verus/extern_signals_invariant.rs:24: //     that every identifier claimed in the mirror's per-section
+verification/verus/extern_signals_invariant.rs:25: //     `// Production ...` annotations is present in the mirror body,
+verification/verus/extern_signals_invariant.rs:26: //     catching drift between the verbatim mirror and the
+verification/verus/extern_signals_invariant.rs:27: //     `crates/vb_core/src/engine/signals.rs` source.
+verification/verus/extern_signals_invariant.rs:28: //
+verification/verus/extern_signals_invariant.rs:29: // The mirror at `production_inner/signals_production.rs` is a
+verification/verus/extern_signals_invariant.rs:30: // hand-written structural copy of the production surface in
+verification/verus/extern_signals_invariant.rs:31: // `crates/vb_core/src/engine/signals.rs`. The substitution relative
+verification/verus/extern_signals_invariant.rs:32: // to direct production `#[path]` inclusion is documented in the
+verification/verus/extern_signals_invariant.rs:33: // mirror's header: production's private `remaining` field is relaxed
+verification/verus/extern_signals_invariant.rs:34: // to `pub` in the mirror so Verus's
+verification/verus/extern_signals_invariant.rs:35: // `#[verifier::external_type_specification]` bridge can establish a
+verification/verus/extern_signals_invariant.rs:36: // transparent binding for spec-mode field access. Field NAME and TYPE
+verification/verus/extern_signals_invariant.rs:37: // are preserved byte-for-byte; any drift breaks the verification
+verification/verus/extern_signals_invariant.rs:38: // build.
+verification/verus/extern_signals_invariant.rs:39: //
+verification/verus/extern_signals_invariant.rs:40: // =============================================================================
+verification/verus/extern_signals_invariant.rs:41: // BINDING LEDGER
+verification/verus/extern_signals_invariant.rs:42: // =============================================================================
+verification/verus/extern_signals_invariant.rs:43: //   - `StepBudget`                          <- crates/vb_core/src/engine/signals.rs:13-16
+verification/verus/extern_signals_invariant.rs:44: //   - `StepBudget::MAX`                     <- crates/vb_core/src/engine/signals.rs:19-22
+verification/verus/extern_signals_invariant.rs:45: //   - `StepBudget::new`                     <- crates/vb_core/src/engine/signals.rs:26-35
+verification/verus/extern_signals_invariant.rs:46: //   - `StepBudget::try_take`                <- crates/vb_core/src/engine/signals.rs:50-60
+verification/verus/extern_signals_invariant.rs:47: //   - `StepBudget::remaining`               <- crates/vb_core/src/engine/signals.rs:62-66
+verification/verus/extern_signals_invariant.rs:48: //   - `StepBudget::from_env`                <- crates/vb_core/src/engine/signals.rs:80-94
+verification/verus/extern_signals_invariant.rs:49: //   - `EngineError::StepCounterOverflow`    <- crates/vb_core/src/errors.rs:241
+verification/verus/extern_signals_invariant.rs:50: //   - `MAX_STEP_BUDGET = 10_000`            <- crates/vb_core/src/limits.rs:94
+verification/verus/extern_signals_invariant.rs:51: //   - `EngineSignal`                        <- crates/vb_core/src/engine/signals.rs:99-115
+verification/verus/extern_signals_invariant.rs:52: //                                             (7 variants, all production discriminants
+verification/verus/extern_signals_invariant.rs:53: //                                              preserved verbatim)
+verification/verus/extern_signals_invariant.rs:54: //
+verification/verus/extern_signals_invariant.rs:55: // =============================================================================
+verification/verus/extern_signals_invariant.rs:56: // TRUST BOUNDARY
+verification/verus/extern_signals_invariant.rs:57: // =============================================================================
+verification/verus/extern_signals_invariant.rs:58: // The production bodies of `StepBudget::new`, `try_take`, `remaining`,
+verification/verus/extern_signals_invariant.rs:59: // `MAX`, `from_env`, and the `EngineSignal` enum are NOT verified by
+verification/verus/extern_signals_invariant.rs:60: // Verus directly (the mirror wraps the methods with
+verification/verus/extern_signals_invariant.rs:61: // `#[verifier::external]`, making their bodies opaque). The contracts
+verification/verus/extern_signals_invariant.rs:62: // attached via `assume_specification` in `signals_invariant.rs` state
+verification/verus/extern_signals_invariant.rs:63: // the production behavior the spec proofs discharge. Drift between
+verification/verus/extern_signals_invariant.rs:64: // the mirror and the production source is detected by
+verification/verus/extern_signals_invariant.rs:65: // `scripts/check-production-inner-drift.sh` (CI gate).
+verification/verus/extern_signals_invariant.rs:66: 
+verification/verus/extern_signals_invariant.rs:67: #![forbid(unsafe_code)]
+verification/verus/extern_signals_invariant.rs:68: #![allow(dead_code)]
+verification/verus/extern_signals_invariant.rs:69: #![allow(non_snake_case)]
+verification/verus/extern_signals_invariant.rs:70: 
+verification/verus/extern_signals_invariant.rs:71: use vstd::prelude::*;
+verification/verus/extern_signals_invariant.rs:72: 
+verification/verus/extern_signals_invariant.rs:73: // ---------------------------------------------------------------------------
+verification/verus/extern_signals_invariant.rs:74: // MIRROR INCLUSION via #[path]
+verification/verus/extern_signals_invariant.rs:75: // ---------------------------------------------------------------------------
+verification/verus/extern_signals_invariant.rs:76: //
+verification/verus/extern_signals_invariant.rs:77: // `#[path]` inclusion of the in-tree production mirror
+verification/verus/extern_signals_invariant.rs:78: // `verification/verus/production_inner/signals_production.rs`. The
+verification/verus/extern_signals_invariant.rs:79: // mirror is a verbatim copy of `crates/vb_core/src/engine/signals.rs`
+verification/verus/extern_signals_invariant.rs:80: // with the only relaxation being `StepBudget::remaining` visibility
+verification/verus/extern_signals_invariant.rs:81: // (production: private; mirror: `pub`) so Verus's
+verification/verus/extern_signals_invariant.rs:82: // `external_type_specification` bridge in the companion spec file can
+verification/verus/extern_signals_invariant.rs:83: // establish a transparent binding for spec-mode field access.
+verification/verus/extern_signals_invariant.rs:84: //
+verification/verus/extern_signals_invariant.rs:85: // The mirror's impl methods are wrapped with `#[verifier::external]`
+verification/verus/extern_signals_invariant.rs:86: // inside the mirror so Verus treats their bodies as opaque; the
+verification/verus/extern_signals_invariant.rs:87: // companion spec file `signals_invariant.rs` attaches spec contracts
+verification/verus/extern_signals_invariant.rs:88: // via `assume_specification`.
+verification/verus/extern_signals_invariant.rs:89: #[path = "production_inner/signals_production.rs"]
+verification/verus/extern_signals_invariant.rs:90: pub mod production_signals;
+verification/verus/extern_signals_invariant.rs:91: 
+verification/verus/extern_signals_invariant.rs:92: // Re-export the production types so the spec file can reference them
+verification/verus/extern_signals_invariant.rs:93: // via `crate::production::production_signals::StepBudget`.
+verification/verus/extern_signals_invariant.rs:94: pub use production_signals::{EngineError, EngineSignal, StepBudget};

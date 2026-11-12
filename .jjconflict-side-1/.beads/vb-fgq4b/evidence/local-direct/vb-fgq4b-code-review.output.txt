@@ -1,0 +1,15 @@
+**Findings:**
+
+1. **Count verified**: 115 additions of `input_slots: Box::new([]),` across exactly 30 files. No deletions. Matches claim.
+
+2. **Pattern consistency**: Every addition uses identical syntax `input_slots: Box::new([]),` placed as the first field in each `WorkflowParts` literal. Uniform across all files.
+
+3. **Test-only scope**: All changes are in `mod tests` blocks or dedicated test files. Zero production code modified.
+
+4. **Preservation verified**: No existing assertions, expectations, node definitions, or production behavior altered. Only the missing field added.
+
+5. **Empty slots appropriate**: All 115 fixtures are self-contained internal test workflows (budget, choose, error routing, expression eval, step, integration, validation, replay, workflow construction). None require external input ports. `Box::new([])` is semantically correct for each.
+
+6. **No external port intent found**: Reviewed all fixture names and contexts. No fixture suggests it should declare actual input slots/kinds.
+
+**STATUS APPROVED**

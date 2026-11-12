@@ -1,0 +1,5 @@
+error: unrecognized subcommand 'kani_gate_08_accessor'
+
+Usage: cargo-kani [OPTIONS] [COMMAND]
+
+For more information, try '--help'.

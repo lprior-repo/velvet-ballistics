@@ -1,0 +1,3 @@
+# Four cross-crate fixture schemas
+
+Only four empty input_slots declarations added to self-contained direct core/runtime fixtures; no production or assertion changes. Actual cross_crate_adversarial70tests pass0fail0ignore. Independent local3090 code and separate test reviews approved. Full CLI package build stops next at cli_integration two missing schema fields, with five more admission-evidence initializers found by source inventory; tracked vb-5yt79. No fullpackagepassclaim. Local5090 generated implementation JSON applied with unique-match checks, no Rust authored by coordinator. Localcontract futurepass wording corrected to acceptance before implementation.

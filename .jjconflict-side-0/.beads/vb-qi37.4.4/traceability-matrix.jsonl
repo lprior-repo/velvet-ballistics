@@ -1,0 +1,10 @@
+{"contract_clause":"PRE-001","tests":["admission_durability_error_variants_are_exhaustive"],"proofs":["ERR-ADM-CAUSES-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-002","tests":["admission_header_persistence_failure_has_dedicated_diagnostic"],"proofs":["ERR-ADM-PERSIST-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-001","tests":["admission_durability_errors_have_stable_codes"],"proofs":["ERR-ADM-001","ERR-ADM-CAUSES-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-002","tests":["api_envelope_preserves_admission_durability_code"],"proofs":["API-ADM-001","TLA-ERR-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-001","tests":["duplicate_run_id_preserves_stable_diagnostic_code"],"proofs":["ERR-IDEMP-001","REL-GATE-004","WAIVER-VERUS-DIAG-TOTALITY"],"review":"contract-verification-review.md"}
+{"contract_clause":"ERR-artifact-not-found","tests":["admission_durability_error_variants_are_exhaustive"],"proofs":["ERR-ADM-CAUSES-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"ERR-artifact-invalid-stale-digest-mismatch","tests":["admission_durability_error_variants_are_exhaustive"],"proofs":["ERR-ADM-CAUSES-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"ERR-capability-denied","tests":["admission_durability_error_variants_are_exhaustive"],"proofs":["ERR-ADM-CAUSES-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"ERR-idempotency-duplicate","tests":["duplicate_run_id_preserves_stable_diagnostic_code"],"proofs":["ERR-IDEMP-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"ERR-header-persistence-failed","tests":["admission_header_persistence_failure_has_dedicated_diagnostic"],"proofs":["ERR-ADM-PERSIST-001"],"review":"contract-verification-review.md"}

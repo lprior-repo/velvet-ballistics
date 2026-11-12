@@ -1,0 +1,100 @@
+FILE crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:1: //! Boundary tests for sequence counter corruption and overflow conditions.
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:2: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:3: use crate::admission::*;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:4: use crate::error::JournalError;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:5: use vb_core::RuntimePolicy;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:6: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:7: use super::{minimal_workflow, temp_journal};
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:8: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:9: #[test]
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:10: fn corrupted_counter_length_7_causes_malformed_row() -> Result<(), String> {
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:11:     let tj = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:12:     let journal = &tj.journal;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:13: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:14:     journal
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:15:         .artifact_acceptance
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:16:         .insert(b"last_issued", &[0, 0, 0, 0, 0, 0, 0])
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:17:         .map_err(|e| format!("insert 7-byte counter: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:18: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:19:     let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:20:     let result = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed);
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:21: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:22:     let matches_malformed = matches!(
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:23:         result,
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:24:         Err(JournalError::MalformedKeyspaceRow {
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:25:             prefix: 0,
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:26:             expected_len: 8,
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:27:             actual_len: 7
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:28:         })
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:29:     );
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:30:     assert!(
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:31:         matches_malformed,
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:32:         "expected MalformedKeyspaceRow actual=7, got {result:?}"
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:33:     );
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:34: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:35:     let counter = journal
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:36:         .artifact_acceptance
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:37:         .get(b"last_issued")
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:38:         .map_err(|e| format!("read counter: {e}"))?
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:39:         .ok_or_else(|| "counter should still exist")?;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:40:     assert_eq!(
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:41:         counter,
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:42:         &[0, 0, 0, 0, 0, 0, 0],
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:43:         "counter should be unchanged"
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:44:     );
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:45:     assert!(
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:46:         journal.compiled_ir.iter().next().is_none(),
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:47:         "no compiled_ir written"
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:48:     );
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:49: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:50:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:51: }
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:52: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:53: #[test]
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:54: fn corrupted_counter_length_9_causes_malformed_row() -> Result<(), String> {
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:55:     let tj = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:56:     let journal = &tj.journal;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:57: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:58:     journal
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:59:         .artifact_acceptance
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:60:         .insert(b"last_issued", &[0, 0, 0, 0, 0, 0, 0, 0, 0])
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:61:         .map_err(|e| format!("insert 9-byte counter: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:62: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:63:     let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:64:     let result = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed);
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:65: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:66:     let matches_malformed = matches!(
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:67:         result,
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:68:         Err(JournalError::MalformedKeyspaceRow {
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:69:             prefix: 0,
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:70:             expected_len: 8,
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:71:             actual_len: 9
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:72:         })
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:73:     );
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:74:     assert!(
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:75:         matches_malformed,
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:76:         "expected MalformedKeyspaceRow actual=9, got {result:?}"
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:77:     );
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:78: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:79:     let counter = journal
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:80:         .artifact_acceptance
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:81:         .get(b"last_issued")
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:82:         .map_err(|e| format!("read counter: {e}"))?
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:83:         .ok_or_else(|| "counter should still exist")?;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:84:     assert_eq!(
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:85:         counter,
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:86:         &[0, 0, 0, 0, 0, 0, 0, 0, 0],
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:87:         "counter should be unchanged"
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:88:     );
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:89:     assert!(
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:90:         journal.compiled_ir.iter().next().is_none(),
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:91:         "no compiled_ir written"
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:92:     );
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:93: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:94:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:95: }
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:96: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:97: #[test]
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:98: fn counter_at_u64_max_causes_sequence_overflow() -> Result<(), String> {
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:99:     let tj = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;

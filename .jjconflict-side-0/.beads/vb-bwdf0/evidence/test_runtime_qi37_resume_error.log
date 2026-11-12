@@ -1,0 +1,37 @@
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/vb_qi37_12_2_resume_error_propagation.rs (target/debug/deps/vb_qi37_12_2_resume_error_propagation-0754416dc26f57da)
+
+running 12 tests
+test handle_submit_propagates_journal_failure_before_drive_run ... ok
+test handle_resume_propagates_flush_evidence_failure ... ok
+test handle_submit_journal_before_state_insert_noorphan_journal_record ... ok
+test failed_resumed_append_restores_resumable_for_retry ... ok
+test runtime_conversion_of_fresh_error_cannot_steal_unobserved_pending_source ... ok
+test runtime_conversion_of_fresh_journal_append_failed_uses_no_stale_source ... ok
+test manually_constructed_journal_append_failed_has_no_stale_source_after_prior_failure ... ok
+test fresh_journal_append_failed_cannot_steal_unobserved_pending_source ... ok
+test handle_submit_journal_event_ordering_run_submitted_before_admission ... ok
+test handle_resume_returns_error_when_drive_run_fails ... ok
+test observe_resume_drive_result_does_not_drop_drive_run_error ... ok
+test resume_error_source_stays_bound_to_first_error_when_later_failure_occurs ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

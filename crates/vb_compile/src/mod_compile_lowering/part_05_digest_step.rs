@@ -1,10 +1,9 @@
 use super::part_05_digest_primitive::{
-    HeaderNested, MAX_BODY_NESTING_DEPTH, body_nesting_error, child_depth, digest_step_post,
-    digest_step_pre, emit_primitive_header,
+    DigestOp, HeaderNested, MAX_BODY_NESTING_DEPTH, body_nesting_error, child_depth,
+    digest_step_post, digest_step_pre, emit_primitive_header,
 };
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 
-#[allow(dead_code)]
 enum Frame<'a> {
     Step {
         step: &'a crate::StepAst,
@@ -27,22 +26,13 @@ enum Frame<'a> {
         index: usize,
         depth: u16,
     },
-    Primitive {
-        primitive: &'a crate::StepPrimitive,
-        depth: u16,
-        stage: u8,
-    },
 }
 
 fn run_digest_stack(
     hasher: &mut blake3::Hasher,
     mut stack: Vec<Frame<'_>>,
 ) -> Result<(), CompileErrors> {
-    enum Op<'a> {
-        Push(Frame<'a>),
-        Pop,
-        Nothing,
-    }
+    type Op<'a> = DigestOp<Frame<'a>>;
     loop {
         let op = match stack.last_mut() {
             None => return Ok(()),
@@ -51,13 +41,13 @@ fn run_digest_stack(
                     let step_ref = *step;
                     let depth_val = *depth;
                     if depth_val > MAX_BODY_NESTING_DEPTH {
-                        return Err(body_nesting_error(
-                            super::canonical_primitive_name(&step_ref.primitive),
-                            depth_val,
-                        ));
+                        let name = super::canonical_primitive_name(&step_ref.primitive)
+                            .map_err(|e| CompileErrors(vec![e]))?;
+                        return Err(body_nesting_error(name, depth_val));
                     }
                     digest_step_pre(hasher, step_ref)?;
-                    let name = super::canonical_primitive_name(&step_ref.primitive);
+                    let name = super::canonical_primitive_name(&step_ref.primitive)
+                        .map_err(|e| CompileErrors(vec![e]))?;
                     let nested = emit_primitive_header(hasher, &step_ref.primitive)?;
                     *stage = 1;
                     match nested {
@@ -170,56 +160,6 @@ fn run_digest_stack(
                     })
                 }
             },
-            Some(Frame::Primitive {
-                primitive,
-                depth,
-                stage,
-            }) => {
-                if *stage == 0 {
-                    let prim_ref = *primitive;
-                    let depth_val = *depth;
-                    if depth_val > MAX_BODY_NESTING_DEPTH {
-                        return Err(body_nesting_error(
-                            super::canonical_primitive_name(prim_ref),
-                            depth_val,
-                        ));
-                    }
-                    let name = super::canonical_primitive_name(prim_ref);
-                    let nested = emit_primitive_header(hasher, prim_ref)?;
-                    *stage = 1;
-                    match nested {
-                        HeaderNested::None => Op::Pop,
-                        HeaderNested::Body(body) => {
-                            super::digest_len(hasher, body.len())?;
-                            let child = child_depth(depth_val, name)?;
-                            Op::Push(Frame::Body {
-                                steps: body,
-                                index: 0,
-                                depth: child,
-                            })
-                        }
-                        HeaderNested::Choose(branches, otherwise) => {
-                            let child = child_depth(depth_val, name)?;
-                            Op::Push(Frame::Choose {
-                                branches,
-                                index: 0,
-                                depth: child,
-                                otherwise,
-                            })
-                        }
-                        HeaderNested::Together(branches) => {
-                            let child = child_depth(depth_val, name)?;
-                            Op::Push(Frame::Together {
-                                branches,
-                                index: 0,
-                                depth: child,
-                            })
-                        }
-                    }
-                } else {
-                    Op::Pop
-                }
-            }
         };
         match op {
             Op::Push(frame) => stack.push(frame),
@@ -246,34 +186,54 @@ pub(super) fn digest_step_at(
     )
 }
 
-#[allow(dead_code)]
-pub(super) fn digest_body_at(
-    hasher: &mut blake3::Hasher,
-    body: &[crate::StepAst],
-    depth: u16,
-) -> Result<(), CompileErrors> {
-    super::digest_len(hasher, body.len())?;
-    run_digest_stack(
-        hasher,
-        vec![Frame::Body {
-            steps: body,
-            index: 0,
-            depth,
-        }],
-    )
-}
-
 pub(super) fn digest_primitive_entry(
     hasher: &mut blake3::Hasher,
     primitive: &crate::StepPrimitive,
     depth: u16,
 ) -> Result<(), CompileErrors> {
-    run_digest_stack(
-        hasher,
-        vec![Frame::Primitive {
-            primitive,
-            depth,
-            stage: 0,
-        }],
-    )
+    if depth > MAX_BODY_NESTING_DEPTH {
+        let name =
+            super::canonical_primitive_name(primitive).map_err(|e| CompileErrors(vec![e]))?;
+        return Err(body_nesting_error(name, depth));
+    }
+    let name = super::canonical_primitive_name(primitive).map_err(|e| CompileErrors(vec![e]))?;
+    let nested = emit_primitive_header(hasher, primitive)?;
+    match nested {
+        HeaderNested::None => Ok(()),
+        HeaderNested::Body(body) => {
+            super::digest_len(hasher, body.len())?;
+            let child = child_depth(depth, name)?;
+            run_digest_stack(
+                hasher,
+                vec![Frame::Body {
+                    steps: body,
+                    index: 0,
+                    depth: child,
+                }],
+            )
+        }
+        HeaderNested::Choose(branches, otherwise) => {
+            let child = child_depth(depth, name)?;
+            run_digest_stack(
+                hasher,
+                vec![Frame::Choose {
+                    branches,
+                    index: 0,
+                    depth: child,
+                    otherwise,
+                }],
+            )
+        }
+        HeaderNested::Together(branches) => {
+            let child = child_depth(depth, name)?;
+            run_digest_stack(
+                hasher,
+                vec![Frame::Together {
+                    branches,
+                    index: 0,
+                    depth: child,
+                }],
+            )
+        }
+    }
 }

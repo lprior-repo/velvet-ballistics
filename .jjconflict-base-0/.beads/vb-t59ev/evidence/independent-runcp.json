@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-t59ev-local5090-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--lib",
+    "--",
+    "run_checkpoint"
+  ],
+  "exit_code": 0,
+  "seconds": 14.38,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/tmp/gate-runcp"
+}

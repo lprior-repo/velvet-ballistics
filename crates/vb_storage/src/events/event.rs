@@ -36,6 +36,19 @@ pub enum DurableActionOutcome {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum JournalEvent {
+    /// Versioned full action-failure state and durable retry timer authority.
+    RetryTimerScheduled {
+        /// Owning run.
+        run: RunId,
+        /// Per-run journal sequence.
+        seq: EventSeq,
+        /// Failed action step.
+        step: StepIdx,
+        /// Current run attempt, distinct from the action attempt.
+        attempt: u16,
+        /// Deadline, ticket, and complete checkpoint bound to this failure.
+        timer: crate::retry_timer::RetryTimerV1,
+    },
     /// Run was accepted after input mapping.
     RunAccepted {
         /// Run identifier.

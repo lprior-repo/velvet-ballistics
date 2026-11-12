@@ -97,6 +97,7 @@ fn gwt_re2_reduce_body_reentry_after_succeeded() {
         input,
         accumulator,
         vb_core::ids::ConstIdx::new(0),
+        65_535,
         body,
         done,
         Some(iterator_slot),
@@ -333,6 +334,7 @@ fn minimal_workflow_with_const(cv: i64) -> vb_core::workflow::CompiledWorkflow {
 
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("reentry_test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([7; 32]),
         nodes: vec![node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
@@ -358,4 +360,3 @@ fn decode_packed(packed: i64) -> (u16, u16) {
 // =====================================================================
 // Proptest: PROP-1 through PROP-5
 // =====================================================================
-

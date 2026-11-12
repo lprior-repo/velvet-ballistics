@@ -80,6 +80,7 @@ fn compiled_workflow_accepts_17_field_resource_contract() {
 
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("type_integrity_test"),
         digest: WorkflowDigest::from_bytes([0xCA; 32]),
@@ -122,6 +123,7 @@ fn compiled_workflow_resource_contract_returns_full_17_field_contract() {
 
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("roundtrip_test"),
         digest: WorkflowDigest::from_bytes([0x1D; 32]),

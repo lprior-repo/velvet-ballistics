@@ -1,0 +1,59 @@
+[
+  {
+    "name": "cancel",
+    "argv": [
+      "cargo",
+      "test",
+      "-p",
+      "velvet-ballistics-workspace-tests",
+      "--test",
+      "cancel_kill_lattice_tests",
+      "-j",
+      "2"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "abi",
+    "argv": [
+      "cargo",
+      "test",
+      "-p",
+      "velvet-ballistics-workspace-tests",
+      "--test",
+      "runtime_fjall_pending_action_recovery",
+      "-j",
+      "2",
+      "--",
+      "runtime_records_actual_action_abi_at_schedule_boundary",
+      "--exact"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "compiler-lib",
+    "argv": [
+      "cargo",
+      "test",
+      "-p",
+      "vb_compile",
+      "--lib",
+      "-j",
+      "2"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "compiler-doc",
+    "argv": [
+      "cargo",
+      "test",
+      "-p",
+      "vb_compile",
+      "--doc",
+      "-j",
+      "2"
+    ],
+    "exit": 0
+  }
+]

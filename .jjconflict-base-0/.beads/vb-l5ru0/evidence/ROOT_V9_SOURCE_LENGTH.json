@@ -1,0 +1,15 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-policy-dispatch-v1",
+  "argv": [
+    "bash",
+    "scripts/check-source-length.sh"
+  ],
+  "exit_code": 0,
+  "seconds": 7.241,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-l5ru0/evidence/ROOT_V9_SOURCE_LENGTH"
+}

@@ -1,0 +1,47 @@
+COMMANDS: scoped libFuzzer ASAN smoke for `ipc_frame_fuzz`, `ipc_decode` after latest black-hat blocker followups (encode Err route + length-mismatch oracle)
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+
+=== ipc_frame_fuzz (decode + encode Err route + payload decode) ===
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.04s
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.04s
+     Running `target/x86_64-unknown-linux-gnu/release/ipc_frame_fuzz -artifact_prefix=/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/artifacts/ipc_frame_fuzz/ -runs=20000 -max_total_time=60 /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/ipc_frame_fuzz`
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 176887165
+INFO: Loaded 1 modules   (1198 inline 8-bit counters): 1198 [0x55a8ca8eb470, 0x55a8ca8eb91e), 
+INFO: Loaded 1 PC tables (1198 PCs): 1198 [0x55a8ca8eb920,0x55a8ca8f0400), 
+INFO:       27 files found in /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/ipc_frame_fuzz
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: seed corpus: files: 27 min: 1b max: 28b total: 701b rss: 60Mb
+#28	INITED cov: 156 ft: 171 corp: 24/619b exec/s: 0 rss: 60Mb
+#185	NEW    cov: 163 ft: 180 corp: 25/647b lim: 28 exec/s: 0 rss: 60Mb L: 28/28 MS: 2 CopyPart-CopyPart-
+#808	NEW    cov: 164 ft: 181 corp: 26/675b lim: 32 exec/s: 0 rss: 60Mb L: 28/28 MS: 3 ChangeBit-ChangeBinInt-ChangeBit-
+#1524	NEW    cov: 166 ft: 183 corp: 27/703b lim: 37 exec/s: 0 rss: 60Mb L: 28/28 MS: 1 ChangeBinInt-
+#1675	NEW    cov: 168 ft: 185 corp: 28/731b lim: 37 exec/s: 0 rss: 60Mb L: 28/28 MS: 1 ChangeBinInt-
+#3376	NEW    cov: 169 ft: 186 corp: 29/759b lim: 52 exec/s: 0 rss: 60Mb L: 28/28 MS: 1 CopyPart-
+#3866	NEW    cov: 170 ft: 187 corp: 30/811b lim: 52 exec/s: 0 rss: 60Mb L: 52/52 MS: 5 ShuffleBytes-ChangeBinInt-CopyPart-ChangeBit-InsertRepeatedBytes-
+#4449	NEW    cov: 172 ft: 189 corp: 31/839b lim: 57 exec/s: 0 rss: 60Mb L: 28/52 MS: 3 ChangeBit-ChangeByte-ChangeBit-
+#5005	NEW    cov: 173 ft: 190 corp: 32/864b lim: 62 exec/s: 0 rss: 60Mb L: 25/52 MS: 1 ShuffleBytes-
+	NEW_FUNC[1/1]: 0x55a8ca844260 in <postcard::de::deserializer::SeqAccess<postcard::de::flavors::Slice> as serde_core::de::SeqAccess>::next_element::<u8> /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/serde_core-1.0.228/src/de/mod.rs:1769
+#5784	NEW    cov: 191 ft: 209 corp: 33/924b lim: 67 exec/s: 0 rss: 60Mb L: 60/60 MS: 4 ChangeBit-InsertByte-ChangeBinInt-InsertRepeatedBytes-
+#8440	NEW    cov: 192 ft: 210 corp: 34/952b lim: 91 exec/s: 0 rss: 60Mb L: 28/60 MS: 1 ChangeBit-
+#10661	NEW    cov: 193 ft: 211 corp: 35/980b lim: 109 exec/s: 0 rss: 60Mb L: 28/60 MS: 1 ChangeByte-
+#14962	NEW    cov: 194 ft: 212 corp: 36/1008b lim: 147 exec/s: 0 rss: 60Mb L: 28/60 MS: 1 ChangeByte-
+#17523	NEW    cov: 195 ft: 213 corp: 37/1036b lim: 168 exec/s: 0 rss: 60Mb L: 28/60 MS: 1 ChangeByte-
+#18155	NEW    cov: 204 ft: 222 corp: 38/1096b lim: 168 exec/s: 0 rss: 60Mb L: 60/60 MS: 2 ShuffleBytes-CopyPart-
+#18441	NEW    cov: 207 ft: 226 corp: 39/1156b lim: 168 exec/s: 0 rss: 60Mb L: 60/60 MS: 1 ChangeByte-
+#18938	NEW    cov: 243 ft: 262 corp: 40/1216b lim: 168 exec/s: 0 rss: 60Mb L: 60/60 MS: 2 ChangeByte-CopyPart-
+#19948	NEW    cov: 244 ft: 263 corp: 41/1268b lim: 175 exec/s: 0 rss: 60Mb L: 52/60 MS: 5 ChangeByte-ShuffleBytes-ShuffleBytes-CMP-ChangeByte- DE: "\000\000\000\000\000\000\000\030"-
+#20000	DONE   cov: 244 ft: 263 corp: 41/1268b lim: 175 exec/s: 0 rss: 60Mb
+###### Recommended dictionary. ######
+"\000\000\000\000\000\000\000\030" # Uses: 9
+###### End of recommended dictionary. ######
+Done 20000 runs in 0 second(s)
+EXIT_STATUS_ipc_frame_fuzz=0
+
+=== ipc_decode (typed header decoder walk over NonZeroUsize bounds) ===
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.04s
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.04s
+     Running `target/x86_64-unknown-linux-gnu/release/ipc_decode -artifact_prefix=/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/artifacts/ipc_decode/ -runs=20000 -max_total_time=60 /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz/corpus/ipc_decode`
+EXIT_STATUS_ipc_decode=0
+
+OVERALL_EXIT_STATUS=0

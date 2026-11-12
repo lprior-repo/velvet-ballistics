@@ -1,0 +1,100 @@
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:179:         );
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:180: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:181:         assert_readback_verified(&journal, &first, RuntimePolicy::Strict)?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:182: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:183:         let second = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:184:             .map_err(|e| format!("second submit: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:185:         assert_second_seq(&second);
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:186:         assert_readback_verified(&journal, &second, RuntimePolicy::Strict)?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:187:     }
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:188: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:189:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:190: }
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:191: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:192: #[path = "acceptance_sequence_boundary_tests.rs"]
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:193: mod boundary_tests;
+PARENT ACTUAL FIXTURES FIRST240LINES
+crates/vb_storage/src/admission/tests.rs:1: #[allow(
+crates/vb_storage/src/admission/tests.rs:2:     clippy::assertions_on_constants,
+crates/vb_storage/src/admission/tests.rs:3:     clippy::panic,
+crates/vb_storage/src/admission/tests.rs:4:     clippy::panic_in_result_fn,
+crates/vb_storage/src/admission/tests.rs:5:     clippy::unwrap_used
+crates/vb_storage/src/admission/tests.rs:6: )]
+crates/vb_storage/src/admission/tests.rs:7: use crate::admission::*;
+crates/vb_storage/src/admission/tests.rs:8: use crate::error::JournalError;
+crates/vb_storage/src/admission/tests.rs:9: use vb_core::workflow::ResourceContract;
+crates/vb_storage/src/admission/tests.rs:10: #[path = "evidence_test_support.rs"]
+crates/vb_storage/src/admission/tests.rs:11: mod evidence_test_support;
+crates/vb_storage/src/admission/tests.rs:12: use evidence_test_support::{action_workflow, assert_checked, assert_declarations};
+crates/vb_storage/src/admission/tests.rs:13: 
+crates/vb_storage/src/admission/tests.rs:14: #[test]
+crates/vb_storage/src/admission/tests.rs:15: fn verification_warning_display_formats_gate_code_message() {
+crates/vb_storage/src/admission/tests.rs:16:     let warning = VerificationWarning {
+crates/vb_storage/src/admission/tests.rs:17:         code: 42,
+crates/vb_storage/src/admission/tests.rs:18:         message: Box::from("deprecated action kind"),
+crates/vb_storage/src/admission/tests.rs:19:         gate: 3,
+crates/vb_storage/src/admission/tests.rs:20:     };
+crates/vb_storage/src/admission/tests.rs:21:     assert_eq!(format!("{warning}"), "gate 3: [42] deprecated action kind");
+crates/vb_storage/src/admission/tests.rs:22: }
+crates/vb_storage/src/admission/tests.rs:23: 
+crates/vb_storage/src/admission/tests.rs:24: #[test]
+crates/vb_storage/src/admission/tests.rs:25: fn verification_warning_equality_works() {
+crates/vb_storage/src/admission/tests.rs:26:     let a = VerificationWarning {
+crates/vb_storage/src/admission/tests.rs:27:         code: 1,
+crates/vb_storage/src/admission/tests.rs:28:         message: Box::from("alpha"),
+crates/vb_storage/src/admission/tests.rs:29:         gate: 2,
+crates/vb_storage/src/admission/tests.rs:30:     };
+crates/vb_storage/src/admission/tests.rs:31:     let b = VerificationWarning {
+crates/vb_storage/src/admission/tests.rs:32:         code: 1,
+crates/vb_storage/src/admission/tests.rs:33:         message: Box::from("alpha"),
+crates/vb_storage/src/admission/tests.rs:34:         gate: 2,
+crates/vb_storage/src/admission/tests.rs:35:     };
+crates/vb_storage/src/admission/tests.rs:36:     assert_eq!(a, b);
+crates/vb_storage/src/admission/tests.rs:37: }
+crates/vb_storage/src/admission/tests.rs:38: 
+crates/vb_storage/src/admission/tests.rs:39: #[test]
+crates/vb_storage/src/admission/tests.rs:40: fn verification_warning_inequality_different_code() {
+crates/vb_storage/src/admission/tests.rs:41:     let a = VerificationWarning {
+crates/vb_storage/src/admission/tests.rs:42:         code: 1,
+crates/vb_storage/src/admission/tests.rs:43:         message: Box::from("alpha"),
+crates/vb_storage/src/admission/tests.rs:44:         gate: 2,
+crates/vb_storage/src/admission/tests.rs:45:     };
+crates/vb_storage/src/admission/tests.rs:46:     let b = VerificationWarning {
+crates/vb_storage/src/admission/tests.rs:47:         code: 99,
+crates/vb_storage/src/admission/tests.rs:48:         message: Box::from("alpha"),
+crates/vb_storage/src/admission/tests.rs:49:         gate: 2,
+crates/vb_storage/src/admission/tests.rs:50:     };
+crates/vb_storage/src/admission/tests.rs:51:     assert_ne!(a, b);
+crates/vb_storage/src/admission/tests.rs:52: }
+crates/vb_storage/src/admission/tests.rs:53: 
+crates/vb_storage/src/admission/tests.rs:54: #[test]
+crates/vb_storage/src/admission/tests.rs:55: fn verification_warning_inequality_different_gate() {
+crates/vb_storage/src/admission/tests.rs:56:     let a = VerificationWarning {
+crates/vb_storage/src/admission/tests.rs:57:         code: 1,
+crates/vb_storage/src/admission/tests.rs:58:         message: Box::from("alpha"),
+crates/vb_storage/src/admission/tests.rs:59:         gate: 1,
+crates/vb_storage/src/admission/tests.rs:60:     };
+crates/vb_storage/src/admission/tests.rs:61:     let b = VerificationWarning {
+crates/vb_storage/src/admission/tests.rs:62:         code: 1,
+crates/vb_storage/src/admission/tests.rs:63:         message: Box::from("alpha"),
+crates/vb_storage/src/admission/tests.rs:64:         gate: 13,
+crates/vb_storage/src/admission/tests.rs:65:     };
+crates/vb_storage/src/admission/tests.rs:66:     assert_ne!(a, b);
+crates/vb_storage/src/admission/tests.rs:67: }
+crates/vb_storage/src/admission/tests.rs:68: 
+crates/vb_storage/src/admission/tests.rs:69: #[test]
+crates/vb_storage/src/admission/tests.rs:70: fn verification_proof_new_initializes_empty_warnings() {
+crates/vb_storage/src/admission/tests.rs:71:     let digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+crates/vb_storage/src/admission/tests.rs:72:     let proof = VerificationProof::new(digest, 2, true);
+crates/vb_storage/src/admission/tests.rs:73:     assert!(proof.warnings.is_empty());
+crates/vb_storage/src/admission/tests.rs:74:     assert_eq!(proof.gate_count, 0);
+crates/vb_storage/src/admission/tests.rs:75:     assert_eq!(proof.durable, false);
+crates/vb_storage/src/admission/tests.rs:76:     assert_eq!(
+crates/vb_storage/src/admission/tests.rs:77:         proof.evidence,
+crates/vb_storage/src/admission/tests.rs:78:         vb_core::artifact::ArtifactEvidence::Unverified
+crates/vb_storage/src/admission/tests.rs:79:     );
+crates/vb_storage/src/admission/tests.rs:80: }
+crates/vb_storage/src/admission/tests.rs:81: 
+crates/vb_storage/src/admission/tests.rs:82: #[test]
+crates/vb_storage/src/admission/tests.rs:83: fn verification_proof_warnings_can_be_populated() {
+crates/vb_storage/src/admission/tests.rs:84:     let digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);

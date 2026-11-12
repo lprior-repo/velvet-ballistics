@@ -1,0 +1,3 @@
+JUSTIFIED|DeletedTestDeclaration|crates/vb_core/src/replay/ops/tests.rs|removed_declarations=90 added_declarations=0|bead=vb-eirmk.13.3
+JUSTIFIED|WeakenedAssertion|crates/vb_core/src/replay/ops/tests.rs|removed_exact=4 added_exact=0 added_weak=0|bead=vb-eirmk.13.3
+test integrity: PASS base=1dbcbe96cacdc0fad91edbba641f7ad3ad542fb7

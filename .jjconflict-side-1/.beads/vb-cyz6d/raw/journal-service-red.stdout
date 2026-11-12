@@ -1,0 +1,30 @@
+
+running 2 tests
+test ipc_serve::tests::service_turn_commits_accepted_journal_work_before_shutdown ... FAILED
+test ipc_serve::tests::service_turn_preserves_and_reports_failed_journal_commit ... FAILED
+
+failures:
+
+---- ipc_serve::tests::service_turn_commits_accepted_journal_work_before_shutdown stdout ----
+
+thread 'ipc_serve::tests::service_turn_commits_accepted_journal_work_before_shutdown' (2437415) panicked at crates/velvet_ballistics/src/ipc_serve_tests.rs:32:5:
+assertion `left == right` failed
+  left: []
+ right: [RunAccepted { run: RunId(42), seq: EventSeq(0), workflow: WorkflowDigest([7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7]) }]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- ipc_serve::tests::service_turn_preserves_and_reports_failed_journal_commit stdout ----
+
+thread 'ipc_serve::tests::service_turn_preserves_and_reports_failed_journal_commit' (2437418) panicked at crates/velvet_ballistics/src/ipc_serve_tests.rs:50:5:
+assertion failed: matches!(result,
+    Err(IpcServiceError::Storage(vb_storage::JournalError::DuplicateEvent
+    { run: found, seq })) if found == run && seq ==
+    vb_storage::EventSeq::new(0))
+
+
+failures:
+    ipc_serve::tests::service_turn_commits_accepted_journal_work_before_shutdown
+    ipc_serve::tests::service_turn_preserves_and_reports_failed_journal_commit
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 352 filtered out; finished in 0.01s
+

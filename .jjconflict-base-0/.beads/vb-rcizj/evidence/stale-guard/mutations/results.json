@@ -1,0 +1,82 @@
+[
+  {
+    "guard_removed": "step",
+    "command": [
+      "timeout",
+      "120",
+      "cargo",
+      "test",
+      "-p",
+      "vb_runtime",
+      "--test",
+      "vb_jggy_lifecycle_tests",
+      "stale_guards::"
+    ],
+    "exit": 101,
+    "killed_by_named_stale_guard_tests": true
+  },
+  {
+    "guard_removed": "action",
+    "command": [
+      "timeout",
+      "120",
+      "cargo",
+      "test",
+      "-p",
+      "vb_runtime",
+      "--test",
+      "vb_jggy_lifecycle_tests",
+      "stale_guards::"
+    ],
+    "exit": 101,
+    "killed_by_named_stale_guard_tests": true
+  },
+  {
+    "guard_removed": "capacity",
+    "command": [
+      "timeout",
+      "120",
+      "cargo",
+      "test",
+      "-p",
+      "vb_runtime",
+      "--test",
+      "vb_jggy_lifecycle_tests",
+      "stale_guards::"
+    ],
+    "exit": 101,
+    "killed_by_named_stale_guard_tests": true
+  },
+  {
+    "guard_removed": "key",
+    "command": [
+      "timeout",
+      "120",
+      "cargo",
+      "test",
+      "-p",
+      "vb_runtime",
+      "--test",
+      "vb_jggy_lifecycle_tests",
+      "stale_guards::"
+    ],
+    "exit": 101,
+    "killed_by_named_stale_guard_tests": true
+  },
+  {
+    "guard_removed": "sequence",
+    "command": [
+      "timeout",
+      "120",
+      "cargo",
+      "test",
+      "-p",
+      "vb_runtime",
+      "--test",
+      "vb_jggy_lifecycle_tests",
+      "stale_guards::"
+    ],
+    "exit": 101,
+    "killed_by_named_stale_guard_tests": true
+  }
+]

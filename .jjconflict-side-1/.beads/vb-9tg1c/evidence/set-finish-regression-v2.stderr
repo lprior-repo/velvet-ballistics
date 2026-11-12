@@ -1,0 +1,3 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9tg1c-local3090-final-format/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.09s
+     Running tests/digest_set_finish_regression.rs (target/debug/deps/digest_set_finish_regression-ba0e6cf2eaceff06)

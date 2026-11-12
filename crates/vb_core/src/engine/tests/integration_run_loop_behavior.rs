@@ -18,6 +18,7 @@ use crate::engine::{EngineSignal, StepBudget, drive_deterministic, run_until_blo
 fn two_step_workflow(value: ConstValue) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("two_step"),
         digest: WorkflowDigest::from_bytes([0x01; 32]),
@@ -55,7 +56,8 @@ fn two_step_workflow(value: ConstValue) -> Result<CompiledWorkflow, String> {
 fn single_step_finish_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("single_finish"),
         digest: WorkflowDigest::from_bytes([0x02; 32]),
         nodes: vec![node(
@@ -82,7 +84,8 @@ fn single_step_finish_workflow() -> Result<CompiledWorkflow, String> {
 fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("do_then_finish"),
         digest: WorkflowDigest::from_bytes([0x03; 32]),
         nodes: vec![
@@ -120,7 +123,8 @@ fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
 fn wait_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("wait"),
         digest: WorkflowDigest::from_bytes([0x04; 32]),
         nodes: vec![node(
@@ -147,7 +151,8 @@ fn wait_workflow() -> Result<CompiledWorkflow, String> {
 fn ask_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("ask"),
         digest: WorkflowDigest::from_bytes([0x05; 32]),
         nodes: vec![node(
@@ -201,6 +206,7 @@ fn four_step_set_const_chain_workflow(values: &[ConstValue]) -> Result<CompiledW
 
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("set_chain"),
         digest: WorkflowDigest::from_bytes([0x06; 32]),
@@ -220,7 +226,8 @@ fn four_step_set_const_chain_workflow(values: &[ConstValue]) -> Result<CompiledW
 fn nop_then_finish_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: Box::<str>::from("nop_finish"),
         digest: WorkflowDigest::from_bytes([0x07; 32]),
         nodes: vec![

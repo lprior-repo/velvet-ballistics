@@ -1,0 +1,26 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-s4hfc-v11",
+  "argv": [
+    "/usr/bin/env",
+    "CRITERION_HOME=/home/lewis/src/isoloated/vb-s4hfc-v11/.beads/vb-s4hfc/evidence/actual-collection-v11/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition",
+    "LC_ALL=C",
+    "/home/lewis/src/isoloated/vb-s4hfc-v11/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313",
+    "bench_engine_step_once_save_const_single_transition",
+    "--bench",
+    "--sample-size",
+    "10",
+    "--warm-up-time",
+    "1",
+    "--measurement-time",
+    "1"
+  ],
+  "exit_code": 0,
+  "seconds": 2.418,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/src/isoloated/vb-s4hfc-v11/.beads/vb-s4hfc/evidence/actual-collection-v11/scratch/gate/bench_engine_step_once_save_const_single_transition-criterion-1792684885270631864",
+  "coordinator_message": "Coordinator review: your new explicit kind38 Err arm uses forbidden panic!, contrary to instructions. Remove that new panic branch. Put exact positive kind38 assertion in the ALREADY Result-returning decode_accepts_all_known_journal_event_kinds test: decode_record_header(...)? then assert_eq!(decoded.record_kind,38); preserve all original assertions. Leave valid-kinds test returning () if unchanged. Do not change production. Rerun fresh gate prefixes FIXTURE_V11_03 (focused suite) and04(fmt). Earlier01 was reused/overwritten after invalid env command; retain final rawfiles but handoff must acknowledge invalid invocation logs unavailable, root will use fresh03. Use env CARGO_TARGET_DIR=... before rustup inside recordedargv, not variable assignment as executable. No broadworkspace. Root owns VCS/bd.\n"
+}

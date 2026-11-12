@@ -1,0 +1,87 @@
+error[E0609]: no field `id` on type `shard::types::RunState`
+   --> crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:354:27
+    |
+354 |     let run_id = original.id;
+    |                           ^^ unknown field
+    |
+    = note: available fields are: `registered_execution`, `frame`, `run_attempt`, `workflow`, `store` ... and 4 others
+
+error[E0061]: this method takes 2 arguments but 1 argument was supplied
+   --> crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:357:34
+    |
+357 |     let original_pending = shard.pending_boundary_snapshot(8)?;
+    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^--- argument #2 of type `usize` is missing
+    |
+note: method defined here
+   --> crates/vb_runtime/src/shard/snapshot_chunks/chunk_002_shard_impl.rs:3:12
+    |
+  3 |     pub fn pending_boundary_snapshot(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+  6 |         max_items: usize,
+    |         ----------------
+help: provide the argument
+    |
+357 |     let original_pending = shard.pending_boundary_snapshot(8, /* usize */)?;
+    |                                                             +++++++++++++
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+   --> crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:357:28
+    |
+357 |     let original_pending = shard.pending_boundary_snapshot(8)?;
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `ShardPendingBoundarySnapshot`
+    |
+help: the nightly-only, unstable trait `Try` is not implemented for `ShardPendingBoundarySnapshot`
+   --> crates/vb_runtime/src/shard/snapshot_chunks/chunk_001_boundary_types.rs:113:1
+    |
+113 | pub struct ShardPendingBoundarySnapshot {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `?` couldn't convert the error: `RunFrameCheckpointV1Error: StdError` is not satisfied
+   --> crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:391:79
+    |
+353 | ) -> Result<(), Box<dyn std::error::Error>> {
+    |      -------------------------------------- required `RunFrameCheckpointV1Error: StdError` because of this
+...
+391 |         vb_core::frame::RunFrame::from_checkpoint_v1(checkpoint.frame.clone())?;
+    |         ----------------------------------------------------------------------^ the trait `StdError` is not implemented for `RunFrameCheckpointV1Error`
+    |         |
+    |         this has type `Result<_, RunFrameCheckpointV1Error>`
+    |
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+    = note: required for `Box<dyn StdError>` to implement `From<RunFrameCheckpointV1Error>`
+
+error[E0061]: this method takes 2 arguments but 1 argument was supplied
+   --> crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:427:15
+    |
+427 |         shard.pending_boundary_snapshot(8)?,
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^--- argument #2 of type `usize` is missing
+    |
+note: method defined here
+   --> crates/vb_runtime/src/shard/snapshot_chunks/chunk_002_shard_impl.rs:3:12
+    |
+  3 |     pub fn pending_boundary_snapshot(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+  6 |         max_items: usize,
+    |         ----------------
+help: provide the argument
+    |
+427 |         shard.pending_boundary_snapshot(8, /* usize */)?,
+    |                                          +++++++++++++
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+   --> crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:427:9
+    |
+427 |         shard.pending_boundary_snapshot(8)?,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `ShardPendingBoundarySnapshot`
+    |
+help: the nightly-only, unstable trait `Try` is not implemented for `ShardPendingBoundarySnapshot`
+   --> crates/vb_runtime/src/shard/snapshot_chunks/chunk_001_boundary_types.rs:113:1
+    |
+113 | pub struct ShardPendingBoundarySnapshot {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some errors have detailed explanations: E0061, E0277, E0609.
+For more information about an error, try `rustc --explain E0061`.
+error: could not compile `vb_runtime` (lib test) due to 6 previous errors

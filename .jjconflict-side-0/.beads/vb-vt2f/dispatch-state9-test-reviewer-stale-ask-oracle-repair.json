@@ -1,0 +1,21 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 9,
+  "sublane": "test-review-after-stale-ask-oracle-repair-red",
+  "delegate": "test-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/test-writer-report.md",
+    ".beads/vb-vt2f/contract-verification-review.md",
+    ".beads/vb-vt2f/contract.md",
+    "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/test-plan-review.md",
+    ".beads/vb-vt2f/test-suite-review.md",
+    ".beads/vb-vt2f/test-repair-guide.md"
+  ],
+  "attempt": 1,
+  "repair_route": "State 9 review after State 8 stale ask oracle repair"
+}

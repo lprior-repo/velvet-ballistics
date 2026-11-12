@@ -1,0 +1,3 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-h7rex-assembly-v8/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.33s
+     Running tests/proptest_journal_error_codes.rs (target/debug/deps/proptest_journal_error_codes-d0f2cc80e1161bfa)

@@ -1,0 +1,43 @@
+{
+  "git_head_changes": {
+    "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-jj-isolation-probe-20261021/HEAD": {
+      "before": "856603b8001c26a199afb91fc9a410bb5715f532\n",
+      "after": "1598788b8c891cc98d0cdcd3e44aba293f4a3bf7\n"
+    }
+  },
+  "other_heads_changed": [],
+  "commands": [
+    {
+      "command": [
+        "jj",
+        "file",
+        "track",
+        "--include-ignored",
+        "glob:.beads/vb-em7tf/**"
+      ],
+      "output": ""
+    },
+    {
+      "command": [
+        "jj",
+        "bookmark",
+        "set",
+        "codex/vb-em7tf-probe",
+        "-r",
+        "@"
+      ],
+      "output": "Created 1 bookmarks pointing to ownmvsor 1598788b codex/vb-em7tf-probe | vb-em7tf: prove per-worktree JJ backing isolation\n"
+    },
+    {
+      "command": [
+        "jj",
+        "new",
+        "@",
+        "-m",
+        "vb-em7tf: inspect isolated backing probe result"
+      ],
+      "output": "Working copy  (@) now at: ysmnvzlp 36daab69 (empty) vb-em7tf: inspect isolated backing probe result\nParent commit (@-)      : ownmvsor 1598788b codex/vb-em7tf-probe | vb-em7tf: prove per-worktree JJ backing isolation\n"
+    }
+  ],
+  "own_git_dir": "/home/lewis/src/velvet-ballistics/.git/worktrees/velvet-ballistics-jj-isolation-probe-20261021"
+}

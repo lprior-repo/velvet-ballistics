@@ -1,0 +1,9 @@
+{
+  "author": "RTX5090 local OMP high nofallback",
+  "path": ".moon/tasks/all.yml",
+  "sha256": "f80a46d690517174c072f023dd0bceeb6aa0794beef16274c6e9226376f4ebe9",
+  "historical_commit": "c56283c9639f",
+  "actual_installed_libfuzzer": "libfuzzer-sys0.4.13 FuzzerDriver.cpp FlagValue requires =; actual builtbinary-help confirms -flag=val",
+  "delta": "8added1removed lines; Basharray optionaldictionary absoluteoneargument and corpusMooninputs. Existingdictinputglobretained. No otherconfigchanges.",
+  "status": "unreviewed draft; no taskexecution/acceptanceclaim"
+}

@@ -1,0 +1,11 @@
+STATUS: REJECTED
+
+Concrete actionable test gaps:
+
+1. **Missing `{is:number}` schema shorthand test**: Contract declares "The schema shorthand accepts `number` or `{is:number}`" but all tests use only `number`. Add a test compiling a workflow with `inputs: { count: {is: number} }` and verifying identical slot allocation and runtime behavior.
+
+2. **Missing duplicate input validation test**: Contract states "Duplicate input validation continues to run as before" but no test exercises this. Add a test with duplicate input declarations (e.g., two inputs both named `count`) and assert the expected duplicate-name compile error.
+
+3. **Missing no-Finish node case test**: Contract specifies "If no `Finish` node is present, input ports are allocated after all nodes are processed" as a distinct code path. Add a test compiling a workflow with inputs but only save/compute nodes (no finish), verifying input slot indices are allocated after internal slots.
+
+4. **Missing non-finish consumer unsupported test**: Contract explicitly states "Non-finish consumers of inputs remain explicitly unsupported." Add a test using `$input.count` in a save node's value field (not finish) and assert the expected compile error, proving the boundary is enforced.

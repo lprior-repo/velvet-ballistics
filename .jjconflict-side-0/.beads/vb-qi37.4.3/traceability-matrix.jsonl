@@ -1,0 +1,7 @@
+{"contract_clause":"PRE-001","tests":["submit_rejects_duplicate_run_id"],"proofs":["TEST-PRE-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-002","tests":["admission_rejection_does_not_insert_run_state"],"proofs":["TEST-PRE-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-001","tests":["storage_failure_before_header_prevents_ack"],"proofs":["TLA-ACK-001","TEST-DUR-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-002","tests":["restart_lookup_finds_persisted_header"],"proofs":["REC-HEADER-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-003","tests":["storage_failure_before_header_prevents_ack"],"proofs":["TEST-DUR-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-001","tests":["restart_lookup_finds_persisted_header"],"proofs":["TLA-ACK-001","REL-GATE-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-002","tests":["storage_failure_before_header_prevents_ack"],"proofs":["TLA-ACK-001","WAIVER-VERUS-HEADER-ORDER"],"review":"contract-verification-review.md"}

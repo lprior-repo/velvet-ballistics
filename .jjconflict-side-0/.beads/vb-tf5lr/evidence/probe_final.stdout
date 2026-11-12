@@ -1,0 +1,19 @@
+
+running 5 tests
+test probe_auto_recovery_does_not_resume_failed_run ... FAILED
+test probe_old_completion_authority ... FAILED
+test probe_old_failure_authority ... FAILED
+test probe_old_ticket_equality_against_retried_ticket ... FAILED
+test probe_recover_retry_accepts_tampered_run_attempt ... FAILED
+
+failures:
+
+failures:
+    probe_auto_recovery_does_not_resume_failed_run
+    probe_old_completion_authority
+    probe_old_failure_authority
+    probe_old_ticket_equality_against_retried_ticket
+    probe_recover_retry_accepts_tampered_run_attempt
+
+test result: FAILED. 0 passed; 5 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+

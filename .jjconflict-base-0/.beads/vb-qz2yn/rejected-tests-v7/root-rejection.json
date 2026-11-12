@@ -1,0 +1,6 @@
+{
+  "status": "INCOMPLETE_UNACCEPTED",
+  "cause": "Scope guard terminated unauthorized parent fixtures.rs; exactfile preserved/quarantined, neverexecuted.",
+  "otherissues": "New main file imports private journal module functions and expected29wrapperhelpers. Rewrite smaller actual bodies reusing existingparentfixtures; no private productiongetter needed.",
+  "executed": false
+}

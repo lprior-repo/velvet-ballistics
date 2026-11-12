@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local5090-durable-deny",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_storage",
+    "--lib",
+    "emergency_deny"
+  ],
+  "exit_code": 0,
+  "seconds": 0.087,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ct31x/evidence/DENY_V1_01",
+  "coordinator_message": "Coordinator: source watch saw you introduced value.unwrap().as_bytes() in new emergency_deny_state. Unwrap is forbidden. Use let Some(value) = ... else { return Ok(Inactive) }; then borrow checked bytes with actual Slice API. No new unwrap/expect/indexing/allow. All original assertions must remain except precise namespace count/list changes; do not use cargo fmt --all to leave broad unrelated edits without reporting. Public activate must not overwrite malformed/unsupported markers and must return storage failure if SyncAll fails.\n"
+}

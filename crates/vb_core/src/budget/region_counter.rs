@@ -37,7 +37,7 @@ impl Frame {
         current: StepIdx,
         cache: &HashMap<(StepIdx, StepIdx), u64>,
     ) -> Result<Option<(StepIdx, StepIdx)>, BudgetTraversalError> {
-        if current == self.done {
+        if current == self.done || (self.body < self.done && current > self.done) {
             return Ok(None);
         }
         let position = find_node_position(nodes, current, nodes.len())?;
@@ -71,6 +71,7 @@ impl Frame {
         self.count = visit_body_region_node(
             nodes,
             current,
+            self.body,
             self.done,
             nodes.len(),
             &mut self.visited,

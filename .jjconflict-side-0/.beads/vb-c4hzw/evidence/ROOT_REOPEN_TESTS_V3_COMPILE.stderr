@@ -1,0 +1,44 @@
+error: unused import: `JournalEvent`
+  --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:31:45
+   |
+31 | use vb_storage::{FjallConfig, FjallJournal, JournalEvent};
+   |                                             ^^^^^^^^^^^^
+   |
+   = note: `-D unused-imports` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:243:19
+    |
+243 |         decision, expected,
+    |                   ^^^^^^^^ expected `Box<DecisionRecord>`, found `DecisionRecord`
+    |
+    = note: expected struct `Box<DecisionRecord>`
+               found struct `DecisionRecord`
+    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+    |
+243 |         decision, Box::new(expected),
+    |                   +++++++++        +
+
+error[E0277]: can't compare `&DecisionRecord` with `DecisionRecord`
+   --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:289:5
+    |
+289 | /     assert_eq!(
+290 | |         stored_decision, &expected,
+291 | |         "stored decision must match expected 9-field record"
+292 | |     );
+    | |_____^ no implementation for `&DecisionRecord == DecisionRecord`
+    |
+help: the trait `PartialEq` is not implemented for `&DecisionRecord`
+      but it is implemented for `DecisionRecord`
+   --> crates/vb_core/src/policy.rs:164:24
+    |
+164 | #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    |                        ^^^^^^^^^
+    = help: for that trait implementation, expected `DecisionRecord`, found `&DecisionRecord`
+    = note: required for `&&DecisionRecord` to implement `PartialEq<&DecisionRecord>`
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_c4hzw_emergency_reopen") due to 3 previous errors

@@ -20,6 +20,8 @@ pub struct CompiledNode {
     pub routing: NodeRouting,
     /// Node behavior.
     pub kind: CompiledNodeKind,
+    /// Fixed, inclusive action attempt limit and delay; never source text.
+    pub retry: Option<super::CompiledRetryPolicy>,
 }
 
 /// Where a node writes its result, when it writes one.

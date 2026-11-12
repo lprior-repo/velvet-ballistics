@@ -1,0 +1,13 @@
+error[E0433]: cannot find `RegisteredExecution` in `types`
+   --> crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:654:30
+    |
+654 |         crate::shard::types::RegisteredExecution::ReconcileOnly,
+    |                              ^^^^^^^^^^^^^^^^^^^ could not find `RegisteredExecution` in `types`
+    |
+help: an enum with a similar name exists
+    |
+654 |         crate::shard::types::RegisteredExecutionMode::ReconcileOnly,
+    |                                                 ++++
+
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `vb_runtime` (lib test) due to 1 previous error

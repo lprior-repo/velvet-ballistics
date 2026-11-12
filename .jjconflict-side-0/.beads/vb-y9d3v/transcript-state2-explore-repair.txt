@@ -1,0 +1,28 @@
+State 2 explore-repair transcript for vb-y9d3v attempt 2
+
+Scope:
+- Direct child of femdation controller.
+- Delegate: explore; sublane: explore-repair.
+- Isolated workdir: /home/lewis/isolated/velvet-ballistics-fresh-replacements/vb-y9d3v
+- Production Rust/test/proof/config edits: none.
+
+Repair actions:
+1. Inspected existing State 2 artifacts under .beads/vb-y9d3v/.
+2. Confirmed codebase-map.md and delivery-scope.jsonl already exist and are non-empty.
+3. Created this transcript artifact because prior ledger row had transcript_artifact=null.
+4. Replaced stale/invalid State 2 ledger provenance with existing relative artifact names only.
+5. Recomputed SHA-256 artifact hashes and ledger entry hash chain.
+
+Invalid prior provenance removed from active State 2 row:
+- delivery-scope.jsonl(seed)
+- prior:/home/lewis/isolated/velvet-ballistics-main-review/vb-8mdp.5
+
+Commands/evidence to be run after ledger write:
+- pwd -P
+- test -s .beads/vb-y9d3v/STATE.md
+- test -s .beads/vb-y9d3v/baseline-report.md
+- test -s .beads/vb-y9d3v/global-readiness-report.md
+- test -s .beads/vb-y9d3v/codebase-map.md
+- test -s .beads/vb-y9d3v/delivery-scope.jsonl
+- jq -c . .beads/vb-y9d3v/delivery-scope.jsonl >/dev/null
+- strict State 2 provenance validator over agent-invocation-ledger.jsonl

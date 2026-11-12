@@ -1,0 +1,8 @@
+error[E0425]: cannot find value `allowed_digest` in this scope
+   --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:138:9
+    |
+138 |         allowed_digest,
+    |         ^^^^^^^^^^^^^^ not found in this scope
+
+For more information about this error, try `rustc --explain E0425`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_c4hzw_emergency_reopen") due to 1 previous error

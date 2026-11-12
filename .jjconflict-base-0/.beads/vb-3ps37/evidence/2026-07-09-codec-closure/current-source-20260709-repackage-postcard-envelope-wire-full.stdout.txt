@@ -1,0 +1,28 @@
+
+running 23 tests
+test po_3t44_010_step_started_roundtrip ... ok
+test po_3t44_012_action_scheduled_roundtrip ... ok
+test po_3t44_016_ask_scheduled_roundtrip ... ok
+test po_3t44_024_payload_digest_mismatch_is_exact ... ok
+test po_3t44_020_run_finished_roundtrip ... ok
+test po_3t44_021_run_failed_roundtrip ... ok
+test po_3t44_025_payload_too_large_rejected ... ok
+test po_3t44_014_action_failed_roundtrip ... ok
+test po_3t44_017_ask_answered_roundtrip ... ok
+test po_3t44_011_slot_written_roundtrip ... ok
+test po_3t44_022_step_succeeded_roundtrip ... ok
+test po_3t44_023_wrong_magic_rejected_first ... ok
+test po_3t44_028_truncated_data_rejected ... ok
+test po_3t44_013_action_completed_roundtrip ... ok
+test po_3t44_029_header_checksum_mismatch ... ok
+test po_3t44_018_retry_scheduled_roundtrip ... ok
+test po_3t44_015_wait_scheduled_roundtrip ... ok
+test po_3t44_024b_header_checksum_wins_when_header_and_payload_corrupt ... ok
+test po_3t44_019_run_cancelled_roundtrip ... ok
+test po_3t44_009_run_accepted_roundtrip ... ok
+test po_3t44_030_valid_record_decodes ... ok
+test po_3t44_027_small_payload_roundtrip ... ok
+test po_3t44_026_all_record_kind_ids_valid ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

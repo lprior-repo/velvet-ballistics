@@ -4,6 +4,14 @@ use vb_core::ids::StepIdx;
 
 use super::RecoveredPendingActionTicket;
 
+/// Numeric authority accepted only with its failure-bound complete checkpoint.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct RecoveredRetryTimer {
+    pub(crate) step: StepIdx,
+    pub(crate) generation: u64,
+    pub(crate) deadline_unix_ms: u64,
+}
+
 /// Kind tag for a recovered external boundary.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -14,6 +22,8 @@ pub enum RecoveredRunBoundaryKind {
     PendingAction,
     /// An ask with no timeout was recovered from the frame state.
     OpenAsk,
+    /// A versioned durable action retry timer.
+    RetryTimer,
     /// A wait suspended on a durable timer schedule was recovered.
     WaitingTimer,
     /// An ask with timer authority was recovered from the frame state.
@@ -25,6 +35,7 @@ enum RecoveredRunBoundaryInner {
     None,
     PendingAction(RecoveredPendingActionTicket),
     OpenAsk(RecoveredOpenAsk),
+    RetryTimer(RecoveredRetryTimer),
     WaitingTimer(RecoveredTimerSuspension),
     TimedAsk(RecoveredTimerSuspension),
 }
@@ -58,6 +69,21 @@ impl RecoveredRunBoundary {
     }
 
     #[must_use]
+    pub(crate) const fn from_retry_timer(timer: RecoveredRetryTimer) -> Self {
+        Self {
+            inner: RecoveredRunBoundaryInner::RetryTimer(timer),
+        }
+    }
+
+    #[must_use]
+    pub(crate) const fn retry_timer(self) -> Option<RecoveredRetryTimer> {
+        match self.inner {
+            RecoveredRunBoundaryInner::RetryTimer(timer) => Some(timer),
+            _ => None,
+        }
+    }
+
+    #[must_use]
     pub(crate) const fn from_waiting_timer(timer: RecoveredTimerSuspension) -> Self {
         Self {
             inner: RecoveredRunBoundaryInner::WaitingTimer(timer),
@@ -74,6 +100,7 @@ impl RecoveredRunBoundary {
     #[must_use]
     pub const fn kind(self) -> RecoveredRunBoundaryKind {
         match self.inner {
+            RecoveredRunBoundaryInner::RetryTimer(_) => RecoveredRunBoundaryKind::RetryTimer,
             RecoveredRunBoundaryInner::None => RecoveredRunBoundaryKind::None,
             RecoveredRunBoundaryInner::PendingAction(_) => RecoveredRunBoundaryKind::PendingAction,
             RecoveredRunBoundaryInner::OpenAsk(_) => RecoveredRunBoundaryKind::OpenAsk,
@@ -87,6 +114,7 @@ impl RecoveredRunBoundary {
         match self.inner {
             RecoveredRunBoundaryInner::PendingAction(ticket) => Some(ticket),
             RecoveredRunBoundaryInner::None
+            | RecoveredRunBoundaryInner::RetryTimer(_)
             | RecoveredRunBoundaryInner::OpenAsk(_)
             | RecoveredRunBoundaryInner::WaitingTimer(_)
             | RecoveredRunBoundaryInner::TimedAsk(_) => None,
@@ -98,6 +126,7 @@ impl RecoveredRunBoundary {
         match self.inner {
             RecoveredRunBoundaryInner::OpenAsk(ask) => Some(ask),
             RecoveredRunBoundaryInner::None
+            | RecoveredRunBoundaryInner::RetryTimer(_)
             | RecoveredRunBoundaryInner::PendingAction(_)
             | RecoveredRunBoundaryInner::WaitingTimer(_)
             | RecoveredRunBoundaryInner::TimedAsk(_) => None,
@@ -109,6 +138,7 @@ impl RecoveredRunBoundary {
         match self.inner {
             RecoveredRunBoundaryInner::WaitingTimer(timer) => Some(timer),
             RecoveredRunBoundaryInner::None
+            | RecoveredRunBoundaryInner::RetryTimer(_)
             | RecoveredRunBoundaryInner::PendingAction(_)
             | RecoveredRunBoundaryInner::OpenAsk(_)
             | RecoveredRunBoundaryInner::TimedAsk(_) => None,
@@ -120,6 +150,7 @@ impl RecoveredRunBoundary {
         match self.inner {
             RecoveredRunBoundaryInner::TimedAsk(ask) => Some(ask),
             RecoveredRunBoundaryInner::None
+            | RecoveredRunBoundaryInner::RetryTimer(_)
             | RecoveredRunBoundaryInner::PendingAction(_)
             | RecoveredRunBoundaryInner::OpenAsk(_)
             | RecoveredRunBoundaryInner::WaitingTimer(_) => None,
@@ -131,6 +162,7 @@ impl RecoveredRunBoundary {
         match self.inner {
             RecoveredRunBoundaryInner::OpenAsk(ask) => ask.step == step,
             RecoveredRunBoundaryInner::None
+            | RecoveredRunBoundaryInner::RetryTimer(_)
             | RecoveredRunBoundaryInner::PendingAction(_)
             | RecoveredRunBoundaryInner::WaitingTimer(_)
             | RecoveredRunBoundaryInner::TimedAsk(_) => false,
@@ -142,6 +174,7 @@ impl RecoveredRunBoundary {
         match self.inner {
             RecoveredRunBoundaryInner::WaitingTimer(timer) => timer.step == step,
             RecoveredRunBoundaryInner::None
+            | RecoveredRunBoundaryInner::RetryTimer(_)
             | RecoveredRunBoundaryInner::PendingAction(_)
             | RecoveredRunBoundaryInner::OpenAsk(_)
             | RecoveredRunBoundaryInner::TimedAsk(_) => false,
@@ -153,6 +186,7 @@ impl RecoveredRunBoundary {
         match self.inner {
             RecoveredRunBoundaryInner::TimedAsk(ask) => ask.step == step,
             RecoveredRunBoundaryInner::None
+            | RecoveredRunBoundaryInner::RetryTimer(_)
             | RecoveredRunBoundaryInner::PendingAction(_)
             | RecoveredRunBoundaryInner::OpenAsk(_)
             | RecoveredRunBoundaryInner::WaitingTimer(_) => false,

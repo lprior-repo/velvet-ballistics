@@ -1,0 +1,22 @@
+Done. Here's what I implemented:
+
+**Test added**: `recover_restores_action_contracts_and_schedules` in `crates/vb_runtime/src/shard/lifecycle/chunk_001.rs` (module `vb_3l40a_action_recovery_tests`)
+
+The test:
+1. Builds a workflow with a Do action and a valid action contract
+2. Creates an artifact store returning the contract
+3. Passes `store.clone()` to `Shard` so the original is preserved for comparison
+4. Seeds the recovery frame with the required input value for the Do action
+5. Calls `handle_recover` and then verifies:
+   - `run_state_get` returns `Some` with explicit `ok_or` + `?`
+   - `state.action_contracts` matches the artifact's contracts (count, id, name)
+   - `pending_action_get` returns `Some(ticket)` with correct run, step, action, and attempt fields
+6. Uses `Result<(), Box<dyn std::error::Error>>` return type with `?` instead of `unwrap`/`expect`
+
+**Mutation test verified**: Applied `Box::new([])` mutation to the recovery code - test failed as expected. Restored the original code - test passes.
+
+**Evidence written**:
+- `.beads/vb-3l40a/exact-state-report.md` - full report
+- `.beads/vb-3l40a/evidence/exact-state/mutation-failure-improved.log` - mutation failure log
+
+No push performed as requested.

@@ -1,0 +1,32 @@
+# vb-3l40a: Runtime Compilation Restored
+
+**Status**: All 22 compile errors fixed. Crate compiles. 1869 tests pass.
+
+## What Was Done
+
+The vb-eyij7 migration exposed API drift between `vb_runtime` callers and the `shard::types` and error definitions. I made minimal genuine repairs preserving the intended typed APIs:
+
+### New/Restored APIs
+- **`RecoverRunCommand` struct**: Typed recovery command carrying run, frame, artifact_digest, workflow_digest, next_seq, collect_states, boundary
+- **`ShardCommand::Recover` variant**: Expanded to carry full recovery context
+- **`validate_submit_admission_with_contracts`**: Admission validation method for submit-with-contracts paths
+- **`action_abi_digests_remove(run)`**: Cleanup of per-run action ABI tracking
+- **`action_abi_digest_for_run_action(run, action)`**: Computes ABI digest (blake3 of postcard-serialized contract) for a specific action
+
+### Error Diagnostics
+- Added match arms for `RuntimeInputSlotKindMismatch` in both `diagnostic_code()` and `runtime_code()`
+
+### Robustness
+- Added catch-all `&_ =>` arm to `slot_value_kind()` for non-exhaustive `SlotValue` enum
+- Added `input_slots` field to all 22 test file `WorkflowParts` constructors
+
+## Evidence
+- Baseline: `cargo check -p vb_runtime` → 22 errors, 2 warnings
+- Post-fix: `cargo check -p vb_runtime` → 0 errors, 1 pre-existing warning
+- Tests: `cargo test -p vb_runtime --lib` → **1869 passed, 0 failed**
+
+## Files Modified
+34 files across: shard types, shard lifecycle, shard impl, shard helpers, error diagnostics, recovery module exports, and 22 test files.
+
+## Remaining Blockers
+None. Compilation restored. All tests pass. No lint relaxations or stubs used.

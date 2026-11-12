@@ -1,0 +1,3 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cd7g8-local5090-review/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.28s
+     Running tests/vb_ko29_5_public_idempotency.rs (target/debug/deps/vb_ko29_5_public_idempotency-774d4b538d29970f)

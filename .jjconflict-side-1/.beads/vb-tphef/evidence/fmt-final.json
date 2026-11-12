@@ -1,0 +1,24 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy",
+  "argv": [
+    "cargo",
+    "fmt",
+    "--check",
+    "--",
+    "crates/vb_core/src/policy.rs",
+    "crates/vb_core/src/policy/original_tests.rs",
+    "crates/vb_core/src/policy/new_tests.rs",
+    "crates/vb_runtime/src/policy.rs",
+    "crates/vb_runtime/src/policy/tests.rs",
+    "crates/vb_runtime/src/lib.rs"
+  ],
+  "exit_code": 0,
+  "seconds": 1.571,
+  "timeout_seconds": 60,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-tphef/evidence/fmt-final",
+  "coordinator_message": "COORDINATOR: Evidence prefixes MUST be unique. I observed runtime-policy-tests.json101 then stdout12pass/compile6s, implying overwritten logs; this evidence set cannot establish acceptance. Preserve it, use new unique names for every rerun.\nRemaining scoped draft corrections: split bothfiles<=300lines, productionfunctions<=25logical. Keep original7RuntimePolicytests verbatim. No new uncheckedindex/cast or oversized9argumentconstructor. Prefer recordstructliteral inside pureevaluator/privatefacts over publiccounterfeitconstructor. Do NOT copy fullCurrentLivePolicy configuration into decision; digest-or-Unconfigured identity suffices. Caller perrunadmissionpin staysper-evaluate. Unknown nonexhaustiveTaint MUST NOT collapse allfuturevariants to255; canonical encodeTaint with typedfailure (postcard smallfixedbuffer / existingerror) instead. Add tests varying EACH of8ticketfields, actualinputbytes and ALLcurrentTaintvariants, not justoneactionfield/taintpair. No Shard/runtimewiring, no storagechanges, no existingtestrewrite.\nActual strictsourceclippy uses --lib -- -D warnings, not weak -- --no-deps. Allcargo/fmtchecks officialrunner; no overwrittenfailurelogs or pipeline. No selfapproval.\n"
+}

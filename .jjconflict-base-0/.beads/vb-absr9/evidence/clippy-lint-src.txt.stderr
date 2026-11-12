@@ -1,0 +1,17 @@
+error: this function has too many arguments (8/7)
+  --> crates/vb_core/src/action/ticket.rs:54:1
+   |
+54 | / pub fn issue_action_ticket(
+55 | |     run: RunId,
+56 | |     step: StepIdx,
+57 | |     seq: SeqNo,
+...  |
+62 | |     capacity: u16,
+63 | | ) -> ActionTicket {
+   | |_________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments
+   = note: `-D clippy::too-many-arguments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::too_many_arguments)]`
+
+error: could not compile `vb_core` (lib) due to 1 previous error

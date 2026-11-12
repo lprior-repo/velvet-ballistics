@@ -1,0 +1,56 @@
+State 6 proof-reviewer transcript for vb-vzcuf (attempt 2)
+
+Run 1: Loaded skill /home/lewis/.opencode/skill/proof-reviewer/SKILL.md
+Run 2: Read all reference documents (non-vacuity-checks, tool-specific-lethal-findings, extreme-proof-review-rubric, adversarial-proof-checklist, evidence-standards)
+Run 3: Explored workspace structure: .beads/vb-vzcuf/, .evidence/, verification/{verus/,kani/,flux/,tla/}
+Run 4: Read proof-obligations.planned.jsonl (45 obligations, POB-vb-vzcuf-001 through POB-vb-vzcuf-045)
+Run 5: Read proof-evidence.md (attempt 2 claims)
+Run 6: Read proof-review.md from attempt 1 (5 LETHAL findings, REJECTED)
+Run 7: Read proof-findings.jsonl from attempt 1 (10 findings)
+Run 8: Read agent-invocation-ledger.jsonl (7 entries, seq 1-7)
+Run 9: Read transcript-state5.txt (empty/minimal)
+Run 10: Read proof-writer-report.md (attempt 2 claims PRODUCTION-BOUND)
+Run 11: Read verification-ledger.jsonl (126 entries, other beads)
+Run 12: Read proof-seeds.jsonl (9 seeds)
+Run 13: Listed verification/verus/ (76 files, 9 are vb-vzcuf-PS-*.rs)
+Run 14: Listed verification/kani/ (38 files, 9 are vb-vzcuf-PS-*.rs)
+Run 15: Listed verification/flux/ (15 files, 9 are vb-vzcuf-PS-*.rs)
+Run 16: Listed fuzz/fuzz_targets/ (46 files, 9 are vb_vzcuf_PS_*.rs)
+Run 17: Read Verus PS-001.rs (admission model, PRODUCTION BINDING comments, no exec fn binding)
+Run 18: Read Verus PS-003.rs (ErrorVariant enum local, Guard enum local, tautological)
+Run 19: Read Verus PS-004.rs (BatchState local, weak lemmas)
+Run 20: Grep for requires|ensures|verus! in crates/vb_storage/src/ -- ZERO production Verus annotations
+Run 21: Grep for requires|ensures|verus! in crates/vb_core/src/ -- ZERO production Verus annotations
+Run 22: Read batch.rs lines 1-100 (JournalWriteBatch struct -- no staged_bytes, no byte_limit)
+Run 23: Read Kani PS-001.rs (imports encode_record, JournalEvent; tests u64::checked_add stdlib)
+Run 24: Read Kani PS-003.rs (imports JournalError from production; tests variants)
+Run 25: Read Kani PS-005.rs (imports encode_record from production; tests encoded length)
+Run 26: Read proptest PS-001.rs (imports JournalWriteBatch, FjallJournal; tests production API)
+Run 27: Read Flux PS-001.rs (standalone admit_bytes function with Flux sig, not production type)
+Run 28: Read fuzz PS-001.rs (calls encode_record from production; defines local admit_bytes)
+Run 29: Verified Verus installation: version 0.2026.05.05.d03e906
+Run 30: Ran verus on PS-001: 7 verified, 0 errors -- CONFIRMED
+Run 31: Ran verus on PS-003: 5 verified, 0 errors -- CONFIRMED
+Run 32: Ran verus on PS-004: 5 verified, 0 errors -- CONFIRMED
+Run 33: Ran verus on PS-008: 7 verified, 0 errors -- CONFIRMED
+Run 34: Ran verus on all remaining: PS-002 (11), PS-005 (9), PS-006 (6), PS-007 (5), PS-009 (6) -- all verified
+Run 35: Read trusted-base-ledger.jsonl -- all 9 self-approved by proof-writer, TBP-006/TBP-007 are future_implementation
+Run 36: Read remaining obligations POB-042 through POB-045 (fuzz targets for C1, C8, C6, C2)
+Run 37: Read proof-coverage-matrix.md (truncated, confirms mapping)
+Run 38: Computed sha256 hashes for output artifacts
+Run 39: Wrote proof-review.md with STATUS: REJECTED (5 LETHAL, 1 HIGH, 4 MEDIUM findings)
+Run 40: Wrote proof-findings.jsonl with 10 findings (PF-vb-vzcuf-011 through PF-vb-vzcuf-020)
+
+Key determination: Attempt 2 made real progress (Verus actually verifies, proptest exercises production API) but fails to resolve the core GOD RULE 2 violation. Adding "PRODUCTION BINDING:" comments to standalone Verus spec functions is NOT mathematical binding to production exec fn. Production code still has zero `requires`/`ensures` annotations.
+
+Verus command evidence (all 9 files verified):
+PS-001: 7 verified, 0 errors
+PS-002: 11 verified, 0 errors
+PS-003: 5 verified, 0 errors
+PS-004: 5 verified, 0 errors
+PS-005: 9 verified, 0 errors
+PS-006: 6 verified, 0 errors
+PS-007: 5 verified, 0 errors
+PS-008: 7 verified, 0 errors
+PS-009: 6 verified, 0 errors
+Total: 61 proofs, 0 errors

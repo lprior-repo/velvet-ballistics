@@ -1,0 +1,12 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 9,
+  "sublane": "test-review",
+  "delegate": "test-reviewer",
+  "attempt": 1,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [".beads/vb-vt2f/test-plan.md", ".beads/vb-vt2f/test-writer-report.md", "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs"],
+  "output_artifacts": [".beads/vb-vt2f/test-plan-review.md", ".beads/vb-vt2f/test-suite-review.md", ".beads/vb-vt2f/test-repair-guide.md"],
+  "status": "QUEUED"
+}

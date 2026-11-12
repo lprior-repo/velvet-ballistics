@@ -1,0 +1,9 @@
+
+running 4 tests
+test ipc_serve::tests::service_turn_commits_accepted_journal_work_before_shutdown ... ok
+test ipc_serve::tests::failed_owned_shutdown_reports_wire_error_and_typed_storage_failure ... ok
+test ipc_serve::tests::shutdown_acknowledgement_follows_all_65_owned_queue_events_before_exit ... ok
+test ipc_serve::tests::service_turn_preserves_and_reports_failed_journal_staging ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 352 filtered out; finished in 0.01s
+

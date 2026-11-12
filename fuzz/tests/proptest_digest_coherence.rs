@@ -6,8 +6,8 @@
 
 use proptest::prelude::*;
 use vb_core::{
-    CompiledNode, CompiledNodeKind, ResourceContract, SlotIdx, StepIdx, WorkflowDigest,
-    WorkflowParts,
+    CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind, InputSlotKind,
+    ResourceContract, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
 };
 
 proptest! {
@@ -47,6 +47,7 @@ proptest! {
 
             if next_index == node_count {
                 nodes.push(CompiledNode {
+                    retry: None,
                     id: step_idx,
                     output: vb_core::workflow::NodeOutput::Discard,
                     routing: vb_core::workflow::NodeRouting {
@@ -59,6 +60,7 @@ proptest! {
                 });
             } else {
                 nodes.push(CompiledNode {
+                    retry: None,
                     id: step_idx,
                     output: vb_core::workflow::NodeOutput::Slot(SlotIdx::new(max_slot)),
                     routing: vb_core::workflow::NodeRouting {
@@ -75,6 +77,7 @@ proptest! {
             name: Box::<str>::from("proptest_digest"),
             digest: WorkflowDigest::from_bytes([0u8; 32]),
             semantic_source_identity: None,
+            source_metadata: None,
             nodes: nodes.into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
@@ -84,7 +87,11 @@ proptest! {
             entry: StepIdx::ZERO,
             resource_contract: ResourceContract::DEFAULT,
             step_names: Box::new([]),
-            input_slots: Box::from([]),
+            input_slots: Box::from([CompiledInputSlot {
+                slot: SlotIdx::new(slot_count.saturating_sub(1)),
+                kind: InputSlotKind::Any,
+                constraint: CompiledInputConstraint::required(),
+            }]),
         };
 
         // Compute reference digest via postcard + blake3.
@@ -104,6 +111,7 @@ proptest! {
         let corrected_parts = WorkflowParts {
             digest: reference_digest,
             semantic_source_identity: None,
+            source_metadata: None,
             ..parts_zeroed
         };
 

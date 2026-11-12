@@ -1,0 +1,29 @@
+Generate ONLY one Rust #[test] function returning Result<(),Box<dyn std::error::Error>>. Reuse exacthelpers/constants below. valid_submit_controls: for mode none,journaled,strict and cases (NO_PORTS_YAML,emptyVec), (NO_PORTS_YAML,postcard::to_allocvec(&Box::<[SlotValue]>::from([]))?), (NUMBER_PORT_YAML,postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(42)]))?) fresh tempdir each. compile_workflow yaml, writefiles, subprocess exitSome0 stderrempty; FjallJournal::open(&db,None)?, run_headers()?, assertlen1 first()?.compiled_digest == compiled.digest(),status0. exactstdout format!("submitted run {}\n  digest:     {}\n  steps:      {}\n  durability: {}\n  status:     submitted\n",header.run.get(),digest_hex,compiled.node_count(),mode), hexcompiled.digest().as_bytes().iter().map(|b|format!("{b:02x}")).collect::<String>(). events_for_run(header.run)? assert exact vec[] none or vec![vb_storage::JournalEvent::RunAccepted{run:header.run,seq:vb_storage::EventSeq::new(0),workflow:compiled.digest()}] othermodes. No inventedfields/no persistent input retentionclaim. Under65lines.
+use std::fs;
+use std::io::Write;
+use std::path::Path;
+use std::process::Command;
+use tempfile::tempdir;
+use vb_core::SlotValue;
+
+const NO_PORTS_YAML: &str = "version: velvet-ballistics/v1\nname: submit_boundary\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n";
+
+const NUMBER_PORT_YAML: &str = "version: velvet-ballistics/v1\nname: submit_number\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: build_result\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n";
+
+fn subprocess(wf: &str, inp: &str, db: &str, mode: &str) -> std::io::Result<std::process::Output> {
+    Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
+        .args(["submit", wf, "--input-bin", inp, "--db", db, "--durability", mode])
+        .output()
+}
+
+fn write_file(dir: &tempfile::TempDir, name: &str, data: &[u8]) -> std::io::Result<String> {
+    let path = dir.path().join(name);
+    let mut f = fs::File::create(&path)?;
+    f.write_all(data)?;
+    Ok(path.to_string_lossy().to_string())
+}
+
+fn db_path(dir: &tempfile::TempDir) -> String {
+    dir.path().join("db").to_string_lossy().to_string()
+}
+

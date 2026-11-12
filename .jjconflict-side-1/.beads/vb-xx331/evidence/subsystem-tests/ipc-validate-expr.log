@@ -1,0 +1,32 @@
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+  --> crates/vb_validate/src/shared/tests.rs:11:5
+   |
+11 |     crate::shared::WorkflowParts {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+  --> crates/vb_validate/src/gate_08_accessor/tests.rs:11:5
+   |
+11 |     WorkflowParts {
+   |     ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+  --> crates/vb_validate/src/red_phase_proptest.rs:22:5
+   |
+22 |     WorkflowParts {
+   |     ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+  --> crates/vb_validate/src/gate_tests.rs:16:5
+   |
+16 |     WorkflowParts {
+   |     ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `vb_core::WorkflowParts`
+  --> crates/vb_validate/src/test_helpers.rs:10:5
+   |
+10 |     WorkflowParts {
+   |     ^^^^^^^^^^^^^ missing `input_slots`
+
+For more information about this error, try `rustc --explain E0063`.
+error: could not compile `vb_validate` (lib test) due to 5 previous errors

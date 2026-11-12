@@ -79,7 +79,8 @@ fn is_action_record(kind: RecordKind) -> bool {
 fn is_wait_or_ask_record(kind: RecordKind) -> bool {
     matches!(
         kind,
-        RecordKind::WaitScheduled
+        RecordKind::RetryTimerScheduled
+            | RecordKind::WaitScheduled
             | RecordKind::AskScheduled
             | RecordKind::AskAnswered
             | RecordKind::WaitResolved

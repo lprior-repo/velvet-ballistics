@@ -1,0 +1,2351 @@
+{
+  "source": "d6a3444c68a19c44ff527b22b9c9078b35705e48",
+  "gate": {
+    "cwd": "/home/lewis/src/isoloated/vb-policy-dispatch-v1",
+    "argv": [
+      "moon",
+      "run",
+      ":fuzz-smoke",
+      "--force"
+    ],
+    "exit_code": 0,
+    "seconds": 628.668,
+    "timeout_seconds": 1200,
+    "timed_out": false,
+    "env_overrides": {
+      "CARGO_BUILD_JOBS": "2"
+    },
+    "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_V42_INTEGRATED_FUZZ_SMOKE_REPAIRED"
+  },
+  "actual_moon_task": "passed",
+  "target_compile_logs": 93,
+  "target_runs_in_successful_set_e_loop": 93,
+  "loaded_dictionaries": [
+    "DICTIONARY: fuzz/fuzz_targets/decode_record.dict",
+    "DICTIONARY: fuzz/fuzz_targets/journal_decode.dict",
+    "DICTIONARY: fuzz/fuzz_targets/kind_validation.dict",
+    "DICTIONARY: fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.dict",
+    "DICTIONARY: fuzz/fuzz_targets/vb_storage_codec.dict"
+  ],
+  "files": [
+    {
+      "file": "accessor_traversal.compile.log",
+      "bytes": 185,
+      "sha256": "44fa7b8d588595057fe0aef0a5177e6ef5a130e4e0a9e45690550e46e4075175"
+    },
+    {
+      "file": "accessor_traversal.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "accessor_traversal.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "action_tracker.compile.log",
+      "bytes": 177,
+      "sha256": "942f7650a06f5fdc5af60127614a0595f612e2d3bc9ed79282c8889c00470804"
+    },
+    {
+      "file": "action_tracker.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "action_tracker.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "admission_flow.compile.log",
+      "bytes": 177,
+      "sha256": "8850274b5465809a326ed03b4ac715191f2c1c5f72b420f7c70c59fe7e2987e6"
+    },
+    {
+      "file": "admission_flow.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "admission_flow.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "admission_fuzz.compile.log",
+      "bytes": 177,
+      "sha256": "e57f13d968713a3b6f317d77c81d63feeaa925b1cb012ebd435b686cc51a44e8"
+    },
+    {
+      "file": "admission_fuzz.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "admission_fuzz.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "aggregate_artifact_budget.compile.log",
+      "bytes": 199,
+      "sha256": "26419fa8ea387341bcba57bdeb23fe08d0e8d7f5859b863938811ac687c5eb53"
+    },
+    {
+      "file": "aggregate_artifact_budget.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "aggregate_artifact_budget.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "aggregate_workflow_budget.compile.log",
+      "bytes": 199,
+      "sha256": "de7c0fa5b25a4cd2ad4c21b7b8ccaf50cc40bdcb8eefb900de95b43ad148387b"
+    },
+    {
+      "file": "aggregate_workflow_budget.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "aggregate_workflow_budget.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "binary_payload_fuzz_boundary.compile.log",
+      "bytes": 205,
+      "sha256": "cfcdf1694465322b9c8b4971d77077f7b49865f3d8e26060739ab71b9a31d651"
+    },
+    {
+      "file": "binary_payload_fuzz_boundary.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "binary_payload_fuzz_boundary.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "boundary_evidence_reference.compile.log",
+      "bytes": 203,
+      "sha256": "d19726f6c61644eae0dce90c243bc20323a456972350e2401d4977907adc83b3"
+    },
+    {
+      "file": "boundary_evidence_reference.err",
+      "bytes": 66778,
+      "sha256": "87bb3af04a82f33d04b39ddc2ad836bf52b0f6b63d28abc05af03809a15885a2"
+    },
+    {
+      "file": "boundary_evidence_reference.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "boundary_inventory_parser.compile.log",
+      "bytes": 199,
+      "sha256": "f54914f6f5d575e6cc4d119a313acb0ea241f09d9b9a9d6c99446d57a3434cd6"
+    },
+    {
+      "file": "boundary_inventory_parser.err",
+      "bytes": 275795,
+      "sha256": "1b3ac0b755eaa3fb725f77dabbc73de1c864d929e187dd5f450accb1a72ac00b"
+    },
+    {
+      "file": "boundary_inventory_parser.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "boundary_metadata.compile.log",
+      "bytes": 183,
+      "sha256": "790972752463536c4aa41722bd126bf9a6565ae1d962589edd2dfc0eb50793e9"
+    },
+    {
+      "file": "boundary_metadata.err",
+      "bytes": 3900,
+      "sha256": "399ec3af4679e702e6195e1a80b3260a79e027d61a5e1d206604c5ecaea9f21d"
+    },
+    {
+      "file": "boundary_metadata.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "budget_compute.compile.log",
+      "bytes": 177,
+      "sha256": "7be7c80afb556f86deca4a5d5326cc61cdcbe773468a3e62e0cebda5b06f3b70"
+    },
+    {
+      "file": "budget_compute.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "budget_compute.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "build.err",
+      "bytes": 255,
+      "sha256": "fed1be694bd72c7124c6f239194a35d8ef7748906927af8eda234cbf86876f67"
+    },
+    {
+      "file": "build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "canonical_digest_ask.compile.log",
+      "bytes": 189,
+      "sha256": "88f7d3084f91eaae8f2c4026dfaab6636bddd4892295cf23d6e03d6f28879054"
+    },
+    {
+      "file": "canonical_digest_ask.err",
+      "bytes": 23763,
+      "sha256": "c3fe138d9a66309461dc14f8a05fd523f0a63c2b0b860c449f08dafd09c76047"
+    },
+    {
+      "file": "canonical_digest_ask.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "capability_contract_schema.compile.log",
+      "bytes": 201,
+      "sha256": "9c65cf8a6d024064b2615a84a9d7b3257025888e4e7f3d3e2b9b4a0cbb0cf331"
+    },
+    {
+      "file": "capability_contract_schema.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "capability_contract_schema.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "capability_name_schema.compile.log",
+      "bytes": 193,
+      "sha256": "5964a72720f48a8a59464c1e651a2b7197673b9fb5fefbd4870d6a600abbfb2d"
+    },
+    {
+      "file": "capability_name_schema.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "capability_name_schema.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "check_doc_taint_consistency_accepts_arbitrary_markdown.compile.log",
+      "bytes": 257,
+      "sha256": "8cc11ade331c055643881d98dd40c8ec606c7efe932ad22fcb7839dc4290c976"
+    },
+    {
+      "file": "check_doc_taint_consistency_accepts_arbitrary_markdown.err",
+      "bytes": 47006,
+      "sha256": "573a3b33fd7152a8441849241b801123b6788b6455c3c24521d26f1cefb0b47a"
+    },
+    {
+      "file": "check_doc_taint_consistency_accepts_arbitrary_markdown.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "choose_lowering_fuzzer.compile.log",
+      "bytes": 193,
+      "sha256": "26c6ab73f93fef13658611285fa3aca4d3d8190ad45071e0002aa59302d2e022"
+    },
+    {
+      "file": "choose_lowering_fuzzer.err",
+      "bytes": 15318,
+      "sha256": "fe11595cc00602e2d82036896498d4b559699179ba55362b6d2501d01373c0fc"
+    },
+    {
+      "file": "choose_lowering_fuzzer.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "compile_source_ast_marks.compile.log",
+      "bytes": 197,
+      "sha256": "2764b8e0b556ec16bb2dff32a4cb79dd7ac2428a4beeb78ae7eff75e100e186e"
+    },
+    {
+      "file": "compile_source_ast_marks.err",
+      "bytes": 187903,
+      "sha256": "0f1017612dd774d59aef3e5765edad72eaf5eaa23abefda8bdaf89f88a0a898a"
+    },
+    {
+      "file": "compile_source_ast_marks.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "compile_workflow_fuzz.compile.log",
+      "bytes": 191,
+      "sha256": "54b8332b86e9fbf9ec818b5dab354028d7ae4b73b50c35c8dc5dc5a31dbf2848"
+    },
+    {
+      "file": "compile_workflow_fuzz.err",
+      "bytes": 196719,
+      "sha256": "96f2654caf70f710c1d0d2bea98c95493c66091c698bc2bdfe150f39ab796b1e"
+    },
+    {
+      "file": "compile_workflow_fuzz.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "compiled_ir_fuzz.compile.log",
+      "bytes": 181,
+      "sha256": "2a56681b5c6a0dd2c53c2e1de7dc6e5b7489637e72f995d9fc4cf852b4f74c57"
+    },
+    {
+      "file": "compiled_ir_fuzz.err",
+      "bytes": 244409,
+      "sha256": "d917a64a0b2c4ed88b58242ffb45b1de34ec0ca17122a7d6d094e03f32872284"
+    },
+    {
+      "file": "compiled_ir_fuzz.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "decode_record.compile.log",
+      "bytes": 175,
+      "sha256": "e4631206ac2f58d7ad89e947467c6521f1d8abe2abd3a3aabeb896b022dfaf69"
+    },
+    {
+      "file": "decode_record.err",
+      "bytes": 20962,
+      "sha256": "8bfab94b94670ff7fefce4fc673cac501f7d2ed5c05c66610d9e6345cdac6ba2"
+    },
+    {
+      "file": "decode_record.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "diagnostic_code_from_str_fuzz.compile.log",
+      "bytes": 207,
+      "sha256": "4e38c96fff5e8e4f0b53d5efb12cdf13a65a9ad2b7e7712db3d34f182d08d13b"
+    },
+    {
+      "file": "diagnostic_code_from_str_fuzz.err",
+      "bytes": 15111,
+      "sha256": "474e7ddb39d7ada51420aedb961cf41e584a2df08b6e5ddd124fcc7f8f5ead13"
+    },
+    {
+      "file": "diagnostic_code_from_str_fuzz.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "diagnostic_from_error_fuzz.compile.log",
+      "bytes": 201,
+      "sha256": "bd1c4b6e295a976f4bbfc0506473657875148ac956885d7075cc150b6ffe4e69"
+    },
+    {
+      "file": "diagnostic_from_error_fuzz.err",
+      "bytes": 1036,
+      "sha256": "db35b7da02d5ef1533a6a518976f1f2bc190a0416956f1643918e22465f1202b"
+    },
+    {
+      "file": "diagnostic_from_error_fuzz.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "expr_bytecode.compile.log",
+      "bytes": 175,
+      "sha256": "53f14e0d45cd3f83cd0ecef275c711fcb512811fa7b9b74dd9782fb817d1286c"
+    },
+    {
+      "file": "expr_bytecode.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "expr_bytecode.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "expr_eval.compile.log",
+      "bytes": 167,
+      "sha256": "acf832d1977a578df110643e9b3e0dd1c6748b62a6a1f2114631befffa21cc65"
+    },
+    {
+      "file": "expr_eval.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "expr_eval.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "expr_eval_fuzz.compile.log",
+      "bytes": 177,
+      "sha256": "29b651596262d5568552aa279f81a5fc1601159f8988a57f62050a29b3f4accd"
+    },
+    {
+      "file": "expr_eval_fuzz.err",
+      "bytes": 252082,
+      "sha256": "60c89b2108fa2d34145691b08302ca77180177f3ba45a75ef581d53f59992bcc"
+    },
+    {
+      "file": "expr_eval_fuzz.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "expression_fuzz.compile.log",
+      "bytes": 179,
+      "sha256": "048e3b62a56413c83dde49a8c6b9e87cdb6b78c0684c0e2dc0127260ab474ddd"
+    },
+    {
+      "file": "expression_fuzz.err",
+      "bytes": 247978,
+      "sha256": "5668b8cac018f6e776bd3e2107864152bb98d9b47c1337891e2d88108e1fab1e"
+    },
+    {
+      "file": "expression_fuzz.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "external_input_adapter_fuzz.compile.log",
+      "bytes": 203,
+      "sha256": "58a74729ff9144a9c03c028787ef8c00ffb6d591a80f922a3a0fbbe207a06349"
+    },
+    {
+      "file": "external_input_adapter_fuzz.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "external_input_adapter_fuzz.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "extract_terminal.compile.log",
+      "bytes": 181,
+      "sha256": "fb837d5588f9402fd1292437425d4627feb975867ebe689cf87624665826953a"
+    },
+    {
+      "file": "extract_terminal.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "extract_terminal.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_choose_depth.compile.log",
+      "bytes": 183,
+      "sha256": "102960f92d72b716bcf1bf4bc1cacd74a37915cf4db0e855d0fea37d5916f5a6"
+    },
+    {
+      "file": "fuzz_choose_depth.err",
+      "bytes": 5103,
+      "sha256": "95b4a0fa10291220a407460f61dc20facf4a5aaf4f4ff513bcfaa3d868ed0176"
+    },
+    {
+      "file": "fuzz_choose_depth.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_choose_when_parse.compile.log",
+      "bytes": 193,
+      "sha256": "cbd96b2c87c1a3e6b41d9547cf52362262e4ac95cf1db3cd86d10ff17fe558c4"
+    },
+    {
+      "file": "fuzz_choose_when_parse.err",
+      "bytes": 16378,
+      "sha256": "b1ee30b1623c895423b5e53d0ae3b2e8e780d340b0a5bc90a07a78bc9fcfe239"
+    },
+    {
+      "file": "fuzz_choose_when_parse.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_collect_lowering.compile.log",
+      "bytes": 191,
+      "sha256": "8f88d0996020c3281268bc60d665f14d2adf9b7291d894ff90ef30bbe0f4d71e"
+    },
+    {
+      "file": "fuzz_collect_lowering.err",
+      "bytes": 1616,
+      "sha256": "eed850e0739dbea868423286cb8f5d0dcd387014f15426bd552beceb37bef6a6"
+    },
+    {
+      "file": "fuzz_collect_lowering.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_diagnostic_code_from_str.compile.log",
+      "bytes": 207,
+      "sha256": "8c470c8f8b59da616d973b19acc9ef99ec120c83a0eecd4c0f540a6f3008062a"
+    },
+    {
+      "file": "fuzz_diagnostic_code_from_str.err",
+      "bytes": 10862,
+      "sha256": "8058caa242a6f20e8acfb22f74061accb26a16072b84b82c1296330390ca65b3"
+    },
+    {
+      "file": "fuzz_diagnostic_code_from_str.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_digest_compile.compile.log",
+      "bytes": 187,
+      "sha256": "2e879c2726bf4dbd6b95a80c161e348e0416cf5d16f26ab0e9b47df7fd8f4304"
+    },
+    {
+      "file": "fuzz_digest_compile.err",
+      "bytes": 208434,
+      "sha256": "2792b138dcd8315ed76f7fc56f3d845a82ee6cdaa9533a7487441f14d1fccd27"
+    },
+    {
+      "file": "fuzz_digest_compile.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_finish_digest_encoding.compile.log",
+      "bytes": 203,
+      "sha256": "a0cc33874a71005d0c0d3d4665b76528847dffc6088e8e01060473f72573fa80"
+    },
+    {
+      "file": "fuzz_finish_digest_encoding.err",
+      "bytes": 16506,
+      "sha256": "0ad1028591ba531a750460178c583a9791e69ece1044dad4ad3f70fbc1217410"
+    },
+    {
+      "file": "fuzz_finish_digest_encoding.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_finish_lowering.compile.log",
+      "bytes": 189,
+      "sha256": "a652685234395063d80b42aa036dc716c675d64f2d91d3947a71ecb548562736"
+    },
+    {
+      "file": "fuzz_finish_lowering.err",
+      "bytes": 1578,
+      "sha256": "a6feec1bb92926d1c5175da6096b294e27556d45bcb8ace189e9b1903624bbb0"
+    },
+    {
+      "file": "fuzz_finish_lowering.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_for_each_lowering.compile.log",
+      "bytes": 193,
+      "sha256": "6c1b23cacc77d9c5b50a9ed105182952aaa3e4e63ba6838b8d8e44115bda4869"
+    },
+    {
+      "file": "fuzz_for_each_lowering.err",
+      "bytes": 1508,
+      "sha256": "4a9b2cec0296546f0251f4561cecd17612ded6b9e833560e0c108caf6fe201ac"
+    },
+    {
+      "file": "fuzz_for_each_lowering.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_retry_normalize_ticket.compile.log",
+      "bytes": 203,
+      "sha256": "fa7fc2bc7e06fa3cffff2bafcad045c0040eb130412e2f15d24d5674ef5d228a"
+    },
+    {
+      "file": "fuzz_retry_normalize_ticket.err",
+      "bytes": 2168,
+      "sha256": "0ebf56de29ceaefa3587adb6ee99a6999c4c49891b3f1d3f2c10d012f314687f"
+    },
+    {
+      "file": "fuzz_retry_normalize_ticket.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_retry_postcard_codec.compile.log",
+      "bytes": 199,
+      "sha256": "18c8573dd076bdd8c10afc54c8b923cbccc3469f5acb5cc70dfabacc76ca3805"
+    },
+    {
+      "file": "fuzz_retry_postcard_codec.err",
+      "bytes": 16781,
+      "sha256": "5a9c37ae4fc2c9939d79251c58c1a23e383a606486409c15482434753cc58bfe"
+    },
+    {
+      "file": "fuzz_retry_postcard_codec.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_retry_record_attempt.compile.log",
+      "bytes": 199,
+      "sha256": "88df2b5098bb38dc22cd43a5700dae9c0edb532c7377dd694038828bd9950042"
+    },
+    {
+      "file": "fuzz_retry_record_attempt.err",
+      "bytes": 3079,
+      "sha256": "1410e121eae92a65f42f703cf801618ba888032c5fa9eb2ad78bead5b0b18868"
+    },
+    {
+      "file": "fuzz_retry_record_attempt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_retry_validate_completion.compile.log",
+      "bytes": 209,
+      "sha256": "a2eafa582e41d1b785cbd332bad296ca0cd3efce3373ecb06f8473810b1c2655"
+    },
+    {
+      "file": "fuzz_retry_validate_completion.err",
+      "bytes": 2528,
+      "sha256": "8ce5bb7333a7abd35bc385739869b60619725349cf6399dd0514bc06079332f2"
+    },
+    {
+      "file": "fuzz_retry_validate_completion.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_set_lowering.compile.log",
+      "bytes": 183,
+      "sha256": "de5a1439121455c86646d942849d249f0b70d3879c58fa8049d4ec716e8c3ea3"
+    },
+    {
+      "file": "fuzz_set_lowering.err",
+      "bytes": 1932,
+      "sha256": "ddf73648a2b8ace16e8e59dd77bc33f956d396643a9cea3d7da004c171e99e7d"
+    },
+    {
+      "file": "fuzz_set_lowering.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_storage_codec_digest.compile.log",
+      "bytes": 199,
+      "sha256": "efc4940a0fa479ac06e06447c7f37f36d9bd0a89dfd424221005598bc400f933"
+    },
+    {
+      "file": "fuzz_storage_codec_digest.err",
+      "bytes": 5856,
+      "sha256": "41d233df7f352db38ba9b590dfc4c04a122e18efde3585779e1b4a7441461c9c"
+    },
+    {
+      "file": "fuzz_storage_codec_digest.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_storage_codec_header.compile.log",
+      "bytes": 199,
+      "sha256": "ead918b9949e7821f2bab19ea7764bb5ad291291ccd40ab15e070e639a89f131"
+    },
+    {
+      "file": "fuzz_storage_codec_header.err",
+      "bytes": 23394,
+      "sha256": "132638debca5e6f87a97b4971ec7aa56c1e74e7da4749f36dd0b1b937fa71040"
+    },
+    {
+      "file": "fuzz_storage_codec_header.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_storage_codec_kind_family.compile.log",
+      "bytes": 209,
+      "sha256": "a3a270191915b890f3ba756539e8a0310629d64c7cb97bfff32280851d31e550"
+    },
+    {
+      "file": "fuzz_storage_codec_kind_family.err",
+      "bytes": 2031,
+      "sha256": "3fee443499b47be0b0bca1f97e810b23043c1d75a2384b16ed925a60e03e529c"
+    },
+    {
+      "file": "fuzz_storage_codec_kind_family.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_storage_codec_payload_corruption.compile.log",
+      "bytes": 223,
+      "sha256": "aaece328760df1846af771ba6c15ebe6abc7b85905c17460afc15442a134c93d"
+    },
+    {
+      "file": "fuzz_storage_codec_payload_corruption.err",
+      "bytes": 1565,
+      "sha256": "caf46c9edd91877cc1261307ba829dffe71013d4583813e8bf2f78b343b3e010"
+    },
+    {
+      "file": "fuzz_storage_codec_payload_corruption.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_storage_codec_roundtrip.compile.log",
+      "bytes": 205,
+      "sha256": "196852090e6bea055506847b16c0242cf32c0d6b84548d9b7ff41058ea1845bd"
+    },
+    {
+      "file": "fuzz_storage_codec_roundtrip.err",
+      "bytes": 42721,
+      "sha256": "cb41abc9e94250c13b5a00fa07ee036c56e4439f15328535fae8f67c353cf209"
+    },
+    {
+      "file": "fuzz_storage_codec_roundtrip.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_storage_codec_schema_version.compile.log",
+      "bytes": 215,
+      "sha256": "ca1eb8e959dbb342487a5524a71efaf77fe70fd7d2b424ccc38d000514536720"
+    },
+    {
+      "file": "fuzz_storage_codec_schema_version.err",
+      "bytes": 1845,
+      "sha256": "ebcd9f49a6b87fdcfba375ed88622cc3c060c091962d12544044709952a89def"
+    },
+    {
+      "file": "fuzz_storage_codec_schema_version.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fuzz_wait_lowering.compile.log",
+      "bytes": 185,
+      "sha256": "ade1797023a0bc3505d6b52b9cd8eced4e7772589a1186a89138adf1a7a2e387"
+    },
+    {
+      "file": "fuzz_wait_lowering.err",
+      "bytes": 2017,
+      "sha256": "5fbd0a02eaf1554fffa8ddff477a73b9d02a8410bc326299e38f55e1b2589001"
+    },
+    {
+      "file": "fuzz_wait_lowering.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "ipc_decode.compile.log",
+      "bytes": 169,
+      "sha256": "88491c8ed30d81f347b03a61f90721cca9e94765be17e9db8bbbc5524ab1ad18"
+    },
+    {
+      "file": "ipc_decode.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "ipc_decode.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "ipc_frame_fuzz.compile.log",
+      "bytes": 177,
+      "sha256": "e22166be49be672d74e4f4e47cd7b991f4d823b3f31280da842b238db78b5ff2"
+    },
+    {
+      "file": "ipc_frame_fuzz.err",
+      "bytes": 28941,
+      "sha256": "693e0323248040639cd597d10222a625edad15a609a33d0fabbab7fecd0e1222"
+    },
+    {
+      "file": "ipc_frame_fuzz.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "ipc_frame_fuzz_boundary.compile.log",
+      "bytes": 195,
+      "sha256": "ea58d478cbc3f13fbcf9b21e5f694123f8cf60d24088cdd590511e56f95a0138"
+    },
+    {
+      "file": "ipc_frame_fuzz_boundary.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "ipc_frame_fuzz_boundary.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "journal_decode.compile.log",
+      "bytes": 177,
+      "sha256": "0abc91335f7a81ecdeb6627e0abec4ee5cf35b682c8aa955a69c1129dd788178"
+    },
+    {
+      "file": "journal_decode.err",
+      "bytes": 7149,
+      "sha256": "ea6d4aad257a2423ada2cc7819a38fa446b1a35b2d8184e29b9fb4177009565a"
+    },
+    {
+      "file": "journal_decode.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "journal_event_fuzz.compile.log",
+      "bytes": 185,
+      "sha256": "85b7a7507089f244ae39487c56c249e46435b73b2a0ae3d1157cc095e8517f92"
+    },
+    {
+      "file": "journal_event_fuzz.err",
+      "bytes": 19293,
+      "sha256": "b75c810ebb38dbe76b05b8e84a21c011ab638be28d96f28f070c55c32838378c"
+    },
+    {
+      "file": "journal_event_fuzz.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "kind_validation.compile.log",
+      "bytes": 179,
+      "sha256": "14027039b9a5a91b51c7f07a9fb1d1b6514b1d6b7c19becd71f84c1e5262c0a9"
+    },
+    {
+      "file": "kind_validation.err",
+      "bytes": 15858,
+      "sha256": "4ad99a0f1b98fb1c71d21203dc16e787901650f8f0d436ed675d7c30bcc662f0"
+    },
+    {
+      "file": "kind_validation.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "lex_expr.compile.log",
+      "bytes": 165,
+      "sha256": "2b638e382461429097390675317e23b66d0a315616e9c35a4a44ced435e90c5c"
+    },
+    {
+      "file": "lex_expr.err",
+      "bytes": 61415,
+      "sha256": "180310930ffcd07b1d082c50637f5805a733debab7cbff624514d2fb8ab08ec6"
+    },
+    {
+      "file": "lex_expr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "parse_workflow_source_fuzz.compile.log",
+      "bytes": 201,
+      "sha256": "1b97714ac202277cfdaa1fba62272f26130b945fea7cbbdc5abbb2b1eeafff2e"
+    },
+    {
+      "file": "parse_workflow_source_fuzz.err",
+      "bytes": 213274,
+      "sha256": "f4a23eb40029c2a8eb3edaf748ca1c729879104b73b2200658e35eab3a1b133a"
+    },
+    {
+      "file": "parse_workflow_source_fuzz.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "recover_runtime_frame_seed_contract.compile.log",
+      "bytes": 219,
+      "sha256": "ea2f2df8f2a2b16f01023da5bc62526f9db498640bc31d153d55a02d2e08637a"
+    },
+    {
+      "file": "recover_runtime_frame_seed_contract.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "recover_runtime_frame_seed_contract.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "recovery_decode.compile.log",
+      "bytes": 179,
+      "sha256": "384d0f983296aa71a88da1ad799caf2d42ed9d053e78ea663ba82990e5681352"
+    },
+    {
+      "file": "recovery_decode.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "recovery_decode.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "replay_events.compile.log",
+      "bytes": 175,
+      "sha256": "4c715ea8becae42d664acb3e9376446181b24f1cc659ca406ebc74a300b87c4f"
+    },
+    {
+      "file": "replay_events.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "replay_events.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "resource_budget.compile.log",
+      "bytes": 179,
+      "sha256": "159b4136ebb2cd5237341d856cb0de3a6e02210542ebc1bd47e5f4d04532b8b4"
+    },
+    {
+      "file": "resource_budget.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "resource_budget.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "slot_value_roundtrip.compile.log",
+      "bytes": 189,
+      "sha256": "42780fbc2bc33063ab2bc4e4fd2e3e1d595926391085cbe509bdb41ab3da666b"
+    },
+    {
+      "file": "slot_value_roundtrip.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "slot_value_roundtrip.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "span_bridge_fuzz.compile.log",
+      "bytes": 181,
+      "sha256": "6cfc6c31c76221804e470d1776ecb8fe02f336aad636a63f209cbadc5da0336e"
+    },
+    {
+      "file": "span_bridge_fuzz.err",
+      "bytes": 114266,
+      "sha256": "c6583e1c1413a3c4813cb590edd75a0c1db5e6e3dddcea880e79386989c292a6"
+    },
+    {
+      "file": "span_bridge_fuzz.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "step_budget_new.compile.log",
+      "bytes": 179,
+      "sha256": "dd0b7da185589dd40a5a657d35d58107506fff553b73f6e87601488053bfc485"
+    },
+    {
+      "file": "step_budget_new.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "step_budget_new.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "storage_envelope_fuzz_boundary.compile.log",
+      "bytes": 209,
+      "sha256": "f1f38f66f92b31be4f4b141b7bc0ddd8352b8a08cf15dba1b6a5f7d9bfaa55ee"
+    },
+    {
+      "file": "storage_envelope_fuzz_boundary.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "storage_envelope_fuzz_boundary.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "strict_yaml_profile.compile.log",
+      "bytes": 187,
+      "sha256": "263957fef2abe548f662077fba267acb3a0afad3e04c90c2d91289a664774216"
+    },
+    {
+      "file": "strict_yaml_profile.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "strict_yaml_profile.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "structured_status_render_hostile.compile.log",
+      "bytes": 213,
+      "sha256": "aa13615ff176545d0962e163a365ad6b228ce7a3a302565d3a29241222427026"
+    },
+    {
+      "file": "structured_status_render_hostile.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "structured_status_render_hostile.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "taint_propagation.compile.log",
+      "bytes": 183,
+      "sha256": "c15b21cc9833228627bb424299f67c69ad0d373a8ee1eeaae3ca96a4ca9b9891"
+    },
+    {
+      "file": "taint_propagation.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "taint_propagation.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "tooling_flux_check_selector.compile.log",
+      "bytes": 203,
+      "sha256": "7851dd85547fe12e159cf637c9fce32beeb2f2a46a6dbb811fb4f1fb0759151d"
+    },
+    {
+      "file": "tooling_flux_check_selector.err",
+      "bytes": 1812,
+      "sha256": "5d787facd39dea1907e69fb4403e7c5baf191d71283db8660481cfa738137345"
+    },
+    {
+      "file": "tooling_flux_check_selector.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "tooling_guard_zero_parser.compile.log",
+      "bytes": 199,
+      "sha256": "3c2d2b15d9a6a27b9e051777c22227ba8c81e34e7d6a5109b638fb619c14f04d"
+    },
+    {
+      "file": "tooling_guard_zero_parser.err",
+      "bytes": 1734,
+      "sha256": "a252202e8708e1e632e68a562d89f73d48eff03a816e2f9b7ba477ddb6e3b421"
+    },
+    {
+      "file": "tooling_guard_zero_parser.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "tooling_kani_list_args.compile.log",
+      "bytes": 193,
+      "sha256": "a563e12239a6515e7c6f3ba7ecde9f13ef52a6f531fabb47ea1d89ce3c01bbd3"
+    },
+    {
+      "file": "tooling_kani_list_args.err",
+      "bytes": 2623,
+      "sha256": "8f070f2df7bc931a348cea2f24082f469cd039b58087a88c1bdf15aa7dd85542"
+    },
+    {
+      "file": "tooling_kani_list_args.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "tooling_loom_list_xtask.compile.log",
+      "bytes": 195,
+      "sha256": "6e8c2b1829caf0eca0358a7bd9e7044de80af5ff2c4733bba713ccb5a9e3a326"
+    },
+    {
+      "file": "tooling_loom_list_xtask.err",
+      "bytes": 1014,
+      "sha256": "c2bc6c1e1e58d2ffe95955d7c648b9d2b5f3cd039d0e3054f099fb33f860f5ad"
+    },
+    {
+      "file": "tooling_loom_list_xtask.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vb_f04l_yaml_compiler_compile.compile.log",
+      "bytes": 207,
+      "sha256": "51cc2629fdff9542d4073b42b8b5d7ebc3e7885b960593872aa51d837f39863c"
+    },
+    {
+      "file": "vb_f04l_yaml_compiler_compile.err",
+      "bytes": 80426,
+      "sha256": "3260ce7cba4cedff0304e2f21eb6cb76bda364111bff0a9aedd3afa2c1ded2e2"
+    },
+    {
+      "file": "vb_f04l_yaml_compiler_compile.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vb_rpch_hydrate_events_fuzz.compile.log",
+      "bytes": 203,
+      "sha256": "55e873a2e03c6b340f13a5055c4faab09ff5023245c09af2f5656113fb2dfe7a"
+    },
+    {
+      "file": "vb_rpch_hydrate_events_fuzz.err",
+      "bytes": 30808,
+      "sha256": "9bc4a86078d09ff1151e7e86d84f6df57fc53e2b65fbb980ea15f3fc7e5014ae"
+    },
+    {
+      "file": "vb_rpch_hydrate_events_fuzz.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vb_rpch_hydrate_snapshot_tail_fuzz.compile.log",
+      "bytes": 217,
+      "sha256": "f2d6b1453ce1afeaffa9cc58fcb34aaa0dfaeb030220eecb9913e49278335a50"
+    },
+    {
+      "file": "vb_rpch_hydrate_snapshot_tail_fuzz.err",
+      "bytes": 3905,
+      "sha256": "d91d5e6acb98ef6198535858c2096146a7696237e58083a1e18c1cc0391a0f25"
+    },
+    {
+      "file": "vb_rpch_hydrate_snapshot_tail_fuzz.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vb_rpch_replay_events_fuzz.compile.log",
+      "bytes": 202,
+      "sha256": "a145eb9574924e5ca44bb5701ce69fb99b4533021e244cf4b5464180e098a52d"
+    },
+    {
+      "file": "vb_rpch_replay_events_fuzz.err",
+      "bytes": 4560,
+      "sha256": "5459000e986825f51c974fe03a8bc1be37595c086bb1aed251bd16419b92ca86"
+    },
+    {
+      "file": "vb_rpch_replay_events_fuzz.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vb_rpch_seed_dimensions_fuzz.compile.log",
+      "bytes": 205,
+      "sha256": "ab0c0c1b5b90cd5cbe87e46fd5c9564ad60e84fce65f091eac111d4744f1623a"
+    },
+    {
+      "file": "vb_rpch_seed_dimensions_fuzz.err",
+      "bytes": 1820,
+      "sha256": "62d671fcea896c665b4700f7237b185b0385323987e28f18ae57149513b4c460"
+    },
+    {
+      "file": "vb_rpch_seed_dimensions_fuzz.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vb_storage_codec.compile.log",
+      "bytes": 181,
+      "sha256": "34aecba7dcba82e56c8342d3235e4091bf0c65150c98e56984f399b2f32f002d"
+    },
+    {
+      "file": "vb_storage_codec.err",
+      "bytes": 6418,
+      "sha256": "60a6128ecd0fa99d547fe53550963271a0f494dd1e0b027f29a358cccfef27e3"
+    },
+    {
+      "file": "vb_storage_codec.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vb_vzcuf_PS_001.compile.log",
+      "bytes": 179,
+      "sha256": "a61664618e2afd3e5bdd80fd28df9804e5e56f27c2a1e386d9936d1acd3eff6d"
+    },
+    {
+      "file": "vb_vzcuf_PS_001.err",
+      "bytes": 4279,
+      "sha256": "c296cb42fe68191d194f36a9da6f1d04dcce8817eeb9a02f1d293aa4cb8a767a"
+    },
+    {
+      "file": "vb_vzcuf_PS_001.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vb_vzcuf_PS_002.compile.log",
+      "bytes": 179,
+      "sha256": "631e66df3e334c53366d27ed8202c6dc0b4d5d6045aaa845e75620cf623a7659"
+    },
+    {
+      "file": "vb_vzcuf_PS_002.err",
+      "bytes": 4567,
+      "sha256": "009ebfa3e3be7fd73d7fe596fe8c8f6202695bf0bc8b914efc5cf17941dae28d"
+    },
+    {
+      "file": "vb_vzcuf_PS_002.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vb_vzcuf_PS_003.compile.log",
+      "bytes": 179,
+      "sha256": "d7c12f66da065969f4c67c6f8f8e92e7289d99931f0bf7ab60989fb5cf718eb6"
+    },
+    {
+      "file": "vb_vzcuf_PS_003.err",
+      "bytes": 2399,
+      "sha256": "c81cb3355aa52d74a2768238a991b0573f57eeea6bb154285277e63ee70f5bcb"
+    },
+    {
+      "file": "vb_vzcuf_PS_003.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vb_vzcuf_PS_004.compile.log",
+      "bytes": 179,
+      "sha256": "f5cb379fea4c6af6c1b38ffcd20a1e416a0aead60f6b5c60697f2671521a09e5"
+    },
+    {
+      "file": "vb_vzcuf_PS_004.err",
+      "bytes": 7131,
+      "sha256": "7c61fb435e945eee761a26096d5cb3a99ffe4a22a9ec0c0c50cef71dd26053bc"
+    },
+    {
+      "file": "vb_vzcuf_PS_004.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vb_vzcuf_PS_005.compile.log",
+      "bytes": 179,
+      "sha256": "047ebdc3929a1bbbd7082d172fec2c305f3eae34ee659f768556db5ac8284b18"
+    },
+    {
+      "file": "vb_vzcuf_PS_005.err",
+      "bytes": 7523,
+      "sha256": "c54b98af78a90de055e76c02dae434b5b1d8ae0005ad86ee5cb6aed668015889"
+    },
+    {
+      "file": "vb_vzcuf_PS_005.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vb_vzcuf_PS_006.compile.log",
+      "bytes": 179,
+      "sha256": "54a6b05e4c38b4edd136f2d9a08962d1c3644e512b884ca1529ccd18f7538a41"
+    },
+    {
+      "file": "vb_vzcuf_PS_006.err",
+      "bytes": 2260,
+      "sha256": "cde8c5d10af093fefdee957bd0ce19dcfa20fa366a604496cbc5cbca08cf2929"
+    },
+    {
+      "file": "vb_vzcuf_PS_006.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vb_vzcuf_PS_007.compile.log",
+      "bytes": 179,
+      "sha256": "b8d6e3afa147513f8a8f6e56568addceac521d9be19e79648f642a2ef7390279"
+    },
+    {
+      "file": "vb_vzcuf_PS_007.err",
+      "bytes": 685,
+      "sha256": "b10c720b5df1d800ce0fe3f9d9ee9fc6b1576a4a3b0fe1324ce9ea45c6807b54"
+    },
+    {
+      "file": "vb_vzcuf_PS_007.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vb_vzcuf_PS_008.compile.log",
+      "bytes": 179,
+      "sha256": "af4ddc6b826da696965041905b2fcbd83377339b389abed0f1a78e235ca349c7"
+    },
+    {
+      "file": "vb_vzcuf_PS_008.err",
+      "bytes": 2479,
+      "sha256": "44ec13e6e4ead927cf1d07512781ce49f695b515813df6800a512b2a3dd6caf8"
+    },
+    {
+      "file": "vb_vzcuf_PS_008.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vb_vzcuf_PS_009.compile.log",
+      "bytes": 179,
+      "sha256": "8fc561909ec2acf9fa6cdbaac8b93d14c518d1e5030b6fb568b37fba4eedb02f"
+    },
+    {
+      "file": "vb_vzcuf_PS_009.err",
+      "bytes": 5934,
+      "sha256": "3c71a5caed8fcffe39fe8d1e2c6e70759c325dd593e33507b25cc935531d8286"
+    },
+    {
+      "file": "vb_vzcuf_PS_009.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "verifier_gates.compile.log",
+      "bytes": 177,
+      "sha256": "a375d24a147acaff203b18db2648c29cc4822d4827f382e4ba8952abe578530f"
+    },
+    {
+      "file": "verifier_gates.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "verifier_gates.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "wait_digest_exhaustive_collision.compile.log",
+      "bytes": 213,
+      "sha256": "55ecd2b39dd3f788689f1793de5c57acd70d3637c5f77bce1e140a202cfc71c4"
+    },
+    {
+      "file": "wait_digest_exhaustive_collision.err",
+      "bytes": 3108,
+      "sha256": "6401597eb30bf65b0f9c030271bd5c521b6b65518c1e64e5f819b195d624a602"
+    },
+    {
+      "file": "wait_digest_exhaustive_collision.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "wait_digest_sensitivity.compile.log",
+      "bytes": 195,
+      "sha256": "e51c31dd10ba049a76adee3f0b2b8c8480d13da4bdd87bb7d7de90f129ab117b"
+    },
+    {
+      "file": "wait_digest_sensitivity.err",
+      "bytes": 5397,
+      "sha256": "32f7ee26ec281aec1a629fa0207b830f76dbeaae90a11610fbfe8f9846fd7bef"
+    },
+    {
+      "file": "wait_digest_sensitivity.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "wait_sentinel_collision.compile.log",
+      "bytes": 195,
+      "sha256": "f2f60d61e96fbe55a128d1f7b14994cf03323c0f29d2ee938f7e597c2f2499e4"
+    },
+    {
+      "file": "wait_sentinel_collision.err",
+      "bytes": 3823,
+      "sha256": "ca9bd1f206f8c6e700e341b56b9a6eab002bb036844b716f2307b2f8173c12f9"
+    },
+    {
+      "file": "wait_sentinel_collision.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "xtask_parse_argv_hostile.compile.log",
+      "bytes": 197,
+      "sha256": "2f8237da0987ca845af1691f601545b1ede0de823af697ecec5048541f6fd512"
+    },
+    {
+      "file": "xtask_parse_argv_hostile.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "xtask_parse_argv_hostile.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "xtask_parse_options_hostile.compile.log",
+      "bytes": 203,
+      "sha256": "6f02d7823e9d113568d93c17b69518686f7b7cbe9d3a6d069cc357cf65dfbb51"
+    },
+    {
+      "file": "xtask_parse_options_hostile.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "xtask_parse_options_hostile.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "yaml_events.compile.log",
+      "bytes": 171,
+      "sha256": "b511d22f5afb23475daec222b05103fb799f4cacff475e0c0f50eb4de6dce8d2"
+    },
+    {
+      "file": "yaml_events.err",
+      "bytes": 98506,
+      "sha256": "0614516a42fc0fc0974c88b80e2b4bcd032e9f155b7291cb9c66afd7f1a0aaca"
+    },
+    {
+      "file": "yaml_events.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "target_endings": [
+    {
+      "target": "accessor_traversal",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "action_tracker",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "admission_flow",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "admission_fuzz",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "aggregate_artifact_budget",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "aggregate_workflow_budget",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "binary_payload_fuzz_boundary",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "boundary_evidence_reference",
+      "stderr_bytes": 66778,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 700041 runs in 2 second(s)",
+      "last_lines": [
+        "\"vb-\\000\\000\\000\\001@\\000\" # Uses: 1",
+        "###### End of recommended dictionary. ######",
+        "Done 700041 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "boundary_inventory_parser",
+      "stderr_bytes": 275795,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 440361 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\001\\000\\000c\" # Uses: 64",
+        "###### End of recommended dictionary. ######",
+        "Done 440361 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "boundary_metadata",
+      "stderr_bytes": 3900,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 1258630 runs in 2 second(s)",
+      "last_lines": [
+        "\"ipc-frame-boundary\" # Uses: 6444",
+        "###### End of recommended dictionary. ######",
+        "Done 1258630 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "budget_compute",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "canonical_digest_ask",
+      "stderr_bytes": 23763,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 81401 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\000\\000\\0000\" # Uses: 130",
+        "###### End of recommended dictionary. ######",
+        "Done 81401 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "capability_contract_schema",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "capability_name_schema",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "check_doc_taint_consistency_accepts_arbitrary_markdown",
+      "stderr_bytes": 47006,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 53204 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\275\\000\\000f\\357\\277\\275vaelexprnlei\" # Uses: 0",
+        "###### End of recommended dictionary. ######",
+        "Done 53204 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "choose_lowering_fuzzer",
+      "stderr_bytes": 15318,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 844279 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\377\\377\\377\\377\\377\\377\\377\\377\" # Uses: 22079",
+        "###### End of recommended dictionary. ######",
+        "Done 844279 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "compile_source_ast_marks",
+      "stderr_bytes": 187903,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 73577 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\001+\" # Uses: 5",
+        "###### End of recommended dictionary. ######",
+        "Done 73577 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "compile_workflow_fuzz",
+      "stderr_bytes": 196719,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 73020 runs in 2 second(s)",
+      "last_lines": [
+        "\"'#J\\012\\012/\\012/\\012\" # Uses: 2",
+        "###### End of recommended dictionary. ######",
+        "Done 73020 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "compiled_ir_fuzz",
+      "stderr_bytes": 244409,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 259516 runs in 2 second(s)",
+      "last_lines": [
+        "\"'\\000\" # Uses: 8",
+        "###### End of recommended dictionary. ######",
+        "Done 259516 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "decode_record",
+      "stderr_bytes": 20962,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 456346 runs in 2 second(s)",
+      "last_lines": [
+        "\"WBIX\" # Uses: 1209",
+        "###### End of recommended dictionary. ######",
+        "Done 456346 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "diagnostic_code_from_str_fuzz",
+      "stderr_bytes": 15111,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 2539319 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\000\\000\\000\\000\\000\\000\\000\\001\" # Uses: 50039",
+        "###### End of recommended dictionary. ######",
+        "Done 2539319 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "diagnostic_from_error_fuzz",
+      "stderr_bytes": 1036,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 524876 runs in 2 second(s)",
+      "last_lines": [
+        "#76\tREDUCE cov: 100 ft: 102 corp: 2/2b lim: 4 exec/s: 0 rss: 48Mb L: 1/1 MS: 1 EraseBytes-",
+        "#524876\tDONE   cov: 100 ft: 102 corp: 2/2b lim: 4096 exec/s: 262438 rss: 401Mb",
+        "Done 524876 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "expr_bytecode",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "expr_eval",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "expr_eval_fuzz",
+      "stderr_bytes": 252082,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 257315 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\001\\010\" # Uses: 0",
+        "###### End of recommended dictionary. ######",
+        "Done 257315 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "expression_fuzz",
+      "stderr_bytes": 247978,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 318644 runs in 2 second(s)",
+      "last_lines": [
+        "\"ry\" # Uses: 10",
+        "###### End of recommended dictionary. ######",
+        "Done 318644 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "external_input_adapter_fuzz",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "extract_terminal",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "fuzz_choose_depth",
+      "stderr_bytes": 5103,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 140 runs in 2 second(s)",
+      "last_lines": [
+        "#140\tNEW    cov: 3609 ft: 9489 corp: 32/65b lim: 4 exec/s: 70 rss: 333Mb L: 3/4 MS: 2 InsertByte-ChangeByte-",
+        "#140\tDONE   cov: 3609 ft: 9489 corp: 32/65b lim: 4 exec/s: 70 rss: 333Mb",
+        "Done 140 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_choose_when_parse",
+      "stderr_bytes": 16378,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 2614 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\376\\377\\377\\370\" # Uses: 1",
+        "###### End of recommended dictionary. ######",
+        "Done 2614 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_collect_lowering",
+      "stderr_bytes": 1616,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 1134539 runs in 2 second(s)",
+      "last_lines": [
+        "#1459\tREDUCE cov: 117 ft: 118 corp: 3/33b lim: 17 exec/s: 0 rss: 39Mb L: 16/16 MS: 5 ShuffleBytes-ChangeByte-EraseBytes-ChangeByte-InsertByte-",
+        "#1134539\tDONE   cov: 117 ft: 118 corp: 3/33b lim: 4096 exec/s: 567269 rss: 361Mb",
+        "Done 1134539 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_diagnostic_code_from_str",
+      "stderr_bytes": 10862,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 2670269 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\001\\021\\000\\000\" # Uses: 113342",
+        "###### End of recommended dictionary. ######",
+        "Done 2670269 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_digest_compile",
+      "stderr_bytes": 208434,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 79873 runs in 2 second(s)",
+      "last_lines": [
+        "\"-- :!\" # Uses: 1",
+        "###### End of recommended dictionary. ######",
+        "Done 79873 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_finish_digest_encoding",
+      "stderr_bytes": 16506,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 5336 runs in 2 second(s)",
+      "last_lines": [
+        "\"set\" # Uses: 0",
+        "###### End of recommended dictionary. ######",
+        "Done 5336 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_finish_lowering",
+      "stderr_bytes": 1578,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 2007186 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\001\\000\" # Uses: 186159",
+        "###### End of recommended dictionary. ######",
+        "Done 2007186 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_for_each_lowering",
+      "stderr_bytes": 1508,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 1446752 runs in 2 second(s)",
+      "last_lines": [
+        "#1122\tNEW    cov: 110 ft: 111 corp: 3/29b lim: 14 exec/s: 0 rss: 41Mb L: 14/14 MS: 1 CrossOver-",
+        "#1446752\tDONE   cov: 110 ft: 111 corp: 3/29b lim: 4096 exec/s: 723376 rss: 304Mb",
+        "Done 1446752 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_retry_normalize_ticket",
+      "stderr_bytes": 2168,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 373735 runs in 2 second(s)",
+      "last_lines": [
+        "#2055\tREDUCE cov: 331 ft: 332 corp: 9/82b lim: 21 exec/s: 0 rss: 46Mb L: 16/16 MS: 3 ChangeBinInt-ShuffleBytes-EraseBytes-",
+        "#373735\tDONE   cov: 331 ft: 332 corp: 9/82b lim: 3711 exec/s: 186867 rss: 229Mb",
+        "Done 373735 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_retry_postcard_codec",
+      "stderr_bytes": 16781,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 134668 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\001\\000\\000\\000\" # Uses: 1310",
+        "###### End of recommended dictionary. ######",
+        "Done 134668 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_retry_record_attempt",
+      "stderr_bytes": 3079,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 401080 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\016\\377\\377\\377\\377\\377\\377\\377\" # Uses: 11419",
+        "###### End of recommended dictionary. ######",
+        "Done 401080 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_retry_validate_completion",
+      "stderr_bytes": 2528,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 472637 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\000\\000\\000\\000\" # Uses: 21243",
+        "###### End of recommended dictionary. ######",
+        "Done 472637 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_set_lowering",
+      "stderr_bytes": 1932,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 2411542 runs in 2 second(s)",
+      "last_lines": [
+        "#882\tREDUCE cov: 41 ft: 48 corp: 5/31b lim: 11 exec/s: 0 rss: 33Mb L: 9/9 MS: 1 CrossOver-",
+        "#2411542\tDONE   cov: 41 ft: 48 corp: 5/31b lim: 4096 exec/s: 1205771 rss: 220Mb",
+        "Done 2411542 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_storage_codec_digest",
+      "stderr_bytes": 5856,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 451831 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\004\\225\\261)7\\361s\\024\\235\\322\\326\\204D\\240u\\313\\327\\021,\\371T\\2077e\\364\\032n\\230Xb\\222w\" # Uses: 1596",
+        "###### End of recommended dictionary. ######",
+        "Done 451831 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_storage_codec_header",
+      "stderr_bytes": 23394,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 54597 runs in 2 second(s)",
+      "last_lines": [
+        "\"(\\000\\000\\000\\000\\000\\000\\000\" # Uses: 7",
+        "###### End of recommended dictionary. ######",
+        "Done 54597 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_storage_codec_kind_family",
+      "stderr_bytes": 2031,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 524769 runs in 2 second(s)",
+      "last_lines": [
+        "#14829\tREDUCE cov: 170 ft: 202 corp: 10/178b lim: 142 exec/s: 0 rss: 56Mb L: 96/96 MS: 2 CopyPart-EraseBytes-",
+        "#524769\tDONE   cov: 170 ft: 202 corp: 10/178b lim: 4096 exec/s: 262384 rss: 479Mb",
+        "Done 524769 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_storage_codec_payload_corruption",
+      "stderr_bytes": 1565,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 90796 runs in 2 second(s)",
+      "last_lines": [
+        "#1741\tREDUCE cov: 358 ft: 371 corp: 8/26b lim: 17 exec/s: 0 rss: 48Mb L: 3/8 MS: 1 EraseBytes-",
+        "#90796\tDONE   cov: 358 ft: 371 corp: 8/26b lim: 895 exec/s: 45398 rss: 197Mb",
+        "Done 90796 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_storage_codec_roundtrip",
+      "stderr_bytes": 42721,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 382683 runs in 2 second(s)",
+      "last_lines": [
+        "\"UBSR\" # Uses: 19",
+        "###### End of recommended dictionary. ######",
+        "Done 382683 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_storage_codec_schema_version",
+      "stderr_bytes": 1845,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 344022 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\000\\000\\000\\000\" # Uses: 13905",
+        "###### End of recommended dictionary. ######",
+        "Done 344022 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "fuzz_wait_lowering",
+      "stderr_bytes": 2017,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 1505171 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\000\\000\" # Uses: 142980",
+        "###### End of recommended dictionary. ######",
+        "Done 1505171 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "ipc_decode",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "ipc_frame_fuzz",
+      "stderr_bytes": 28941,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 1334322 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\013\\000\" # Uses: 2032",
+        "###### End of recommended dictionary. ######",
+        "Done 1334322 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "ipc_frame_fuzz_boundary",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "journal_decode",
+      "stderr_bytes": 7149,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 118267 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\377\\377\\377\\377\" # Uses: 3",
+        "###### End of recommended dictionary. ######",
+        "Done 118267 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "journal_event_fuzz",
+      "stderr_bytes": 19293,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 904874 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\000\\000\\000\\000\\000\\000\\000Q\" # Uses: 4668",
+        "###### End of recommended dictionary. ######",
+        "Done 904874 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "kind_validation",
+      "stderr_bytes": 15858,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 1357668 runs in 2 second(s)",
+      "last_lines": [
+        "\"MBBV\" # Uses: 9641",
+        "###### End of recommended dictionary. ######",
+        "Done 1357668 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "lex_expr",
+      "stderr_bytes": 61415,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 358179 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\013\\000\\000\\000\\000\\000\\000\\000\" # Uses: 244",
+        "###### End of recommended dictionary. ######",
+        "Done 358179 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "parse_workflow_source_fuzz",
+      "stderr_bytes": 213274,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 84828 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\025 \\004\\036\" # Uses: 4",
+        "###### End of recommended dictionary. ######",
+        "Done 84828 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "recover_runtime_frame_seed_contract",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "recovery_decode",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "replay_events",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "resource_budget",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "slot_value_roundtrip",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "span_bridge_fuzz",
+      "stderr_bytes": 114266,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 36043 runs in 2 second(s)",
+      "last_lines": [
+        "\".!\" # Uses: 50",
+        "###### End of recommended dictionary. ######",
+        "Done 36043 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "step_budget_new",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "storage_envelope_fuzz_boundary",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "strict_yaml_profile",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "structured_status_render_hostile",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "taint_propagation",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "tooling_flux_check_selector",
+      "stderr_bytes": 1812,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 23 runs in 2 second(s)",
+      "last_lines": [
+        "#13\tNEW    cov: 99 ft: 118 corp: 8/13b lim: 4 exec/s: 13 rss: 32Mb L: 2/3 MS: 1 CopyPart-",
+        "#23\tDONE   cov: 99 ft: 118 corp: 8/13b lim: 4 exec/s: 11 rss: 32Mb",
+        "Done 23 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "tooling_guard_zero_parser",
+      "stderr_bytes": 1734,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 676 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\000\\000\" # Uses: 17",
+        "###### End of recommended dictionary. ######",
+        "Done 676 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "tooling_kani_list_args",
+      "stderr_bytes": 2623,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 62 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\001\\000\\000\\205\" # Uses: 1",
+        "###### End of recommended dictionary. ######",
+        "Done 62 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "tooling_loom_list_xtask",
+      "stderr_bytes": 1014,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 135 runs in 2 second(s)",
+      "last_lines": [
+        "#20\tNEW    cov: 192 ft: 197 corp: 4/4b lim: 4 exec/s: 0 rss: 43Mb L: 1/1 MS: 5 CopyPart-ChangeBinInt-ShuffleBytes-ShuffleBytes-ChangeBit-",
+        "#135\tDONE   cov: 192 ft: 197 corp: 4/4b lim: 4 exec/s: 67 rss: 61Mb",
+        "Done 135 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "vb_f04l_yaml_compiler_compile",
+      "stderr_bytes": 80426,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 11247 runs in 2 second(s)",
+      "last_lines": [
+        "\"value\" # Uses: 5",
+        "###### End of recommended dictionary. ######",
+        "Done 11247 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "vb_rpch_hydrate_events_fuzz",
+      "stderr_bytes": 30808,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 147792 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\001\\000\\000\\000\" # Uses: 702",
+        "###### End of recommended dictionary. ######",
+        "Done 147792 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "vb_rpch_hydrate_snapshot_tail_fuzz",
+      "stderr_bytes": 3905,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 351030 runs in 2 second(s)",
+      "last_lines": [
+        "#3795\tREDUCE cov: 371 ft: 396 corp: 17/45b lim: 33 exec/s: 0 rss: 50Mb L: 3/8 MS: 4 ChangeByte-EraseBytes-CopyPart-ChangeBit-",
+        "#351030\tDONE   cov: 371 ft: 396 corp: 17/45b lim: 3480 exec/s: 175515 rss: 444Mb",
+        "Done 351030 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "vb_rpch_replay_events_fuzz",
+      "stderr_bytes": 4560,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 98 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\031\\000\" # Uses: 0",
+        "###### End of recommended dictionary. ######",
+        "Done 98 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "vb_rpch_seed_dimensions_fuzz",
+      "stderr_bytes": 1820,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 2653874 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\000\\000\" # Uses: 246266",
+        "###### End of recommended dictionary. ######",
+        "Done 2653874 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "vb_storage_codec",
+      "stderr_bytes": 6418,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 60191 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\377\\377z\\024S\\216\\227\\000\" # Uses: 286",
+        "###### End of recommended dictionary. ######",
+        "Done 60191 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "vb_vzcuf_PS_001",
+      "stderr_bytes": 4279,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 701972 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\000\\000\\000\\000\\000\\000\\000\\000\" # Uses: 15695",
+        "###### End of recommended dictionary. ######",
+        "Done 701972 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "vb_vzcuf_PS_002",
+      "stderr_bytes": 4567,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 783008 runs in 2 second(s)",
+      "last_lines": [
+        "\"!\\000\\000\\000\\000\\000\\000\\000\" # Uses: 71403",
+        "###### End of recommended dictionary. ######",
+        "Done 783008 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "vb_vzcuf_PS_003",
+      "stderr_bytes": 2399,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 949854 runs in 2 second(s)",
+      "last_lines": [
+        "#584\tREDUCE cov: 169 ft: 172 corp: 6/26b lim: 8 exec/s: 0 rss: 37Mb L: 5/8 MS: 4 ChangeBinInt-InsertByte-CopyPart-EraseBytes-",
+        "#949854\tDONE   cov: 169 ft: 172 corp: 6/26b lim: 4096 exec/s: 474927 rss: 274Mb",
+        "Done 949854 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "vb_vzcuf_PS_004",
+      "stderr_bytes": 7131,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 564707 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\220:\\000Pm\\004\\000\\000\" # Uses: 5268",
+        "###### End of recommended dictionary. ######",
+        "Done 564707 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "vb_vzcuf_PS_005",
+      "stderr_bytes": 7523,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 540569 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\001\\000\\000\\000\\000\\000\\000\\000\" # Uses: 16170",
+        "###### End of recommended dictionary. ######",
+        "Done 540569 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "vb_vzcuf_PS_006",
+      "stderr_bytes": 2260,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 3702544 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\000\\000\" # Uses: 335429",
+        "###### End of recommended dictionary. ######",
+        "Done 3702544 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "vb_vzcuf_PS_007",
+      "stderr_bytes": 685,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 4281867 runs in 2 second(s)",
+      "last_lines": [
+        "#2\tINITED cov: 14 ft: 15 corp: 1/1b exec/s: 0 rss: 32Mb",
+        "#4281867\tDONE   cov: 14 ft: 15 corp: 1/1b lim: 4096 exec/s: 2140933 rss: 354Mb",
+        "Done 4281867 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "vb_vzcuf_PS_008",
+      "stderr_bytes": 2479,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 972069 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\000\\000\\000\\000\" # Uses: 78245",
+        "###### End of recommended dictionary. ######",
+        "Done 972069 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "vb_vzcuf_PS_009",
+      "stderr_bytes": 5934,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 573758 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\010\\000\\000\\000\\000\\000\\000\\000\" # Uses: 12073",
+        "###### End of recommended dictionary. ######",
+        "Done 573758 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "verifier_gates",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "wait_digest_exhaustive_collision",
+      "stderr_bytes": 3108,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 4566 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\000\\000\\000\\000\\000\\000\\000\\006\" # Uses: 87",
+        "###### End of recommended dictionary. ######",
+        "Done 4566 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "wait_digest_sensitivity",
+      "stderr_bytes": 5397,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 4555 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\177\\377\\377\\377\\377\\377\\377\\370\" # Uses: 13",
+        "###### End of recommended dictionary. ######",
+        "Done 4555 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "wait_sentinel_collision",
+      "stderr_bytes": 3823,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 4275 runs in 2 second(s)",
+      "last_lines": [
+        "\"\\003\\000\\000\\000\" # Uses: 54",
+        "###### End of recommended dictionary. ######",
+        "Done 4275 runs in 2 second(s)"
+      ]
+    },
+    {
+      "target": "xtask_parse_argv_hostile",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "xtask_parse_options_hostile",
+      "stderr_bytes": 0,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": null,
+      "last_lines": []
+    },
+    {
+      "target": "yaml_events",
+      "stderr_bytes": 98506,
+      "stdout_bytes": 0,
+      "libfuzzer_done_line": "Done 21601 runs in 2 second(s)",
+      "last_lines": [
+        "\"!i\" # Uses: 1",
+        "###### End of recommended dictionary. ######",
+        "Done 21601 runs in 2 second(s)"
+      ]
+    }
+  ],
+  "scope": "Actual Moon fuzz-smoke task passed all93 manifest targets. Some target binaries produce empty logs; no per-target execution counter invented. Task set-euo pipefail and success confirm loop exited0. Only5 matching dictionaries loaded by task. All8 separately checked in parse-after-v2. Short smoke is not full campaign or proof closure.",
+  "corrections": [
+    "Prior summary and commentary96 target claim was wrong; actual Cargo manifest and compile logs both93, exactsetmatch.",
+    "Actual all.yml line547 set -euo pipefail confirmed runReport. Prior root correction claiming only set-e was wrong; withdrawn. No source shell change made."
+  ]
+}

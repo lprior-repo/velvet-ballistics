@@ -1,0 +1,2 @@
+# vb-rmufc exact recovery contract
+Restore only a46c3723dc467807ac34f590550c36b6c539fb19 own commit three mutable full-slice expressions to as_mut_slice at IPC fixed-header encoding and deterministic test fixture/seed byte-fill. Preserve buffer identity, size, bytes, wire semantics, random seed behavior and all existing error/assertion branches. No whole old branch merge; ancestor patch inventory has unrelated deltas. Existing executable tests plus actual focused pinned toolchain gates, local independent review before final landing.

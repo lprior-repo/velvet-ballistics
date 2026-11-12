@@ -1,0 +1,10 @@
+[
+  {
+    "command": "systemd-run --user --scope --collect --unit=vb-has-static-six-20261110 -p MemoryHigh=20G -p MemoryMax=24G -p MemorySwapMax=0 env TMPDIR=/run/user/1000/vbs CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target CARGO_BUILD_RUSTC_WRAPPER= RUSTC_WRAPPER= RUSTFLAGS=-Dwarnings timeout 600s rustup run nightly-2026-04-28 cargo nextest run --cargo-quiet -p vb_expr --all-features -E 'test(has_argument_types::)' > target/core-build-20261110/evidence/has-static-six-native.log 2>&1",
+    "metadata": {
+      "status": "completed",
+      "truncated": false,
+      "exit": 0
+    }
+  }
+]

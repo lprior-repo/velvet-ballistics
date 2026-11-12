@@ -1,0 +1,17 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-9tg1c-local3090-final-format",
+  "argv": [
+    "cargo",
+    "test",
+    "--test",
+    "finish_input_execution"
+  ],
+  "exit_code": 0,
+  "seconds": 10.486,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-9tg1c/evidence/finish-input-execution"
+}

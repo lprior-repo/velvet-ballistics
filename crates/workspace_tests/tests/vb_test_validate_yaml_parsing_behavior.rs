@@ -37,6 +37,7 @@ fn make_step(fields: Vec<(&str, FieldValue)>) -> StepDoc {
 fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
@@ -968,8 +969,13 @@ fn validation_pipeline_no_gates_creates_all_disabled() {
 #[test]
 fn validation_pipeline_validate_accepts_valid_parts() {
     // Given a valid WorkflowParts
-    let parts = make_parts(vec![finish_node(0, 0)], 1);
+    let mut parts = make_parts(vec![finish_node(0, 0)], 1);
     // When validate is called via convenience function
+    parts.input_slots = Box::new([vb_core::workflow::CompiledInputSlot {
+        slot: vb_core::SlotIdx::new(0),
+        kind: vb_core::workflow::InputSlotKind::Any,
+        constraint: vb_core::workflow::CompiledInputConstraint::required(),
+    }]);
     let result = validate(&parts);
     // Then it returns Ok
     assert_eq!(result, Ok(()));
@@ -1036,7 +1042,12 @@ fn validation_pipeline_selective_gates_skip_disabled() {
 #[test]
 fn validation_pipeline_validate_with_contracts_accepts_valid_parts() {
     // Given a valid WorkflowParts and empty contracts
-    let parts = make_parts(vec![finish_node(0, 0)], 1);
+    let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+    parts.input_slots = Box::new([vb_core::workflow::CompiledInputSlot {
+        slot: vb_core::SlotIdx::new(0),
+        kind: vb_core::workflow::InputSlotKind::Any,
+        constraint: vb_core::workflow::CompiledInputConstraint::required(),
+    }]);
     let contracts: Vec<ActionContract> = vec![];
     // When validate_with_contracts is called
     let result = validate_with_contracts(&parts, &contracts);

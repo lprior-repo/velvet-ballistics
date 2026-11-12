@@ -1,0 +1,180 @@
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:177:                 file: BufWriter::with_capacity(JOURNAL_BUFFER_BYTES, file),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:178:                 buf: Vec::new(),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:179:                 is_buffer_dirty: false,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:180:                 compression: CompressionType::None,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:181:                 compression_threshold: 0,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:182:             });
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:183:         }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:184: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:185:         let file = OpenOptions::new()
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:186:             .append(true)
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:187:             .open(path)
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:188:             .inspect_err(|e| {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:189:                 log::error!("Failed to open journal file at {}: {e:?}", path.display());
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:190:             })?;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:191: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:192:         Ok(Self {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:193:             path: path.into(),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:194:             file: BufWriter::with_capacity(JOURNAL_BUFFER_BYTES, file),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:195:             buf: Vec::new(),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:196:             is_buffer_dirty: false,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:197:             compression: CompressionType::None,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:198:             compression_threshold: 0,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:199:         })
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:200:     }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:201: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:202:     /// Persists the journal file.
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:203:     pub(crate) fn persist(&mut self, mode: PersistMode) -> std::io::Result<()> {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:204:         log::trace!(
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:205:             "Persisting journal at {} with mode={mode:?}",
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:206:             self.path.display(),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:207:         );
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:208: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:209:         if self.is_buffer_dirty {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:210:             self.file.flush().inspect_err(|e| {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:211:                 log::error!(
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:212:                     "Failed to flush journal IO buffers at {}: {e:?}",
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:213:                     self.path.display(),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:214:                 );
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:215:             })?;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:216:             self.is_buffer_dirty = false;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:217:         }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:218: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:219:         match mode {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:220:             PersistMode::SyncAll => self.file.get_mut().sync_all().inspect_err(|e| {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:221:                 log::error!(
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:222:                     "Failed to fsync journal file at {}: {e:?}",
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:223:                     self.path.display(),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:224:                 );
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:225:             }),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:226:             PersistMode::SyncData => self.file.get_mut().sync_data().inspect_err(|e| {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:227:                 log::error!(
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:228:                     "Failed to fsyncdata journal file at {}: {e:?}",
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:229:                     self.path.display(),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:230:                 );
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:231:             }),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:232:             PersistMode::Buffer => Ok(()),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:233:         }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:234:     }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:235: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:236:     /// Writes a batch start marker to the journal
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:237:     fn write_start(&mut self, item_count: u32, seqno: SeqNo) -> Result<usize, crate::Error> {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:238:         debug_assert!(self.buf.is_empty());
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:239: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:240:         Entry::Start { item_count, seqno }.encode_into(&mut self.buf)?;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:241: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:242:         self.file.write_all(&self.buf)?;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:243: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:244:         Ok(self.buf.len())
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:245:     }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:246: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:247:     /// Writes a batch end marker to the journal
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:248:     fn write_end(&mut self, checksum: u64) -> Result<usize, crate::Error> {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:249:         debug_assert!(self.buf.is_empty());
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:250: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:251:         Entry::End(checksum).encode_into(&mut self.buf)?;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:252: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:253:         self.file.write_all(&self.buf)?;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:254: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:255:         Ok(self.buf.len())
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:256:     }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:257: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:258:     pub(crate) fn write_raw(
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:259:         &mut self,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:260:         keyspace_id: InternalKeyspaceId,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:261:         key: &[u8],
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:262:         value: &[u8],
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:263:         value_type: ValueType,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:264:         seqno: u64,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:265:     ) -> crate::Result<usize> {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:266:         self.is_buffer_dirty = true;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:267: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:268:         let mut hasher = xxhash_rust::xxh3::Xxh3::default();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:269:         let mut byte_count = 0;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:270: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:271:         self.buf.clear();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:272:         byte_count += self.write_start(1, seqno)?;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:273:         self.buf.clear();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:274: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:275:         serialize_marker_item(
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:276:             &mut self.buf,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:277:             keyspace_id,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:278:             key,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:279:             value,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:280:             value_type,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:281:             if self.compression_threshold > 0 && value.len() >= self.compression_threshold {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:282:                 self.compression
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:283:             } else {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:284:                 CompressionType::None
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:285:             },
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:286:         )?;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:287: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:288:         self.file.write_all(&self.buf)?;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:289: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:290:         hasher.update(&self.buf);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:291:         byte_count += self.buf.len();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:292: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:293:         self.buf.clear();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:294:         let checksum = hasher.finish();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:295:         byte_count += self.write_end(checksum)?;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:296: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:297:         Ok(byte_count)
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:298:     }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:299: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:300:     pub(crate) fn write_clear(
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:301:         &mut self,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:302:         keyspace_id: InternalKeyspaceId,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:303:         seqno: SeqNo,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:304:     ) -> crate::Result<usize> {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:305:         self.is_buffer_dirty = true;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:306: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:307:         let mut hasher = xxhash_rust::xxh3::Xxh3::default();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:308:         let mut byte_count = 0;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:309: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:310:         self.buf.clear();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:311:         byte_count += self.write_start(1, seqno)?;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:312:         self.buf.clear();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:313: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:314:         Entry::Clear { keyspace_id }.encode_into(&mut self.buf)?;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:315:         self.file.write_all(&self.buf)?;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:316:         hasher.update(&self.buf);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:317:         byte_count += self.buf.len();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:318: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:319:         self.buf.clear();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:320:         let checksum = hasher.finish();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:321:         byte_count += self.write_end(checksum)?;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:322: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:323:         Ok(byte_count)
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:324:     }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:325: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:326:     pub fn write_batch<'a>(
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:327:         &mut self,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:328:         items: impl Iterator<Item = &'a BatchItem>,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:329:         batch_size: usize,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:330:         seqno: SeqNo,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:331:     ) -> crate::Result<usize> {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:332:         if batch_size == 0 {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:333:             return Ok(0);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:334:         }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:335: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:336:         self.is_buffer_dirty = true;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:337: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:338:         self.buf.clear();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:339: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:340:         // NOTE: entries.len() is surely never > u32::MAX
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:341:         #[expect(clippy::cast_possible_truncation)]
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:342:         let item_count = batch_size as u32;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:343: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:344:         let mut hasher = xxhash_rust::xxh3::Xxh3::default();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:345:         let mut byte_count = 0;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:346: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:347:         byte_count += self.write_start(item_count, seqno)?;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:348:         self.buf.clear();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:349: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:350:         for item in items {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:351:             debug_assert!(self.buf.is_empty());
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:352: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:353:             serialize_marker_item(
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:354:                 &mut self.buf,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:355:                 item.keyspace.id,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs:356:                 &item.key,

@@ -47,6 +47,7 @@ use vb_core::{
 fn two_step_workflow(value: i64) -> CompiledWorkflow {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("test_two_step"),
         digest: WorkflowDigest::from_bytes([0xAB; 32]),
@@ -85,6 +86,7 @@ fn two_step_workflow(value: i64) -> CompiledWorkflow {
 fn three_step_workflow() -> CompiledWorkflow {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("test_three_step"),
         digest: WorkflowDigest::from_bytes([0xCD; 32]),
@@ -131,7 +133,12 @@ fn three_step_workflow() -> CompiledWorkflow {
 fn suspend_on_action_workflow() -> CompiledWorkflow {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([vb_core::workflow::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::workflow::InputSlotKind::Any,
+            constraint: vb_core::workflow::CompiledInputConstraint::required(),
+        }]),
         name: Box::<str>::from("test_do_suspend"),
         digest: WorkflowDigest::from_bytes([0xDD; 32]),
         nodes: vec![node(
@@ -191,6 +198,7 @@ mod behavior_new_run_frame {
         // GIVEN: A workflow with 2 steps but 0 slots (Nop-only, no Finish with slots)
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("zero_slots"),
             digest: WorkflowDigest::from_bytes([0xEE; 32]),
@@ -467,6 +475,7 @@ mod behavior_slot_management {
         // GIVEN: A frame with 2 slots, all uninitialized
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("slot_test"),
             digest: WorkflowDigest::from_bytes([0xFF; 32]),
@@ -512,6 +521,7 @@ mod behavior_slot_management {
         // GIVEN: A frame with uninitialized slot 0
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("slot_test"),
             digest: WorkflowDigest::from_bytes([0x11; 32]),
@@ -543,6 +553,7 @@ mod behavior_slot_management {
         // GIVEN: A frame with 2 slots (indices 0 and 1)
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("slot_test"),
             digest: WorkflowDigest::from_bytes([0x22; 32]),
@@ -574,6 +585,7 @@ mod behavior_slot_management {
         // GIVEN: A frame with initialized slot
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("taint_test"),
             digest: WorkflowDigest::from_bytes([0x33; 32]),
@@ -613,6 +625,7 @@ mod behavior_slot_management {
         // GIVEN: A frame with uninitialized slot
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("taint_test"),
             digest: WorkflowDigest::from_bytes([0x44; 32]),
@@ -644,6 +657,7 @@ mod behavior_slot_management {
         // GIVEN: A frame with slot 0 containing I64(10)
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("overwrite_test"),
             digest: WorkflowDigest::from_bytes([0x55; 32]),
@@ -693,6 +707,7 @@ mod behavior_step_state_transitions {
         // GIVEN: A frame with 3 steps (need 3 nodes in workflow)
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("state_test"),
             digest: WorkflowDigest::from_bytes([0x66; 32]),
@@ -782,6 +797,7 @@ mod behavior_step_state_transitions {
         // GIVEN: A frame with 2 steps
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("state_test"),
             digest: WorkflowDigest::from_bytes([0x77; 32]),
@@ -811,6 +827,7 @@ mod behavior_step_state_transitions {
         // GIVEN: A frame with step in Succeeded (terminal) state
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("state_test"),
             digest: WorkflowDigest::from_bytes([0x88; 32]),
@@ -989,6 +1006,7 @@ mod behavior_error_propagation {
         // GIVEN: Workflow parts with empty nodes array
         let parts = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("empty_nodes"),
             digest: WorkflowDigest::from_bytes([0x33; 32]),
@@ -1024,6 +1042,7 @@ mod behavior_parallel_in_flight {
         // GIVEN: A frame
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("parallel_test"),
             digest: WorkflowDigest::from_bytes([0x99; 32]),
@@ -1062,6 +1081,7 @@ mod behavior_parallel_in_flight {
         // GIVEN: A frame with parallel_in_flight = 0
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("parallel_test"),
             digest: WorkflowDigest::from_bytes([0xAA; 32]),
@@ -1100,6 +1120,7 @@ mod behavior_slot_snapshots {
         // GIVEN: A frame with 3 slots, slots 0 and 2 written
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("snapshot_test"),
             digest: WorkflowDigest::from_bytes([0xBB; 32]),
@@ -1139,6 +1160,7 @@ mod behavior_slot_snapshots {
         // GIVEN: A frame with 3 slots, only slot 1 written
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("snapshot_test"),
             digest: WorkflowDigest::from_bytes([0xCC; 32]),
@@ -1192,6 +1214,7 @@ mod behavior_validate_compiled_workflow {
         // GIVEN: Valid workflow parts for a 2-step workflow
         let parts = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("validate_test"),
             digest: WorkflowDigest::from_bytes([0x12; 32]),
@@ -1236,6 +1259,7 @@ mod behavior_validate_compiled_workflow {
         // GIVEN: A workflow with no nodes
         let result = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("empty"),
             digest: WorkflowDigest::from_bytes([0xDD; 32]),
@@ -1268,6 +1292,7 @@ mod behavior_taint_propagation {
         // GIVEN: A frame with 1 slot
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("taint_test"),
             digest: WorkflowDigest::from_bytes([0xEE; 32]),
@@ -1310,6 +1335,7 @@ mod behavior_taint_propagation {
         // GIVEN: A frame with 1 slot
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("taint_test"),
             digest: WorkflowDigest::from_bytes([0xFF; 32]),
@@ -1348,6 +1374,7 @@ mod behavior_pc_manipulation {
         // GIVEN: A frame with 5 steps (need 5 nodes in workflow)
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("pc_test"),
             digest: WorkflowDigest::from_bytes([0x11; 32]),
@@ -1404,6 +1431,7 @@ mod behavior_pc_manipulation {
         // GIVEN: A frame with 3 steps
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("pc_test"),
             digest: WorkflowDigest::from_bytes([0x22; 32]),

@@ -1,0 +1,88 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running tests/vb_c1s0_orchestration_runtime_tests.rs (target/debug/deps/vb_c1s0_orchestration_runtime_tests-474c9cd6c61a1255)
+
+running 29 tests
+test action_queue_dequeue_respects_fifo_order_with_values ... ok
+test answer_ask_returns_run_not_found_for_terminal_run ... ok
+test action_completion_resumes_at_correct_step_when_valid_ticket ... ok
+test answer_ask_returns_run_not_found_for_unknown_run ... ok
+test fail_action_transitions_run_to_failed_state ... ok
+test fifo_queue_dequeue_content_matches_enqueue_order ... ok
+test complete_action_returns_invalid_ticket_error_when_ticket_unknown ... ok
+test migrate_shard_to_self_returns_migrate_self_error ... ok
+test run_reaches_failed_state_when_action_fails ... ok
+test run_reaches_cancelled_state_when_cancel_called ... ok
+test run_reaches_finished_state_when_workflow_complete ... ok
+test runtime_respects_step_budget_per_tick ... ok
+test runtime_routes_run_to_correct_shard_by_run_id_modulo ... ok
+test same_run_id_routes_to_same_shard_always ... ok
+test snapshot_run_returns_not_found_for_unknown_run ... ok
+test snapshot_run_returns_shard_not_found_for_invalid_run ... ok
+test shard_commands_processed_in_fifo_order ... ok
+test step_budget_decrements_correctly_on_each_step ... ok
+test submit_direct_returns_admission_rejected_for_missing_capability ... ok
+test terminal_state_guard_mutation_would_be_caught ... ok
+test terminal_run_ignores_subsequent_commands ... ok
+test tick_all_returns_false_after_graceful_shutdown ... ok
+test tick_all_returns_false_when_any_shard_shutting_down ... ok
+test tick_all_returns_true_when_all_shards_alive ... ok
+test tick_all_processes_at_most_one_command_per_shard ... ok
+test tick_shard_migrate_directive_transfers_commands ... ok
+test tick_shard_returns_shard_not_found_for_invalid_index ... ok
+test tick_shard_continue_directive_processes_command ... ok
+test tick_shard_shutdown_directive_returns_false ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+EXIT_CODE=0
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-mryfc-lifecycle-luna/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.35s
+     Running tests/vb_test_runtime_lifecycle_state_behavior.rs (target/debug/deps/vb_test_runtime_lifecycle_state_behavior-c425ace591f70253)
+
+running 40 tests
+test action_scheduled_lifecycle_event_recorded ... ok
+test action_completion_transitions_run_from_resumable_to_finished ... ok
+test action_suspension_transitions_run_to_resumable ... ok
+test active_runs_tracked_per_shard_independently ... ok
+test counters_return_exact_zero_initially ... ok
+test cancel_run_transitions_run_to_failed ... ok
+test counters_updated_on_completion ... ok
+test counters_updated_on_submit ... ok
+test counters_updated_on_failure ... ok
+test drain_trace_removes_events ... ok
+test fail_action_transitions_run_to_failed ... ok
+test frame_released_on_run_finish ... ok
+test list_events_is_non_destructive ... ok
+test pending_timers_cleaned_up_on_run_finish ... ok
+test run_failed_lifecycle_event_recorded ... ok
+test run_finished_lifecycle_event_recorded ... ok
+test runtime_state_is_resumable_is_exact ... ok
+test shard_directive_barrier_is_unsupported ... ok
+test shard_directive_cancel_is_unsupported ... ok
+test shard_directive_continue_processes_one_command ... ok
+test same_run_id_routes_to_same_shard ... ok
+test shard_directive_migrate_to_self_returns_migrate_self ... ok
+test shard_directive_migrate_to_invalid_returns_shard_not_found ... ok
+test shard_directive_shutdown_drains_and_returns_false ... ok
+test shard_directive_suspend_preserves_queue ... ok
+test shutdown_drains_before_journal_drain ... ok
+test shutdown_processes_all_shards ... ok
+test snapshot_run_returns_found_with_exact_fields ... ok
+test snapshot_run_returns_not_found_for_finished_run ... ok
+test step_started_lifecycle_event_recorded ... ok
+test submit_returns_exact_queue_full_on_full_queue ... ok
+test submit_lifecycle_event_recorded_before_tick ... ok
+test submit_transitions_run_from_absent_to_initial ... ok
+test terminal_state_is_final_no_further_transitions ... ok
+test tick_all_returns_exact_false_after_shutdown ... ok
+test tick_all_returns_exact_true_when_alive ... ok
+test tick_shard_returns_exact_shard_not_found ... ok
+test tick_all_processes_one_command_per_shard ... ok
+test trace_events_recorded_for_run_lifecycle ... ok
+test trace_events_appear_in_deterministic_order ... ok
+
+test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+EXIT_CODE=0

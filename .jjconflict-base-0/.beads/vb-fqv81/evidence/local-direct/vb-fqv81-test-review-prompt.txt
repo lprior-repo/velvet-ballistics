@@ -1,0 +1,107 @@
+Adversarial TESTreview of boundedconfigfix. Return STATUS: APPROVED if no openfindings else REJECTED. One productionmetadatafieldremoved. Existingcheckermustacceptactualeditedmetadata and rejectonlyportaddition with EXACTstderr/exit1. Server/contexthealthunmodified. Unit fixturecleanupsubshell safe. Tests actualcopiedmetadata notminimalfake. No newpolicybranches andexistinggateunchanged. Sources/logsfollow:
+
+.beads/metadata.json
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_server_host": "127.0.0.1",
+  "dolt_database": "velvet-ballistics",
+  "project_id": "3265bb22-ec7c-4f87-b1a5-6001b941b612"
+}
+
+scripts/check-beads-server-mode.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+metadata=".beads/metadata.json"
+
+fail() {
+  printf 'beads server-mode check failed: %s\n' "$1" >&2
+  exit 1
+}
+
+[[ -f "$metadata" ]] || fail "$metadata is missing"
+
+grep -Eq '"backend"[[:space:]]*:[[:space:]]*"dolt"' "$metadata" \
+  || fail "$metadata must keep backend set to dolt"
+
+grep -Eq '"dolt_mode"[[:space:]]*:[[:space:]]*"server"' "$metadata" \
+  || fail "$metadata must keep dolt_mode set to server"
+
+if grep -Eq '"dolt_mode"[[:space:]]*:[[:space:]]*"embedded"' "$metadata"; then
+  fail "embedded Dolt mode is forbidden; use server mode only"
+fi
+
+if grep -Eq '"dolt_server_port"' "$metadata"; then
+  fail "do not pin dolt_server_port in metadata; bd manages .beads/dolt-server.port"
+fi
+
+if [[ -e ".beads/embeddeddolt" ]]; then
+  fail ".beads/embeddeddolt exists; remove it before running bd"
+fi
+
+printf 'beads server-mode check passed\n'
+
+crates/workspace_tests/tests/tooling/beads_server_port.sh
+set -euo pipefail
+
+checker="$PWD/scripts/check-beads-server-mode.sh"
+fixture_dir=$(mktemp -d)
+trap 'rm -rf "$fixture_dir"' EXIT
+
+mkdir -p "$fixture_dir/valid/.beads" "$fixture_dir/negative/.beads"
+cp -f .beads/metadata.json "$fixture_dir/valid/.beads/metadata.json"
+
+(cd "$fixture_dir/valid" && bash "$checker") >"$fixture_dir/pass.out" 2>"$fixture_dir/pass.err"
+test "$(cat "$fixture_dir/pass.out")" = "beads server-mode check passed"
+test -s "$fixture_dir/pass.err" && { cat "$fixture_dir/pass.err" >&2; exit 1; }
+
+jq '. + {"dolt_server_port": 1}' .beads/metadata.json > "$fixture_dir/negative/.beads/metadata.json"
+if (cd "$fixture_dir/negative" && bash "$checker") >"$fixture_dir/fail.out" 2>"$fixture_dir/fail.err"; then
+  echo "unexpected success" >&2
+  exit 1
+else
+  status=$?
+  test "$status" -eq 1
+fi
+test -s "$fixture_dir/fail.out" && { cat "$fixture_dir/fail.out" >&2; exit 1; }
+test "$(cat "$fixture_dir/fail.err")" = "beads server-mode check failed: do not pin dolt_server_port in metadata; bd manages .beads/dolt-server.port"
+
+echo "2 regression cases passed"
+
+.beads/vb-fqv81/evidence/port-regression-tests.log
+2 regression cases passed
+
+.beads/vb-fqv81/evidence/metadata-postcondition.json
+{
+  "removed": [
+    "dolt_server_port"
+  ],
+  "preserved": {
+    "database": "dolt",
+    "backend": "dolt",
+    "dolt_mode": "server",
+    "dolt_server_host": "127.0.0.1",
+    "dolt_database": "velvet-ballistics",
+    "project_id": "3265bb22-ec7c-4f87-b1a5-6001b941b612"
+  },
+  "all_other_fields_equal": true
+}
+
+.beads/vb-fqv81/evidence/bd-context.log
+bd version:     1.0.5
+
+Repository:
+  beads dir:    /home/lewis/src/velvet-ballistics/.beads
+  repo root:    /home/lewis/src/velvet-ballistics
+  cwd repo:     /home/lewis/src/isoloated/velvet-ballistics-vb-fqv81-beads-metadata-3090
+  worktree:     yes
+  role:         maintainer
+
+Backend:
+  type:         dolt
+  mode:         server
+  database:     velvet-ballistics
+  server:       127.0.0.1:44101
+  project id:   3265bb22-ec7c-4f87-b1a5-6001b941b612

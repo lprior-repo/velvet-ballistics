@@ -1,0 +1,28 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-policy-integration-v18",
+  "argv": [
+    "env",
+    "TEST_INTEGRITY_BASE=58a1f9580ca8beb32f80118ce08df521688a249a",
+    "moon",
+    "ci",
+    ":workspace-assertions",
+    ":test-integrity",
+    ":check",
+    ":lint-src",
+    ":fmt",
+    ":source-length",
+    "--downstream",
+    "none",
+    "--force",
+    "--concurrency",
+    "2"
+  ],
+  "exit_code": 0,
+  "seconds": 37.456,
+  "timeout_seconds": 900,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ny068/evidence/PRECHECK_V19"
+}

@@ -1,0 +1,5 @@
+{"id":"VB-IUCS-G8-KANI","planned_command":"cargo kani -p vb_validate --harness kani_gate_08_valid_bounded_parts_pass --output-format=regular and sibling Gate 8 harnesses","required":true,"status":"planned"}
+{"id":"VB-IUCS-STEP-KANI","planned_command":"cargo kani -p vb_core --harness kani_step_state_transition_matches_contract --output-format=regular","required":true,"status":"planned"}
+{"id":"VB-IUCS-STEP-VERUS","planned_command":"verus verification/verus/step_state_machine.rs","required":true,"status":"planned"}
+{"id":"VB-IUCS-BUDGET-TLA","planned_command":"tlc -config specs/tla/BudgetArithmetic.cfg specs/tla/BudgetArithmetic.tla","required":true,"status":"planned"}
+{"id":"VB-IUCS-PO030-NONCLAIM","planned_command":"evidence review only","required":true,"status":"planned"}

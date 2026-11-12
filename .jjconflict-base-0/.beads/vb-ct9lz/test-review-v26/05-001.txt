@@ -1,0 +1,100 @@
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:1: //! Issuance boundary tests for executor catalog packed admission.
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:2: //! Verifies counter length boundaries, u64::MAX overflow, and
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:3: //! overflow-then-retry behavior through the packed submission path.
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:4: 
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:5: use super::issuance_test_support::*;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:6: use crate::JournalError;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:7: use crate::executor::ExecutorError;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:8: use vb_core::RuntimePolicy;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:9: 
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:10: /// Counter stored as 7 bytes yields EXACT
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:11: /// ExecutorError::Artifact(JournalError::MalformedKeyspaceRow{prefix:0,
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:12: /// expected_len:8, actual_len:7}). Raw counter bytes unchanged and compiled_ir
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:13: /// empty before any submission.
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:14: #[test]
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:15: fn malformed_counter_seven_bytes() -> TestResult {
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:16:     let short = vec![0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77];
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:17:     check_malformed_counter(&short, 7)
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:18: }
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:19: 
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:20: /// Counter stored as 9 bytes yields EXACT MalformedKeyspaceRow with
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:21: /// actual_len=9.
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:22: #[test]
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:23: fn malformed_counter_nine_bytes() -> TestResult {
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:24:     let long = vec![0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99];
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:25:     check_malformed_counter(&long, 9)
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:26: }
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:27: 
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:28: fn check_malformed_counter(bytes: &[u8], expected_actual_len: usize) -> TestResult {
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:29:     let fixture = PackedFixture::new()?;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:30:     let (_dir, journal) = open_test_journal()?;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:31:     journal.artifact_acceptance.insert(b"last_issued", bytes)?;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:32: 
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:33:     let result = fixture.submit(&journal, RuntimePolicy::Relaxed);
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:34:     assert!(
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:35:         matches!(
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:36:             &result,
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:37:             Err(ExecutorError::Artifact(JournalError::MalformedKeyspaceRow {
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:38:                 prefix,
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:39:                 expected_len,
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:40:                 actual_len
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:41:             })) if *prefix == 0 && *expected_len == 8 && *actual_len == expected_actual_len
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:42:         ),
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:43:         "expected MalformedKeyspaceRow(actual_len={expected_actual_len}), got: {result:?}"
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:44:     );
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:45: 
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:46:     let stored = journal
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:47:         .artifact_acceptance
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:48:         .get(b"last_issued")?
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:49:         .ok_or("counter row should still exist")?;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:50:     assert_eq!(stored.as_ref(), bytes);
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:51:     assert!(journal.compiled_ir.iter().next().is_none());
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:52:     Ok(())
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:53: }
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:54: 
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:55: /// Counter at u64::MAX yields EXACT
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:56: /// ExecutorError::Artifact(JournalError::SequenceOverflow). Counter
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:57: /// remains at u64::MAX and compiled_ir is empty.
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:58: #[test]
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:59: fn counter_at_max_yields_sequence_overflow() -> TestResult {
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:60:     let fixture = PackedFixture::new()?;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:61:     let (_dir, journal) = open_test_journal()?;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:62: 
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:63:     write_counter(&journal, u64::MAX)?;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:64: 
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:65:     assert_sequence_overflow(&fixture, &journal)?;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:66:     assert_eq!(read_counter(&journal)?, Some(u64::MAX));
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:67:     assert!(journal.compiled_ir.iter().next().is_none());
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:68:     Ok(())
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:69: }
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:70: 
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:71: fn assert_sequence_overflow(fixture: &PackedFixture, journal: &crate::FjallJournal) -> TestResult {
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:72:     let result = fixture.submit(journal, RuntimePolicy::Relaxed);
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:73:     assert!(
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:74:         matches!(
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:75:             &result,
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:76:             Err(ExecutorError::Artifact(JournalError::SequenceOverflow))
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:77:         ),
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:78:         "expected SequenceOverflow, got: {result:?}"
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:79:     );
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:80:     Ok(())
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:81: }
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:82: 
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:83: /// Counter at u64::MAX-1 allows one more submission at u64::MAX.
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:84: /// Subsequent submission fails with EXACT SequenceOverflow; counter
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:85: /// stays at u64::MAX and the prior artifact remains fully readable.
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:86: #[test]
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:87: fn counter_at_max_minus_one_allows_one_more() -> TestResult {
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:88:     let fixture = PackedFixture::new()?;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:89:     let (_dir, journal) = open_test_journal()?;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:90: 
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:91:     let predecessor = u64::MAX.checked_sub(1).ok_or("max predecessor")?;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:92:     write_counter(&journal, predecessor)?;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:93: 
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:94:     let artifact = fixture.submit(&journal, RuntimePolicy::Relaxed)?;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:95:     assert_eq!(artifact.accepted_at_seq.get(), u64::MAX);
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:96:     fixture.check(&journal, &artifact, RuntimePolicy::Relaxed)?;
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:97: 
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:98:     assert_eq!(read_counter(&journal)?, Some(u64::MAX));
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:99: 
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:100:     assert_sequence_overflow(&fixture, &journal)?;

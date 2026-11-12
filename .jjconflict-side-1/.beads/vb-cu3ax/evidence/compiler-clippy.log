@@ -1,0 +1,24 @@
+error: this `if` statement can be collapsed
+  --> crates/vb_compile/src/mod_compile_lowering/part_01.rs:38:9
+   |
+38 | /         if index == last {
+39 | |             if let crate::StepPrimitive::Finish { result } = &step.primitive {
+40 | |                 prepare_finish_input_slots(source, result, &mut outputs, &mut builder)?;
+41 | |                 inputs_allocated = true;
+42 | |             }
+43 | |         }
+   | |_________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
+   = note: `-D clippy::collapsible-if` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+   |
+38 ~         if index == last
+39 ~             && let crate::StepPrimitive::Finish { result } = &step.primitive {
+40 |                 prepare_finish_input_slots(source, result, &mut outputs, &mut builder)?;
+41 |                 inputs_allocated = true;
+42 ~             }
+   |
+
+error: could not compile `vb_compile` (lib) due to 1 previous error

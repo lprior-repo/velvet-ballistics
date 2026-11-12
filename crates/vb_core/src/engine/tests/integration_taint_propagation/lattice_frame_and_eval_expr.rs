@@ -225,15 +225,14 @@ fn eval_workflow_with_slots(
 
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: "taint_eval_test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: vec![crate::workflow::node(
             StepIdx::new(0),
-            CompiledNodeKind::EvalExpr {
-                expr: ExprIdx::new(0),
-            },
-            Some(SlotIdx::new(0)),
+            CompiledNodeKind::Nop,
+            None,
             None,
         )]
         .into(),

@@ -1,0 +1,15 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/crates/vb_storage)
+error[E0282]: type annotations needed
+  --> crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:38:9
+   |
+38 |         Ok(results)
+   |         ^^ cannot infer type of the type parameter `E` declared on the enum `Result`
+   |
+help: consider specifying the generic arguments
+   |
+38 |         Ok::<Vec<admission::AcceptedArtifact>, E>(results)
+   |           +++++++++++++++++++++++++++++++++++++++
+
+For more information about this error, try `rustc --explain E0282`.
+error: could not compile `vb_storage` (lib test) due to 1 previous error
+error: command `/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/bin/cargo test --no-run --message-format json-render-diagnostics --package vb_storage --lib --all-features --locked` exited with code 101

@@ -1,0 +1,422 @@
+use super::{InputMappingError, map_runtime_inputs};
+use std::error::Error;
+use vb_core::ids::{StepIdx, WorkflowDigest};
+use vb_core::workflow::{
+    CompiledInputSlot, CompiledNodeKind, CompiledWorkflow, InputSlotKind, ResourceContract,
+    WorkflowParts,
+};
+use vb_core::{SlotIdx, SlotValue};
+
+type TestResult<T> = Result<T, Box<dyn Error>>;
+
+fn fixture(input_slots: Box<[CompiledInputSlot]>) -> TestResult<CompiledWorkflow> {
+    // Mapping optional inputs must not require the graph to consume them.
+    let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None);
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        source_metadata: None,
+        name: Box::from("input-mapping"),
+        digest: WorkflowDigest::from_bytes([1; 32]),
+        nodes: Box::from([node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 4,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::from([]),
+        input_slots,
+    };
+    CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string().into())
+}
+
+fn i64_port() -> CompiledInputSlot {
+    CompiledInputSlot {
+        slot: SlotIdx::new(2),
+        kind: InputSlotKind::I64,
+        constraint: vb_core::CompiledInputConstraint::unconstrained(),
+    }
+}
+fn bool_port() -> CompiledInputSlot {
+    CompiledInputSlot {
+        slot: SlotIdx::new(3),
+        kind: InputSlotKind::Bool,
+        constraint: vb_core::CompiledInputConstraint::unconstrained(),
+    }
+}
+
+#[test]
+fn zeroports_raw_empty() -> TestResult<()> {
+    let wf = fixture(Box::from([]))?;
+    let result = map_runtime_inputs(&wf, &[]);
+    assert_eq!(result, Ok(Box::from([])));
+    Ok(())
+}
+
+#[test]
+fn zeroports_encoded_empty() -> TestResult<()> {
+    let wf = fixture(Box::from([]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([]))?;
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(result, Ok(Box::from([])));
+    Ok(())
+}
+
+#[test]
+fn zeroports_malformed_255() -> TestResult<()> {
+    let wf = fixture(Box::from([]))?;
+    let buf: Vec<u8> = vec![255];
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(result, Err(InputMappingError::DecodeFailed));
+    Ok(())
+}
+
+#[test]
+fn zeroports_one_i64() -> TestResult<()> {
+    let wf = fixture(Box::from([]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(99)]))?;
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(result, Err(InputMappingError::SlotCountExceeded));
+    Ok(())
+}
+
+#[test]
+fn zeroports_encoded_empty_plus_255() -> TestResult<()> {
+    let wf = fixture(Box::from([]))?;
+    let mut buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([]))?;
+    buf.push(255);
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(result, Err(InputMappingError::DecodeFailed));
+    Ok(())
+}
+
+#[test]
+fn with_i64_port_empty_raw() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let result = map_runtime_inputs(&wf, &[]);
+    assert_eq!(result, Ok(Box::from([])));
+    Ok(())
+}
+
+#[test]
+fn slot2_i64_mapping_i64_42() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(42)]))?;
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(
+        result,
+        Ok(Box::from([(SlotIdx::new(2), SlotValue::I64(42))]))
+    );
+    Ok(())
+}
+
+#[test]
+fn slots_2_i64_3_bool_partial_1_maps_2() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port(), bool_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(11)]))?;
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(
+        result,
+        Ok(Box::from([(SlotIdx::new(2), SlotValue::I64(11))]))
+    );
+    Ok(())
+}
+
+#[test]
+fn full_2_correct_order() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port(), bool_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([
+        SlotValue::I64(1),
+        SlotValue::Bool(true),
+    ]))?;
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(
+        result,
+        Ok(Box::from([
+            (SlotIdx::new(2), SlotValue::I64(1)),
+            (SlotIdx::new(3), SlotValue::Bool(true)),
+        ]))
+    );
+    Ok(())
+}
+
+#[test]
+fn i64_port_bool() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::Bool(true)]))?;
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(
+        result,
+        Err(InputMappingError::KindMismatch {
+            slot: SlotIdx::new(2),
+            expected_kind: InputSlotKind::I64,
+        })
+    );
+    Ok(())
+}
+
+#[test]
+fn two_values_for_one_port() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([
+        SlotValue::I64(1),
+        SlotValue::I64(2),
+    ]))?;
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(result, Err(InputMappingError::SlotCountExceeded));
+    Ok(())
+}
+
+#[test]
+fn ports_255() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let buf: Vec<u8> = vec![255];
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(result, Err(InputMappingError::DecodeFailed));
+    Ok(())
+}
+
+#[test]
+fn valid_one_plus_255() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let mut buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(1)]))?;
+    buf.push(255);
+    let result = map_runtime_inputs(&wf, &buf);
+    assert_eq!(result, Err(InputMappingError::DecodeFailed));
+    Ok(())
+}
+
+#[test]
+fn trailing_bytes_precede_excess_count() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([
+        SlotValue::I64(1),
+        SlotValue::I64(2),
+    ]))?;
+    let mut buf = buf;
+    buf.push(255);
+    assert_eq!(
+        map_runtime_inputs(&wf, &buf),
+        Err(InputMappingError::DecodeFailed)
+    );
+    Ok(())
+}
+
+#[test]
+fn trailing_bytes_precede_kind_mismatch() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::Bool(true)]))?;
+    let mut buf = buf;
+    buf.push(255);
+    assert_eq!(
+        map_runtime_inputs(&wf, &buf),
+        Err(InputMappingError::DecodeFailed)
+    );
+    Ok(())
+}
+
+proptest::proptest! {
+    #[test]
+    fn typed_i64_mapping_and_trailing_rejection(value in proptest::num::i64::ANY, junk in proptest::collection::vec(proptest::num::u8::ANY, 1..17)) {
+        let wf = fixture(Box::from([i64_port()]))
+            .map_err(|error| proptest::test_runner::TestCaseError::fail(error.to_string()))?;
+        let mut bytes = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(value)]))
+            .map_err(|error| proptest::test_runner::TestCaseError::fail(error.to_string()))?;
+        proptest::prop_assert_eq!(
+            map_runtime_inputs(&wf, &bytes),
+            Ok(Box::from([(SlotIdx::new(2), SlotValue::I64(value))]))
+        );
+        bytes.extend(junk);
+        proptest::prop_assert_eq!(
+            map_runtime_inputs(&wf, &bytes),
+            Err(InputMappingError::DecodeFailed)
+        );
+    }
+}
+
+fn required_number_port() -> CompiledInputSlot {
+    CompiledInputSlot {
+        slot: SlotIdx::new(2),
+        kind: InputSlotKind::I64,
+        constraint: vb_core::CompiledInputConstraint::required(),
+    }
+}
+
+fn required_trailing_port() -> CompiledInputSlot {
+    CompiledInputSlot {
+        slot: SlotIdx::new(3),
+        kind: InputSlotKind::I64,
+        constraint: vb_core::CompiledInputConstraint::required(),
+    }
+}
+
+fn optional_number_port() -> CompiledInputSlot {
+    CompiledInputSlot {
+        slot: SlotIdx::new(3),
+        kind: InputSlotKind::Bool,
+        constraint: vb_core::CompiledInputConstraint::unconstrained(),
+    }
+}
+
+#[test]
+fn required_port_empty_raw_is_missing() -> TestResult<()> {
+    let wf = fixture(Box::from([required_number_port()]))?;
+    assert_eq!(
+        map_runtime_inputs(&wf, &[]),
+        Err(InputMappingError::MissingRequiredInput {
+            slot: SlotIdx::new(2)
+        })
+    );
+    Ok(())
+}
+
+#[test]
+fn required_port_empty_encoded_is_missing() -> TestResult<()> {
+    let wf = fixture(Box::from([required_number_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([]))?;
+    assert_eq!(
+        map_runtime_inputs(&wf, &buf),
+        Err(InputMappingError::MissingRequiredInput {
+            slot: SlotIdx::new(2)
+        })
+    );
+    Ok(())
+}
+
+#[test]
+fn required_trailing_port_short_list_is_missing() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port(), required_trailing_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(1)]))?;
+    assert_eq!(
+        map_runtime_inputs(&wf, &buf),
+        Err(InputMappingError::MissingRequiredInput {
+            slot: SlotIdx::new(3)
+        })
+    );
+    Ok(())
+}
+
+#[test]
+fn optional_trailing_port_short_list_maps_prefix() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port(), optional_number_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(11)]))?;
+    assert_eq!(
+        map_runtime_inputs(&wf, &buf),
+        Ok(Box::from([(SlotIdx::new(2), SlotValue::I64(11))]))
+    );
+    Ok(())
+}
+
+#[test]
+fn missing_required_input_display() -> TestResult<()> {
+    let error = InputMappingError::MissingRequiredInput {
+        slot: SlotIdx::new(2),
+    };
+    assert_eq!(
+        error.to_string(),
+        "INPUT_MAPPING_FAILED: missing required input for slot SlotIdx(2)"
+    );
+    Ok(())
+}
+
+#[test]
+fn any_port_maps_primitives() -> TestResult<()> {
+    let wf = fixture(Box::from([CompiledInputSlot {
+        slot: SlotIdx::new(2),
+        kind: InputSlotKind::Any,
+        constraint: vb_core::CompiledInputConstraint::unconstrained(),
+    }]))?;
+    let values = [
+        vb_core::SlotValue::Null,
+        vb_core::SlotValue::Bool(false),
+        vb_core::SlotValue::Bool(true),
+        vb_core::SlotValue::I64(i64::MIN),
+        vb_core::SlotValue::I64(i64::MAX),
+        vb_core::SlotValue::F64(vb_core::value::FiniteF64::new(1.25)?),
+        vb_core::SlotValue::Symbol(vb_core::SymbolId::new(0)),
+        vb_core::SlotValue::List(vb_core::ListId::new(0)),
+        vb_core::SlotValue::Object(vb_core::ObjectId::new(0)),
+        vb_core::SlotValue::Blob(vb_core::BlobId::new(0)),
+    ];
+    for value in values {
+        let bytes = postcard::to_allocvec(&Box::<[SlotValue]>::from([value]))?;
+        assert_eq!(
+            map_runtime_inputs(&wf, &bytes),
+            Ok(Box::from([(SlotIdx::new(2), value)]))
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn nullable_null_mapping_matches_the_scalar_root_validator() -> TestResult<()> {
+    for kind in [
+        InputSlotKind::Any,
+        InputSlotKind::Null,
+        InputSlotKind::Bool,
+        InputSlotKind::I64,
+        InputSlotKind::F64,
+        InputSlotKind::Symbol,
+        InputSlotKind::List,
+        InputSlotKind::Object,
+        InputSlotKind::Blob,
+    ] {
+        for nullable in [false, true] {
+            let wf = fixture(Box::from([CompiledInputSlot {
+                slot: SlotIdx::new(2),
+                kind,
+                constraint: vb_core::CompiledInputConstraint {
+                    nullability: nullable.into(),
+                    ..vb_core::CompiledInputConstraint::unconstrained()
+                },
+            }]))?;
+            let declaration = wf.input_slots().first().ok_or("input declaration")?;
+            let root = vb_core::input_validation::validate_scalar_input_value(
+                declaration,
+                SlotValue::Null,
+                &wf,
+            );
+            let bytes = postcard::to_allocvec(&vec![SlotValue::Null])?;
+            let expected = if nullable || matches!(kind, InputSlotKind::Any | InputSlotKind::Null) {
+                assert_eq!(root, Ok(()));
+                Ok(Box::from([(SlotIdx::new(2), SlotValue::Null)]))
+            } else {
+                assert_eq!(root, Err(vb_core::input_validation::InputValueIssue::Kind));
+                Err(InputMappingError::KindMismatch {
+                    slot: SlotIdx::new(2),
+                    expected_kind: kind,
+                })
+            };
+            assert_eq!(
+                map_runtime_inputs(&wf, &bytes),
+                expected,
+                "{kind:?}, nullable={nullable}"
+            );
+            for value in [
+                SlotValue::Bool(true),
+                SlotValue::I64(7),
+                SlotValue::F64(vb_core::value::FiniteF64::new(1.25)?),
+            ] {
+                let root =
+                    vb_core::input_validation::validate_scalar_input_value(declaration, value, &wf);
+                let expected = match root {
+                    Ok(()) => Ok(Box::from([(SlotIdx::new(2), value)])),
+                    Err(vb_core::input_validation::InputValueIssue::Kind) => {
+                        Err(InputMappingError::KindMismatch {
+                            slot: SlotIdx::new(2),
+                            expected_kind: kind,
+                        })
+                    }
+                    Err(other) => return Err(format!("unexpected scalar issue: {other:?}").into()),
+                };
+                assert_eq!(
+                    map_runtime_inputs(&wf, &postcard::to_allocvec(&vec![value])?),
+                    expected,
+                    "{kind:?}, nullable={nullable}, value={value:?}"
+                );
+            }
+        }
+    }
+    Ok(())
+}

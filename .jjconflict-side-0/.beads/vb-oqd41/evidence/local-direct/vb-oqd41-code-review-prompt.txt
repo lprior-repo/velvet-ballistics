@@ -1,0 +1,138 @@
+Independent CODE REVIEW vb-oqd41 test fixture now usesactualissuedpendingActionTicket; productionauthorityunchanged. AfterrealNonRetryableTimeout failure assert exact1submitted1failed0completed, one RunFailed forrun, pendingticketnone. Review no manufacturedticket/securityweakening/vacuity. Existingfail_assert macro intentionally fails test thenreturn, not silentreturn. No t.issued field; rejected draft inventedthatfield, correctedcontract. Actual focusedadmission24test pass pendingreadlogbelow. Return STATUS APPROVED only no findings elseREJECTED max500words.
+# Test Contract: evidence_chain_captures_action_timeout_and_failure
+
+**Location:** `crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs`
+
+## Precondition
+Runtime initialized; run submitted with timeout-prone action; runtime ticked.
+
+## Ticket Retrieval
+Call `runtime.lookup_pending_action_ticket(run_id, 0)` → `Option<ActionTicket>`.
+- `Some(t)`: proceed
+- `None`: fail fixture explicitly (missing ticket)
+
+## Ticket Field Invariants
+Pass the returned issued ticket unchanged. Preserve its seq, action, attempt, idempotency_key and capacity; do not reconstruct expected identity. The generated draft invented a t.issued field; the actual ActionTicket has no such field and that claim is rejected before application.
+
+## Failure Injection
+Submit `NonRetryable Timeout ActionFailure` for retrieved ticket.
+
+## Postcondition Assertions
+- `runs_submitted == 1`
+- `runs_completed == 0`
+- `runs_failed == 1`
+- `lookup_pending_action_ticket(run_id, 0)` → `None` (ticket consumed)
+- Journal contains exactly one `RunFailed` event for the run
+
+## Constraints
+- No production code changes
+- No assertion weakening
+- No fabricated tickets
+- API matches step 0: `Option<ActionTicket>` return type
+DIFF
+diff --git a/crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs b/crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs
+index 83b44576ee..2e84aa1987 100644
+--- a/crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs
++++ b/crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs
+@@ -282,15 +282,15 @@
+         }
+     }
+ 
+-    let ticket = vb_core::action::ActionTicket {
+-        run: run_id,
+-        step: StepIdx::new(0),
+-        seq: vb_core::ids::SeqNo::ZERO,
+-        action: ActionId::new(7),
+-        attempt: 1,
+-        idempotency_key: 0,
+-        capacity: 1,
++    let ticket_opt = runtime.lookup_pending_action_ticket(run_id, 0);
++    let ticket = match ticket_opt {
++        Some(t) => t,
++        None => {
++            fail_assert!("no pending action ticket found for run");
++            return;
++        }
+     };
++
+     let failure = vb_core::action::ActionFailure {
+         code: vb_core::action::ActionFailureCode::Timeout,
+         retry_policy: vb_core::action::RetryPolicy::NonRetryable,
+@@ -314,10 +314,9 @@
+     }
+ 
+     let snap = runtime.counters_snapshot();
+-    assert_eq!(snap.runs_completed, 0, "run should not complete on action timeout");
+-    assert!(snap.runs_failed > 0 || snap.runs_submitted > snap.runs_completed,
+-        "run should be in failed/suspended state after action timeout: runs_submitted={} runs_failed={}",
+-        snap.runs_submitted, snap.runs_failed);
++    assert_eq!(snap.runs_submitted, 1, "exactly one run should be submitted");
++    assert_eq!(snap.runs_failed, 1, "exactly one run should be failed");
++    assert_eq!(snap.runs_completed, 0, "no runs should be completed");
+ 
+     let events = match journal.snapshot() {
+         Ok(events) => events,
+@@ -326,10 +325,13 @@
+             return;
+         }
+     };
+-    let has_failed = events.iter().any(|e| {
++    let failed_events = events.iter().filter(|e| {
+         matches!(e, vb_runtime::journal::RuntimeJournalEvent::RunFailed { run, .. } if *run == run_id)
+-    });
+-    assert!(has_failed, "journal should contain RunFailed after action timeout");
++    }).count();
++    assert_eq!(failed_events, 1, "exactly one RunFailed event expected");
++
++    let ticket_after = runtime.lookup_pending_action_ticket(run_id, 0);
++    assert!(ticket_after.is_none(), "ticket should be consumed after failure");
+ }
+ 
+ #[test]
+
+LOG
+/vb_ipc)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-oqd41-ticket-fixture-3090/crates/vb_compile)
+   Compiling ppv-lite86 v0.2.21
+   Compiling wait-timeout v0.2.1
+   Compiling bit-vec v0.8.0
+   Compiling quick-error v1.2.3
+   Compiling rusty-fork v0.3.1
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-oqd41-ticket-fixture-3090/crates/velvet_ballistics)
+   Compiling bit-set v0.8.0
+   Compiling rand_chacha v0.9.0
+   Compiling rand_xorshift v0.4.0
+   Compiling rand v0.9.4
+   Compiling unarray v0.1.4
+   Compiling proptest v1.11.0
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 19.12s
+     Running tests/admission_evidence_integration.rs (target/debug/deps/admission_evidence_integration-a186395269f19b19)
+
+running 24 tests
+test budget_validation_rejects_action_ticket_limit_exceeded ... ok
+test budget_validation_accepts_budget_policy_within_limits ... ok
+test budget_validation_rejects_oversized_workflow ... ok
+test budget_validation_rejects_result_bytes_exceeded ... ok
+test capability_check_rejects_any_action_when_empty_grant_set ... ok
+test runtime_rejects_submission_when_capacity_exceeded ... ok
+test storage_failure_before_header_prevents_ack ... ok
+test capability_check_rejects_unauthorized_action ... ok
+test evidence_chain_captures_action_timeout_and_failure ... ok
+test evidence_chain_preserves_event_ordering_across_restarts ... ok
+test evidence_chain_after_execution ... ok
+test multiple_runs_concurrent_produce_correct_completion_counters ... ok
+test taint_propagates_through_expression_eval ... ok
+test taint_secret_propagates_through_finish_signal ... ok
+test taint_clean_propagates_preserved_through_set_const ... ok
+test submit_with_tainted_input_propagates_taint_through_runtime ... ok
+test compiled_ir_query_returns_none_for_missing_digest ... ok
+test restart_lookup_finds_persisted_header ... ok
+test submit_artifact_under_strict_policy_requires_matching_digest ... ok
+test submit_artifact_then_run_succeeds ... ok
+test run_without_artifact_under_relaxed_policy ... ok
+test run_without_artifact_under_strict_policy_rejects_unverified_workflow ... ok
+test submit_artifact_yaml_compiled_then_run_with_inputs_taints ... ok
+test journal_persistence_survives_runtime_drop_and_reopen ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.57s
+

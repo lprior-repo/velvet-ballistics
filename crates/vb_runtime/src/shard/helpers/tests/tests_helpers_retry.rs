@@ -40,18 +40,23 @@ fn retry_policy_after_action_rejects_non_i64_policy_slot() {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("retry_bad_policy"),
         digest: WorkflowDigest::from_bytes([0xAB; 32]),
         nodes: Box::from([set_policy, action, retry_check, finish]),
         expressions: Box::from([]),
         accessors: Box::from([]),
-        constants: Box::from([ConstValue::Bool(true)]),
+        constants: Box::from([ConstValue::I64(1)]),
         slot_count: 2,
         symbols_count: 0,
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
         .expect("retry_policy_after_action_rejects_non_i64_policy_slot");
@@ -139,6 +144,7 @@ fn retry_policy_after_action_rejects_negative_max_attempts() {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("retry_negative"),
         digest: WorkflowDigest::from_bytes([0xAC; 32]),
         nodes: Box::from([set_policy, action, retry_check, finish]),
@@ -150,7 +156,11 @@ fn retry_policy_after_action_rejects_negative_max_attempts() {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
         .expect("retry_policy_after_action_rejects_negative_max_attempts");
@@ -217,6 +227,7 @@ fn retry_policy_after_action_rejects_zero_max_attempts() {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("retry_zero"),
         digest: WorkflowDigest::from_bytes([0xAD; 32]),
         nodes: Box::from([set_policy, action, retry_check, finish]),
@@ -228,7 +239,11 @@ fn retry_policy_after_action_rejects_zero_max_attempts() {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
         .expect("retry_policy_after_action_rejects_zero_max_attempts");
@@ -345,6 +360,7 @@ fn error_handler_with_slot_workflow() -> Option<vb_core::workflow::CompiledWorkf
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("error_handler_with_slot"),
         digest: WorkflowDigest::from_bytes([0xBA; 32]),
         nodes: Box::from([guard, action, handler, finish]),
@@ -356,7 +372,11 @@ fn error_handler_with_slot_workflow() -> Option<vb_core::workflow::CompiledWorkf
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     Some(
         vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
@@ -458,6 +478,7 @@ fn seed_input_slots_writes_multiple_distinct_values() {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("multi_slot"),
         digest: WorkflowDigest::from_bytes([0xCA; 32]),
         nodes: Box::from([set_a, finish]),
@@ -493,18 +514,35 @@ fn seed_input_slots_writes_multiple_distinct_values() {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::from([node]),
         expressions: Box::from([]),
         accessors: Box::from([]),
         constants: Box::from([]),
-        slot_count: 1,
+        slot_count: 3,
         symbols_count: 0,
         entry: vb_core::ids::StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: vb_core::ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([
+            vb_core::CompiledInputSlot {
+                slot: vb_core::SlotIdx::new(0),
+                kind: vb_core::InputSlotKind::Any,
+                constraint: vb_core::CompiledInputConstraint::required(),
+            },
+            vb_core::CompiledInputSlot {
+                slot: vb_core::SlotIdx::new(1),
+                kind: vb_core::InputSlotKind::Any,
+                constraint: vb_core::CompiledInputConstraint::required(),
+            },
+            vb_core::CompiledInputSlot {
+                slot: vb_core::SlotIdx::new(2),
+                kind: vb_core::InputSlotKind::Any,
+                constraint: vb_core::CompiledInputConstraint::required(),
+            },
+        ]),
     };
     let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).unwrap();
     assert_eq!(seed_input_slots(&mut frame, &inputs, &workflow), Ok(()));

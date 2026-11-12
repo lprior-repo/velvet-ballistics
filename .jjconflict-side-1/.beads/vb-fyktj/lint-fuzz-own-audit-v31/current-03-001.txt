@@ -1,0 +1,91 @@
+crates/workspace_tests/src/test_util/fixture.rs:1: use crate::TestSetupError;
+crates/workspace_tests/src/test_util/fixture.rs:2: 
+crates/workspace_tests/src/test_util/fixture.rs:3: /// A capacity bound for fixture builders.
+crates/workspace_tests/src/test_util/fixture.rs:4: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+crates/workspace_tests/src/test_util/fixture.rs:5: pub struct FixtureCapacity {
+crates/workspace_tests/src/test_util/fixture.rs:6:     pub value: usize,
+crates/workspace_tests/src/test_util/fixture.rs:7: }
+crates/workspace_tests/src/test_util/fixture.rs:8: 
+crates/workspace_tests/src/test_util/fixture.rs:9: impl FixtureCapacity {
+crates/workspace_tests/src/test_util/fixture.rs:10:     /// The maximum allowed fixture capacity.
+crates/workspace_tests/src/test_util/fixture.rs:11:     pub const MAX_CAPACITY: usize = 1024 * 1024; // 1 MiB
+crates/workspace_tests/src/test_util/fixture.rs:12: 
+crates/workspace_tests/src/test_util/fixture.rs:13:     /// Create a new `FixtureCapacity`.
+crates/workspace_tests/src/test_util/fixture.rs:14:     ///
+crates/workspace_tests/src/test_util/fixture.rs:15:     /// # Errors
+crates/workspace_tests/src/test_util/fixture.rs:16:     ///
+crates/workspace_tests/src/test_util/fixture.rs:17:     /// Returns `TestSetupError::InvalidCapacity` if `cap` is zero or exceeds
+crates/workspace_tests/src/test_util/fixture.rs:18:     /// `MAX_CAPACITY`.
+crates/workspace_tests/src/test_util/fixture.rs:19:     pub fn new(cap: usize) -> Result<Self, TestSetupError> {
+crates/workspace_tests/src/test_util/fixture.rs:20:         if cap == 0 {
+crates/workspace_tests/src/test_util/fixture.rs:21:             return Err(TestSetupError::InvalidCapacity(
+crates/workspace_tests/src/test_util/fixture.rs:22:                 "capacity must be greater than zero".to_string(),
+crates/workspace_tests/src/test_util/fixture.rs:23:             ));
+crates/workspace_tests/src/test_util/fixture.rs:24:         }
+crates/workspace_tests/src/test_util/fixture.rs:25:         if cap > Self::MAX_CAPACITY {
+crates/workspace_tests/src/test_util/fixture.rs:26:             return Err(TestSetupError::InvalidCapacity(format!(
+crates/workspace_tests/src/test_util/fixture.rs:27:                 "capacity {} exceeds maximum {}",
+crates/workspace_tests/src/test_util/fixture.rs:28:                 cap,
+crates/workspace_tests/src/test_util/fixture.rs:29:                 Self::MAX_CAPACITY
+crates/workspace_tests/src/test_util/fixture.rs:30:             )));
+crates/workspace_tests/src/test_util/fixture.rs:31:         }
+crates/workspace_tests/src/test_util/fixture.rs:32:         Ok(Self { value: cap })
+crates/workspace_tests/src/test_util/fixture.rs:33:     }
+crates/workspace_tests/src/test_util/fixture.rs:34: }
+crates/workspace_tests/src/test_util/fixture.rs:35: 
+crates/workspace_tests/src/test_util/fixture.rs:36: /// A builder for test fixtures with deterministic seeded contents.
+crates/workspace_tests/src/test_util/fixture.rs:37: pub struct FixtureBuilder {
+crates/workspace_tests/src/test_util/fixture.rs:38:     capacity: FixtureCapacity,
+crates/workspace_tests/src/test_util/fixture.rs:39: }
+crates/workspace_tests/src/test_util/fixture.rs:40: 
+crates/workspace_tests/src/test_util/fixture.rs:41: impl FixtureBuilder {
+crates/workspace_tests/src/test_util/fixture.rs:42:     /// Create a new `FixtureBuilder` with the given capacity.
+crates/workspace_tests/src/test_util/fixture.rs:43:     ///
+crates/workspace_tests/src/test_util/fixture.rs:44:     /// # Errors
+crates/workspace_tests/src/test_util/fixture.rs:45:     ///
+crates/workspace_tests/src/test_util/fixture.rs:46:     /// Returns `TestSetupError::InvalidCapacity` if the capacity is invalid.
+crates/workspace_tests/src/test_util/fixture.rs:47:     pub fn with_capacity(cap: FixtureCapacity) -> Result<Self, TestSetupError> {
+crates/workspace_tests/src/test_util/fixture.rs:48:         Ok(Self { capacity: cap })
+crates/workspace_tests/src/test_util/fixture.rs:49:     }
+crates/workspace_tests/src/test_util/fixture.rs:50: 
+crates/workspace_tests/src/test_util/fixture.rs:51:     /// Build a byte vector of the configured capacity using the given seed.
+crates/workspace_tests/src/test_util/fixture.rs:52:     pub fn build_bytes(self, seed: u64) -> Vec<u8> {
+crates/workspace_tests/src/test_util/fixture.rs:53:         use rand::rngs::StdRng;
+crates/workspace_tests/src/test_util/fixture.rs:54:         use rand::{Rng, SeedableRng};
+crates/workspace_tests/src/test_util/fixture.rs:55: 
+crates/workspace_tests/src/test_util/fixture.rs:56:         let mut rng = StdRng::seed_from_u64(seed);
+crates/workspace_tests/src/test_util/fixture.rs:57:         let mut vec = vec![0u8; self.capacity.value];
+crates/workspace_tests/src/test_util/fixture.rs:58:         rng.fill(vec.as_mut_slice());
+crates/workspace_tests/src/test_util/fixture.rs:59:         vec
+crates/workspace_tests/src/test_util/fixture.rs:60:     }
+crates/workspace_tests/src/test_util/fixture.rs:61: }
+crates/workspace_tests/src/test_util/fixture.rs:62: 
+crates/workspace_tests/src/test_util/fixture.rs:63: #[cfg(test)]
+crates/workspace_tests/src/test_util/fixture.rs:64: mod tests {
+crates/workspace_tests/src/test_util/fixture.rs:65:     use super::*;
+crates/workspace_tests/src/test_util/fixture.rs:66: 
+crates/workspace_tests/src/test_util/fixture.rs:67:     #[test]
+crates/workspace_tests/src/test_util/fixture.rs:68:     fn zero_capacity_rejected() {
+crates/workspace_tests/src/test_util/fixture.rs:69:         let result = FixtureCapacity::new(0);
+crates/workspace_tests/src/test_util/fixture.rs:70:         assert!(matches!(result, Err(TestSetupError::InvalidCapacity(_))));
+crates/workspace_tests/src/test_util/fixture.rs:71:     }
+crates/workspace_tests/src/test_util/fixture.rs:72: 
+crates/workspace_tests/src/test_util/fixture.rs:73:     #[test]
+crates/workspace_tests/src/test_util/fixture.rs:74:     fn valid_capacity_accepted() {
+crates/workspace_tests/src/test_util/fixture.rs:75:         let result = FixtureCapacity::new(100);
+crates/workspace_tests/src/test_util/fixture.rs:76:         assert!(result.is_ok());
+crates/workspace_tests/src/test_util/fixture.rs:77:         assert_eq!(result.unwrap().value, 100);
+crates/workspace_tests/src/test_util/fixture.rs:78:     }
+crates/workspace_tests/src/test_util/fixture.rs:79: 
+crates/workspace_tests/src/test_util/fixture.rs:80:     #[test]
+crates/workspace_tests/src/test_util/fixture.rs:81:     fn max_capacity_boundary() {
+crates/workspace_tests/src/test_util/fixture.rs:82:         let result = FixtureCapacity::new(FixtureCapacity::MAX_CAPACITY);
+crates/workspace_tests/src/test_util/fixture.rs:83:         assert!(result.is_ok());
+crates/workspace_tests/src/test_util/fixture.rs:84:     }
+crates/workspace_tests/src/test_util/fixture.rs:85: 
+crates/workspace_tests/src/test_util/fixture.rs:86:     #[test]
+crates/workspace_tests/src/test_util/fixture.rs:87:     fn over_max_capacity_rejected() {
+crates/workspace_tests/src/test_util/fixture.rs:88:         let result = FixtureCapacity::new(FixtureCapacity::MAX_CAPACITY + 1);
+crates/workspace_tests/src/test_util/fixture.rs:89:         assert!(matches!(result, Err(TestSetupError::InvalidCapacity(_))));
+crates/workspace_tests/src/test_util/fixture.rs:90:     }
+crates/workspace_tests/src/test_util/fixture.rs:91: }

@@ -1,0 +1,100 @@
+crates/vb_storage/src/executor/issuance_failure_tests.rs:1: //! Issuance failure tests for executor catalog packed admission.
+crates/vb_storage/src/executor/issuance_failure_tests.rs:2: //! Verifies fault handling, counter state, and error wrapping through
+crates/vb_storage/src/executor/issuance_failure_tests.rs:3: //! the executor catalog's packed submission path.
+crates/vb_storage/src/executor/issuance_failure_tests.rs:4: 
+crates/vb_storage/src/executor/issuance_failure_tests.rs:5: use super::issuance_test_support::*;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:6: use crate::JournalError;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:7: use crate::executor::ExecutorError;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:8: use vb_core::RuntimePolicy;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:9: 
+crates/vb_storage/src/executor/issuance_failure_tests.rs:10: /// Strict/Journaled/Relaxed fresh journal: precommit persist failure yields
+crates/vb_storage/src/executor/issuance_failure_tests.rs:11: /// EXACT ExecutorError::Artifact(JournalError::StrictDurabilityFailed).
+crates/vb_storage/src/executor/issuance_failure_tests.rs:12: /// Counter unchanged (None) and compiled_ir empty BEFORE retry; retry gets
+crates/vb_storage/src/executor/issuance_failure_tests.rs:13: /// seq 1, counter 1, fixture.check full readback.
+crates/vb_storage/src/executor/issuance_failure_tests.rs:14: #[test]
+crates/vb_storage/src/executor/issuance_failure_tests.rs:15: fn strict_persist_failure_is_precommit() -> TestResult {
+crates/vb_storage/src/executor/issuance_failure_tests.rs:16:     let fixture = PackedFixture::new()?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:17:     check_persist_precommit(&fixture, RuntimePolicy::Strict)?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:18:     check_persist_precommit(&fixture, RuntimePolicy::Journaled)?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:19:     check_persist_precommit(&fixture, RuntimePolicy::Relaxed)?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:20:     Ok(())
+crates/vb_storage/src/executor/issuance_failure_tests.rs:21: }
+crates/vb_storage/src/executor/issuance_failure_tests.rs:22: 
+crates/vb_storage/src/executor/issuance_failure_tests.rs:23: fn check_persist_precommit(fixture: &PackedFixture, policy: RuntimePolicy) -> TestResult {
+crates/vb_storage/src/executor/issuance_failure_tests.rs:24:     let fresh = open_test_journal()?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:25:     fresh.1.fail_next_persist_for_test();
+crates/vb_storage/src/executor/issuance_failure_tests.rs:26:     let result = fixture.submit(&fresh.1, policy);
+crates/vb_storage/src/executor/issuance_failure_tests.rs:27:     assert!(
+crates/vb_storage/src/executor/issuance_failure_tests.rs:28:         matches!(
+crates/vb_storage/src/executor/issuance_failure_tests.rs:29:             &result,
+crates/vb_storage/src/executor/issuance_failure_tests.rs:30:             Err(ExecutorError::Artifact(
+crates/vb_storage/src/executor/issuance_failure_tests.rs:31:                 JournalError::StrictDurabilityFailed
+crates/vb_storage/src/executor/issuance_failure_tests.rs:32:             ))
+crates/vb_storage/src/executor/issuance_failure_tests.rs:33:         ),
+crates/vb_storage/src/executor/issuance_failure_tests.rs:34:         "expected StrictDurabilityFailed, got: {result:?}"
+crates/vb_storage/src/executor/issuance_failure_tests.rs:35:     );
+crates/vb_storage/src/executor/issuance_failure_tests.rs:36:     assert_eq!(read_counter(&fresh.1)?, None);
+crates/vb_storage/src/executor/issuance_failure_tests.rs:37:     assert!(fresh.1.compiled_ir.iter().next().is_none());
+crates/vb_storage/src/executor/issuance_failure_tests.rs:38:     let artifact = fixture.submit(&fresh.1, policy)?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:39:     assert_eq!(artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_failure_tests.rs:40:     assert_eq!(read_counter(&fresh.1)?, Some(1));
+crates/vb_storage/src/executor/issuance_failure_tests.rs:41:     fixture.check(&fresh.1, &artifact, policy)
+crates/vb_storage/src/executor/issuance_failure_tests.rs:42: }
+crates/vb_storage/src/executor/issuance_failure_tests.rs:43: 
+crates/vb_storage/src/executor/issuance_failure_tests.rs:44: /// Injected batch commit failure is precommit: EXACT
+crates/vb_storage/src/executor/issuance_failure_tests.rs:45: /// ExecutorError::Artifact(JournalError::Fjall(fjall::Error::Io(io))) with
+crates/vb_storage/src/executor/issuance_failure_tests.rs:46: /// io.kind() == Other. Counter and compiled IR unchanged before retry;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:47: /// retry yields seq 1 and full readback.
+crates/vb_storage/src/executor/issuance_failure_tests.rs:48: #[test]
+crates/vb_storage/src/executor/issuance_failure_tests.rs:49: fn batch_commit_failure_is_precommit() -> TestResult {
+crates/vb_storage/src/executor/issuance_failure_tests.rs:50:     let fixture = PackedFixture::new()?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:51:     let (_dir, journal) = open_test_journal()?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:52: 
+crates/vb_storage/src/executor/issuance_failure_tests.rs:53:     journal.fail_next_batch_commit_for_test();
+crates/vb_storage/src/executor/issuance_failure_tests.rs:54:     let result = fixture.submit(&journal, RuntimePolicy::Strict);
+crates/vb_storage/src/executor/issuance_failure_tests.rs:55:     assert!(
+crates/vb_storage/src/executor/issuance_failure_tests.rs:56:         matches!(
+crates/vb_storage/src/executor/issuance_failure_tests.rs:57:             &result,
+crates/vb_storage/src/executor/issuance_failure_tests.rs:58:             Err(ExecutorError::Artifact(JournalError::Fjall(e)))
+crates/vb_storage/src/executor/issuance_failure_tests.rs:59:                 if matches!(
+crates/vb_storage/src/executor/issuance_failure_tests.rs:60:                     e,
+crates/vb_storage/src/executor/issuance_failure_tests.rs:61:                     fjall::Error::Io(io) if io.kind() == std::io::ErrorKind::Other
+crates/vb_storage/src/executor/issuance_failure_tests.rs:62:                 )
+crates/vb_storage/src/executor/issuance_failure_tests.rs:63:         ),
+crates/vb_storage/src/executor/issuance_failure_tests.rs:64:         "expected Fjall(Io(Other)) wrapped in Artifact, got: {result:?}"
+crates/vb_storage/src/executor/issuance_failure_tests.rs:65:     );
+crates/vb_storage/src/executor/issuance_failure_tests.rs:66:     assert_eq!(read_counter(&journal)?, None);
+crates/vb_storage/src/executor/issuance_failure_tests.rs:67:     assert!(journal.compiled_ir.iter().next().is_none());
+crates/vb_storage/src/executor/issuance_failure_tests.rs:68: 
+crates/vb_storage/src/executor/issuance_failure_tests.rs:69:     let artifact = fixture.submit(&journal, RuntimePolicy::Strict)?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:70:     assert_eq!(artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_failure_tests.rs:71:     fixture.check(&journal, &artifact, RuntimePolicy::Strict)
+crates/vb_storage/src/executor/issuance_failure_tests.rs:72: }
+crates/vb_storage/src/executor/issuance_failure_tests.rs:73: 
+crates/vb_storage/src/executor/issuance_failure_tests.rs:74: /// Injected compiled IR readback failure is POSTCOMMIT: counter advances to 1,
+crates/vb_storage/src/executor/issuance_failure_tests.rs:75: /// artifact record is persisted, but submission yields EXACT
+crates/vb_storage/src/executor/issuance_failure_tests.rs:76: /// ExecutorError::Corrupt (NOT ArtifactMalformed). Followup submission
+crates/vb_storage/src/executor/issuance_failure_tests.rs:77: /// succeeds at seq 2.
+crates/vb_storage/src/executor/issuance_failure_tests.rs:78: #[test]
+crates/vb_storage/src/executor/issuance_failure_tests.rs:79: fn compiled_ir_readback_failure_is_postcommit() -> TestResult {
+crates/vb_storage/src/executor/issuance_failure_tests.rs:80:     let fixture = PackedFixture::new()?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:81:     let (_dir, journal) = open_test_journal()?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:82: 
+crates/vb_storage/src/executor/issuance_failure_tests.rs:83:     let mut expected = fixture.prepare(RuntimePolicy::Strict)?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:84:     expected.accepted_at_seq = crate::EventSeq::new(1);
+crates/vb_storage/src/executor/issuance_failure_tests.rs:85:     expected.digest = crate::admission::accepted_artifact_digest(&expected)?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:86:     expected.verification.digest = expected.digest;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:87: 
+crates/vb_storage/src/executor/issuance_failure_tests.rs:88:     journal.fail_next_compiled_ir_readback_for_test();
+crates/vb_storage/src/executor/issuance_failure_tests.rs:89:     let result = fixture.submit(&journal, RuntimePolicy::Strict);
+crates/vb_storage/src/executor/issuance_failure_tests.rs:90:     assert!(
+crates/vb_storage/src/executor/issuance_failure_tests.rs:91:         matches!(&result, Err(ExecutorError::Corrupt)),
+crates/vb_storage/src/executor/issuance_failure_tests.rs:92:         "expected Corrupt, got: {result:?}"
+crates/vb_storage/src/executor/issuance_failure_tests.rs:93:     );
+crates/vb_storage/src/executor/issuance_failure_tests.rs:94: 
+crates/vb_storage/src/executor/issuance_failure_tests.rs:95:     assert_eq!(read_counter(&journal)?, Some(1));
+crates/vb_storage/src/executor/issuance_failure_tests.rs:96:     fixture.check(&journal, &expected, RuntimePolicy::Strict)?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:97: 
+crates/vb_storage/src/executor/issuance_failure_tests.rs:98:     let artifact2 = fixture.submit(&journal, RuntimePolicy::Strict)?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:99:     assert_eq!(artifact2.accepted_at_seq.get(), 2);
+crates/vb_storage/src/executor/issuance_failure_tests.rs:100:     fixture.check(&journal, &artifact2, RuntimePolicy::Strict)

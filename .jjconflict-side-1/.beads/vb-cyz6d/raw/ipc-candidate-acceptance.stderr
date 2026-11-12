@@ -1,0 +1,8 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol/crates/vb_runtime)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol/crates/vb_ipc)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol/crates/velvet_ballistics)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.27s
+     Running tests/vb_te1i_binary_ipc_acceptance.rs (target/debug/deps/vb_te1i_binary_ipc_acceptance-5e8ff05892383d65)
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_te1i_binary_ipc_acceptance`

@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 4,
+  "sublane": "proof-plan-sync-after-ledger-repair",
+  "delegate": "proof-planner",
+  "attempt": 5,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "State 3 attempt 4 promoted new TLA/Kani/Verus candidate obligations into primary proof-obligations.jsonl and traceability; sync planned executable commands and review input",
+  "input_artifacts": [".beads/vb-vt2f/contract.md", ".beads/vb-vt2f/verification-layers.md", ".beads/vb-vt2f/proof-obligations.jsonl", ".beads/vb-vt2f/traceability-matrix.jsonl", ".beads/vb-vt2f/proof-review.md", ".beads/vb-vt2f/contract-verification-review.md", ".beads/vb-vt2f/proof-repair-guide.md"],
+  "output_artifacts": [".beads/vb-vt2f/proof-strategy.md", ".beads/vb-vt2f/proof-plan-review-input.md", ".beads/vb-vt2f/proof-obligations.planned.jsonl"],
+  "status": "QUEUED"
+}

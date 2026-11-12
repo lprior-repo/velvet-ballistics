@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-p51m8-local5090-finish",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_ko29_5_public_idempotency",
+    "--no-run"
+  ],
+  "exit_code": 101,
+  "seconds": 0.2,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/tmp/vb_ko29_compile",
+  "coordinator_message": "Use supplied immutable runner exactly with .beads/vb-p51m8/evidence/UNIQUE prefix, env RUSTFLAGS=-Dwarnings rustup run nightly-2026-04-28 cargo test. NO pipes or root-level evidence prefixes. Root saw command prefix vb_compile and tail; place any actual produced logs under your bead after end, preserve bytes. Current workspace includes all dependencies already; no need dependency research, copy real successful Runtime producer from durable_retry_execution.rs. Finish scoped test16/handoff thenEND."
+}

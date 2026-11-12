@@ -1,0 +1,12 @@
+COMMANDS:
+- git rev-parse --show-toplevel && jj root && jj status
+- jj diff --summary
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+RESULT:
+- Git root: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+- JJ root: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+- `jj status` and `jj diff --summary` ran after splitting the oversized final cargo-test log.
+- No new `Warning: Refused to snapshot some files` warning was emitted after the split.
+- The old unsplit `117-final-cargo-test-workspace-all-features-raw-after-black-hat-repairs.txt` evidence filename is absent; split files `117a-...` and `117b-...` are present.
+- Working copy remains intentionally dirty with local wave-25 fuzz closure changes and local evidence artifacts; no push or bead closure was performed by instruction.
+EXIT_STATUS=0

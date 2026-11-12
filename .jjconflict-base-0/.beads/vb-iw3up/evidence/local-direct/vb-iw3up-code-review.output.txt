@@ -1,0 +1,21 @@
+STATUS APPROVED
+
+The diff correctly adds the required `input_slots` field to the `base_parts` fixture in `crates/velvet_ballistics/tests/ir_artifact_admission.rs`.
+
+**Contract Alignment:**
+- The added `CompiledInputSlot` uses exactly the two fields defined in the contract: `slot: SlotIdx::ZERO` and `kind: vb_core::workflow::InputSlotKind::I64`.
+- No extraneous fields (names, required flags, defaults) are introduced.
+
+**Fixture Consistency:**
+- The single declared input slot matches the existing `slot_count: 1` in `base_parts`.
+- The `I64` kind aligns with the test payload `SlotValue::I64(42)` used in `run_compiled_accepts_valid_handcrafted_ir_artifact`.
+- The `Finish` node reads `SlotIdx::ZERO`, which corresponds to the declared input slot index.
+
+**Syntax:**
+- `Box::from([...])` correctly constructs the boxed slice expected for `input_slots`.
+
+**Scope Adherence:**
+- The change is limited to the `input_slots` field in `base_parts` as specified.
+- Preexisting failures in `cross_crate_adversarial` (tracked as vb-16buk) are outside this scope and do not affect approval of this specific fixture repair.
+
+No actionable findings within the defined scope.

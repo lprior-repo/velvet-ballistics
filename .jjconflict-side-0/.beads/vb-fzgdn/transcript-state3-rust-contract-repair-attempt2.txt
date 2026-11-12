@@ -1,0 +1,13 @@
+vb-fzgdn State 3 rust-contract-repair attempt 2 transcript
+
+Scope: repair proof-seeds.jsonl schema after State 3 validator rejection.
+Actions:
+- Loaded rust-contract skill as mandated by delegate role.
+- Read proof-seeds.jsonl, contract.md, traceability-matrix.jsonl, and agent-invocation-ledger.jsonl.
+- Rewrote all proof seed rows to canonical proof-seed/v1 fields:
+  schema_version, id, requirement_id, contract_clause, domain_claim,
+  behavior_affecting, suggested_layers, model_boundary, risk_tags, notes.
+- Preserved deterministic numeric timer seam meaning across all ten seeds.
+- Did not edit production Rust.
+
+Validator output is returned in the femdation child response.

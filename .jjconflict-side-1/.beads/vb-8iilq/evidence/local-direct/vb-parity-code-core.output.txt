@@ -1,0 +1,37 @@
+**CODE REVIEW: vb-8iilq parity cleanup**
+
+**Contract verification:**
+
+1. **No cfg(test) alternative handlers** ✓
+   - `handle_submit`: single implementation, `#[cfg(not(test))]` removed
+   - `handle_submit_with_inputs`: single implementation, `#[cfg(not(test))]` removed
+   - Both cfg(test) fabricated versions fully deleted
+
+2. **No orphan fabrication helpers in production** ✓
+   - All 5 removed: `test_first_do_action`, `test_contract_required_capability`, `test_contract_grants`, `test_action_contract`, `test_contracts_through`
+   - Production lifecycle file now contains only real handlers
+
+3. **Shard tests use explicit fixtures** ✓
+   - All lifecycle test call sites updated to `SubmitWithInputsAndContracts` or `SubmitWithContracts`
+   - Explicit `contract_capability_for()` and `contracts_through()` at every submission
+   - No reliance on implicit fabrication
+
+4. **Runtime tests use explicit fixtures** ✓
+   - `submit_suspended` now calls `submit_direct_with_inputs_grants_and_contracts` with typed fixtures
+
+5. **No new panic/expect/unwrap in test code** ✓
+   - New regression tests use `ok_or()` for error handling
+   - No index/cast/ignored-result patterns introduced
+
+6. **Negative admission tests preserved** ✓
+   - `submit_with_contracts_empty_caps_denied` verifies exact `AdmissionCapabilityDenied` error with typed fields
+   - Empty caps remain empty (no fabrication)
+   - Journal and counter assertions confirm no admission occurred
+
+**Test fixture placement:** New `test_fixtures.rs` module properly declared in `tests.rs` as `pub(crate)`, registered with `#[path]` for `submission_parity`. Helpers are test-only, not in production code.
+
+**Test results:** 2452 passed, 0 failed, 1 intentional ignored marker. Original 2 cfg-handler regression failures resolved by source restoration.
+
+**No security weakening:** Production admission logic unchanged; tests now explicitly provide what production requires rather than fabricating it.
+
+STATUS: APPROVED

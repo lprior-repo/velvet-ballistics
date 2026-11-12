@@ -1,0 +1,28 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-h2qc2-yaml-fuzz-bound-v1",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "--quiet",
+    "-p",
+    "velvet-ballistics-fuzz",
+    "--lib",
+    "yaml_target::tests::large_yaml_exceeds_4096_bound",
+    "--",
+    "--exact"
+  ],
+  "exit_code": 0,
+  "seconds": 2.986,
+  "timeout_seconds": 240,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_YAML_BOUND_V3_GREEN"
+}

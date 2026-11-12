@@ -1,0 +1,45 @@
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.25s
+     Running tests/durable_retry_red_phase.rs (target/debug/deps/durable_retry_red_phase-7e75e2a13304ade0)
+
+running 9 tests
+test record_retry_attempt_integration_gap ... ok
+test action_failure_preserves_action_completed_slots_integration_gap ... ok
+test ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata ... ok
+test ticket_with_retry_capacity_increases_capacity_to_max_attempts ... ok
+test retry_is_available_returns_false_when_no_retry_metadata ... ok
+test retry_is_available_returns_false_for_nonretryable_policy ... ok
+test apply_action_failure_to_state_resets_pc_to_failed_step_on_retry ... ok
+test journal_replay_idempotent_action_failed ... ok
+test apply_error_handler_writes_step_index_to_error_slot_integration_gap ... FAILED
+
+failures:
+
+---- apply_error_handler_writes_step_index_to_error_slot_integration_gap stdout ----
+Error: "expected Found inspect response"
+
+
+failures:
+    apply_error_handler_writes_step_index_to_error_slot_integration_gap
+
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p vb_runtime --test durable_retry_red_phase`

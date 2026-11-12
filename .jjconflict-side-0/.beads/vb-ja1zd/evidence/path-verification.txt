@@ -1,0 +1,31 @@
+VB-ja1zd fuzz-tsan path verification
+Run: 2026-10-21
+Baseline: d20 commit (velvet-ballistics-vb-2lyiw-final-ci)
+
+=== Actual executable location (verified) ===
+ls -la target/x86_64-unknown-linux-gnu/release/accessor_traversal
+-rwxr-xr-x 2 lewis lewis 1305576 Oct 21 22:20 target/x86_64-unknown-linux-gnu/release/accessor_traversal
+
+file target/x86_64-unknown-linux-gnu/release/accessor_traversal
+ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked,
+interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 4.4.0, stripped
+
+=== Old path (verified absent) ===
+ls -la fuzz/target/
+ls: cannot access 'fuzz/target/': No such file or directory
+
+=== Old-path check against specific target (verified) ===
+Old path check:
+  fuzz/target/x86_64-unknown-linux-gnu/release/accessor_traversal: MISSING (as reported by d20 CI)
+
+=== New path check (verified found) ===
+New path check:
+  target/x86_64-unknown-linux-gnu/release/accessor_traversal: FOUND (executable)
+
+=== Build log excerpt ===
+target/fuzz-tsan/build.err last line:
+  Finished `release` profile [optimized + debuginfo] target(s) in 15m 21s
+
+=== Task diff ===
+-        bin="fuzz/target/x86_64-unknown-linux-gnu/release/${tgt}"
++        bin="target/x86_64-unknown-linux-gnu/release/${tgt}"

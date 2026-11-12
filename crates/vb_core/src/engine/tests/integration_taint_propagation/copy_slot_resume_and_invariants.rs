@@ -98,7 +98,8 @@ fn copy_slot_destination_taint_equals_source_taint_after_copy() -> Result<(), St
 fn resume_action_completion_writes_output_value_and_taint_unchanged() -> Result<(), String> {
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: super::external_input(),
         name: "resume_test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: vec![

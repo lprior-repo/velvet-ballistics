@@ -1,0 +1,23 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 3,
+  "sublane": "contract-and-verification-layers",
+  "delegate": "rust-contract",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "inputs": [
+    ".beads/vb-vt2f/codebase-map.md",
+    ".beads/vb-vt2f/delivery-scope.jsonl",
+    "bd show vb-vt2f --json"
+  ],
+  "outputs": [
+    ".beads/vb-vt2f/contract.md",
+    ".beads/vb-vt2f/domain-model-review.md",
+    ".beads/vb-vt2f/tla-spec.md",
+    ".beads/vb-vt2f/lean-contract.md",
+    ".beads/vb-vt2f/verification-layers.md",
+    ".beads/vb-vt2f/proof-obligations.jsonl",
+    ".beads/vb-vt2f/traceability-matrix.jsonl"
+  ],
+  "attempt": 1
+}

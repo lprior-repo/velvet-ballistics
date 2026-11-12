@@ -1,0 +1,21 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2598665931
+INFO: Loaded 1 modules   (5210 inline 8-bit counters): 5210 [0x56336d383023, 0x56336d38447d), 
+INFO: Loaded 1 PC tables (5210 PCs): 5210 [0x56336d384480,0x56336d398a20), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/vb_vzcuf_PS_003
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 20 ft: 21 corp: 1/1b exec/s: 0 rss: 34Mb
+#3	NEW    cov: 21 ft: 22 corp: 2/2b lim: 4 exec/s: 0 rss: 34Mb L: 1/1 MS: 1 ChangeByte-
+	NEW_FUNC[1/21]: 0x56336d28d3a0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_vzcuf_PS_003+0x1593a0) (BuildId: cbc05ad9b757bb762a815e50016199c244a33307)
+	NEW_FUNC[2/21]: 0x56336d290e60  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_vzcuf_PS_003+0x15ce60) (BuildId: cbc05ad9b757bb762a815e50016199c244a33307)
+#214	NEW    cov: 145 ft: 147 corp: 3/8b lim: 6 exec/s: 0 rss: 35Mb L: 6/6 MS: 1 InsertRepeatedBytes-
+#219	NEW    cov: 147 ft: 149 corp: 4/14b lim: 6 exec/s: 0 rss: 35Mb L: 6/6 MS: 5 ChangeBit-ChangeByte-ChangeBinInt-ChangeBit-InsertRepeatedBytes-
+#258	REDUCE cov: 147 ft: 149 corp: 4/13b lim: 6 exec/s: 0 rss: 35Mb L: 5/6 MS: 4 ShuffleBytes-ShuffleBytes-ChangeBinInt-EraseBytes-
+	NEW_FUNC[1/3]: 0x56336d2e74d0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_vzcuf_PS_003+0x1b34d0) (BuildId: cbc05ad9b757bb762a815e50016199c244a33307)
+	NEW_FUNC[2/3]: 0x56336d2ecef0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_vzcuf_PS_003+0x1b8ef0) (BuildId: cbc05ad9b757bb762a815e50016199c244a33307)
+#293	NEW    cov: 166 ft: 169 corp: 5/19b lim: 6 exec/s: 0 rss: 36Mb L: 6/6 MS: 5 ChangeByte-CopyPart-InsertRepeatedBytes-ChangeBit-ChangeBit-
+#510	REDUCE cov: 169 ft: 172 corp: 6/27b lim: 8 exec/s: 0 rss: 37Mb L: 8/8 MS: 2 EraseBytes-InsertRepeatedBytes-
+#584	REDUCE cov: 169 ft: 172 corp: 6/26b lim: 8 exec/s: 0 rss: 37Mb L: 5/8 MS: 4 ChangeBinInt-InsertByte-CopyPart-EraseBytes-
+#949854	DONE   cov: 169 ft: 172 corp: 6/26b lim: 4096 exec/s: 474927 rss: 274Mb
+Done 949854 runs in 2 second(s)

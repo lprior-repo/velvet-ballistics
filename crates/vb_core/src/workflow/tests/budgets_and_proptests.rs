@@ -403,6 +403,7 @@ fn budget_parts(
 ) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("budget_validation"),
         digest: WorkflowDigest::from_bytes([0x71; 32]),
@@ -483,6 +484,7 @@ mod proptests {
         let max_steps = u16::try_from(nodes.len()).map_or(u16::MAX, |v| v);
         WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("proptest_valid_chain"),
             digest: WorkflowDigest::from_bytes([0xAA; 32]),
@@ -531,6 +533,7 @@ mod proptests {
             StepIdx::new(u16::try_from(index).map_or(u16::MAX, |v| v))
         };
         CompiledNode {
+            retry: None,
             id: claimed_id,
             ..chain_node(index, total)
         }
@@ -576,6 +579,7 @@ mod proptests {
             let bad_slot = slot_count.saturating_add(bad_slot_delta);
             let parts = WorkflowParts {
                 semantic_source_identity: None,
+                source_metadata: None,
                 input_slots: Box::new([]),
                 name: Box::<str>::from("prop_b_finish_oob"),
                 digest: WorkflowDigest::from_bytes([0xBB; 32]),
@@ -613,6 +617,7 @@ mod proptests {
             let bad_slot = slot_count.saturating_add(bad_slot_delta);
             let parts = WorkflowParts {
                 semantic_source_identity: None,
+                source_metadata: None,
                 input_slots: Box::new([]),
                 name: Box::<str>::from("prop_b_output_oob"),
                 digest: WorkflowDigest::from_bytes([0xBC; 32]),
@@ -664,6 +669,7 @@ mod proptests {
             let max_steps = u16::try_from(n).map_or(u16::MAX, |v| v);
             let parts = WorkflowParts {
                 semantic_source_identity: None,
+                source_metadata: None,
                 input_slots: Box::new([]),
                 name: Box::<str>::from("prop_c_dup"),
                 digest: WorkflowDigest::from_bytes([0xCC; 32]),
@@ -715,6 +721,7 @@ mod proptests {
             let max_steps = u16::try_from(total).map_or(u16::MAX, |v| v);
             let parts = WorkflowParts {
                 semantic_source_identity: None,
+                source_metadata: None,
                 input_slots: Box::new([]),
                 name: Box::<str>::from("prop_d_unreachable"),
                 digest: WorkflowDigest::from_bytes([0xDD; 32]),
@@ -760,6 +767,7 @@ mod proptests {
             let valid_parts = build_valid_chain(usize::from(actual_steps));
             let parts = WorkflowParts {
                 semantic_source_identity: None,
+                source_metadata: None,
                 resource_contract: resource_contract(max_steps_declared, 1, 1, 0, 0),
         step_names: Box::new([]),
                 ..valid_parts
@@ -788,6 +796,7 @@ mod proptests {
             // Single node that uses a slot at the boundary.
             let parts = WorkflowParts {
                 semantic_source_identity: None,
+                source_metadata: None,
                 input_slots: Box::new([]),
                 name: Box::<str>::from("prop_e_slots"),
                 digest: WorkflowDigest::from_bytes([0xEE; 32]),

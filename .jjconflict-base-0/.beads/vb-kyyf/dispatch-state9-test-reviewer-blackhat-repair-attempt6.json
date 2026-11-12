@@ -1,0 +1,32 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 9,
+  "sublane": "review-state8-black-hat-defect-test-hardening",
+  "delegate": "test-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/black-hat-review.md",
+    ".beads/vb-kyyf/defects.md",
+    ".beads/vb-kyyf/contract.md",
+    ".beads/vb-kyyf/test-plan.md",
+    ".beads/vb-kyyf/test-writer-report.md",
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    "crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs",
+    "crates/workspace_tests/tests/vb_hxm0_acceptance_catalog.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/test-repair-guide.md"
+  ],
+  "attempt": 6,
+  "expected_focus": [
+    "DEFECT-001 static marker evidence",
+    "DEFECT-002 repeated CLI determinism",
+    "DEFECT-003 repeated corrupt recovery",
+    "DEFECT-004 repeated non-replay-safe blocked replay",
+    "DEFECT-005 generated parity real evidence",
+    "DEFECT-006 PO-007 catalog evidence path parity"
+  ]
+}

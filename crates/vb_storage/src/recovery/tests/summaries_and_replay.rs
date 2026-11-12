@@ -470,8 +470,13 @@ fn frame_seed_with_workflow_preserves_action_completed_envelope_output_slot_valu
     let action = ActionId::new(4);
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: "action_recovery".into(),
-        input_slots: Box::new([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: SlotIdx::ZERO,
+            kind: vb_core::InputSlotKind::I64,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
         digest,
         nodes: vec![node(
             StepIdx::ZERO,

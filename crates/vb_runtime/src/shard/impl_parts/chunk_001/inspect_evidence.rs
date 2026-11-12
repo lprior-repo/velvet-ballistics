@@ -133,11 +133,15 @@ impl Shard {
             EvidenceEvent::StepStarted { step } => {
                 Self::push_drive_journal_event(
                     journal_events,
-                    RuntimeJournalEvent::StepStarted { run, step, attempt},
+                    RuntimeJournalEvent::StepStarted { run, step, attempt },
                 )?;
                 trace_events.push(TraceEvent::StepStarted { run, step });
                 Ok(())
             }
+            EvidenceEvent::StepFailed { step } => Self::push_drive_journal_event(
+                journal_events,
+                RuntimeJournalEvent::StepFailed { run, step, attempt },
+            ),
             EvidenceEvent::StepSucceeded { step, output } => Self::push_drive_journal_event(
                 journal_events,
                 RuntimeJournalEvent::StepSucceeded {

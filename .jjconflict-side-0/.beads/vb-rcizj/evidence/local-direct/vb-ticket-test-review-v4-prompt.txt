@@ -1,0 +1,581 @@
+Independent TEST REVIEW v4. Priorv3reviewapproved but incorrectlycalledpureattemptvalidation untestedandreportedMINORwithoutdisposition; this isreturnedforfactualcorrection. Authoritativeclarification below corrects contradictory historicaldraftwithoutweakening exactticketownership. Actual25existingpurevalidate_action_completionunit/propertytests justran, includingexactattemptzero/capacityzero/beyondcapacityerrors andvalid/future/stalebranches. Propertyrangeexcludeszero, soonlyexplicitnamedunitcasesprovezeroboundaries. Actual28publictargetedtests passed independently asbefore; fiveguarddeletionmutationskilled. No ownerwaivers. Review currentboundedticketrepair only, not allruntime/v1. Return<=250words Findings(actualactionabledefectsonly; limitationsnotfindings),Evidence,Limitations,STATUS. Do notapprovewithopenactualdefect. No requirementforpublicAPItoforgeinvalidpendingauthorityjusttohitunreachablehelpererrors. Source/testsourcebelowactual.
+
+## .beads/vb-rcizj/contract-error-precedence-clarification.md
+# Authoritative scope correction to contradictory draft wording
+
+The original contract and early addendum contain contradictory statements; this clarification supersedes them for this bead and records existing source behavior, not a weakened ticket contract. No owner waiver is granted. A complete exact pendingticket match includingattempt/capacity/seq/key passes ownership. Genuine oldticketclassification requires0<attempt<pending.attempt, same run/step/action/capacity, canonicalkey,seq<=pending.seq and returnsStaleAttempt before mutation. Missingrun=>RunNotFound. All other forged/missingpendingticketcases=>InvalidActionCompletion. It is impossible for a ticket to be a full exactmatch and simultaneously differinattempt/capacity. The addendum's sentence suggesting this is wrong and withdrawn. Public API tests must not fabricate malformed pendingauthority to force lowerlevelAttemptBeyondMax.
+
+Pure validate_action_completion/validate_ticket_attempt still independently requiresAttemptBeyondMax for zeroattempt/zerocapacity/attempt>capacity; helperunit tests can exercise those conditions without forging publicownership. Existing relevantunit tests and actualfresh command evidence accompany this clarification. Do not claim purehelpervalidation untested merely because publicownership correctlyrejectsforgedtickets first. Existing helperpropertyrange excludeszero and is not zero-boundary evidence; exactzero tests supply that evidence.
+
+## crates/vb_runtime/src/shard/lifecycle/chunk_004.rs
+impl Shard {
+    fn reserve_cancel_kill_terminalization(&mut self, run: RunId) -> RuntimeResult<()> {
+        self.reserve_checked_out_run_slot(run)?;
+        self.reserve_terminal_run_slot(run)
+    }
+
+    fn append_cancel_terminal_events(
+        &mut self,
+        run: RunId,
+        reason: Option<String>,
+    ) -> RuntimeResult<()> {
+        self.append_terminal_events_with_pending_action(
+            run,
+            RuntimeJournalEvent::RunCancelled { run, reason },
+        )
+    }
+
+    fn append_kill_terminal_events(&mut self, run: RunId) -> RuntimeResult<()> {
+        self.append_terminal_events_with_pending_action(run, RuntimeJournalEvent::RunKilled { run })
+    }
+
+    fn append_terminal_events_with_pending_action(
+        &mut self,
+        run: RunId,
+        terminal: RuntimeJournalEvent,
+    ) -> RuntimeResult<()> {
+        match self.pending_action_get(run) {
+            Some(ticket) if ticket.run == run => self.append_journal_events_atomically([
+                RuntimeJournalEvent::ActionAbandoned { ticket },
+                terminal,
+            ]),
+            Some(_) => Err(RuntimeError::InvalidActionCompletion),
+            None => self.append_journal_event(terminal),
+        }
+    }
+
+    fn require_pending_action_ownership(&self, ticket: ActionTicket) -> RuntimeResult<()> {
+        if !self.run_state_contains(ticket.run) {
+            return Err(RuntimeError::RunNotFound);
+        }
+        match self.pending_action_get(ticket.run) {
+            Some(pending) if pending == ticket => Ok(()),
+            Some(pending)
+                if ticket.attempt > 0
+                    && ticket.attempt < pending.attempt
+                    && ticket.run == pending.run
+                    && ticket.step == pending.step
+                    && ticket.action == pending.action
+                    && ticket.capacity == pending.capacity
+                    && vb_core::action::action_ticket_has_valid_key(ticket)
+                    && ticket.seq <= pending.seq =>
+            {
+                Err(RuntimeError::StaleAttempt {
+                    incoming: ticket.attempt,
+                    current: pending.attempt,
+                })
+            }
+            Some(_) | None => Err(RuntimeError::InvalidActionCompletion),
+        }
+    }
+
+    fn require_legacy_pending_action_ownership(
+        &self,
+        run: RunId,
+        step: StepIdx,
+    ) -> RuntimeResult<ActionTicket> {
+        if !self.run_state_contains(run) {
+            return Err(RuntimeError::RunNotFound);
+        }
+        match self.pending_action_get(run) {
+            Some(pending) if pending.run == run && pending.step == step => Ok(pending),
+            Some(_) | None => Err(RuntimeError::InvalidActionCompletion),
+        }
+    }
+}
+
+## crates/vb_runtime/tests/vb_jggy_lifecycle/stale_guards.rs
+// tests/ticket_stale_guards.rs
+// Tests that stale (superseded) action tickets are rejected on delivery.
+
+use super::*;
+use std::sync::Arc;
+
+#[derive(Debug)]
+enum StaleTamper {
+    Step,
+    Action,
+    Capacity,
+    Key,
+    Sequence,
+}
+
+#[derive(Debug)]
+enum Delivery {
+    Completion,
+    Failure,
+}
+
+fn check(tamper: &StaleTamper, delivery: &Delivery) -> Result<(), Box<dyn std::error::Error>> {
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+
+    let workflow = retry_workflow().ok_or("no retry workflow")?;
+    let run = RunId::new(100);
+    submit_with_contracts(&shard, run, workflow);
+    assert_eq!(shard.tick(), Ok(true));
+    let ticket1 = shard.pending_action_get(run).ok_or("missing ticket1")?;
+    assert_eq!(ticket1.attempt, 1);
+
+    shard.enqueue(ShardCommand::ActionFailed {
+        ticket: ticket1,
+        failure: retryable_failure(),
+    })?;
+    assert_eq!(shard.tick(), Ok(true));
+    let ticket2 = shard.pending_action_get(run).ok_or("missing ticket2")?;
+
+    shard.enqueue(ShardCommand::ActionFailed {
+        ticket: ticket2,
+        failure: retryable_failure(),
+    })?;
+    assert_eq!(shard.tick(), Ok(true));
+    let ticket3 = shard.pending_action_get(run).ok_or("missing ticket3")?;
+
+    assert_eq!(ticket2.attempt, 2);
+    assert_eq!(ticket3.attempt, 3);
+
+    let current_ticket = ticket3;
+    let snap_before = journal.snapshot()?;
+
+    let frame_before = &shard.run_state_get(run).ok_or("frame missing")?.frame;
+    let pc_before = frame_before.pc();
+    let slot0_before = *frame_before.read_slot(SlotIdx::ZERO)?;
+    let slot1_before = *frame_before.read_slot(SlotIdx::new(1))?;
+    let taint0_before = frame_before.read_taint(SlotIdx::ZERO)?;
+    let taint1_before = frame_before.read_taint(SlotIdx::new(1))?;
+
+    let mut stale = ticket2;
+    match tamper {
+        StaleTamper::Step => {
+            stale.step = StepIdx::new(99);
+        }
+        StaleTamper::Action => {
+            stale.action = ActionId::new(99);
+            stale.idempotency_key =
+                vb_core::action::compute_action_idempotency_key(stale.run, stale.seq, stale.action);
+        }
+        StaleTamper::Capacity => {
+            stale.capacity = stale.capacity.checked_add(1).ok_or("cap overflow")?;
+        }
+        StaleTamper::Key => {
+            stale.idempotency_key ^= 1;
+        }
+        StaleTamper::Sequence => {
+            let seq_plus = current_ticket
+                .seq
+                .get()
+                .checked_add(1)
+                .ok_or("seq overflow")?;
+            stale.seq = SeqNo::new(seq_plus);
+            stale.idempotency_key =
+                vb_core::action::compute_action_idempotency_key(stale.run, stale.seq, stale.action);
+        }
+    }
+
+    let command = match delivery {
+        Delivery::Completion => ShardCommand::ActionCompleted {
+            ticket: stale,
+            output: ActionOutputReady {
+                output_slot: SlotIdx::ZERO,
+                value: SlotValue::I64(7),
+                taint: Taint::Clean,
+                encoded_len: 3,
+            },
+        },
+        Delivery::Failure => ShardCommand::ActionFailed {
+            ticket: stale,
+            failure: non_retryable_failure(),
+        },
+    };
+    shard.enqueue(command)?;
+    assert_eq!(
+        shard.tick(),
+        Err(RuntimeError::InvalidActionCompletion),
+        "{tamper:?} via {delivery:?}"
+    );
+
+    let snap_after = journal.snapshot()?;
+    assert_eq!(snap_before, snap_after);
+
+    let current_pending = shard.pending_action_get(run).ok_or("current ticket gone")?;
+    assert_eq!(current_pending, current_ticket);
+
+    let frame_after = &shard.run_state_get(run).ok_or("frame gone after")?.frame;
+    assert_eq!(pc_before, frame_after.pc());
+    assert_eq!(slot0_before, *frame_after.read_slot(SlotIdx::ZERO)?);
+    assert_eq!(slot1_before, *frame_after.read_slot(SlotIdx::new(1))?);
+    assert_eq!(taint0_before, frame_after.read_taint(SlotIdx::ZERO)?);
+    assert_eq!(taint1_before, frame_after.read_taint(SlotIdx::new(1))?);
+
+    Ok(())
+}
+
+#[test]
+fn stale_completions_rejected() -> Result<(), Box<dyn std::error::Error>> {
+    for tamper in [
+        StaleTamper::Step,
+        StaleTamper::Action,
+        StaleTamper::Capacity,
+        StaleTamper::Key,
+        StaleTamper::Sequence,
+    ] {
+        check(&tamper, &Delivery::Completion)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn stale_failures_rejected() -> Result<(), Box<dyn std::error::Error>> {
+    for tamper in [
+        StaleTamper::Step,
+        StaleTamper::Action,
+        StaleTamper::Capacity,
+        StaleTamper::Key,
+        StaleTamper::Sequence,
+    ] {
+        check(&tamper, &Delivery::Failure)?;
+    }
+    Ok(())
+}
+
+## .beads/vb-rcizj/evidence/independent-v3/targeted.log
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-test-review-3090/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.43s
+     Running tests/durable_retry_red_phase.rs (target/debug/deps/durable_retry_red_phase-7e75e2a13304ade0)
+
+running 9 tests
+test record_retry_attempt_integration_gap ... ok
+test action_failure_preserves_action_completed_slots_integration_gap ... ok
+test apply_action_failure_to_state_resets_pc_to_failed_step_on_retry ... ok
+test ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata ... ok
+test journal_replay_idempotent_action_failed ... ok
+test apply_error_handler_writes_step_index_to_error_slot_integration_gap ... ok
+test retry_is_available_returns_false_when_no_retry_metadata ... ok
+test ticket_with_retry_capacity_increases_capacity_to_max_attempts ... ok
+test retry_is_available_returns_false_for_nonretryable_policy ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ticket_authority_matrix.rs (target/debug/deps/ticket_authority_matrix-37b62807c1c1a5ed)
+
+running 2 tests
+test completion_rejects_tampering_without_journal_or_run_mutation ... ok
+test failure_rejects_tampering_without_journal_or_run_mutation ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/vb_jggy_lifecycle_tests.rs (target/debug/deps/vb_jggy_lifecycle_tests-01f06dea8d9c1fee)
+
+running 17 tests
+test handle_submit_records_first_action_attempt_single_step ... ok
+test action_failed_carries_attempt_field ... ok
+test handle_submit_with_inputs_records_first_action_attempts ... ok
+test validate_ticket_attempt_accepts_valid_ticket ... ok
+test step_succeeded_carries_attempt_field ... ok
+test equal_attempt_is_not_stale ... ok
+test action_attempts_advances_after_scheduling ... ok
+test step_succeeded_carries_retry_attempt_number ... ok
+test completion_happy_path_writes_output_and_event ... ok
+test stale_attempt_completion_rejected_before_journal_write ... ok
+test stale_attempt_failure_rejected_before_journal_write ... ok
+test action_attempts_never_decreases_across_operations ... ok
+test each_step_has_independent_attempt_counter ... ok
+test future_attempt_within_capacity_is_rejected ... ok
+test action_attempts_monotonically_advances_on_retry ... ok
+test stale_guards::stale_completions_rejected ... ok
+test stale_guards::stale_failures_rejected ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+## .beads/vb-rcizj/evidence/independent-v3/pure-validation.log
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-test-review-3090/crates/vb_runtime)
+warning: unused variable: `snap`
+   --> crates/vb_runtime/src/runtime_tests.rs:765:13
+    |
+765 |         let snap = runtime.counters_snapshot();
+    |             ^^^^ help: if this is intentional, prefix it with an underscore: `_snap`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:348:13
+    |
+348 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:387:13
+    |
+387 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib test) generated 4 warnings (run `cargo fix --lib -p vb_runtime --tests` to apply 3 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.93s
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-44a6b870dcba4c37)
+
+running 25 tests
+test shard::helpers::tests::validate_action_completion_accepts_running_step_with_matching_action ... ok
+test shard::helpers::tests::validate_action_completion_accepts_equal_attempt_and_capacity ... ok
+test shard::helpers::tests::validate_action_completion_accepts_boundary_min_valid_attempt_capacity_one ... ok
+test shard::helpers::tests::validate_action_completion_rejects_attempt_beyond_max ... ok
+test shard::helpers::tests::validate_action_completion_rejects_unscheduled_first_attempt ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_step_is_failed ... ok
+test shard::helpers::tests::validate_action_completion_accepts_boundary_max_valid_attempt ... ok
+test shard::helpers::tests::validate_action_completion_accepts_matching_current_attempt ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_capacity_is_zero ... ok
+test shard::helpers::tests::validate_action_completion_rejects_stale_attempt_without_state_change ... ok
+test shard::helpers::tests::validate_action_completion_rejects_future_attempt_when_attempt_exceeds_current ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_node_is_not_do ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_step_is_pending ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_attempt_over_capacity_and_current_zero ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_step_is_succeeded ... ok
+test shard::helpers::tests::validate_action_completion_rejects_wrong_action_id ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_attempt_exceeds_capacity ... ok
+test shard::helpers::tests::validate_action_completion_rejects_zero_attempt ... ok
+test shard::helpers::tests::validate_action_completion_rejects_zero_capacity ... ok
+test shard::helpers::tests::validate_action_completion_returns_ok_when_all_preconditions_satisfied ... ok
+test shard::helpers::tests::validate_action_completion_rejects_when_attempt_is_zero ... ok
+test shard::helpers::tests::validate_action_completion_returns_stale_attempt_at_edge_1_vs_2 ... ok
+test shard::helpers::tests::validate_action_completion_returns_stale_attempt_when_attempt_lower_than_current ... ok
+test shard::helpers::tests::validate_action_completion_returns_stale_attempt_when_lower_by_many ... ok
+test shard::helpers::tests::proptest_tests::prop_validate_action_completion_never_panics ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 1878 filtered out; finished in 0.00s
+
+
+## .beads/vb-rcizj/evidence/stale-guard/mutations/results.json
+[
+  {
+    "guard_removed": "step",
+    "command": [
+      "timeout",
+      "120",
+      "cargo",
+      "test",
+      "-p",
+      "vb_runtime",
+      "--test",
+      "vb_jggy_lifecycle_tests",
+      "stale_guards::"
+    ],
+    "exit": 101,
+    "killed_by_named_stale_guard_tests": true
+  },
+  {
+    "guard_removed": "action",
+    "command": [
+      "timeout",
+      "120",
+      "cargo",
+      "test",
+      "-p",
+      "vb_runtime",
+      "--test",
+      "vb_jggy_lifecycle_tests",
+      "stale_guards::"
+    ],
+    "exit": 101,
+    "killed_by_named_stale_guard_tests": true
+  },
+  {
+    "guard_removed": "capacity",
+    "command": [
+      "timeout",
+      "120",
+      "cargo",
+      "test",
+      "-p",
+      "vb_runtime",
+      "--test",
+      "vb_jggy_lifecycle_tests",
+      "stale_guards::"
+    ],
+    "exit": 101,
+    "killed_by_named_stale_guard_tests": true
+  },
+  {
+    "guard_removed": "key",
+    "command": [
+      "timeout",
+      "120",
+      "cargo",
+      "test",
+      "-p",
+      "vb_runtime",
+      "--test",
+      "vb_jggy_lifecycle_tests",
+      "stale_guards::"
+    ],
+    "exit": 101,
+    "killed_by_named_stale_guard_tests": true
+  },
+  {
+    "guard_removed": "sequence",
+    "command": [
+      "timeout",
+      "120",
+      "cargo",
+      "test",
+      "-p",
+      "vb_runtime",
+      "--test",
+      "vb_jggy_lifecycle_tests",
+      "stale_guards::"
+    ],
+    "exit": 101,
+    "killed_by_named_stale_guard_tests": true
+  }
+]
+
+## exacthelperboundarytestsource
+fn validate_action_completion_rejects_when_attempt_is_zero() -> Result<(), String> {
+    let wf =
+        suspended_workflow().ok_or_else(|| "suspended_workflow fixture must build".to_owned())?;
+    let mut state = make_run_state(wf, RunId::new(1))
+        .ok_or_else(|| "make_run_state for suspended_workflow must succeed".to_owned())?;
+    assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+    let t = ActionTicket {
+        capacity: 5,
+        ..ticket(RunId::new(1), StepIdx::ZERO, 0)
+    };
+    let result = validate_action_completion(&state, t);
+    assert_eq!(
+        result,
+        Err(RuntimeError::AttemptBeyondMax { attempt: 0, max: 5 })
+    );
+    Ok(())
+}
+
+#[test]
+fn validate_action_completion_rejects_when_capacity_is_zero() {
+    let Some(wf) = suspended_workflow() else {
+        return;
+    };
+    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+        return;
+    };
+    assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+    let t = ActionTicket {
+        capacity: 0,
+        ..ticket(RunId::new(1), StepIdx::ZERO, 1)
+    };
+    let result = validate_action_completion(&state, t);
+    assert_eq!(
+        result,
+        Err(RuntimeError::AttemptBeyondMax { attempt: 1, max: 0 })
+    );
+}
+
+#[test]
+fn validate_action_completion_rejects_when_attempt_exceeds_capacity() {
+    let Some(wf) = suspended_workflow() else {
+        return;
+    };
+    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+        return;
+    };
+    assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+    if let Some(attempt) = state.action_attempts.get_mut(0) {
+        *attempt = 5;
+    }
+    let t = ActionTicket {
+        capacity: 3,
+        ..ticket(RunId::new(1), StepIdx::ZERO, 5)
+    };
+    let result = validate_action_completion(&state, t);
+    assert_eq!(
+        result,
+        Err(RuntimeError::AttemptBeyondMax { attempt: 5, max: 3 })
+    );
+}
+
+#[test]
+fn validate_action_completion_rejects_when_step_is_succeeded() {
+    let Some(wf) = suspended_workflow() else {
+        return;
+    };
+    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+        return;
+    };
+    assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+    assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
+    if let Some(attempt) = state.action_attempts.get_mut(0) {
+        *attempt = 1;
+    }
+    let t = ticket(RunId::new(1), StepIdx::ZERO, 1);
+    let result = validate_action_completion(&state, t);
+    assert_eq!(result, Err(RuntimeError::InvalidActionCompletion));
+}
+
+#[test]
+fn validate_action_completion_rejects_when_step_is_pending() {
+    let Some(wf) = suspended_workflow() else {
+        return;
+    };
+    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+        return;
+    };
+    assert_eq!(
+        state.frame.step_state(StepIdx::ZERO),
+        Ok(StepState::Pending)
+    );
+    if let Some(attempt) = state.action_attempts.get_mut(0) {
+        *attempt = 1;
+    }
+    let t = ticket(RunId::new(1), StepIdx::ZERO, 1);
+    let result = validate_action_completion(&state, t);
+    assert_eq!(result, Err(RuntimeError::InvalidActionCompletion));
+}
+
+#[test]
+fn validate_action_completion_rejects_when_step_is_failed() {
+    let Some(wf) = suspended_workflow() else {
+        return;
+    };
+    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+        return;
+    };
+    assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+    assert_eq!(state.frame.mark_failed(StepIdx::ZER

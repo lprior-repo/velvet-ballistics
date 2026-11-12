@@ -1,0 +1,28 @@
+[verus] verus --crate-type=lib verification/verus/step_state_machine.rs
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> verification/verus/production_inner/step_state_machine_production.rs:68:10
+   |
+68 | #[derive(Clone)]
+   |          ^^^^^
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/step_state_machine_production.rs:100:10
+    |
+100 | #[derive(Clone)]
+    |          ^^^^^
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/step_state_machine_production.rs:120:10
+    |
+120 | #[derive(Clone)]
+    |          ^^^^^
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/step_state_machine_production.rs:144:10
+    |
+144 | #[derive(Clone)]
+    |          ^^^^^
+
+verification results:: 32 verified, 0 errors
+warning: 4 warnings emitted
+

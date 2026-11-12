@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-local3090-measurement-review",
+  "argv": [
+    "python3",
+    ".beads/vb-3iflr/evidence/final-v3-assertion-verification-v1.py"
+  ],
+  "exit_code": 0,
+  "seconds": 6.427,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-3iflr/evidence/final-v3-assertion-verification-v1",
+  "coordinator_message": "Root advanced your JJ workingcopy once WITHOUT changing filebytes so GitHEAD now includes534aa404 andv3ancestorcheckcanpass. Fix only actual dynamiccriterionfilelookup if hardcodedtruncatedpathnamewrong. Preservefailedv1logs; subsequentofficialrunnewprefix. Useactualcollector functions, assertions MUST fail process. Stop aftergenuinev3all3recordsverified, conciseaccuratereport. No sourcechanges. No needbroadchecks. Mainnotyetpublished. Rootwaitingfinalreport thenpush."
+}

@@ -1,0 +1,5 @@
+────────────
+ Nextest run ID 54217f8b-94d5-4d6b-87e4-8ec622b6c1b6 with nextest profile: default
+    Starting 14349 tests across 290 binaries (27 tests skipped)
+────────────
+     Summary [  18.653s] 14349 tests run: 14349 passed, 27 skipped

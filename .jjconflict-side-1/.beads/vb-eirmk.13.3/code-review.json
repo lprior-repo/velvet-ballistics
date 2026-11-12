@@ -1,0 +1,74 @@
+{
+  "bead": "vb-eirmk.13.3",
+  "verdict": "PASS",
+  "scope": "Independent CODE review of frozen relocation documentation and exact two-row ledger proposal only; not authorization to apply protected changes.",
+  "pins": {
+    "candidate_change": "mvkvvsrnsxlxutlystswypywslottmzs",
+    "candidate_commit": "6c57e127e589b93010d98526b3da1f823bd3bde9",
+    "candidate_parent": "6fe1758adceb470e649d2cf947a48b66a35f9c50",
+    "original_base": "1dbcbe96cacdc0fad91edbba641f7ad3ad542fb7",
+    "relocated_source": "743f93433ed92f6d400c7ac2f008fd47e4be2636",
+    "native_run_snapshot": "84d7edd0e4c7540d165782510d58407e10a7ee10",
+    "review_child": "75d1890b74ba2b18599257895012d069df14e9f8"
+  },
+  "workspace": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+    "git_and_jj_roots_verified": true,
+    "clean": true,
+    "pin_resolution": "Concatenated display pin was not a valid revset; read-only lookup independently resolved both prefixes before jj new at the full frozen commit."
+  },
+  "findings": [],
+  "controls": {
+    "proposal_sha256": "21df94f5d09edc452542b597d6555d0a5247af6ab68eaf279dbfe3b053b4dd95",
+    "proposal_rows": 2,
+    "fields_per_row": 11,
+    "review_path": ".beads/vb-eirmk.13.3/relocation-review.md",
+    "review_blob": "1c08e67983dbd66ce2f076a0c89f5a9c49973dcb",
+    "old_tests_blob": "6178f772bbca4f510f386f71172165ce430531b1",
+    "current_blobs": {
+      "crates/vb_core/src/replay/ops/tests.rs": "c72d1036e72d16afc56947d8d83f8313328e515d",
+      "crates/vb_core/src/replay/ops/tests_stack.rs": "99cc11f167ddbe5e0b424d3bdce36281c54a051f",
+      "crates/vb_core/src/replay/ops/tests_expr.rs": "5ec62370dc7635812b480c5132bbb11c96ca6fc3",
+      "crates/vb_core/src/replay/ops/tests_ce003.rs": "acb8a177acf3e0c04e34f8c0da9a64053d942165",
+      "crates/vb_core/src/replay/ops/context_tests.rs": "707d2b4b9ff4f087eb2b46ef21bbf7f112d784c0"
+    }
+  },
+  "source_checks": [
+    "Independently compared all 100 original function definitions, not just names: every definition byte-identical; target adds exactly the two documented cases. Expanding include files reconstructs old source with only three section-comment/blank-line changes after excluding the additional context include.",
+    "90 original #[test] declarations retained; 92 total distinct declarations, no missing or duplicated names, no added ignore or conditional exclusion attributes. Shared helpers and imports survive in the same lexical module.",
+    "All 92 body-map hashes and old/new locations verified against actual Git source. Map hashes cover the braced body including braces, without a trailing newline; 90 BYTE_IDENTICAL and two ADDED_CASE rows.",
+    "All four original exact assertions preserved: ExpressionEvalFailed(StepIdx::ZERO), value I64(30), taint Secret, remaining stack I64(2). Their target locations are tests_stack.rs:136 and tests_expr.rs:693,698,723.",
+    "ops.rs retains identical #[cfg(test)] #[path = \"ops/tests.rs\"] mod tests registration. tests.rs includes stack, expression and ce003 files; ce003 includes context_tests.rs without introducing a nested module.",
+    "All five replay source blobs match at relocation pin, frozen document candidate and recorded native-run JJ snapshot.",
+    "Proposal identities match the actual per-file deletion/assertion findings. Full 40-character base, old/current/replacement blobs and review artifact blob all verified; no blanket waiver.",
+    "Candidate differs from its direct parent only in one documentation paragraph. Existing eval_replay_op error-remapping production change in relocation target was inspected and excluded from this disposition."
+  ],
+  "evidence": {
+    "author_directory": "/home/lewis/src/isoloated/velvet-ballistics-frame-snapshots-luna/target/core-build-20261110/evidence",
+    "parent_directory": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence",
+    "catalog_sha256": "9f0f8b4a21ee9c58b4b4e7510b5ce785732a34a604edf885fefc1d703173227c",
+    "native_log": "trace-assertion-integrated-moon.log",
+    "observed_native": "Actual Nextest summary: 16417 tests run, 16417 passed, 7 skipped. Exactly 92 replay PASS names equal catalog matches and source declarations; all replay matches are nonignored.",
+    "run_id": "4fb3cd61-799f-40ce-a823-bff3fa105ebc",
+    "provenance": "Raw log Git SHA 2f3f82b4ad48de6c2b696d26ab8be4c8086c5600 is first parent, not merged source identity. Verified recorded JJ snapshot parents are that SHA and 01b56891a6cf8442ddb030afc65df2bdd35eb61f. Parent attribution of execution to this snapshot is not independently recoverable from the log alone.",
+    "exit_limit": "No explicit MOON_EXIT=0 line found in inspected raw log; test summary and completed-task output were read, not converted into an independently observed shell exit."
+  },
+  "copied_checker_preview": {
+    "directory": "replay-ledger-preview",
+    "source_verification": "Reversing exactly one JUSTIFICATIONS_REL constant in checker.rs yields byte-identical live checker source. It targets an ignored target/.../combined.tsv path; combined.tsv is byte-for-byte existing ledger plus the exact proposal. Copied proposal equals author proposal.",
+    "positive": "valid.log contains exactly the two expected JUSTIFIED entries and test integrity: PASS at the full original base.",
+    "negative": "All three raw negative logs contain test integrity: FAIL and an unwaived DeletedTestDeclaration. negative-controls.json records exit 1 for wrong review blob, wrong replacement blob and shortened base. The unaffected other row remains justified, demonstrating row-specific rejection.",
+    "execution_limit": "Preview was not rerun by this reviewer. Positive log contains PASS but no explicit numeric exit receipt; supplied parent exit-0 claim is distinguished from observed log text."
+  },
+  "protected_hashes": {
+    "live_ledger_sha256": "096df4425e06980160297b3fcdb126532d1f015af2329c37f4c475d5e507cafb",
+    "live_checker_rs_sha256": "461cf1a5bab360748745cfad9a59a6a9ea5f7d3dcfb696aad91e956a187b0c1e",
+    "live_checker_shell_sha256": "be1e52d50820989270bea5e91f7536fa0478f7b7804ea760d5cc66c2dbb5adb7",
+    "verification": "Read-only hashes agree with preview before-receipt for ledger/Rust checker; protected paths have no source delta between relocation target and document candidate. No protected file written."
+  },
+  "limits": [
+    "Proposal remains unapplied; explicit user approval is still required before live ledger/checker changes. Copied preview PASS is not live integrity PASS.",
+    "Preservation review does not approve inherited oversized functions, weak/vacuous original oracles, the two additional cases as an independent implementation review, or production eval_replay_op behavior.",
+    "No formal proof, full CI closure, whole-feature acceptance or fresh test execution claimed. Other review reports were not read. Only authorized review child and this report were created."
+  ]
+}

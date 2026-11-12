@@ -1,0 +1,47 @@
+
+running 42 tests
+test active_run_capacity_exceeded_returns_artifact_malformed_code ... ok
+test admission_journal_failed_returns_artifact_malformed_code ... ok
+test admission_required_returns_artifact_malformed_code ... ok
+test all_journal_error_codes_are_nonzero ... ok
+test artifact_checksum_mismatch_returns_correct_code ... ok
+test artifact_malformed_returns_correct_code ... ok
+test artifact_not_found_returns_correct_code ... ok
+test bad_magic_returns_correct_code ... ok
+test capability_denied_returns_artifact_malformed_code ... ok
+test clock_unavailable_returns_artifact_malformed_code ... ok
+test duplicate_event_returns_correct_code ... ok
+test frame_allocation_failed_returns_artifact_malformed_code ... ok
+test header_checksum_mismatch_returns_correct_code ... ok
+test header_length_mismatch_returns_correct_code ... ok
+test input_schema_mismatch_returns_artifact_malformed_code ... ok
+test invalid_event_returns_correct_code ... ok
+test invalid_gate_count_returns_correct_code ... ok
+test invalid_run_id_returns_correct_code ... ok
+test key_capacity_returns_correct_code ... ok
+test migration_required_returns_correct_code ... ok
+test missing_required_proof_flag_returns_correct_code ... ok
+test payload_digest_mismatch_returns_correct_code ... ok
+test payload_too_large_returns_correct_code ... ok
+test postcard_decode_failed_returns_correct_code ... ok
+test process_lock_held_returns_correct_code ... ok
+test process_lock_io_returns_correct_code ... ok
+test queue_capacity_returns_correct_code ... ok
+test queue_full_returns_correct_code ... ok
+test queue_shutdown_returns_correct_code ... ok
+test record_kind_family_mismatch_returns_correct_code ... ok
+test replay_allocation_failed_returns_correct_code ... ok
+test run_already_exists_returns_artifact_malformed_code ... ok
+test secret_unavailable_returns_artifact_malformed_code ... ok
+test sequence_gap_returns_correct_code ... ok
+test sequence_overflow_returns_correct_code ... ok
+test strict_durability_failed_returns_artifact_malformed_code ... ok
+test too_many_events_returns_correct_code ... ok
+test unexpected_eof_returns_correct_code ... ok
+test unknown_record_kind_returns_correct_code ... ok
+test unsupported_schema_version_returns_correct_code ... ok
+test write_lock_poisoned_returns_correct_code ... ok
+test wrong_run_returns_correct_code ... ok
+
+test result: ok. 42 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

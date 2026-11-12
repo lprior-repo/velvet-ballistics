@@ -1,0 +1,23 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-qz2yn-failure-repair-local5090-v14",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "cargo",
+    "check",
+    "-p",
+    "vb_storage",
+    "--tests",
+    "--all-features",
+    "--locked"
+  ],
+  "exit_code": 101,
+  "seconds": 11.528,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_ARTIFACT_COUNTER_5090_V14_TEST_CHECK"
+}

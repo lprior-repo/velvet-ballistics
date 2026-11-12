@@ -1,0 +1,220 @@
+                     && ticket.run == pending.run
+                     && ticket.step == pending.step
+                     && ticket.action == pending.action
+                     && ticket.capacity == pending.capacity
+                     && vb_core::action::action_ticket_has_valid_key(ticket)
+                     && ticket.seq <= pending.seq =>
+             {
+                 Err(RuntimeError::StaleAttempt {
+                     incoming: ticket.attempt,
+                     current: pending.attempt,
+                 })
+             }
+             Some(_) | None => Err(RuntimeError::InvalidActionCompletion),
+         }
+     }
+ 
+     fn require_legacy_pending_action_ownership(
+         &self,
+         run: RunId,
+         step: StepIdx,
+     ) -> RuntimeResult<ActionTicket> {
+         if !self.run_state_contains(run) {
+             return Err(RuntimeError::RunNotFound);
+         }
+         match self.pending_action_get(run) {
+             Some(pending) if pending.run == run && pending.step == step => Ok(pending),
+             Some(_) | None => Err(RuntimeError::InvalidActionCompletion),
+FILE crates/vb_runtime/src/shard/lifecycle/recovered_admission.rs SHA256 055fffb445451a0277a0fddd8ab24481471eb9464bd6bfdaf6d271ca99021e72
+diff --git a/crates/vb_runtime/src/shard/lifecycle/recovered_admission.rs b/crates/vb_runtime/src/shard/lifecycle/recovered_admission.rs
+new file mode 100644
+index 000000000..ab849c5cf
+--- /dev/null
++++ b/crates/vb_runtime/src/shard/lifecycle/recovered_admission.rs
+@@ -0,0 +1,126 @@
++//! Recovery admission validation and construction phases.
++//!
++//! Separates recovery admission into distinct phases that complete before
++//! any sequence or slot mutation:
++//! - Phase A: Validate the command's recovered admission evidence
++//! - Phase B: Validate checkpoint policy pin if present
++//! - Phase C: Build unverified admission for legacy recovery
++
++use vb_core::ids::{RunId, WorkflowDigest};
++use vb_core::{CapabilitySet, CompiledWorkflow};
++use vb_storage::RunPolicyPin;
++use vb_storage::admission::AcceptedArtifact;
++
++use crate::admission::RunAdmission;
++use crate::recovery::{
++    RecoveredAdmissionContext, RecoveredAdmissionEvidence, validate_recovered_admission_evidence,
++};
++use crate::run_checkpoint::RunCheckpointV1;
++use crate::shard::types::RecoveredAdmissionKind;
++use crate::{RuntimeError, RuntimeResult};
++
++/// Phase A: Validate the command's recovered admission evidence.
++///
++/// For Historical admissions, validates the full recovered admission evidence
++/// using the existing RecoveredAdmissionContext/Evidence types.
++///
++/// For Unverified admissions, validates only run identity and artifact
++/// digest matching. Policy pin cannot be validated without historical
++/// admission, which is the correct fail-closed behavior for legacy
++/// raw recovery.
++pub(crate) fn validate_recovered_admission(
++    kind: &RecoveredAdmissionKind,
++    context: RecoveredAdmissionContext,
++    artifact: &AcceptedArtifact,
++    workflow: &CompiledWorkflow,
++) -> RuntimeResult<()> {
++    match kind {
++        RecoveredAdmissionKind::Historical(historical) => {
++            validate_recovered_admission_evidence(RecoveredAdmissionEvidence {
++                context,
++                admission: historical,
++                artifact,
++                workflow,
++            })
++        }
++        RecoveredAdmissionKind::Unverified {
++            run_id,
++            artifact_digest: cmd_digest,
++        } => validate_unverified_identity(context.run, *run_id, artifact.digest, *cmd_digest),
++    }
++}
++
++fn validate_unverified_identity(
++    run: RunId,
++    admission_run_id: RunId,
++    expected_artifact_digest: WorkflowDigest,
++    admission_digest: WorkflowDigest,
++) -> RuntimeResult<()> {
++    if admission_run_id != run {
++        return Err(RuntimeError::Recovery {
++            error: format!(
++                "admission run identity mismatch: expected {run:?}, got {admission_run_id:?}"
++            ),
++        });
++    }
++    if admission_digest != expected_artifact_digest {
++        return Err(RuntimeError::Recovery {
++            error: format!(
++                "admission artifact digest mismatch: expected {expected_artifact_digest:?}, got {admission_digest:?}"
++            ),
++        });
++    }
++    Ok(())
++}
++
++/// Phase B: Validate the full retry checkpoint before any state mutation.
++///
++/// When a retry checkpoint is provided, validates its nested identities
++/// against the compiled workflow, then if the checkpoint carries an
++/// admission, validates the full recovered admission evidence. This
++/// must complete before any sequence or slot mutation so that the
++/// correct exact reason propagates. Applies to both Historical and
++/// Unverified command paths because the public
++/// new(...).with_retry_checkpoint(...) API can attach a checkpoint
++/// to an Unverified command without Runtime prefix validation.
++pub(crate) fn validate_retry_checkpoint(
++    checkpoint: Option<&RunCheckpointV1>,
++    context: RecoveredAdmissionContext,
++    artifact: &AcceptedArtifact,
++    workflow: &CompiledWorkflow,
++) -> RuntimeResult<()> {
++    if let Some(checkpoint) = checkpoint {
++        checkpoint
++            .validate_against(workflow, artifact.digest, &artifact.action_contracts)
++            .map_err(|error| RuntimeError::Recovery {
++                error: format!("retry checkpoint validation failed: {error}"),
++            })?;
++        if let Some(admission) = checkpoint.admission.as_ref() {
++            validate_recovered_admission_evidence(RecoveredAdmissionEvidence {
++                context,
++                admission,
++                artifact,
++                workflow,
++            })?;
++        }
++    }
++    Ok(())
++}
++
++/// Phase C: Build unverified admission for legacy recovery.
++///
++/// For Unverified kind recovery, build admission using the artifact's
++/// required capabilities and current policy, then force the Unverified pin
++/// so recovery never promotes to Pinned.
++pub(crate) fn build_unverified_admission(
++    shard: &crate::shard::Shard,
++    run: RunId,
++    artifact_digest: WorkflowDigest,
++    artifact: &AcceptedArtifact,
++) -> RuntimeResult<Option<RunAdmission>> {
++    let caps = CapabilitySet::from_grants(artifact.required_capabilities.clone());
++    match shard.build_admission(run, artifact_digest, caps)? {
++        Some(adm) => Ok(Some(adm.with_policy_pin(RunPolicyPin::Unverified))),
++        None => Ok(None),
++    }
++}
+FILE crates/vb_runtime/src/shard/lifecycle/registered_completion.rs SHA256 9825672451ec4a2d8640c9d9a7c6e12d16eec6c0dea4991304ec543c27bbfe80
+diff --git a/crates/vb_runtime/src/shard/lifecycle/registered_completion.rs b/crates/vb_runtime/src/shard/lifecycle/registered_completion.rs
+index 816bf4a12..4e94f6ded 100644
+--- a/crates/vb_runtime/src/shard/lifecycle/registered_completion.rs
++++ b/crates/vb_runtime/src/shard/lifecycle/registered_completion.rs
+@@ -1,105 +1,77 @@
+ use crate::shard::Shard;
+ use crate::{RuntimeError, RuntimeResult};
++use vb_core::ActionTicket;
++use vb_core::Taint;
+ use vb_core::action::ActionOutputReady;
+-use vb_core::{ActionTicket, CompiledNodeKind, SlotValue, Taint};
++use vb_core::policy::PinnedAdmissionPolicy;
+ use vb_storage::executor::RegisterReceipt;
+ 
++use super::registered_completion_context::{
++    build_registered_action_context, convert_policy_pin, load_admitted_artifact,
++};
++
+ pub(crate) struct RegisteredActionContext {
+     pub artifact: vb_storage::AcceptedArtifact,
+     pub output: ActionOutputReady,
+     pub value: i64,
+     pub mode: crate::shard::types::RegisteredExecutionMode,
++    /// Admission policy pin converted from RunPolicyPin.
++    pub admission_pin: PinnedAdmissionPolicy,
++    /// Canonical serialized bytes of the action input value.
++    pub encoded_bytes: Vec<u8>,
++    /// Actual frame input taint at evaluation time.
++    pub input_taint: Taint,
+ }
+ 
+ impl Shard {
+     pub(crate) fn registered_action_context(
+         &self,
+         ticket: ActionTicket,
+     ) -> RuntimeResult<RegisteredActionContext> {
+         self.require_pending_action_ownership(ticket)?;
+         let state = self
+             .run_state_get(ticket.run)
+             .ok_or(RuntimeError::RunNotFound)?;
+         let admission = state
+             .admission
+             .as_ref()
+             .ok_or(RuntimeError::InvalidActionCompletion)?;
+-        let artifact = self
+-            .artifact_store
+-            .load_accepted_artifact(admission.artifact_digest())
+-            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+-        let node = state
+-            .workflow
+-            .node(ticket.step)
+-            .ok_or(RuntimeError::InvalidActionCompletion)?;
+-        let CompiledNodeKind::Do { action, input } = node.kind else {
+-            return Err(RuntimeError::InvalidActionCompletion);
+-        };
+-        if action != ticket.action
+-            || state
+-                .frame
+-                .read_taint(input)

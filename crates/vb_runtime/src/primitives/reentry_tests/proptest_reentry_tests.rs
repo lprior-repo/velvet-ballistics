@@ -28,6 +28,7 @@ mod proptest_reentry {
 
         let parts = WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             name: Box::from("proptest_reduce"),
             digest: vb_core::ids::WorkflowDigest::from_bytes([9; 32]),
             nodes: vec![node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
@@ -238,6 +239,7 @@ mod proptest_reentry {
                 input,
                 accumulator,
                 vb_core::ids::ConstIdx::new(0),
+                65_535,
                 body,
                 done,
                 Some(iterator_slot),

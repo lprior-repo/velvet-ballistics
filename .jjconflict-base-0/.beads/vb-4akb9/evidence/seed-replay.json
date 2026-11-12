@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-4akb9-local3090-artifact-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_qi37_4_2_strict_runtime_admission",
+    "--",
+    "--include-ignored"
+  ],
+  "exit_code": 0,
+  "seconds": 0.293,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-4akb9/evidence/seed-replay"
+}

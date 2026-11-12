@@ -1,0 +1,245 @@
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling libc v0.2.186
+   Compiling syn v2.0.117
+   Compiling cfg-if v1.0.4
+   Compiling serde_core v1.0.228
+   Compiling semver v1.0.28
+   Compiling serde v1.0.228
+   Compiling rustc_version v0.4.1
+   Compiling serde_derive v1.0.228
+   Compiling scopeguard v1.2.0
+   Compiling once_cell v1.21.4
+   Compiling crossbeam-utils v0.8.21
+   Compiling getrandom v0.4.2
+   Compiling autocfg v1.5.1
+   Compiling rustix v1.1.4
+   Compiling num-traits v0.2.19
+   Compiling lock_api v0.4.14
+   Compiling linux-raw-sys v0.12.1
+   Compiling getrandom v0.3.4
+   Compiling bitflags v2.11.1
+   Compiling thiserror v2.0.18
+   Compiling equivalent v1.0.2
+   Compiling thiserror-impl v2.0.18
+   Compiling crossbeam-epoch v0.9.20
+   Compiling fastrand v2.4.1
+   Compiling tempfile v3.27.0
+   Compiling spin v0.9.8
+   Compiling parking_lot_core v0.9.12
+   Compiling zerocopy v0.8.48
+   Compiling shlex v1.3.0
+   Compiling find-msvc-tools v0.1.9
+   Compiling rand_core v0.9.5
+   Compiling cc v1.2.62
+   Compiling heapless v0.7.17
+   Compiling hashbrown v0.17.1
+   Compiling byteorder v1.5.0
+   Compiling xxhash-rust v0.8.15
+   Compiling twox-hash v2.1.2
+   Compiling byteorder-lite v0.1.0
+   Compiling iana-time-zone v0.1.65
+   Compiling hashbrown v0.16.1
+   Compiling compare v0.0.6
+   Compiling smallvec v1.15.1
+   Compiling log v0.4.29
+   Compiling sfa v1.0.0
+   Compiling quick_cache v0.6.22
+   Compiling interval-heap v0.0.5
+   Compiling chrono v0.4.44
+   Compiling lz4_flex v0.13.1
+   Compiling hash32 v0.2.1
+   Compiling indexmap v2.14.0
+   Compiling crossbeam-skiplist v0.1.3
+   Compiling blake3 v1.8.5
+   Compiling bytes v1.11.1
+   Compiling enum_dispatch v0.3.13
+   Compiling crc32c v0.6.8
+   Compiling hashbrown v0.14.5
+   Compiling self_cell v1.2.2
+   Compiling varint-rs v2.2.0
+   Compiling byteview v0.10.1
+   Compiling rustc-hash v2.1.2
+   Compiling stable_deref_trait v1.2.1
+   Compiling lsm-tree v3.1.4
+   Compiling dashmap v6.2.1
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-full-record-tests/crates/vb_core)
+   Compiling ppv-lite86 v0.2.21
+   Compiling flume v0.12.0
+   Compiling cobs v0.3.0
+   Compiling wait-timeout v0.2.1
+   Compiling constant_time_eq v0.4.2
+   Compiling quick-error v1.2.3
+   Compiling fnv v1.0.7
+   Compiling arrayref v0.3.9
+   Compiling arrayvec v0.7.6
+   Compiling cpufeatures v0.3.0
+   Compiling bit-vec v0.8.0
+   Compiling bit-set v0.8.0
+   Compiling rusty-fork v0.3.1
+   Compiling postcard v1.1.3
+   Compiling fjall v3.1.4
+   Compiling rand_chacha v0.9.0
+   Compiling rand_xorshift v0.4.0
+   Compiling rand v0.9.4
+   Compiling unarray v0.1.4
+   Compiling regex-syntax v0.8.10
+   Compiling proptest v1.11.0
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-full-record-tests/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-full-record-tests/crates/vb_storage)
+error[E0433]: cannot find `Store` in `fjall`
+   --> crates/vb_storage/tests/policy_decision_full_record.rs:292:28
+    |
+292 |     let mut store = fjall::Store::open(dir, None)?;
+    |                            ^^^^^ could not find `Store` in `fjall`
+    |
+help: there is an enum variant `vb_storage::recovery::MissingRunStateComponent::Store`; try using the variant's enum
+    |
+292 -     let mut store = fjall::Store::open(dir, None)?;
+292 +     let mut store = vb_storage::recovery::MissingRunStateComponent::open(dir, None)?;
+    |
+
+error[E0433]: cannot find `Store` in `fjall`
+   --> crates/vb_storage/tests/policy_decision_full_record.rs:297:25
+    |
+297 |     let store2 = fjall::Store::open(dir, None)?;
+    |                         ^^^^^ could not find `Store` in `fjall`
+    |
+help: there is an enum variant `vb_storage::recovery::MissingRunStateComponent::Store`; try using the variant's enum
+    |
+297 -     let store2 = fjall::Store::open(dir, None)?;
+297 +     let store2 = vb_storage::recovery::MissingRunStateComponent::open(dir, None)?;
+    |
+
+warning: unused import: `std::path::PathBuf`
+ --> crates/vb_storage/tests/policy_decision_full_record.rs:3:5
+  |
+3 | use std::path::PathBuf;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unnecessary parentheses around function argument
+   --> crates/vb_storage/tests/policy_decision_full_record.rs:611:53
+    |
+611 | ...                   digest: make_digest(((idx % 250) as u8 + 50)),
+    |                                           ^                      ^
+    |
+    = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default
+help: remove these parentheses
+    |
+611 -                                 digest: make_digest(((idx % 250) as u8 + 50)),
+611 +                                 digest: make_digest((idx % 250) as u8 + 50),
+    |
+
+warning: unnecessary parentheses around function argument
+   --> crates/vb_storage/tests/policy_decision_full_record.rs:613:55
+    |
+613 | ...                   input_digest: make_digest(((idx % 250) as u8 + 100)),
+    |                                                 ^                       ^
+    |
+help: remove these parentheses
+    |
+613 -                             input_digest: make_digest(((idx % 250) as u8 + 100)),
+613 +                             input_digest: make_digest((idx % 250) as u8 + 100),
+    |
+
+error[E0308]: mismatched types
+   --> crates/vb_storage/tests/policy_decision_full_record.rs:100:5
+    |
+ 94 |   ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    |        ------------------------------------------- expected `Result<Vec<u8>, Box<(dyn std::error::Error + 'static)>>` because of return type
+...
+100 | /     encode_record(
+101 | |         MAGIC_JOURNAL_EVENT,
+102 | |         event.record_kind(),
+103 | |         event.seq().get(),
+104 | |         &event,
+105 | |         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+106 | |     )
+    | |_____^ expected `Result<Vec<u8>, Box<dyn Error>>`, found `Result<Vec<u8>, JournalError>`
+    |
+    = note: expected enum `Result<_, Box<(dyn std::error::Error + 'static)>>`
+               found enum `Result<_, JournalError>`
+help: use `?` to coerce and return an appropriate `Err`, and wrap the resulting value in `Ok` so the expression remains of type `Result`
+    |
+100 ~     Ok(encode_record(
+101 |         MAGIC_JOURNAL_EVENT,
+...
+105 |         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+106 ~     )?)
+    |
+
+error[E0308]: mismatched types
+   --> crates/vb_storage/tests/policy_decision_full_record.rs:113:5
+    |
+112 | ) -> Result<JournalEvent, Box<dyn std::error::Error>> {
+    |      ------------------------------------------------ expected `Result<JournalEvent, Box<(dyn std::error::Error + 'static)>>` because of return type
+113 |     decode_journal_event(encoded, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES).map(|(_, e)| e)
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<JournalEvent, Box<dyn Error>>`, found `Result<JournalEvent, JournalError>`
+    |
+    = note: expected enum `Result<_, Box<(dyn std::error::Error + 'static)>>`
+               found enum `Result<_, JournalError>`
+help: use `?` to coerce and return an appropriate `Err`, and wrap the resulting value in `Ok` so the expression remains of type `Result`
+    |
+113 |     Ok(decode_journal_event(encoded, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES).map(|(_, e)| e)?)
+    |     +++                                                                                                   ++
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+   --> crates/vb_storage/tests/policy_decision_full_record.rs:300:14
+    |
+300 |         Some(read_bytes) => {
+    |              ^^^^^^^^^^ doesn't have a size known at compile-time
+    |
+    = help: the trait `Sized` is not implemented for `[u8]`
+    = note: all local variables must have a statically known size
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+   --> crates/vb_storage/tests/policy_decision_full_record.rs:300:9
+    |
+300 |         Some(read_bytes) => {
+    |         ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+    |
+    = help: the trait `Sized` is not implemented for `[u8]`
+note: required by a bound in `Some`
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:600:17
+    |
+600 | pub enum Option<T> {
+    |                 ^ required by this bound in `Some`
+...
+608 |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+    |     ---- required by a bound in this tuple variant
+
+error[E0277]: the trait bound `WorkflowDigest: From<[u8; 32]>` is not satisfied
+   --> crates/vb_storage/tests/policy_decision_full_record.rs:522:29
+    |
+522 |         workflow: [1u8; 32].into(),
+    |                             ^^^^ the trait `From<[u8; 32]>` is not implemented for `WorkflowDigest`
+    |
+    = note: required for `[u8; 32]` to implement `Into<WorkflowDigest>`
+
+error[E0277]: the trait bound `WorkflowDigest: From<[u8; 32]>` is not satisfied
+   --> crates/vb_storage/tests/policy_decision_full_record.rs:659:30
+    |
+659 |         workflow: [42u8; 32].into(),
+    |                              ^^^^ the trait `From<[u8; 32]>` is not implemented for `WorkflowDigest`
+    |
+    = note: required for `[u8; 32]` to implement `Into<WorkflowDigest>`
+
+error[E0599]: no variant named `RunFailed` found for enum `JournalEvent`
+   --> crates/vb_storage/tests/policy_decision_full_record.rs:668:36
+    |
+668 |     let run_failed = JournalEvent::RunFailed {
+    |                                    ^^^^^^^^^
+    |
+help: there is a variant with a similar name
+    |
+668 -     let run_failed = JournalEvent::RunFailed {
+668 +     let run_failed = JournalEvent::RunKilled {
+    |
+
+Some errors have detailed explanations: E0277, E0308, E0433, E0599.
+For more information about an error, try `rustc --explain E0277`.
+warning: `vb_storage` (test "policy_decision_full_record") generated 3 warnings
+error: could not compile `vb_storage` (test "policy_decision_full_record") due to 9 previous errors; 3 warnings emitted

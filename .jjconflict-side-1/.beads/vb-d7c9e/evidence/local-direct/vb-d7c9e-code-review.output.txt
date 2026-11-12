@@ -1,0 +1,3 @@
+STATUS: APPROVED
+
+The change replaces two `assert_eq!(expr, true, msg)` calls with `assert!(expr, msg)` in the `kind_validation` fuzz target. For boolean expressions, these forms are semantically equivalent: both panic with the provided custom message when the expression evaluates to false. The predicate evaluation, panic messages, and overall fuzz target logic are preserved. The only difference is the standard assert macro diagnostic formatting, which is less informative for boolean conditions than the custom message anyway. No actionable findings.

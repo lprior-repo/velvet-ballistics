@@ -94,20 +94,22 @@ impl Runtime {
     fn product_from_recovered_seed(
         run: RunId,
         prefix: RecoveryPrefixEvidence,
-        seed: impl Into<RecoveredWorkflowSeed>,
+        seed: RecoveredWorkflowSeed,
         boundary: crate::recovery::RecoveredRunBoundary,
         retained_inputs: crate::recovery::RecoveredRetainedInputs,
+        complete_frame: Option<vb_core::RunFrame>,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         let RecoveredWorkflowSeed {
             seed,
             replay_cursor,
-        } = seed.into();
+        } = seed;
         let context = RecoveredSeedProductContext {
             run,
             prefix,
             seed,
             replay_cursor,
             boundary,
+            complete_frame,
         };
         Self::product_from_recovered_context(context, &retained_inputs)
     }
@@ -146,7 +148,10 @@ impl Runtime {
         context: RecoveredSeedProductContext,
         retained_inputs: &crate::recovery::RecoveredRetainedInputs,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
-        let frame = Self::hydrate_replayed_frame(&context, retained_inputs)?;
+        let frame = match context.complete_frame {
+            Some(frame) => frame,
+            None => Self::hydrate_replayed_frame(&context, retained_inputs)?,
+        };
         let collect_states = Self::hydrate_recovered_collect_states(&context.prefix.events)?;
         let open_gates = crate::manual_gate::reconstruct_open_gates(&context.prefix.events)
             .map_err(|source| RuntimeError::GateEvaluationFailed { source })?;
@@ -161,6 +166,7 @@ impl Runtime {
                     next_seq: context.prefix.next_seq,
                     collect_states,
                     boundary: context.boundary,
+                    retry_checkpoint: None,
                     open_gates,
                     admission: context.prefix.admission.clone(),
                     restored_store: retained_inputs.store_checkpoint(),
@@ -210,8 +216,20 @@ impl Runtime {
         product: crate::recovery::ResumableRecoveryProduct,
     ) -> RuntimeResult<()> {
         let run = product.run_id();
-        let command = product.into_recover_command();
+        let mut command = product.into_recover_command();
         let shard = self.shard_for(run)?;
+        if command.retry_checkpoint.is_none() {
+            let recovered = self.load_recovery_artifact_and_workflow(
+                self.recovery_storage_journal()?,
+                command.artifact_digest,
+            )?;
+            if recovered.workflow.digest() != command.workflow_digest {
+                return Err(RuntimeError::Recovery {
+                    error: String::from("recovery workflow identity mismatch"),
+                });
+            }
+            shard.initialize_secret_frame(&recovered.workflow, &mut command.frame)?;
+        }
         shard.enqueue(ShardCommand::Recover {
             command: Box::new(command),
         })
@@ -238,12 +256,14 @@ impl Runtime {
                     _ => String::from("artifact_decode_failed"),
                 },
             })?;
+        let parts = postcard::from_bytes::<vb_core::workflow::WorkflowParts>(&artifact.ir)
+            .map_err(|error| RuntimeError::Recovery {
+                error: error.to_string(),
+            })?;
         let workflow =
-            vb_storage::decode_compiled_ir(&artifact.ir, Some(artifact.artifact_version)).map_err(
-                |error| RuntimeError::Recovery {
-                    error: error.to_string(),
-                },
-            )?;
+            CompiledWorkflow::try_from_parts(parts).map_err(|error| RuntimeError::Recovery {
+                error: error.to_string(),
+            })?;
         Ok(RecoveryArtifactWorkflow { artifact, workflow })
     }
 }

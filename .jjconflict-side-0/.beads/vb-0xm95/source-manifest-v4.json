@@ -1,0 +1,91 @@
+{
+  "base": "dba19b95918aca7c23e91b8814afa2a9118449f8",
+  "candidate_before_metadata": "8bb193827f15a036ee58f20ef0c3ce173b74edac",
+  "scope": "Fresh production CODE after rejecting invented cold-path exemption; named admission phases extracted and artifact/workflow identities remain distinct. Includes YAML bounds recovered exact source. Unit additions inside production source are TEST review separately.",
+  "inputs": [
+    {
+      "path": "crates/vb_runtime/src/journal.rs",
+      "sha256": "b2470cd450b09ad74c7be10da41eedcf3cae262c6de4e2ad70911c609eb655a2"
+    },
+    {
+      "path": "crates/vb_runtime/src/journal/chunk_001.rs",
+      "sha256": "8aa0a314028a919f929deb9ca61b7390ab205af44ec11f7b94c7de6703e215f1"
+    },
+    {
+      "path": "crates/vb_runtime/src/journal/chunk_002.rs",
+      "sha256": "e5ca3174e71976dce2d1e0a164a0d5c83a3f139e94075070f783b90dc932a682"
+    },
+    {
+      "path": "crates/vb_runtime/src/journal/chunk_003.rs",
+      "sha256": "2525fb7460ce649a4fcd825ee52fbaffa712882438f021e63dac0791fdefb599"
+    },
+    {
+      "path": "crates/vb_runtime/src/recovery/full/product.rs",
+      "sha256": "dedef606c0f5a4a5e3c1eb21e6a846b6b0ecb6b759d680c0fdfb2d4231c2e9d6"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime.rs",
+      "sha256": "b292409cb5ef3cd9672271f60abbf57c46ab99ebc1528fe2dfb2217e4dd8e74b"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime/live_policy_dispatch.rs",
+      "sha256": "4aab043f11828426ac4ae8a11fd2c48b556faf27ee53d65dcc0c991afd79ae6d"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime/registered_executor.rs",
+      "sha256": "8ce1ff241a6896c60821c8052ce131637d7369d4f1fa0a046a628d18009f1368"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/impl_.rs",
+      "sha256": "c2b206285b5c16e9200a10e24d37cb521eebea5158e05993a89fb951d9acd039"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/impl_parts/policy_decision.rs",
+      "sha256": "c6210a2723cf4e5262a6241cbe15d47d3468938bdb5e3779ec66f95a5a0f0763"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle.rs",
+      "sha256": "99398079741b116d558380dd848f98a8a2488a511a2b611ab66e00bb64d2465d"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/chunk_001.rs",
+      "sha256": "313db6ce310715c9fdc101838f68a0907a45b6489d465a194d2c6b71d9695e2f"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/chunk_004.rs",
+      "sha256": "e79dcbdaa905a9197a5ff9b30b9b83a5330214188b3b72729d8582d65294ee2e"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/recovered_admission.rs",
+      "sha256": "1456ab2f2fbb41da6c04790e32869e0ea5c21226328d218fb160b539f45cc9c1"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/registered_completion.rs",
+      "sha256": "9825672451ec4a2d8640c9d9a7c6e12d16eec6c0dea4991304ec543c27bbfe80"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/registered_completion_context.rs",
+      "sha256": "df1252d315e83deda54295771f2983842b0aa0944c0375a57591414f16e2a1cf"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/registered_context_helpers.rs",
+      "sha256": "0a2e0a7f3906cfffc77be623db1a944cfbc4c9a66a9ecd3a23ca1d17b71940ad"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/types.rs",
+      "sha256": "0391290d65d126a5206d3c2c1983f8d13e3b8a385f8d957be97b14d494064fd9"
+    },
+    {
+      "path": "fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs",
+      "sha256": "795852155207cb6f5848a3d80ffcd5b4d5f376b8f6eb6094eb2b4178754ccfdc"
+    },
+    {
+      "path": "fuzz/fuzz_targets/yaml_events.rs",
+      "sha256": "497e38991ea248e6c3d65dc606e55c1243327703ce1aeeb6a0ca9f22a3a662be"
+    },
+    {
+      "path": "fuzz/src/yaml_target.rs",
+      "sha256": "878302d163b2de2bbc7e22fbce2f34edd7ecb6051d043852fddea3b164409bb5"
+    }
+  ]
+}

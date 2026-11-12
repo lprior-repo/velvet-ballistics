@@ -1,0 +1,18 @@
+Dictionary: 10 entries
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 3860212177
+INFO: Loaded 1 modules   (2176 inline 8-bit counters): 2176 [0x55efc932acb0, 0x55efc932b530), 
+INFO: Loaded 1 PC tables (2176 PCs): 2176 [0x55efc932b530,0x55efc9333d30), 
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 49 ft: 50 corp: 1/1b exec/s: 0 rss: 32Mb
+	NEW_FUNC[1/1]: 0x55efc926efc0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/kind_validation+0x149fc0) (BuildId: 99357a049f18c88292424af57a34ca916fc41f16)
+#6	NEW    cov: 61 ft: 69 corp: 2/3b lim: 4 exec/s: 6 rss: 33Mb L: 2/2 MS: 4 CrossOver-ChangeBinInt-ChangeBit-CopyPart-
+#9	NEW    cov: 64 ft: 72 corp: 3/7b lim: 4 exec/s: 9 rss: 33Mb L: 4/4 MS: 3 CopyPart-ChangeByte-InsertByte-
+#23	NEW    cov: 73 ft: 84 corp: 4/9b lim: 4 exec/s: 23 rss: 33Mb L: 2/4 MS: 4 CrossOver-ShuffleBytes-InsertByte-ManualDict- DE: "(\000"-
+#43	NEW    cov: 74 ft: 87 corp: 5/13b lim: 4 exec/s: 43 rss: 33Mb L: 4/4 MS: 5 ChangeBinInt-PersAutoDict-ChangeBit-ShuffleBytes-CopyPart- DE: "(\000"-
+#54	NEW    cov: 80 ft: 93 corp: 6/15b lim: 4 exec/s: 54 rss: 33Mb L: 2/4 MS: 1 ChangeByte-
+#80	NEW    cov: 85 ft: 98 corp: 7/19b lim: 4 exec/s: 80 rss: 34Mb L: 4/4 MS: 1 ChangeBit-
+#99	NEW    cov: 90 ft: 103 corp: 8/23b lim: 4 exec/s: 99 rss: 34Mb L: 4/4 MS: 4 PersAutoDict-ChangeByte-ShuffleBytes-ChangeByte- DE: "(\000"-
+#100	DONE   cov: 90 ft: 103 corp: 8/23b lim: 4 exec/s: 100 rss: 34Mb
+Done 100 runs in 1 second(s)

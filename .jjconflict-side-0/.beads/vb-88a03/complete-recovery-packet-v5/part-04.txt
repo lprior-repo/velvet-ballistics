@@ -1,0 +1,220 @@
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:660:         .pending_action_get(run_id)
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:661:         .ok_or("positive control: pending action not found after recovery")?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:662:     assert_eq!(restored_ticket.run, run_id);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:663:     assert_eq!(restored_ticket.step, vb_core::ids::StepIdx::ZERO);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:664:     assert_eq!(restored_ticket.action, vb_core::ids::ActionId::new(0));
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:665:     assert_eq!(restored_ticket.attempt, 1);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:666: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:667:     // Original shard, its journal, and pending state remain unchanged.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:668:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:669:         shard.run_state_get(run_id),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:670:         Some(&original),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:671:         "original shard run state must be unchanged after positive control"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:672:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:673:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:674:         shard.pending_boundary_snapshot(0, 8),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:675:         original_pending,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:676:         "original shard pending boundaries must be unchanged after positive control"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:677:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:678:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:679:         journal.snapshot()?,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:680:         original_journal,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:681:         "original shard journal must be unchanged after positive control"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:682:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:683: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:684:     Ok(())
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:685: }
+FILE crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs SHA256 c131b861ea70a34a5b3839920da1f00e88c12e6e14cbf8dba4943dbfcdd1abff
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:1: #![forbid(unsafe_code)]
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:2: // Runtime policy recovery: corrupt emergency marker with unsupported version.
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:3: // Verifies that a corrupted emergency deny marker causes precise typed failure
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:4: // rather than silent default to inactive.
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:5: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:6: use std::num::NonZeroUsize;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:7: use std::sync::Arc;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:8: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:9: use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:10: use vb_core::action_pack::{CapabilityScopeSpec, RecoveryClass};
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:11: use vb_core::capability::{Capability, CapabilitySet};
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:12: use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:13: use vb_core::policy::{DecisionCode, PolicyDigest, PolicyRule, RuntimePolicy};
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:14: use vb_core::value::SlotValue;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:15: use vb_core::workflow::{
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:16:     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:17: };
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:18: use vb_runtime::journal::StorageRuntimeJournal;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:19: use vb_runtime::runtime::RegisteredExecutionError;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:20: use vb_runtime::runtime::Runtime;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:21: use vb_runtime::shard::ShardConfig;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:22: use vb_storage::JournalEvent;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:23: use vb_storage::executor::{ExecutorCatalog, FjallRegister};
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:24: use vb_storage::{FjallConfig, FjallJournal};
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:25: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:26: type TestResult = Result<(), Box<dyn std::error::Error>>;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:27: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:28: fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:29:     NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:30: }
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:31: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:32: fn strict_config() -> ShardConfig {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:33:     ShardConfig {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:34:         command_queue_capacity: 32,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:35:         trace_capacity: 64,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:36:         step_budget_per_tick: 16,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:37:         max_active_runs: 8,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:38:         policy: RuntimePolicy::Strict,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:39:     }
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:40: }
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:41: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:42: fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:43:     CompiledNode {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:44:         id: StepIdx::new(id),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:45:         output: output.map(SlotIdx::new),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:46:         next: next.map(StepIdx::new),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:47:         on_error: None,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:48:         error_slot: None,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:49:         kind,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:50:     }
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:51: }
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:52: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:53: fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:54:     let mut parts = WorkflowParts {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:55:         name: "vb_c4hzw_corrupt_marker".into(),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:56:         semantic_source_identity: None,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:57:         input_slots: Box::new([]),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:58:         digest: WorkflowDigest::from_bytes([0; 32]),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:59:         nodes: Box::from([
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:60:             node(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:61:                 0,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:62:                 Some(1),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:63:                 Some(1),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:64:                 CompiledNodeKind::Do {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:65:                     action: ActionId::new(0),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:66:                     input: SlotIdx::ZERO,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:67:                 },
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:68:             ),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:69:             node(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:70:                 1,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:71:                 None,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:72:                 None,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:73:                 CompiledNodeKind::Finish {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:74:                     result: SlotIdx::new(1),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:75:                 },
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:76:             ),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:77:         ]),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:78:         expressions: Box::from([]),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:79:         accessors: Box::from([]),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:80:         constants: Box::from([]),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:81:         slot_count: 2,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:82:         symbols_count: 0,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:83:         entry: StepIdx::ZERO,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:84:         step_names: Box::from([]),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:85:         resource_contract: ResourceContract::DEFAULT,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:86:     };
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:87:     let hash_bytes = postcard::to_allocvec(&parts).map_err(|err| err.to_string())?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:88:     parts.digest = WorkflowDigest::from_bytes(blake3::hash(&hash_bytes).into());
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:89:     CompiledWorkflow::try_from_parts(parts).map_err(|err| err.to_string())
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:90: }
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:91: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:92: fn external_contract(action: ActionId) -> Result<ActionContract, Box<dyn std::error::Error>> {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:93:     Ok(ActionContract {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:94:         id: action,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:95:         name: ActionName::new("vb_c4hzw_corrupt_marker")?,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:96:         input_slot_count: 1,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:97:         output_slot_count: 1,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:98:         max_input_bytes: 64,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:99:         max_output_bytes: 64,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:100:         timeout_ms: 1000,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:101:         idempotency: Idempotency::IdempotentExternal,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:102:         side_effect: SideEffect::Writes,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:103:         retry_safety: RetrySafety::KeyRequired,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:104:         required_capabilities: Box::new([Capability::new("velvet.register.write".into(), action)]),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:105:     })
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:106: }
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:107: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:108: fn scope() -> CapabilityScopeSpec {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:109:     CapabilityScopeSpec {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:110:         namespace: 15,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:111:         key: 29,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:112:     }
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:113: }
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:114: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:115: fn action_grants(action: ActionId) -> CapabilitySet {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:116:     CapabilitySet::from_grants(Box::from([Capability::new(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:117:         "velvet.register.write".into(),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:118:         action,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:119:     )]))
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:120: }
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:121: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:122: fn corrupt_emergency_marker(path: &std::path::Path) -> TestResult {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:123:     let db = fjall::Database::builder(path).cache_size(1 << 20).open()?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:124:     let ks = db.keyspace("emergency_deny", fjall::KeyspaceCreateOptions::default)?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:125:     ks.insert(b"active", [99u8])?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:126:     db.persist(fjall::PersistMode::SyncAll)?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:127:     drop(ks);
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:128:     drop(db);
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:129:     Ok(())
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:130: }
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:131: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:132: #[test]
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:133: fn corrupt_emergency_marker_causes_precise_typed_failure() -> TestResult {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:134:     let dir = tempfile::tempdir()?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:135:     let run = RunId::new(12_001);
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:136:     let action = ActionId::new(0);
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:137:     let workflow = action_then_finish_workflow()?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:138:     let contract = external_contract(action)?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:139:     let catalog = ExecutorCatalog::run_registered_conformance()?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:140:     let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:141: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:142:     // Phase 1: Persist accepted artifact only; no runtime execution
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:143:     let journal = Arc::new(FjallJournal::open(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:144:         dir.path(),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:145:         Some(FjallConfig::default()),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:146:     )?);
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:147:     let artifact = catalog.submit_artifact(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:148:         &journal,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:149:         &workflow,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:150:         RuntimePolicy::Strict,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:151:         &[contract.clone()],
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:152:         &[pack],
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:153:     )?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:154:     drop(journal);
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:155: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:156:     // Phase 2: Corrupt the emergency_deny keyspace with version 99
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:157:     corrupt_emergency_marker(dir.path())?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:158: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:159:     // Phase 3: Reopen fresh runtime, configure policy, submit new legal run
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:160:     let journal_reopen = Arc::new(FjallJournal::open(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:161:         dir.path(),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:162:         Some(FjallConfig::default()),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:163:     )?);
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:164:     let storage = StorageRuntimeJournal::shared_strict_with_catalog(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:165:         journal_reopen.clone(),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:166:         Arc::new(catalog.clone()),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:167:     );
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:168:     let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:169: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:170:     let allowed_digest = PolicyDigest::from_bytes([0x33u8; 32]);
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:171:     runtime.configure_live_policy(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:172:         allowed_digest,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:173:         PolicyRule {
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:174:             action,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:175:             code: DecisionCode::Allowed,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:176:         },
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:177:     )?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:178: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:179:     let contract_for_submit = external_contract(action)?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:180:     runtime.submit_direct_with_inputs_grants_and_contracts(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:181:         run,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:182:         workflow,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:183:         Box::from([(SlotIdx::ZERO, SlotValue::I64(100))]),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:184:         action_grants(action),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:185:         Box::from([contract_for_submit]),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:186:     )?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:187:     runtime.tick_all()?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:188: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:189:     // Derive actual ticket and catalog grant for real artifact
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:190:     let ticket = runtime
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:191:         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:192:         .ok_or("expected pending action ticket")?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:193:     let grant = catalog.issue_register_grant(&artifact, ticket, scope())?;

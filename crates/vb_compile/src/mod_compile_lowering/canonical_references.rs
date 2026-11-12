@@ -1,72 +1,94 @@
 #![forbid(unsafe_code)]
 //! Reference resolution for expressions referencing prior step outputs.
 
-use super::canonical_scope::CanonicalScope;
+use super::CanonicalScope;
 use crate::CompileError;
 use std::collections::HashMap;
-use std::sync::OnceLock;
-use vb_core::{ExprOp, SlotIdx};
-use vb_expr::expr_typecheck::ExprType;
-
-/// Empty placeholder for `CanonicalScope` when only outputs/step_outputs are
-/// needed (e.g. legacy `from_maps` callers that don't have slot_types at
-/// hand). Lazily initialised to avoid leaking.
-#[allow(dead_code)]
-fn empty_slot_types() -> &'static HashMap<SlotIdx, ExprType> {
-    static EMPTY: OnceLock<HashMap<SlotIdx, ExprType>> = OnceLock::new();
-    EMPTY.get_or_init(HashMap::new)
-}
+use vb_core::{AccessorIdx, AccessorProgram, ExprOp, PathSegment, SlotIdx};
 
 /// Resolves expression references to prior step outputs.
 ///
-/// Now backed by a borrowed `CanonicalScope` chain: lookups walk local maps
-/// then parent pointers without cloning whole HashMaps. This is the perf fix
-/// for the YAML clone waivers — `StepReferenceResolver` no longer requires
-/// owning copies of `outputs`/`step_outputs`.
-pub(in crate::mod_compile_lowering) struct StepReferenceResolver<'a> {
+/// Maintains two separate maps:
+/// - `outputs`: output names (Set aliases) -> slots
+/// - `step_outputs`: step IDs -> slots
+///
+/// Resolution rules:
+/// - `$step.id` / `$steps.id`: explicit step reference, only checks step_outputs
+/// - Direct `$name`: checks both maps, rejects if found in different slots
+/// - Numeric: backward compatibility slot index
+pub(super) struct StepReferenceResolver<'a> {
     scope: CanonicalScope<'a>,
+    symbols: Option<&'a mut crate::source_symbols::SourceSymbolTable>,
+    accessors: Option<&'a mut Vec<AccessorProgram>>,
     local_binding: Option<(&'a str, SlotIdx)>,
 }
 
 impl<'a> StepReferenceResolver<'a> {
-    pub(in crate::mod_compile_lowering) fn new(scope: CanonicalScope<'a>) -> Self {
+    pub(super) fn new(scope: CanonicalScope<'a>) -> Self {
         Self {
             scope,
             local_binding: None,
+            symbols: None,
+            accessors: None,
         }
     }
 
-    /// Compatibility shim for callers still holding raw HashMaps (creates a
-    /// root scope with `parent: None`). New code should use `new(scope)`.
-    #[allow(dead_code)]
-    pub(in crate::mod_compile_lowering) fn from_maps(
+    pub(super) fn from_maps(
         outputs: &'a HashMap<String, SlotIdx>,
         step_outputs: &'a HashMap<String, SlotIdx>,
     ) -> Self {
-        Self {
-            scope: CanonicalScope {
-                outputs,
-                step_outputs,
-                slot_types: empty_slot_types(),
-                parent: None,
-            },
-            local_binding: None,
-        }
+        static TYPES: std::sync::OnceLock<HashMap<SlotIdx, vb_expr::expr_typecheck::ExprType>> =
+            std::sync::OnceLock::new();
+        Self::new(CanonicalScope {
+            outputs,
+            step_outputs,
+            slot_types: TYPES.get_or_init(HashMap::new),
+            parent: None,
+        })
     }
 
-    pub(in crate::mod_compile_lowering) fn with_local_binding(
-        mut self,
-        name: &'a str,
-        slot: SlotIdx,
-    ) -> Self {
+    pub(super) fn with_local_binding(mut self, name: &'a str, slot: SlotIdx) -> Self {
         self.local_binding = Some((name, slot));
         self
     }
 
-    pub(in crate::mod_compile_lowering) fn resolve_slot(
+    pub(super) fn with_payloads(
+        mut self,
+        symbols: &'a mut crate::source_symbols::SourceSymbolTable,
+        accessors: &'a mut Vec<AccessorProgram>,
+    ) -> Self {
+        self.symbols = Some(symbols);
+        self.accessors = Some(accessors);
+        self
+    }
+
+    pub(super) fn resolve_path<'r>(
         &self,
-        reference: &str,
-    ) -> Result<SlotIdx, CompileError> {
+        reference: &'r str,
+    ) -> Result<(SlotIdx, Option<&'r str>), CompileError> {
+        let original = self.resolve_direct(reference);
+        if let Ok(slot) = original {
+            return Ok((slot, None));
+        }
+        for (index, _) in reference.rmatch_indices('.') {
+            let Some(prefix) = reference.get(..index) else {
+                continue;
+            };
+            if let Ok(slot) = self.resolve_direct(prefix) {
+                let start = index
+                    .checked_add(1)
+                    .ok_or(CompileError::StepIndexOutOfRange { value: index })?;
+                return Ok((slot, reference.get(start..)));
+            }
+        }
+        original.map(|slot| (slot, None))
+    }
+
+    pub(super) fn resolve_slot(&self, reference: &str) -> Result<SlotIdx, CompileError> {
+        self.resolve_path(reference).map(|(slot, _)| slot)
+    }
+
+    fn resolve_direct(&self, reference: &str) -> Result<SlotIdx, CompileError> {
         if let Some((name, slot)) = self.local_binding
             && reference.strip_prefix('$') == Some(name)
         {
@@ -74,28 +96,9 @@ impl<'a> StepReferenceResolver<'a> {
         }
         resolve_slot_reference_scoped(reference, self.scope)
     }
-
-    /// Access the underlying borrowed scope for type checking.
-    #[allow(dead_code)]
-    pub(in crate::mod_compile_lowering) fn scope(&self) -> CanonicalScope<'a> {
-        self.scope
-    }
 }
 
-/// Scoped reference resolution walking the `CanonicalScope` parent chain.
-pub(in crate::mod_compile_lowering) fn resolve_slot_reference_scoped(
-    reference: &str,
-    scope: CanonicalScope<'_>,
-) -> Result<SlotIdx, CompileError> {
-    if reference.starts_with('$') {
-        resolve_dollar_reference_scoped(reference, scope)
-    } else {
-        resolve_numeric_slot(reference)
-    }
-}
-
-/// Legacy entry point taking raw maps; wraps them in a root scope (parent=None).
-/// New code paths use `resolve_slot_reference_scoped` with borrowed chain.
+/// Parse and resolve a direct slot reference from text.
 pub(crate) fn resolve_slot_reference(
     reference: &str,
     outputs: &HashMap<String, SlotIdx>,
@@ -120,37 +123,26 @@ fn resolve_dollar_reference(
             root: Box::from(reference),
         })?;
 
+    // Explicit step ID reference: $step.id or $steps.id
     if let Some((root, tail)) = body.split_once('.') {
         match root {
             "step" | "steps" => return resolve_explicit_step_id(tail, reference, step_outputs),
             "input" | "vars" => return resolve_declared_name(reference, reference, outputs),
+            "secrets" => {
+                return outputs.get(reference).copied().ok_or_else(|| {
+                    CompileError::UnknownReferenceName {
+                        kind: "secrets",
+                        reference: reference.into(),
+                        name: tail.into(),
+                    }
+                });
+            }
             _ => {}
         }
     }
 
+    // Direct name: check both maps
     resolve_direct_name(body, reference, outputs, step_outputs)
-}
-
-fn resolve_dollar_reference_scoped(
-    reference: &str,
-    scope: CanonicalScope<'_>,
-) -> Result<SlotIdx, CompileError> {
-    let body = reference
-        .strip_prefix('$')
-        .ok_or(CompileError::UnknownReferenceRoot {
-            reference: Box::from(reference),
-            root: Box::from(reference),
-        })?;
-
-    if let Some((root, tail)) = body.split_once('.') {
-        match root {
-            "step" | "steps" => return resolve_explicit_step_id_scoped(tail, reference, scope),
-            "input" | "vars" => return resolve_declared_name_scoped(reference, reference, scope),
-            _ => {}
-        }
-    }
-
-    resolve_direct_name_scoped(body, reference, scope)
 }
 
 fn resolve_declared_name(
@@ -161,20 +153,6 @@ fn resolve_declared_name(
     outputs
         .get(name)
         .copied()
-        .ok_or_else(|| CompileError::UnknownReferenceName {
-            kind: "declaration",
-            reference: Box::from(reference),
-            name: Box::from(name),
-        })
-}
-
-fn resolve_declared_name_scoped(
-    name: &str,
-    reference: &str,
-    scope: CanonicalScope<'_>,
-) -> Result<SlotIdx, CompileError> {
-    scope
-        .get_output(name)
         .ok_or_else(|| CompileError::UnknownReferenceName {
             kind: "declaration",
             reference: Box::from(reference),
@@ -197,20 +175,6 @@ fn resolve_explicit_step_id(
         })
 }
 
-fn resolve_explicit_step_id_scoped(
-    step_id: &str,
-    reference: &str,
-    scope: CanonicalScope<'_>,
-) -> Result<SlotIdx, CompileError> {
-    scope
-        .get_step(step_id)
-        .ok_or(CompileError::UnknownReferenceName {
-            kind: "step",
-            reference: Box::from(reference),
-            name: Box::from(step_id),
-        })
-}
-
 fn resolve_direct_name(
     name: &str,
     reference: &str,
@@ -224,38 +188,15 @@ fn resolve_direct_name(
         (Some(slot), Some(same_slot)) if slot == same_slot => Ok(slot),
         (Some(slot), None) => Ok(slot),
         (None, Some(slot)) => Ok(slot),
-        (Some(_), Some(_)) => Err(CompileError::ExpressionLoweringUnsupported {
-            feature: format!(
-                "ambiguous reference '{}' found in both output names and step IDs with different slots",
-                name
-            ).into(),
-        }),
-        (None, None) => Err(CompileError::UnknownReferenceName {
-            kind: "output",
-            reference: Box::from(reference),
-            name: Box::from(name),
-        }),
-    }
-}
-
-fn resolve_direct_name_scoped(
-    name: &str,
-    reference: &str,
-    scope: CanonicalScope<'_>,
-) -> Result<SlotIdx, CompileError> {
-    let in_outputs = scope.get_output(name);
-    let in_step_outputs = scope.get_step(name);
-
-    match (in_outputs, in_step_outputs) {
-        (Some(slot), Some(same_slot)) if slot == same_slot => Ok(slot),
-        (Some(slot), None) => Ok(slot),
-        (None, Some(slot)) => Ok(slot),
-        (Some(_), Some(_)) => Err(CompileError::ExpressionLoweringUnsupported {
-            feature: format!(
-                "ambiguous reference '{}' found in both output names and step IDs with different slots",
-                name
-            ).into(),
-        }),
+        (Some(_), Some(_)) => {
+            // Ambiguous: found in both maps with different slots
+            Err(CompileError::ExpressionLoweringUnsupported {
+                feature: format!(
+                    "ambiguous reference '{}' found in both output names and step IDs with different slots",
+                    name
+                ).into(),
+            })
+        }
         (None, None) => Err(CompileError::UnknownReferenceName {
             kind: "output",
             reference: Box::from(reference),
@@ -279,8 +220,48 @@ fn resolve_numeric_slot(text: &str) -> Result<SlotIdx, CompileError> {
 
 /// Implementation of the expression bytecode reference resolver.
 impl crate::expression_bytecode::ExpressionReferenceResolver for StepReferenceResolver<'_> {
+    fn resolve_text(&mut self, text: &str) -> Result<vb_core::SymbolId, CompileError> {
+        self.symbols
+            .as_mut()
+            .ok_or_else(|| CompileError::ExpressionLoweringUnsupported {
+                feature: "symbol context".into(),
+            })?
+            .intern(text)
+            .map_err(|error| CompileError::ExpressionLoweringUnsupported {
+                feature: error.to_string().into(),
+            })
+    }
     fn resolve_reference(&mut self, reference: &str) -> Result<ExprOp, CompileError> {
-        let slot = self.resolve_slot(reference)?;
-        Ok(ExprOp::LoadSlot(slot))
+        let (slot, path) = self.resolve_path(reference)?;
+        let Some(path) = path else {
+            return Ok(ExprOp::LoadSlot(slot));
+        };
+        let mut segments = Vec::new();
+        for part in path.split('.') {
+            segments.push(match part.parse::<u32>() {
+                Ok(index) => PathSegment::Index(index),
+                Err(_) => PathSegment::Field(self.resolve_text(part)?),
+            });
+        }
+        let accessors =
+            self.accessors
+                .as_mut()
+                .ok_or_else(|| CompileError::ExpressionLoweringUnsupported {
+                    feature: "accessor context".into(),
+                })?;
+        let index = u16::try_from(accessors.len()).map_err(|_| {
+            CompileError::ExpressionLoweringUnsupported {
+                feature: "accessor table overflow".into(),
+            }
+        })?;
+        accessors.push(AccessorProgram {
+            root: slot,
+            path: segments.into_boxed_slice(),
+        });
+        Ok(ExprOp::LoadAccessor(AccessorIdx::new(index)))
     }
 }
+
+#[path = "scoped_references.rs"]
+mod scoped;
+pub(in crate::mod_compile_lowering) use scoped::resolve_slot_reference_scoped;

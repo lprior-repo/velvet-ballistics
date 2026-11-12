@@ -1,0 +1,6 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-5aw5i-local3090-tool-fixtures/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.14s
+     Running tests/vb_8ma2_workspace_assertions.rs (target/debug/deps/vb_8ma2_workspace_assertions-483d8dbc9132505a)
+     Running tests/vb_eepg_bdd_tests.rs (target/debug/deps/vb_eepg_bdd_tests-625256d24407d814)
+     Running tests/vb_kkvb_xtask_command_shell_coverage.rs (target/debug/deps/vb_kkvb_xtask_command_shell_coverage-d04df1eaf1f3d87c)
+     Running tests/vb_nf2u_current_scope_tests.rs (target/debug/deps/vb_nf2u_current_scope_tests-431dd6a241764635)

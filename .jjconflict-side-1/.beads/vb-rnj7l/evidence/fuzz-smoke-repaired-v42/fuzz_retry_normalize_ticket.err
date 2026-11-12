@@ -1,0 +1,21 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2248374429
+INFO: Loaded 1 modules   (6119 inline 8-bit counters): 6119 [0x55f023770203, 0x55f0237719ea), 
+INFO: Loaded 1 PC tables (6119 PCs): 6119 [0x55f0237719f0,0x55f023789860), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/fuzz_retry_normalize_ticket
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 292 ft: 293 corp: 1/1b exec/s: 0 rss: 41Mb
+#3	NEW    cov: 293 ft: 294 corp: 2/3b lim: 4 exec/s: 0 rss: 41Mb L: 2/2 MS: 1 CopyPart-
+#49	REDUCE cov: 293 ft: 294 corp: 2/2b lim: 4 exec/s: 0 rss: 41Mb L: 1/1 MS: 1 EraseBytes-
+#479	NEW    cov: 297 ft: 298 corp: 3/10b lim: 8 exec/s: 0 rss: 44Mb L: 8/8 MS: 5 CopyPart-CrossOver-CrossOver-ChangeByte-InsertRepeatedBytes-
+	NEW_FUNC[1/1]: 0x55f023695410  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_retry_normalize_ticket+0x150410) (BuildId: 1e5fa0cafa763d1d901929adbee9ed5d7f046e26)
+#789	NEW    cov: 309 ft: 310 corp: 4/19b lim: 11 exec/s: 0 rss: 45Mb L: 9/9 MS: 5 ChangeBit-ChangeBinInt-ChangeByte-ChangeBinInt-InsertByte-
+#799	NEW    cov: 312 ft: 313 corp: 5/30b lim: 11 exec/s: 0 rss: 45Mb L: 11/11 MS: 5 CrossOver-ShuffleBytes-ShuffleBytes-EraseBytes-InsertRepeatedBytes-
+#832	NEW    cov: 313 ft: 314 corp: 6/40b lim: 11 exec/s: 0 rss: 46Mb L: 10/11 MS: 3 ShuffleBytes-EraseBytes-InsertRepeatedBytes-
+#1149	NEW    cov: 322 ft: 323 corp: 7/52b lim: 14 exec/s: 0 rss: 46Mb L: 12/12 MS: 2 ChangeByte-CopyPart-
+#1174	NEW    cov: 324 ft: 325 corp: 8/66b lim: 14 exec/s: 0 rss: 46Mb L: 14/14 MS: 5 InsertByte-ChangeBit-ChangeByte-ChangeByte-CrossOver-
+#1482	NEW    cov: 331 ft: 332 corp: 9/83b lim: 17 exec/s: 0 rss: 46Mb L: 17/17 MS: 3 CrossOver-InsertByte-InsertRepeatedBytes-
+#2055	REDUCE cov: 331 ft: 332 corp: 9/82b lim: 21 exec/s: 0 rss: 46Mb L: 16/16 MS: 3 ChangeBinInt-ShuffleBytes-EraseBytes-
+#373735	DONE   cov: 331 ft: 332 corp: 9/82b lim: 3711 exec/s: 186867 rss: 229Mb
+Done 373735 runs in 2 second(s)

@@ -1,0 +1,7 @@
+APPROVE
+
+The dependency repair is correct and properly scoped. The change renames the dev-dependency from the misleading alias `vb_cli` to the actual library name `velvet_ballistics`, matching the `[lib] name` in the product manifest. Since `rg` confirms zero `vb_cli::` consumers in workspace_tests, this is a pure wiring fix with no source behavior changes.
+
+The 14 test failures are all in the `vb_37lc_canonical_spelling_red` naming suite, which has stale production canonical table expectations (assertions still expecting `vb_cli` vs receiving `velvet_ballistics`). These are pre-existing fixture issues unrelated to the dependency repair and are correctly identified as a separate followup. The other three test targets (18+13+48=79 tests) all pass, confirming the wiring fix is sound.
+
+No blockers for this specific dependency correction.

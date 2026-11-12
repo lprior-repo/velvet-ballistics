@@ -1,4 +1,22 @@
 impl Shard {
+    pub(super) fn drive_one_pending_run(&mut self) -> RuntimeResult<()> {
+        let run = self.active_runs_iter().find_map(|(&run, state)| {
+            (self.runtime_state_get(run) == Some(RuntimeState::Running)
+                && state.frame.step_state(state.frame.pc()) == Ok(vb_core::StepState::Pending))
+            .then_some(run)
+        });
+        let Some(run) = run else {
+            return Ok(());
+        };
+        // Rotate before drive_run's swap removal to retain the other runs' order.
+        let (run, state) = self
+            .runs
+            .shift_remove_entry(&run)
+            .ok_or(RuntimeError::RunNotFound)?;
+        let _previous = self.runs.insert(run, state);
+        self.drive_run(run)
+    }
+
     /// §77.17 run-start enforcement: re-checks the run's journaled
     /// compatibility decisions before its first live effects.
     ///

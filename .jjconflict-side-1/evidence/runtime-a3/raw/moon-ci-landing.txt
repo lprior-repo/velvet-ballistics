@@ -1,0 +1,29 @@
+# command: moon ci
+# workdir: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+# result: TIMEOUT
+# shell_timeout_ms: 1800000
+# note: The full live command stream was 63,702 lines / 9.1 MiB before the OpenCode shell killed the command for exceeding its 1,800,000 ms timeout. The oversized raw stream was not committed because JJ refused to snapshot new files larger than 1 MiB. This evidence records the terminal observed state and the precise blocker; no Moon pass/fail summary was produced.
+
+Observed terminal state at timeout:
+
+```text
+velvet-ballistics:kani-baseline | Unwinding loop ... std::vec::Vec::<std::option::Option<value::SlotValue>>::extend_with ... iteration 3648 ...
+velvet-ballistics:kani-baseline | aborting path on assume(false) ... alloc/src/vec/mod.rs line 3454 column 22 ...
+velvet-ballistics:kani-baseline | aborting path on assume(false) ... kani::mem::cbmc::same_allocation ...
+...
+velvet-ballistics:kani-baseline | Unwinding loop ... std::vec::Vec::<std::option::Option<value::SlotValue>>::extend_with ... iteration 3658 ...
+velvet-ballistics:kani-baseline | aborting path on assume(false) ... alloc/src/vec/mod.rs line 3454 column 22 ...
+velvet-ballistics:kani-baseline | aborting path on assume(false) ... kani::mem::cbmc::same_allocation ...
+```
+
+Shell metadata:
+
+```text
+shell tool terminated command after exceeding timeout 1800000 ms. If this command is expected to take longer and is not waiting for interactive input, retry with a larger timeout value in milliseconds.
+```
+
+Classification:
+
+- `BLOCK_GLOBAL`: canonical `moon ci` did not finish because the `kani-baseline` lane exceeded the landing timeout.
+- Existing related bead: `vb-lf3ev` (`[process] moon ci kani-baseline exceeds landing timeout`).
+- `vb-4969v` remains in progress; do not close from this evidence.

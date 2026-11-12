@@ -142,11 +142,18 @@ fn test_numeric_slot_finish() -> Result<(), Box<dyn std::error::Error>> {
     let workflow = compile(yaml)?;
     assert_eq!(
         workflow.input_slots(),
-        &[CompiledInputSlot {
-            slot: SlotIdx::new(4),
-            kind: InputSlotKind::I64,
-            constraint: CompiledInputConstraint::required()
-        }]
+        &[
+            CompiledInputSlot {
+                slot: SlotIdx::new(3),
+                kind: InputSlotKind::Any,
+                constraint: CompiledInputConstraint::required()
+            },
+            CompiledInputSlot {
+                slot: SlotIdx::new(4),
+                kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::required()
+            }
+        ]
     );
     let parts = workflow.to_parts();
     let terminal = parts.nodes.last().ok_or("missing terminal")?;

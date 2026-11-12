@@ -1,0 +1,180 @@
+crates/vb_storage/src/error/mod.rs:21: pub enum JournalError {
+crates/vb_storage/src/error/mod.rs:22:     #[error("fjall journal operation failed: {0}")]
+crates/vb_storage/src/error/mod.rs:23:     Fjall(#[from] fjall::Error),
+crates/vb_storage/src/error/mod.rs:24:     #[error("journal event encoding failed: {0}")]
+crates/vb_storage/src/error/mod.rs:25:     Encode(#[from] postcard::Error),
+crates/vb_storage/src/error/mod.rs:26:     #[error("artifact postcard encode failed: {0}")]
+crates/vb_storage/src/error/mod.rs:27:     PostcardEncodeFailed(#[source] postcard::Error),
+crates/vb_storage/src/error/mod.rs:28:     #[error("journal key capacity exceeded")]
+crates/vb_storage/src/error/mod.rs:29:     KeyCapacity,
+crates/vb_storage/src/error/mod.rs:30:     #[error("duplicate journal event for run {run:?} seq {seq:?}")]
+crates/vb_storage/src/error/mod.rs:31:     DuplicateEvent { run: RunId, seq: EventSeq },
+crates/vb_storage/src/error/mod.rs:32:     #[error("duplicate journal event staged in the same batch for run {run:?} seq {seq:?}")]
+crates/vb_storage/src/error/mod.rs:33:     DuplicateStagedKey { run: RunId, seq: EventSeq },
+crates/vb_storage/src/error/mod.rs:34:     #[error("journal write lock is poisoned")]
+crates/vb_storage/src/error/mod.rs:35:     WriteLockPoisoned,
+crates/vb_storage/src/error/mod.rs:36:     #[error("journal writer queue capacity must be non-zero")]
+crates/vb_storage/src/error/mod.rs:37:     QueueCapacity,
+crates/vb_storage/src/error/mod.rs:38:     #[error("journal writer queue is full")]
+crates/vb_storage/src/error/mod.rs:39:     QueueFull,
+crates/vb_storage/src/error/mod.rs:40:     #[error("journal batch byte budget exceeded: attempted {attempted} > limit {limit}")]
+crates/vb_storage/src/error/mod.rs:41:     JournalBatchBytesExceeded { attempted: u64, limit: u64 },
+crates/vb_storage/src/error/mod.rs:42:     #[error("journal write batch was aborted; commit is a no-op")]
+crates/vb_storage/src/error/mod.rs:43:     BatchAborted,
+crates/vb_storage/src/error/mod.rs:44:     #[error("journal writer queue is shut down")]
+crates/vb_storage/src/error/mod.rs:45:     QueueShutdown,
+crates/vb_storage/src/error/mod.rs:46:     #[error("journal replay returned run {actual:?}, expected {expected:?}")]
+crates/vb_storage/src/error/mod.rs:47:     WrongRun { expected: RunId, actual: RunId },
+crates/vb_storage/src/error/mod.rs:48:     #[error("journal replay sequence gap: expected {expected:?}, actual {actual:?}")]
+crates/vb_storage/src/error/mod.rs:49:     SequenceGap {
+crates/vb_storage/src/error/mod.rs:50:         expected: EventSeq,
+crates/vb_storage/src/error/mod.rs:51:         actual: EventSeq,
+crates/vb_storage/src/error/mod.rs:52:     },
+crates/vb_storage/src/error/mod.rs:53:     #[error(
+crates/vb_storage/src/error/mod.rs:54:         "journal replay key/payload mismatch for run {run:?}: key_seq={key_seq} payload_seq={payload_seq}"
+crates/vb_storage/src/error/mod.rs:55:     )]
+crates/vb_storage/src/error/mod.rs:56:     ReplayKeyMismatch {
+crates/vb_storage/src/error/mod.rs:57:         run: RunId,
+crates/vb_storage/src/error/mod.rs:58:         key_seq: u64,
+crates/vb_storage/src/error/mod.rs:59:         payload_seq: u64,
+crates/vb_storage/src/error/mod.rs:60:     },
+crates/vb_storage/src/error/mod.rs:61:     #[error(
+crates/vb_storage/src/error/mod.rs:62:         "journal replay envelope/payload sequence mismatch for run {run:?}: envelope_seq={envelope_seq} payload_seq={payload_seq}"
+crates/vb_storage/src/error/mod.rs:63:     )]
+crates/vb_storage/src/error/mod.rs:64:     ReplayEnvelopeSequenceMismatch {
+crates/vb_storage/src/error/mod.rs:65:         run: RunId,
+crates/vb_storage/src/error/mod.rs:66:         envelope_seq: u64,
+crates/vb_storage/src/error/mod.rs:67:         payload_seq: u64,
+crates/vb_storage/src/error/mod.rs:68:     },
+crates/vb_storage/src/error/mod.rs:69:     #[error("journal event sequence overflow")]
+crates/vb_storage/src/error/mod.rs:70:     SequenceOverflow,
+crates/vb_storage/src/error/mod.rs:71:     #[error("bad record magic: {found:#010x}")]
+crates/vb_storage/src/error/mod.rs:72:     BadMagic { found: u32 },
+crates/vb_storage/src/error/mod.rs:73:     #[error("unsupported record schema version: {version}")]
+crates/vb_storage/src/error/mod.rs:74:     UnsupportedSchemaVersion { version: u16 },
+crates/vb_storage/src/error/mod.rs:75:     #[error("record schema migration required from {from} to {to}")]
+crates/vb_storage/src/error/mod.rs:76:     MigrationRequired { from: u16, to: u16 },
+crates/vb_storage/src/error/mod.rs:77:     #[error("unknown record kind: {kind}")]
+crates/vb_storage/src/error/mod.rs:78:     UnknownRecordKind { kind: u16 },
+crates/vb_storage/src/error/mod.rs:79:     #[error("record kind {kind} does not belong to magic {magic:#010x}")]
+crates/vb_storage/src/error/mod.rs:80:     RecordKindFamilyMismatch { magic: u32, kind: u16 },
+crates/vb_storage/src/error/mod.rs:81:     #[error(
+crates/vb_storage/src/error/mod.rs:82:         "journal event payload kind {payload_kind} does not match envelope kind {envelope_kind}"
+crates/vb_storage/src/error/mod.rs:83:     )]
+crates/vb_storage/src/error/mod.rs:84:     RecordKindPayloadMismatch {
+crates/vb_storage/src/error/mod.rs:85:         envelope_kind: u16,
+crates/vb_storage/src/error/mod.rs:86:         payload_kind: u16,
+crates/vb_storage/src/error/mod.rs:87:     },
+crates/vb_storage/src/error/mod.rs:88:     #[error("record header length mismatch: {found}")]
+crates/vb_storage/src/error/mod.rs:89:     HeaderLengthMismatch { found: u32 },
+crates/vb_storage/src/error/mod.rs:90:     #[error("record payload too large: {len} > {max}")]
+crates/vb_storage/src/error/mod.rs:91:     PayloadTooLarge { len: u32, max: u32 },
+crates/vb_storage/src/error/mod.rs:92:     #[error("record header checksum mismatch")]
+crates/vb_storage/src/error/mod.rs:93:     HeaderChecksumMismatch,
+crates/vb_storage/src/error/mod.rs:94:     #[error("record payload digest mismatch")]
+crates/vb_storage/src/error/mod.rs:95:     PayloadDigestMismatch,
+crates/vb_storage/src/error/mod.rs:96:     #[error("unexpected end of record")]
+crates/vb_storage/src/error/mod.rs:97:     UnexpectedEof,
+crates/vb_storage/src/error/mod.rs:98:     #[error(
+crates/vb_storage/src/error/mod.rs:99:         "malformed keyspace row under prefix {prefix:#04x}: actual_len={actual_len} expected_len={expected_len}"
+crates/vb_storage/src/error/mod.rs:100:     )]
+crates/vb_storage/src/error/mod.rs:101:     MalformedKeyspaceRow {
+crates/vb_storage/src/error/mod.rs:102:         prefix: u8,
+crates/vb_storage/src/error/mod.rs:103:         expected_len: usize,
+crates/vb_storage/src/error/mod.rs:104:         actual_len: usize,
+crates/vb_storage/src/error/mod.rs:105:     },
+crates/vb_storage/src/error/mod.rs:106:     #[error("postcard payload decode failed: {0}")]
+crates/vb_storage/src/error/mod.rs:107:     PostcardDecodeFailed(#[source] postcard::Error),
+crates/vb_storage/src/error/mod.rs:108:     #[error("journal event is structurally encoded but semantically invalid")]
+crates/vb_storage/src/error/mod.rs:109:     InvalidEvent,
+crates/vb_storage/src/error/mod.rs:110:     #[error("artifact structure validation failed")]
+crates/vb_storage/src/error/mod.rs:111:     ArtifactMalformed,
+crates/vb_storage/src/error/mod.rs:112:     #[error("compiled artifact validation failed: {0}")]
+crates/vb_storage/src/error/mod.rs:113:     ArtifactValidation(#[source] vb_validate::ValidationError),
+crates/vb_storage/src/error/mod.rs:114:     #[error("artifact action registry invalid: {0}")]
+crates/vb_storage/src/error/mod.rs:115:     ArtifactActionRegistry(#[source] vb_core::action::ActionRegistryError),
+crates/vb_storage/src/error/mod.rs:116:     #[error("compiled workflow reconstruction failed: {0}")]
+crates/vb_storage/src/error/mod.rs:117:     WorkflowReconstruction(#[source] WorkflowError),
+crates/vb_storage/src/error/mod.rs:118:     #[error("compiled_ir readback failed: {0}")]
+crates/vb_storage/src/error/mod.rs:119:     CompiledIrReadback(#[source] Box<JournalError>),
+crates/vb_storage/src/error/mod.rs:120:     #[error("admission pre-allocation failed: {0}")]
+crates/vb_storage/src/error/mod.rs:121:     AdmissionAllocationFailed(#[source] std::collections::TryReserveError),
+crates/vb_storage/src/error/mod.rs:122:     #[error("artifact checksum mismatch")]
+crates/vb_storage/src/error/mod.rs:123:     ArtifactChecksumMismatch,
+crates/vb_storage/src/error/mod.rs:124:     #[error("invalid gate count: {found}")]
+crates/vb_storage/src/error/mod.rs:125:     InvalidGateCount { found: u8 },
+crates/vb_storage/src/error/mod.rs:126:     #[error("missing required proof flag: {flag}")]
+crates/vb_storage/src/error/mod.rs:127:     MissingRequiredProofFlag { flag: &'static str },
+crates/vb_storage/src/error/mod.rs:128:     #[error("artifact not found: {digest:?}")]
+crates/vb_storage/src/error/mod.rs:129:     ArtifactNotFound { digest: WorkflowDigest },
+crates/vb_storage/src/error/mod.rs:130:     #[error("accepted artifact admission is required")]
+crates/vb_storage/src/error/mod.rs:131:     AdmissionRequired,
+crates/vb_storage/src/error/mod.rs:132:     #[error("artifact invalid: {source:?}")]
+crates/vb_storage/src/error/mod.rs:133:     ArtifactInvalid { source: ArtifactInvalidSource },
+crates/vb_storage/src/error/mod.rs:134:     #[error("runtime input too large: {len} > {max}")]
+crates/vb_storage/src/error/mod.rs:135:     InputTooLarge { len: u32, max: u32 },
+crates/vb_storage/src/error/mod.rs:136:     #[error("runtime input schema mismatch")]
+crates/vb_storage/src/error/mod.rs:137:     InputSchemaMismatch,
+crates/vb_storage/src/error/mod.rs:138:     #[error("runtime capability denied")]
+crates/vb_storage/src/error/mod.rs:139:     CapabilityDenied,
+crates/vb_storage/src/error/mod.rs:140:     #[error("runtime secret unavailable")]
+crates/vb_storage/src/error/mod.rs:141:     SecretUnavailable,
+crates/vb_storage/src/error/mod.rs:142:     #[error("run already exists")]
+crates/vb_storage/src/error/mod.rs:143:     RunAlreadyExists,
+crates/vb_storage/src/error/mod.rs:144:     #[error("invalid run identifier: {run:?}")]
+crates/vb_storage/src/error/mod.rs:145:     InvalidRunId { run: RunId },
+crates/vb_storage/src/error/mod.rs:146:     #[error("active run capacity exceeded")]
+crates/vb_storage/src/error/mod.rs:147:     ActiveRunCapacityExceeded,
+crates/vb_storage/src/error/mod.rs:148:     #[error("frame allocation failed")]
+crates/vb_storage/src/error/mod.rs:149:     FrameAllocationFailed,
+crates/vb_storage/src/error/mod.rs:150:     #[error("admission journal failed")]
+crates/vb_storage/src/error/mod.rs:151:     AdmissionJournalFailed,
+crates/vb_storage/src/error/mod.rs:152:     #[error(
+crates/vb_storage/src/error/mod.rs:153:         "IndexStatusState byte collision: 0x{byte:02x} below minimum 0x{min:02x} for named status range"
+crates/vb_storage/src/error/mod.rs:154:     )]
+crates/vb_storage/src/error/mod.rs:155:     IndexStatusStateCollision { byte: u8, min: u8 },
+crates/vb_storage/src/error/mod.rs:156:     #[error("strict durability failed")]
+crates/vb_storage/src/error/mod.rs:157:     StrictDurabilityFailed,
+crates/vb_storage/src/error/mod.rs:158:     #[error(
+crates/vb_storage/src/error/mod.rs:159:         "journal replay for run {run:?} exceeded event limit: observed {observed} > limit {limit}"
+crates/vb_storage/src/error/mod.rs:160:     )]
+crates/vb_storage/src/error/mod.rs:161:     TooManyEvents {
+crates/vb_storage/src/error/mod.rs:162:         run: RunId,
+crates/vb_storage/src/error/mod.rs:163:         limit: usize,
+crates/vb_storage/src/error/mod.rs:164:         observed: usize,
+crates/vb_storage/src/error/mod.rs:165:     },
+crates/vb_storage/src/error/mod.rs:166:     #[error("journal replay allocation failed for run {run:?}: requested {requested} events")]
+crates/vb_storage/src/error/mod.rs:167:     ReplayAllocationFailed { run: RunId, requested: usize },
+crates/vb_storage/src/error/mod.rs:168:     #[error("admission clock unavailable")]
+crates/vb_storage/src/error/mod.rs:169:     ClockUnavailable,
+crates/vb_storage/src/error/mod.rs:170:     #[error("invalid configuration for field {field}: {reason}")]
+crates/vb_storage/src/error/mod.rs:171:     InvalidConfig {
+crates/vb_storage/src/error/mod.rs:172:         field: &'static str,
+crates/vb_storage/src/error/mod.rs:173:         reason: &'static str,
+crates/vb_storage/src/error/mod.rs:174:     },
+crates/vb_storage/src/error/mod.rs:175:     #[error(
+crates/vb_storage/src/error/mod.rs:176:         "read-only journal open is not supported; Fjall does not expose a true read-only database open"
+crates/vb_storage/src/error/mod.rs:177:     )]
+crates/vb_storage/src/error/mod.rs:178:     UnsupportedReadOnly,
+crates/vb_storage/src/error/mod.rs:179:     #[error("process lock held by another process (pid: {holder_pid:?}) at {path}")]
+crates/vb_storage/src/error/mod.rs:180:     ProcessLockHeld {
+crates/vb_storage/src/error/mod.rs:181:         path: Box<Path>,
+crates/vb_storage/src/error/mod.rs:182:         source: rustix::io::Errno,
+crates/vb_storage/src/error/mod.rs:183:         holder_pid: Option<u32>,
+crates/vb_storage/src/error/mod.rs:184:     },
+crates/vb_storage/src/error/mod.rs:185:     #[error("process lock I/O error at {path}: {source}")]
+crates/vb_storage/src/error/mod.rs:186:     ProcessLockIo {
+crates/vb_storage/src/error/mod.rs:187:         path: Box<Path>,
+crates/vb_storage/src/error/mod.rs:188:         source: std::io::Error,
+crates/vb_storage/src/error/mod.rs:189:     },
+crates/vb_storage/src/error/mod.rs:190:     #[error("trim operation failed: {0}")]
+crates/vb_storage/src/error/mod.rs:191:     Trim(Box<crate::TrimError>),
+crates/vb_storage/src/error/mod.rs:192:     #[error("emergency deny marker has unsupported version: {version}")]
+crates/vb_storage/src/error/mod.rs:193:     EmergencyDenyMarkerUnsupportedVersion { version: u8 },
+crates/vb_storage/src/error/mod.rs:194:     #[error("emergency deny marker is malformed (wrong length or encoding)")]
+crates/vb_storage/src/error/mod.rs:195:     EmergencyDenyMarkerMalformed,
+crates/vb_storage/src/error/mod.rs:196: }
+crates/vb_storage/src/error/mod.rs:197: 
+crates/vb_storage/src/error/mod.rs:198: #[path = "conversions.rs"]
+crates/vb_storage/src/error/mod.rs:199: mod conversions;
+FILE /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs

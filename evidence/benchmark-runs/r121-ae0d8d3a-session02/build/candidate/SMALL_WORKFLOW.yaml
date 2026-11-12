@@ -1,0 +1,12 @@
+version: velvet-ballistics/v1
+name: bench_minimal
+when:
+  manual: {}
+steps:
+  - id: save_value
+    save:
+      output: saved
+      value: '1'
+  - id: done
+    finish:
+      result: saved

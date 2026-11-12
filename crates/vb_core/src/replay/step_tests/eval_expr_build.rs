@@ -215,7 +215,7 @@ fn replay_build_object_empty_fields() -> Result<(), CoreError> {
 #[test]
 fn replay_build_object_uninitialized_field_returns_error() -> Result<(), CoreError> {
     let field_sym = SymbolId::new(0);
-    let plan = make_plan(
+    let plan = make_rejected_plan(
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -236,6 +236,7 @@ fn replay_build_object_uninitialized_field_returns_error() -> Result<(), CoreErr
         ],
         vec![],
         vec![],
+        crate::workflow::SlotFlowFailure::UninitializedRead,
     )?;
 
     let mut run = RunFrame::new(
@@ -470,7 +471,7 @@ fn replay_build_list_empty_items() -> Result<(), CoreError> {
 
 #[test]
 fn replay_build_list_uninitialized_item_returns_error() -> Result<(), CoreError> {
-    let plan = make_plan(
+    let plan = make_rejected_plan(
         vec![
             crate::workflow::node(
                 StepIdx::new(0),
@@ -491,6 +492,7 @@ fn replay_build_list_uninitialized_item_returns_error() -> Result<(), CoreError>
         ],
         vec![],
         vec![],
+        crate::workflow::SlotFlowFailure::UninitializedRead,
     )?;
 
     let mut run = RunFrame::new(

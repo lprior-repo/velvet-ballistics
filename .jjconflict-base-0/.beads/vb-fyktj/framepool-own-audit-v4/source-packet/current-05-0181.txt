@@ -1,0 +1,111 @@
+ACTUAL CURRENT SOURCE crates/vb_runtime/src/shard/tests/chunk_017.rs
+181:             action_contracts: crate::shard::tests::test_fixtures::contracts_through(
+182:                 vb_core::ActionId::new(0)
+183:             )
+184:         }),
+185:         Ok(())
+186:     );
+187:     assert_eq!(shard.tick(), Ok(true));
+188:     assert_eq!(
+189:         shard.enqueue(ShardCommand::Inspect {
+190:             run,
+191:             correlation: 1
+192:         }),
+193:         Ok(())
+194:     );
+195:     assert_eq!(shard.tick(), Ok(true));
+196:     match shard.take_inspect_response() {
+197:         Some(InspectResponse::Found(_)) => {}
+198:         other => {
+199:             let msg = format!("expected Found, got {other:?}");
+200:             panic!("{msg}");
+201:         }
+202:     }
+203: }
+204: 
+205: // BH-SHD-07: Frame pool is bounded by capacity — no fresh allocation as fallback.
+206: // Severity: Low. Mitigated by max_active_runs.
+207: #[test]
+208: fn bh_shd_07_frame_pool_bounded_no_fresh_alloc() {
+209:     let mut pool = crate::frame_pool::FramePool::new(2, 1, 2)
+210:         .ok()
+211:         .unwrap_or_else(|| panic!("FramePool::new failed"));
+212:     // With pre-allocation, taking 2 frames exhausts the pool
+213:     let f1 = pool.take(super::RunId::new(1), vb_core::ids::StepIdx::ZERO);
+214:     let f2 = pool.take(super::RunId::new(2), vb_core::ids::StepIdx::ZERO);
+215:     assert!(f1.is_ok(), "BH-SHD-07: f1 should succeed (within capacity)");
+216:     assert!(f2.is_ok(), "BH-SHD-07: f2 should succeed (within capacity)");
+217:     // A 3rd take returns AllocationFailed (no fresh allocation fallback)
+218:     let f3 = pool.take(super::RunId::new(3), vb_core::ids::StepIdx::ZERO);
+219:     assert!(
+220:         matches!(f3, Err(vb_core::errors::CoreError::AllocationFailed)),
+221:         "BH-SHD-07: f3 should fail with AllocationFailed (pool bounded, no fresh alloc)"
+222:     );
+223: }
+224: 
+225: // BH-SHD-08: pending_timers allows only one timer per run (last wins).
+226: // Severity: Low. Invariant maintained by workflow structure.
+227: #[test]
+228: fn bh_shd_08_pending_timers_last_wins_per_run() {
+229:     let config = small_config();
+230:     let mut shard = Shard::new(config);
+231:     let Some(workflow) = timed_wait_then_finish_workflow() else {
+232:         return;
+233:     };
+234:     let run = super::RunId::new(808);
+235:     assert_eq!(
+236:         shard.enqueue(ShardCommand::SubmitWithContracts {
+237:             run: run,
+238:             workflow: workflow,
+239:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+240:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+241:         }),
+242:         Ok(())
+243:     );
+244:     assert_eq!(shard.tick(), Ok(true));
+245:     assert_eq!(shard.pending_timer_count(), 1);
+246:     let timer1 = shard.pending_timer_get(run);
+247:     assert!(matches!(
+248:         shard.pending_timer_insert(
+249:             run,
+250:             super::types::PendingTimer {
+251:                 step: vb_core::ids::StepIdx::new(99),
+252:                 kind: super::types::PendingTimerKind::Ask,
+253:                 generation: 2,
+254:                 deadline: std::time::Instant::now(),
+255:             },
+256:         ),
+257:         Ok(Some(_))
+258:     ));
+259:     let timer2 = shard.pending_timer_get(run);
+260:     assert_ne!(timer1, timer2, "BH-SHD-08: second timer replaced first");
+261:     assert_eq!(
+262:         timer2.map(|t| t.step),
+263:         Some(vb_core::ids::StepIdx::new(99)),
+264:         "BH-SHD-08: replacement timer has different step"
+265:     );
+266: }
+267: 
+268: // BH-SHD-09: AskAnswer for non-existent run errors correctly.
+269: #[test]
+270: fn bh_shd_09_ask_answer_for_nonexistent_run_errors() {
+271:     let config = small_config();
+272:     let mut shard = Shard::new(config);
+273:     let run = super::RunId::new(809);
+274:     let answer = AskAnswer {
+275:         ticket: AskTicket {
+276:             run,
+277:             ask_step: vb_core::ids::StepIdx::ZERO,
+278:             resume_step: vb_core::ids::StepIdx::new(1),
+279: 
+280:             answer_slot: vb_core::ids::SlotIdx::ZERO,
+281:             boundary_seq: vb_storage::EventSeq::ZERO,
+282:         },
+283:         answer_slot: SlotIdx::new(0),
+284:         value: vb_core::value::SlotValue::I64(42),
+285:         taint: vb_core::value::Taint::Clean,
+286:         encoded_len: 0,
+287:     };
+288:     assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
+289:     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+290: }

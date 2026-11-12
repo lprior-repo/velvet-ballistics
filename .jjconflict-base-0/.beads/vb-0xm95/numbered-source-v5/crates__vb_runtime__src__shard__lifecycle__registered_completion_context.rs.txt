@@ -1,0 +1,59 @@
+1: //! Focused helpers for registered action completion context construction.
+2: //!
+3: //! Extracted from `Shard::registered_action_context` to keep the caller
+4: //! under 25 logical lines while preserving exact artifact loading,
+5: //! policy pin conversion, and context assembly semantics.
+6: 
+7: use crate::admission::AcceptedArtifactStore;
+8: use crate::shard::types::RunState;
+9: use crate::{RuntimeError, RuntimeResult};
+10: use vb_core::action::ActionTicket;
+11: use vb_core::policy::{PinnedAdmissionPolicy, PolicyDigest};
+12: use vb_storage::AcceptedArtifact;
+13: 
+14: /// Load the accepted artifact for a registered action admission,
+15: /// mapping storage errors to the action completion error type.
+16: pub(super) fn load_admitted_artifact(
+17:     store: &dyn AcceptedArtifactStore,
+18:     digest: vb_core::WorkflowDigest,
+19: ) -> RuntimeResult<AcceptedArtifact> {
+20:     store
+21:         .load_accepted_artifact(digest)
+22:         .map_err(|_| RuntimeError::InvalidActionCompletion)
+23: }
+24: 
+25: /// Convert a RunPolicyPin to the policy admission policy enum.
+26: /// Pinned digests are converted to actual artifact digests;
+27: /// Unverified is preserved without fabrication.
+28: pub(super) fn convert_policy_pin(pin: &vb_storage::RunPolicyPin) -> PinnedAdmissionPolicy {
+29:     match pin {
+30:         vb_storage::RunPolicyPin::Pinned(digest) => {
+31:             PinnedAdmissionPolicy::Artifact(PolicyDigest::from_bytes(digest.as_bytes()))
+32:         }
+33:         vb_storage::RunPolicyPin::Unverified => PinnedAdmissionPolicy::Unverified,
+34:     }
+35: }
+36: 
+37: /// Construct the full registered action context from resolved components.
+38: pub(super) fn build_registered_action_context(
+39:     state: &RunState,
+40:     ticket: ActionTicket,
+41:     artifact: AcceptedArtifact,
+42:     policy_pin: PinnedAdmissionPolicy,
+43: ) -> RuntimeResult<super::registered_completion::RegisteredActionContext> {
+44:     let (value, input_taint) =
+45:         super::registered_context_helpers::resolve_action_input(state, ticket)?;
+46:     let encoded = super::registered_context_helpers::encode_action_input(value)?;
+47:     let output =
+48:         super::registered_context_helpers::build_action_output(state, ticket, value, &encoded)?;
+49:     super::preflight_action_completion(state, ticket, output)?;
+50:     Ok(super::registered_completion::RegisteredActionContext {
+51:         artifact,
+52:         output,
+53:         value,
+54:         mode: state.registered_execution,
+55:         admission_pin: policy_pin,
+56:         encoded_bytes: encoded,
+57:         input_taint,
+58:     })
+59: }

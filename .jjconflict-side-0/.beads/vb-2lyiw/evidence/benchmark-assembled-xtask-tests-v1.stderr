@@ -1,0 +1,37 @@
+   Compiling libc v0.2.191
+   Compiling rand_core v0.10.1
+   Compiling getrandom v0.4.3
+   Compiling arraydeque v0.5.1
+   Compiling foldhash v0.1.5
+   Compiling hashbrown v0.15.5
+   Compiling saphyr-parser-bw v0.0.611
+   Compiling hashlink v0.10.0
+   Compiling bit-vec v0.10.1
+   Compiling getrandom v0.3.4
+   Compiling tempfile v3.27.0
+   Compiling ahash v0.8.12
+   Compiling wait-timeout v0.2.1
+   Compiling serde-saphyr v0.0.25
+   Compiling quick-error v1.2.3
+   Compiling fnv v1.0.7
+   Compiling rusty-fork v0.3.1
+   Compiling rand v0.10.3
+   Compiling bit-set v0.11.1
+   Compiling saphyr-parser v0.0.6
+   Compiling chacha20 v0.10.2
+   Compiling rand_xorshift v0.5.0
+   Compiling ordered-float v5.5.0
+   Compiling unarray v0.1.4
+   Compiling proptest v1.12.0
+   Compiling xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/xtask)
+   Compiling saphyr v0.0.6
+   Compiling kani v0.0.1
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.76s
+     Running unittests src/lib.rs (xtask/target/debug/deps/xtask-ef0134484e5d900a)
+     Running unittests src/main.rs (xtask/target/debug/deps/xtask-f9becf257dcda604)
+     Running tests/benchmark_policy_cli.rs (xtask/target/debug/deps/benchmark_policy_cli-b247c495f268bb8c)
+     Running tests/bundle_tests.rs (xtask/target/debug/deps/bundle_tests-4c279fdf07aaf1a3)
+     Running tests/integration_gates.rs (xtask/target/debug/deps/integration_gates-b6f3509317d18143)
+     Running tests/ui_release_errors.rs (xtask/target/debug/deps/ui_release_errors-36386682c52abdb1)
+     Running tests/ui_release_gates.rs (xtask/target/debug/deps/ui_release_gates-69ea98341f1d1653)
+     Running tests/ui_release_tooling_red_phase.rs (xtask/target/debug/deps/ui_release_tooling_red_phase-8da94dc76fafae7a)

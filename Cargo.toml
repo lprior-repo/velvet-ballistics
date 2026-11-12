@@ -88,6 +88,13 @@ lto = "thin"
 codegen-units = 1
 strip = "symbols"
 
+[profile.hardened]
+inherits = "release"
+debug = true
+debug-assertions = true
+overflow-checks = true
+strip = "none"
+
 [profile.bench]
 inherits = "release"
 debug = true

@@ -8,8 +8,9 @@ use crate::value::ConstValue;
 use crate::value::SlotValue;
 use crate::value_store::ValueStore;
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, ExprBranch, ExprOp, ExprProgram, ResourceContract, SlotBranch,
-    WorkflowParts, check_expr_stack_bound,
+    CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind, ExprBranch, ExprOp,
+    ExprProgram, InputSlotKind, ResourceContract, SlotBranch, WorkflowParts,
+    check_expr_stack_bound,
 };
 
 use crate::ids::ActionId;

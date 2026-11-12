@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-policy-integration-v18",
+  "argv": [
+    "zstd",
+    "-dc",
+    "/home/lewis/src/isoloated/vb-policy-integration-v18/.beads/vb-ny068/evidence/actual-collection-v20/scratch/heaptrack/ht-ipc_frame_decode.zst"
+  ],
+  "exit_code": 0,
+  "seconds": 0.055,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/src/isoloated/vb-policy-integration-v18/.beads/vb-ny068/evidence/actual-collection-v20/scratch/gate/ipc_frame_decode-heaptrack-1792690211127923952-zstd"
+}

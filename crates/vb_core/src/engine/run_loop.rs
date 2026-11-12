@@ -56,6 +56,7 @@ mod tests {
     fn two_step_workflow(value: ConstValue) -> Result<CompiledWorkflow, String> {
         CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
+            source_metadata: None,
             input_slots: Box::new([]),
             name: Box::<str>::from("run_loop_test"),
             digest: WorkflowDigest::from_bytes([0x99; 32]),
@@ -165,7 +166,12 @@ mod tests {
     fn drive_deterministic_stops_on_do_node_suspension() -> Result<(), String> {
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             semantic_source_identity: None,
-            input_slots: Box::new([]),
+            source_metadata: None,
+            input_slots: Box::new([crate::workflow::CompiledInputSlot {
+                slot: SlotIdx::new(0),
+                kind: crate::workflow::InputSlotKind::Any,
+                constraint: crate::workflow::CompiledInputConstraint::required(),
+            }]),
             name: Box::<str>::from("do_suspend"),
             digest: WorkflowDigest::from_bytes([0xDD; 32]),
             nodes: vec![node(

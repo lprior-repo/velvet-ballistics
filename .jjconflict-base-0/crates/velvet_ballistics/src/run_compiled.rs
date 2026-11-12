@@ -1,0 +1,178 @@
+//! Module: run_compiled
+
+use crate::app_impl::prelude::*;
+
+pub(crate) fn cmd_run_compiled(
+    vbir_path: &std::path::Path,
+    input_bin: &std::path::Path,
+    durability: DurabilityMode,
+    db: Option<&std::path::Path>,
+    output: OutputFormat,
+) -> ExitCode {
+    let input_data = match read_file(input_bin, output, CliExitCode::ValidationFailed) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+
+    let ir_bytes = match read_file(vbir_path, output, CliExitCode::CompileFailed) {
+        Ok(b) => b,
+        Err(code) => return code,
+    };
+
+    let compiled: vb_core::CompiledWorkflow = match vb_storage::decode_compiled_ir(&ir_bytes, None)
+    {
+        Ok(c) => c,
+        Err(vb_storage::JournalError::WorkflowReconstruction(e)) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("compiled IR validation error: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("compiled IR validation error: {e}");
+            }
+            return CliExitCode::CompileFailed.into();
+        }
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error deserializing compiled IR: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error deserializing compiled IR: {e}");
+            }
+            return CliExitCode::CompileFailed.into();
+        }
+    };
+
+    let inputs = match map_runtime_inputs(&compiled, &input_data) {
+        Ok(inputs) => inputs,
+        Err(error) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": error.to_string()
+                    }),
+                    output,
+                );
+            } else {
+                errln!("{error}");
+            }
+            return CliExitCode::CompileFailed.into();
+        }
+    };
+
+    run_compiled_workflow(&compiled, inputs, durability, db, output)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum InputMappingError {
+    DecodeFailed,
+    SlotCountExceeded,
+    KindMismatch {
+        slot: vb_core::SlotIdx,
+        expected_kind: vb_core::InputSlotKind,
+    },
+    MissingRequiredInput {
+        slot: vb_core::SlotIdx,
+    },
+}
+
+impl std::fmt::Display for InputMappingError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::DecodeFailed => formatter.write_str(INPUT_MAPPING_DECODE_FAILED_MESSAGE),
+            Self::SlotCountExceeded => {
+                formatter.write_str(INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE)
+            }
+            Self::KindMismatch {
+                slot,
+                expected_kind,
+            } => write!(
+                formatter,
+                "INPUT_MAPPING_FAILED: slot {slot:?} value kind mismatch, expected {expected_kind:?}"
+            ),
+            Self::MissingRequiredInput { slot } => write!(
+                formatter,
+                "INPUT_MAPPING_FAILED: missing required input for slot {slot:?}"
+            ),
+        }
+    }
+}
+
+pub(crate) fn map_runtime_inputs(
+    compiled: &vb_core::CompiledWorkflow,
+    input_data: &[u8],
+) -> Result<Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>, InputMappingError> {
+    let input_slots = compiled.input_slots();
+    let values: Box<[vb_core::SlotValue]> = if input_data.is_empty() {
+        Box::from([])
+    } else {
+        let (values, remainder) =
+            postcard::take_from_bytes::<Box<[vb_core::SlotValue]>>(input_data)
+                .map_err(|_| InputMappingError::DecodeFailed)?;
+        if !remainder.is_empty() {
+            return Err(InputMappingError::DecodeFailed);
+        }
+        values
+    };
+    if values.len() > input_slots.len() {
+        return Err(InputMappingError::SlotCountExceeded);
+    }
+    let mut mapped = Vec::with_capacity(values.len());
+    for (slot, value) in input_slots.iter().zip(values.iter()) {
+        let value_kind = vb_core::input_validation::input_value_kind(*value);
+        if !(*value == vb_core::SlotValue::Null && slot.constraint.nullability.allows_null())
+            && slot.kind != vb_core::InputSlotKind::Any
+            && value_kind != slot.kind
+        {
+            return Err(InputMappingError::KindMismatch {
+                slot: slot.slot,
+                expected_kind: slot.kind,
+            });
+        }
+        mapped.push((slot.slot, *value));
+    }
+    // A short value list no longer silently drops trailing ports: every
+    // required slot without a supplied value fails here, before admission.
+    // Optional and defaulted slots are satisfied downstream by storage.
+    for slot in input_slots.iter().skip(values.len()) {
+        if slot.constraint.requires_value() {
+            return Err(InputMappingError::MissingRequiredInput { slot: slot.slot });
+        }
+    }
+    Ok(mapped.into_boxed_slice())
+}
+
+pub(crate) fn runtime_journal_for_mode(
+    durability: DurabilityMode,
+    db: Option<&std::path::Path>,
+    output: OutputFormat,
+) -> Result<vb_runtime::journal::SharedRuntimeJournal, ExitCode> {
+    match durability {
+        DurabilityMode::None => Ok(vb_runtime::journal::NoopRuntimeJournal::shared()),
+        DurabilityMode::Journaled => open_storage_runtime_journal(db, false, output),
+        DurabilityMode::Strict => open_storage_runtime_journal(db, true, output),
+    }
+}
+
+pub(crate) fn runtime_config_for_durability(
+    durability: DurabilityMode,
+) -> vb_runtime::shard::ShardConfig {
+    vb_runtime::shard::ShardConfig {
+        policy: crate::submit::submission_policy(durability),
+        ..vb_runtime::shard::ShardConfig::default()
+    }
+}
+
+#[cfg(test)]
+#[path = "run_compiled_input_tests.rs"]
+mod input_tests;

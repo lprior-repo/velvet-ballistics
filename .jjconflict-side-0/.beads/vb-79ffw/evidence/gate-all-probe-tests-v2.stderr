@@ -1,0 +1,7 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local3090-authority-review/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.32s
+     Running tests/vb_79ffw_ticket_authority_probe.rs (target/debug/deps/vb_79ffw_ticket_authority_probe-b689fe577635266d)
+Events before stale rejection: 14
+Tick rejected stale failure: invalid action completion
+Events after stale rejection: 14
+Events after completion: 18

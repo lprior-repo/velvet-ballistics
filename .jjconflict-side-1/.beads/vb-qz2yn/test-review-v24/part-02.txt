@@ -1,0 +1,100 @@
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:100:     let journal = &tj.journal;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:101: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:102:     let max_bytes = u64::MAX.to_be_bytes();
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:103:     journal
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:104:         .artifact_acceptance
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:105:         .insert(b"last_issued", &max_bytes)
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:106:         .map_err(|e| format!("insert u64::MAX counter: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:107: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:108:     let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:109:     let result = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed);
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:110: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:111:     assert!(
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:112:         matches!(result, Err(JournalError::SequenceOverflow)),
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:113:         "expected SequenceOverflow, got {result:?}"
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:114:     );
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:115: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:116:     let counter = journal
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:117:         .artifact_acceptance
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:118:         .get(b"last_issued")
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:119:         .map_err(|e| format!("read counter: {e}"))?
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:120:         .ok_or_else(|| "counter should still exist")?;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:121:     assert_eq!(counter, &max_bytes, "counter should be unchanged");
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:122:     assert!(
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:123:         journal.compiled_ir.iter().next().is_none(),
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:124:         "no compiled_ir written"
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:125:     );
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:126: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:127:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:128: }
+FILE crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:1: //! Concurrency test for the artifact acceptance sequence counter.
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:2: //!
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:3: //! Tests that 8 concurrent submissions to the same journal each receive a
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:4: //! unique sequence number (1-8), proving the write_lock serialization and
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:5: //! counter atomicity. Status: PENDING compiler and test execution by coordinator.
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:6: 
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:7: use std::collections::HashSet;
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:8: use vb_core::RuntimePolicy;
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:9: 
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:10: use super::{minimal_workflow, temp_journal};
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:11: use crate::admission::*;
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:12: 
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:13: /// 8 concurrent submissions must all succeed with unique sequences 1-8.
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:14: #[test]
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:15: fn eight_concurrent_submissions_get_unique_sequences_1_through_8() -> Result<(), String> {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:16:     let journal = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:17:     let workflow = minimal_workflow()?;
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:18: 
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:19:     let journal_ref = &journal;
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:20:     let artifacts = std::thread::scope(|scope| -> Result<Vec<AcceptedArtifact>, String> {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:21:         let mut handles = Vec::with_capacity(8);
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:22:         for _ in 0..8 {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:23:             let wf = workflow.clone();
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:24:             let handle = scope.spawn(move || {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:25:                 submit_artifact(journal_ref, &wf, RuntimePolicy::Relaxed)
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:26:                     .map_err(|e| format!("submit_artifact failed: {e}"))
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:27:             });
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:28:             handles.push(handle);
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:29:         }
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:30: 
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:31:         let mut results = Vec::with_capacity(8);
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:32:         for handle in handles {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:33:             let artifact = handle
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:34:                 .join()
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:35:                 .map_err(|e| format!("thread join failed: {e:?}"))??;
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:36:             results.push(artifact);
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:37:         }
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:38:         Ok(results)
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:39:     })?;
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:40: 
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:41:     if artifacts.len() != 8 {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:42:         return Err(format!("expected 8 artifacts, got {}", artifacts.len()));
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:43:     }
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:44: 
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:45:     // Sequences must be unique and form the set {1, 2, 3, 4, 5, 6, 7, 8}.
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:46:     let mut seqs = Vec::with_capacity(8);
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:47:     for artifact in &artifacts {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:48:         seqs.push(artifact.accepted_at_seq.get());
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:49:     }
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:50:     let mut sorted_seqs = seqs.clone();
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:51:     sorted_seqs.sort();
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:52:     let expected: Vec<u64> = (1..=8).collect();
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:53:     if sorted_seqs != expected {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:54:         return Err(format!("sequences must be 1..=8, got {:?}", sorted_seqs));
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:55:     }
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:56: 
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:57:     // All digests must be unique (HashSet, not Ord sort).
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:58:     let mut digests = HashSet::new();
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:59:     for artifact in &artifacts {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:60:         digests.insert(artifact.digest);
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:61:     }
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:62:     if digests.len() != 8 {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:63:         return Err(format!("expected 8 unique digests, got {}", digests.len()));
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:64:     }
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:65: 
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:66:     // Full readback: decode each artifact and verify identity.
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:67:     for (i, artifact) in artifacts.iter().enumerate() {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:68:         let record = journal
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:69:             .compiled_ir(artifact.digest)
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:70:             .map_err(|e| format!("compiled_ir read failed for artifact {i}: {e}"))?

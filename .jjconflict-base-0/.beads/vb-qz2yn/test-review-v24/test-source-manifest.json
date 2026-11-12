@@ -1,0 +1,45 @@
+{
+  "source": "806917730d7013d973ed6d27d57b48a94db885ee",
+  "tests": [
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs",
+      "sha256": "a1942fc1a19f8b0b74d648a839f89ef0dbc8461a869a63cf15257655f3982b30"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs",
+      "sha256": "487a8d6feeb04fb328548c24e29a10e4667d477fbf754a88da951ef65f61b40b"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs",
+      "sha256": "9c3742ab5a4871dbfa5288b8df9c9db029a747db84259f21f6231e92f44c420b"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_tests.rs",
+      "sha256": "59f3cf42934f452b5b166a520cf68edd34b9fa6f9d19cded133df2198d3a625b"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/tests.rs",
+      "sha256": "1573aeea7c2c0c96c53378602e338cd65217dcfc463478e260d5099d62277159"
+    },
+    {
+      "path": "crates/vb_storage/src/journal/tests.rs",
+      "sha256": "196bf73ab8cfbe054ba58607f2d61095d611a331b9c5020f414dceea3e82c26f"
+    },
+    {
+      "path": "crates/vb_storage/src/tests.rs",
+      "sha256": "11e03571e867617142424bda3371ba9606f6c5fcd295aef732e8188427701002"
+    },
+    {
+      "path": "crates/vb_storage/src/vb_2bok_durability_gate_tests.rs",
+      "sha256": "3f6204f2a19e09329e4bba27670f8b91c296e31412fba61effb5a08cd04e5c36"
+    },
+    {
+      "path": "crates/workspace_tests/tests/fjall_keyspace_manifest_tests.rs",
+      "sha256": "64f3475f696580831b56a19f5b10f176adb0324566ed005859b5c70d8cdc944e"
+    },
+    {
+      "path": "crates/workspace_tests/tests/restate_doctor_key_decode_tests.rs",
+      "sha256": "0fe198fcb7dcc6c9fd9dd9dafdee32b86cfe5602cd87d94798778305426cf5bb"
+    }
+  ]
+}

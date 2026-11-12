@@ -89,7 +89,7 @@ inputs:
   items:
     is: list
     of: any
-    max: 4294967295
+    max: 65535
 steps:
   - id: seed
     save:
@@ -101,10 +101,16 @@ steps:
       input: $input.items
       at_once: 1
       steps:
-        - id: body
-          save:
-            output: seen
-            value: '1'
+        - id: inner
+          for_each:
+            variable: inner_entry
+            input: $input.items
+            at_once: 1
+            steps:
+              - id: body
+                save:
+                  output: seen
+                  value: '1'
   - id: done
     finish:
       result: seeded
@@ -133,7 +139,7 @@ steps:
         assert!(message.is_some(), "profile {} message", profile);
         let msg = message.ok_or("message")?;
         assert!(
-            msg.contains("budget step count overflow: 8589934593 cannot be represented"),
+            msg.contains("budget step count overflow: 12884901891 cannot be represented"),
             "profile {} message content",
             profile
         );

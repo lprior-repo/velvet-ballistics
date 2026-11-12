@@ -1,0 +1,530 @@
+// Ticket authority matrix tests for vb-rcizj
+// Tests all ticket validation branches: ownership, stale, future, capacity, attempt=0,
+// wrong run/step/action, invalid idempotency key, advanced sequence.
+// Expected errors follow production error precedence documented in
+// contract-error-precedence-addendum.md.
+
+#![allow(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::expect_used,
+    clippy::get_first,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unwrap_used
+)]
+
+use vb_core::action::{
+    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
+    Idempotency, RetryPolicy, RetrySafety, SideEffect,
+};
+use vb_core::capability::CapabilitySet;
+use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::value::{SlotValue, Taint};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+};
+
+use vb_runtime::journal::{SharedRuntimeJournal, VolatileRuntimeJournal};
+use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
+
+fn action_workflow() -> CompiledWorkflow {
+    let action = CompiledNode {
+        id: StepIdx::ZERO,
+        output: Some(SlotIdx::new(0)),
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::ZERO,
+        },
+    };
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::from("single_action"),
+        digest: WorkflowDigest::from_bytes([0xAA; 32]),
+        nodes: Box::from([action]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::new([]),
+    })
+    .expect("single_action workflow must compile")
+}
+
+fn small_config() -> ShardConfig {
+    ShardConfig {
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+        ..ShardConfig::default()
+    }
+}
+
+fn contract_required_capability(action: ActionId) -> vb_core::capability::Capability {
+    vb_core::capability::Capability::new("__contract_required__".into(), action)
+}
+
+fn action_contract(action: ActionId, required: bool) -> ActionContract {
+    let required_capabilities = if required {
+        Box::from([contract_required_capability(action)])
+    } else {
+        Box::from([])
+    };
+    ActionContract {
+        id: action,
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities,
+    }
+}
+
+fn contracts_through(action: ActionId) -> Box<[ActionContract]> {
+    let target = action.get();
+    let mut contracts = Vec::with_capacity(usize::from(target).saturating_add(1));
+    let mut id = 0u16;
+    loop {
+        let current = ActionId::new(id);
+        contracts.push(action_contract(current, id == target));
+        if id == target {
+            break;
+        }
+        id = id.saturating_add(1);
+    }
+    contracts.into_boxed_slice()
+}
+
+fn submit_action_run(shard: &mut Shard, run: RunId) -> ActionTicket {
+    let wf = action_workflow();
+    shard
+        .enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow: wf,
+            inputs: Box::from([(SlotIdx::new(0), SlotValue::Bool(false))]),
+            caps: CapabilitySet::from_grants(Box::from([contract_required_capability(
+                ActionId::new(0),
+            )])),
+            action_contracts: contracts_through(ActionId::new(0)),
+        })
+        .expect("submit must succeed");
+    shard.tick().expect("tick after submit");
+    shard
+        .pending_action_get(run)
+        .expect("pending ticket must exist after submit")
+}
+
+// Helper: forge a ticket with modified fields
+fn forge_ticket(
+    base: &ActionTicket,
+    run: Option<RunId>,
+    step: Option<StepIdx>,
+    action: Option<ActionId>,
+    attempt: Option<u16>,
+    capacity: Option<u16>,
+    seq: Option<SeqNo>,
+) -> ActionTicket {
+    let new_run = run.unwrap_or(base.run);
+    let new_step = step.unwrap_or(base.step);
+    let new_action = action.unwrap_or(base.action);
+    let new_attempt = attempt.unwrap_or(base.attempt);
+    let new_capacity = capacity.unwrap_or(base.capacity);
+    let new_seq = seq.unwrap_or(base.seq);
+
+    let idempotency_key =
+        vb_runtime::engine::action::compute_idempotency_key(new_run, new_seq, new_action);
+
+    ActionTicket {
+        run: new_run,
+        step: new_step,
+        action: new_action,
+        attempt: new_attempt,
+        capacity: new_capacity,
+        seq: new_seq,
+        idempotency_key,
+    }
+}
+
+fn non_retryable_failure() -> ActionFailure {
+    ActionFailure {
+        code: ActionFailureCode::InvalidInput,
+        retry_policy: RetryPolicy::NonRetryable,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    }
+}
+
+#[test]
+fn action_completed_wrong_run_returns_run_not_found() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let run = RunId::new(8010);
+    submit_action_run(&mut shard, run);
+
+    let ticket = shard.pending_action_get(run).unwrap();
+    // Forge ticket with wrong run
+    let forged = forge_ticket(&ticket, Some(RunId::new(99999)), None, None, None, None, None);
+    shard
+        .enqueue(ShardCommand::ActionCompleted {
+            ticket: forged,
+            output: ActionOutputReady {
+                output_slot: SlotIdx::new(0),
+                value: SlotValue::I64(0),
+                taint: Taint::Clean,
+                encoded_len: 2,
+            },
+        })
+        .expect("enqueue must succeed");
+    let result = shard.tick();
+    match result {
+        Err(vb_runtime::RuntimeError::RunNotFound { .. }) => {}
+        other => panic!("expected RunNotFound, got {:?}", other),
+    }
+}
+
+#[test]
+fn action_completed_wrong_step_returns_invalid() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let run = RunId::new(8020);
+    let ticket = submit_action_run(&mut shard, run);
+
+    // Forge ticket with wrong step
+    let forged = forge_ticket(&ticket, None, Some(StepIdx::new(99)), None, None, None, None);
+    shard
+        .enqueue(ShardCommand::ActionCompleted {
+            ticket: forged,
+            output: ActionOutputReady {
+                output_slot: SlotIdx::new(0),
+                value: SlotValue::I64(0),
+                taint: Taint::Clean,
+                encoded_len: 2,
+            },
+        })
+        .expect("enqueue must succeed");
+    let result = shard.tick();
+    match result {
+        Err(vb_runtime::RuntimeError::InvalidActionCompletion) => {}
+        other => panic!("expected InvalidActionCompletion (wrong step), got {:?}", other),
+    }
+}
+
+#[test]
+fn action_completed_wrong_action_returns_invalid() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let run = RunId::new(8021);
+    let ticket = submit_action_run(&mut shard, run);
+
+    // Forge ticket with wrong action
+    let forged = forge_ticket(&ticket, None, None, Some(ActionId::new(99)), None, None, None);
+    shard
+        .enqueue(ShardCommand::ActionCompleted {
+            ticket: forged,
+            output: ActionOutputReady {
+                output_slot: SlotIdx::new(0),
+                value: SlotValue::I64(0),
+                taint: Taint::Clean,
+                encoded_len: 2,
+            },
+        })
+        .expect("enqueue must succeed");
+    let result = shard.tick();
+    match result {
+        Err(vb_runtime::RuntimeError::InvalidActionCompletion) => {}
+        other => panic!("expected InvalidActionCompletion (wrong action), got {:?}", other),
+    }
+}
+
+#[test]
+fn action_completed_attempt_zero_returns_invalid() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let run = RunId::new(8030);
+    let ticket = submit_action_run(&mut shard, run);
+
+    // Forge ticket with attempt=0
+    let forged = forge_ticket(&ticket, None, None, None, Some(0), None, None);
+    shard
+        .enqueue(ShardCommand::ActionCompleted {
+            ticket: forged,
+            output: ActionOutputReady {
+                output_slot: SlotIdx::new(0),
+                value: SlotValue::I64(0),
+                taint: Taint::Clean,
+                encoded_len: 2,
+            },
+        })
+        .expect("enqueue must succeed");
+    let result = shard.tick();
+    match result {
+        Err(vb_runtime::RuntimeError::InvalidActionCompletion) => {}
+        other => panic!("expected InvalidActionCompletion (attempt=0, ownership fails first), got {:?}", other),
+    }
+}
+
+#[test]
+fn action_completed_capacity_zero_returns_invalid() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let run = RunId::new(8040);
+    let ticket = submit_action_run(&mut shard, run);
+
+    // Forge ticket with capacity=0
+    let forged = forge_ticket(&ticket, None, None, None, None, Some(0), None);
+    shard
+        .enqueue(ShardCommand::ActionCompleted {
+            ticket: forged,
+            output: ActionOutputReady {
+                output_slot: SlotIdx::new(0),
+                value: SlotValue::I64(0),
+                taint: Taint::Clean,
+                encoded_len: 2,
+            },
+        })
+        .expect("enqueue must succeed");
+    let result = shard.tick();
+    match result {
+        Err(vb_runtime::RuntimeError::InvalidActionCompletion) => {}
+        other => panic!("expected InvalidActionCompletion (capacity=0, ownership fails first), got {:?}", other),
+    }
+}
+
+#[test]
+fn action_completed_future_attempt_returns_invalid() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let run = RunId::new(8050);
+    let ticket = submit_action_run(&mut shard, run);
+
+    // Forge ticket with future attempt (attempt > current)
+    let forged = forge_ticket(&ticket, None, None, None, Some(99), Some(100), None);
+    shard
+        .enqueue(ShardCommand::ActionCompleted {
+            ticket: forged,
+            output: ActionOutputReady {
+                output_slot: SlotIdx::new(0),
+                value: SlotValue::I64(0),
+                taint: Taint::Clean,
+                encoded_len: 2,
+            },
+        })
+        .expect("enqueue must succeed");
+    let result = shard.tick();
+    match result {
+        Err(vb_runtime::RuntimeError::InvalidActionCompletion) => {}
+        other => panic!(
+            "expected InvalidActionCompletion (future attempt), got {:?}",
+            other
+        ),
+    }
+}
+
+#[test]
+fn action_completed_invalid_key_returns_invalid() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let run = RunId::new(8060);
+    let ticket = submit_action_run(&mut shard, run);
+
+    // Forge ticket with invalid idempotency key
+    let mut bad_key = ticket.clone();
+    bad_key.idempotency_key = u128::MAX;
+    shard
+        .enqueue(ShardCommand::ActionCompleted {
+            ticket: bad_key,
+            output: ActionOutputReady {
+                output_slot: SlotIdx::new(0),
+                value: SlotValue::I64(0),
+                taint: Taint::Clean,
+                encoded_len: 2,
+            },
+        })
+        .expect("enqueue must succeed");
+    let result = shard.tick();
+    match result {
+        Err(vb_runtime::RuntimeError::InvalidActionCompletion) => {}
+        other => panic!(
+            "expected InvalidActionCompletion (bad key), got {:?}",
+            other
+        ),
+    }
+}
+
+#[test]
+fn action_completed_advanced_seq_returns_invalid() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let run = RunId::new(8070);
+    let ticket = submit_action_run(&mut shard, run);
+
+    // Forge ticket with advanced sequence
+    let forged = forge_ticket(&ticket, None, None, None, None, None, Some(SeqNo::new(999)));
+    shard
+        .enqueue(ShardCommand::ActionCompleted {
+            ticket: forged,
+            output: ActionOutputReady {
+                output_slot: SlotIdx::new(0),
+                value: SlotValue::I64(0),
+                taint: Taint::Clean,
+                encoded_len: 2,
+            },
+        })
+        .expect("enqueue must succeed");
+    let result = shard.tick();
+    match result {
+        Err(vb_runtime::RuntimeError::InvalidActionCompletion) => {}
+        other => panic!(
+            "expected InvalidActionCompletion (wrong seq), got {:?}",
+            other
+        ),
+    }
+}
+
+// Similar tests for ActionFailed
+#[test]
+fn action_failed_wrong_run_returns_run_not_found() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let run = RunId::new(8080);
+    submit_action_run(&mut shard, run);
+
+    let ticket = shard.pending_action_get(run).unwrap();
+    // Forge ticket with wrong run
+    let forged = forge_ticket(&ticket, Some(RunId::new(99999)), None, None, None, None, None);
+    shard
+        .enqueue(ShardCommand::ActionFailed {
+            ticket: forged,
+            failure: non_retryable_failure(),
+        })
+        .expect("enqueue must succeed");
+    let result = shard.tick();
+    match result {
+        Err(vb_runtime::RuntimeError::RunNotFound { .. }) => {}
+        other => panic!(
+            "expected RunNotFound (failed wrong run), got {:?}",
+            other
+        ),
+    }
+}
+
+#[test]
+fn action_failed_attempt_zero_returns_invalid() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let run = RunId::new(8090);
+    let ticket = submit_action_run(&mut shard, run);
+
+    // Forge ticket with attempt=0
+    let forged = forge_ticket(&ticket, None, None, None, Some(0), None, None);
+    shard
+        .enqueue(ShardCommand::ActionFailed {
+            ticket: forged,
+            failure: non_retryable_failure(),
+        })
+        .expect("enqueue must succeed");
+    let result = shard.tick();
+    match result {
+        Err(vb_runtime::RuntimeError::InvalidActionCompletion) => {}
+        other => panic!(
+            "expected InvalidActionCompletion (failed attempt=0, ownership fails first), got {:?}",
+            other
+        ),
+    }
+}
+
+#[test]
+fn action_failed_invalid_key_returns_invalid() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let run = RunId::new(8100);
+    let ticket = submit_action_run(&mut shard, run);
+
+    // Forge ticket with invalid idempotency key
+    let mut bad_key = ticket.clone();
+    bad_key.idempotency_key = u128::MAX;
+    shard
+        .enqueue(ShardCommand::ActionFailed {
+            ticket: bad_key,
+            failure: non_retryable_failure(),
+        })
+        .expect("enqueue must succeed");
+    let result = shard.tick();
+    match result {
+        Err(vb_runtime::RuntimeError::InvalidActionCompletion) => {}
+        other => panic!(
+            "expected InvalidActionCompletion (failed bad key), got {:?}",
+            other
+        ),
+    }
+}
+
+#[test]
+fn valid_ticket_accepted_and_run_continues() {
+    let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+
+    let run = RunId::new(8110);
+    let ticket = submit_action_run(&mut shard, run);
+
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::new(0),
+        value: SlotValue::I64(42),
+        taint: Taint::Clean,
+        encoded_len: 2,
+    };
+
+    shard
+        .enqueue(ShardCommand::ActionCompleted { ticket, output })
+        .expect("enqueue must succeed");
+    let result = shard.tick();
+    assert_eq!(result, Ok(true), "valid ticket must be accepted");
+
+    // Verify run state
+    if let Some(state) = shard.run_state_get(run) {
+        let slot_value = state
+            .frame
+            .read_slot(SlotIdx::new(0))
+            .expect("slot 0 must be readable");
+
+        match slot_value {
+            SlotValue::I64(n) => {
+                assert_eq!(*n, 42, "slot 0 must contain I64(42)");
+            }
+            other => panic!("slot 0 contains {:?} instead of I64(42)", other),
+        }
+    }
+}

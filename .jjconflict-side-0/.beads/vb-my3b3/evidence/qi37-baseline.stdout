@@ -1,0 +1,259 @@
+
+running 19 tests
+test corrupt_slot_value_blocks_both_values_and_taint ... ok
+test action_completion_records_exact_secret_taint_when_action_writes_output ... ok
+test ask_answer_records_exact_clean_taint_when_answer_writes_output ... ok
+test deterministic_step_recovery_hydrates_exact_tainted_frame_when_slot_event_is_complete ... ok
+test event_only_recovery_returns_secret_i64_when_durable_taint_is_secret ... ok
+test event_only_recovery_returns_derived_bool_when_durable_taint_is_derived ... ok
+test missing_slot_value_blocks_both_values_and_taint ... ok
+test event_only_recovery_keeps_slot_taint_supported_when_value_bytes_are_valid ... ok
+test no_output_step_recovery_has_no_recovered_slot_entries ... ok
+test no_output_step_does_not_fabricate_slot_zero_dimension ... ok
+test no_output_step_summary_reports_zero_slots_written ... ok
+test recovery_does_not_default_missing_durable_taint_to_clean ... ok
+test runtime_to_storage_mapping_preserves_taint_for_slot_write ... ok
+test supported_seed_hydrates_exact_derived_taint ... ok
+test supported_seed_hydrates_exact_secret_taint ... ok
+test proptest_no_output_success_never_creates_slot_zero ... ok
+test proptest_valid_slot_events_are_fully_hydrateable ... ok
+test proptest_event_only_slot_recovery_preserves_secret_taint ... ok
+test drain_report_contract_requires_three_drained_and_three_written ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 3 tests
+test binary_alias_reports_exact_allowed_binary_set ... ok
+test package_name_drift_reports_exact_member_and_expected_name ... ok
+test feature_drift_reports_exact_expected_feature_set ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+
+running 47 tests
+test integration_budget_compute_empty_workflow_error ... ok
+test integration_budget_compute_collect_small_limit ... ok
+test e2e_diagnostic_fields_exposed_in_rejection ... ok
+test integration_action_together_parallel_exceeded ... ok
+test integration_budget_compute_nop_chain ... ok
+test integration_budget_compute_repeat_small_attempts ... ok
+test integration_budget_compute_single_do_node ... ok
+test integration_budget_compute_single_nop ... ok
+test integration_budget_compute_single_finish_node ... ok
+test integration_budget_compute_together_small_branches ... ok
+test integration_budget_error_fanout_exceeded_display ... ok
+test integration_budget_error_parallel_exceeded_display ... ok
+test integration_budget_error_total_steps_exceeded_display ... ok
+test integration_budget_returns_fanout_exceeded_when_fanout_crosses_limit ... ok
+test integration_collect_overflow_returns_total_steps_exceeded ... ok
+test integration_collect_large_limit_tracks_gather_items ... ok
+test integration_collect_with_minimum_limit ... ok
+test integration_default_policy_accepts_large_workflow ... ok
+test integration_nested_loops_returns_nesting_depth_exceeded ... ok
+test integration_policy_accepts_workflow_within_limits ... ok
+test integration_policy_rejects_at_exact_fanout_boundary ... ok
+test integration_policy_checks_fanout_before_parallel ... ok
+test integration_default_policy_accepts_moderate_workflow ... ok
+test integration_policy_checks_total_steps_before_fanout ... ok
+test integration_policy_rejects_at_nesting_depth_boundary ... ok
+test integration_policy_rejects_at_exact_total_steps_boundary ... ok
+test integration_policy_returns_nesting_depth_exceeded_when_depth_crosses_limit ... ok
+test integration_policy_returns_result_bytes_exceeded_when_result_bytes_cross_limit ... ok
+test integration_policy_returns_runtime_exceeded_when_runtime_crosses_limit ... ok
+test integration_policy_returns_total_slots_exceeded_when_slots_cross_limit ... ok
+test integration_policy_returns_parallel_exceeded_when_parallel_crosses_limit ... ok
+test integration_policy_validates_nesting_depth ... ok
+test integration_policy_returns_action_tickets_exceeded_when_action_tickets_cross_limit ... ok
+test integration_policy_validates_result_bytes ... ok
+test integration_policy_validate_order_is_deterministic ... ok
+test integration_repeat_large_attempts_tracks_repeat_attempts ... ok
+test integration_repeat_overflow_returns_total_steps_exceeded ... ok
+test integration_policy_validates_total_slots ... ok
+test integration_repeat_with_minimum_attempts ... ok
+test integration_result_size_returns_result_bytes_exceeded ... ok
+test integration_together_with_minimum_branches ... ok
+test integration_together_large_branches_tracks_fanout ... ok
+test integration_together_overflow_returns_fanout_exceeded ... ok
+test integration_policy_validates_steps_executable ... ok
+test e2e_workflow_error_budget_policy_exceeded_contains_detail ... ok
+test integration_budget_returns_total_steps_exceeded_when_steps_cross_limit ... ok
+test integration_policy_returns_steps_executable_exceeded_when_executable_steps_cross_limit ... ok
+
+test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 22 tests
+test given_budget_over_capacity_when_admission_with_budget_runs_then_resource_capacity_error_is_preserved ... ok
+test given_existence_only_artifact_check_when_strict_admission_then_bypass_is_denied ... ok
+test given_malformed_bytes_when_strict_run_created_then_decode_failed_with_rejected_digest ... ok
+test given_invalid_envelope_semantic_matrix_when_strict_run_created_then_typed_invalid_diagnostic_denies ... FAILED
+test given_gate_count_zero_two_fourteen_or_sixteen_when_strict_run_created_then_gate_mismatch_denies ... FAILED
+test given_digest_mismatch_when_strict_run_created_then_digest_mismatch_denies ... FAILED
+test given_missing_artifact_when_strict_run_created_then_artifact_not_found_before_allocation ... ok
+test given_missing_prefix_or_action_mismatched_capability_then_capability_denied ... FAILED
+test given_non_durable_artifact_when_strict_run_created_then_durable_proof_flag_denies ... FAILED
+test given_required_capability_with_extras_or_duplicates_then_denied ... FAILED
+test given_stale_artifact_when_strict_run_created_then_stale_certificate_denies ... FAILED
+test given_valid_accepted_artifact_when_runtime_admits_then_yaml_json_decoder_is_not_called ... ok
+test given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile ... FAILED
+test proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted ... FAILED
+test proptest_digest_equality_is_required_across_requested_record_and_envelope ... FAILED
+test given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_store_is_required ... FAILED
+test proptest_fail_closed_envelope_predicate_denies_any_invalid_field ... FAILED
+test given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated ... FAILED
+test given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_digest_and_cause_are_preserved ... FAILED
+test proptest_gate_count_acceptance_is_singleton_canonical_15 ... FAILED
+test proptest_diagnostic_mapping_is_injective_over_admission_error_categories ... ok
+test given_raw_or_malformed_storage_bytes_when_strict_run_created_then_decode_failed_matrix_denies ... ok
+
+failures:
+
+---- given_invalid_envelope_semantic_matrix_when_strict_run_created_then_typed_invalid_diagnostic_denies stdout ----
+
+thread 'given_invalid_envelope_semantic_matrix_when_strict_run_created_then_typed_invalid_diagnostic_denies' (2417098) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1172:9:
+assertion `left == right` failed: invalid envelope case GateCount { found: 0 }
+  left: InvalidProofFlag { flag: "evidence" }
+ right: InvalidGateCount { found: 0, required: 15 }
+
+---- given_gate_count_zero_two_fourteen_or_sixteen_when_strict_run_created_then_gate_mismatch_denies stdout ----
+
+thread 'given_gate_count_zero_two_fourteen_or_sixteen_when_strict_run_created_then_gate_mismatch_denies' (2417097) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:622:9:
+assertion `left == right` failed: gate_count=0 must deny with observed and required gate counts
+  left: InvalidProofFlag { flag: "evidence" }
+ right: InvalidGateCount { found: 0, required: 15 }
+
+---- given_digest_mismatch_when_strict_run_created_then_digest_mismatch_denies stdout ----
+
+thread 'given_digest_mismatch_when_strict_run_created_then_digest_mismatch_denies' (2417095) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:691:5:
+assertion `left == right` failed
+  left: InvalidProofFlag { flag: "evidence" }
+ right: DigestMismatch { requested: WorkflowDigest([209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209, 209]), record: WorkflowDigest([210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210]), envelope: WorkflowDigest([210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210]) }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- given_missing_prefix_or_action_mismatched_capability_then_capability_denied stdout ----
+
+thread 'given_missing_prefix_or_action_mismatched_capability_then_capability_denied' (2417101) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:769:9:
+assertion `left == right` failed: capability mismatch case missing must preserve action, required, and granted
+  left: InvalidProofFlag { flag: "evidence" }
+ right: CapabilityDenied { action: ActionId(7), required: Capability { name: "network.github", action: ActionId(7) }, granted: CapabilitySet { grants: [] } }
+
+---- given_non_durable_artifact_when_strict_run_created_then_durable_proof_flag_denies stdout ----
+
+thread 'given_non_durable_artifact_when_strict_run_created_then_durable_proof_flag_denies' (2417102) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:658:5:
+assertion `left == right` failed
+  left: InvalidProofFlag { flag: "evidence" }
+ right: InvalidProofFlag { flag: "durable" }
+
+---- given_required_capability_with_extras_or_duplicates_then_denied stdout ----
+
+thread 'given_required_capability_with_extras_or_duplicates_then_denied' (2417104) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:822:9:
+assertion `left == right` failed: capability cardinality-mismatch case excess must deny closed
+  left: InvalidProofFlag { flag: "evidence" }
+ right: CapabilityCountMismatch { required_count: 1, granted_count: 2 }
+
+---- given_stale_artifact_when_strict_run_created_then_stale_certificate_denies stdout ----
+
+thread 'given_stale_artifact_when_strict_run_created_then_stale_certificate_denies' (2417105) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:725:5:
+assertion `left == right` failed
+  left: InvalidProofFlag { flag: "evidence" }
+ right: Admitted(RunAdmission { artifact_digest: WorkflowDigest([81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81]), run_id: RunId(46), granted_capabilities: CapabilitySet { grants: [] }, policy: Strict, budget: None, idempotency_attested: [] })
+
+---- given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile stdout ----
+
+thread 'given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile' (2417107) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:838:73:
+artifact build: ArtifactChecksumMismatch
+
+---- proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted stdout ----
+proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+thread 'proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted' (2417109) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1573:1:
+Test failed: assertion failed: `(left == right)` 
+  left: `InvalidProofFlag { flag: "evidence" }`,
+ right: `Admitted(RunAdmission { artifact_digest: WorkflowDigest([250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]), run_id: RunId(501), granted_capabilities: CapabilitySet { grants: [Capability { name: "network.service.1", action: ActionId(1) }] }, policy: Strict, budget: None, idempotency_attested: [] })` at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1600.
+minimal failing input: required_action = 1, _granted_action = 1, name_suffix = 1, mutation = 0
+	successes: 0
+	local rejects: 0
+	global rejects: 0
+
+
+---- proptest_digest_equality_is_required_across_requested_record_and_envelope stdout ----
+proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+thread 'proptest_digest_equality_is_required_across_requested_record_and_envelope' (2417111) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1573:1:
+Test failed: assertion failed: `(left == right)` 
+  left: `InvalidProofFlag { flag: "evidence" }`,
+ right: `DigestMismatch { requested: WorkflowDigest([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), record: WorkflowDigest([175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175]), envelope: WorkflowDigest([175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175, 175]) }` at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1671.
+minimal failing input: requested_byte = 0, record_byte = 175, envelope_byte = 175
+	successes: 0
+	local rejects: 0
+	global rejects: 0
+
+
+---- given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_store_is_required stdout ----
+
+thread 'given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_store_is_required' (2417106) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1512:5:
+assertion `left == right` failed
+  left: Err(AdmissionArtifactInvalid { digest: WorkflowDigest([102, 167, 189, 158, 141, 137, 237, 192, 106, 237, 37, 141, 126, 19, 22, 176, 159, 54, 174, 206, 22, 165, 66, 210, 132, 55, 190, 87, 100, 44, 5, 89]) })
+ right: Ok(true)
+
+---- proptest_fail_closed_envelope_predicate_denies_any_invalid_field stdout ----
+proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+thread 'proptest_fail_closed_envelope_predicate_denies_any_invalid_field' (2417112) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1573:1:
+Test failed: assertion failed: `(left == right)` 
+  left: `InvalidProofFlag { flag: "evidence" }`,
+ right: `InvalidGateCount { found: 0, required: 15 }` at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1637.
+minimal failing input: gate_count = 0, durable = false, bounded = false, taint_safe = false, retry_safe = false, replayable = false
+	successes: 0
+	local rejects: 0
+	global rejects: 0
+
+
+---- given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated stdout ----
+
+thread 'given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated' (2417092) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1471:9:
+assertion `left == right` failed: denial diagnostic case decode_failed
+  left: PublicAdmissionDiagnostic { category: "invalid_envelope", digest: Some(WorkflowDigest([102, 167, 189, 158, 141, 137, 237, 192, 106, 237, 37, 141, 126, 19, 22, 176, 159, 54, 174, 206, 22, 165, 66, 210, 132, 55, 190, 87, 100, 44, 5, 89])), cause: "artifact_envelope_invalid" }
+ right: PublicAdmissionDiagnostic { category: "decode_failed", digest: Some(WorkflowDigest([102, 167, 189, 158, 141, 137, 237, 192, 106, 237, 37, 141, 126, 19, 22, 176, 159, 54, 174, 206, 22, 165, 66, 210, 132, 55, 190, 87, 100, 44, 5, 89])), cause: "artifact_envelope_decode_failed" }
+
+---- given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_digest_and_cause_are_preserved stdout ----
+
+thread 'given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_digest_and_cause_are_preserved' (2417094) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1323:9:
+assertion `left == right` failed: public diagnostic case decode_failed
+  left: PublicAdmissionDiagnostic { category: "invalid_envelope", digest: Some(WorkflowDigest([102, 167, 189, 158, 141, 137, 237, 192, 106, 237, 37, 141, 126, 19, 22, 176, 159, 54, 174, 206, 22, 165, 66, 210, 132, 55, 190, 87, 100, 44, 5, 89])), cause: "artifact_envelope_invalid" }
+ right: PublicAdmissionDiagnostic { category: "decode_failed", digest: Some(WorkflowDigest([102, 167, 189, 158, 141, 137, 237, 192, 106, 237, 37, 141, 126, 19, 22, 176, 159, 54, 174, 206, 22, 165, 66, 210, 132, 55, 190, 87, 100, 44, 5, 89])), cause: "artifact_envelope_decode_failed" }
+
+---- proptest_gate_count_acceptance_is_singleton_canonical_15 stdout ----
+proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+thread 'proptest_gate_count_acceptance_is_singleton_canonical_15' (2417113) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:934:1:
+Test failed: assertion failed: `(left == right)` 
+  left: `InvalidProofFlag { flag: "evidence" }`,
+ right: `InvalidGateCount { found: 0, required: 15 }` at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:971.
+minimal failing input: found = 0
+	successes: 0
+	local rejects: 0
+	global rejects: 0
+
+
+
+failures:
+    given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated
+    given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_digest_and_cause_are_preserved
+    given_digest_mismatch_when_strict_run_created_then_digest_mismatch_denies
+    given_gate_count_zero_two_fourteen_or_sixteen_when_strict_run_created_then_gate_mismatch_denies
+    given_invalid_envelope_semantic_matrix_when_strict_run_created_then_typed_invalid_diagnostic_denies
+    given_missing_prefix_or_action_mismatched_capability_then_capability_denied
+    given_non_durable_artifact_when_strict_run_created_then_durable_proof_flag_denies
+    given_required_capability_with_extras_or_duplicates_then_denied
+    given_stale_artifact_when_strict_run_created_then_stale_certificate_denies
+    given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_store_is_required
+    given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile
+    proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted
+    proptest_digest_equality_is_required_across_requested_record_and_envelope
+    proptest_fail_closed_envelope_predicate_denies_any_invalid_field
+    proptest_gate_count_acceptance_is_singleton_canonical_15
+
+test result: FAILED. 7 passed; 15 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+

@@ -1,0 +1,51 @@
+=== Edge case input tests ===
+Working dir: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+Git toplevel: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+JJ root: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+Date: 2026-07-10T12:36:09Z
+
+--- n=0 actual_size=0 ---
+Running: /tmp/fuzz_edge_0.bin
+Executed /tmp/fuzz_edge_0.bin in 0 ms
+--- n=1 actual_size=1 ---
+Running: /tmp/fuzz_edge_1.bin
+Executed /tmp/fuzz_edge_1.bin in 0 ms
+--- n=2 actual_size=2 ---
+Running: /tmp/fuzz_edge_2.bin
+Executed /tmp/fuzz_edge_2.bin in 0 ms
+--- n=3 actual_size=3 ---
+Running: /tmp/fuzz_edge_3.bin
+Executed /tmp/fuzz_edge_3.bin in 0 ms
+--- n=4 actual_size=4 ---
+Running: /tmp/fuzz_edge_4.bin
+Executed /tmp/fuzz_edge_4.bin in 0 ms
+--- n=5 actual_size=5 ---
+Running: /tmp/fuzz_edge_5.bin
+Executed /tmp/fuzz_edge_5.bin in 0 ms
+--- n=6 actual_size=6 ---
+Running: /tmp/fuzz_edge_6.bin
+Executed /tmp/fuzz_edge_6.bin in 0 ms
+--- n=7 actual_size=7 ---
+Running: /tmp/fuzz_edge_7.bin
+Executed /tmp/fuzz_edge_7.bin in 0 ms
+--- n=8 actual_size=8 ---
+Running: /tmp/fuzz_edge_8.bin
+Executed /tmp/fuzz_edge_8.bin in 0 ms
+--- n=9 actual_size=9 ---
+Running: /tmp/fuzz_edge_9.bin
+Executed /tmp/fuzz_edge_9.bin in 0 ms
+--- n=10 actual_size=10 ---
+Running: /tmp/fuzz_edge_10.bin
+Executed /tmp/fuzz_edge_10.bin in 0 ms
+--- n=11 actual_size=11 ---
+Running: /tmp/fuzz_edge_11.bin
+Executed /tmp/fuzz_edge_11.bin in 1 ms
+--- n=12 actual_size=12 ---
+Running: /tmp/fuzz_edge_12.bin
+Executed /tmp/fuzz_edge_12.bin in 0 ms
+--- n=13 actual_size=13 ---
+Running: /tmp/fuzz_edge_13.bin
+Executed /tmp/fuzz_edge_13.bin in 0 ms
+--- n=14 actual_size=14 ---
+Running: /tmp/fuzz_edge_14.bin
+Executed /tmp/fuzz_edge_14.bin in 0 ms

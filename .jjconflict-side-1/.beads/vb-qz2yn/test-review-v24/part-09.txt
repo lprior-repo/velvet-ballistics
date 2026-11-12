@@ -1,0 +1,100 @@
+crates/vb_storage/src/admission/tests.rs:85:     let mut proof = VerificationProof::new(digest, 5, false);
+crates/vb_storage/src/admission/tests.rs:86:     proof.warnings.push(VerificationWarning {
+crates/vb_storage/src/admission/tests.rs:87:         code: 100,
+crates/vb_storage/src/admission/tests.rs:88:         message: Box::from("soft check advisory"),
+crates/vb_storage/src/admission/tests.rs:89:         gate: 7,
+crates/vb_storage/src/admission/tests.rs:90:     });
+crates/vb_storage/src/admission/tests.rs:91:     proof.warnings.push(VerificationWarning {
+crates/vb_storage/src/admission/tests.rs:92:         code: 200,
+crates/vb_storage/src/admission/tests.rs:93:         message: Box::from("boundary advisory"),
+crates/vb_storage/src/admission/tests.rs:94:         gate: 11,
+crates/vb_storage/src/admission/tests.rs:95:     });
+crates/vb_storage/src/admission/tests.rs:96:     assert_eq!(proof.warnings.len(), 2);
+crates/vb_storage/src/admission/tests.rs:97:     assert_eq!(proof.warnings[0].gate, 7);
+crates/vb_storage/src/admission/tests.rs:98:     assert_eq!(proof.warnings[1].code, 200);
+crates/vb_storage/src/admission/tests.rs:99: }
+crates/vb_storage/src/admission/tests.rs:100: 
+crates/vb_storage/src/admission/tests.rs:101: #[test]
+crates/vb_storage/src/admission/tests.rs:102: fn verification_warning_clone_preserves_fields() {
+crates/vb_storage/src/admission/tests.rs:103:     let original = VerificationWarning {
+crates/vb_storage/src/admission/tests.rs:104:         code: 55,
+crates/vb_storage/src/admission/tests.rs:105:         message: Box::from("cloneable warning"),
+crates/vb_storage/src/admission/tests.rs:106:         gate: 9,
+crates/vb_storage/src/admission/tests.rs:107:     };
+crates/vb_storage/src/admission/tests.rs:108:     let cloned = original.clone();
+crates/vb_storage/src/admission/tests.rs:109:     assert_eq!(original, cloned);
+crates/vb_storage/src/admission/tests.rs:110:     assert_eq!(cloned.code, 55);
+crates/vb_storage/src/admission/tests.rs:111:     assert_eq!(&*cloned.message, "cloneable warning");
+crates/vb_storage/src/admission/tests.rs:112:     assert_eq!(cloned.gate, 9);
+crates/vb_storage/src/admission/tests.rs:113: }
+crates/vb_storage/src/admission/tests.rs:114: 
+crates/vb_storage/src/admission/tests.rs:115: #[test]
+crates/vb_storage/src/admission/tests.rs:116: fn is_valid_rejects_gate_zero() {
+crates/vb_storage/src/admission/tests.rs:117:     let w = VerificationWarning {
+crates/vb_storage/src/admission/tests.rs:118:         code: 1,
+crates/vb_storage/src/admission/tests.rs:119:         message: Box::from("zero gate"),
+crates/vb_storage/src/admission/tests.rs:120:         gate: 0,
+crates/vb_storage/src/admission/tests.rs:121:     };
+crates/vb_storage/src/admission/tests.rs:122:     assert!(!w.is_valid());
+crates/vb_storage/src/admission/tests.rs:123: }
+crates/vb_storage/src/admission/tests.rs:124: 
+crates/vb_storage/src/admission/tests.rs:125: #[test]
+crates/vb_storage/src/admission/tests.rs:126: fn is_valid_accepts_gate_one() {
+crates/vb_storage/src/admission/tests.rs:127:     let w = VerificationWarning {
+crates/vb_storage/src/admission/tests.rs:128:         code: 1,
+crates/vb_storage/src/admission/tests.rs:129:         message: Box::from("min gate"),
+crates/vb_storage/src/admission/tests.rs:130:         gate: VerificationWarning::MIN_GATE,
+crates/vb_storage/src/admission/tests.rs:131:     };
+crates/vb_storage/src/admission/tests.rs:132:     assert!(w.is_valid());
+crates/vb_storage/src/admission/tests.rs:133: }
+crates/vb_storage/src/admission/tests.rs:134: 
+crates/vb_storage/src/admission/tests.rs:135: #[test]
+crates/vb_storage/src/admission/tests.rs:136: fn is_valid_accepts_gate_two() {
+crates/vb_storage/src/admission/tests.rs:137:     let w = VerificationWarning {
+crates/vb_storage/src/admission/tests.rs:138:         code: 1,
+crates/vb_storage/src/admission/tests.rs:139:         message: Box::from("max gate"),
+crates/vb_storage/src/admission/tests.rs:140:         gate: VerificationWarning::MAX_GATE,
+crates/vb_storage/src/admission/tests.rs:141:     };
+crates/vb_storage/src/admission/tests.rs:142:     assert!(w.is_valid());
+crates/vb_storage/src/admission/tests.rs:143: }
+crates/vb_storage/src/admission/tests.rs:144: 
+crates/vb_storage/src/admission/tests.rs:145: #[test]
+crates/vb_storage/src/admission/tests.rs:146: fn is_valid_accepts_gate_fourteen() {
+crates/vb_storage/src/admission/tests.rs:147:     let w = VerificationWarning {
+crates/vb_storage/src/admission/tests.rs:148:         code: 1,
+crates/vb_storage/src/admission/tests.rs:149:         message: Box::from("within gate range"),
+crates/vb_storage/src/admission/tests.rs:150:         gate: 14,
+crates/vb_storage/src/admission/tests.rs:151:     };
+crates/vb_storage/src/admission/tests.rs:152:     assert!(w.is_valid());
+crates/vb_storage/src/admission/tests.rs:153: }
+crates/vb_storage/src/admission/tests.rs:154: 
+crates/vb_storage/src/admission/tests.rs:155: // =========================================================================
+crates/vb_storage/src/admission/tests.rs:156: // submit_artifact: Relaxed policy
+crates/vb_storage/src/admission/tests.rs:157: // =========================================================================
+crates/vb_storage/src/admission/tests.rs:158: 
+crates/vb_storage/src/admission/tests.rs:159: /// Owns both a temporary directory path and a FjallJournal so the directory
+crates/vb_storage/src/admission/tests.rs:160: /// is not dropped while the journal is in use.
+crates/vb_storage/src/admission/tests.rs:161: struct TestJournal {
+crates/vb_storage/src/admission/tests.rs:162:     path: std::path::PathBuf,
+crates/vb_storage/src/admission/tests.rs:163:     journal: crate::FjallJournal,
+crates/vb_storage/src/admission/tests.rs:164: }
+crates/vb_storage/src/admission/tests.rs:165: 
+crates/vb_storage/src/admission/tests.rs:166: impl Drop for TestJournal {
+crates/vb_storage/src/admission/tests.rs:167:     fn drop(&mut self) {
+crates/vb_storage/src/admission/tests.rs:168:         if let Err(error) = std::fs::remove_dir_all(&self.path) {
+crates/vb_storage/src/admission/tests.rs:169:             std::hint::black_box(error.kind());
+crates/vb_storage/src/admission/tests.rs:170:         }
+crates/vb_storage/src/admission/tests.rs:171:     }
+crates/vb_storage/src/admission/tests.rs:172: }
+crates/vb_storage/src/admission/tests.rs:173: 
+crates/vb_storage/src/admission/tests.rs:174: impl std::ops::Deref for TestJournal {
+crates/vb_storage/src/admission/tests.rs:175:     type Target = crate::FjallJournal;
+crates/vb_storage/src/admission/tests.rs:176:     fn deref(&self) -> &Self::Target {
+crates/vb_storage/src/admission/tests.rs:177:         &self.journal
+crates/vb_storage/src/admission/tests.rs:178:     }
+crates/vb_storage/src/admission/tests.rs:179: }
+crates/vb_storage/src/admission/tests.rs:180: 
+crates/vb_storage/src/admission/tests.rs:181: /// Opens a temporary FjallJournal that is cleaned up when dropped.
+crates/vb_storage/src/admission/tests.rs:182: fn temp_journal() -> Result<TestJournal, JournalError> {
+crates/vb_storage/src/admission/tests.rs:183:     let dir = tempfile::tempdir().map_err(|_| JournalError::ArtifactMalformed)?;
+crates/vb_storage/src/admission/tests.rs:184:     let path = dir.keep();

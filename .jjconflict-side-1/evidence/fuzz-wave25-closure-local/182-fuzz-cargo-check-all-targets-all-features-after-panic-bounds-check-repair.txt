@@ -1,0 +1,10 @@
+=== cargo check --workspace --all-targets --all-features (fuzz) ===
+Working dir: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+Git toplevel: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+JJ root: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+Date: 2026-07-10T12:35:32Z
+
+Command: cargo check --manifest-path=fuzz/Cargo.toml --all-targets --all-features
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.09s
+exit_status=0

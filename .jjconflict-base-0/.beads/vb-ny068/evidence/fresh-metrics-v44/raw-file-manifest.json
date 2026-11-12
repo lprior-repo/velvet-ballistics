@@ -1,0 +1,1776 @@
+{
+  "scope": "Actual fresh baseline equals result; no speedup claim. Large expanded zstd stdout duplicates omitted only, compressed originals retained.",
+  "files": [
+    {
+      "path": "gate/cargo-build-1792708163453388114.json",
+      "bytes": 543,
+      "sha256": "5943f60b8f8028b2afd0ca5a34b1f3ba0f2144ce53f83b032afabd46641ff1a4",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/gate/cargo-build-1792708163453388114.json"
+    },
+    {
+      "path": "gate/cargo-build-1792708163453388114.stderr",
+      "bytes": 6759,
+      "sha256": "3219b19da00a529e8be1507754ad0461cabf6e17325f231dc4f4d3185d40c088",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/gate/cargo-build-1792708163453388114.stderr"
+    },
+    {
+      "path": "gate/cargo-build-1792708163453388114.stdout",
+      "bytes": 195691,
+      "sha256": "a112c8c38c8eb65f0dcf0c6fced56f13d2d1dfd849e84ab7176d668d6b90f61a",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/gate/cargo-build-1792708163453388114.stdout"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/report/index.html",
+      "bytes": 2159,
+      "sha256": "9f78c12dc0a4b990b1d1630c8e12c2dc2a8aae207c17f60fcf5ed27fa692df88",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json",
+      "bytes": 1012,
+      "sha256": "f890e9c63222c97f1f60341a78cae8b874a327dd63f0d38f11e5c226f8d3cba5",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json",
+      "bytes": 1006,
+      "sha256": "dd5d9f3e58028bd65b09fee85c8e8f533ac6a2ca032c6b90a9e86d3bf8e35bba",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json",
+      "bytes": 254,
+      "sha256": "d1479aa6d001592302f5a454e547514085711aa3c6857cfb8ef74bd81fc9eb36",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json",
+      "bytes": 76,
+      "sha256": "e849e9ce0cc3b59c6ac493d5f0caab76dd532055d5477fd58866075f803e2b57",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json",
+      "bytes": 1012,
+      "sha256": "f890e9c63222c97f1f60341a78cae8b874a327dd63f0d38f11e5c226f8d3cba5",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json",
+      "bytes": 1006,
+      "sha256": "dd5d9f3e58028bd65b09fee85c8e8f533ac6a2ca032c6b90a9e86d3bf8e35bba",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json",
+      "bytes": 254,
+      "sha256": "d1479aa6d001592302f5a454e547514085711aa3c6857cfb8ef74bd81fc9eb36",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json",
+      "bytes": 76,
+      "sha256": "e849e9ce0cc3b59c6ac493d5f0caab76dd532055d5477fd58866075f803e2b57",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/MAD.svg",
+      "bytes": 13735,
+      "sha256": "335bd363c434741f451b36d9d6abfe8bae2059fc645ed61f3101255aa48a7cd4",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/MAD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/SD.svg",
+      "bytes": 13486,
+      "sha256": "43a6315c88e7f346052a36e297306a809e59495cb5390d09ee9575d299cd39c9",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/SD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/index.html",
+      "bytes": 7279,
+      "sha256": "b281d4cf87194376844e82d52b5666e909384c50cad667f3a2dc4b68400217c8",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/mean.svg",
+      "bytes": 12218,
+      "sha256": "ac5603a3f022ed09abc121616c5e41c23be7e89d3e4b4cf809a8a3f529c0dd83",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/mean.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/median.svg",
+      "bytes": 13253,
+      "sha256": "72b8c2d39cb143fc141965e7a6cc8ce60b867987f5d44ea953623bfb4518d5ea",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/median.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf.svg",
+      "bytes": 14073,
+      "sha256": "91cbf057ad4c5cc0b56f1d99fe3580c3d5266b1ed6d4564c436026ffaf59f37d",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf_small.svg",
+      "bytes": 7514,
+      "sha256": "51453194d9ebafbc46fc82daa120e588597840752454f59f1508b116254dd76f",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression.svg",
+      "bytes": 8380,
+      "sha256": "bc79607b0e9d785e7f895d1f3d7745bb412e34b882f9c0642176560738605dbd",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression_small.svg",
+      "bytes": 7368,
+      "sha256": "3ef444931951d63a719cf9a8887cade4580281af8d68b3785116eb2c7efd054d",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/slope.svg",
+      "bytes": 12012,
+      "sha256": "bc730ef4ccf42b4cc5d3396ba71c3c56aea4fbc560b70e264670f6f4fdfafd28",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/slope.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/typical.svg",
+      "bytes": 12014,
+      "sha256": "8400884cc260a4c36b690da5f9ce41a543e3cd17493655fb8c411258421c6a38",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/typical.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/report/index.html",
+      "bytes": 3108,
+      "sha256": "45b99ba040c80479cafb9d92017739d0bdb92df0efc846fb72bcce9e8b4f2d32",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/report/violin.svg",
+      "bytes": 10591,
+      "sha256": "a8f1bed79a958023da69e40e326d54d54c68394fa2e8a3ded9ac6c3fe7775da2",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/runtime_core/report/violin.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/report/index.html",
+      "bytes": 2156,
+      "sha256": "e0a85224f74d2ae3549e6e3bfe3483524d07ba268b4137f3fdede9d5808b026c",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json",
+      "bytes": 1006,
+      "sha256": "0a64076d71d8187a0216b8485aac821608c88a9caedbbec8130d92a070dec91f",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json",
+      "bytes": 1000,
+      "sha256": "e0039f1842081438f9c4ca74d6ad4fa60f3adb499550026ce7950efc14ad5864",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json",
+      "bytes": 254,
+      "sha256": "50659279d44bf796ae8c28642bf41b42ec01133d47b253ade9b58c2616f24579",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json",
+      "bytes": 74,
+      "sha256": "33dce8eba05019bf22b220c7f3ef458277e24ee405d98e0db168b72cd6fb0df5",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json",
+      "bytes": 1006,
+      "sha256": "0a64076d71d8187a0216b8485aac821608c88a9caedbbec8130d92a070dec91f",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json",
+      "bytes": 1000,
+      "sha256": "e0039f1842081438f9c4ca74d6ad4fa60f3adb499550026ce7950efc14ad5864",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json",
+      "bytes": 254,
+      "sha256": "50659279d44bf796ae8c28642bf41b42ec01133d47b253ade9b58c2616f24579",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json",
+      "bytes": 74,
+      "sha256": "33dce8eba05019bf22b220c7f3ef458277e24ee405d98e0db168b72cd6fb0df5",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/MAD.svg",
+      "bytes": 12768,
+      "sha256": "542475b2799eea7f6277203049e9fa72ce98beb2fafa9689a0911796ce7e7d54",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/MAD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/SD.svg",
+      "bytes": 11985,
+      "sha256": "48788588559014cacc79e0329a34edff38114e4ba17eb025210ee39b5a866758",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/SD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/index.html",
+      "bytes": 7279,
+      "sha256": "53a5680156ff561b23b5bd4f1bedac36a9a8878471fa0332af814426b38f0452",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/mean.svg",
+      "bytes": 12506,
+      "sha256": "7b699a12e900ee7292f3937923508397a45d765e717cae3553f31a6a4bcdaae7",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/mean.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/median.svg",
+      "bytes": 13249,
+      "sha256": "a9a8fe0c356a6d3266779988180fccd23ebdd40016dab061dc98333767e37ce0",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/median.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf.svg",
+      "bytes": 13810,
+      "sha256": "95407662701378fdb1d5a143ef6f6a5aa4e168b43b3096f4c34fb3a57bf85a69",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf_small.svg",
+      "bytes": 7253,
+      "sha256": "df10946a48846faf8dad13e577d8c5d09ee5893137c39d81265bd91cc3bb1c1a",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression.svg",
+      "bytes": 8379,
+      "sha256": "3f4290586291e7c031d13c550c832a3c78d2bd612ec06d1f28e8a88fc3fd207c",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression_small.svg",
+      "bytes": 7368,
+      "sha256": "92d400993b37280a54c929b148c0077b18cedcf94521910bd89e9eb8e1bce8d0",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/slope.svg",
+      "bytes": 12475,
+      "sha256": "fb9431ccfdf8200624eb31b2c94d8df1456c3a6d5dc1e2b4671669b31f849df3",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/slope.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/typical.svg",
+      "bytes": 12477,
+      "sha256": "8ee1aac2c6097172e78cbe7f6bccacd0424d56a8ca97d3981f7f37a06207f2f4",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/typical.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/index.html",
+      "bytes": 3108,
+      "sha256": "1db2d796ca71e488f6ec55606fae40326a5990321e10ab246a2ce71567c0232c",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/violin.svg",
+      "bytes": 10622,
+      "sha256": "2a5933ffc832baa4af3b96d52af68a032fb5e15f3a1add1b97c07377ee255a45",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/violin.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/report/index.html",
+      "bytes": 2124,
+      "sha256": "f4532246c0d6c66d72a5d315998cf7a355d0079583973e8a557f1b6eed9fc7b3",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json",
+      "bytes": 945,
+      "sha256": "b42e45287e8a5a4c9b54963032fc42670e1ccccd254b1b1da35c74ea64226988",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json",
+      "bytes": 992,
+      "sha256": "86e80e9c24159415a5cbd01d537688dbde2d2f05af7534c8ceeecc0141272aaf",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json",
+      "bytes": 255,
+      "sha256": "6e09e8b4be606a6ad29dbb1e8b551853c5a9e0a5c8dbdc07f92aa47be4955ffe",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json",
+      "bytes": 72,
+      "sha256": "f53ed7418487e23a6f8392853aa3125fab95a55843aa0d845a3e9f05bffc70f8",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json",
+      "bytes": 945,
+      "sha256": "b42e45287e8a5a4c9b54963032fc42670e1ccccd254b1b1da35c74ea64226988",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json",
+      "bytes": 992,
+      "sha256": "86e80e9c24159415a5cbd01d537688dbde2d2f05af7534c8ceeecc0141272aaf",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json",
+      "bytes": 255,
+      "sha256": "6e09e8b4be606a6ad29dbb1e8b551853c5a9e0a5c8dbdc07f92aa47be4955ffe",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json",
+      "bytes": 72,
+      "sha256": "f53ed7418487e23a6f8392853aa3125fab95a55843aa0d845a3e9f05bffc70f8",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/MAD.svg",
+      "bytes": 12285,
+      "sha256": "c4aa9658aeea453e6e41ed0fad5d88b041720f81b15ec696d139e2f89ed2661d",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/MAD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/SD.svg",
+      "bytes": 12272,
+      "sha256": "1de0208db89251d49a20b9e68526826ceffb488b321a1d015ea63545ea2a6172",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/SD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/index.html",
+      "bytes": 7279,
+      "sha256": "dddade78cfda6159737a06ec0ce9613d8d494cf9fdf937ef56ca8cb3ba83bdad",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/mean.svg",
+      "bytes": 13467,
+      "sha256": "45637f256f017e95f89ab89b86df638c925062814d6699d634d2529c22720776",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/mean.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/median.svg",
+      "bytes": 13238,
+      "sha256": "ff3873730db7aed2938c378052bb4cb49114c70b768ae9a083d2de3696c94a51",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/median.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf.svg",
+      "bytes": 13819,
+      "sha256": "74da6f5a9b89b6accd3d226ed6c468cd497f2c53216424a297209c8d8eb29334",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf_small.svg",
+      "bytes": 8433,
+      "sha256": "2bc9a8685a30f698744b4eeb95f0fb75c6e2c127e73402ee5f159daa1a100575",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression.svg",
+      "bytes": 8055,
+      "sha256": "aa2865a8f2a22dde9e8915857a82a08e2101a863b2f8228dd1079ae5f9597b47",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression_small.svg",
+      "bytes": 7044,
+      "sha256": "86282aa6bccb7d3f0cbe3fed25700e95d33a8cb0cbe53e66534b87f1f0112563",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/slope.svg",
+      "bytes": 13421,
+      "sha256": "7677f945001a9a8b2fc13468811f6e010f06da7c45a3b9a61a3f9cfce359387d",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/slope.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/typical.svg",
+      "bytes": 13423,
+      "sha256": "984dac946baaa0f3be64930c2e5a01ec20393ec200c4fe827b5fe36c2a97db87",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/typical.svg"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/report/index.html",
+      "bytes": 3101,
+      "sha256": "6fa87afaba8a2af312ba0949932f219dd389489a58cbd68e74bc809e233fae8d",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/report/violin.svg",
+      "bytes": 10400,
+      "sha256": "647acc14118805e8e776c440d04dda8b276bc7bcac968da0e9ddb9118f722d03",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/criterion-ipc_frame_decode/storage_ipc/report/violin.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/report/index.html",
+      "bytes": 2159,
+      "sha256": "9f78c12dc0a4b990b1d1630c8e12c2dc2a8aae207c17f60fcf5ed27fa692df88",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json",
+      "bytes": 1012,
+      "sha256": "f890e9c63222c97f1f60341a78cae8b874a327dd63f0d38f11e5c226f8d3cba5",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json",
+      "bytes": 1002,
+      "sha256": "07cde26fa264d7e947213205e73d6d16504daa71c572aa75214054e99574d1ae",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json",
+      "bytes": 254,
+      "sha256": "b8bb42d53c2a91432d1ed1407c3f17f9349cae623ba01d7a893b127e090191a5",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json",
+      "bytes": 75,
+      "sha256": "fe928431fd50948377425bd78ae91c8ad01129049cfb08610f11d0a6dc0184fe",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json",
+      "bytes": 1012,
+      "sha256": "f890e9c63222c97f1f60341a78cae8b874a327dd63f0d38f11e5c226f8d3cba5",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json",
+      "bytes": 1002,
+      "sha256": "07cde26fa264d7e947213205e73d6d16504daa71c572aa75214054e99574d1ae",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json",
+      "bytes": 254,
+      "sha256": "b8bb42d53c2a91432d1ed1407c3f17f9349cae623ba01d7a893b127e090191a5",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json",
+      "bytes": 75,
+      "sha256": "fe928431fd50948377425bd78ae91c8ad01129049cfb08610f11d0a6dc0184fe",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/MAD.svg",
+      "bytes": 12282,
+      "sha256": "e1e0f5773692cec5530dfc22126da50a4853803186a62a0a66f4b6865a23b3fa",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/MAD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/SD.svg",
+      "bytes": 12752,
+      "sha256": "3ddf768de9b4629bf456f11bea8a82890ecf6e8db7e2421ef4e8f70f71fc35d8",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/SD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/index.html",
+      "bytes": 7279,
+      "sha256": "7c550136a5cfe4498c2786eb97426b9f863058ffc294040fa7c2c2a1b88afcb4",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/mean.svg",
+      "bytes": 11943,
+      "sha256": "5c3bc111acd41ab1cdd0b9c31db60464bf8dee9321136c82e90c5a532fe878f0",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/mean.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/median.svg",
+      "bytes": 12745,
+      "sha256": "3067c83b3923d501e9c61214cb499eeaf3f04c2faf052069def290a39c85f48f",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/median.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf.svg",
+      "bytes": 14809,
+      "sha256": "a825e1ca9957a8dacf8f65dcc7bcfc9d9a85ef455e911ac2400cdd34cce9b398",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf_small.svg",
+      "bytes": 6585,
+      "sha256": "91507787de7d87dcb180554441264401588eeb0d90ca084abac72f37ab0ad245",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression.svg",
+      "bytes": 8380,
+      "sha256": "524ef127cea69169500b6e92260a50b54f2801e8315f47026cd3bc5474ce2fb5",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression_small.svg",
+      "bytes": 7368,
+      "sha256": "deb7fb982e5ee9d1e0ba42eb9526c6353496736f56eeb95dd13ddabd441a4876",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/slope.svg",
+      "bytes": 12906,
+      "sha256": "623e8f42dde66f8dd052d0ff11329ca00224ae4cd65a7a21e023542d0b08c76b",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/slope.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/typical.svg",
+      "bytes": 12908,
+      "sha256": "8a0e976df51be69e7ae0e493feb9fbce533073277fedb458a464b5f0caf41ccd",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/typical.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/report/index.html",
+      "bytes": 3108,
+      "sha256": "45b99ba040c80479cafb9d92017739d0bdb92df0efc846fb72bcce9e8b4f2d32",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/report/violin.svg",
+      "bytes": 10578,
+      "sha256": "08859edc6071a162fa309cea770bf2d47966b45052077fa7aecdccec851d4d42",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-bench_engine_step_once_save_const_single_transition/runtime_core/report/violin.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/report/index.html",
+      "bytes": 2156,
+      "sha256": "e0a85224f74d2ae3549e6e3bfe3483524d07ba268b4137f3fdede9d5808b026c",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json",
+      "bytes": 1006,
+      "sha256": "0a64076d71d8187a0216b8485aac821608c88a9caedbbec8130d92a070dec91f",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json",
+      "bytes": 1007,
+      "sha256": "44a4772bbadf0d6c10c3a8832fb97bdbf9e4fbf424733997b7beffab8bd81368",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json",
+      "bytes": 254,
+      "sha256": "265db5c57132c74774957c1f4643b58f4daaa2919303400158aa304aa9e6979f",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json",
+      "bytes": 77,
+      "sha256": "6a0d7e6c95d35ed732dc041e3468ea7e09f2dec6198fc4770eb2abe9b265dcca",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json",
+      "bytes": 1006,
+      "sha256": "0a64076d71d8187a0216b8485aac821608c88a9caedbbec8130d92a070dec91f",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json",
+      "bytes": 1007,
+      "sha256": "44a4772bbadf0d6c10c3a8832fb97bdbf9e4fbf424733997b7beffab8bd81368",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json",
+      "bytes": 254,
+      "sha256": "265db5c57132c74774957c1f4643b58f4daaa2919303400158aa304aa9e6979f",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json",
+      "bytes": 77,
+      "sha256": "6a0d7e6c95d35ed732dc041e3468ea7e09f2dec6198fc4770eb2abe9b265dcca",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/MAD.svg",
+      "bytes": 13253,
+      "sha256": "57ed557f371b915bb4bca3a565fe62efddbc093cd4c7179affb6609513a570c0",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/MAD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/SD.svg",
+      "bytes": 12261,
+      "sha256": "d990ca75af3fb14a942e9b62c57f8e24efff3193128ba9794b83c8dddf7badd3",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/SD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/index.html",
+      "bytes": 7279,
+      "sha256": "56ff2fe73a6a4317bfb6f73d614dda6567fc6059f5438a9b424fdc26b4e5eaf6",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/mean.svg",
+      "bytes": 12264,
+      "sha256": "e84fd9fb33923c617b61d56b58e1e05d87feb0581501cbceabc0d43234018cdd",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/mean.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/median.svg",
+      "bytes": 13731,
+      "sha256": "6f1e28f61510a2d5b00f115476f61f3b4c596f1c651c040b41009795ce7dd0e7",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/median.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf.svg",
+      "bytes": 13838,
+      "sha256": "27e476beb3275de2dd4907cbaa06fa0257c9ba01c81bcc0ea1efce8f6b224087",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf_small.svg",
+      "bytes": 7282,
+      "sha256": "bc6070f1c9f17362b9b8d9cbc775ee7a22618e94a7b4124c35515e032f22e834",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression.svg",
+      "bytes": 8379,
+      "sha256": "a13142dbe605ff9cccbd76a21c5d33f384464b945fd6294dab0bf1b2ebab4312",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression_small.svg",
+      "bytes": 7368,
+      "sha256": "e87d9cfbc7cc651dcb1a8b27ad5c97e2f244afe878108610f78f5352972b749d",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/slope.svg",
+      "bytes": 12257,
+      "sha256": "81d79b0a720628b0c4172397c63a920a53d8f452d083b5f520347717e3f8e96b",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/slope.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/typical.svg",
+      "bytes": 12259,
+      "sha256": "aaf682eaed9d76d28c2e0d9aaa1f978eed4c5dee44f5eccf10e1d3f94b3ba9ac",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/typical.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/index.html",
+      "bytes": 3108,
+      "sha256": "1db2d796ca71e488f6ec55606fae40326a5990321e10ab246a2ce71567c0232c",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/violin.svg",
+      "bytes": 10584,
+      "sha256": "0e8e2afeee13af967b5161ebf25230587b694ac6b2db705c10a679fea5411f0f",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/violin.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/report/index.html",
+      "bytes": 2124,
+      "sha256": "f4532246c0d6c66d72a5d315998cf7a355d0079583973e8a557f1b6eed9fc7b3",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json",
+      "bytes": 945,
+      "sha256": "b42e45287e8a5a4c9b54963032fc42670e1ccccd254b1b1da35c74ea64226988",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json",
+      "bytes": 982,
+      "sha256": "6753cfcdd9b3e9432c4655ca156914f091f1adca1fdaf5d9d606f25254857e91",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json",
+      "bytes": 249,
+      "sha256": "370ad5aae06ec3c102e4e47a4e7f1ab68aa6d580c22efb90ed260dba4b715adc",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json",
+      "bytes": 73,
+      "sha256": "06e20821c27a282fe31066b1c8017320cf9c305da046e35348e368e7c14e86ec",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json",
+      "bytes": 945,
+      "sha256": "b42e45287e8a5a4c9b54963032fc42670e1ccccd254b1b1da35c74ea64226988",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json",
+      "bytes": 982,
+      "sha256": "6753cfcdd9b3e9432c4655ca156914f091f1adca1fdaf5d9d606f25254857e91",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json",
+      "bytes": 249,
+      "sha256": "370ad5aae06ec3c102e4e47a4e7f1ab68aa6d580c22efb90ed260dba4b715adc",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json",
+      "bytes": 73,
+      "sha256": "06e20821c27a282fe31066b1c8017320cf9c305da046e35348e368e7c14e86ec",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/MAD.svg",
+      "bytes": 12462,
+      "sha256": "f75c6eb5687a6688a159164a731682be118a9d4233da3256e9a3c862ce3c1abd",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/MAD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/SD.svg",
+      "bytes": 13435,
+      "sha256": "d0d049c6c91d1010204fd51cd05a71e29d6730268d2fa869a4f540f8cfb733d8",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/SD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/index.html",
+      "bytes": 7279,
+      "sha256": "48d72245eedc9c8c4db42b1fb3683b5e95f78f1df933b594d113a947abe824e0",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/mean.svg",
+      "bytes": 13476,
+      "sha256": "80b2ae750191292b8e446cb5ed1f95191841a3630d16e04fa2afe1e73449a1e6",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/mean.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/median.svg",
+      "bytes": 12514,
+      "sha256": "f1f87c21622a5fc1d91fd8b6938d8faee4f313f9e6f1bd61061c33378af65538",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/median.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf.svg",
+      "bytes": 14094,
+      "sha256": "89246fc170210e2c666e3de53fb19eca79d7e59d249e9e19b011fc1524b1d882",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf_small.svg",
+      "bytes": 7997,
+      "sha256": "9aececc8c6f475e4fdfba4882292f758ef52bfb08f4fd1363d5b2a587603c897",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression.svg",
+      "bytes": 8719,
+      "sha256": "f92386e9242cf27601d8e6adee7450eb0ff9ce85f86ad5b8796ba7fdeaa1bc90",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression_small.svg",
+      "bytes": 7707,
+      "sha256": "c930ed9dbc02efe9b4aa2b25e3ec0887236f548d7c073278fdd9e297845bcaec",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/slope.svg",
+      "bytes": 11984,
+      "sha256": "45351591b595699d987ba11fcb7346d6828a8cef79aaf49b61e0b292544898a6",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/slope.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/typical.svg",
+      "bytes": 11986,
+      "sha256": "a6a6de828fa925f4eddde726efd8d25076307ab4bc9bf34f27a02035b2a2cc57",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/typical.svg"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/report/index.html",
+      "bytes": 3101,
+      "sha256": "6fa87afaba8a2af312ba0949932f219dd389489a58cbd68e74bc809e233fae8d",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/report/violin.svg",
+      "bytes": 10362,
+      "sha256": "8a24ebf94ec96a405fe26e394adc2035ad2cf7bdea144abee1883605e4cea8d2",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/heaptrack-ipc_frame_decode/storage_ipc/report/violin.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/report/index.html",
+      "bytes": 2159,
+      "sha256": "9f78c12dc0a4b990b1d1630c8e12c2dc2a8aae207c17f60fcf5ed27fa692df88",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json",
+      "bytes": 1012,
+      "sha256": "f890e9c63222c97f1f60341a78cae8b874a327dd63f0d38f11e5c226f8d3cba5",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json",
+      "bytes": 1005,
+      "sha256": "15ae7c2716dae6839ed16f44bcb3c58bb0fde5a34a35d382ce333acdd8b5c728",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json",
+      "bytes": 254,
+      "sha256": "210de4c7d1a4024891fb69556fa242bdf00e6664582e3803dc6c1104ceb52301",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json",
+      "bytes": 76,
+      "sha256": "91906ed99822aa1336eba8fe4de2aeb5252e4536dea731415e4944c14bc30343",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/base/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json",
+      "bytes": 1012,
+      "sha256": "f890e9c63222c97f1f60341a78cae8b874a327dd63f0d38f11e5c226f8d3cba5",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json",
+      "bytes": 1005,
+      "sha256": "15ae7c2716dae6839ed16f44bcb3c58bb0fde5a34a35d382ce333acdd8b5c728",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json",
+      "bytes": 254,
+      "sha256": "210de4c7d1a4024891fb69556fa242bdf00e6664582e3803dc6c1104ceb52301",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json",
+      "bytes": 76,
+      "sha256": "91906ed99822aa1336eba8fe4de2aeb5252e4536dea731415e4944c14bc30343",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/new/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/MAD.svg",
+      "bytes": 13255,
+      "sha256": "facc2563bb25471b5b7203cf61409b4c29a4e8d2550da2d2e1fe55ac59f06384",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/MAD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/SD.svg",
+      "bytes": 13179,
+      "sha256": "ac3659fe9218e56f00c41e3fac2b76099c12a703624e85211188e53de44ce2ba",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/SD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/index.html",
+      "bytes": 7279,
+      "sha256": "9fe3fb33d4dadf0e10c8688070ab89f69a7862a84303736084ea9cc0573a6162",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/mean.svg",
+      "bytes": 12251,
+      "sha256": "31bce915a607500cf6660d2f62172a6b2a4a76e188fd8f414e7db2c0a436cbdc",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/mean.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/median.svg",
+      "bytes": 12312,
+      "sha256": "5275a12f53da2c8cb64e400d73d2b58a4791681a89da87bf2efbac7bee8ca883",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/median.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf.svg",
+      "bytes": 13563,
+      "sha256": "26869721bd0c18463a6c958320d9acdc77156e08ce397cf5e5234235fbba6fcb",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf_small.svg",
+      "bytes": 6998,
+      "sha256": "6aace96a26436d6d00de550e54e72ff15457d0bdd4e5e13ba5e05fca28c252b9",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/pdf_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression.svg",
+      "bytes": 8380,
+      "sha256": "97f6651ce1530f6c56acbb03cc769455ed14f460f4c24d25a4a31d4d1d37f76d",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression_small.svg",
+      "bytes": 7368,
+      "sha256": "bffd67ed7c0ca7dae4737e8be9f37342e3c55581119cba5b4128ee43a7f1b75e",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/regression_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/slope.svg",
+      "bytes": 13920,
+      "sha256": "916066ad1e305fa527394f744c53b3a274849c6df54ad1e568c01fc045cf47df",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/slope.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/typical.svg",
+      "bytes": 13922,
+      "sha256": "a43b1d4309d0fb2d39b8a0e9c74f9acd4811240341b340348cc388893ca0ab19",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/bench_engine_step_once_save_const_single_transition;profile=benc/report/typical.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/report/index.html",
+      "bytes": 3108,
+      "sha256": "45b99ba040c80479cafb9d92017739d0bdb92df0efc846fb72bcce9e8b4f2d32",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/report/violin.svg",
+      "bytes": 10637,
+      "sha256": "7245b0a74b796ad8681d5ffcfe9d8d8381a054ae0a5c59c83be5e3bd687615f6",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition/runtime_core/report/violin.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/report/index.html",
+      "bytes": 2156,
+      "sha256": "e0a85224f74d2ae3549e6e3bfe3483524d07ba268b4137f3fdede9d5808b026c",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json",
+      "bytes": 1006,
+      "sha256": "0a64076d71d8187a0216b8485aac821608c88a9caedbbec8130d92a070dec91f",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json",
+      "bytes": 998,
+      "sha256": "7bbfe853cdb9e5e0082b3fa6d07b5ad019ab205f00a3a8922b09899ffee04590",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json",
+      "bytes": 254,
+      "sha256": "edfd25fdfe8d399bb894633f790a5e59a165c3a9383672144855ab054701e475",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json",
+      "bytes": 77,
+      "sha256": "7f1e43b92aceb20c1b699361115295d59b9e12987e48f37cec00a4eaa16300bb",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/base/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json",
+      "bytes": 1006,
+      "sha256": "0a64076d71d8187a0216b8485aac821608c88a9caedbbec8130d92a070dec91f",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json",
+      "bytes": 998,
+      "sha256": "7bbfe853cdb9e5e0082b3fa6d07b5ad019ab205f00a3a8922b09899ffee04590",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json",
+      "bytes": 254,
+      "sha256": "edfd25fdfe8d399bb894633f790a5e59a165c3a9383672144855ab054701e475",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json",
+      "bytes": 77,
+      "sha256": "7f1e43b92aceb20c1b699361115295d59b9e12987e48f37cec00a4eaa16300bb",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/new/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/MAD.svg",
+      "bytes": 12528,
+      "sha256": "ab8957f9383e5010b3a34d431493c50bc615f062b9326c70b60d4b785a0c6824",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/MAD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/SD.svg",
+      "bytes": 13466,
+      "sha256": "ea0e6793adc21a27e72d6c4c10e98f6c63431d6a75ebf4d9e49bdf02ef7fbec6",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/SD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/index.html",
+      "bytes": 7279,
+      "sha256": "b48a230eec5db2aaf974ff80e59c0e4f44555e3766fa4a73158ff10a173df676",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/mean.svg",
+      "bytes": 12473,
+      "sha256": "21b04bc62a2683a69b757ad8e2cd0daa25c435723f01c7bdbad9e92947e3efd0",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/mean.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/median.svg",
+      "bytes": 13727,
+      "sha256": "2d507841a42903a619778aa27aa0a8010650468bd41f68a706849902e738b690",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/median.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf.svg",
+      "bytes": 14758,
+      "sha256": "ac246227ca723c5672319510a0e5299cd5246a73ac9872c5cdd383cf70170f18",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf_small.svg",
+      "bytes": 7685,
+      "sha256": "dac318e17d87013a54fe3d6946afef9d3d3dad97e5c02e3569bb76712150b27c",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/pdf_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression.svg",
+      "bytes": 8380,
+      "sha256": "0b13369459054b5b5c80ca9685518569e279f97fe68df71c22b8c40edc8b7ce0",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression_small.svg",
+      "bytes": 7368,
+      "sha256": "4c367841b3d86d569fca3451503e1f384f4b512c2d534f595899eeeb280d7265",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/regression_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/slope.svg",
+      "bytes": 14161,
+      "sha256": "09bc4544ed5802305f17c43b3278339c762a4f54a14a81b0148b5b13e0ea98b1",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/slope.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/typical.svg",
+      "bytes": 14163,
+      "sha256": "8e53d6582c00daa8cdbb41843e07d533a2af837d8e04a1d1884bd73d9b7c6dc1",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;/report/typical.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/index.html",
+      "bytes": 3108,
+      "sha256": "1db2d796ca71e488f6ec55606fae40326a5990321e10ab246a2ce71567c0232c",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/violin.svg",
+      "bytes": 10687,
+      "sha256": "9a430c978e2dbdd9eb56a9066adfed8531f50069b9cc29ee6c1c6aff9c522a40",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow/runtime_core/report/violin.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/report/index.html",
+      "bytes": 2124,
+      "sha256": "f4532246c0d6c66d72a5d315998cf7a355d0079583973e8a557f1b6eed9fc7b3",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json",
+      "bytes": 945,
+      "sha256": "b42e45287e8a5a4c9b54963032fc42670e1ccccd254b1b1da35c74ea64226988",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json",
+      "bytes": 987,
+      "sha256": "238b452831f02addfb9e2b9f9c5aeb15be1328ff25dbb6aa927da719c0363f27",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json",
+      "bytes": 255,
+      "sha256": "9b7e8c6c1fef0ec58915d8618a558e9d6aa6a2115b454604fd804ebf6b2090a2",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json",
+      "bytes": 73,
+      "sha256": "6e98629b5c3c7f3113c7f1a800f06e9051cdbcdc93e68b9f4c785d5187e7e5c0",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/base/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json",
+      "bytes": 945,
+      "sha256": "b42e45287e8a5a4c9b54963032fc42670e1ccccd254b1b1da35c74ea64226988",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/benchmark.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json",
+      "bytes": 987,
+      "sha256": "238b452831f02addfb9e2b9f9c5aeb15be1328ff25dbb6aa927da719c0363f27",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/estimates.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json",
+      "bytes": 255,
+      "sha256": "9b7e8c6c1fef0ec58915d8618a558e9d6aa6a2115b454604fd804ebf6b2090a2",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/sample.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json",
+      "bytes": 73,
+      "sha256": "6e98629b5c3c7f3113c7f1a800f06e9051cdbcdc93e68b9f4c785d5187e7e5c0",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/new/tukey.json"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/MAD.svg",
+      "bytes": 12526,
+      "sha256": "91834723f0a5914336c1080b7cea5f058b51b3f8c8e7d97e57bc99c0a2a1d3a3",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/MAD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/SD.svg",
+      "bytes": 12262,
+      "sha256": "5d9ec8bb7feb1a3613de1faa47074ef73fc1eda02a267a24ab869800a54698f7",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/SD.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/index.html",
+      "bytes": 7279,
+      "sha256": "4eeb1c6cfc96e57594ac16a4a30de24d2e521c552a61470dc2fdc968ed8eb438",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/mean.svg",
+      "bytes": 13463,
+      "sha256": "93f519e0d4d2b48dc39a3c1b1634c51a3827e9cab22e83f19d10cbf815002f5d",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/mean.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/median.svg",
+      "bytes": 14203,
+      "sha256": "cd597fd934d0ca48b0b4884993c8ecdbb2a6625d866f7f584f729efea154c40f",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/median.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf.svg",
+      "bytes": 12868,
+      "sha256": "c913508563e1e2ded2480d2c3eaa5b4d616a7355a3eae6d045076ed1ee01e78d",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf_small.svg",
+      "bytes": 7535,
+      "sha256": "85bdee106c175aeaad28c16a826dc8a69cd4c336cdf4022f318bccfe8c6eb0d4",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/pdf_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression.svg",
+      "bytes": 8056,
+      "sha256": "c7515e9e61eb0ac3e29576555183e8cac49a0beab2d508efd8b70fd1878ebe94",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression_small.svg",
+      "bytes": 7044,
+      "sha256": "2cdc76815f9a7bd3e5b6e647af230a2ad18f4e64b27f8e2c29ad0d6e51f40287",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/regression_small.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/slope.svg",
+      "bytes": 12263,
+      "sha256": "e569db3f8a60fb76429d433e0a4e7c3dfaaf57ccefcb163b81e11c3b2b564fc1",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/slope.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/typical.svg",
+      "bytes": 12265,
+      "sha256": "bed8b8b588c169dc7bcd37112652be660e7d893862de53ed98cf3aa23851858f",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mix/report/typical.svg"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/report/index.html",
+      "bytes": 3101,
+      "sha256": "6fa87afaba8a2af312ba0949932f219dd389489a58cbd68e74bc809e233fae8d",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/report/index.html"
+    },
+    {
+      "path": "scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/report/violin.svg",
+      "bytes": 10592,
+      "sha256": "5e1a16e88bc678c168fb81cb31ebd1360e74c391466633e5279579d224170276",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/criterion-home/perf-ipc_frame_decode/storage_ipc/report/violin.svg"
+    },
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-criterion-1792708262835078424.json",
+      "bytes": 933,
+      "sha256": "cd09e8dffed52073631fc50d3ab16483abe9f9fa3660a80a4482e8663e14bde2",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/bench_engine_step_once_save_const_single_transition-criterion-1792708262835078424.json"
+    },
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-criterion-1792708262835078424.stderr",
+      "bytes": 5448,
+      "sha256": "3f97d575289493166a856543bda54977a05e1be1a4bebaea385a0add06057221",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/bench_engine_step_once_save_const_single_transition-criterion-1792708262835078424.stderr"
+    },
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-criterion-1792708262835078424.stdout",
+      "bytes": 169,
+      "sha256": "05b3542aa9453d59ec721935602286c4fbd24f4895b50b998798486584ef362e",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/bench_engine_step_once_save_const_single_transition-criterion-1792708262835078424.stdout"
+    },
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-print.json",
+      "bytes": 622,
+      "sha256": "08b2edcd9c427a5d4e94c3284a58588c07e49b858997f069e81df74d343c9a41",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-print.json"
+    },
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-print.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-print.stderr"
+    },
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-print.stdout",
+      "bytes": 78625,
+      "sha256": "66d2ed4f44661cd6ac433ebad2cad985b247bde2c5195f0a722e32676114d06e",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-print.stdout"
+    },
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-record.json",
+      "bytes": 1156,
+      "sha256": "354b92a9e727b9e233891b146847b08d22f632861fc7f703ecfd5bc1663c316b",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-record.json"
+    },
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-record.stderr",
+      "bytes": 5743,
+      "sha256": "4360b75d45b45591202dca6fe8621143c55e2a51fd60997948937a68f3f72fdb",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-record.stderr"
+    },
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-record.stdout",
+      "bytes": 751,
+      "sha256": "5a8bf75f841561c86ab217814d2ecb8cce165378305f290d37dfb66f61bf00b5",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-record.stdout"
+    },
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-zstd.json",
+      "bytes": 621,
+      "sha256": "1e3d29afd58ccab3d4a4c7a7bca313c5439d1e0c117e91621ca90bc281cd983d",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-zstd.json"
+    },
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-zstd.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-zstd.stderr"
+    },
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-zstd.stdout",
+      "bytes": 16428845,
+      "sha256": "9acf043fc4b06180ea427124d5810a63d989b9e81c3f95b20b20b05a5435b680",
+      "retained_in_git": false,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-zstd.stdout"
+    },
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-perf-1792708265213222611.json",
+      "bytes": 1180,
+      "sha256": "c7164bc9ebfb655b9d9b75f6df3334cdf86ca6eec1b34c775c293908a813b405",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/bench_engine_step_once_save_const_single_transition-perf-1792708265213222611.json"
+    },
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-perf-1792708265213222611.stderr",
+      "bytes": 5453,
+      "sha256": "26acf30daf165a9874989f6f0383a3ec8c487abaf0285c8a07a73d16da544dde",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/bench_engine_step_once_save_const_single_transition-perf-1792708265213222611.stderr"
+    },
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-perf-1792708265213222611.stdout",
+      "bytes": 169,
+      "sha256": "59affdf33b0784eec1354427efb93bd6ffe0f2193b4a38f0176acbc982ffe02a",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/bench_engine_step_once_save_const_single_transition-perf-1792708265213222611.stdout"
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-criterion-1792708287309541929.json",
+      "bytes": 927,
+      "sha256": "2dc8e63ba6d180b8a46187e34dc998a04de105f3634f503cefdbb0618f23458b",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-criterion-1792708287309541929.json"
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-criterion-1792708287309541929.stderr",
+      "bytes": 5377,
+      "sha256": "06bb8124070e8d290308ed3736333aad626ca08580fff20ecf5f43240b5e2ede",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-criterion-1792708287309541929.stderr"
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-criterion-1792708287309541929.stdout",
+      "bytes": 169,
+      "sha256": "ebaaf5878aa5567b8b5466aefd88abb52411e1cf449c1e6c9ac3d43a34cb8406",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-criterion-1792708287309541929.stdout"
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-print.json",
+      "bytes": 618,
+      "sha256": "9747da0f2c410f09855c2204b5d35a20bc2868188094d1f8730ab8fdc61375b4",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-print.json"
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-print.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-print.stderr"
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-print.stdout",
+      "bytes": 79014,
+      "sha256": "d9bf10e259fc0a299c49fd001d37fd75288ac982169f82efd44a0727b2ddcfef",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-print.stdout"
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-record.json",
+      "bytes": 1148,
+      "sha256": "e449feeee8e0968a1a7fb7373b6d805d3b940d422889e131efe73c6aac453232",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-record.json"
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-record.stderr",
+      "bytes": 5671,
+      "sha256": "9bf71021736683fc4b084a25bdec43ec55e53c41f7fd1f66560c80ebf5d101f0",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-record.stderr"
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-record.stdout",
+      "bytes": 793,
+      "sha256": "17db0ade9c7f2649b3db42c687baa561ab0caa69c97d725d352b3f04f73ae72d",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-record.stdout"
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-zstd.json",
+      "bytes": 617,
+      "sha256": "8c77ca05129f3c537e7e3c725b8f2ac4aff3332c6e3c9717231c566fc7c2a741",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-zstd.json"
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-zstd.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-zstd.stderr"
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-zstd.stdout",
+      "bytes": 19012281,
+      "sha256": "9761f4c3705a78a69fa94b35173231c7329e15119133bd7911cf4240ec17c043",
+      "retained_in_git": false,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792708292078787028-zstd.stdout"
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-perf-1792708289695679231.json",
+      "bytes": 1171,
+      "sha256": "e899953143349522f281b7a2df03e244129fe9bfc5c8181ae039e51181991585",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-perf-1792708289695679231.json"
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-perf-1792708289695679231.stderr",
+      "bytes": 5379,
+      "sha256": "7d3aa6bd8ac43a6ae099c6ad9e05b86f01bd7af3a7896fe8490b449e05f854f5",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-perf-1792708289695679231.stderr"
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-perf-1792708289695679231.stdout",
+      "bytes": 169,
+      "sha256": "244b719c9c9136f12a5adfb08d2e0f25d454530fcb025fa279ac8a126db90394",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-perf-1792708289695679231.stdout"
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-criterion-1792708270923448052.json",
+      "bytes": 828,
+      "sha256": "78a0ac1b9a915f6293a93bf468763c17416479a6b0aa959a07d133976f7da041",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/ipc_frame_decode-criterion-1792708270923448052.json"
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-criterion-1792708270923448052.stderr",
+      "bytes": 4118,
+      "sha256": "fc678eb07451ab4be886da894bd30f9dd5c46ea5c2e25127af688991a657a07a",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/ipc_frame_decode-criterion-1792708270923448052.stderr"
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-criterion-1792708270923448052.stdout",
+      "bytes": 169,
+      "sha256": "ff19fef3f0a38b2b5400638189c40a8dc366b9974923fe1d8f70a2caf29058ec",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/ipc_frame_decode-criterion-1792708270923448052.stdout"
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-print.json",
+      "bytes": 551,
+      "sha256": "414ea646bc457abfcd1af1e96c57b71e07b1e86ed66333915ab23fe99fb83560",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-print.json"
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-print.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-print.stderr"
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-print.stdout",
+      "bytes": 80678,
+      "sha256": "36d68283599941e8c2dd0fc71a833352d193ebbc4f84ac04ec553b7c1ec2840d",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-print.stdout"
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-record.json",
+      "bytes": 1016,
+      "sha256": "b0199b42785a462ebfae6c32a19d9b3f58a50dfa749aaa170d5aa4453eb181a3",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-record.json"
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-record.stderr",
+      "bytes": 4226,
+      "sha256": "9fa4a85417d21d408bcefcc37f27e8ec051f94c2c657901f871edb4de923a354",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-record.stderr"
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-record.stdout",
+      "bytes": 703,
+      "sha256": "d151538ee75d35f2e0b9c719ee6e599c50657e28b83ffeeda59db44ce9f5dc4f",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-record.stdout"
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-zstd.json",
+      "bytes": 551,
+      "sha256": "41764a20194affe0886f40250ced8f8a2a1381cb219b994d0e46f315fc90cfd3",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-zstd.json"
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-zstd.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-zstd.stderr"
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-zstd.stdout",
+      "bytes": 207471000,
+      "sha256": "1b2567f2306e5bd8b3d29a8202df9ca35b23e6d4ce2112336b800deafbebf933",
+      "retained_in_git": false,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/ipc_frame_decode-heaptrack-1792708276633214307-zstd.stdout"
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-perf-1792708273761601965.json",
+      "bytes": 1040,
+      "sha256": "347b817bc95d5f6c06eebfa717cace1ad792b04e424d3e6c4bef22c813d7edad",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/ipc_frame_decode-perf-1792708273761601965.json"
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-perf-1792708273761601965.stderr",
+      "bytes": 4125,
+      "sha256": "dcf5a763f65ddec82b0fbae65b4e5e42ff4a533c9f8b0ce90f31ba12950c52c6",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/ipc_frame_decode-perf-1792708273761601965.stderr"
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-perf-1792708273761601965.stdout",
+      "bytes": 239,
+      "sha256": "42356d5abd5cb2644fa4ce81fcbdaec8564cd6614aeb48eb5623561c1462cf5d",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/ipc_frame_decode-perf-1792708273761601965.stdout"
+    },
+    {
+      "path": "scratch/heaptrack/ht-bench_engine_step_once_save_const_single_transition.zst",
+      "bytes": 3536253,
+      "sha256": "04c1b681fc1ddfde53b789acc89ea0c498284174bffbb3fc03f9ad793dd3da89",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/heaptrack/ht-bench_engine_step_once_save_const_single_transition.zst"
+    },
+    {
+      "path": "scratch/heaptrack/ht-engine_run_until_blocked_budget_10_small_workflow.zst",
+      "bytes": 4213540,
+      "sha256": "00c039b592a13f8c354365f039be126d8499b2c6ae243961ce09d775ab769318",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/heaptrack/ht-engine_run_until_blocked_budget_10_small_workflow.zst"
+    },
+    {
+      "path": "scratch/heaptrack/ht-ipc_frame_decode.zst",
+      "bytes": 3933087,
+      "sha256": "4f20299f9ab7c0d2a58f311f9bdd7c64e73216eea5422582c062fcceb1dffa70",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/heaptrack/ht-ipc_frame_decode.zst"
+    },
+    {
+      "path": "scratch/heaptrack-manifest.json",
+      "bytes": 1104,
+      "sha256": "15a302b759b2c246cc0cc572b528900063eace15dd247ac2dd8e4cc3acea6243",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/heaptrack-manifest.json"
+    },
+    {
+      "path": "scratch/perf/bench_engine_step_once_save_const_single_transition.csv",
+      "bytes": 87,
+      "sha256": "792d74e1e7fc8888ba106547888cf672afbf741e7a91caa049307e895cf836ae",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/perf/bench_engine_step_once_save_const_single_transition.csv"
+    },
+    {
+      "path": "scratch/perf/engine_run_until_blocked_budget_10_small_workflow.csv",
+      "bytes": 87,
+      "sha256": "dcf17d718769883bd32d640829051134176a89a0ca80c0c02550b6090869554c",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/perf/engine_run_until_blocked_budget_10_small_workflow.csv"
+    },
+    {
+      "path": "scratch/perf/ipc_frame_decode.csv",
+      "bytes": 87,
+      "sha256": "75881a8574657fc1316e556a3650b29a760e501604d35e25084411b55b323216",
+      "retained_in_git": true,
+      "external_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/perf/ipc_frame_decode.csv"
+    }
+  ]
+}

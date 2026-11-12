@@ -1,0 +1,7 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-ct9lz-impl-local5090-v4/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.91s
+────────────
+ Nextest run ID 1840826f-4f9a-4181-8942-700ea1514158 with nextest profile: default
+    Starting 1658 tests across 1 binary
+────────────
+     Summary [   1.529s] 1658 tests run: 1658 passed, 0 skipped

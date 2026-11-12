@@ -182,10 +182,10 @@ fn shard_tick_counts_zero_initially() {
 }
 
 #[test]
-fn shard_submit_with_inputs_completes_finished_workflow() {
+fn shard_submit_with_inputs_completes_input_result_workflow() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = finished_workflow() else {
+    let Some(workflow) = input_result_workflow() else {
         return;
     };
     let inputs = Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::I64(99))]);

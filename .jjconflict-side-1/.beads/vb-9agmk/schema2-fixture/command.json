@@ -1,0 +1,21 @@
+{
+  "build_command": [
+    "rustc",
+    "--edition=2024",
+    ".beads/vb-9agmk/schema2-fixture/emit.rs",
+    "-L",
+    "dependency=target/debug/deps",
+    "-o",
+    "/tmp/vb9-schema2-emitter",
+    "--extern",
+    "vb_compile=target/debug/deps/libvb_compile-639c086a7bce7f55.rlib",
+    "--extern",
+    "vb_storage=target/debug/deps/libvb_storage-69cb519b86e8eda3.rlib",
+    "--extern",
+    "vb_core=target/debug/deps/libvb_core-74adf8ef8b508686.rlib",
+    "--extern",
+    "postcard=target/debug/deps/libpostcard-010f1ce5133cb547.rlib"
+  ],
+  "source_commit": "57f307dac5dd59153f46f1d3e7b92ea73e2de35b",
+  "build_exit": 1
+}

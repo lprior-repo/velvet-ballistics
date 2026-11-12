@@ -1,0 +1,24 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local3090-test-strengthening",
+  "argv": [
+    "cargo",
+    "clippy",
+    "-p",
+    "vb_core",
+    "-p",
+    "vb_runtime",
+    "--lib",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "exit_code": 0,
+  "seconds": 5.955,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-kbjwj/evidence/TPHEF3",
+  "coordinator_message": "Coordinator: Preserve stable encoding coverage and existing test names. Replacing discriminant tests with mere assert_ne enum inequality WEAKENS them; do not do that. Use postcard::to_allocvec(&variant)? exact expected bytes e.g [0u8]/[1u8]/[2u8] to verify actual serialized wire stability without casts. Check dependency vb_core Cargo.toml (postcard already available if present). Keep names decision_code_discriminants/policy_layer_discriminants, test signatures Result can change. Preserve all variants and assertions. No dropping cases. Ensure full ticket uses distinct values, runtime current identity configured expected distinctdigest, all newtests uncheckedoperations removed. Root will audit exact diff.\n"
+}

@@ -1,0 +1,2 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running tests/digest_framing_collision.rs (target/debug/deps/digest_framing_collision-d69811b06dae3d34)

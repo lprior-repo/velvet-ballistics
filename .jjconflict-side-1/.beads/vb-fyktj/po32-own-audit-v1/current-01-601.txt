@@ -1,0 +1,7 @@
+crates/vb_core/src/engine/signals.rs:601:                 kani::assert(false, "should not overflow when remaining <= MAX");
+crates/vb_core/src/engine/signals.rs:602:             }
+crates/vb_core/src/engine/signals.rs:603:             Err(_) => {}
+crates/vb_core/src/engine/signals.rs:604:             Ok(_) => {}
+crates/vb_core/src/engine/signals.rs:605:         }
+crates/vb_core/src/engine/signals.rs:606:     }
+crates/vb_core/src/engine/signals.rs:607: }

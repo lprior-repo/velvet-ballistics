@@ -1,0 +1,138 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 563046989
+INFO: Loaded 1 modules   (54540 inline 8-bit counters): 54540 [0x5650ddae67e3, 0x5650ddaf3cef), 
+INFO: Loaded 1 PC tables (54540 PCs): 54540 [0x5650ddaf3cf0,0x5650ddbc8db0), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/fuzz_choose_when_parse
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 831 ft: 832 corp: 1/1b exec/s: 0 rss: 49Mb
+	NEW_FUNC[1/217]: 0x5650dd785880  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_choose_when_parse+0x2ca880) (BuildId: 5a54f28d6ef170d97a03edca0b24cb30629574e7)
+	NEW_FUNC[2/217]: 0x5650dd786440  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_choose_when_parse+0x2cb440) (BuildId: 5a54f28d6ef170d97a03edca0b24cb30629574e7)
+#3	NEW    cov: 3347 ft: 3761 corp: 2/2b lim: 4 exec/s: 0 rss: 51Mb L: 1/1 MS: 1 ChangeByte-
+#4	NEW    cov: 3347 ft: 3762 corp: 3/3b lim: 4 exec/s: 0 rss: 52Mb L: 1/1 MS: 1 ChangeBit-
+	NEW_FUNC[1/1]: 0x5650dda303e0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_choose_when_parse+0x5753e0) (BuildId: 5a54f28d6ef170d97a03edca0b24cb30629574e7)
+#5	NEW    cov: 3350 ft: 3765 corp: 4/4b lim: 4 exec/s: 0 rss: 52Mb L: 1/1 MS: 1 ChangeBit-
+#6	NEW    cov: 3350 ft: 3767 corp: 5/5b lim: 4 exec/s: 0 rss: 52Mb L: 1/1 MS: 1 CopyPart-
+#7	NEW    cov: 3353 ft: 3788 corp: 6/7b lim: 4 exec/s: 0 rss: 52Mb L: 2/2 MS: 1 CrossOver-
+	NEW_FUNC[1/1]: 0x5650dd7b6b80  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_choose_when_parse+0x2fbb80) (BuildId: 5a54f28d6ef170d97a03edca0b24cb30629574e7)
+#8	NEW    cov: 3356 ft: 3791 corp: 7/9b lim: 4 exec/s: 0 rss: 53Mb L: 2/2 MS: 1 CopyPart-
+#10	NEW    cov: 3356 ft: 3794 corp: 8/11b lim: 4 exec/s: 0 rss: 53Mb L: 2/2 MS: 2 ShuffleBytes-CopyPart-
+	NEW_FUNC[1/1]: 0x5650dd8568a0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_choose_when_parse+0x39b8a0) (BuildId: 5a54f28d6ef170d97a03edca0b24cb30629574e7)
+#11	NEW    cov: 3364 ft: 3814 corp: 9/14b lim: 4 exec/s: 0 rss: 54Mb L: 3/3 MS: 1 InsertByte-
+	NEW_FUNC[1/1]: 0x5650dd905b70  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_choose_when_parse+0x44ab70) (BuildId: 5a54f28d6ef170d97a03edca0b24cb30629574e7)
+#12	NEW    cov: 3367 ft: 3817 corp: 10/15b lim: 4 exec/s: 0 rss: 54Mb L: 1/3 MS: 1 ShuffleBytes-
+	NEW_FUNC[1/1]: 0x5650dda564e0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_choose_when_parse+0x59b4e0) (BuildId: 5a54f28d6ef170d97a03edca0b24cb30629574e7)
+#13	NEW    cov: 3370 ft: 3820 corp: 11/17b lim: 4 exec/s: 0 rss: 54Mb L: 2/3 MS: 1 ShuffleBytes-
+#21	NEW    cov: 3370 ft: 3822 corp: 12/19b lim: 4 exec/s: 0 rss: 56Mb L: 2/3 MS: 3 InsertByte-ChangeByte-ChangeBit-
+	NEW_FUNC[1/1]: 0x5650dda08a50  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_choose_when_parse+0x54da50) (BuildId: 5a54f28d6ef170d97a03edca0b24cb30629574e7)
+#22	NEW    cov: 3412 ft: 3872 corp: 13/21b lim: 4 exec/s: 0 rss: 56Mb L: 2/3 MS: 1 ChangeBit-
+#23	NEW    cov: 3412 ft: 3883 corp: 14/25b lim: 4 exec/s: 0 rss: 57Mb L: 4/4 MS: 1 CopyPart-
+#24	NEW    cov: 3422 ft: 3898 corp: 15/27b lim: 4 exec/s: 0 rss: 57Mb L: 2/4 MS: 1 CopyPart-
+#26	NEW    cov: 3428 ft: 3904 corp: 16/31b lim: 4 exec/s: 0 rss: 57Mb L: 4/4 MS: 2 CrossOver-ChangeBinInt-
+#27	NEW    cov: 3429 ft: 3905 corp: 17/35b lim: 4 exec/s: 0 rss: 57Mb L: 4/4 MS: 1 CrossOver-
+#32	NEW    cov: 3430 ft: 3906 corp: 18/38b lim: 4 exec/s: 0 rss: 58Mb L: 3/4 MS: 5 CopyPart-EraseBytes-ChangeBit-CopyPart-EraseBytes-
+#37	NEW    cov: 3453 ft: 3935 corp: 19/40b lim: 4 exec/s: 0 rss: 58Mb L: 2/4 MS: 5 ChangeByte-CrossOver-CopyPart-ChangeBit-CMP- DE: "\377\377"-
+#44	NEW    cov: 3453 ft: 3955 corp: 20/41b lim: 4 exec/s: 0 rss: 59Mb L: 1/4 MS: 2 PersAutoDict-EraseBytes- DE: "\377\377"-
+#45	NEW    cov: 3454 ft: 3956 corp: 21/44b lim: 4 exec/s: 0 rss: 59Mb L: 3/4 MS: 1 ChangeBit-
+#46	NEW    cov: 3454 ft: 3957 corp: 22/47b lim: 4 exec/s: 0 rss: 60Mb L: 3/4 MS: 1 PersAutoDict- DE: "\377\377"-
+#48	NEW    cov: 3456 ft: 3959 corp: 23/51b lim: 4 exec/s: 0 rss: 60Mb L: 4/4 MS: 2 ShuffleBytes-CopyPart-
+#51	NEW    cov: 3497 ft: 4023 corp: 24/55b lim: 4 exec/s: 0 rss: 60Mb L: 4/4 MS: 3 InsertByte-CopyPart-ChangeBinInt-
+#57	NEW    cov: 3498 ft: 4033 corp: 25/57b lim: 4 exec/s: 0 rss: 61Mb L: 2/4 MS: 1 InsertByte-
+#59	NEW    cov: 3503 ft: 4061 corp: 26/61b lim: 4 exec/s: 0 rss: 61Mb L: 4/4 MS: 2 ShuffleBytes-CopyPart-
+#61	NEW    cov: 3503 ft: 4064 corp: 27/62b lim: 4 exec/s: 0 rss: 61Mb L: 1/4 MS: 2 CopyPart-ShuffleBytes-
+#72	NEW    cov: 3503 ft: 4084 corp: 28/66b lim: 4 exec/s: 0 rss: 62Mb L: 4/4 MS: 1 ChangeByte-
+#76	NEW    cov: 3504 ft: 4087 corp: 29/67b lim: 4 exec/s: 0 rss: 62Mb L: 1/4 MS: 4 ChangeByte-InsertByte-CopyPart-EraseBytes-
+#83	NEW    cov: 3508 ft: 4095 corp: 30/68b lim: 4 exec/s: 0 rss: 63Mb L: 1/4 MS: 2 ChangeBit-ChangeByte-
+#84	REDUCE cov: 3508 ft: 4095 corp: 30/67b lim: 4 exec/s: 0 rss: 63Mb L: 3/4 MS: 1 EraseBytes-
+	NEW_FUNC[1/9]: 0x5650dd811670  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_choose_when_parse+0x356670) (BuildId: 5a54f28d6ef170d97a03edca0b24cb30629574e7)
+	NEW_FUNC[2/9]: 0x5650dd859510  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_choose_when_parse+0x39e510) (BuildId: 5a54f28d6ef170d97a03edca0b24cb30629574e7)
+#92	NEW    cov: 3600 ft: 4188 corp: 31/68b lim: 4 exec/s: 0 rss: 64Mb L: 1/4 MS: 3 EraseBytes-ShuffleBytes-ChangeByte-
+#99	NEW    cov: 3605 ft: 4198 corp: 32/69b lim: 4 exec/s: 0 rss: 64Mb L: 1/4 MS: 2 ChangeByte-ChangeByte-
+#101	NEW    cov: 3611 ft: 4205 corp: 33/71b lim: 4 exec/s: 0 rss: 65Mb L: 2/4 MS: 2 ShuffleBytes-InsertByte-
+#105	NEW    cov: 3611 ft: 4207 corp: 34/74b lim: 4 exec/s: 0 rss: 65Mb L: 3/4 MS: 4 EraseBytes-PersAutoDict-ChangeByte-ChangeByte- DE: "\377\377"-
+#106	NEW    cov: 3611 ft: 4211 corp: 35/76b lim: 4 exec/s: 0 rss: 65Mb L: 2/4 MS: 1 CrossOver-
+#122	NEW    cov: 3611 ft: 4214 corp: 36/77b lim: 4 exec/s: 0 rss: 66Mb L: 1/4 MS: 1 EraseBytes-
+#129	NEW    cov: 3611 ft: 4215 corp: 37/80b lim: 4 exec/s: 0 rss: 67Mb L: 3/4 MS: 2 ChangeBinInt-EraseBytes-
+#152	NEW    cov: 3622 ft: 5017 corp: 38/84b lim: 4 exec/s: 0 rss: 69Mb L: 4/4 MS: 3 CopyPart-ChangeBit-ChangeByte-
+#153	NEW    cov: 3626 ft: 5029 corp: 39/85b lim: 4 exec/s: 0 rss: 69Mb L: 1/4 MS: 1 CrossOver-
+#185	NEW    cov: 3635 ft: 5038 corp: 40/89b lim: 4 exec/s: 0 rss: 72Mb L: 4/4 MS: 2 PersAutoDict-ChangeBinInt- DE: "\377\377"-
+#187	NEW    cov: 3642 ft: 5054 corp: 41/91b lim: 4 exec/s: 0 rss: 72Mb L: 2/4 MS: 2 EraseBytes-InsertByte-
+#195	REDUCE cov: 3642 ft: 5054 corp: 41/90b lim: 4 exec/s: 0 rss: 73Mb L: 3/4 MS: 3 EraseBytes-ChangeBit-PersAutoDict- DE: "\377\377"-
+#209	NEW    cov: 3646 ft: 5060 corp: 42/94b lim: 4 exec/s: 0 rss: 74Mb L: 4/4 MS: 4 PersAutoDict-ShuffleBytes-ChangeByte-ChangeBit- DE: "\377\377"-
+#221	NEW    cov: 3646 ft: 5065 corp: 43/97b lim: 4 exec/s: 0 rss: 75Mb L: 3/4 MS: 2 EraseBytes-CrossOver-
+#227	NEW    cov: 3646 ft: 5066 corp: 44/101b lim: 4 exec/s: 0 rss: 75Mb L: 4/4 MS: 1 ChangeBinInt-
+	NEW_FUNC[1/7]: 0x5650dd96c790  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_choose_when_parse+0x4b1790) (BuildId: 5a54f28d6ef170d97a03edca0b24cb30629574e7)
+	NEW_FUNC[2/7]: 0x5650dd96d630  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_choose_when_parse+0x4b2630) (BuildId: 5a54f28d6ef170d97a03edca0b24cb30629574e7)
+#254	NEW    cov: 3719 ft: 5310 corp: 45/103b lim: 4 exec/s: 0 rss: 78Mb L: 2/4 MS: 2 ChangeBit-CrossOver-
+#261	NEW    cov: 3719 ft: 5311 corp: 46/104b lim: 4 exec/s: 0 rss: 78Mb L: 1/4 MS: 2 CopyPart-ChangeByte-
+#297	NEW    cov: 3720 ft: 5312 corp: 47/105b lim: 4 exec/s: 0 rss: 80Mb L: 1/4 MS: 1 EraseBytes-
+#307	NEW    cov: 3723 ft: 5315 corp: 48/109b lim: 4 exec/s: 0 rss: 81Mb L: 4/4 MS: 5 ChangeBit-CrossOver-ChangeByte-CopyPart-ChangeByte-
+#319	REDUCE cov: 3723 ft: 5315 corp: 48/108b lim: 4 exec/s: 0 rss: 82Mb L: 3/4 MS: 2 CopyPart-EraseBytes-
+#333	NEW    cov: 3723 ft: 5316 corp: 49/109b lim: 4 exec/s: 0 rss: 83Mb L: 1/4 MS: 4 CrossOver-ChangeBit-ChangeBit-ChangeByte-
+#343	NEW    cov: 3723 ft: 5317 corp: 50/113b lim: 4 exec/s: 0 rss: 84Mb L: 4/4 MS: 5 PersAutoDict-ChangeByte-ChangeBinInt-CrossOver-ShuffleBytes- DE: "\377\377"-
+#378	REDUCE cov: 3726 ft: 5323 corp: 51/117b lim: 4 exec/s: 0 rss: 87Mb L: 4/4 MS: 5 ShuffleBytes-InsertByte-ChangeByte-ChangeByte-CopyPart-
+#405	NEW    cov: 3726 ft: 5325 corp: 52/121b lim: 4 exec/s: 0 rss: 90Mb L: 4/4 MS: 2 CrossOver-CopyPart-
+#411	NEW    cov: 3726 ft: 5384 corp: 53/125b lim: 4 exec/s: 0 rss: 90Mb L: 4/4 MS: 1 CrossOver-
+#541	NEW    cov: 3726 ft: 5386 corp: 54/129b lim: 4 exec/s: 0 rss: 100Mb L: 4/4 MS: 5 ChangeByte-PersAutoDict-CopyPart-ShuffleBytes-CrossOver- DE: "\377\377"-
+#549	NEW    cov: 3741 ft: 5401 corp: 55/133b lim: 4 exec/s: 0 rss: 100Mb L: 4/4 MS: 3 ChangeBit-CopyPart-ShuffleBytes-
+#561	NEW    cov: 3743 ft: 5403 corp: 56/135b lim: 4 exec/s: 0 rss: 101Mb L: 2/4 MS: 2 EraseBytes-CrossOver-
+#647	NEW    cov: 3748 ft: 5409 corp: 57/139b lim: 4 exec/s: 0 rss: 108Mb L: 4/4 MS: 1 CrossOver-
+#680	REDUCE cov: 3751 ft: 5412 corp: 58/143b lim: 4 exec/s: 0 rss: 111Mb L: 4/4 MS: 3 InsertByte-CrossOver-CrossOver-
+#681	NEW    cov: 3751 ft: 5413 corp: 59/147b lim: 4 exec/s: 0 rss: 111Mb L: 4/4 MS: 1 CopyPart-
+#691	NEW    cov: 3752 ft: 5416 corp: 60/151b lim: 4 exec/s: 0 rss: 111Mb L: 4/4 MS: 5 CopyPart-ChangeBinInt-ChangeByte-ChangeByte-ChangeBit-
+#727	NEW    cov: 3752 ft: 5417 corp: 61/153b lim: 4 exec/s: 0 rss: 114Mb L: 2/4 MS: 1 CrossOver-
+#735	NEW    cov: 3753 ft: 5418 corp: 62/154b lim: 4 exec/s: 0 rss: 115Mb L: 1/4 MS: 3 InsertByte-EraseBytes-ChangeByte-
+#739	NEW    cov: 3754 ft: 5419 corp: 63/158b lim: 4 exec/s: 0 rss: 115Mb L: 4/4 MS: 4 CopyPart-CrossOver-ChangeByte-CrossOver-
+#740	NEW    cov: 3755 ft: 5426 corp: 64/162b lim: 4 exec/s: 0 rss: 115Mb L: 4/4 MS: 1 CopyPart-
+#769	REDUCE cov: 3755 ft: 5429 corp: 65/163b lim: 4 exec/s: 0 rss: 117Mb L: 1/4 MS: 4 CMP-ChangeBit-EraseBytes-EraseBytes- DE: "\000\000"-
+#770	NEW    cov: 3757 ft: 5431 corp: 66/165b lim: 4 exec/s: 0 rss: 117Mb L: 2/4 MS: 1 ChangeBit-
+#778	NEW    cov: 3757 ft: 5437 corp: 67/168b lim: 4 exec/s: 0 rss: 118Mb L: 3/4 MS: 3 ShuffleBytes-CopyPart-CopyPart-
+#780	NEW    cov: 3757 ft: 5438 corp: 68/172b lim: 4 exec/s: 0 rss: 118Mb L: 4/4 MS: 2 CMP-CopyPart- DE: "0o"-
+#807	REDUCE cov: 3757 ft: 5438 corp: 68/171b lim: 4 exec/s: 0 rss: 120Mb L: 2/4 MS: 2 EraseBytes-ChangeBit-
+#833	NEW    cov: 3760 ft: 5456 corp: 69/173b lim: 4 exec/s: 0 rss: 122Mb L: 2/4 MS: 1 CopyPart-
+#891	NEW    cov: 3761 ft: 5457 corp: 70/176b lim: 4 exec/s: 891 rss: 126Mb L: 3/4 MS: 3 ShuffleBytes-ChangeBit-ShuffleBytes-
+#914	NEW    cov: 3762 ft: 5459 corp: 71/179b lim: 4 exec/s: 914 rss: 128Mb L: 3/4 MS: 3 EraseBytes-PersAutoDict-PersAutoDict- DE: "\377\377"-"0o"-
+#940	NEW    cov: 3762 ft: 5462 corp: 72/182b lim: 4 exec/s: 940 rss: 131Mb L: 3/4 MS: 1 ChangeByte-
+#970	NEW    cov: 3767 ft: 5494 corp: 73/186b lim: 4 exec/s: 970 rss: 132Mb L: 4/4 MS: 5 CrossOver-CrossOver-CrossOver-ChangeByte-CrossOver-
+#1018	REDUCE cov: 3767 ft: 5494 corp: 73/185b lim: 4 exec/s: 1018 rss: 136Mb L: 3/4 MS: 3 EraseBytes-CopyPart-EraseBytes-
+#1019	NEW    cov: 3767 ft: 5497 corp: 74/188b lim: 4 exec/s: 1019 rss: 136Mb L: 3/4 MS: 1 EraseBytes-
+#1062	NEW    cov: 3767 ft: 5498 corp: 75/192b lim: 4 exec/s: 1062 rss: 139Mb L: 4/4 MS: 3 CopyPart-CopyPart-PersAutoDict- DE: "\000\000"-
+#1073	REDUCE cov: 3767 ft: 5498 corp: 75/191b lim: 4 exec/s: 1073 rss: 140Mb L: 2/4 MS: 1 EraseBytes-
+#1100	REDUCE cov: 3767 ft: 5498 corp: 75/189b lim: 4 exec/s: 1100 rss: 142Mb L: 2/4 MS: 2 ChangeByte-EraseBytes-
+#1232	NEW    cov: 3767 ft: 5500 corp: 76/192b lim: 4 exec/s: 1232 rss: 151Mb L: 3/4 MS: 2 ChangeBit-EraseBytes-
+#1298	NEW    cov: 3768 ft: 5502 corp: 77/196b lim: 4 exec/s: 1298 rss: 156Mb L: 4/4 MS: 1 CopyPart-
+#1304	NEW    cov: 3770 ft: 5504 corp: 78/200b lim: 4 exec/s: 1304 rss: 157Mb L: 4/4 MS: 1 PersAutoDict- DE: "\377\377"-
+#1348	NEW    cov: 3770 ft: 5506 corp: 79/204b lim: 4 exec/s: 1348 rss: 159Mb L: 4/4 MS: 4 CrossOver-PersAutoDict-ChangeByte-CopyPart- DE: "\377\377"-
+#1368	REDUCE cov: 3771 ft: 5508 corp: 80/208b lim: 4 exec/s: 1368 rss: 161Mb L: 4/4 MS: 5 ShuffleBytes-CopyPart-EraseBytes-InsertByte-CopyPart-
+#1372	NEW    cov: 3771 ft: 5547 corp: 81/212b lim: 4 exec/s: 1372 rss: 161Mb L: 4/4 MS: 4 ChangeBinInt-EraseBytes-ChangeByte-CopyPart-
+#1523	NEW    cov: 3771 ft: 5552 corp: 82/216b lim: 4 exec/s: 1523 rss: 172Mb L: 4/4 MS: 1 ShuffleBytes-
+#1539	NEW    cov: 3774 ft: 5555 corp: 83/220b lim: 4 exec/s: 1539 rss: 174Mb L: 4/4 MS: 1 CrossOver-
+#1592	NEW    cov: 3775 ft: 5556 corp: 84/224b lim: 4 exec/s: 1592 rss: 178Mb L: 4/4 MS: 3 CrossOver-CopyPart-ChangeBit-
+#1653	NEW    cov: 3778 ft: 5561 corp: 85/227b lim: 4 exec/s: 1653 rss: 182Mb L: 3/4 MS: 1 CopyPart-
+#1667	REDUCE cov: 3778 ft: 5561 corp: 85/226b lim: 4 exec/s: 1667 rss: 183Mb L: 3/4 MS: 4 ChangeBit-ChangeByte-ShuffleBytes-EraseBytes-
+	NEW_FUNC[1/2]: 0x5650dd97a4a0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_choose_when_parse+0x4bf4a0) (BuildId: 5a54f28d6ef170d97a03edca0b24cb30629574e7)
+	NEW_FUNC[2/2]: 0x5650dd97d1f0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_choose_when_parse+0x4c21f0) (BuildId: 5a54f28d6ef170d97a03edca0b24cb30629574e7)
+#1754	NEW    cov: 3806 ft: 5659 corp: 86/230b lim: 4 exec/s: 1754 rss: 189Mb L: 4/4 MS: 2 EraseBytes-CMP- DE: "e\000"-
+#1894	NEW    cov: 3806 ft: 5672 corp: 87/234b lim: 4 exec/s: 1894 rss: 199Mb L: 4/4 MS: 5 ChangeByte-CopyPart-ShuffleBytes-ShuffleBytes-ShuffleBytes-
+#1994	REDUCE cov: 3806 ft: 5672 corp: 87/233b lim: 4 exec/s: 1994 rss: 206Mb L: 2/4 MS: 5 CopyPart-ChangeBit-ChangeBit-ChangeBit-EraseBytes-
+#2045	NEW    cov: 3807 ft: 5673 corp: 88/235b lim: 4 exec/s: 2045 rss: 210Mb L: 2/4 MS: 1 EraseBytes-
+#2107	REDUCE cov: 3807 ft: 5673 corp: 88/234b lim: 4 exec/s: 2107 rss: 214Mb L: 3/4 MS: 2 ChangeByte-EraseBytes-
+#2120	NEW    cov: 3809 ft: 5675 corp: 89/236b lim: 4 exec/s: 2120 rss: 215Mb L: 2/4 MS: 3 EraseBytes-ChangeBinInt-CrossOver-
+#2125	NEW    cov: 3811 ft: 5677 corp: 90/238b lim: 4 exec/s: 2125 rss: 216Mb L: 2/4 MS: 5 CrossOver-ChangeByte-ChangeByte-EraseBytes-ChangeBinInt-
+#2251	NEW    cov: 3811 ft: 5678 corp: 91/242b lim: 4 exec/s: 2251 rss: 225Mb L: 4/4 MS: 1 ChangeBinInt-
+#2306	REDUCE cov: 3811 ft: 5679 corp: 92/243b lim: 4 exec/s: 2306 rss: 229Mb L: 1/4 MS: 5 CopyPart-CrossOver-PersAutoDict-EraseBytes-EraseBytes- DE: "e\000"-
+#2512	NEW    cov: 3811 ft: 5694 corp: 93/248b lim: 6 exec/s: 2512 rss: 244Mb L: 5/5 MS: 1 CrossOver-
+#2522	REDUCE cov: 3812 ft: 6218 corp: 94/254b lim: 6 exec/s: 2522 rss: 245Mb L: 6/6 MS: 5 InsertRepeatedBytes-CrossOver-ChangeByte-ChangeByte-ShuffleBytes-
+#2526	NEW    cov: 3812 ft: 6219 corp: 95/260b lim: 6 exec/s: 2526 rss: 245Mb L: 6/6 MS: 4 InsertByte-EraseBytes-CrossOver-CMP- DE: "\376\377\377\370"-
+	NEW_FUNC[1/1]: 0x5650dd9747f0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_choose_when_parse+0x4b97f0) (BuildId: 5a54f28d6ef170d97a03edca0b24cb30629574e7)
+#2562	NEW    cov: 3823 ft: 6261 corp: 96/263b lim: 6 exec/s: 2562 rss: 248Mb L: 3/6 MS: 1 PersAutoDict- DE: "0o"-
+#2584	NEW    cov: 3824 ft: 6269 corp: 97/269b lim: 6 exec/s: 2584 rss: 250Mb L: 6/6 MS: 2 ChangeBinInt-PersAutoDict- DE: "0o"-
+#2614	DONE   cov: 3824 ft: 6269 corp: 97/269b lim: 6 exec/s: 1307 rss: 252Mb
+###### Recommended dictionary. ######
+"\377\377" # Uses: 101
+"\000\000" # Uses: 33
+"0o" # Uses: 44
+"e\000" # Uses: 13
+"\376\377\377\370" # Uses: 1
+###### End of recommended dictionary. ######
+Done 2614 runs in 2 second(s)

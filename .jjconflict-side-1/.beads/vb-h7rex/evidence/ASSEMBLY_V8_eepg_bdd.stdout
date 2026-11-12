@@ -1,0 +1,38 @@
+
+running 33 tests
+test action_ticket_key_roundtrip::index_action_key_max_values ... ok
+test action_ticket_key_roundtrip::index_action_key_preserves_all_fields ... ok
+test e2e_fromstr_cold_path::fromstr_max_u64_roundtrip ... ok
+test e2e_fromstr_cold_path::fromstr_rejects_empty ... ok
+test e2e_fromstr_cold_path::fromstr_rejects_overflow ... ok
+test e2e_fromstr_cold_path::fromstr_rejects_negative ... ok
+test e2e_fromstr_cold_path::fromstr_zero_roundtrip ... ok
+test integration_full_roundtrip::full_run_id_to_key_to_decode_roundtrip ... ok
+test integration_full_roundtrip::full_workflow_id_index_key_roundtrip ... ok
+test min_max_numeric_id_roundtrip::run_id_max_roundtrip ... ok
+test min_max_numeric_id_roundtrip::run_id_nonzero_roundtrip ... ok
+test min_max_numeric_id_roundtrip::run_id_zero_roundtrip ... ok
+test min_max_numeric_id_roundtrip::workflow_id_extents_roundtrip ... ok
+test record_kind_stable_ids::record_kind_id_values_match_constants ... ok
+test record_kind_stable_ids::record_kind_id_is_stable ... ok
+test run_id_roundtrip::run_header_key_max_run_id ... ok
+test run_id_roundtrip::run_header_key_prefix_is_0x10 ... ok
+test run_id_roundtrip::run_header_key_preserves_run_id_bytes ... ok
+test run_id_roundtrip::run_header_key_zero_run_id ... ok
+test seqno_overflow_rejection::seqno_add_exact_max_succeeds ... ok
+test seqno_overflow_rejection::seqno_checked_add_associativity ... ok
+test seqno_overflow_rejection::seqno_normal_addition_succeeds ... ok
+test seqno_overflow_rejection::seqno_overflow_returns_none ... ok
+test storage_key_family_separation::all_key_prefixes_are_distinct ... ok
+test storage_key_family_separation::run_family_prefixes_distinct ... ok
+test unknown_record_kind_rejection::decode_rejects_unknown_record_kind ... ok
+test workflow_id_roundtrip::index_workflow_key_lexicographic_ordering ... ok
+test unknown_record_kind_rejection::is_known_record_kind_returns_false_for_invalid_kinds ... ok
+test workflow_id_roundtrip::index_workflow_key_preserves_workflow_id_bytes ... ok
+test unknown_record_kind_rejection::decode_accepts_all_known_journal_event_kinds ... ok
+test workflow_id_roundtrip::index_workflow_key_zero_values ... ok
+test unknown_record_kind_rejection::is_known_record_kind_returns_true_for_valid_kinds ... ok
+test workflow_id_roundtrip::index_workflow_key_zero_workflow_id ... ok
+
+test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

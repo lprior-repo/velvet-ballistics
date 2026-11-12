@@ -1,0 +1,23 @@
+{
+  "bead": "vb-88a03",
+  "review_version": 4,
+  "candidate": "b752db4c1a665caf90fa9e63e43d1505b0ba651d",
+  "base": "dba19b95918aca7c23e91b8814afa2a9118449f8",
+  "verdict": "APPROVED",
+  "files_reviewed": 16,
+  "test_count": {
+    "new_bead_tests": 6,
+    "retained_direct_api": 14,
+    "retained_unit": 1,
+    "total_in_scope": 21
+  },
+  "recovery_scenarios_covered": [
+    "emergency_deny_persistence_across_restart",
+    "corrupt_emergency_marker_unsupported_version",
+    "historical_replay_under_current_deny",
+    "legacy_unverified_admission_recovery",
+    "forged_policy_pin_rejection",
+    "cross_runtime_ask_ticket_rejection"
+  ],
+  "open_findings": []
+}

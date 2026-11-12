@@ -1,0 +1,11 @@
+{
+  "candidate": "a59d98340cbfcf2975ad8b7f12af68ffe1966dbc",
+  "original_patch": "a46c3723dc467807ac34f590550c36b6c539fb19",
+  "source_hashes_verified_equal": {
+    "crates/vb_ipc/src/frame_types.rs": "d8231b69c173cb6a125f4be3828758c9ada61d424b0f771bd81eda45df50f784",
+    "crates/workspace_tests/src/test_util/fixture.rs": "48eaa54a9eb89a042d4d82f98b156b65122e0ae393d42ebc847db759291c7357",
+    "crates/workspace_tests/src/test_util/seed.rs": "1c6ff536f38c4bcedde112edecfb41f3d46486ed266bbb390fd660bc6db51434"
+  },
+  "review": "Local3090 CODEandexistingTEST applicability approved exact3expressiondelta. Root agrees borrow-equivalence; entireoldbranch notaccepted.",
+  "scope_correction": "Reviewer phrase moon-ci-equivalent is unsupported. Actual scoped Cargo lib tests555pass only; canonical integration remainsrequired. No performance or fullv1claim."
+}

@@ -40,6 +40,7 @@ fn do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn std::error::E
     let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Do { action: ActionId::new(action_id), input: SlotIdx::ZERO, }, Some(SlotIdx::ZERO), None);
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("test-do"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: Box::from([node]),
@@ -51,7 +52,11 @@ fn do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn std::error::E
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::ZERO,
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     })
     .map_err(|e| format!("workflow must compile: {}", e).into())
 }
@@ -63,6 +68,7 @@ fn setconst_do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn std:
     let finish = vb_core::workflow::node(StepIdx::new(2), CompiledNodeKind::Finish { result: SlotIdx::new(1), }, None, None);
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("setconst-do"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: Box::from([set, do_node, finish]),
@@ -85,6 +91,7 @@ fn input_slot_do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn st
     let finish = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(1), }, None, None);
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("input-do"),
         digest: WorkflowDigest::from_bytes([5; 32]),
         nodes: Box::from([do_node, finish]),
@@ -99,7 +106,7 @@ fn input_slot_do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn st
         input_slots: Box::from([CompiledInputSlot {
             slot: SlotIdx::ZERO,
             kind: InputSlotKind::I64,
-            constraint: vb_core::CompiledInputConstraint::unconstrained(),
+            constraint: vb_core::CompiledInputConstraint::required(),
         }]),
     })
     .map_err(|e| format!("workflow must compile: {}", e).into())
@@ -256,10 +263,19 @@ fn validate_contracts_rejection_is_non_mutating() -> Result<(), Box<dyn std::err
 #[test]
 fn validate_contracts_accepts_reused_action_ids() -> Result<(), Box<dyn std::error::Error>> {
     // Workflow with same action appearing twice
-    let node1 = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::ZERO, }, Some(SlotIdx::ZERO), Some(StepIdx::new(1)));
+    let node1 = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::ZERO,
+        },
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(1)),
+    );
     let node2 = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::new(1), }, Some(SlotIdx::new(1)), None);
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("reused"),
         digest: WorkflowDigest::from_bytes([3; 32]),
         nodes: Box::from([node1, node2]),
@@ -271,7 +287,11 @@ fn validate_contracts_accepts_reused_action_ids() -> Result<(), Box<dyn std::err
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::ZERO,
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     })?;
 
     let shard = test_shard();
@@ -330,10 +350,19 @@ fn validate_contracts_rejects_empty_action_name() -> Result<(), Box<dyn std::err
 fn validate_contracts_accepts_multiple_distinct_action_ids()
 -> Result<(), Box<dyn std::error::Error>> {
     // Workflow with two distinct actions
-    let node1 = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::ZERO, }, Some(SlotIdx::ZERO), Some(StepIdx::new(1)));
+    let node1 = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::ZERO,
+        },
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(1)),
+    );
     let node2 = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Do { action: ActionId::new(1), input: SlotIdx::new(1), }, Some(SlotIdx::new(1)), None);
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("multi-action"),
         digest: WorkflowDigest::from_bytes([4; 32]),
         nodes: Box::from([node1, node2]),
@@ -345,7 +374,11 @@ fn validate_contracts_accepts_multiple_distinct_action_ids()
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::ZERO,
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     })?;
 
     let shard = test_shard();
@@ -478,7 +511,8 @@ fn shard_boundary_validates_fabricated_id_before_admission()
     let action_contracts: Box<[vb_core::action::ActionContract]> = Box::from([contract]);
 
     let snapshot = journal.snapshot()?;
-    shard.enqueue(ShardCommand::SubmitWithContracts {
+    shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+        inputs: Box::from([(vb_core::SlotIdx::ZERO, vb_core::SlotValue::I64(0))]),
         run,
         workflow,
         caps: CapabilitySet::empty(),
@@ -525,7 +559,7 @@ fn shard_boundary_validates_fabricated_id_with_inputs_before_admission()
     let run = RunId::new(102);
     let contract = make_contract(777, "fabricated")?;
     let action_contracts: Box<[vb_core::action::ActionContract]> = Box::from([contract]);
-    let inputs: Box<[(SlotIdx, SlotValue)]> = Box::from([]);
+    let inputs: Box<[(SlotIdx, SlotValue)]> = Box::from([(SlotIdx::ZERO, SlotValue::I64(7))]);
 
     let snapshot = journal.snapshot()?;
     shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {

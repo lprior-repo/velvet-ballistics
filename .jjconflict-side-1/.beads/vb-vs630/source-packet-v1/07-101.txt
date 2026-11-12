@@ -1,0 +1,95 @@
+crates/velvet_ballistics/src/submit.rs:101:     let digest = vb_core::WorkflowDigest::from_bytes(blake3::hash(&source).into());
+crates/velvet_ballistics/src/submit.rs:102:     vb_storage::WorkflowSourceRecord { digest, source }
+crates/velvet_ballistics/src/submit.rs:103: }
+crates/velvet_ballistics/src/submit.rs:104: 
+crates/velvet_ballistics/src/submit.rs:105: fn submission_header(
+crates/velvet_ballistics/src/submit.rs:106:     run: vb_core::RunId,
+crates/velvet_ballistics/src/submit.rs:107:     compiled_digest: vb_core::WorkflowDigest,
+crates/velvet_ballistics/src/submit.rs:108: ) -> vb_storage::RunHeaderRecord {
+crates/velvet_ballistics/src/submit.rs:109:     let accepted_at_ms = match SystemTime::now().duration_since(UNIX_EPOCH) {
+crates/velvet_ballistics/src/submit.rs:110:         Ok(duration) => u64::try_from(duration.as_millis()).map_or(0, |value| value),
+crates/velvet_ballistics/src/submit.rs:111:         Err(_) => 0,
+crates/velvet_ballistics/src/submit.rs:112:     };
+crates/velvet_ballistics/src/submit.rs:113:     vb_storage::RunHeaderRecord {
+crates/velvet_ballistics/src/submit.rs:114:         run,
+crates/velvet_ballistics/src/submit.rs:115:         workflow_id: vb_core::WorkflowId::new(0),
+crates/velvet_ballistics/src/submit.rs:116:         compiled_digest,
+crates/velvet_ballistics/src/submit.rs:117:         status: vb_storage::records::RunHeaderStatus::PENDING.as_byte(),
+crates/velvet_ballistics/src/submit.rs:118:         accepted_at_ms,
+crates/velvet_ballistics/src/submit.rs:119:     }
+crates/velvet_ballistics/src/submit.rs:120: }
+crates/velvet_ballistics/src/submit.rs:121: 
+crates/velvet_ballistics/src/submit.rs:122: fn commit_submission(
+crates/velvet_ballistics/src/submit.rs:123:     db: &std::path::Path,
+crates/velvet_ballistics/src/submit.rs:124:     submission: &vb_storage::RunSubmission,
+crates/velvet_ballistics/src/submit.rs:125:     durability: DurabilityMode,
+crates/velvet_ballistics/src/submit.rs:126: ) -> Result<(), vb_storage::JournalError> {
+crates/velvet_ballistics/src/submit.rs:127:     let journal = vb_storage::FjallJournal::open(db, None)?;
+crates/velvet_ballistics/src/submit.rs:128:     journal.commit_run_submission(submission, submission_policy(durability))
+crates/velvet_ballistics/src/submit.rs:129: }
+crates/velvet_ballistics/src/submit.rs:130: 
+crates/velvet_ballistics/src/submit.rs:131: pub(crate) fn submission_policy(mode: DurabilityMode) -> vb_core::RuntimePolicy {
+crates/velvet_ballistics/src/submit.rs:132:     match mode {
+crates/velvet_ballistics/src/submit.rs:133:         DurabilityMode::Strict => vb_core::RuntimePolicy::Strict,
+crates/velvet_ballistics/src/submit.rs:134:         DurabilityMode::Journaled => vb_core::RuntimePolicy::Journaled,
+crates/velvet_ballistics/src/submit.rs:135:         DurabilityMode::None => vb_core::RuntimePolicy::Relaxed,
+crates/velvet_ballistics/src/submit.rs:136:     }
+crates/velvet_ballistics/src/submit.rs:137: }
+crates/velvet_ballistics/src/submit.rs:138: 
+crates/velvet_ballistics/src/submit.rs:139: fn emit_submission(
+crates/velvet_ballistics/src/submit.rs:140:     prepared: &PreparedSubmission,
+crates/velvet_ballistics/src/submit.rs:141:     durability: DurabilityMode,
+crates/velvet_ballistics/src/submit.rs:142:     output: OutputFormat,
+crates/velvet_ballistics/src/submit.rs:143: ) -> ExitCode {
+crates/velvet_ballistics/src/submit.rs:144:     let digest_hex = workflow_digest_hex(prepared.digest);
+crates/velvet_ballistics/src/submit.rs:145:     if output != OutputFormat::Text {
+crates/velvet_ballistics/src/submit.rs:146:         emit_json_or_return!(
+crates/velvet_ballistics/src/submit.rs:147:             &serde_json::json!({
+crates/velvet_ballistics/src/submit.rs:148:                 "run_id": prepared.run.get(), "digest": digest_hex,
+crates/velvet_ballistics/src/submit.rs:149:                 "status": "submitted", "step_count": prepared.step_count,
+crates/velvet_ballistics/src/submit.rs:150:             }),
+crates/velvet_ballistics/src/submit.rs:151:             output
+crates/velvet_ballistics/src/submit.rs:152:         );
+crates/velvet_ballistics/src/submit.rs:153:     } else {
+crates/velvet_ballistics/src/submit.rs:154:         emit_submission_text(prepared, durability, &digest_hex);
+crates/velvet_ballistics/src/submit.rs:155:     }
+crates/velvet_ballistics/src/submit.rs:156:     CliExitCode::Success.into()
+crates/velvet_ballistics/src/submit.rs:157: }
+crates/velvet_ballistics/src/submit.rs:158: 
+crates/velvet_ballistics/src/submit.rs:159: fn workflow_digest_hex(digest: vb_core::WorkflowDigest) -> String {
+crates/velvet_ballistics/src/submit.rs:160:     digest
+crates/velvet_ballistics/src/submit.rs:161:         .as_bytes()
+crates/velvet_ballistics/src/submit.rs:162:         .iter()
+crates/velvet_ballistics/src/submit.rs:163:         .map(|byte| format!("{byte:02x}"))
+crates/velvet_ballistics/src/submit.rs:164:         .collect()
+crates/velvet_ballistics/src/submit.rs:165: }
+crates/velvet_ballistics/src/submit.rs:166: 
+crates/velvet_ballistics/src/submit.rs:167: fn emit_submission_text(
+crates/velvet_ballistics/src/submit.rs:168:     prepared: &PreparedSubmission,
+crates/velvet_ballistics/src/submit.rs:169:     durability: DurabilityMode,
+crates/velvet_ballistics/src/submit.rs:170:     digest_hex: &str,
+crates/velvet_ballistics/src/submit.rs:171: ) {
+crates/velvet_ballistics/src/submit.rs:172:     outln!("submitted run {}", prepared.run.get());
+crates/velvet_ballistics/src/submit.rs:173:     outln!("  digest:     {digest_hex}");
+crates/velvet_ballistics/src/submit.rs:174:     outln!("  steps:      {}", prepared.step_count);
+crates/velvet_ballistics/src/submit.rs:175:     outln!("  durability: {}", durability_as_str(durability));
+crates/velvet_ballistics/src/submit.rs:176:     outln!("  status:     submitted");
+crates/velvet_ballistics/src/submit.rs:177: }
+crates/velvet_ballistics/src/submit.rs:178: 
+crates/velvet_ballistics/src/submit.rs:179: pub(crate) fn durability_as_str(mode: DurabilityMode) -> &'static str {
+crates/velvet_ballistics/src/submit.rs:180:     match mode {
+crates/velvet_ballistics/src/submit.rs:181:         DurabilityMode::Strict => "strict",
+crates/velvet_ballistics/src/submit.rs:182:         DurabilityMode::Journaled => "journaled",
+crates/velvet_ballistics/src/submit.rs:183:         DurabilityMode::None => "none",
+crates/velvet_ballistics/src/submit.rs:184:     }
+crates/velvet_ballistics/src/submit.rs:185: }
+crates/velvet_ballistics/src/submit.rs:186: 
+crates/velvet_ballistics/src/submit.rs:187: pub(crate) fn generate_submit_run_id() -> u64 {
+crates/velvet_ballistics/src/submit.rs:188:     let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) else {
+crates/velvet_ballistics/src/submit.rs:189:         return u64::MAX;
+crates/velvet_ballistics/src/submit.rs:190:     };
+crates/velvet_ballistics/src/submit.rs:191:     match u64::try_from(now.as_nanos()) {
+crates/velvet_ballistics/src/submit.rs:192:         Ok(value) => value,
+crates/velvet_ballistics/src/submit.rs:193:         Err(_) => now.as_secs(),
+crates/velvet_ballistics/src/submit.rs:194:     }
+crates/velvet_ballistics/src/submit.rs:195: }

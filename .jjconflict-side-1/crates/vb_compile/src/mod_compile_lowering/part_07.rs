@@ -1,0 +1,160 @@
+#![allow(unused_imports)]
+use super::*;
+use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_error};
+use crate::mod_compile_validation::{
+    reject_unsupported_for_each_fields, validate_canonical_compile_scope,
+};
+use saphyr::Yaml;
+use std::collections::HashMap;
+use vb_core::workflow::node;
+use vb_core::{
+    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
+    ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch, SlotIdx,
+    StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
+};
+
+/// Lowers a `repeat` primitive into retry IR nodes.
+pub fn lower_repeat(
+    id: StepIdx,
+    max_attempts: u16,
+    body: StepIdx,
+    done: StepIdx,
+    builder: &mut SlotCompiler,
+) -> Result<Vec<CompiledNode>, CompileError> {
+    let attempt_slot = builder.allocate_slot()?;
+    let result = builder.allocate_slot()?;
+    Ok(vec![
+        node(
+            id,
+            CompiledNodeKind::RepeatStart {
+                max_attempts: max_attempts.into(),
+                body,
+                done,
+            },
+            Some(attempt_slot),
+            None,
+        ),
+        node(
+            body,
+            CompiledNodeKind::RepeatAttempt {
+                attempt_slot,
+                body,
+                done,
+            },
+            None,
+            None,
+        ),
+        node(
+            done,
+            CompiledNodeKind::RepeatFinish {
+                result: attempt_slot,
+            },
+            Some(result),
+            None,
+        ),
+    ])
+}
+
+/// Type-safe discriminator for the two legal `wait` shapes.
+///
+/// Replaces the previous `is_event: bool` parameter, which allowed invalid
+/// combinations such as passing `is_event = false` with a `timeout_slot`,
+/// which would be silently discarded.
+#[non_exhaustive]
+pub enum WaitKind {
+    /// `wait.until` — waits until a deadline slot is reached; no timeout.
+    Until { deadline: SlotIdx },
+    /// `wait.event` — waits for an event slot, with an optional timeout.
+    Event {
+        event: SlotIdx,
+        timeout: Option<SlotIdx>,
+    },
+}
+
+/// Lowers a `wait` primitive into `WaitUntil` or `WaitEvent` IR nodes.
+pub fn lower_wait(id: StepIdx, kind: WaitKind, builder: &mut SlotCompiler) -> CompiledNode {
+    let compiled_kind = match kind {
+        WaitKind::Until { deadline } => {
+            builder.record_slot(deadline);
+            CompiledNodeKind::WaitUntil {
+                deadline_slot: deadline,
+            }
+        }
+        WaitKind::Event { event, timeout } => {
+            builder.record_slot(event);
+            if let Some(slot) = timeout {
+                builder.record_slot(slot);
+            }
+            CompiledNodeKind::WaitEvent {
+                event,
+                timeout_slot: timeout.into(),
+            }
+        }
+    };
+    node(id, compiled_kind, None, None)
+}
+
+/// Lowers an `ask` primitive into `Ask` and `AskResume` IR nodes.
+pub fn lower_ask(
+    id: StepIdx,
+    prompt: SlotIdx,
+    answer: SlotIdx,
+    timeout_slot: Option<SlotIdx>,
+    builder: &mut SlotCompiler,
+) -> Result<Vec<CompiledNode>, CompileError> {
+    builder.record_slot(prompt);
+    builder.record_slot(answer);
+    if let Some(timeout) = timeout_slot {
+        builder.record_slot(timeout);
+    }
+    let resume = id
+        .checked_add(1)
+        .ok_or(CompileError::PrimitiveLoweringLimitExceeded {
+            primitive: "ask",
+            field: "resume_step",
+            value: id.as_usize(),
+            limit: usize::from(u16::MAX),
+        })?;
+    Ok(vec![
+        node(
+            id,
+            CompiledNodeKind::Ask {
+                prompt,
+                timeout_slot: timeout_slot.into(),
+            },
+            Some(answer),
+            None,
+        ),
+        node(
+            resume,
+            CompiledNodeKind::AskResume { answer },
+            Some(answer),
+            None,
+        ),
+    ])
+}
+
+/// Lowers a `finish` primitive into a terminal `Finish` node.
+pub fn lower_finish(id: StepIdx, result: SlotIdx, builder: &mut SlotCompiler) -> CompiledNode {
+    builder.record_slot(result);
+    node(id, CompiledNodeKind::Finish { result }, None, None)
+}
+
+/// Mutable slot compiler state for building node arrays.
+///
+/// Tracks slot allocation, constant pool, expression programs, accessor
+/// programs, and input slot metadata during step lowering.
+#[derive(Debug, Default)]
+pub struct SlotCompiler {
+    pub(super) body_depth: u16,
+    pub(super) symbols: crate::source_symbols::SourceSymbolTable,
+    pub(super) display_names: std::collections::BTreeMap<StepIdx, Box<str>>,
+    pub(super) nodes: Vec<CompiledNode>,
+    pub(super) constants: Vec<ConstValue>,
+    pub(super) expressions: Vec<ExprProgram>,
+    pub(super) accessors: Vec<AccessorProgram>,
+    pub(super) max_slot: Option<usize>,
+    pub(super) input_slots: Vec<CompiledInputSlot>,
+    pub(super) secret_requirements:
+        Vec<vb_core::workflow::source_metadata::CompiledSecretRequirement>,
+}

@@ -1,0 +1,23 @@
+All tests pass. Let me provide a final summary:
+
+## Summary
+
+**Workspace verified:** Both `git rev-parse --show-toplevel` and `jj root` resolve to `/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090`.
+
+**Files modified:** Only `crates/vb_runtime/tests/vb_jggy_lifecycle_tests.rs` (no production edits).
+
+**Root cause of failures:** The 6 failing tests used synthetic tickets from `make_ticket()` with `SeqNo::ZERO`, but the production code validates the full ticket authority (including the idempotency key computed from the actual sequence number assigned by the action queue). The fix was to use `shard.pending_action_get(run)` to retrieve the real issued ticket.
+
+**Tests repaired (6):**
+1. `validate_ticket_attempt_accepts_valid_ticket` - now uses real pending ticket
+2. `step_succeeded_carries_retry_attempt_number` - uses `retry_workflow()`, drives 2 real failures, captures real ticket 3
+3. `action_attempts_monotonically_advances_on_retry` - captures real pending ticket before each retryable failure
+4. `stale_attempt_completion_rejected_before_journal_write` - uses `retry_workflow()`, drives 2 failures, submits stale ticket 2 against current ticket 3
+5. `action_failed_carries_attempt_field` - uses real pending ticket
+6. `stale_attempt_failure_rejected_before_journal_write` - uses `retry_workflow()`, drives 2 failures, submits stale ticket 2 against current ticket 3
+
+**Test results:**
+- Integration tests: **15 passed, 0 failed** (log: `.beads/vb-rcizj/evidence/jggy-real-issued-tickets.log`)
+- Lib regression suite: **1903 passed, 0 failed** (log: `.beads/vb-rcizj/evidence/jggy-lib-regression.log`)
+
+All changed test functions return `Result` and propagate setup failures with `?`. No new `unwrap`/`expect`/`panic`/unchecked indexing/arithmetic/ignored `Result`. All other tests and assertions retained unchanged.

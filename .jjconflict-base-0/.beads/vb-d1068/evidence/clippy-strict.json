@@ -1,0 +1,19 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-d1068-local3090-cli-review",
+  "argv": [
+    "cargo",
+    "clippy",
+    "-p",
+    "velvet-ballistics",
+    "--",
+    "-Dwarnings"
+  ],
+  "exit_code": 0,
+  "seconds": 8.047,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-d1068/evidence/clippy-strict"
+}

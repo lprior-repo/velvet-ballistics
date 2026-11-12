@@ -6,16 +6,21 @@ pub(crate) mod error_routing;
 pub(crate) mod expr_eval;
 pub(crate) mod node_helpers;
 pub(crate) mod object_list;
+pub mod repeat;
 pub(crate) mod run_loop;
 pub(crate) mod signals;
 pub(crate) mod step;
+pub mod suspension;
 pub(crate) mod validate;
 
 pub use crate::errors::EngineError;
 pub use crate::frame::RunFrame;
 pub use crate::value_store::ValueStore;
 pub use crate::workflow::CompiledWorkflow;
-pub use error_routing::{ErrorHandlerOutcome, ErrorSlotData, route_error_handler};
+pub use error_routing::{
+    ErrorHandlerOutcome, ErrorSlotData, abandon_together_scopes, abandoned_together_count,
+    route_error_handler,
+};
 pub use expr_eval::eval_accessor;
 pub use expr_eval::eval_accessor_with_store;
 pub use expr_eval::eval_expr;

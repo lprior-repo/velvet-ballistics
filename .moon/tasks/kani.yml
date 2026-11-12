@@ -113,6 +113,22 @@ tasks:
           exit 1
         fi
       done
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_sources)'
+      - '@globs(kani_harnesses)'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.cargo/**/*'
+      - 'crates/*/Cargo.toml'
+      - 'fuzz/Cargo.toml'
+      - 'xtask/Cargo.toml'
+      - '.moon/tasks/kani.yml'
+    options:
+      runInCI: true
+      cache: false
   # Heavy Kani harnesses isolated in separate CBMC invocation to prevent
   # cumulative OOM from the kani_idempotency_gates module. Each harness
   # generates 390K-1.3M GOTO steps; running them fresh avoids memory bleed.

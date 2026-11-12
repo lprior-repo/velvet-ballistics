@@ -1,0 +1,22 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-final-local3090-authority-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_79ffw_ticket_authority_probe",
+    "--",
+    "--nocapture"
+  ],
+  "exit_code": 101,
+  "seconds": 0.766,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-79ffw/evidence/ticket-authority-compile",
+  "coordinator_message": "Current review findings: legacy_wire_decoder.rs uses bytes.len() as u64 and unchecked JSON indexing manifest[\"cases\"], c[\"name\"], case[\"length\"], case[\"blake3\"]. Replace with checked conversion and .get(...).and_then(...) without allow exceptions. Keep new cross-crate tests in workspace_tests, portable tracked fixture bytes and provenance. Current public parse_event typed outcome must be measured and asserted, not guessed. Stale completion and queued stale failure must each assert complete serialized journal equality plus current pending ticket/counters unchanged; current valid ticket must complete to actual RunFinished. Finish scoped gates, report true outcomes, freeze promptly. Do not self-approve independent review.\n"
+}

@@ -1,0 +1,109 @@
+{
+  "bead": "vb-eirmk.12",
+  "review_kind": "Bounded independent POST-APPLY ownership audit",
+  "verdict": "PASS",
+  "scope": "Actual creation and canonical remapping of four qualification-only TASK owners only; not full190-plan or phase acceptance.",
+  "workspace": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+    "git_and_jj_roots_verified": true,
+    "clean": true,
+    "mode": "Read-only evidence and live bd show/dep cycles; author apply script inspected, never executed."
+  },
+  "actual_mapping": {
+    "phase:4": "vb-eirmk.48",
+    "phase:17": "vb-eirmk.49",
+    "phase:20": "vb-eirmk.50",
+    "phase:21": "vb-eirmk.51"
+  },
+  "findings": [],
+  "inputs": {
+    "directory": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/core-build-20261110/evidence/ownership-repair",
+    "files": [
+      "creation-receipts.json",
+      "remap-audit.json",
+      "design-before.raw",
+      "design-after.raw",
+      "post-update-live.json",
+      "apply-reviewed-owners.rb",
+      "qualification-owner-proposals-v2.json",
+      "issue-before.json",
+      "apply-command-1.json",
+      "apply-command-20.json",
+      "apply-command-22.json"
+    ],
+    "before_sha256": "9b3529dffcd966d5854782572101e9c2628c2e3d0e39188b808bb81c9783f03a",
+    "after_sha256": "cdb6d341fd36c2196e797be8cd17b3758e112be3c57556d8d4b437089e9c39e6"
+  },
+  "remap_verification": {
+    "independent_full_design_diff": "Recursive comparison of entire parsed designs found exactly20 changed scalar paths and no object-key/list-length changes. Paths match the author's audit and reviewed allowlist.",
+    "changed_fields_per_phase": [
+      "canonical_qualification_owner_id: historical closed owner -> actual new TASK ID",
+      "current_owner_status: closed -> open",
+      "unresolved_checks[owned qualify:phase:N].accountable_bead_id: historical owner -> actual new TASK ID",
+      "unresolved_checks[owned qualify:phase:N].proposal_key: null -> stable proposal key",
+      "resolved_from_proposal_key: null -> stable proposal key"
+    ],
+    "canonical_row_indices": [
+      5,
+      18,
+      21,
+      22
+    ],
+    "requirement_count_before": 190,
+    "requirement_count_after": 190,
+    "unchanged_rows": 186,
+    "byte_preservation": "Independently scanned raw before JSON with a separate recursive parser to locate exactly20 scalar-token spans. Replaced only those tokens with actual after-values; reconstructed bytes equal design-after.raw byte-for-byte. Both inputs are ASCII. This directly verifies the audit's unchanged-outside-selected-tokens claim, rather than trusting its boolean.",
+    "payload_preservation": "All targeted unresolved-check fields except accountable_bead_id/proposal_key are unchanged, including check IDs, assertions, required results, status and reasons. Preferred/support/historical owner references and scope fields remain unchanged. All other design sections, including delivery-role records and exact-native audit content, are unchanged.",
+    "all_completion_false": true,
+    "all_implementation_missing_null": true,
+    "historical_live_statuses": {
+      "vb-core-yaml-ast": "closed",
+      "vb-tzsfr": "closed",
+      "vb-2bbo": "closed",
+      "vb-heqb": "closed"
+    },
+    "live_binding": "Live vb-eirmk.12 design and retained post-update-live design both equal exact after bytes. Full before/post issue comparison differs only in design and updated_at; issue metadata is unchanged.",
+    "preapply_guard_receipts": "Actual bd show command receipts1 and20 both exit0 and carry the exact before hash; post-update show22 exits0 with the exact after hash. Supports the recorded no-drift pre-write check."
+  },
+  "qualifier_contract_verification": {
+    "all_live_open_tasks": true,
+    "all_root_parent": "vb-eirmk",
+    "metadata": "Each live qualifier has qualification_only=true, exact singleton master_requirement_ids for its phase, and the corresponding stable owner_repair_proposal key.",
+    "proposal_binding": "Each live design JSON equals its exact reviewed v2 proposal; acceptance_criteria equals all reviewed acceptance entries joined by newlines. Family allocations, bounded child/reuse policy, historical preservation and no-missing-implementation presumption survive in the actual description/design.",
+    "receipt_binding": "Live id/type/status/metadata/description/design/acceptance/title match creation receipts. created_at is returned at different timestamp precision by create versus show; no contract or ownership drift detected.",
+    "role_scope": "Actual repair workflow and separate CODE/independent TEST requirements remain in descriptions/acceptance; no placeholder implementation child was created by this operation. Existing role metadata elsewhere in .12's design is byte-preserved."
+  },
+  "graph_verification": {
+    "live_prerequisite_edges": [
+      [
+        "vb-eirmk.11",
+        "vb-eirmk.48",
+        "blocks"
+      ],
+      [
+        "vb-eirmk.11",
+        "vb-eirmk.49",
+        "blocks"
+      ],
+      [
+        "vb-eirmk.11",
+        "vb-eirmk.50",
+        "blocks"
+      ],
+      [
+        "vb-eirmk.11",
+        "vb-eirmk.51",
+        "blocks"
+      ]
+    ],
+    "direction": "Live .11 dependencies list the four new TASKs as blocking prerequisites; not reversed and not substituted with tracks.",
+    "hierarchy": "Each new TASK's only reported dependency is vb-eirmk with parent-child type; root membership is hierarchy, not a TASK-to-EPIC execution prerequisite.",
+    "cycles": "Actual read-only bd dep cycles --json returned []; no reported cycles."
+  },
+  "limits": [
+    "PASS only for these four creations, their reviewed contracts, dependency edges and exact canonical edit footprint. No substantive qualification acceptance for these phases or the186 untouched rows.",
+    "All190 completion flags remain false and implementation_missing remains null. Full-plan acceptance and native-obligation mapping remain false; broader118-owner and unmapped-native issues remain outside scope.",
+    "Planning-owner repair does not prove implementation, behavior, formal verification, source acceptance or CI success. Applicable full formal mandates and user repair workflow remain in force.",
+    "No DB/source/gate/tracker changes, agents, forbidden temporary-path access or execution of mutation script; only this requested report written. Previous reports preserved."
+  ]
+}

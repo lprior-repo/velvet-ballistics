@@ -51,3 +51,11 @@ fn finish_tail() -> &'static str {
 
 mod foreach;
 mod layout;
+
+fn in_for_each(body: &str) -> String {
+    source(&format!(
+        "  - id: seed\n    set: {{output: base, value: '1'}}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: entry\n      steps:\n{body}"
+    )) + finish_tail()
+}
+
+mod controls;

@@ -1,0 +1,3 @@
+=== compile evidence: yaml_events ===
+-rwxr-xr-x 2 lewis lewis 2863464 Oct 22 17:17 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/yaml_events
+OK: binary present

@@ -1,0 +1,16 @@
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-16buk-cli-fixtures-3090/crates/velvet_ballistics)
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+  --> crates/velvet_ballistics/tests/cli_integration.rs:40:5
+   |
+40 |     WorkflowParts {
+   |     ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+  --> crates/velvet_ballistics/tests/cli_integration.rs:60:5
+   |
+60 |     WorkflowParts {
+   |     ^^^^^^^^^^^^^ missing `input_slots`
+
+For more information about this error, try `rustc --explain E0063`.
+error: could not compile `velvet-ballistics` (test "cli_integration") due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...

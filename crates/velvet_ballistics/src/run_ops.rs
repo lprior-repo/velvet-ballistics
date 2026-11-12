@@ -178,8 +178,14 @@ pub(crate) fn cmd_retry(
     // `RuntimePolicy` is `Strict` for both), so retry selects the strict barrier as the
     // safe default: it never weakens a previously-strict run and only upgrades a
     // journaled run's retry phase to a `SyncAll`-acknowledged append.
-    let shared = vb_runtime::journal::StorageRuntimeJournal::shared_strict(Arc::new(journal));
+    let journal = Arc::new(journal);
+    let shared = vb_runtime::journal::StorageRuntimeJournal::shared_strict(Arc::clone(&journal));
     let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config, shared);
+    crate::run_compiled_runtime::secret_presence::install_stored(
+        &mut runtime,
+        journal,
+        checkpoint.artifact_digest,
+    );
 
     if let Err(e) = runtime.recover_retry(rid, checkpoint, next_seq) {
         report_runtime_error(format_args!("retry recovery failed: {e}"), output);

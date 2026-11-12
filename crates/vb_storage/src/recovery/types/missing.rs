@@ -1,10 +1,10 @@
 #![forbid(unsafe_code)]
 
 /// Identifier for a single full-RunState component whose absence is
-/// tracked on a [`RecoveryCannotResumeState`] witness.
+/// tracked on a [`super::RecoveryCannotResumeState`] witness.
 ///
 /// These map 1:1 to the seven `*_missing` flags on
-/// [`RecoveryCannotResumeState`]. The enum is intentionally distinct
+/// [`super::RecoveryCannotResumeState`]. The enum is intentionally distinct
 /// from the mask struct ([`MissingRunStateComponents`]) so callers
 /// can talk about a single component (e.g. via
 /// [`MissingRunStateComponents::single`]) without constructing the
@@ -30,9 +30,9 @@ pub enum MissingRunStateComponent {
 /// Mask for which full-RunState components are absent from a seed.
 ///
 /// Used to parameterize
-/// [`RecoveryCannotResumeState::mark_missing_components`] so the
+/// [`super::RecoveryCannotResumeState::mark_missing_components`] so the
 /// priority chain reason string in
-/// [`RecoveryCannotResumeState::unsupported_reason`] can exercise
+/// [`super::RecoveryCannotResumeState::unsupported_reason`] can exercise
 /// every reachable token (e.g. `"store_missing"`,
 /// `"action_attempts_missing"`, `"admission_missing"`,
 /// `"collect_states_missing"`, `"action_contracts_missing"`,

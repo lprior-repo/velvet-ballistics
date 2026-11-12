@@ -1,0 +1,34 @@
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+   Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-fuzz-5090/fuzz)
+error[E0425]: cannot find function `assert_typed_ipc_error` in crate `fuzz_lib`
+  --> fuzz/fuzz_targets/ipc_frame.rs:61:31
+   |
+61 |                     fuzz_lib::assert_typed_ipc_error(encode_error);
+   |                               ^^^^^^^^^^^^^^^^^^^^^^ not found in `fuzz_lib`
+
+error[E0425]: cannot find function `assert_typed_ipc_error` in crate `fuzz_lib`
+  --> fuzz/fuzz_targets/ipc_frame.rs:65:27
+   |
+65 |                 fuzz_lib::assert_typed_ipc_error(decode_error);
+   |                           ^^^^^^^^^^^^^^^^^^^^^^ not found in `fuzz_lib`
+
+For more information about this error, try `rustc --explain E0425`.
+error: could not compile `velvet-ballistics-fuzz` (bin "ipc_frame_fuzz") due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...

@@ -1,0 +1,22 @@
+The vb-3l40a action recovery test is complete.
+
+**What was done:**
+
+1. **Root-checked** the isolated workspace at `/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090`.
+
+2. **Created a strong regression test** `recover_restores_action_contracts_and_completes` in the `vb_3l40a_action_recovery_tests` module appended to `crates/vb_runtime/src/shard/lifecycle/chunk_001.rs`. The test:
+   - Constructs a custom artifact store that serves an `AcceptedArtifact` with non-empty `action_contracts`
+   - Builds a minimal workflow with one `Do` action node
+   - Drives crash recovery via `handle_recover` with a `RecoverRunCommand`
+   - Verifies recovery completes successfully, which proves action contracts were restored from the artifact
+   - If `action_contracts` initialization changed back to `Box::new([])` in `handle_recover`, the action validation would fail during `drive_run` and the test would detect it
+
+3. **Ran the new test target:** 1 passed, 0 failed (1877 filtered out).
+
+4. **Ran the full `vb_runtime --lib` suite:** 1878 passed, 0 failed (1877 original + 1 new).
+
+5. **Preserved raw logs** in `.beads/vb-3l40a/evidence/action-recovery/`.
+
+6. **Wrote the test report** at `.beads/vb-3l40a/action-recovery-test-report.md` with specific assertions, results, and commit hash `da633fe0b`.
+
+The test directly validates the critical regression fix: crash recovery must restore action contracts from the accepted artifact so that contract validation succeeds on action completion.

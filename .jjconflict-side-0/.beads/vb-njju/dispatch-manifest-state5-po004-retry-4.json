@@ -1,0 +1,23 @@
+{
+  "bead_id": "vb-njju",
+  "state": 5,
+  "sublane": "po004-mutation-evidence-retry",
+  "delegate": "proof-writer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/femdation-vb-njju",
+  "input_artifacts": [
+    ".beads/vb-njju/proof-repair-guide.md",
+    ".beads/vb-njju/proof-obligations.planned.jsonl",
+    ".beads/vb-njju/proof-writer-report.md",
+    ".beads/vb-njju/proof-evidence.md",
+    "target/test-output/PO-004-cargo-mutants-admission.log"
+  ],
+  "output_artifacts": [
+    ".beads/vb-njju/proof-writer-report.md",
+    ".beads/vb-njju/proof-evidence.md",
+    "target/test-output/PO-004-cargo-mutants-admission.log",
+    "target/test-output/po-004-mutants/"
+  ],
+  "attempt": "repair-4-of-7",
+  "reason": "Retry exact PO-004 cargo-mutants command after local temp/quota cleanup; PO-005/PO-017 already scoped pass."
+}

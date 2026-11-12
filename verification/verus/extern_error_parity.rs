@@ -113,6 +113,7 @@ fn compiled_node_shape_drift_check() {
     let node_step = prod_src::StepIdx::new(0);
     let node_slot = prod_src::SlotIdx::new(0);
     let _node = prod_src::CompiledNode {
+        retry: None,
         id: node_step,
         output: prod_src::NodeOutput::Slot(node_slot),
         routing: prod_src::NodeRouting {
@@ -125,6 +126,7 @@ fn compiled_node_shape_drift_check() {
         kind: prod_src::CompiledNodeKind::SetConst { value: prod_src::ConstIdx::new(0) },
     };
     let _node = prod_src::CompiledNode {
+        retry: None,
         id: node_step,
         output: prod_src::NodeOutput::Discard,
         routing: prod_src::NodeRouting {

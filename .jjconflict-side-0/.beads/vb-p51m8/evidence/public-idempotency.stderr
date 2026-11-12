@@ -1,0 +1,48 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ko29-local3090-coverage/crates/workspace_tests)
+error[E0433]: cannot find type `ActionReplayTracker` in this scope
+   --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:377:30
+    |
+377 |     let mut replay_tracker = ActionReplayTracker::new();
+    |                              ^^^^^^^^^^^^^^^^^^^ use of undeclared type `ActionReplayTracker`
+    |
+help: consider importing this struct
+    |
+  3 + use vb_storage::ActionReplayTracker;
+    |
+
+error[E0425]: cannot find function `replay_journal` in this scope
+   --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:378:20
+    |
+378 |     let replayed = replay_journal(&journal, run, &mut replay_tracker, &[], &[])
+    |                    ^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this function
+    |
+  3 + use vb_storage::replay_journal;
+    |
+
+error[E0433]: cannot find type `ActionReplayTracker` in this scope
+   --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:430:31
+    |
+430 |     let mut durable_tracker = ActionReplayTracker::new();
+    |                               ^^^^^^^^^^^^^^^^^^^ use of undeclared type `ActionReplayTracker`
+    |
+help: consider importing this struct
+    |
+  3 + use vb_storage::ActionReplayTracker;
+    |
+
+error[E0425]: cannot find function `replay_journal` in this scope
+   --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:431:18
+    |
+431 |     let events = replay_journal(&journal, run, &mut durable_tracker, &[], &[])
+    |                  ^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this function
+    |
+  3 + use vb_storage::replay_journal;
+    |
+
+Some errors have detailed explanations: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_ko29_5_public_idempotency") due to 4 previous errors

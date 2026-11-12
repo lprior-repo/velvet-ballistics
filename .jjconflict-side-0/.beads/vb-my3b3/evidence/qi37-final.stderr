@@ -1,0 +1,7 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-my3b3-deepseek-qi37/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.41s
+     Running tests/vb_qi37_1_1_red_recovery_contract_test.rs (target/debug/deps/vb_qi37_1_1_red_recovery_contract_test-4cf6b81f6c9da833)
+     Running tests/vb_qi37_25_quality_gates.rs (target/debug/deps/vb_qi37_25_quality_gates-a23d0aaf3aa05f2e)
+     Running tests/vb_qi37_2_4_integration_budget_errors.rs (target/debug/deps/vb_qi37_2_4_integration_budget_errors-9b6d00dcf1d25085)
+     Running tests/vb_qi37_4_2_strict_runtime_admission.rs (target/debug/deps/vb_qi37_4_2_strict_runtime_admission-7e747ffab38e373c)
+     Running tests/vb_qi37_6_state8_setup.rs (target/debug/deps/vb_qi37_6_state8_setup-fda1b56cb70062e7)

@@ -8,10 +8,12 @@ use vb_core::{
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 pub(super) fn workflow() -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
+    // Retention validates ports without executing or reading optional inputs.
     let mut parts = WorkflowParts {
         name: "retained_input".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::from([
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
@@ -24,14 +26,7 @@ pub(super) fn workflow() -> Result<CompiledWorkflow, Box<dyn std::error::Error>>
                 constraint: CompiledInputConstraint::unconstrained(),
             },
         ]),
-        nodes: Box::from([node(
-            StepIdx::new(0),
-            CompiledNodeKind::Finish {
-                result: SlotIdx::new(0),
-            },
-            None,
-            None,
-        )]),
+        nodes: Box::from([node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: Box::new([]),
@@ -237,23 +232,18 @@ fn constrained_workflow(
     kind: InputSlotKind,
     constraint: CompiledInputConstraint,
 ) -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
+    // Retention validates ports without executing or reading optional inputs.
     let mut parts = WorkflowParts {
         name: "constrained_input".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::from([CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind,
             constraint,
         }]),
-        nodes: Box::from([node(
-            StepIdx::new(0),
-            CompiledNodeKind::Finish {
-                result: SlotIdx::new(0),
-            },
-            None,
-            None,
-        )]),
+        nodes: Box::from([node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: Box::new([]),

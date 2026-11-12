@@ -1,0 +1,220 @@
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:194: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:195:     // Record full boundary snapshot BEFORE execute
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:196:     let pending_before = runtime.pending_boundary_snapshot(8);
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:197: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:198:     // Phase 4: Execute -> expect precise typed error from corrupt marker
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:199:     let register_path = dir.path().join("register");
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:200:     let mut adapter = FjallRegister::open(&register_path, 8)?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:201:     let result = runtime.execute_registered_action(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:202:         &mut adapter,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:203:         run,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:204:         u64::from(StepIdx::ZERO.get()),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:205:         &grant,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:206:     );
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:207: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:208:     // Verify precise typed error: StorageJournalAppend wrapping EmergencyDenyMarkerUnsupportedVersion { version: 99 }
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:209:     let is_correct_error = matches!(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:210:         &result,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:211:         Err(RegisteredExecutionError::Runtime(err))
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:212:             if matches!(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:213:                 err,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:214:                 vb_runtime::RuntimeError::StorageJournalAppend { source }
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:215:                     if matches!(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:216:                         source.as_ref(),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:217:                         vb_storage::JournalError::EmergencyDenyMarkerUnsupportedVersion { version }
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:218:                             if *version == 99
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:219:                     )
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:220:             )
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:221:     );
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:222:     assert!(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:223:         is_correct_error,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:224:         "expected precise typed error JournalError::EmergencyDenyMarkerUnsupportedVersion {{ version: 99 }}, got {result:?}"
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:225:     );
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:226: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:227:     // Verify zero effects
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:228:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:229:         adapter.effect_count()?,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:230:         0,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:231:         "expected zero effects after corrupt marker failure"
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:232:     );
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:233:     assert!(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:234:         adapter.value(scope())?.is_none(),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:235:         "register target must be empty after failed execute"
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:236:     );
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:237: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:238:     // Verify boundary unchanged: full snapshot equal, ticket unchanged
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:239:     let pending_after = runtime.pending_boundary_snapshot(8);
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:240:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:241:         pending_before, pending_after,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:242:         "pending boundary must be unchanged after corrupt marker failure"
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:243:     );
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:244:     let ticket_after = runtime
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:245:         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:246:         .ok_or("ticket disappeared after failure")?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:247:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:248:         ticket, ticket_after,
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:249:         "exact ticket must be unchanged after corrupt marker failure"
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:250:     );
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:251: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:252:     // Verify no policy decision event persisted (error before strict decision)
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:253:     let events = vb_storage::read_run_events(&journal_reopen, run)?;
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:254:     let decision_events: Vec<&JournalEvent> = events
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:255:         .iter()
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:256:         .filter(|e| matches!(e, JournalEvent::PolicyDecisionEvent { .. }))
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:257:         .collect();
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:258:     assert!(
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:259:         decision_events.is_empty(),
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:260:         "no PolicyDecisionEvent expected when read fails before strict decision persist"
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:261:     );
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:262: 
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:263:     drop(runtime);
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:264:     drop(journal_reopen);
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:265:     Ok(())
+crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs:266: }
+FILE crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs SHA256 0df678a7a08d629764100117592b30f73dbb09a8276523dbc0393ac5fba8741b
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:1: #![forbid(unsafe_code)]
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:2: // Emergency deny state survives journal reopen (vb-c4hzw).
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:3: // Persists emergency marker, drops all handles, reopens journal,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:4: // and verifies a NEW legal live execution is still blocked at the
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:5: // Emergency layer with a full 9-field decision record.
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:6: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:7: #[path = "vb_c4hzw_emergency_reopen/oracle.rs"]
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:8: mod oracle;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:9: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:10: #[path = "vb_c4hzw_emergency_reopen/fixtures.rs"]
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:11: mod fixtures;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:12: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:13: use std::sync::Arc;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:14: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:15: use vb_core::ActionTicket;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:16: use vb_core::action_pack::RecoveryClass;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:17: use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:18: use vb_core::policy::{
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:19:     CurrentPolicyIdentity, DecisionCode, DecisionRecord, InfluenceState, PinnedAdmissionPolicy,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:20:     PolicyDigest, PolicyLayer, PolicyRule, RuntimePolicy,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:21: };
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:22: use vb_core::value::{SlotValue, Taint};
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:23: use vb_runtime::journal::StorageRuntimeJournal;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:24: use vb_runtime::runtime::Runtime;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:25: use vb_storage::executor::{ExecutorCatalog, FjallRegister};
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:26: use vb_storage::journal::EmergencyDenyState;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:27: use vb_storage::{FjallConfig, FjallJournal};
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:28: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:29: use fixtures::{action_grants, build_contract, build_workflow, scope, shard_count, strict_config};
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:30: use oracle::{admission_pin_from_artifact, compute_expected_input_digest, current_live_configured};
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:31: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:32: type TestResult = Result<(), Box<dyn std::error::Error>>;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:33: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:34: fn expected_emergency_decision(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:35:     ticket: ActionTicket,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:36:     admission_pin: PinnedAdmissionPolicy,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:37:     current_live: CurrentPolicyIdentity,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:38:     input_digest: PolicyDigest,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:39: ) -> DecisionRecord {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:40:     DecisionRecord {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:41:         ticket,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:42:         admission: admission_pin,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:43:         current_live,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:44:         input_digest,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:45:         taint: Taint::Clean,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:46:         outcome: DecisionCode::Denied,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:47:         layer: PolicyLayer::Emergency,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:48:         emergency_influence: InfluenceState::Active,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:49:         compat_influence: InfluenceState::NotEvaluated,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:50:     }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:51: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:52: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:53: fn prepare_artifact(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:54:     dir: &tempfile::TempDir,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:55:     action: ActionId,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:56: ) -> Result<(ExecutorCatalog, vb_storage::AcceptedArtifact), Box<dyn std::error::Error>> {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:57:     let workflow = build_workflow()?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:58:     let contract = build_contract(action)?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:59:     let catalog = ExecutorCatalog::run_registered_conformance()?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:60:     let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:61: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:62:     let journal = Arc::new(FjallJournal::open(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:63:         dir.path(),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:64:         Some(FjallConfig::default()),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:65:     )?);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:66:     let artifact = catalog.submit_artifact(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:67:         &journal,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:68:         &workflow,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:69:         RuntimePolicy::Strict,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:70:         &[contract.clone()],
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:71:         &[pack],
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:72:     )?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:73: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:74:     Ok((catalog, artifact))
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:75: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:76: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:77: fn trigger_emergency_deny(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:78:     dir: &tempfile::TempDir,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:79:     catalog: &ExecutorCatalog,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:80:     action: ActionId,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:81: ) -> Result<(), Box<dyn std::error::Error>> {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:82:     let journal = Arc::new(FjallJournal::open(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:83:         dir.path(),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:84:         Some(FjallConfig::default()),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:85:     )?);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:86:     let storage = StorageRuntimeJournal::shared_strict_with_catalog(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:87:         journal.clone(),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:88:         Arc::new(catalog.clone()),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:89:     );
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:90:     let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage.clone());
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:91: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:92:     let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:93:     runtime.configure_live_policy(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:94:         allowed_digest,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:95:         PolicyRule {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:96:             action,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:97:             code: DecisionCode::Allowed,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:98:         },
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:99:     )?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:100: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:101:     runtime.activate_emergency_deny()?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:102: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:103:     drop(runtime);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:104:     drop(storage);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:105:     drop(journal);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:106:     Ok(())
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:107: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:108: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:109: #[test]
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:110: fn emergency_deny_survives_journal_reopen() -> TestResult {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:111:     let dir = tempfile::tempdir()?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:112:     let action = ActionId::new(0);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:113: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:114:     let (catalog, artifact) = prepare_artifact(&dir, action)?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:115:     trigger_emergency_deny(&dir, &catalog, action)?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:116: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:117:     // Reopen and verify emergency state persisted
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:118:     let journal_reopen = Arc::new(FjallJournal::open(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:119:         dir.path(),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:120:         Some(FjallConfig::default()),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:121:     )?);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:122:     let durable_state = journal_reopen.emergency_deny_state()?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:123:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:124:         durable_state,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:125:         EmergencyDenyState::Active,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:126:         "emergency deny must be durable after reopen"
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:127:     );
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:128: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:129:     let storage_reopen = StorageRuntimeJournal::shared_strict_with_catalog(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:130:         journal_reopen.clone(),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:131:         Arc::new(catalog.clone()),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:132:     );
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:133:     let mut runtime_reopen = Runtime::new(shard_count(1)?, strict_config(), storage_reopen);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:134: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:135:     // Submit a NEW legal run and attempt execution
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:136:     let run = RunId::new(9_201);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:137:     let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:138:     runtime_reopen.configure_live_policy(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:139:         allowed_digest,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:140:         PolicyRule {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:141:             action,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:142:             code: DecisionCode::Allowed,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:143:         },
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:144:     )?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:145: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:146:     runtime_reopen.submit_direct_with_inputs_grants_and_contracts(

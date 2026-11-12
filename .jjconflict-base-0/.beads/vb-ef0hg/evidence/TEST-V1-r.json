@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-ef0hg-local5090-test-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_test_cli_run_lifecycle_behavior"
+  ],
+  "exit_code": 0,
+  "seconds": 0.107,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ef0hg/evidence/TEST-V1-r",
+  "coordinator_message": "MANDATORY: use ONLY official /tmp/vb-run-gate.py for cargo commands and preserve exact exits. Do not pipe cargo to tail (pipeline can falsely0). No release production rebuild needed for test-only change; existing current debugCLI path should bebuilt ifmissing using scoped -p velvet-ballistics --bin velvet-ballistics then real80test target. Target CARGO_BIN_EXE env fallback targets/debug binary. No fabricated claims from releasebuild. Preserve sourcehash ccac03... exact. Mutate only shared current_dir line, actual1FAILED101, restore all80PASS. If bare commands alreadyrun recordthem honestly but rerun officialforacceptance. Do not modify runner/sourceformat.\n"
+}

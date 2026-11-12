@@ -1,0 +1,90 @@
+1: impl RuntimeJournal for QueuedStorageRuntimeJournal {
+2:     fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
+3:         Err(RuntimeError::UnsupportedOperation {
+4:             operation: "unsequenced_storage_journal_append",
+5:         })
+6:     }
+7: 
+8:     fn append_sequenced(&self, event: RuntimeJournalEvent, seq: EventSeq) -> RuntimeResult<()> {
+9:         if self.profile == DurabilityProfile::Strict {
+10:             return Err(RuntimeError::UnsupportedAsyncStrictAck);
+11:         }
+12:         let storage_event = StorageRuntimeJournal::storage_event(event, seq)?;
+13:         let result = self.queue.enqueue_journaled(storage_event);
+14:         result.map_err(RuntimeError::from)?;
+15:         Ok(())
+16:     }
+17: 
+18:     fn append_sequenced_batch(
+19:         &self,
+20:         events: &[RuntimeJournalEvent],
+21:         start_seq: EventSeq,
+22:     ) -> RuntimeResult<()> {
+23:         if self.profile == DurabilityProfile::Strict {
+24:             return Err(RuntimeError::UnsupportedAsyncStrictAck);
+25:         }
+26:         let mut storage_events = Vec::new();
+27:         storage_events
+28:             .try_reserve(events.len())
+29:             .map_err(|_| RuntimeError::from(vb_storage::JournalError::QueueFull))?;
+30:         for (offset, event) in events.iter().enumerate() {
+31:             let seq = StorageRuntimeJournal::sequence_at_offset(start_seq, offset)?;
+32:             let storage_event = StorageRuntimeJournal::storage_event(event.clone(), seq)?;
+33:             storage_events.push(storage_event);
+34:         }
+35:         self.queue
+36:             .enqueue_journaled_batch(storage_events)
+37:             .map_err(RuntimeError::from)
+38:     }
+39: 
+40:     fn probe(&self) -> RuntimeResult<()> {
+41:         if self.profile == DurabilityProfile::Strict {
+42:             return Err(RuntimeError::UnsupportedAsyncStrictAck);
+43:         }
+44:         self.journal.probe_health().map_err(RuntimeError::from)?;
+45:         self.queue
+46:             .probe_accepting_writes()
+47:             .map_err(RuntimeError::from)
+48:     }
+49: 
+50:     fn drain_for_shutdown(&self) -> RuntimeResult<JournalWriterFlushReport> {
+51:         // Retire each queue batch only after its own SyncAll succeeds. A
+52:         // failed barrier keeps that batch in RAM for an idempotent retry.
+53:         let report = self.queue.shutdown_durable(&self.journal)?;
+54:         // Also covers writes previously flushed through the profile-driven API.
+55:         self.journal.persist_strict()?;
+56:         Ok(report)
+57:     }
+58: 
+59:     fn storage_journal(&self) -> Option<std::sync::Arc<vb_storage::FjallJournal>> {
+60:         Some(self.journal.clone())
+61:     }
+62:     fn convert_to_storage_event(
+63:         &self,
+64:         event: RuntimeJournalEvent,
+65:         seq: EventSeq,
+66:     ) -> RuntimeResult<vb_storage::JournalEvent> {
+67:         StorageRuntimeJournal::storage_event(event, seq)
+68:     }
+69: 
+70:     fn append_policy_decision_strict(
+71:         &self,
+72:         decision: vb_core::policy::DecisionRecord,
+73:         seq: EventSeq,
+74:     ) -> RuntimeResult<()> {
+75:         self.queue
+76:             .probe_accepting_writes()
+77:             .map_err(RuntimeError::from)?;
+78:         self.queue
+79:             .drain_all(self.journal.as_ref())
+80:             .map_err(RuntimeError::from)?;
+81:         let storage_event = JournalEvent::PolicyDecisionEvent {
+82:             run: decision.ticket.run,
+83:             seq,
+84:             decision,
+85:         };
+86:         self.journal
+87:             .append_strict(&storage_event)
+88:             .map_err(RuntimeError::from)
+89:     }
+90: }

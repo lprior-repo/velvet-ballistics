@@ -1,0 +1,22 @@
+{
+  "frozen_source": "48ef265727dbbe1426c8349ce09bdcbde0e8ae11",
+  "checked_files": 1811,
+  "all_source_hashes_unchanged": true,
+  "metadata_parents": [
+    "d96d0487b2736872fc2f739cac27d5e16b628180",
+    "559f8dcd681b083c4fc1396a2a0837c90068e748",
+    "60d1adde3a5767e51605f14c13d40ceb90faae06",
+    "114d695126306cb05b91e1d5d452fd65c513e0d9"
+  ],
+  "canonical_gate": "ROOT_COUNTER_FLUX_V48_CANONICAL",
+  "acceptance_scope": [
+    "vb-qz2yn default artifact submissions",
+    "vb-63js3 explicit-package Flux routing"
+  ],
+  "unaccepted_followups": [
+    "vb-ct9lz registered submission contract only",
+    "vb-0qwfq CLI submission issuance",
+    "vb-fyktj historical branches",
+    "full v1"
+  ]
+}

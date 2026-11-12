@@ -1,0 +1,18 @@
+{"contract_clause":"PRE-001","tests":["vb_hxm0_acceptance_catalog validates catalog shape","test_mutation_gate_fails_when_admission_branch_removed","test_fuzz_smoke_runs_yaml_ipc_journal_compiled_ir_targets","test_property_gate_fails_when_generated_ir_comparison_ignores_taint","test_unsafe_boundary_fuzz_missing_causes_release_gate_failure"],"proofs":["BDD-CAT-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-002","tests":["vb_hxm0_acceptance_catalog validates isolated fixture and related bead fields"],"proofs":["BDD-CAT-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-003","tests":["test_mutation_gate_fails_when_admission_branch_removed","vb_c3k9_current_api_mutation_plan validates critical survivor policy"],"proofs":["MUT-ADM-001","MUT-PLAN-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-004","tests":["test_fuzz_smoke_runs_yaml_ipc_journal_compiled_ir_targets"],"proofs":["FUZZ-SMOKE-001","FUZZ-BUILD-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-005","tests":["test_property_gate_fails_when_generated_ir_comparison_ignores_taint","proptests::fixed_six_step_emitted_rust_and_ir_match_finished_signal_and_slots"],"proofs":["PROP-TAINT-001","PROP-REPLAY-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-006","tests":["test_unsafe_boundary_fuzz_missing_causes_release_gate_failure","vb_y1zq_boundary_inventory_contract"],"proofs":["BOUNDARY-FUZZ-001","BOUNDARY-REL-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-001","tests":["test_mutation_gate_fails_when_admission_branch_removed"],"proofs":["MUT-ADM-001","MUT-PLAN-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-002","tests":["test_fuzz_smoke_runs_yaml_ipc_journal_compiled_ir_targets"],"proofs":["FUZZ-SMOKE-001","FUZZ-BUILD-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-003","tests":["test_property_gate_fails_when_generated_ir_comparison_ignores_taint"],"proofs":["PROP-TAINT-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-004","tests":["test_unsafe_boundary_fuzz_missing_causes_release_gate_failure"],"proofs":["BOUNDARY-FUZZ-001","BOUNDARY-REL-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-005","tests":["vb_hxm0_acceptance_catalog","vb_njju_mutation_fuzz_property_closure"],"proofs":["BDD-CAT-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-006","tests":["jsonl validation command"],"proofs":["TRACE-JSONL-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-001","tests":["vb_hxm0_acceptance_catalog public-surface validation"],"proofs":["BDD-CAT-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-002","tests":["test_fuzz_smoke_runs_yaml_ipc_journal_compiled_ir_targets"],"proofs":["FUZZ-SMOKE-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-003","tests":["test_mutation_gate_fails_when_admission_branch_removed"],"proofs":["MUT-ADM-001","MUT-PLAN-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-004","tests":["test_property_gate_fails_when_generated_ir_comparison_ignores_taint"],"proofs":["PROP-TAINT-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-005","tests":["test_unsafe_boundary_fuzz_missing_causes_release_gate_failure"],"proofs":["BOUNDARY-FUZZ-001","BOUNDARY-REL-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-006","tests":["jsonl validation command"],"proofs":["TRACE-JSONL-001","TLA-WAIVE-001","LEAN-WAIVE-001"],"review":"contract-verification-review.md"}

@@ -1,0 +1,10 @@
+   Compiling xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/xtask)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.53s
+     Running unittests src/lib.rs (xtask/target/debug/deps/xtask-ef0134484e5d900a)
+     Running unittests src/main.rs (xtask/target/debug/deps/xtask-f9becf257dcda604)
+     Running tests/benchmark_policy_cli.rs (xtask/target/debug/deps/benchmark_policy_cli-b247c495f268bb8c)
+     Running tests/bundle_tests.rs (xtask/target/debug/deps/bundle_tests-4c279fdf07aaf1a3)
+     Running tests/integration_gates.rs (xtask/target/debug/deps/integration_gates-b6f3509317d18143)
+     Running tests/ui_release_errors.rs (xtask/target/debug/deps/ui_release_errors-36386682c52abdb1)
+     Running tests/ui_release_gates.rs (xtask/target/debug/deps/ui_release_gates-69ea98341f1d1653)
+     Running tests/ui_release_tooling_red_phase.rs (xtask/target/debug/deps/ui_release_tooling_red_phase-8da94dc76fafae7a)

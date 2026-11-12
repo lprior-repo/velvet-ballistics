@@ -1,0 +1,19 @@
++zsh:1> df -h . /tmp/opencode
+Filesystem        Size  Used Avail Use% Mounted on
+/dev/mapper/root  1.9T  1.1T  689G  62% /home
+tmpfs              62G   47G   15G  76% /tmp
++zsh:1> timeout 5400s cargo fuzz build
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+    Finished `release` profile [optimized + debuginfo] target(s) in 3.88s
++zsh:1> build_status=0 
++zsh:1> df -h . /tmp/opencode
+Filesystem        Size  Used Avail Use% Mounted on
+/dev/mapper/root  1.9T  1.1T  689G  62% /home
+tmpfs              62G   47G   15G  76% /tmp
++zsh:1> printf '\ncargo_fuzz_build_exit_status=%s\n' 0
+
+cargo_fuzz_build_exit_status=0
++zsh:1> exit 0

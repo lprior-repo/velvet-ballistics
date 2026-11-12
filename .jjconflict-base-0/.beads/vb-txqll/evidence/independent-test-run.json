@@ -1,0 +1,22 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-txqll-local5090-probe-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_79ffw_ticket_authority_probe",
+    "--",
+    "--nocapture"
+  ],
+  "exit_code": 0,
+  "seconds": 16.948,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "stdout": "running 6 tests\ntest idempotency_key_differs_across_run_attempts ... ok\ntest ticket_key_valid_after_serialization ... ok\ntest zero_run_attempt_ticket_rejected ... ok\ntest future_run_attempt_ticket_rejected ... ok\ntest cold_recovery_preserves_run_attempt ... ok\nEvents before stale rejection: 14\nEvents after stale rejection: 14\nEvents after completion: 18\ntest stale_completion_rejected_after_two_retries ... ok\n\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s",
+  "stderr": ""
+}

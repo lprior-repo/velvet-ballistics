@@ -1,0 +1,24 @@
+{
+  "bead_id": "vb-njju",
+  "state": 6,
+  "sublane": "proof-review",
+  "delegate": "proof-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/femdation-vb-njju",
+  "input_artifacts": [
+    ".beads/vb-njju/proof-obligations.planned.jsonl",
+    ".beads/vb-njju/proof-strategy.md",
+    ".beads/vb-njju/proof-plan-review-input.md",
+    ".beads/vb-njju/proof-writer-report.md",
+    ".beads/vb-njju/proof-evidence.md",
+    "target/test-output/",
+    "target/fuzz-smoke/"
+  ],
+  "output_artifacts": [
+    ".beads/vb-njju/proof-review.md",
+    ".beads/vb-njju/proof-findings.jsonl",
+    ".beads/vb-njju/proof-repair-guide.md"
+  ],
+  "attempt": "repair-2-of-7",
+  "reason": "Review repaired raw evidence and classify PO-004/PO-005/PO-017 BLOCK_LOCAL proof blockers."
+}

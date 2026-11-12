@@ -1,0 +1,10 @@
+COMMAND: stale corpus spelling scan for vb_f04l_yaml_compiler_compile
+STALE_CORPUS_MATCH=absent
+fuzz/corpus/vb_f04l_yaml_compiler_compile/unsupported_save.yaml:1:version: velvet-ballistics/v1
+fuzz/corpus/vb_f04l_yaml_compiler_compile/unsupported_save.yaml:2:name: fuzz_save
+fuzz/corpus/vb_f04l_yaml_compiler_compile/minimal_set_finish.yaml:1:version: velvet-ballistics/v1
+fuzz/corpus/vb_f04l_yaml_compiler_compile/minimal_set_finish.yaml:2:name: fuzz_set
+fuzz/corpus/vb_f04l_yaml_compiler_compile/for_each.yaml:1:version: velvet-ballistics/v1
+fuzz/corpus/vb_f04l_yaml_compiler_compile/for_each.yaml:2:name: fuzz_foreach
+
+EXIT_STATUS=0

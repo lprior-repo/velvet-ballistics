@@ -102,6 +102,7 @@ fn make_do_run_state(step_count: u16) -> RunState {
     );
     let parts = WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("proptest_do_wf"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0xBB; 32]),
         nodes: Box::from([do_node]),
@@ -113,7 +114,11 @@ fn make_do_run_state(step_count: u16) -> RunState {
         entry: StepIdx::ZERO,
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
-        input_slots: Box::from([]),
+        input_slots: Box::from([vb_core::CompiledInputSlot {
+            slot: vb_core::SlotIdx::new(0),
+            kind: vb_core::InputSlotKind::Any,
+            constraint: vb_core::CompiledInputConstraint::required(),
+        }]),
     };
     let workflow = CompiledWorkflow::try_from_parts(parts).expect("proptest: valid workflow parts");
     let frame =

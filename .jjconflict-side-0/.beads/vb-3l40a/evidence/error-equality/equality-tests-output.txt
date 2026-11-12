@@ -1,0 +1,41 @@
+
+running 16 tests
+test error::tests_equality::contract_validation_different_both_unequal ... ok
+test error::tests_equality::contract_validation_different_action_unequal ... ok
+test error::tests_equality::contract_validation_different_message_unequal ... ok
+test error::tests_equality::recovery_different_strings_unequal ... ok
+test error::tests_equality::recovery_identical_strings_equal ... ok
+test error::tests_equality::recovery_reflexivity ... ok
+test error::tests_equality::contract_validation_identical_equal ... ok
+test error::tests_equality::slot_kind_mismatch_different_actual_unequal ... ok
+test error::tests_equality::slot_kind_mismatch_different_expected_unequal ... ok
+test error::tests_equality::slot_kind_mismatch_different_slot_unequal ... ok
+test error::tests_equality::slot_kind_mismatch_identical_equal ... ok
+test error::tests_equality::contract_validation_reflexivity ... ok
+test error::tests_equality::cross_variant_slot_mismatch_vs_recovery ... ok
+test error::tests_equality::cross_variant_contract_vs_slot_mismatch ... ok
+test error::tests_equality::slot_kind_mismatch_reflexivity ... ok
+test error::tests_equality::cross_variant_recovery_vs_contract ... ok
+
+successes:
+
+successes:
+    error::tests_equality::contract_validation_different_action_unequal
+    error::tests_equality::contract_validation_different_both_unequal
+    error::tests_equality::contract_validation_different_message_unequal
+    error::tests_equality::contract_validation_identical_equal
+    error::tests_equality::contract_validation_reflexivity
+    error::tests_equality::cross_variant_contract_vs_slot_mismatch
+    error::tests_equality::cross_variant_recovery_vs_contract
+    error::tests_equality::cross_variant_slot_mismatch_vs_recovery
+    error::tests_equality::recovery_different_strings_unequal
+    error::tests_equality::recovery_identical_strings_equal
+    error::tests_equality::recovery_reflexivity
+    error::tests_equality::slot_kind_mismatch_different_actual_unequal
+    error::tests_equality::slot_kind_mismatch_different_expected_unequal
+    error::tests_equality::slot_kind_mismatch_different_slot_unequal
+    error::tests_equality::slot_kind_mismatch_identical_equal
+    error::tests_equality::slot_kind_mismatch_reflexivity
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 1878 filtered out; finished in 0.00s
+

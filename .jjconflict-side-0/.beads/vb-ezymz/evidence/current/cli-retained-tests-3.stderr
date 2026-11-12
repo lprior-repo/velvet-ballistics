@@ -1,0 +1,3 @@
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.46s
+     Running ../workspace_tests/tests/cli/submit_retained_inputs.rs (target/debug/deps/submit_retained_inputs-85efd7e6dbb40ed1)

@@ -1,0 +1,19 @@
+{
+  "bead_id": "vb-njju",
+  "state": 5,
+  "sublane": "proof-writing",
+  "delegate": "proof-writer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/femdation-vb-njju",
+  "input_artifacts": [
+    ".beads/vb-njju/proof-strategy.md",
+    ".beads/vb-njju/proof-plan-review-input.md",
+    ".beads/vb-njju/proof-obligations.planned.jsonl"
+  ],
+  "output_artifacts": [
+    ".beads/vb-njju/proof-writer-report.md",
+    ".beads/vb-njju/proof-evidence.md"
+  ],
+  "attempt": "1-of-7",
+  "reason": "Write/prepare verification artifacts and proof evidence from approved State 4 proof plan."
+}

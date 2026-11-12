@@ -20,25 +20,13 @@ use vb_core::{
 mod canonical_reduce;
 pub(super) use canonical_reduce::{ReduceLowering, checked_width_n, lower_canonical_aggregate};
 
-pub(super) fn field_error(
-    step: usize,
-    field: &'static str,
-    expected: &'static str,
-) -> CompileErrors {
-    CompileErrors(vec![CompileError::StepFieldShape {
-        step,
-        field,
-        expected,
-    }])
-}
-
 #[path = "canonical_reduce_initial.rs"]
 mod canonical_reduce_initial;
 pub(super) use canonical_reduce_initial::parse_typed_initial;
 
 #[path = "canonical_repeat.rs"]
 mod canonical_repeat;
-pub(super) use canonical_repeat::{RepeatLowering, lower_canonical_repeat};
+pub(super) use canonical_repeat::lower_canonical_repeat;
 
 pub(super) fn lower_canonical_wait(
     index: usize,
@@ -81,7 +69,7 @@ pub(super) fn lower_canonical_ask(
     next: Option<StepIdx>,
     scope: CanonicalScope<'_>,
     builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
+) -> Result<SlotIdx, CompileErrors> {
     let prompt = resolve_suspension_slot(prompt, index, "ask.prompt", scope)?;
     let timeout = resolve_optional_suspension_slot(timeout, index, "ask.timeout", scope)?;
     builder.record_slot(prompt);
@@ -106,9 +94,10 @@ pub(super) fn lower_canonical_ask(
     for node in nodes {
         builder.push_node(node);
     }
-    Ok(())
+    Ok(answer)
 }
 
+#[cfg(test)]
 pub(super) fn emit_single_body_set(
     body: &[crate::StepAst],
     id: StepIdx,
@@ -143,15 +132,19 @@ pub(super) fn emit_single_body_set(
         crate::StepPrimitive::Do { action, input } => {
             lower_do_body_set(id, diagnostic_step, slot, next, action, input, builder)
         }
-        other => Err(CompileErrors(vec![
-            CompileError::UnsupportedStepPrimitive {
-                step: diagnostic_step,
-                primitive: canonical_primitive_name(other),
-            },
-        ])),
+        other => {
+            let name = canonical_primitive_name(other).map_err(|e| CompileErrors(vec![e]))?;
+            Err(CompileErrors(vec![
+                CompileError::UnsupportedStepPrimitive {
+                    step: diagnostic_step,
+                    primitive: name,
+                },
+            ]))
+        }
     }
 }
 
+#[cfg(test)]
 fn lower_do_body_set(
     id: StepIdx,
     diagnostic_step: usize,
@@ -207,6 +200,8 @@ fn lower_do_body_set(
 }
 
 #[path = "body_constants.rs"]
+#[cfg(test)]
 mod body_constants;
+#[cfg(test)]
 pub(super) use body_constants::body_constant_index;
 use vb_core::workflow::node;

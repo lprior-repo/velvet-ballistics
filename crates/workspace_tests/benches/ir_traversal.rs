@@ -49,6 +49,7 @@ fn chain_workflow(count: u16) -> Option<CompiledWorkflow> {
     ));
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("bench_chain"),
         digest: WorkflowDigest::from_bytes([0x44; 32]),
@@ -125,6 +126,7 @@ fn mixed_workflow() -> Option<CompiledWorkflow> {
     let expr_program = ExprProgram::try_from_parts(ops, 2).ok()?;
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("bench_mixed"),
         digest: WorkflowDigest::from_bytes([0x55; 32]),
@@ -184,6 +186,7 @@ fn expression_workflow(expr_count: u16) -> Option<CompiledWorkflow> {
     }
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::from("bench_expr"),
         digest: WorkflowDigest::from_bytes([0x66; 32]),

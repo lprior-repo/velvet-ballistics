@@ -1,0 +1,20 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 13,
+  "sublane": "truth-serum-audit-owner-authorized-substitute-package",
+  "delegate": "truth-serum",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/state13-provenance-waiver.md",
+    ".beads/vb-vt2f/assurance-bundle.md",
+    ".beads/vb-vt2f/final-evidence-decision.md",
+    ".beads/vb-vt2f/formal-verification-report.md",
+    ".beads/vb-vt2f/verification-ledger.jsonl",
+    ".beads/vb-vt2f/black-hat-review.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/truth-serum-report.md"
+  ],
+  "attempt": "owner-authorized-substitute-1"
+}

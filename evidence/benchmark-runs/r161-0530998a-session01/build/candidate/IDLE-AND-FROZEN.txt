@@ -1,0 +1,4 @@
+pin=0530998a5636fafb32b2602c33d14b38e983f1a6
+cpu=14
+ci_kani_and_other_builds=stopped
+attested_at_unix_ns=1794475346848767901

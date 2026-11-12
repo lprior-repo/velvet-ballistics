@@ -1,0 +1,19 @@
+   Compiling rustversion v1.0.22
+   Compiling aho-corasick v1.1.4
+   Compiling tracing-core v0.1.36
+   Compiling regex-automata v0.4.14
+   Compiling generator v0.8.8
+   Compiling pin-project-lite v0.2.17
+   Compiling lazy_static v1.5.0
+   Compiling tracing v0.1.44
+   Compiling sharded-slab v0.1.7
+   Compiling matchers v0.2.0
+   Compiling tracing-log v0.2.0
+   Compiling thread_local v1.1.9
+   Compiling nu-ansi-term v0.50.3
+   Compiling tracing-subscriber v0.3.23
+   Compiling scoped-tls v1.0.1
+   Compiling loom v0.7.2
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9tg1c-local3090-final-format/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.12s
+     Running tests/vb_wave16_mqa.rs (target/debug/deps/vb_wave16_mqa-f7cb6889b711617f)

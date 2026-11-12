@@ -1,0 +1,30 @@
+{
+  "status": "historical own-patch not accepted for current proof closure; originals retained with these required corrections",
+  "candidate": "dd50c691bb67624f7d39bb19ca057223aed43abe",
+  "scope": "4 own files only; inherited branch unresolved; no verifier executed",
+  "corrections": [
+    "Registry description explicitly says trusted external_body boundary and old bead title is ledger OR prove: absence of a body proof does not itself reject an honest TRUSTED ledger. Raw review wrongly says registry necessarily claims PROVED. No approved trustworthy closure ledger was established by this audit.",
+    "StepBudget::new PO006 is a separately reported historical obligation; no fresh verifier logs reviewed here, so PROVED label withdrawn.",
+    "Err wildcard true applies to other error variants; explicit earlier StepCounterOverflow=>false remains, so wildcard does not admit that variant.",
+    "Old real mirror external_body was itself an unproved trusted IO boundary; old new standalone loop{} external stub and assume specification do not establish production from_env behavior. Composition lemma only calls new with an already bounded precondition.",
+    "Signature drift/Verus build parity was not executed here; do not rely on claimed signature-only drift behavior without actual gate review.",
+    "Trust adapter exit1 reports86 raw token markers including attribute-like comments, NOT86 established trust boundaries. Bounded scan of listed files, not full verifier/vstd closure.",
+    "Raw finding source line numbers are approximate and often wrong; exact anchors below authoritative.",
+    "No production proof/source modification, installed verifier pass, mathematical closure, owner trust approval or full branch acceptance."
+  ],
+  "anchors": {
+    "assume_from_env": [
+      119
+    ],
+    "composition": [
+      144
+    ],
+    "external_stub": [
+      183
+    ],
+    "registry": [
+      1145
+    ]
+  },
+  "disposition": "Preserve old branch and raw reviewer report. vb-4pg6g reopened; possible future production-bound parse proof or explicitly justified trusted IO ledger, no blind restore of stub or new assumptions."
+}

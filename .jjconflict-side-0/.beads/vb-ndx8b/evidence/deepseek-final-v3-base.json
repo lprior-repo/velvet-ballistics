@@ -1,0 +1,18 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-ndx8b-deepseek-filter-repair",
+  "argv": [
+    "bash",
+    "scripts/check-test-integrity.sh",
+    "--base",
+    "da633fe0bbde9e414173d5f7aabe314a37f8752d"
+  ],
+  "exit_code": 1,
+  "seconds": 8.216,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ndx8b/evidence/deepseek-final-v3-base",
+  "coordinator_message": "Context~94k. Finish narrow four fixes with existingchecker, no more extensive exploratorycommands. Critical actual-file hash binding two confirmedbypasses, active exact-base lifecycle, modifiedrename perpair realdiff, validatedUTF8beforeequalrelocationskip. Add actualregressions, officialrunner selftest and realda633base output, source-length. No giantrewrite/TSVpopulation yet. Write honest handoff and END before120k. Newindepreview follows. No fake HEAD-onlygreen/statusmasking."
+}

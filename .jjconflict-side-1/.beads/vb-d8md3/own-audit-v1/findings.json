@@ -1,0 +1,58 @@
+{
+  "bead": "vb-d8md3",
+  "commit": "b9ebb909182a",
+  "audit_version": 1,
+  "base": "505464",
+  "api_surface": {
+    "added_type": "BackpressureWarningOutcome",
+    "variants": ["Delivered", "ChannelFull", "ChannelDisconnected"],
+    "added_method": "enqueue_with_backpressure_warning_outcome",
+    "return_type": "(Result<(), ActionQueueError>, BackpressureWarningOutcome)"
+  },
+  "production_callers": {
+    "count": 0,
+    "files": [],
+    "note": "BoundedActionCompletionQueue used only in tests; production Shard uses separate command_queue"
+  },
+  "behavior_classification": {
+    "already_preserved": [
+      "bounded capacity enforcement",
+      "80% ceiling backpressure threshold",
+      "backpressure warning via channel",
+      "FIFO dequeue ordering",
+      "remaining capacity tracking",
+      "poison recovery on lock",
+      "capacity validation"
+    ],
+    "useful_missing": [
+      "honest warning send outcome surfacing (distinguish delivered/channel-full/disconnected)"
+    ],
+    "flawed_historical": [
+      "Delivered variant overloaded (means delivered/not-attempted/no-channel/queue-full)",
+      "no NotAttempted state",
+      "test 'delivered_on_queue_full' checks Delivered when no enqueue occurred",
+      "test 'delivered_without_channel' checks Delivered when nothing was sent"
+    ]
+  },
+  "test_flaws": [
+    {
+      "test": "backpressure_outcome_delivered_on_queue_full",
+      "issue": "Queue full means no enqueue; outcome should be NotAttempted, not Delivered"
+    },
+    {
+      "test": "backpressure_outcome_delivered_without_channel",
+      "issue": "Delivered when no channel = nothing was delivered; overloaded semantics"
+    }
+  ],
+  "recommendations": {
+    "cherry_pick_as_is": false,
+    "redesign_if_adopted": true,
+    "suggested_outcome_states": ["WarningDelivered", "ChannelFull", "ChannelDisconnected", "NotAttempted"],
+    "production_urgency": "none",
+    "label": "cold API until wired to real callers"
+  },
+  "file": "crates/vb_runtime/src/action_queue.rs",
+  "line_additions": 268,
+  "hunks": 3,
+  "tests_added": 7
+}
