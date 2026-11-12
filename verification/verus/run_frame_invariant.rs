@@ -33,9 +33,9 @@
 //
 // BINDING LEDGER:
 //   - `RunFrame::new`                   <- extern::run_frame_new
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:3-31)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:3-30)
 //   - `RunFrame::reinitialize`          <- extern::run_frame_reinitialize
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:34-71)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_001_construct.rs:33-67)
 //   - `RunFrame::step_count`            <- extern::run_frame_step_count
 //                                          (mirror of crates/vb_core/src/frame/parts/impl_002_accessors.rs:22-24)
 //   - `RunFrame::slot_count`            <- extern::run_frame_slot_count
@@ -45,26 +45,26 @@
 //   - `RunFrame::set_pc`                <- extern::run_frame_set_pc
 //                                          (mirror of crates/vb_core/src/frame/parts/impl_002_accessors.rs:80-86)
 //   - `RunFrame::states_snapshot`       <- extern::run_frame_states_snapshot
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:72-74)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:71-73)
 //   - `RunFrame::slots_snapshot`        <- extern::run_frame_slots_snapshot
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:51-53)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:46-51)
 //   - `RunFrame::taint_snapshot`        <- extern::run_frame_taint_snapshot
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:66-68)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:62-67)
 //   - `RunFrame::write_slot_with_taint` <- extern::run_frame_write_slot_with_taint
-//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:21-37)
+//                                          (mirror of crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:21-33)
 //   - `is_valid_step_state_transition`  <- extern::is_valid_step_state_transition
 //                                          (mirror of crates/vb_core/src/frame.rs:71-101;
 //                                           pure decision fn, body verified
 //                                           by Verus, contract attached)
 //   - `Taint` discriminant set          <- extern::Taint
-//                                          (mirror of value.rs:14-25;
+//                                          (mirror of crates/vb_core/src/value/taint.rs:10-21;
 //                                           Clean=0, DerivedFromSecret=1,
 //                                           Secret=2, Random=3,
 //                                           TimeDependent=4)
 //   - `CoreError` relevant variants     <- extern::CoreError
 //     (InvalidCompiledWorkflow, InvalidProgramCounter)
-//                                          (mirror of crates/vb_core/src/errors.rs:264-268
-//                                          and crates/vb_core/src/errors.rs:169-173)
+//                                          (mirror of crates/vb_core/src/errors.rs:497-500
+//                                          and crates/vb_core/src/errors.rs:402-405)
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -296,7 +296,7 @@ pub open spec fn spec_valid_step_index(step: int, step_count: int) -> bool {
 }
 
 /// `Taint` validity: every `Taint` variant is a valid write target. The
-/// production `Taint` enum at `crates/vb_core/src/value.rs:14-25` is a
+/// production `Taint` enum at `crates/vb_core/src/value/taint.rs:10-21` is a
 /// closed 5-variant `#[repr(u8)]` enum. `write_slot_with_taint` writes
 /// the input `taint: Taint` directly to `taint[index]` (no raw u8
 /// conversion), so any closed-enum variant is a valid write.
@@ -320,7 +320,7 @@ pub open spec fn spec_taint_valid_write(taint: Taint) -> bool {
 // exercise the contracts via the exec wrappers in the
 // "Production-bound exec fns" section.
 // ---------------------------------------------------------------------------
-// Bridge: `RunFrame::new`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:3-31)
+// Bridge: `RunFrame::new`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:3-30)
 // ---------------------------------------------------------------------------
 // Production contract:
 //   - Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" })
@@ -356,7 +356,7 @@ pub assume_specification[ production::run_frame_new ](
 ;
 
 // ---------------------------------------------------------------------------
-// Bridge: `RunFrame::reinitialize`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:34-71)
+// Bridge: `RunFrame::reinitialize`  (crates/vb_core/src/frame/parts/impl_001_construct.rs:33-67)
 // ---------------------------------------------------------------------------
 // Production contract:
 //   - Err(CoreError::InvalidCompiledWorkflow { reason: "step_count_zero" })
@@ -421,7 +421,7 @@ pub assume_specification[ production::run_frame_set_pc ](
 ;
 
 // ---------------------------------------------------------------------------
-// Bridge: `RunFrame::write_slot_with_taint`  (crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:21-37)
+// Bridge: `RunFrame::write_slot_with_taint`  (crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:21-33)
 // ---------------------------------------------------------------------------
 // Production contract:
 //   - Err(CoreError::InvalidCompiledWorkflow { reason: "slot_index_out_of_bounds" })
@@ -453,7 +453,7 @@ pub assume_specification[ production::run_frame_write_slot_with_taint ](
 ;
 
 // ---------------------------------------------------------------------------
-// Bridges: accessor fns (crates/vb_core/src/frame/parts/impl_002_accessors.rs:1-86, crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:1-74)
+// Bridges: accessor fns (crates/vb_core/src/frame/parts/impl_002_accessors.rs:1-86, crates/vb_core/src/frame/parts/impl_003_slots_taints.rs:1-73)
 // ---------------------------------------------------------------------------
 // These are pure accessors — single spec invariant per bridge.
 pub assume_specification[ production::run_frame_pc ](frame: &RunFrame) -> (pc: StepIdx)
@@ -750,7 +750,7 @@ pub proof fn proof_valid_dimensions_accepted(first_step: int, step_count: int)
 
 // ============================================================================
 // VB-INV006-VERUS: Taint validity proofs. The production Taint enum at
-// `crates/vb_core/src/value.rs:14-25` has 5 closed variants (was 3 in
+// `crates/vb_core/src/value/taint.rs:10-21` has 5 closed variants (was 3 in
 // the prior vacuum spec; production was always 5). `write_slot_with_taint`
 // writes the input `Taint` directly with no raw u8 conversion, so any
 // variant is a valid write.
