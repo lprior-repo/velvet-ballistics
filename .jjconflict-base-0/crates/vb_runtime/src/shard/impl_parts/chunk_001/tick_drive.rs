@@ -82,8 +82,7 @@ impl Shard {
         let due = self
             .pending_timer_iter()
             .filter(|(_, timer)| timer.deadline <= now)
-            .min_by_key(|(run, timer)| (timer.deadline, run.get()))
-            .map(|(run, timer)| (*run, *timer));
+            .min_by_key(|(run, timer)| (timer.deadline, run.get()));
         let Some((run, timer)) = due else {
             return self.drive_one_pending_run();
         };
