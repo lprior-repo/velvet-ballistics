@@ -1,8 +1,10 @@
 use super::super::part_14::{BodyCtx, emit_scoped_flat_body};
 use super::super::{SlotCompiler, checked_step_offset, slot_from_text};
-use super::{CanonicalScope, resolve_slot_reference, validate_output_alias};
+use super::canonical_references::resolve_slot_reference_scoped;
+use super::{CanonicalScope, validate_output_alias};
 use crate::mod_compile_validation::validate_public_name;
 use crate::{CompileError, CompileErrors};
+use std::collections::HashMap;
 use vb_core::workflow::node;
 use vb_core::{CompiledNodeKind, SlotIdx, StepIdx};
 use vb_expr::expr_typecheck::ExprType;
@@ -39,12 +41,8 @@ fn bounds_error(index: usize) -> CompileErrors {
 
 fn resolve_source(index: usize, config: &CollectLowering<'_>) -> Result<SlotIdx, CompileErrors> {
     if config.source.starts_with('$') {
-        resolve_slot_reference(
-            config.source,
-            config.scope.outputs,
-            config.scope.step_outputs,
-        )
-        .map_err(|e| CompileErrors(vec![e]))
+        resolve_slot_reference_scoped(config.source, config.scope)
+            .map_err(|e| CompileErrors(vec![e]))
     } else {
         slot_from_text(config.source, index, "collect.source")
     }
@@ -66,9 +64,7 @@ fn validate_variable_capture(
     variable: &str,
     config: &CollectLowering<'_>,
 ) -> Result<(), CompileErrors> {
-    if config.scope.outputs.contains_key(variable)
-        || config.scope.step_outputs.contains_key(variable)
-    {
+    if config.scope.contains_output(variable) || config.scope.contains_step(variable) {
         return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
             name: variable.into(),
         }]));
@@ -183,7 +179,7 @@ fn emit_start(id: StepIdx, plan: &CollectPlan, builder: &mut SlotCompiler) {
         id,
         CompiledNodeKind::CollectStart {
             source: plan.source,
-            limit: plan.limit,
+            limit: plan.limit.into(),
             page_size: plan.page_size,
             body: plan.body_step,
             done: plan.done,
@@ -198,16 +194,18 @@ fn emit_body(
     plan: &CollectPlan,
     builder: &mut SlotCompiler,
 ) -> Result<Option<SlotIdx>, CompileErrors> {
-    let mut local_outputs = config.scope.outputs.clone();
-    let mut local_types = config.scope.slot_types.clone();
-    local_outputs.insert(config.variable.to_owned(), plan.collector_slot);
-    local_types.insert(plan.collector_slot, ExprType::List);
+    // Borrowed overlay: single-binding HashMaps + parent chain, no whole-map clone.
+    let mut overlay_outputs = HashMap::with_capacity(1);
+    overlay_outputs.insert(config.variable.to_owned(), plan.collector_slot);
+    let mut overlay_types = HashMap::with_capacity(1);
+    overlay_types.insert(plan.collector_slot, ExprType::List);
     let local_scope = CanonicalScope {
-        outputs: &local_outputs,
+        outputs: &overlay_outputs,
         step_outputs: config.scope.step_outputs,
-        slot_types: &local_types,
+        slot_types: &overlay_types,
+        parent: Some(&config.scope),
     };
-    let body_output = emit_scoped_flat_body(
+    let (body_output, _) = emit_scoped_flat_body(
         config.body,
         plan.body_step,
         plan.advance,
@@ -215,6 +213,7 @@ fn emit_body(
         config.nested,
         builder,
         "collect",
+        None,
     )?;
     Ok(body_output)
 }

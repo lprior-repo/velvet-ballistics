@@ -84,6 +84,15 @@ pub(crate) enum Commands {
         #[arg(long)]
         model: String,
     },
+    #[command(name = "crash-lab")]
+    CrashLab {
+        #[arg(long)]
+        workflow: String,
+        #[arg(long)]
+        crash_at: Option<String>,
+        #[arg(long)]
+        all_crash_points: bool,
+    },
     #[command(name = "diff-test")]
     DiffTest {
         #[arg(long)]
@@ -103,6 +112,8 @@ pub(crate) enum Commands {
         #[arg(long, default_value = "evidence/benchmark-evidence.jsonl")]
         evidence: String,
     },
+    #[command(name = "replay-lab")]
+    ReplayLab,
     // === New proof/test orchestrator commands ===
     #[command(name = "list-crates")]
     ListCrates {

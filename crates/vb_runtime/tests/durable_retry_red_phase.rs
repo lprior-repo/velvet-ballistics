@@ -84,7 +84,7 @@ fn error_handler_with_slot_workflow() -> Option<CompiledWorkflow> {
         CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(1),
             handler: StepIdx::new(2),
-            error_slot: Some(SlotIdx::new(1)),
+            error_slot: Some(SlotIdx::new(1)).into(),
         },
         None,
         None,

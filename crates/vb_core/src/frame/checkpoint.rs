@@ -85,8 +85,8 @@ impl RunFrame {
                 .copied()
                 .map(CheckpointStepState::from)
                 .collect(),
-            slots: self.slots.to_vec(),
-            taint: self.taint.to_vec(),
+            slots: self.slots_snapshot(),
+            taint: self.taint_snapshot(),
         }
     }
 
@@ -124,14 +124,13 @@ impl RunFrame {
         for (target, state) in frame.states.iter_mut().zip(checkpoint.states) {
             *target = StepState::from(state);
         }
-        for ((slot, value), (taint_slot, taint)) in frame
-            .slots
-            .iter_mut()
-            .zip(checkpoint.slots)
-            .zip(frame.taint.iter_mut().zip(checkpoint.taint))
-        {
-            *slot = value;
-            *taint_slot = taint;
+        for (cell, (value, taint)) in frame.cells.iter_mut().zip(
+            checkpoint.slots.into_iter().zip(checkpoint.taint),
+        ) {
+            *cell = match value {
+                Some(value) => crate::value::SlotCell::value(value, taint),
+                None => crate::value::SlotCell::empty(),
+            };
         }
         Ok(frame)
     }

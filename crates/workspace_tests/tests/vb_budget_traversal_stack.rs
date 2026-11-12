@@ -33,7 +33,7 @@ fn choose_two_branches_converging() -> Result<(), String> {
                         target: StepIdx::new(2),
                     },
                 ]),
-                otherwise: Some(StepIdx::new(3)),
+                otherwise: Some(StepIdx::new(3)).into(),
             },
         ),
         step_next(1, 2, CompiledNodeKind::Nop),
@@ -68,7 +68,7 @@ fn choose_slot_two_branches_converging() -> Result<(), String> {
                         target: StepIdx::new(2),
                     },
                 ]),
-                otherwise: Some(StepIdx::new(3)),
+                otherwise: Some(StepIdx::new(3)).into(),
             },
         ),
         step_next(1, 2, CompiledNodeKind::Nop),
@@ -103,7 +103,7 @@ fn choose_duplicate_targets() -> Result<(), String> {
                         target: StepIdx::new(1),
                     },
                 ]),
-                otherwise: None,
+                otherwise: None.into(),
             },
         ),
         step(
@@ -129,7 +129,7 @@ fn choose_back_edge_cycle() {
                 condition: ExprIdx::new(0),
                 target: StepIdx::new(0),
             }]),
-            otherwise: None,
+            otherwise: None.into(),
         },
     )];
     let result = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &ResourceContract::DEFAULT);
@@ -151,7 +151,7 @@ fn choose_out_of_bounds_target() {
                 condition: ExprIdx::new(0),
                 target: StepIdx::new(9),
             }]),
-            otherwise: None,
+            otherwise: None.into(),
         },
     )];
     let result = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &ResourceContract::DEFAULT);

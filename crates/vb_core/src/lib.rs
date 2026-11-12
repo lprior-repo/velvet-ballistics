@@ -110,6 +110,10 @@ pub mod kani_taint;
 #[path = "verification/kani/kani_vbjpq733_proofs.rs"]
 pub mod kani_vbjpq733_proofs;
 
+#[cfg(kani)]
+#[path = "verification/kani/kani_reduce_repeat_invariants.rs"]
+pub mod kani_reduce_repeat_invariants;
+
 #[cfg(all(kani, feature = "kani-diagnostic-codes"))]
 #[path = "verification/kani/diagnostic/mod.rs"]
 pub mod kani;
@@ -147,7 +151,7 @@ pub use engine::{
     step_once, validate_compiled_workflow, validate_no_nested_together, validate_node_bounds,
     validate_resource_contract, validate_transition_target,
 };
-pub use errors::{CoreError, CoreResult, EngineError};
+pub use errors::{CompilePrimitive, CoreError, CoreResult, EngineError, InvariantKind};
 pub use frame::{RunFrame, StepState};
 pub use ids::{
     AccessorIdx, ActionId, BlobId, BranchCount, BranchIdx, ConstIdx, EventSeq, ExprIdx,
@@ -156,11 +160,12 @@ pub use ids::{
 };
 pub use policy::RuntimePolicy;
 pub use span::{Located, SourceMap, Span, SpanError, Spanned};
-pub use value::{ConstValue, FiniteF64, SlotValue, Taint, join_taint};
+pub use value::{ConstValue, FiniteF64, SlotCell, SlotValue, Taint, join_taint};
 pub use value_store::{ObjectField, ValueStore};
 pub use workflow::{
-    AccessorProgram, CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind,
-    CompiledWorkflow, ExprBranch, ExprOp, ExprProgram, InputConstraintIssue, InputSlotKind,
-    PathSegment, ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
+    AccessorProgram, Bound, BranchContinuation, CompiledInputConstraint, CompiledInputSlot,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, Deadline, ErrorSink, ExprBranch, ExprOp,
+    ExprProgram, ExtraFields, InputConstraintIssue, InputSlotKind, LoopRegionSlot, Nullability,
+    PathSegment, Presence, ResourceContract, Secretness, SlotBranch, WorkflowError, WorkflowParts,
     check_expr_stack_bound, node, node_with_handler,
 };

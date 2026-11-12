@@ -314,7 +314,7 @@ fn gate_11_accepts_valid_for_each() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 10,
+                limit: 10.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
@@ -344,7 +344,7 @@ fn gate_11_rejects_for_each_body_out_of_range() {
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
-            limit: 10,
+            limit: 10.into(),
             body: StepIdx::new(99),
             done: StepIdx::new(2),
         },
@@ -365,7 +365,7 @@ fn gate_11_rejects_for_each_done_out_of_range() {
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
-            limit: 10,
+            limit: 10.into(),
             body: StepIdx::new(1),
             done: StepIdx::new(99),
         },
@@ -425,7 +425,7 @@ fn gate_11_rejects_loop_body_before_start() {
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
-            limit: 10,
+            limit: 10.into(),
             body: StepIdx::new(0),
             done: StepIdx::new(1),
         },
@@ -445,7 +445,7 @@ fn gate_11_accepts_valid_repeat() {
         vb_core::workflow::node(
             StepIdx::new(0),
             CompiledNodeKind::RepeatStart {
-                max_attempts: 3,
+                max_attempts: 3.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(3),
             },
@@ -503,7 +503,7 @@ fn gate_11_rejects_for_each_done_before_body() {
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
-            limit: 10,
+            limit: 10.into(),
             body: StepIdx::new(2),
             done: StepIdx::new(1),
         },

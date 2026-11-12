@@ -115,7 +115,7 @@ fn build_nested_graph(depth: u16) -> Result<(Vec<CompiledNode>, u16), Box<dyn st
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(item_slot),
-                limit: 2,
+                limit: 2.into(),
                 body: StepIdx::new(body),
                 done: StepIdx::new(done),
             },
@@ -179,7 +179,7 @@ fn build_sibling_graph(depth: u16) -> Result<(Vec<CompiledNode>, u16), Box<dyn s
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(item_slot),
-                limit: 2,
+                limit: 2.into(),
                 body: StepIdx::new(body_id),
                 done: StepIdx::new(join_id),
             },

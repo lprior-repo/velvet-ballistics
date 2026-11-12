@@ -380,7 +380,7 @@ fn collect_eleven_items_three_pages() -> Result<(), String> {
         CompiledNodeKind::CollectStart {
             limit, page_size, ..
         } => {
-            assert_eq!(*limit, 15, "IR limit should be 15 (3 pages * 5 items)");
+            assert_eq!(limit.get(), 15, "IR limit should be 15 (3 pages * 5 items)");
             assert_eq!(*page_size, 5, "IR page_size should be 5");
         }
         _ => return Err("CollectStart node has unexpected kind".to_string()),

@@ -334,11 +334,11 @@ fn runtime_signal_awaiting_action_differs_for_different_ticket() {
 
 #[test]
 fn runtime_engine_error_from_engine_error() {
-    let core = EngineError::UnsupportedPrimitive { primitive: "test" };
+    let core = EngineError::UnsupportedPrimitive { primitive: "test".into() };
     let engine_err: RuntimeEngineError = core.into();
     assert_eq!(
         engine_err,
-        RuntimeEngineError::Core(EngineError::UnsupportedPrimitive { primitive: "test" })
+        RuntimeEngineError::Core(EngineError::UnsupportedPrimitive { primitive: "test".into() })
     );
 }
 
@@ -359,13 +359,13 @@ fn runtime_engine_error_from_action_error() {
 #[test]
 fn runtime_engine_error_core_wraps_core_error() {
     let core_err = EngineError::UnsupportedPrimitive {
-        primitive: "test_prim",
+        primitive: "test_prim".into(),
     };
     let engine_err = RuntimeEngineError::Core(core_err.clone());
     assert_eq!(
         engine_err,
         RuntimeEngineError::Core(EngineError::UnsupportedPrimitive {
-            primitive: "test_prim",
+            primitive: "test_prim".into(),
         })
     );
 }
@@ -718,7 +718,7 @@ fn resume_action_outcome_failed_non_retryable_returns_error() {
         result,
         Err(RuntimeEngineError::Core(
             EngineError::UnsupportedPrimitive {
-                primitive: "action_failed_non_retryable",
+                primitive: "action_failed_non_retryable".into(),
             }
         ))
     );
@@ -1863,7 +1863,7 @@ mod blackhat_engine {
             CompiledNodeKind::ErrorHandler {
                 body: StepIdx::new(1),
                 handler: StepIdx::new(2),
-                error_slot: None,
+                error_slot: None.into(),
             },
             None,
             None,

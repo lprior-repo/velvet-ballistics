@@ -13,7 +13,7 @@ fn count_total_steps_overflow_returns_step_count_overflow() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: u32::MAX,
+                limit: u32::MAX.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(3),
             },
@@ -53,7 +53,7 @@ fn count_and_push_loop_body_overflow_propagates_budget_error() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: u32::MAX,
+                limit: u32::MAX.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(4),
             },
@@ -65,7 +65,7 @@ fn count_and_push_loop_body_overflow_propagates_budget_error() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(2),
                 item_slot: SlotIdx::new(3),
-                limit: u32::MAX,
+                limit: u32::MAX.into(),
                 body: StepIdx::new(2),
                 done: StepIdx::new(3),
             },
@@ -196,7 +196,7 @@ fn whole_workflow_budget_max_gather_pages_and_items() -> Result<(), String> {
             StepIdx::new(0),
             CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
-                limit: 50,
+                limit: 50.into(),
                 page_size: 10,
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),

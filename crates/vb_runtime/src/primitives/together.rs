@@ -43,7 +43,7 @@ pub fn together_start(
             .first()
             .copied()
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "together branches checked nonzero",
+                reason: "together branches checked nonzero".into(),
             })?;
     jump_to(run, first_branch)
 }
@@ -93,7 +93,7 @@ pub fn together_join(
     let count = branch_count.get();
     if run.parallel_in_flight() < count {
         return Err(EngineError::InternalInvariantViolation {
-            reason: "parallel_in_flight underflow",
+            reason: "parallel_in_flight underflow".into(),
         });
     }
     // Read the accumulator list built by together_branch invocations.

@@ -25,7 +25,7 @@ fn get_first_item(items: &[SlotValue]) -> Result<SlotValue, EngineError> {
         .first()
         .copied()
         .ok_or(EngineError::InternalInvariantViolation {
-            reason: "reduce items checked nonempty",
+            reason: "reduce items checked nonempty".into(),
         })
 }
 
@@ -47,7 +47,7 @@ fn get_item_at(source: &[SlotValue], cursor: usize) -> Result<SlotValue, EngineE
         .get(cursor)
         .copied()
         .ok_or(EngineError::InternalInvariantViolation {
-            reason: "reduce cursor bounds-checked above",
+            reason: "reduce cursor bounds-checked above".into(),
         })
 }
 
@@ -55,7 +55,7 @@ fn advance_cursor(cursor: usize) -> Result<usize, EngineError> {
     cursor
         .checked_add(1)
         .ok_or(EngineError::InternalInvariantViolation {
-            reason: "reduce cursor overflow",
+            reason: "reduce cursor overflow".into(),
         })
 }
 

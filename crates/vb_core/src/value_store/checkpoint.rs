@@ -171,7 +171,9 @@ fn arena_count(checkpoint: &ValueStoreCheckpointV1) -> CoreResult<u64> {
 }
 
 fn invalid_checkpoint(reason: &'static str) -> CoreError {
-    CoreError::InternalInvariantViolation { reason }
+    CoreError::InternalInvariantViolation {
+        reason: reason.into(),
+    }
 }
 
 #[cfg(test)]

@@ -25,6 +25,10 @@ mod source_declarations;
 use super::source_slot_reservation::reserve_source_slots;
 use source_declarations::prepare_source_declarations;
 
+#[path = "compile_source_finish.rs"]
+mod compile_source_finish;
+use compile_source_finish::finalize_compiled_workflow;
+
 /// Compile the canonical cold YAML authoring AST into numeric runtime IR.
 pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, CompileErrors> {
     validate_canonical_compile_scope(source)?;
@@ -72,28 +76,14 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
     super::skipped_outputs::PossiblySkippedOutputs::from_source(source)
         .and_then(|outputs| outputs.validate(&builder))
         .map_err(|error| CompileErrors(vec![error]))?;
-    let mut parts = WorkflowParts {
-        name: Box::from(source.name()),
-        digest: WorkflowDigest::from_bytes([0u8; 32]),
-        semantic_source_identity: Some(semantic_source_identity),
-        slot_count: builder.slot_count().map_err(|e| CompileErrors(vec![e]))?,
-        symbols_count: 0,
-        nodes: builder.nodes.into_boxed_slice(),
-        expressions: builder.expressions.into_boxed_slice(),
-        accessors: builder.accessors.into_boxed_slice(),
-        constants: builder.constants.into_boxed_slice(),
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: step_names.into_boxed_slice(),
-        input_slots: builder.input_slots.into_boxed_slice(),
-    };
-    let encoded_parts = postcard::to_allocvec(&parts)
-        .map_err(|error| CompileErrors(vec![CompileError::CompiledIrEncode(error)]))?;
-    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&encoded_parts).into());
-    vb_validate::shared::validate(&parts)
-        .map_err(|e| CompileErrors(vec![named_workflow_error(e.into(), steps, &layout)]))?;
-    CompiledWorkflow::try_from_parts(parts)
-        .map_err(|e| CompileErrors(vec![named_workflow_error(e.into(), steps, &layout)]))
+    finalize_compiled_workflow(
+        source,
+        semantic_source_identity,
+        builder,
+        step_names,
+        steps,
+        &layout,
+    )
 }
 
 #[path = "input_schema.rs"]
@@ -153,14 +143,143 @@ pub(super) fn canonical_step_width_with_condition(
     canonical_step_width(&step.primitive)
 }
 
+/// Iterative layout width for a nested body, replacing the recursive
+/// `body_width` -> `canonical_body_step_width` -> `body_width` cycle with an
+/// explicit heap stack (Rule 1: no recursion).
+///
+/// Each frame owns one body (or choose-branch table) plus its running
+/// accumulator; container steps push a child frame instead of recursing and
+/// completed frames fold their total into the parent. Error values match the
+/// recursive version exactly: the accumulator that overflowed, or the
+/// parent's accumulator when a child total overflows into it.
+///
+/// Termination: every iteration either advances one frame's cursor (one step
+/// or branch consumed, never revisited) or pops a finished frame, so the
+/// total number of iterations is bounded by the number of nodes in the AST
+/// tree; the stack depth never exceeds the AST nesting depth and lives on
+/// the heap, so deep nesting cannot overflow the call stack.
 pub(super) fn body_width(body: &[crate::StepAst], overhead: usize) -> Result<usize, CompileError> {
-    let mut width = overhead;
-    for step in body {
-        width = width
-            .checked_add(canonical_body_step_width(&step.primitive)?)
-            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
+    enum Frame<'a> {
+        Body {
+            steps: &'a [crate::StepAst],
+            index: usize,
+            width: usize,
+        },
+        Choose {
+            branches: &'a [crate::ChooseBranch],
+            index: usize,
+            width: usize,
+        },
     }
-    Ok(width)
+    impl<'a> Frame<'a> {
+        fn width(&self) -> usize {
+            match self {
+                Frame::Body { width, .. } | Frame::Choose { width, .. } => *width,
+            }
+        }
+        fn width_slot(&mut self) -> &mut usize {
+            match self {
+                Frame::Body { width, .. } | Frame::Choose { width, .. } => width,
+            }
+        }
+        fn fold(width: usize, parent: &mut Frame<'a>) -> Result<(), CompileError> {
+            *parent.width_slot() = parent.width_slot().checked_add(width).ok_or(
+                CompileError::StepIndexOutOfRange {
+                    value: *parent.width_slot(),
+                },
+            )?;
+            Ok(())
+        }
+    }
+    enum Step<'a> {
+        Fold,
+        Idle,
+        Push(Frame<'a>),
+    }
+    let mut stack = vec![Frame::Body {
+        steps: body,
+        index: 0,
+        width: overhead,
+    }];
+    loop {
+        // Decide the next action inside a scoped borrow, then act on the
+        // stack after the borrow ends.
+        let step = match stack.last_mut() {
+            None => return Ok(0),
+            Some(Frame::Body {
+                steps,
+                index,
+                width,
+            }) => match steps.get(*index) {
+                None => Step::Fold,
+                Some(step) => {
+                    *index = index
+                        .checked_add(1)
+                        .ok_or(CompileError::StepIndexOutOfRange { value: *index })?;
+                    let _ = width;
+                    match &step.primitive {
+                        crate::StepPrimitive::Set { .. } | crate::StepPrimitive::Do { .. } => {
+                            *width = width
+                                .checked_add(1)
+                                .ok_or(CompileError::StepIndexOutOfRange { value: *width })?;
+                            Step::Idle
+                        }
+                        crate::StepPrimitive::ForEach { body, .. } => Step::Push(Frame::Body {
+                            steps: body,
+                            index: 0,
+                            width: 2,
+                        }),
+                        crate::StepPrimitive::Collect { body, .. }
+                        | crate::StepPrimitive::Repeat { body, .. } => Step::Push(Frame::Body {
+                            steps: body,
+                            index: 0,
+                            width: 3,
+                        }),
+                        crate::StepPrimitive::Choose { branches, .. } => {
+                            Step::Push(Frame::Choose {
+                                branches,
+                                index: 0,
+                                width: 1,
+                            })
+                        }
+                        other => {
+                            return Err(CompileError::UnsupportedStepPrimitive {
+                                step: 0,
+                                primitive: canonical_primitive_name(other),
+                            });
+                        }
+                    }
+                }
+            },
+            Some(Frame::Choose {
+                branches, index, ..
+            }) => match branches.get(*index) {
+                None => Step::Fold,
+                Some(branch) => {
+                    *index = index
+                        .checked_add(1)
+                        .ok_or(CompileError::StepIndexOutOfRange { value: *index })?;
+                    Step::Push(Frame::Body {
+                        steps: &branch.steps,
+                        index: 0,
+                        width: 0,
+                    })
+                }
+            },
+        };
+        match step {
+            Step::Fold => {
+                let total = stack.last().map_or(0, Frame::width);
+                stack.pop();
+                let Some(parent) = stack.last_mut() else {
+                    return Ok(total);
+                };
+                Frame::fold(total, parent)?;
+            }
+            Step::Idle => {}
+            Step::Push(frame) => stack.push(frame),
+        }
+    }
 }
 
 pub(super) fn choose_width(branches: &[crate::ChooseBranch]) -> Result<usize, CompileError> {

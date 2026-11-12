@@ -18,6 +18,43 @@ pub struct CompiledLoopRegion {
     done: StepIdx,
 }
 
+/// Total per-step loop cache state.
+///
+/// Replaces the former parallel `Option<CompiledLoopRegion>` cache and
+/// boolean nested-entry mask: every step has exactly one state, so lookups
+/// are total with no out-of-range confusion.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoopRegionSlot {
+    /// Neither a loop control nor a nested activation entry.
+    Empty,
+    /// A loop control owning this region.
+    Region(CompiledLoopRegion),
+    /// A nested activation entry without a loop region.
+    NestedEntry,
+    /// A loop control whose step is also a nested activation entry.
+    RegionAndNested(CompiledLoopRegion),
+}
+
+impl LoopRegionSlot {
+    /// Loop region, when this step is a loop control.
+    #[must_use]
+    pub const fn region(&self) -> Option<&CompiledLoopRegion> {
+        match self {
+            Self::Empty | Self::NestedEntry => None,
+            Self::Region(region) | Self::RegionAndNested(region) => Some(region),
+        }
+    }
+
+    /// Whether this step is a nested activation entry.
+    #[must_use]
+    pub const fn is_nested_entry(&self) -> bool {
+        match self {
+            Self::Empty | Self::Region(_) => false,
+            Self::NestedEntry | Self::RegionAndNested(_) => true,
+        }
+    }
+}
+
 impl CompiledLoopRegion {
     /// Owning start, excluded from the body activation interval.
     #[must_use]
@@ -80,6 +117,26 @@ pub(super) fn nested_activation_map(
     regions: &[Option<CompiledLoopRegion>],
 ) -> Result<Box<[bool]>, WorkflowError> {
     nested_entries::derive(parts, regions)
+}
+
+/// Merges validated regions and the nested-entry mask into total slots.
+///
+/// Every step maps to exactly one [`LoopRegionSlot`]. The merge is pure and
+/// total: inputs already agree on length, so no failure is possible here.
+pub(super) fn merge_slots(
+    regions: &[Option<CompiledLoopRegion>],
+    nested: &[bool],
+) -> Box<[LoopRegionSlot]> {
+    regions
+        .iter()
+        .zip(nested.iter())
+        .map(|(region, blocked)| match (region, *blocked) {
+            (Some(region), true) => LoopRegionSlot::RegionAndNested(*region),
+            (Some(region), false) => LoopRegionSlot::Region(*region),
+            (None, true) => LoopRegionSlot::NestedEntry,
+            (None, false) => LoopRegionSlot::Empty,
+        })
+        .collect()
 }
 
 fn empty_regions(count: usize) -> Result<Vec<Option<CompiledLoopRegion>>, WorkflowError> {

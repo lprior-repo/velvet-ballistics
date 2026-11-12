@@ -112,7 +112,7 @@ fn collect_start_node(id: u16, source: u16, output: u16, body: u16, done: u16) -
         StepIdx::new(id),
         CompiledNodeKind::CollectStart {
             source: SlotIdx::new(source),
-            limit: 100,
+            limit: 100.into(),
             page_size: 1,
             body: StepIdx::new(body),
             done: StepIdx::new(done),

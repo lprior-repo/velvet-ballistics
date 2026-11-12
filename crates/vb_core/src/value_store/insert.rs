@@ -43,7 +43,7 @@ impl ValueStore {
         validate_list_len(values.len())?;
         if taints.len() != values.len() {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "list values and taints length mismatch",
+                reason: "list values and taints length mismatch".into(),
             });
         }
         self.check_arena_cap()?;
@@ -66,14 +66,14 @@ impl ValueStore {
             let field = fields
                 .get(field_pos)
                 .ok_or(CoreError::InternalInvariantViolation {
-                    reason: "object field index checked by loop bound",
+                    reason: "object field index checked by loop bound".into(),
                 })?;
             index.entry(field.key).or_insert(field.value);
             taint_index.entry(field.key).or_insert(field.taint);
             field_pos = field_pos
                 .checked_add(1)
                 .ok_or(CoreError::InternalInvariantViolation {
-                    reason: "object field index overflow",
+                    reason: "object field index overflow".into(),
                 })?;
         }
         self.object_field_index.push(index);

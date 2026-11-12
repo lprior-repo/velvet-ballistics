@@ -53,7 +53,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         });
                     }
                 }
-                if let Some(o) = otherwise {
+                if let Some(o) = otherwise.step() {
                     if o.as_usize() >= node_count {
                         return Err(ValidationError::NodeKindConstraintViolation {
                             node_index,
@@ -86,7 +86,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                         });
                     }
                 }
-                if let Some(o) = otherwise {
+                if let Some(o) = otherwise.step() {
                     if o.as_usize() >= node_count {
                         return Err(ValidationError::NodeKindConstraintViolation {
                             node_index,

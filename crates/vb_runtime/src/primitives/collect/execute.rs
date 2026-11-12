@@ -229,7 +229,7 @@ fn validate_cursor_in_source(
 ) -> Result<(), EngineError> {
     if state.cursor > source_len {
         return Err(EngineError::InternalInvariantViolation {
-            reason: "collect cursor beyond source items",
+            reason: "collect cursor beyond source items".into(),
         });
     }
     Ok(())
@@ -243,7 +243,7 @@ fn finish_collect_terminal(
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let state = states.capture_state(run.run_id(), collector_slot).ok_or(
         EngineError::InternalInvariantViolation {
-            reason: "collect terminal without pagination state",
+            reason: "collect terminal without pagination state".into(),
         },
     )?;
     let taint = run.read_taint(collector_slot)?;

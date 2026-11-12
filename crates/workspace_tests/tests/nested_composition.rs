@@ -63,7 +63,7 @@ fn drive_source(
 fn drive_twice(source: &str, items: &[i64]) -> Result<(RuntimeSignal, Vec<EvidenceEvent>), String> {
     let first = drive_source(source, items)?;
     let second = drive_source(source, items)?;
-    if std::mem::discriminant(&first.0) != std::mem::discriminant(&second.0) {
+    if first != second {
         return Err("drive signal drifted between runs".to_owned());
     }
     Ok(first)

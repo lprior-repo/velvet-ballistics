@@ -9,13 +9,13 @@ pub(crate) fn start_kind(family: Family, body: u16, done: u16) -> CompiledNodeKi
         Family::ForEach => CompiledNodeKind::ForEachStart {
             input: slot(0),
             item_slot: slot(3),
-            limit: 2,
+            limit: 2.into(),
             body: step(body),
             done: step(done),
         },
         Family::Collect => CompiledNodeKind::CollectStart {
             source: slot(0),
-            limit: 2,
+            limit: 2.into(),
             page_size: 1,
             body: step(body),
             done: step(done),
@@ -28,7 +28,7 @@ pub(crate) fn start_kind(family: Family, body: u16, done: u16) -> CompiledNodeKi
             done: step(done),
         },
         Family::Repeat => CompiledNodeKind::RepeatStart {
-            max_attempts: 2,
+            max_attempts: 2.into(),
             body: step(body),
             done: step(done),
         },

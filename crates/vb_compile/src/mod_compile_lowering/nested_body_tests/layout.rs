@@ -1,51 +1,4 @@
-//! Nested body composition: loops and branches inside loop bodies.
-//!
-//! Compile-only layout proofs; execution is qualified by runtime drive tests
-//! and the workspace `nested_composition` end-to-end suite.
-
-use crate::{CompileError, compile_workflow};
-use vb_core::workflow::{NodeContinuation, NodeOutput};
-use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx};
-
-const HEADER: &str = "version: velvet-ballistics/v1\nname: nested_bodies\nwhen: {manual: {}}\n";
-const INPUTS: &str = "inputs:\n  outer_items: {is: list, of: any, max: 4}\n  inner_items: {is: list, of: any, max: 4}\n";
-
-fn source(body: &str) -> String {
-    format!("{HEADER}{INPUTS}steps:\n{body}")
-}
-
-fn compile(text: &str) -> Result<CompiledWorkflow, String> {
-    compile_workflow(text.as_bytes()).map_err(|e| format!("compile: {e:?}"))
-}
-
-fn node(workflow: &CompiledWorkflow, id: u16) -> Result<&CompiledNode, String> {
-    workflow
-        .node(StepIdx::new(id))
-        .ok_or_else(|| format!("missing node {id}"))
-}
-
-fn output(workflow: &CompiledWorkflow, id: u16) -> Result<SlotIdx, String> {
-    node(workflow, id)?
-        .output
-        .slot()
-        .ok_or_else(|| format!("missing output {id}"))
-}
-
-fn rejects(text: &str, predicate: impl Fn(&CompileError) -> bool) -> Result<(), String> {
-    let errors = match compile_workflow(text.as_bytes()) {
-        Ok(_) => return Err("unexpected source acceptance".to_owned()),
-        Err(errors) => errors,
-    };
-    if errors.0.iter().any(predicate) {
-        Ok(())
-    } else {
-        Err(format!("wrong diagnostic: {errors:?}"))
-    }
-}
-
-fn finish_tail() -> &'static str {
-    "  - id: done\n    finish: {result: '$seed'}\n"
-}
+use super::*;
 
 #[test]
 fn nested_for_each_in_for_each_layout() -> Result<(), String> {
@@ -69,7 +22,7 @@ fn nested_for_each_in_for_each_layout() -> Result<(), String> {
     };
     assert_eq!(
         (*outer_body, *outer_done, *outer_limit),
-        (StepIdx::new(2), StepIdx::new(6), 4)
+        (StepIdx::new(2), StepIdx::new(6), FanoutLimit::new(4))
     );
     let CompiledNodeKind::ForEachStart {
         body: inner_body,
@@ -82,7 +35,7 @@ fn nested_for_each_in_for_each_layout() -> Result<(), String> {
     };
     assert_eq!(
         (*inner_body, *inner_done, *inner_limit),
-        (StepIdx::new(3), StepIdx::new(5), 4)
+        (StepIdx::new(3), StepIdx::new(5), FanoutLimit::new(4))
     );
     assert_eq!(
         node(&workflow, 4)?.kind,
@@ -258,4 +211,26 @@ fn finish_inside_loop_body_stays_rejected() -> Result<(), String> {
             }
         )
     })
+}
+
+#[test]
+fn foreach_multi_step_body_layout() -> Result<(), String> {
+    let text = source(
+        "  - id: seed\n    set: {output: base, value: '1'}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: entry\n      steps:\n        - id: one\n          set: {output: picked, value: '$entry'}\n        - id: two\n          set: {output: second, value: '$picked'}\n",
+    ) + finish_tail();
+    let workflow = compile(&text)?;
+    assert_eq!(workflow.to_parts().nodes.len(), 6);
+    let CompiledNodeKind::ForEachStart { body, done, .. } = &node(&workflow, 1)?.kind else {
+        return Err("node 1 is not ForEachStart".to_owned());
+    };
+    assert_eq!((*body, *done), (StepIdx::new(2), StepIdx::new(5)));
+    assert_eq!(
+        node(&workflow, 2)?.routing.next,
+        NodeContinuation::Step(StepIdx::new(3))
+    );
+    assert_eq!(
+        node(&workflow, 3)?.routing.next,
+        NodeContinuation::Step(StepIdx::new(4))
+    );
+    Ok(())
 }

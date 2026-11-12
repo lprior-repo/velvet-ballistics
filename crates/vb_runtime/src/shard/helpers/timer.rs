@@ -15,7 +15,7 @@ pub fn timer_registration_required(state: &crate::shard::types::RunState, step: 
     match node.kind {
         CompiledNodeKind::WaitUntil { .. } => true,
         CompiledNodeKind::WaitEvent { timeout_slot, .. }
-        | CompiledNodeKind::Ask { timeout_slot, .. } => timeout_slot.is_some(),
+        | CompiledNodeKind::Ask { timeout_slot, .. } => timeout_slot.slot().is_some(),
         _ => false,
     }
 }

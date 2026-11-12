@@ -83,7 +83,7 @@ fn collect_kind_edges(node_idx: u16, kind: &CompiledNodeKind) -> Vec<(u16, u16, 
             for branch in branches.iter() {
                 edges.push((node_idx, branch.target.get(), String::new()));
             }
-            if let Some(fallback) = otherwise {
+            if let Some(fallback) = otherwise.step() {
                 edges.push((node_idx, fallback.get(), "otherwise".to_string()));
             }
         }
@@ -94,7 +94,7 @@ fn collect_kind_edges(node_idx: u16, kind: &CompiledNodeKind) -> Vec<(u16, u16, 
             for branch in branches.iter() {
                 edges.push((node_idx, branch.target.get(), String::new()));
             }
-            if let Some(fallback) = otherwise {
+            if let Some(fallback) = otherwise.step() {
                 edges.push((node_idx, fallback.get(), "otherwise".to_string()));
             }
         }

@@ -61,7 +61,7 @@ pub(super) fn visit_body_region_node(
                 count = count_nested_for_region(
                     *body,
                     *done,
-                    u64::from(*limit).max(1),
+                    u64::from(limit.get()).max(1),
                     count,
                     stack,
                     cache,
@@ -75,7 +75,7 @@ pub(super) fn visit_body_region_node(
                 count = count_nested_for_region(
                     *body,
                     *done,
-                    u64::from(*limit).max(1),
+                    u64::from(limit.get()).max(1),
                     count,
                     stack,
                     cache,
@@ -106,7 +106,7 @@ pub(super) fn visit_body_region_node(
                 count = count_nested_for_region(
                     *body,
                     *done,
-                    u64::from(*max_attempts).max(1),
+                    u64::from(max_attempts.get()).max(1),
                     count,
                     stack,
                     cache,

@@ -15,7 +15,7 @@ fn boxed_queue_full() -> Box<vb_core::errors::CoreError> {
 }
 
 fn boxed_invariant_violation() -> Box<vb_core::errors::CoreError> {
-    Box::new(vb_core::errors::CoreError::InternalInvariantViolation { reason: "test" })
+    Box::new(vb_core::errors::CoreError::InternalInvariantViolation { reason: "test".into() })
 }
 
 #[test]

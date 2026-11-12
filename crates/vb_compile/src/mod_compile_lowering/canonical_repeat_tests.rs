@@ -64,7 +64,7 @@ fn flat_repeat_layout_uses_actual_width_and_private_outputs() -> Result<(), Stri
         assert_eq!(
             node(&workflow, 1)?.kind,
             CompiledNodeKind::RepeatStart {
-                max_attempts: attempts,
+                max_attempts: attempts.into(),
                 body: StepIdx::new(2),
                 done: StepIdx::new(5),
             }
@@ -241,7 +241,7 @@ fn nested_repeat_compiles_with_exact_layout() -> Result<(), String> {
     assert_eq!(
         node(&workflow, 1)?.kind,
         CompiledNodeKind::RepeatStart {
-            max_attempts: 3,
+            max_attempts: 3.into(),
             body: StepIdx::new(2),
             done: StepIdx::new(7),
         }
@@ -249,7 +249,7 @@ fn nested_repeat_compiles_with_exact_layout() -> Result<(), String> {
     assert_eq!(
         node(&workflow, 2)?.kind,
         CompiledNodeKind::RepeatStart {
-            max_attempts: 1,
+            max_attempts: 1.into(),
             body: StepIdx::new(3),
             done: StepIdx::new(5),
         }

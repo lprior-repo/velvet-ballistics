@@ -12,7 +12,7 @@ pub(super) fn build_nested_loop_workflow() -> Result<CompiledWorkflow, String> {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 2,
+                limit: 2.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(7),
             },
@@ -26,7 +26,7 @@ pub(super) fn build_nested_loop_workflow() -> Result<CompiledWorkflow, String> {
                     condition: SlotIdx::new(5),
                     target: StepIdx::new(6),
                 }]),
-                otherwise: Some(StepIdx::new(2)),
+                otherwise: Some(StepIdx::new(2)).into(),
             },
         ),
         cn(
@@ -34,7 +34,7 @@ pub(super) fn build_nested_loop_workflow() -> Result<CompiledWorkflow, String> {
             Some(3),
             None,
             CompiledNodeKind::RepeatStart {
-                max_attempts: 2,
+                max_attempts: 2.into(),
                 body: StepIdx::new(3),
                 done: StepIdx::new(6),
             },

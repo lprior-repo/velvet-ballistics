@@ -13,7 +13,7 @@ fn budget_foreach_loop_multiplies_body_steps() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 5,
+                limit: 5.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
@@ -50,7 +50,7 @@ fn budget_repeat_loop_multiplies_body_steps() {
         node(
             StepIdx::new(0),
             CompiledNodeKind::RepeatStart {
-                max_attempts: 3,
+                max_attempts: 3.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
@@ -98,7 +98,7 @@ fn budget_nested_loop_multiplies_correctly() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 10,
+                limit: 10.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(4),
             },
@@ -110,7 +110,7 @@ fn budget_nested_loop_multiplies_correctly() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(2),
                 item_slot: SlotIdx::new(3),
-                limit: 10,
+                limit: 10.into(),
                 body: StepIdx::new(2),
                 done: StepIdx::new(3),
             },
@@ -161,7 +161,7 @@ fn budget_large_loop_counted_realistically() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 1000,
+                limit: 1000.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
@@ -201,7 +201,7 @@ fn budget_collect_loop_multiplies_body_steps() {
             StepIdx::new(0),
             CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
-                limit: 5,
+                limit: 5.into(),
                 page_size: 2,
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),

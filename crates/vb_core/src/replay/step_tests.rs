@@ -76,7 +76,7 @@ fn replay_err_to_core(e: ReplayError) -> CoreError {
         ReplayError::SlotNotAvailable { slot } => CoreError::SlotOutOfBounds { slot },
         ReplayError::ExpressionEvalFailed { step } => CoreError::InvalidProgramCounter { step },
         ReplayError::NonDeterministicStep { step, .. } => CoreError::InvalidProgramCounter { step },
-        ReplayError::Internal { reason } => CoreError::InternalInvariantViolation { reason },
+        ReplayError::Internal { reason } => CoreError::InternalInvariantViolation { reason: reason.into() },
     }
 }
 
@@ -114,7 +114,7 @@ fn replay_nop_advances_to_next() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
@@ -122,18 +122,18 @@ fn replay_nop_advances_to_next() -> Result<(), CoreError> {
         ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "Nop should return Continue(1)",
+                reason: "Nop should return Continue(1)".into(),
             });
         }
     }
     if run.pc() != StepIdx::new(1) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "PC should be at step 1",
+            reason: "PC should be at step 1".into(),
         });
     }
     if run.executed() != 1 {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "executed should be 1",
+            reason: "executed should be 1".into(),
         });
     }
     Ok(())
@@ -160,7 +160,7 @@ fn replay_nop_missing_next_returns_error() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let result = replay_step(node, &mut run, &mut store, &plan);
     assert!(
@@ -210,13 +210,13 @@ fn replay_set_const_writes_slot() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     if *run.read_slot(SlotIdx::new(0))? != SlotValue::I64(42) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "slot 0 should be I64(42) after SetConst",
+            reason: "slot 0 should be I64(42) after SetConst".into(),
         });
     }
     Ok(())
@@ -255,13 +255,13 @@ fn replay_set_const_bool() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     if *run.read_slot(SlotIdx::new(0))? != SlotValue::Bool(true) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "slot 0 should be Bool(true)",
+            reason: "slot 0 should be Bool(true)".into(),
         });
     }
     Ok(())
@@ -300,13 +300,13 @@ fn replay_set_const_null() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     if *run.read_slot(SlotIdx::new(0))? != SlotValue::Null {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "slot 0 should be Null",
+            reason: "slot 0 should be Null".into(),
         });
     }
     Ok(())
@@ -348,7 +348,7 @@ fn replay_set_const_missing_output_returns_error() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let result = replay_step(node, &mut run, &mut store, &plan);
     assert!(
@@ -406,7 +406,7 @@ fn replay_copy_transfers_value_and_taint() -> Result<(), CoreError> {
     let node0 = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
     run.write_taint(SlotIdx::new(0), Taint::Secret)?;
@@ -414,18 +414,18 @@ fn replay_copy_transfers_value_and_taint() -> Result<(), CoreError> {
     let node1 = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     if *run.read_slot(SlotIdx::new(1))? != SlotValue::I64(100) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "slot 1 should be I64(100)",
+            reason: "slot 1 should be I64(100)".into(),
         });
     }
     if run.read_taint(SlotIdx::new(1))? != Taint::Secret {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "slot 1 taint should be Secret",
+            reason: "slot 1 taint should be Secret".into(),
         });
     }
     Ok(())
@@ -472,20 +472,20 @@ fn replay_copy_clean_source_has_clean_taint() -> Result<(), CoreError> {
     let node0 = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     let node1 = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     if run.read_taint(SlotIdx::new(1))? != Taint::Clean {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "slot 1 taint should be Clean",
+            reason: "slot 1 taint should be Clean".into(),
         });
     }
     Ok(())
@@ -527,7 +527,7 @@ fn replay_copy_uninitialized_source_returns_error() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let result = replay_step(node, &mut run, &mut store, &plan);
     assert!(
@@ -578,14 +578,14 @@ fn replay_copy_missing_output_returns_error() -> Result<(), CoreError> {
     let node0 = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     let node1 = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     let result = replay_step(node1, &mut run, &mut store, &plan);
     assert!(
@@ -657,27 +657,27 @@ fn replay_eval_expr_computes_result() -> Result<(), CoreError> {
     let node0 = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     let node1 = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     let node2 = plan
         .node(StepIdx::new(2))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 2 missing",
+            reason: "node 2 missing".into(),
         })?;
     replay_step(node2, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     if *run.read_slot(SlotIdx::new(2))? != SlotValue::I64(42) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "slot 2 should be I64(42)",
+            reason: "slot 2 should be I64(42)".into(),
         });
     }
     Ok(())
@@ -727,14 +727,14 @@ fn replay_build_object_creates_handle() -> Result<(), CoreError> {
     let node0 = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     let node1 = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
@@ -742,17 +742,17 @@ fn replay_build_object_creates_handle() -> Result<(), CoreError> {
         SlotValue::Object(id) => {
             let obj = store.object(id)?;
             let field = obj.first().ok_or(CoreError::InternalInvariantViolation {
-                reason: "object should have a field",
+                reason: "object should have a field".into(),
             })?;
             if field.key != field_sym || field.value != SlotValue::I64(42) {
                 return Err(CoreError::InternalInvariantViolation {
-                    reason: "field mismatch",
+                    reason: "field mismatch".into(),
                 });
             }
         }
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "slot 1 should be Object",
+                reason: "slot 1 should be Object".into(),
             });
         }
     }
@@ -792,7 +792,7 @@ fn replay_build_object_empty_fields() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
@@ -801,13 +801,13 @@ fn replay_build_object_empty_fields() -> Result<(), CoreError> {
             let obj = store.object(id)?;
             if !obj.is_empty() {
                 return Err(CoreError::InternalInvariantViolation {
-                    reason: "empty BuildObject should create empty object",
+                    reason: "empty BuildObject should create empty object".into(),
                 });
             }
         }
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "slot 0 should be Object",
+                reason: "slot 0 should be Object".into(),
             });
         }
     }
@@ -851,7 +851,7 @@ fn replay_build_object_uninitialized_field_returns_error() -> Result<(), CoreErr
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let result = replay_step(node, &mut run, &mut store, &plan);
     assert!(
@@ -903,7 +903,7 @@ fn replay_build_object_propagates_taint() -> Result<(), CoreError> {
     let node0 = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
     run.write_taint(SlotIdx::new(0), Taint::DerivedFromSecret)?;
@@ -911,13 +911,13 @@ fn replay_build_object_propagates_taint() -> Result<(), CoreError> {
     let node1 = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     if run.read_taint(SlotIdx::new(1))? != Taint::DerivedFromSecret {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BuildObject output taint should be DerivedFromSecret",
+            reason: "BuildObject output taint should be DerivedFromSecret".into(),
         });
     }
     Ok(())
@@ -974,21 +974,21 @@ fn replay_build_list_creates_handle() -> Result<(), CoreError> {
     let node0 = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     let node1 = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     let node2 = plan
         .node(StepIdx::new(2))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 2 missing",
+            reason: "node 2 missing".into(),
         })?;
     replay_step(node2, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
@@ -997,18 +997,18 @@ fn replay_build_list_creates_handle() -> Result<(), CoreError> {
             let list = store.list(id)?;
             if list.len() != 2 {
                 return Err(CoreError::InternalInvariantViolation {
-                    reason: "list should have 2 items",
+                    reason: "list should have 2 items".into(),
                 });
             }
             if list[0] != SlotValue::I64(10) || list[1] != SlotValue::I64(20) {
                 return Err(CoreError::InternalInvariantViolation {
-                    reason: "list items mismatch",
+                    reason: "list items mismatch".into(),
                 });
             }
         }
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "slot 2 should be List",
+                reason: "slot 2 should be List".into(),
             });
         }
     }
@@ -1048,7 +1048,7 @@ fn replay_build_list_empty_items() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
@@ -1057,13 +1057,13 @@ fn replay_build_list_empty_items() -> Result<(), CoreError> {
             let list = store.list(id)?;
             if !list.is_empty() {
                 return Err(CoreError::InternalInvariantViolation {
-                    reason: "empty BuildList should create empty list",
+                    reason: "empty BuildList should create empty list".into(),
                 });
             }
         }
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "slot 0 should be List",
+                reason: "slot 0 should be List".into(),
             });
         }
     }
@@ -1106,7 +1106,7 @@ fn replay_build_list_uninitialized_item_returns_error() -> Result<(), CoreError>
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let result = replay_step(node, &mut run, &mut store, &plan);
     assert!(
@@ -1157,7 +1157,7 @@ fn replay_build_list_propagates_taint() -> Result<(), CoreError> {
     let node0 = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
     run.write_taint(SlotIdx::new(0), Taint::Secret)?;
@@ -1165,13 +1165,13 @@ fn replay_build_list_propagates_taint() -> Result<(), CoreError> {
     let node1 = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     if run.read_taint(SlotIdx::new(1))? != Taint::Secret {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "BuildList output taint should be Secret",
+            reason: "BuildList output taint should be Secret".into(),
         });
     }
     Ok(())
@@ -1212,14 +1212,14 @@ fn replay_finish_returns_finished_action() -> Result<(), CoreError> {
     let node0 = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     let node1 = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     let action = replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
@@ -1227,13 +1227,13 @@ fn replay_finish_returns_finished_action() -> Result<(), CoreError> {
         ReplayAction::Finished => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "Finish should return Finished",
+                reason: "Finish should return Finished".into(),
             });
         }
     }
     if run.executed() != 2 {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "executed should be 2",
+            reason: "executed should be 2".into(),
         });
     }
     Ok(())
@@ -1265,7 +1265,7 @@ fn replay_finish_uninitialized_result_returns_error() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let result = replay_step(node, &mut run, &mut store, &plan);
     assert!(
@@ -1311,7 +1311,7 @@ fn replay_jump_advances_pc_to_target() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
@@ -1319,13 +1319,13 @@ fn replay_jump_advances_pc_to_target() -> Result<(), CoreError> {
         ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "Jump should return Continue(1)",
+                reason: "Jump should return Continue(1)".into(),
             });
         }
     }
     if run.pc() != StepIdx::new(1) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "PC should be at step 1",
+            reason: "PC should be at step 1".into(),
         });
     }
     Ok(())
@@ -1371,11 +1371,11 @@ fn ce_004_replay_jump_out_of_bounds_yields_typed_step_not_found() -> Result<(), 
     let result = super::replay_jump(&mut run, StepIdx::new(99));
     match result {
         Ok(_) => Err(CoreError::InternalInvariantViolation {
-            reason: "replay_jump accepted out-of-bounds target",
+            reason: "replay_jump accepted out-of-bounds target".into(),
         }),
         Err(ReplayError::StepNotFound { step }) if step == StepIdx::new(99) => Ok(()),
         Err(_) => Err(CoreError::InternalInvariantViolation {
-            reason: "CE-004: out-of-bounds Jump must surface as typed StepNotFound",
+            reason: "CE-004: out-of-bounds Jump must surface as typed StepNotFound".into(),
         }),
     }
 }
@@ -1409,7 +1409,7 @@ fn replay_do_suspends() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
@@ -1418,7 +1418,7 @@ fn replay_do_suspends() -> Result<(), CoreError> {
             if step == StepIdx::new(0) && kind == SuspensionKind::ActionPending => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "Do should return Suspended(0, Do)",
+                reason: "Do should return Suspended(0, Do)".into(),
             });
         }
     }
@@ -1432,7 +1432,7 @@ fn replay_ask_suspends() -> Result<(), CoreError> {
             StepIdx::new(0),
             CompiledNodeKind::Ask {
                 prompt: SlotIdx::new(0),
-                timeout_slot: None,
+                timeout_slot: None.into(),
             },
             None,
             None,
@@ -1452,7 +1452,7 @@ fn replay_ask_suspends() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
@@ -1461,7 +1461,7 @@ fn replay_ask_suspends() -> Result<(), CoreError> {
             if step == StepIdx::new(0) && kind == SuspensionKind::AskPending => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "Ask should return Suspended(0, Ask)",
+                reason: "Ask should return Suspended(0, Ask)".into(),
             });
         }
     }
@@ -1494,7 +1494,7 @@ fn replay_wait_until_suspends() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
@@ -1503,7 +1503,7 @@ fn replay_wait_until_suspends() -> Result<(), CoreError> {
             if step == StepIdx::new(0) && kind == SuspensionKind::WaitUntil => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "WaitUntil should return Suspended(0, WaitUntil)",
+                reason: "WaitUntil should return Suspended(0, WaitUntil)".into(),
             });
         }
     }
@@ -1517,7 +1517,7 @@ fn replay_wait_event_suspends() -> Result<(), CoreError> {
             StepIdx::new(0),
             CompiledNodeKind::WaitEvent {
                 event: SlotIdx::new(0),
-                timeout_slot: None,
+                timeout_slot: None.into(),
             },
             None,
             None,
@@ -1537,7 +1537,7 @@ fn replay_wait_event_suspends() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
@@ -1546,7 +1546,7 @@ fn replay_wait_event_suspends() -> Result<(), CoreError> {
             if step == StepIdx::new(0) && kind == SuspensionKind::WaitEvent => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "WaitEvent should return Suspended(0, WaitEvent)",
+                reason: "WaitEvent should return Suspended(0, WaitEvent)".into(),
             });
         }
     }
@@ -1575,7 +1575,7 @@ fn replay_choose_slot_true_branch_taken() -> Result<(), CoreError> {
                         target: StepIdx::new(2),
                     }]
                     .into(),
-                    otherwise: Some(StepIdx::new(3)),
+                    otherwise: Some(StepIdx::new(3)).into(),
                 },
                 None,
                 None,
@@ -1609,14 +1609,14 @@ fn replay_choose_slot_true_branch_taken() -> Result<(), CoreError> {
     let node0 = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     let node1 = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     let action = replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
@@ -1624,7 +1624,7 @@ fn replay_choose_slot_true_branch_taken() -> Result<(), CoreError> {
         ReplayAction::Continue(next) if next == StepIdx::new(2) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "ChooseSlot true should go to step 2",
+                reason: "ChooseSlot true should go to step 2".into(),
             });
         }
     }
@@ -1651,7 +1651,7 @@ fn replay_choose_slot_false_falls_to_otherwise() -> Result<(), CoreError> {
                         target: StepIdx::new(2),
                     }]
                     .into(),
-                    otherwise: Some(StepIdx::new(3)),
+                    otherwise: Some(StepIdx::new(3)).into(),
                 },
                 None,
                 None,
@@ -1685,14 +1685,14 @@ fn replay_choose_slot_false_falls_to_otherwise() -> Result<(), CoreError> {
     let node0 = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     let node1 = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     let action = replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
@@ -1700,7 +1700,7 @@ fn replay_choose_slot_false_falls_to_otherwise() -> Result<(), CoreError> {
         ReplayAction::Continue(next) if next == StepIdx::new(3) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "ChooseSlot false should go to otherwise (step 3)",
+                reason: "ChooseSlot false should go to otherwise (step 3)".into(),
             });
         }
     }
@@ -1753,34 +1753,34 @@ fn replay_multi_step_executed_counter() -> Result<(), CoreError> {
     let node0 = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     let node1 = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     let node2 = plan
         .node(StepIdx::new(2))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 2 missing",
+            reason: "node 2 missing".into(),
         })?;
     replay_step(node2, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     let node3 = plan
         .node(StepIdx::new(3))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 3 missing",
+            reason: "node 3 missing".into(),
         })?;
     replay_step(node3, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     if run.executed() != 4 {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "executed counter should be 4",
+            reason: "executed counter should be 4".into(),
         });
     }
     Ok(())
@@ -1840,21 +1840,21 @@ fn replay_build_object_multiple_fields_preserves_order() -> Result<(), CoreError
     let node0 = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     let node1 = plan
         .node(StepIdx::new(1))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
+            reason: "node 1 missing".into(),
         })?;
     replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     let node2 = plan
         .node(StepIdx::new(2))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 2 missing",
+            reason: "node 2 missing".into(),
         })?;
     replay_step(node2, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
@@ -1863,7 +1863,7 @@ fn replay_build_object_multiple_fields_preserves_order() -> Result<(), CoreError
             let fields = store.object(id)?;
             if fields.len() != 2 {
                 return Err(CoreError::InternalInvariantViolation {
-                    reason: "object should have 2 fields",
+                    reason: "object should have 2 fields".into(),
                 });
             }
             if fields[0].key != sym_a
@@ -1872,13 +1872,13 @@ fn replay_build_object_multiple_fields_preserves_order() -> Result<(), CoreError
                 || fields[1].value != SlotValue::I64(20)
             {
                 return Err(CoreError::InternalInvariantViolation {
-                    reason: "field order or values wrong",
+                    reason: "field order or values wrong".into(),
                 });
             }
         }
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "slot 2 should be Object",
+                reason: "slot 2 should be Object".into(),
             });
         }
     }
@@ -1909,7 +1909,7 @@ fn replay_collect_next_reports_missing_source_list() -> Result<(), CoreError> {
     let current_page = store
         .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "current page insert failed",
+            reason: "current page insert failed".into(),
         })?;
     let mut run = RunFrame::new(
         RunId::new(91),
@@ -1943,7 +1943,7 @@ fn replay_collect_next_reports_missing_source_list() -> Result<(), CoreError> {
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "CollectNext should report missing source list",
+            reason: "CollectNext should report missing source list".into(),
         }),
     }
 }
@@ -1963,14 +1963,14 @@ fn replay_copy_reports_source_slot_failures() -> Result<(), CoreError> {
         Err(ReplayError::SlotNotAvailable { slot }) if slot == SlotIdx::new(7) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "Copy should report out-of-bounds source slot",
+                reason: "Copy should report out-of-bounds source slot".into(),
             });
         }
     }
     match super::replay_copy(&mut run, &node, SlotIdx::new(0)) {
         Err(ReplayError::SlotNotAvailable { slot }) if slot == SlotIdx::new(0) => Ok(()),
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "Copy should report uninitialized source slot",
+            reason: "Copy should report uninitialized source slot".into(),
         }),
     }
 }
@@ -1992,7 +1992,7 @@ fn replay_build_object_reports_field_slot_failures() -> Result<(), CoreError> {
         Err(ReplayError::SlotNotAvailable { slot }) if slot == SlotIdx::new(7) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "BuildObject should report out-of-bounds field slot",
+                reason: "BuildObject should report out-of-bounds field slot".into(),
             });
         }
     }
@@ -2000,7 +2000,7 @@ fn replay_build_object_reports_field_slot_failures() -> Result<(), CoreError> {
     match super::replay_build_object(&mut run, &mut store, &node, &fields) {
         Err(ReplayError::SlotNotAvailable { slot }) if slot == SlotIdx::new(0) => Ok(()),
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "BuildObject should report uninitialized field slot",
+            reason: "BuildObject should report uninitialized field slot".into(),
         }),
     }
 }
@@ -2021,14 +2021,14 @@ fn replay_build_list_reports_item_slot_failures() -> Result<(), CoreError> {
         Err(ReplayError::SlotNotAvailable { slot }) if slot == SlotIdx::new(7) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "BuildList should report out-of-bounds item slot",
+                reason: "BuildList should report out-of-bounds item slot".into(),
             });
         }
     }
     match super::replay_build_list(&mut run, &mut store, &node, &[SlotIdx::new(0)]) {
         Err(ReplayError::SlotNotAvailable { slot }) if slot == SlotIdx::new(0) => Ok(()),
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "BuildList should report uninitialized item slot",
+            reason: "BuildList should report uninitialized item slot".into(),
         }),
     }
 }
@@ -2040,14 +2040,14 @@ fn replay_finish_reports_result_slot_failures() -> Result<(), CoreError> {
         Err(ReplayError::SlotNotAvailable { slot }) if slot == SlotIdx::new(7) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "Finish should report out-of-bounds result slot",
+                reason: "Finish should report out-of-bounds result slot".into(),
             });
         }
     }
     match super::replay_finish(&mut run, SlotIdx::new(0)) {
         Err(ReplayError::SlotNotAvailable { slot }) if slot == SlotIdx::new(0) => Ok(()),
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "Finish should report uninitialized result slot",
+            reason: "Finish should report uninitialized result slot".into(),
         }),
     }
 }

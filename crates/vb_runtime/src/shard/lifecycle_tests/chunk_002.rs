@@ -1,7 +1,7 @@
 fn ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let set_prompt = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::ZERO), Some(StepIdx::new(1)));
     let set_timeout = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::SetConst { value: ConstIdx::new(1), }, Some(SlotIdx::new(1)), Some(StepIdx::new(2)));
-    let ask = vb_core::workflow::node(StepIdx::new(2), CompiledNodeKind::Ask { prompt: SlotIdx::ZERO, timeout_slot: Some(SlotIdx::new(1)), }, None, Some(StepIdx::new(3)));
+    let ask = vb_core::workflow::node(StepIdx::new(2), CompiledNodeKind::Ask { prompt: SlotIdx::ZERO, timeout_slot: Some(SlotIdx::new(1)).into(), }, None, Some(StepIdx::new(3)));
     let resume = vb_core::workflow::node(StepIdx::new(3), CompiledNodeKind::AskResume { answer: SlotIdx::new(2), }, None, Some(StepIdx::new(4)));
     let finish_node = vb_core::workflow::node(StepIdx::new(4), CompiledNodeKind::Finish { result: SlotIdx::new(2), }, None, None);
     let parts = WorkflowParts {

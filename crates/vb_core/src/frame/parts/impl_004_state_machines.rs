@@ -67,7 +67,7 @@ impl RunFrame {
             Ok(())
         } else {
             Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition",
+                reason: "invalid_state_transition".into(),
             })
         }
     }

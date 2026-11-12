@@ -147,7 +147,7 @@ mod tests {
         assert_eq!(
             result,
             Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
+                reason: "invalid_state_transition".into()
             })
         );
         assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Succeeded);
@@ -170,7 +170,7 @@ mod tests {
         assert_eq!(
             result,
             Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
+                reason: "invalid_state_transition".into()
             })
         );
         assert_eq!(frame.step_state(StepIdx::new(1))?, StepState::Failed);
@@ -193,7 +193,7 @@ mod tests {
         assert_eq!(
             result,
             Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
+                reason: "invalid_state_transition".into()
             })
         );
         assert_eq!(frame.step_state(StepIdx::new(2))?, StepState::Cancelled);
@@ -747,7 +747,7 @@ mod tests {
         assert_eq!(
             frame.add_parallel_in_flight(2),
             Err(CoreError::InternalInvariantViolation {
-                reason: "parallel_in_flight overflow"
+                reason: "parallel_in_flight overflow".into()
             })
         );
 
@@ -761,7 +761,7 @@ mod tests {
         assert_eq!(
             frame.sub_parallel_in_flight(1),
             Err(CoreError::InternalInvariantViolation {
-                reason: "parallel_in_flight underflow"
+                reason: "parallel_in_flight underflow".into()
             })
         );
 
@@ -796,19 +796,19 @@ mod tests {
         assert_eq!(
             frame.mark_running(StepIdx::ZERO),
             Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
+                reason: "invalid_state_transition".into()
             })
         );
         assert_eq!(
             frame.mark_failed(StepIdx::ZERO),
             Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
+                reason: "invalid_state_transition".into()
             })
         );
         assert_eq!(
             frame.mark_waiting(StepIdx::ZERO),
             Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
+                reason: "invalid_state_transition".into()
             })
         );
 
@@ -816,19 +816,19 @@ mod tests {
         assert_eq!(
             frame.mark_running(StepIdx::new(1)),
             Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
+                reason: "invalid_state_transition".into()
             })
         );
         assert_eq!(
             frame.mark_succeeded(StepIdx::new(1)),
             Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
+                reason: "invalid_state_transition".into()
             })
         );
         assert_eq!(
             frame.mark_waiting(StepIdx::new(1)),
             Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
+                reason: "invalid_state_transition".into()
             })
         );
 
@@ -836,13 +836,13 @@ mod tests {
         assert_eq!(
             frame.mark_running(StepIdx::new(2)),
             Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
+                reason: "invalid_state_transition".into()
             })
         );
         assert_eq!(
             frame.mark_succeeded(StepIdx::new(2)),
             Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
+                reason: "invalid_state_transition".into()
             })
         );
 
@@ -850,13 +850,13 @@ mod tests {
         assert_eq!(
             frame.mark_running(StepIdx::new(3)),
             Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
+                reason: "invalid_state_transition".into()
             })
         );
         assert_eq!(
             frame.mark_failed(StepIdx::new(3)),
             Err(CoreError::InternalInvariantViolation {
-                reason: "invalid_state_transition"
+                reason: "invalid_state_transition".into()
             })
         );
 

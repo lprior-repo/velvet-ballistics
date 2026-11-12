@@ -24,12 +24,12 @@ fn millis_since_epoch() -> Result<u64, EngineError> {
     SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .map_err(|_| EngineError::InternalInvariantViolation {
-            reason: "system time is before UNIX epoch",
+            reason: "system time is before UNIX epoch".into(),
         })?
         .as_millis()
         .try_into()
         .map_err(|_| EngineError::InternalInvariantViolation {
-            reason: "millis_since_epoch overflow",
+            reason: "millis_since_epoch overflow".into(),
         })
 }
 
@@ -111,13 +111,13 @@ fn copy_prefix(items: &[SlotValue], page_size: usize) -> Result<Box<[SlotValue]>
         let value = *items
             .get(index)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "collect prefix index checked by loop bound",
+                reason: "collect prefix index checked by loop bound".into(),
             })?;
         page.push(value);
         index = index
             .checked_add(1)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "collect prefix index overflow",
+                reason: "collect prefix index overflow".into(),
             })?;
     }
     Ok(page.into_boxed_slice())
@@ -133,7 +133,7 @@ fn copy_page_range(
             .len()
             .checked_sub(start)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "collect cursor beyond item count",
+                reason: "collect cursor beyond item count".into(),
             })?;
     let count = page_size.min(remaining);
     let mut page = Vec::with_capacity(count);
@@ -143,7 +143,7 @@ fn copy_page_range(
         let value = *items
             .get(index)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "collect page index checked by loop bound",
+                reason: "collect page index checked by loop bound".into(),
             })?;
         page.push(value);
         offset = checked_add_usize(offset, 1, "collect page offset overflow")?;
@@ -174,6 +174,7 @@ fn checked_add_usize(
     right: usize,
     reason: &'static str,
 ) -> Result<usize, EngineError> {
-    left.checked_add(right)
-        .ok_or(EngineError::InternalInvariantViolation { reason })
+    left.checked_add(right).ok_or(EngineError::InternalInvariantViolation {
+        reason: reason.into(),
+    })
 }
