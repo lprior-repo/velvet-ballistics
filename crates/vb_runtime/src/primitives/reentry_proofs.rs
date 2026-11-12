@@ -12,13 +12,13 @@
 
 #[cfg(kani)]
 pub mod reentry_harnesses {
-    use vb_core::errors::EngineError;
+    use vb_core::errors::{EngineError, InvariantKind};
     use vb_core::frame::{RunFrame, StepState};
     use vb_core::ids::{SlotIdx, StepIdx};
     use vb_core::value::SlotValue;
     use vb_core::value_store::ValueStore;
 
-    use crate::primitives::collect::{CollectStates, collect_next, collect_page};
+    use crate::primitives::collect::{collect_next, collect_page, CollectStates};
     use crate::primitives::for_each::for_each_next;
     use crate::primitives::reduce::reduce_next;
     use crate::primitives::repeat::{repeat_attempt, repeat_check};
@@ -148,7 +148,7 @@ pub mod reentry_harnesses {
             }
             Err(EngineError::InternalInvariantViolation { reason }) => {
                 kani::assert(
-                    reason != "invalid_state_transition",
+                    reason != InvariantKind::InvalidStateTransition,
                     "for_each_next re-entry should not fail with invalid_state_transition",
                 );
             }
@@ -237,7 +237,7 @@ pub mod reentry_harnesses {
             }
             Err(EngineError::InternalInvariantViolation { reason }) => {
                 kani::assert(
-                    reason != "invalid_state_transition",
+                    reason != InvariantKind::InvalidStateTransition,
                     "reduce_next re-entry should not fail with invalid_state_transition",
                 );
             }
@@ -343,7 +343,7 @@ pub mod reentry_harnesses {
             }
             Err(EngineError::InternalInvariantViolation { reason }) => {
                 kani::assert(
-                    reason != "invalid_state_transition",
+                    reason != InvariantKind::InvalidStateTransition,
                     "collect_next re-entry should not fail with invalid_state_transition",
                 );
             }
@@ -440,7 +440,7 @@ pub mod reentry_harnesses {
             }
             Err(EngineError::InternalInvariantViolation { reason }) => {
                 kani::assert(
-                    reason != "invalid_state_transition",
+                    reason != InvariantKind::InvalidStateTransition,
                     "collect_page re-entry should not fail with invalid_state_transition",
                 );
             }
@@ -511,7 +511,7 @@ pub mod reentry_harnesses {
             }
             Err(EngineError::InternalInvariantViolation { reason }) => {
                 kani::assert(
-                    reason != "invalid_state_transition",
+                    reason != InvariantKind::InvalidStateTransition,
                     "repeat_attempt re-entry should not fail with invalid_state_transition",
                 );
             }
@@ -582,7 +582,7 @@ pub mod reentry_harnesses {
             }
             Err(EngineError::InternalInvariantViolation { reason }) => {
                 kani::assert(
-                    reason != "invalid_state_transition",
+                    reason != InvariantKind::InvalidStateTransition,
                     "repeat_check re-entry should not fail with invalid_state_transition",
                 );
             }

@@ -16,7 +16,7 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{
-    CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
+    node, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
 
 use crate::engine::RetryPolicy;
@@ -51,9 +51,11 @@ fn any_bounded_ticket() -> ActionTicket {
         step: StepIdx::new(step),
         seq: SeqNo::new(seq),
         action: ActionId::new(action_id),
+        run_attempt: 1,
         attempt,
         idempotency_key: key,
         capacity,
+        fencing_token: 0,
     }
 }
 
@@ -92,6 +94,7 @@ fn any_do_run_state(step_count: u16, current_attempt: u16) -> RunState {
     let mut state = RunState {
         registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
         frame,
+        run_attempt: core::num::NonZeroU16::MIN,
         workflow,
         store: ValueStore::new(),
         action_attempts: new_action_attempts(step_count),
@@ -378,9 +381,11 @@ fn proof_attempt_comparison_panic_free() {
         step: StepIdx::new(0),
         seq: SeqNo::new(0),
         action: ActionId::new(0),
+        run_attempt: 1,
         attempt,
         idempotency_key: 0,
         capacity,
+        fencing_token: 0,
     };
 
     // normalize_scheduled_ticket exercises the same arithmetic patterns
@@ -506,9 +511,11 @@ fn proof_all_attempt_combinations_handled() {
         step: StepIdx::new(0),
         seq: SeqNo::new(0),
         action: ActionId::new(0),
+        run_attempt: 1,
         attempt,
         idempotency_key: 0,
         capacity,
+        fencing_token: 0,
     };
 
     let step_count: u16 = 1;

@@ -886,27 +886,27 @@ mod kani_proofs {
         let state: u8 = kani::any();
         kani::assume(state < 5);
         let runtime_state = match state {
-            0 => super::RuntimeState::Initial,
-            1 => super::RuntimeState::Running,
-            2 => super::RuntimeState::Resumable,
-            3 => super::RuntimeState::Resuming,
-            4 => super::RuntimeState::Failed,
+            0 => super::super::RuntimeState::Initial,
+            1 => super::super::RuntimeState::Running,
+            2 => super::super::RuntimeState::Resumable,
+            3 => super::super::RuntimeState::Resuming,
+            4 => super::super::RuntimeState::Failed,
             _ => unreachable!(),
         };
         match runtime_state {
-            super::RuntimeState::Initial => {
+            super::super::RuntimeState::Initial => {
                 assert!(!runtime_state.is_resumable());
             }
-            super::RuntimeState::Running => {
+            super::super::RuntimeState::Running => {
                 assert!(!runtime_state.is_resumable());
             }
-            super::RuntimeState::Resumable => {
+            super::super::RuntimeState::Resumable => {
                 assert!(runtime_state.is_resumable());
             }
-            super::RuntimeState::Resuming => {
+            super::super::RuntimeState::Resuming => {
                 assert!(!runtime_state.is_resumable());
             }
-            super::RuntimeState::Failed => {
+            super::super::RuntimeState::Failed => {
                 assert!(!runtime_state.is_resumable());
             }
         }
@@ -917,16 +917,16 @@ mod kani_proofs {
         let event_idx: u8 = kani::any();
         kani::assume(event_idx < 10);
         let event = match event_idx {
-            0 => super::RuntimeEvent::Submit,
-            1 => super::RuntimeEvent::Resume,
-            2 => super::RuntimeEvent::ResumeRollback,
-            3 => super::RuntimeEvent::DriveContinue,
-            4 => super::RuntimeEvent::DriveFinished,
-            5 => super::RuntimeEvent::AwaitAction,
-            6 => super::RuntimeEvent::AwaitTimer,
-            7 => super::RuntimeEvent::Fail,
-            8 => super::RuntimeEvent::TerminalRemove,
-            _ => super::RuntimeEvent::Submit,
+            0 => super::super::RuntimeEvent::Submit,
+            1 => super::super::RuntimeEvent::Resume,
+            2 => super::super::RuntimeEvent::ResumeRollback,
+            3 => super::super::RuntimeEvent::DriveContinue,
+            4 => super::super::RuntimeEvent::DriveFinished,
+            5 => super::super::RuntimeEvent::AwaitAction,
+            6 => super::super::RuntimeEvent::AwaitTimer,
+            7 => super::super::RuntimeEvent::Fail,
+            8 => super::super::RuntimeEvent::TerminalRemove,
+            _ => super::super::RuntimeEvent::Submit,
         };
         let terminal = event.is_terminal();
         let resumable = event.is_resumable();
@@ -937,9 +937,9 @@ mod kani_proofs {
         if terminal {
             assert!(matches!(
                 event,
-                super::RuntimeEvent::Fail
-                    | super::RuntimeEvent::TerminalRemove
-                    | super::RuntimeEvent::DriveFinished
+                super::super::RuntimeEvent::Fail
+                    | super::super::RuntimeEvent::TerminalRemove
+                    | super::super::RuntimeEvent::DriveFinished
             ));
         }
     }
@@ -947,7 +947,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_is_valid_command_queue_capacity_within_domain() {
         let cap: usize = kani::any();
-        let valid = super::is_valid_command_queue_capacity(cap);
+        let valid = crate::shard::types::is_valid_command_queue_capacity(cap);
         if cap == 0 {
             assert!(!valid);
         } else if cap > super::MAX_COMMAND_QUEUE_CAPACITY {
@@ -971,7 +971,7 @@ mod kani_proofs {
         assert!(
             matches!(
                 result,
-                Err(RuntimeError::CommandQueueCapacityExceeded { .. })
+                Err(crate::error::RuntimeError::CommandQueueCapacityExceeded { .. })
             )
         );
     }
