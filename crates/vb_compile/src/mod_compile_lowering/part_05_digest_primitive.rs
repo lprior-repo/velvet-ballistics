@@ -18,6 +18,13 @@ pub(super) fn child_depth(depth: u16, primitive: &'static str) -> Result<u16, Co
         .ok_or_else(|| body_nesting_error(primitive, depth))
 }
 
+/// Single shared stack operation for the digest walkers.
+pub(super) enum DigestOp<F> {
+    Push(F),
+    Pop,
+    Nothing,
+}
+
 pub(super) enum HeaderNested<'a> {
     None,
     Body(&'a [crate::StepAst]),

@@ -133,10 +133,11 @@ impl<'a> BranchBindings<'a> {
                 (slot, ExprType::Unknown)
             }
             other => {
+                let name = canonical_primitive_name(other).map_err(|e| CompileErrors(vec![e]))?;
                 return Err(CompileErrors(vec![
                     CompileError::UnsupportedStepPrimitive {
                         step: id.as_usize(),
-                        primitive: canonical_primitive_name(other),
+                        primitive: name,
                     },
                 ]));
             }
@@ -183,12 +184,15 @@ impl<'a> BranchBindings<'a> {
                 // and reads of it fail closed downstream.
                 alloc_body_slot(builder)
             }
-            other => Err(CompileErrors(vec![
-                CompileError::UnsupportedStepPrimitive {
-                    step: id.as_usize(),
-                    primitive: canonical_primitive_name(other),
-                },
-            ])),
+            other => {
+                let name = canonical_primitive_name(other).map_err(|e| CompileErrors(vec![e]))?;
+                Err(CompileErrors(vec![
+                    CompileError::UnsupportedStepPrimitive {
+                        step: id.as_usize(),
+                        primitive: name,
+                    },
+                ]))
+            }
         }
     }
 

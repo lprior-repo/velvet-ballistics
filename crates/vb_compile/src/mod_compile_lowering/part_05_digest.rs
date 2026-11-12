@@ -132,21 +132,26 @@ fn digest_optional_u32(
     Ok(())
 }
 
-pub(crate) fn canonical_primitive_name(primitive: &crate::StepPrimitive) -> &'static str {
+pub(crate) fn canonical_primitive_name(
+    primitive: &crate::StepPrimitive,
+) -> Result<&'static str, CompileError> {
     match primitive {
-        crate::StepPrimitive::Set { .. } => "set",
-        crate::StepPrimitive::Save { .. } => "save",
-        crate::StepPrimitive::Do { .. } => "do",
-        crate::StepPrimitive::Choose { .. } => "choose",
-        crate::StepPrimitive::ForEach { .. } => "for_each",
-        crate::StepPrimitive::Together { .. } => "together",
-        crate::StepPrimitive::Collect { .. } => "collect",
-        crate::StepPrimitive::Aggregate { .. } => "reduce",
-        crate::StepPrimitive::Repeat { .. } => "repeat",
-        crate::StepPrimitive::Wait { .. } => "wait",
-        crate::StepPrimitive::Ask { .. } => "ask",
-        crate::StepPrimitive::Finish { .. } => "finish",
-        _ => "unknown",
+        crate::StepPrimitive::Set { .. } => Ok("set"),
+        crate::StepPrimitive::Save { .. } => Ok("save"),
+        crate::StepPrimitive::Do { .. } => Ok("do"),
+        crate::StepPrimitive::Choose { .. } => Ok("choose"),
+        crate::StepPrimitive::ForEach { .. } => Ok("for_each"),
+        crate::StepPrimitive::Together { .. } => Ok("together"),
+        crate::StepPrimitive::Collect { .. } => Ok("collect"),
+        crate::StepPrimitive::Aggregate { .. } => Ok("reduce"),
+        crate::StepPrimitive::Repeat { .. } => Ok("repeat"),
+        crate::StepPrimitive::Wait { .. } => Ok("wait"),
+        crate::StepPrimitive::Ask { .. } => Ok("ask"),
+        crate::StepPrimitive::Finish { .. } => Ok("finish"),
+        _ => Err(CompileError::CanonicalYaml {
+            category: "digest",
+            message: "unknown step primitive variant cannot be canonicalized".into(),
+        }),
     }
 }
 
@@ -207,17 +212,4 @@ fn digest_scalar_value(
             "unknown scalar value variant cannot be canonicalized",
         )),
     }
-}
-
-/// Hash the body steps of a container primitive.
-///
-/// Iterative heap-stack walk with `MAX_BODY_NESTING_DEPTH` budget; body steps
-/// enter at depth 0 when called standalone. Nested bodies driven from
-/// `run_digest_stack` carry the parent step depth plus one.
-#[allow(dead_code)]
-fn digest_body_steps(
-    hasher: &mut blake3::Hasher,
-    body: &[crate::StepAst],
-) -> Result<(), CompileErrors> {
-    part_05_digest_step::digest_body_at(hasher, body, 0)
 }

@@ -547,6 +547,97 @@ fn digest_mixed_nested_primitives_match_recursive_baseline() {
     );
 }
 
+fn build_workflow_source_with_chain(levels: usize) -> crate::WorkflowSource {
+    let mut body = vec![set_leaf("leaf")];
+    let mut remaining = levels;
+    while remaining > 1 {
+        body = vec![foreach_wrap("nest", body)];
+        remaining -= 1;
+    }
+    let top = StepAst {
+        id: "top".to_string(),
+        name: None,
+        condition: None,
+        primitive: StepPrimitive::ForEach {
+            variable: "v".to_string(),
+            input: "items".to_string(),
+            at_once: None,
+            body,
+        },
+        with: None,
+        retry: None,
+        on_error: None,
+        then: None,
+    };
+    crate::WorkflowSource::new(crate::WorkflowSourceParts {
+        version: "velvet-ballistics/v1".to_string(),
+        name: "tco".to_string(),
+        trigger: crate::TriggerAst::Manual,
+        inputs: vec![],
+        vars: vec![],
+        secrets: vec![],
+        steps: vec![top],
+        result: None,
+        examples: vec![],
+    })
+}
+
+#[test]
+fn canonical_digest_64_deep_succeeds_and_is_deterministic() {
+    use crate::mod_compile_lowering::part_05::canonical_digest;
+    let source = build_workflow_source_with_chain(64);
+    let first = canonical_digest(&source).expect("64-deep canonical_digest within budget");
+    let second = canonical_digest(&source).expect("64-deep deterministic");
+    assert_eq!(
+        first, second,
+        "canonical_digest must be deterministic through iterative path"
+    );
+    assert!(
+        !first.as_bytes().iter().all(|&b| b == 0),
+        "canonical_digest must be non-zero"
+    );
+}
+
+#[test]
+fn canonical_digest_64_deep_in_bounded_thread_no_overflow() {
+    use crate::mod_compile_lowering::part_05::canonical_digest;
+    let source = build_workflow_source_with_chain(64);
+    let expected = canonical_digest(&source).expect("64-deep within budget");
+    let result = std::thread::Builder::new()
+        .stack_size(256 * 1024)
+        .spawn(move || canonical_digest(&source))
+        .expect("spawn bounded canonical_digest thread")
+        .join()
+        .expect("join bounded thread")
+        .expect("64-deep canonical_digest on 256KiB stack must succeed");
+    assert_eq!(
+        result, expected,
+        "canonical_digest on bounded stack must equal baseline"
+    );
+}
+
+#[test]
+fn canonical_digest_65_deep_fails_closed_without_stack_overflow() {
+    use crate::mod_compile_lowering::part_05::canonical_digest;
+    let source = build_workflow_source_with_chain(65);
+    let result = std::thread::Builder::new()
+        .stack_size(256 * 1024)
+        .spawn(move || canonical_digest(&source))
+        .expect("spawn bounded canonical_digest thread")
+        .join()
+        .expect("join bounded thread");
+    match result {
+        Err(errors) => assert!(
+            errors
+                .0
+                .iter()
+                .any(|e| matches!(e, CompileError::PrimitiveLoweringLimitExceeded { .. })),
+            "65-deep canonical_digest must fail with PrimitiveLoweringLimitExceeded, got {errors:?}"
+        ),
+        Ok(_) => panic!("65-deep canonical_digest must fail closed, not succeed"),
+    }
+}
+
 #[test]
 fn validate_branch_counts_65_deep_fails_closed() {
     use crate::mod_compile_lowering::part_05::validate_branch_counts;

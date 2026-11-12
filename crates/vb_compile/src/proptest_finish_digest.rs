@@ -72,6 +72,11 @@ fn step_id_strategy() -> impl Strategy<Value = String> {
         !matches!(
             s.as_str(),
             "y" | "n" | "yes" | "no" | "true" | "false" | "on" | "off"
+                | "input" | "inputs" | "vars" | "secrets" | "steps" | "result" | "when"
+                | "item" | "error" | "summary" | "cursor" | "page" | "event" | "attempt"
+                | "attempts" | "null" | "run" | "do" | "set" | "save" | "choose"
+                | "for_each" | "parallel" | "collect" | "aggregate" | "repeat" | "wait"
+                | "ask" | "try_again" | "on_error" | "then" | "finish"
         )
     })
 }

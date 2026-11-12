@@ -16,7 +16,10 @@ use crate::mod_compile_errors::CompileError;
 /// total number of iterations is bounded by the number of nodes in the AST
 /// tree; the stack depth never exceeds the AST nesting depth and lives on
 /// the heap, so deep nesting cannot overflow the call stack.
-pub(in crate::mod_compile_lowering) fn body_width(body: &[crate::StepAst], overhead: usize) -> Result<usize, CompileError> {
+pub(in crate::mod_compile_lowering) fn body_width(
+    body: &[crate::StepAst],
+    overhead: usize,
+) -> Result<usize, CompileError> {
     enum Frame<'a> {
         Body {
             steps: &'a [crate::StepAst],
@@ -101,9 +104,10 @@ pub(in crate::mod_compile_lowering) fn body_width(body: &[crate::StepAst], overh
                             })
                         }
                         other => {
+                            let name = canonical_primitive_name(other)?;
                             return Err(CompileError::UnsupportedStepPrimitive {
                                 step: 0,
-                                primitive: canonical_primitive_name(other),
+                                primitive: name,
                             });
                         }
                     }
@@ -140,7 +144,9 @@ pub(in crate::mod_compile_lowering) fn body_width(body: &[crate::StepAst], overh
     }
 }
 
-pub(in crate::mod_compile_lowering) fn choose_width(branches: &[crate::ChooseBranch]) -> Result<usize, CompileError> {
+pub(in crate::mod_compile_lowering) fn choose_width(
+    branches: &[crate::ChooseBranch],
+) -> Result<usize, CompileError> {
     let mut width = 1usize;
     for branch in branches {
         width = width
@@ -150,7 +156,9 @@ pub(in crate::mod_compile_lowering) fn choose_width(branches: &[crate::ChooseBra
     Ok(width)
 }
 
-pub(in crate::mod_compile_lowering) fn together_width(branches: &[crate::TogetherBranch]) -> Result<usize, CompileError> {
+pub(in crate::mod_compile_lowering) fn together_width(
+    branches: &[crate::TogetherBranch],
+) -> Result<usize, CompileError> {
     let mut width = 2usize;
     for branch in branches {
         width = width
@@ -176,9 +184,12 @@ pub(in crate::mod_compile_lowering) fn canonical_body_step_width(
             body_width(body, 3)
         }
         crate::StepPrimitive::Choose { branches, .. } => choose_width(branches),
-        other => Err(CompileError::UnsupportedStepPrimitive {
-            step: 0,
-            primitive: canonical_primitive_name(other),
-        }),
+        other => {
+            let name = canonical_primitive_name(other)?;
+            Err(CompileError::UnsupportedStepPrimitive {
+                step: 0,
+                primitive: name,
+            })
+        }
     }
 }

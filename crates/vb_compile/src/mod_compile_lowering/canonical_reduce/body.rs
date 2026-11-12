@@ -28,10 +28,12 @@ pub(super) fn lower_multi_body(
         last.primitive,
         crate::StepPrimitive::Set { .. } | crate::StepPrimitive::Do { .. }
     ) {
+        let name = crate::mod_compile_lowering::canonical_primitive_name(&last.primitive)
+            .map_err(|e| CompileErrors(vec![e]))?;
         return Err(CompileErrors(vec![
             CompileError::UnsupportedStepPrimitive {
                 step: index,
-                primitive: crate::mod_compile_lowering::canonical_primitive_name(&last.primitive),
+                primitive: name,
             },
         ]));
     }

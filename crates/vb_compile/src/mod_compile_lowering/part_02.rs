@@ -131,10 +131,13 @@ fn dispatch_step(
 }
 
 fn unsupported_primitive(step: usize, primitive: &crate::StepPrimitive) -> CompileErrors {
-    CompileErrors(vec![CompileError::UnsupportedStepPrimitive {
-        step,
-        primitive: canonical_primitive_name(primitive),
-    }])
+    match canonical_primitive_name(primitive) {
+        Ok(name) => CompileErrors(vec![CompileError::UnsupportedStepPrimitive {
+            step,
+            primitive: name,
+        }]),
+        Err(e) => CompileErrors(vec![e]),
+    }
 }
 
 #[path = "canonical_finish.rs"]

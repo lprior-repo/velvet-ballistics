@@ -7,3 +7,4 @@
 cc 47761eb72846d039727a915abc77337b14dce9a3b240dd45e86cda30d4f1ebe8 # shrinks to slot = 1024, id = "a"
 cc 690c33fb8cffe18f5ec15f8e455c21a84f552b226b25a1d4a78b30b7948af594 # shrinks to id = "a", slot_a = 0, slot_b = 1024
 cc 81dcaeb3466544d2c48c5d36242271f929fcab5394e9968cc3e04c3b2d6e0054 # shrinks to id1 = "a", id2 = "a0", slot = 1024
+cc 25db8b1f41974bf5046e62287da4b8d8c713a40d705c8f326e411aca1f1fc6b6 # shrinks to id = "do", out_a = "a", out_b = "a_"
