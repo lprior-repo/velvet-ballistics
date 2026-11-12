@@ -80,22 +80,7 @@ fn validate_body(index: usize, config: &CollectLowering<'_>) -> Result<(), Compi
             expected: "non-empty body",
         }]));
     }
-    for step in config.body {
-        if step.id == config.variable {
-            return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-                name: config.variable.into(),
-            }]));
-        }
-        if matches!(
-            &step.primitive,
-            crate::StepPrimitive::Set { output, .. } if output == config.variable
-        ) {
-            return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-                name: config.variable.into(),
-            }]));
-        }
-    }
-    Ok(())
+    super::for_each_capture::validate_capture(config.variable, config.body)
 }
 
 fn checked_body_offset(id: StepIdx, n: u16, label: &'static str) -> Result<StepIdx, CompileErrors> {

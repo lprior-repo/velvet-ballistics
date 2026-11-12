@@ -55,6 +55,9 @@ mod proptest_step_offset;
 #[cfg(test)]
 #[path = "mod_compile_lowering/vb_8mdp_7_collect.rs"]
 mod vb_8mdp_7_collect;
+#[cfg(test)]
+#[path = "mod_compile_lowering/canonical_collect_scoped_tests.rs"]
+mod canonical_collect_scoped_tests;
 
 #[allow(unused_imports)]
 pub(crate) use part_01::*;
