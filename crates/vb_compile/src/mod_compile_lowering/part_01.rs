@@ -135,13 +135,80 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
 mod input_schema;
 use input_schema::{constraint_from_input_schema, kind_from_input_schema};
 
-#[path = "canonical_layout.rs"]
+#[path = "part_01/width.rs"]
+mod width;
+pub(super) use width::{body_width, choose_width, together_width};
+#[path = "part_01/layout.rs"]
 mod layout;
-pub(super) use layout::*;
+pub(super) use layout::{
+    canonical_layout, canonical_step_names, layout_start, layout_width, named_workflow_error,
+    next_layout_start,
+};
 
 /// Converts a bounded cold author literal into an arena-independent payload.
 pub fn author_value_to_owned(
     value: &AuthorValue,
 ) -> Result<vb_core::InputDefaultValue, CompileError> {
     input_schema::defaults::owned(value)
+}
+
+#[derive(Clone, Copy)]
+pub(in crate::mod_compile_lowering) struct CanonicalStepLayout {
+    pub(in crate::mod_compile_lowering) start: StepIdx,
+    pub(in crate::mod_compile_lowering) width: usize,
+}
+
+pub(in crate::mod_compile_lowering) fn canonical_step_width(
+    primitive: &crate::StepPrimitive,
+) -> Result<usize, CompileError> {
+    match primitive {
+        crate::StepPrimitive::Set { .. }
+        | crate::StepPrimitive::Finish { .. }
+        | crate::StepPrimitive::Wait { .. } => Ok(1),
+        crate::StepPrimitive::Ask { .. } => Ok(2),
+        crate::StepPrimitive::ForEach { input, body, .. } => {
+            super::part_14::iteration_body_width(body)?
+                .checked_add(
+                    6usize
+                        .checked_add(super::list_input::source_width(input))
+                        .ok_or(CompileError::StepIndexOutOfRange { value: 6 })?,
+                )
+                .ok_or(CompileError::StepIndexOutOfRange { value: 6 })
+        }
+        crate::StepPrimitive::Collect { body, .. } => body_width(body, 3),
+        crate::StepPrimitive::Repeat { body, .. } => body_width(body, 4),
+        crate::StepPrimitive::Aggregate { body, .. } => {
+            if !reduce_direct_body(body) {
+                body_width(body, 5)
+            } else {
+                body_width(body, 4)
+            }
+        }
+        crate::StepPrimitive::Together { branches } => together_width(branches),
+        crate::StepPrimitive::Choose { branches, .. } => choose_width(branches),
+        _ => Ok(1),
+    }
+}
+
+pub(in crate::mod_compile_lowering) fn reduce_direct_body(body: &[crate::StepAst]) -> bool {
+    matches!(body, [step] if matches!(step.primitive, crate::StepPrimitive::Set { .. })
+        && step.condition.is_none() && step.then.is_none() && step.on_error.is_none()
+        && step.retry.is_none() && step.with.is_none())
+}
+
+pub(in crate::mod_compile_lowering) fn canonical_step_width_with_condition(
+    step: &crate::StepAst,
+) -> Result<usize, CompileError> {
+    let mut width = canonical_step_width(&step.primitive)?;
+    if let Some(value) = &step.with {
+        width = width
+            .checked_add(super::canonical_values::width(value)?)
+            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
+    }
+    if step.condition.is_some() {
+        return width
+            .checked_add(1)
+            .ok_or(CompileError::StepIndexOutOfRange { value: width });
+    }
+    Ok(width)
 }

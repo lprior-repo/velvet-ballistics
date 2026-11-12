@@ -118,7 +118,7 @@
 //                                                  body=id+1, advance=id+body_len+1,
 //                                                  done=id+body_len+2)
 //   - `CollectStart` / `CollectNext` /
-//     `CollectFinish`                           <- crates/vb_core/src/workflow/node_kind.rs:87-111
+//     `CollectFinish`                           <- crates/vb_core/src/workflow/node_kind.rs:87-107
 //                                                  (CollectStart { source, limit, page_size,
 //                                                  body, done }; CollectNext
 //                                                  { collector_slot, body, done };
@@ -133,10 +133,10 @@
 //   - `SlotCompiler::allocate_slot`             <- crates/vb_compile/src/mod_compile_lowering/part_08.rs:41-50
 //                                                  (returns SlotIdx::new(slot_count),
 //                                                  reserves one more slot)
-//   - `emit_scoped_flat_body`                   <- crates/vb_compile/src/mod_compile_lowering/canonical_branch_body.rs:27-43
-//                                                  (one node per body step at
-//                                                  start+index, one slot allocated
-//                                                  per step)
+//   - `emit_scoped_flat_body`                   <- crates/vb_compile/src/mod_compile_lowering/canonical_branch_body.rs:28-44
+//                                                  (dispatches each body step; nested
+//                                                  constructs may expand to multiple
+//                                                  nodes and checked slot allocations)
 //
 // ============================================================================
 // TRUST BOUNDARY

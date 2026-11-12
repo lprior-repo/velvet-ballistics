@@ -62,7 +62,7 @@ verus! {
 pub mod prod_src;
 
 /// Pins the `prod_src::CompiledNodeKind` payloads
-/// (`crates/vb_core/src/workflow/mod.rs:1191-1357`) so a field drift
+/// (`crates/vb_core/src/workflow/node_kind.rs:14-180`) so a field drift
 /// breaks the build. The `SetConst` / `Do` arms are the only kinds
 /// this mirror models; constructing each pins its field set.
 #[verifier::external]
@@ -104,7 +104,7 @@ pub use prod_src::{
 };
 
 /// Pins the `prod_src::CompiledNode` struct shape
-/// (`crates/vb_core/src/workflow/mod.rs:995-1004`) so a field drift
+/// (`crates/vb_core/src/workflow/node.rs:14-23`) so a field drift
 /// breaks the build. Constructing both routing shapes pins every
 /// variant of the `NodeOutput` / `NodeContinuation` / `ErrorRouting`
 /// mirrors.
