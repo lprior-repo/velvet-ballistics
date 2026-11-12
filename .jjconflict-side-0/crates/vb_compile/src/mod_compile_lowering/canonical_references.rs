@@ -225,11 +225,12 @@ impl crate::expression_bytecode::ExpressionReferenceResolver for StepReferenceRe
     }
 
     fn intern_text(&mut self, text: &str) -> Result<vb_core::SymbolId, CompileError> {
-        let symbols = self.symbols.as_mut().ok_or_else(|| {
-            CompileError::ExpressionLoweringUnsupported {
-                feature: "symbol context".into(),
-            }
-        })?;
+        let symbols =
+            self.symbols
+                .as_mut()
+                .ok_or_else(|| CompileError::ExpressionLoweringUnsupported {
+                    feature: "symbol context".into(),
+                })?;
         crate::source_symbol_binding::intern_source_text(symbols, text)
     }
 
