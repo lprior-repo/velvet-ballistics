@@ -3,6 +3,10 @@
 use super::{CompileError, canonical_primitive_name};
 use crate::{ChooseBranch, StepAst, StepPrimitive, TogetherBranch};
 
+#[path = "body_width_walk/mode.rs"]
+mod mode;
+use mode::{WidthMode, primitive_action};
+
 enum Frame<'a> {
     Body {
         steps: &'a [StepAst],
@@ -79,14 +83,14 @@ impl<'a> Frame<'a> {
         }
     }
 
-    fn advance(&mut self) -> Result<Action<'a>, CompileError> {
+    fn advance_in(&mut self, mode: WidthMode) -> Result<Action<'a>, CompileError> {
         match self {
             Self::Body {
                 steps,
                 index,
                 width,
                 track,
-            } => body_action(steps, index, width, *track),
+            } => body_action(steps, index, width, *track, mode),
             Self::Choose {
                 branches, index, ..
             } => branch_action(branches, index),
@@ -94,6 +98,10 @@ impl<'a> Frame<'a> {
                 branches, index, ..
             } => together_branch_action(branches, index),
         }
+    }
+
+    fn advance(&mut self) -> Result<Action<'a>, CompileError> {
+        self.advance_in(WidthMode::Legacy)
     }
 }
 
@@ -116,13 +124,16 @@ fn body_action<'a>(
     index: &mut usize,
     width: &mut usize,
     track: bool,
+    mode: WidthMode,
 ) -> Result<Action<'a>, CompileError> {
     let Some(step) = steps.get(*index) else {
         return Ok(Action::Fold);
     };
     advance_index(index)?;
-    add_step_extras(step, width, track)?;
-    primitive_action(&step.primitive, width)
+    if matches!(mode, WidthMode::Canonical) {
+        add_step_extras(step, width, track)?;
+    }
+    primitive_action(&step.primitive, width, mode)
 }
 
 fn add_step_extras(step: &StepAst, width: &mut usize, track: bool) -> Result<(), CompileError> {
@@ -159,70 +170,6 @@ fn together_branch_action<'a>(
     Ok(Action::Push(Frame::body(&branch.steps, 2)))
 }
 
-fn primitive_action<'a>(
-    primitive: &'a StepPrimitive,
-    width: &mut usize,
-) -> Result<Action<'a>, CompileError> {
-    match primitive {
-        StepPrimitive::Set { .. }
-        | StepPrimitive::Save { .. }
-        | StepPrimitive::Do { .. }
-        | StepPrimitive::Wait { .. }
-        | StepPrimitive::Finish { .. } => add_width(width, 1).map(|()| Action::Idle),
-        StepPrimitive::Ask { .. } => add_width(width, 2).map(|()| Action::Idle),
-        _ => container_action(primitive, *width),
-    }
-}
-
-fn container_action(
-    primitive: &StepPrimitive,
-    parent_width: usize,
-) -> Result<Action<'_>, CompileError> {
-    match primitive {
-        StepPrimitive::ForEach { .. } => for_each_action(primitive, parent_width),
-        StepPrimitive::Collect { .. }
-        | StepPrimitive::Repeat { .. }
-        | StepPrimitive::Aggregate { .. } => loop_action(primitive),
-        StepPrimitive::Choose { branches, .. } => Ok(Action::Push(Frame::choose(branches))),
-        StepPrimitive::Together { branches } => Ok(Action::Push(Frame::together(branches))),
-        other => unsupported_body(other),
-    }
-}
-
-fn for_each_action(
-    primitive: &StepPrimitive,
-    parent_width: usize,
-) -> Result<Action<'_>, CompileError> {
-    let StepPrimitive::ForEach { input, body, .. } = primitive else {
-        return unsupported_body(primitive);
-    };
-    let tracked = super::super::part_14::iteration_body::needs_tracking(body);
-    let overhead = 6usize
-        .checked_add(super::super::list_input::source_width(input))
-        .and_then(|width| width.checked_add(usize::from(tracked)))
-        .ok_or(CompileError::StepIndexOutOfRange {
-            value: parent_width,
-        })?;
-    Ok(Action::Push(Frame::tracked_body(body, overhead, tracked)))
-}
-
-fn loop_action(primitive: &StepPrimitive) -> Result<Action<'_>, CompileError> {
-    let (body, overhead) = match primitive {
-        StepPrimitive::Collect { body, .. } => (body, 3),
-        StepPrimitive::Repeat { body, .. } => (body, 4),
-        StepPrimitive::Aggregate { body, .. } => (
-            body,
-            if super::reduce_direct_body(body) {
-                4
-            } else {
-                5
-            },
-        ),
-        other => return unsupported_body(other),
-    };
-    Ok(Action::Push(Frame::body(body, overhead)))
-}
-
 fn unsupported_body(primitive: &StepPrimitive) -> Result<Action<'_>, CompileError> {
     Err(CompileError::UnsupportedStepPrimitive {
         step: 0,
@@ -240,11 +187,29 @@ fn fold_frame(stack: &mut Vec<Frame<'_>>) -> Result<Progress, CompileError> {
 }
 
 pub(super) fn body_width(body: &[StepAst], overhead: usize) -> Result<usize, CompileError> {
+    measure_body_width(body, overhead, WidthMode::Legacy)
+}
+
+pub(super) fn canonical_body_width(
+    body: &[StepAst],
+    overhead: usize,
+) -> Result<usize, CompileError> {
+    if body.is_empty() {
+        return body_width(body, overhead);
+    }
+    measure_body_width(body, overhead, WidthMode::Canonical)
+}
+
+fn measure_body_width(
+    body: &[StepAst],
+    overhead: usize,
+    mode: WidthMode,
+) -> Result<usize, CompileError> {
     let mut stack = vec![Frame::body(body, overhead)];
     loop {
         let action = match stack.last_mut() {
             None => return Ok(0),
-            Some(frame) => frame.advance()?,
+            Some(frame) => advance_frame(frame, mode)?,
         };
         match action {
             Action::Fold => match fold_frame(&mut stack)? {
@@ -257,6 +222,13 @@ pub(super) fn body_width(body: &[StepAst], overhead: usize) -> Result<usize, Com
     }
 }
 
+fn advance_frame<'a>(frame: &mut Frame<'a>, mode: WidthMode) -> Result<Action<'a>, CompileError> {
+    match mode {
+        WidthMode::Legacy => frame.advance(),
+        WidthMode::Canonical => frame.advance_in(WidthMode::Canonical),
+    }
+}
+
 #[cfg(test)]
 #[path = "body_width_walk/fixtures.rs"]
 mod fixtures;
@@ -264,3 +236,7 @@ mod fixtures;
 #[cfg(test)]
 #[path = "body_width_walk/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "body_width_walk/mode_tests.rs"]
+mod mode_tests;

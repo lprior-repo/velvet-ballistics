@@ -20,7 +20,7 @@ pub(in crate::mod_compile_lowering) fn body_width(
     body: &[crate::StepAst],
     overhead: usize,
 ) -> Result<usize, CompileError> {
-    body_width_walk::body_width(body, overhead)
+    body_width_walk::canonical_body_width(body, overhead)
 }
 
 pub(in crate::mod_compile_lowering) fn choose_width(
