@@ -1,18 +1,23 @@
 //! vb-eyij7: Migration regression tests for canonical workspace structure.
 //!
 //! Verifies:
-//! 1. Exact workspace member equality (11 members) via toml parsing
+//! 1. Exact workspace member equality (12 members) via toml parsing
 //! 2. YAML/expression API identity and behavior parity
 //! 3. ExprError conversion from CoreError preserves specific variants
 //! 4. No duplicate old implementation modules
 //! 5. Canonical product naming (parsed from manifests)
 //! 6. Fuzz targets reachable
-//! 7. cargo metadata resolves exactly 11 packages with correct names
+//! 7. cargo metadata resolves exactly 12 packages with correct names
 
 #![forbid(unsafe_code)]
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::path::Path;
+
+#[path = "support/vb_eyij7_workspace_members.rs"]
+mod workspace_membership;
+#[path = "support/vb_eyij7_workspace_metadata.rs"]
+mod workspace_metadata;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Section 1: Workspace Member Equality (exact, via toml parsing)
@@ -33,106 +38,18 @@ type PathBuf = std::path::PathBuf;
 /// Parse root Cargo.toml and extract exact [workspace].members array.
 fn workspace_members() -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let root = workspace_root()?;
-    let toml_text = std::fs::read_to_string(root.join("Cargo.toml"))?;
-    let parsed: toml::Value = toml::from_str(&toml_text)?;
-
-    let members = parsed
-        .get("workspace")
-        .and_then(|w| w.get("members"))
-        .and_then(|m| m.as_array())
-        .ok_or_else(|| "workspace.members not found or not an array".to_string())?;
-
-    let result: Vec<String> = members
-        .iter()
-        .filter_map(|m| m.as_str().map(String::from))
-        .collect();
-
-    if result.is_empty() {
-        return Err("workspace.members is empty after parsing".into());
-    }
-    Ok(result)
+    workspace_metadata::parse_members(&std::fs::read_to_string(root.join("Cargo.toml"))?)
 }
 
 #[test]
-fn workspace_has_exactly_11_members() -> Result<(), Box<dyn std::error::Error>> {
-    let actual = workspace_members()?;
-
-    let expected: BTreeSet<String> = BTreeSet::from([
-        "crates/vb_core".to_string(),
-        "crates/vb_yaml".to_string(),
-        "crates/vb_validate".to_string(),
-        "crates/vb_expr".to_string(),
-        "crates/vb_compile".to_string(),
-        "crates/vb_storage".to_string(),
-        "crates/vb_runtime".to_string(),
-        "crates/vb_ipc".to_string(),
-        "crates/velvet_ballistics".to_string(),
-        "crates/workspace_tests".to_string(),
-        "fuzz".to_string(),
-    ]);
-
-    // Check length
-    if actual.len() != 11 {
-        return Err(format!(
-            "Expected 11 workspace members, got {}: {:?}",
-            actual.len(),
-            actual
-        )
-        .into());
-    }
-
-    // Check for duplicates via set length
-    let actual_set: BTreeSet<String> = actual.iter().cloned().collect();
-    if actual_set.len() != actual.len() {
-        return Err("Duplicate workspace member detected".into());
-    }
-
-    // Check exact set equality
-    if actual_set != expected {
-        let missing: Vec<&String> = expected.difference(&actual_set).collect();
-        let extra: Vec<&String> = actual_set.difference(&expected).collect();
-
-        let mut msg = "Workspace member set mismatch".to_string();
-        if !missing.is_empty() {
-            msg.push_str(&format!("\n  missing: {:?}", missing));
-        }
-        if !extra.is_empty() {
-            msg.push_str(&format!("\n  extra: {:?}", extra));
-        }
-        return Err(msg.into());
-    }
-
+fn workspace_has_exactly_12_members() -> Result<(), Box<dyn std::error::Error>> {
+    workspace_membership::validate_members(&workspace_members()?)?;
     Ok(())
 }
 
 #[test]
 fn workspace_members_are_in_canonical_order() -> Result<(), Box<dyn std::error::Error>> {
-    let actual = workspace_members()?;
-
-    let canonical = [
-        "crates/vb_core",
-        "crates/vb_yaml",
-        "crates/vb_validate",
-        "crates/vb_expr",
-        "crates/vb_compile",
-        "crates/vb_storage",
-        "crates/vb_runtime",
-        "crates/vb_ipc",
-        "crates/velvet_ballistics",
-        "crates/workspace_tests",
-        "fuzz",
-    ];
-
-    for (i, (actual_m, canonical_m)) in actual.iter().zip(canonical.iter()).enumerate() {
-        if actual_m != canonical_m {
-            return Err(format!(
-                "Member at position {} mismatch: expected {}, got {}",
-                i, canonical_m, actual_m
-            )
-            .into());
-        }
-    }
-
+    workspace_membership::validate_order(&workspace_members()?)?;
     Ok(())
 }
 
@@ -155,93 +72,13 @@ fn workspace_no_old_member_names() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Section 2: cargo metadata resolves exactly 11 packages with correct names
+// Section 2: cargo metadata resolves exactly 12 packages with correct names
 // ──────────────────────────────────────────────────────────────────────────────
 
 #[test]
-fn cargo_metadata_resolves_exactly_11_packages() -> Result<(), Box<dyn std::error::Error>> {
-    let root = workspace_root()?;
-    let output = std::process::Command::new("cargo")
-        .args(["metadata", "--no-deps", "--format-version", "1"])
-        .current_dir(&root)
-        .output()?;
-
-    if !output.status.success() {
-        return Err(format!(
-            "cargo metadata failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        )
-        .into());
-    }
-
-    let json: serde_json::Value = serde_json::from_slice(&output.stdout)?;
-    let packages = json
-        .get("packages")
-        .and_then(|p| p.as_array())
-        .ok_or_else(|| "packages array not found in cargo metadata")?;
-
-    // Check count
-    if packages.len() != 11 {
-        return Err(format!(
-            "Expected 11 packages, got {}: {:?}",
-            packages.len(),
-            packages
-                .iter()
-                .filter_map(|p| p.get("name").and_then(|n| n.as_str()))
-                .collect::<Vec<_>>()
-        )
-        .into());
-    }
-
-    // Map package names to expected member paths
-    let name_to_path: BTreeMap<&str, &str> = BTreeMap::from([
-        ("vb_core", "crates/vb_core"),
-        ("vb_yaml", "crates/vb_yaml"),
-        ("vb_validate", "crates/vb_validate"),
-        ("vb_expr", "crates/vb_expr"),
-        ("vb_compile", "crates/vb_compile"),
-        ("vb_storage", "crates/vb_storage"),
-        ("vb_runtime", "crates/vb_runtime"),
-        ("vb_ipc", "crates/vb_ipc"),
-        ("velvet-ballistics", "crates/velvet_ballistics"),
-        (
-            "velvet-ballistics-workspace-tests",
-            "crates/workspace_tests",
-        ),
-        ("velvet-ballistics-fuzz", "fuzz"),
-    ]);
-
-    for pkg in packages {
-        let name = pkg
-            .get("name")
-            .and_then(|n| n.as_str())
-            .ok_or_else(|| "package missing name")?;
-        let manifest_path = pkg
-            .get("manifest_path")
-            .and_then(|m| m.as_str())
-            .ok_or_else(|| "package missing manifest_path")?;
-
-        // Extract directory name from manifest_path
-        let path = Path::new(manifest_path);
-        let parent = path
-            .parent()
-            .ok_or_else(|| format!("no parent for {}", manifest_path))?;
-        let rel = parent.strip_prefix(&root)?;
-        let rel_str = rel.to_string_lossy().to_string();
-
-        let expected_path = name_to_path
-            .get(name)
-            .ok_or_else(|| format!("Unexpected package name: {}", name))?;
-
-        if rel_str != *expected_path {
-            return Err(format!(
-                "Package {} manifest path mismatch: expected {}/Cargo.toml, got {}/Cargo.toml",
-                name, expected_path, rel_str
-            )
-            .into());
-        }
-    }
-
+fn cargo_metadata_resolves_exactly_12_packages() -> Result<(), Box<dyn std::error::Error>> {
+    let packages = workspace_metadata::read_packages(&workspace_root()?)?;
+    workspace_membership::validate_packages(&packages)?;
     Ok(())
 }
 
