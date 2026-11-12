@@ -8,12 +8,12 @@
 //
 // This file binds the collect_ir_structure.rs Verus spec to the
 // production exec fn `lower_bounded_collect` at
-// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277`.
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:255-275`.
 //
 // The production fn was split out of `mod_compile_lowering/part_03.rs`
 // (the pre-split `lower_canonical_collect` at part_03.rs no
 // longer exists) and reshaped: edges are now body-length dependent
-// (`plan_compute_edges`, bounded_collect.rs:117-127), the second fixed
+// (`plan_compute_edges`, bounded_collect.rs:113-123), the second fixed
 // node is `CollectNext` (not `CollectPage`), the fn returns the finish
 // `SlotIdx` (not `()`), each body step allocates one slot, and the slot
 // effect is one `record_slot` plus two `allocate_slot` calls plus one
@@ -37,7 +37,7 @@
 // what `checked_step_offset` actually constructs on overflow — see
 // part_12.rs:199-212), and `CompileError::StepIndexOutOfRange` is at
 // crates/vb_compile/src/mod_compile_errors/kind.rs:126 (what `checked_body_length_offset` constructs when
-// body_len+extra overflows u16 — see bounded_collect.rs:109-115).
+// body_len+extra overflows u16 — see bounded_collect.rs:105-111).
 // The spec lemmas are grounded in the production `StepIdx` contract
 // via `assume_specification` bridges.
 //
@@ -95,7 +95,7 @@
 //   - `StepIdx::new(value: u16) -> Self`        <- crates/vb_core/src/ids/mod.rs:36-36
 //   - `StepIdx::get(self) -> u16`               <- crates/vb_core/src/ids/mod.rs:70-70
 //   - `StepIdx::checked_add`                    <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206
-//                                                  (used at bounded_collect.rs:117-127
+//                                                  (used at bounded_collect.rs:113-123
 //                                                   via the `checked_step_offset`
 //                                                   wrapper at part_12.rs:199-212)
 //   - `CompileError::PrimitiveLoweringLimitExceeded`
@@ -109,11 +109,11 @@
 //                                                  (the exact variant produced by
 //                                                  `checked_body_length_offset` when
 //                                                  body_len+extra overflows u16)
-//   - `lower_bounded_collect`                   <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277
+//   - `lower_bounded_collect`                   <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:255-275
 //                                                  (plan build + start/body/next/finish emission;
 //                                                  edges computed by plan_compute_edges,
-//                                                  bounded_collect.rs:117-127)
-//   - `lower_bounded_collect_offsets`           <- bounded_collect.rs:117-127 (inlined)
+//                                                  bounded_collect.rs:113-123)
+//   - `lower_bounded_collect_offsets`           <- bounded_collect.rs:113-123 (inlined)
 //                                                  (mirror of `plan_compute_edges`:
 //                                                  body=id+1, advance=id+body_len+1,
 //                                                  done=id+body_len+2)
@@ -151,10 +151,10 @@
 //
 // The projection models the scalar-determined sub-decision only:
 // body emptiness, edge arithmetic, and the slot budget. Variable-name
-// and capture validation (bounded_collect.rs:53-77), source
-// resolution (bounded_collect.rs:40-51), bounds validation
-// (pages/items, bounded_collect.rs:129-145), and body emission
-// errors (bounded_collect.rs:196-220) are not scalar-determined and
+// and capture validation (bounded_collect.rs:51-73), source
+// resolution (bounded_collect.rs:42-49), bounds validation
+// (pages/items, bounded_collect.rs:125-141), and body emission
+// errors (bounded_collect.rs:192-218) are not scalar-determined and
 // stay outside the projection: `ok == true` here means the
 // edge/slot/body-emptiness sub-decision succeeds, not that the full
 // production fn returns `Ok`. In particular the projection takes
@@ -215,7 +215,7 @@ use vstd::prelude::*;
 // so the projection is nameable in spec mode.
 //
 // DRIFT POLICY: This mirror MUST be regenerated from
-// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277`
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:255-275`
 // whenever production changes. Section headers cite the originating
 // production line range so regeneration is mechanical.
 
@@ -256,11 +256,11 @@ verus! {
 //     `u32`, not `u16`: production stores nodes in a `Vec`, so the
 //     count is not u16-bound.
 //   - `collector_slot` / `finish_slot` mirror the two slots
-//     `allocate_collect_slots` returns (bounded_collect.rs:147-155).
+//     `allocate_collect_slots` returns (bounded_collect.rs:143-151).
 //     Under the fresh-source assumption they are
 //     `pre_slot_count + 1` and `pre_slot_count + 2`.
 //   - `start_*` mirrors the `CollectStart` node pushed by
-//     `emit_start` (bounded_collect.rs:181-194): id, source, limit,
+//     `emit_start` (bounded_collect.rs:177-190): id, source, limit,
 //     page_size, body and done edges. Its output slot is the
 //     collector slot.
 //   - `body_first_step_id` / `body_last_step_id` mirror the ids
@@ -269,10 +269,10 @@ verus! {
 //     mirror the slots those steps allocate
 //     (`pre_slot_count + 3 + i` under the fresh-source assumption).
 //   - `next_*` mirrors the `CollectNext` node pushed by `emit_next`
-//     (bounded_collect.rs:222-233): advance id, collector slot,
+//     (bounded_collect.rs:220-231): advance id, collector slot,
 //     body and done edges.
 //   - `finish_*` mirrors the `CollectFinish` node pushed by
-//     `emit_finish` (bounded_collect.rs:235-244): done id and
+//     `emit_finish` (bounded_collect.rs:233-242): done id and
 //     collector slot. Its output slot is the finish slot, which is
 //     also the fn return value.
 //   - `node_0_kind` / `next_kind` / `finish_kind` mirror the
@@ -406,13 +406,13 @@ fn failure_outcome(error_kind: u8, pre_slot_count: u16) -> SpecCollectIROutcome 
 /// Mirror of `lower_bounded_collect(index: usize, id: StepIdx,
 /// config: CollectLowering<'_>, builder: &mut SlotCompiler) ->
 /// Result<SlotIdx, CompileErrors>` at
-/// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277`.
+/// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:255-275`.
 ///
 /// The projection returns `SpecCollectIROutcome` (a `Copy` struct) so
 /// the spec proofs can reason about its fields directly. The body
 /// reproduces the production decision shape in production order:
-/// `validate_body` (bounded_collect.rs:79-103) rejects an empty body,
-/// then `plan_compute_edges` (bounded_collect.rs:117-127) computes
+/// `validate_body` (bounded_collect.rs:75-99) rejects an empty body,
+/// then `plan_compute_edges` (bounded_collect.rs:113-123) computes
 /// body, advance, done in order, then the full-call slot budget is
 /// checked, then the three fixed nodes plus body emission are
 /// described by the success outcome.

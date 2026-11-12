@@ -8,7 +8,7 @@
 // PRODUCTION BINDING (GOD RULE 2 compliance)
 // ============================================================================
 // Target: production exec fn `lower_bounded_collect` in
-// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277`.
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:255-275`.
 //
 // The production exec fn emits 3 + body_node_count CompiledNode
 // entries on the success path:
@@ -28,7 +28,7 @@
 //        } with output slot finish_slot
 //
 // The collector slot and the finish slot are the two slots
-// `allocate_collect_slots` returns (bounded_collect.rs:147-155);
+// `allocate_collect_slots` returns (bounded_collect.rs:143-151);
 // under the fresh-source assumption they are pre_slot_count + 1 and
 // pre_slot_count + 2. The fn returns the finish slot.
 //
@@ -64,8 +64,8 @@
 //   - `StepIdx::new`                       <- crates/vb_core/src/ids/mod.rs:36-36
 //   - `StepIdx::get`                       <- crates/vb_core/src/ids/mod.rs:70-70
 //   - `StepIdx::checked_add`               <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206
-//   - `lower_bounded_collect`              <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277
-//   - `plan_compute_edges`                 <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:117-127
+//   - `lower_bounded_collect`              <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:255-275
+//   - `plan_compute_edges`                 <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:113-123
 //   - `CollectStart` / `CollectNext` /
 //     `CollectFinish`                      <- crates/vb_core/src/workflow/mod.rs:1264-1284
 //   - `SlotCompiler::record_slot`          <- crates/vb_compile/src/mod_compile_lowering/part_08.rs:111-117
@@ -873,7 +873,7 @@ pub exec fn checked_prod_lower_bounded_collect_ir(
 /// PO-012 / L1: The emitted node ids are id (CollectStart), id+1 ..
 /// id+body_len (body), id+body_len+1 (CollectNext), id+body_len+2
 /// (CollectFinish). This matches the production
-/// `plan_compute_edges` arithmetic at bounded_collect.rs:117-127 and
+/// `plan_compute_edges` arithmetic at bounded_collect.rs:113-123 and
 /// the per-step ids `emit_scoped_flat_body` assigns at
 /// canonical_branch_body.rs:20-42.
 pub proof fn lemma_collect_node_ids(
@@ -1728,7 +1728,7 @@ pub proof fn lemma_collect_full_emission_chain(
 /// `ok = false` with `error_kind = SPEC_ERR_LIMIT_EXCEEDED` and emits
 /// no nodes. This matches the production's
 /// `CompileError::PrimitiveLoweringLimitExceeded` from
-/// `checked_step_offset(id, 1)` at bounded_collect.rs:117-127.
+/// `checked_step_offset(id, 1)` at bounded_collect.rs:113-123.
 pub proof fn lemma_collect_id_overflow_fails(
     id: int,
     source: int,
@@ -1782,7 +1782,7 @@ pub proof fn lemma_collect_id_overflow_fails(
 /// `ok = false` with `error_kind = SPEC_ERR_STEP_SHAPE` and emits no
 /// nodes. This matches the production's `CompileError::StepFieldShape`
 /// from `validate_body` requiring a non-empty body at
-/// bounded_collect.rs:79-103.
+/// bounded_collect.rs:75-99.
 pub proof fn lemma_collect_body_shape_fails(
     id: int,
     source: int,
@@ -1836,7 +1836,7 @@ pub proof fn lemma_collect_body_shape_fails(
 /// nodes. This matches the production's
 /// `CompileError::StepIndexOutOfRange` from
 /// `checked_body_length_offset(body_len, 1)` at
-/// bounded_collect.rs:109-115.
+/// bounded_collect.rs:105-111.
 pub proof fn lemma_collect_body_length_overflow_fails(
     id: int,
     source: int,

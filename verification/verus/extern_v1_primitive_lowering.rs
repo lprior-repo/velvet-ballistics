@@ -38,7 +38,7 @@
 //   - lower_choose        <- crates/vb_compile/src/mod_compile_lowering/part_06.rs:22-51
 //   - lower_for_each      <- crates/vb_compile/src/mod_compile_lowering/part_06.rs:54-90
 //   - lower_together      <- crates/vb_compile/src/mod_compile_lowering/part_06.rs:93-127
-//   - lower_collect       <- bounded_collect.rs:257-277
+//   - lower_collect       <- bounded_collect.rs:255-275
 //   - lower_reduce        <- crates/vb_compile/src/mod_compile_lowering/part_06.rs:135-178
 //   - lower_repeat        <- crates/vb_compile/src/mod_compile_lowering/part_07.rs:17-56
 //   - lower_wait          <- crates/vb_compile/src/mod_compile_lowering/part_07.rs:75-95
