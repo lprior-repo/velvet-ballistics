@@ -2,7 +2,6 @@
 # Format: <file_path>|<owner>|<split_bead>|<removal_plan>|<reason>
 # Each over-limit file must have a validated entry or be split below its category limit.
 # Rows below are the pre-existing over-limit baseline on main d3110dd2 (2026-11-05), captured by the source-length gate; splits are future work tracked under vb-srclen.
-crates/vb_compile/src/expression_bytecode_tests.rs|lewis|vb-srclen|split-after-ledger-landing|test_in_src 1972 lines (limit 1500) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_compile/src/mod_compile_lowering/tests.rs|lewis|vb-srclen|split-after-ledger-landing|test_in_src 1635 lines (limit 1500) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_compile/tests/v1_primitive_lowering.rs|lewis|vb-srclen|split-after-ledger-landing|test_top_level 3030 lines (limit 3000) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 crates/vb_core/src/diagnostic.rs|lewis|vb-srclen|split-after-ledger-landing|production 2100 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
