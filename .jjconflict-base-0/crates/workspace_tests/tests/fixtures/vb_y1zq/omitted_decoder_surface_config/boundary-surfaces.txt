@@ -1,0 +1,2 @@
+ipc-frame-boundary
+external-binary-boundary

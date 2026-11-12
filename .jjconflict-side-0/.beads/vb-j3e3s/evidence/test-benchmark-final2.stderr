@@ -1,0 +1,10 @@
+   Compiling xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-deepseek-repair/xtask)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.53s
+     Running unittests src/lib.rs (xtask/target/debug/deps/xtask-5cd0d99a04fede72)
+     Running unittests src/main.rs (xtask/target/debug/deps/xtask-37187e753dbc8725)
+     Running tests/benchmark_policy_cli.rs (xtask/target/debug/deps/benchmark_policy_cli-df7a6a721edb856d)
+     Running tests/bundle_tests.rs (xtask/target/debug/deps/bundle_tests-c733bba5a7957094)
+     Running tests/integration_gates.rs (xtask/target/debug/deps/integration_gates-7d02896bb9e82218)
+     Running tests/ui_release_errors.rs (xtask/target/debug/deps/ui_release_errors-20d1528c14012143)
+     Running tests/ui_release_gates.rs (xtask/target/debug/deps/ui_release_gates-72a0655b1249b199)
+     Running tests/ui_release_tooling_red_phase.rs (xtask/target/debug/deps/ui_release_tooling_red_phase-24ec4344982207cc)

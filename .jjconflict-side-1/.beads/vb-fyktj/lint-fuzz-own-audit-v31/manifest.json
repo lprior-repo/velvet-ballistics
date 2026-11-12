@@ -1,0 +1,26 @@
+{
+  "base": "07b363ed319863cddacb58653bca9433ff2c76f6",
+  "tips": [
+    "a46c3723dc467807ac34f590550c36b6c539fb19",
+    "62a2f47c2f2874d39dcb61466698e3f737e7d316",
+    "c56283c9639f511e01d407a950592070aaf5e566"
+  ],
+  "packets": [
+    ".beads/vb-fyktj/lint-fuzz-own-audit-v31/a46c3723dc-own.patch.txt",
+    ".beads/vb-fyktj/lint-fuzz-own-audit-v31/62a2f47c2f-own.patch.txt",
+    ".beads/vb-fyktj/lint-fuzz-own-audit-v31/c56283c963-own.patch.txt",
+    ".beads/vb-fyktj/lint-fuzz-own-audit-v31/current-01-001.txt",
+    ".beads/vb-fyktj/lint-fuzz-own-audit-v31/current-01-101.txt",
+    ".beads/vb-fyktj/lint-fuzz-own-audit-v31/current-01-201.txt",
+    ".beads/vb-fyktj/lint-fuzz-own-audit-v31/current-02-001.txt",
+    ".beads/vb-fyktj/lint-fuzz-own-audit-v31/current-02-101.txt",
+    ".beads/vb-fyktj/lint-fuzz-own-audit-v31/current-03-001.txt",
+    ".beads/vb-fyktj/lint-fuzz-own-audit-v31/current-04-001.txt",
+    ".beads/vb-fyktj/lint-fuzz-own-audit-v31/current-05-001.txt",
+    ".beads/vb-fyktj/lint-fuzz-own-audit-v31/current-06-001.txt",
+    ".beads/vb-fyktj/lint-fuzz-own-audit-v31/current-07-001.txt",
+    ".beads/vb-fyktj/lint-fuzz-own-audit-v31/current-07-101.txt",
+    ".beads/vb-fyktj/lint-fuzz-own-audit-v31/current-07-201.txt"
+  ],
+  "scope": "OWN deltas only, inherited branch deltas unresolved"
+}

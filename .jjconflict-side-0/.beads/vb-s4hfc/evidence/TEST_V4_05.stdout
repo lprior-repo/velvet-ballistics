@@ -1,0 +1,39 @@
+
+running 14 tests
+test distinct_nonzero_digests ... ok
+test all_decision_enum_variants_round_trip ... ok
+test envelope_kind_mismatch_rejected ... ok
+test journal_seq_not_ticket_seq ... ok
+test influence_state_values_distinct ... ok
+test malformed_payload_rejected ... ok
+test old_tag_10_fixture_unchanged ... ok
+test neutral_policy_fact_does_not_reset_lifecycle ... FAILED
+test truncated_payload_rejected ... ok
+test run_envelope_mismatch_protected ... FAILED
+test policy_decision_event_round_trip ... ok
+test fjall_persistence_survives_reopen ... ok
+test multiple_ordered_policy_events ... ok
+test all_outcome_layers_taints_round_trip ... ok
+
+failures:
+
+---- neutral_policy_fact_does_not_reset_lifecycle stdout ----
+
+thread 'neutral_policy_fact_does_not_reset_lifecycle' (3244883) panicked at crates/vb_storage/tests/policy_decision_full_record.rs:516:5:
+assertion `left == right` failed: Policy decision after Failed should preserve Failed state
+  left: Active
+ right: Failed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- run_envelope_mismatch_protected stdout ----
+
+thread 'run_envelope_mismatch_protected' (3244886) panicked at crates/vb_storage/tests/policy_decision_full_record.rs:310:5:
+run envelope mismatch should be rejected; got Ok
+
+
+failures:
+    neutral_policy_fact_does_not_reset_lifecycle
+    run_envelope_mismatch_protected
+
+test result: FAILED. 12 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

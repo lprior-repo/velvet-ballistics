@@ -1,0 +1,11 @@
+{
+  "fixed_candidate": "9d4cf426132d47cfd2c0aaf0060a91b6940286a5",
+  "unfixed_production_source": "834c3c043daff6234e741d425eea0d89b0136547",
+  "files": {
+    "crates/vb_runtime/tests/policy_pin_durable_recovery.rs": "20142767cd6b6ba8d0fcf8493ed7cf3d186da113b0b4566463fbee2d7a8545e7",
+    "crates/vb_runtime/src/shard/lifecycle/chunk_001.rs": "a2d70494021487b73c02b32cd8ec7c956038b778b1ac8121ca77d0e4f1482f7d",
+    "crates/vb_runtime/src/recovery/full/admission.rs": "ccc2b1c56101e5f5ddba7fcba729b47e1b313ea57483333a7dd786e0bab13740",
+    "crates/vb_runtime/src/recovery/full.rs": "5ceef2b4dec9e19ec605242e4b370bef9e6d0984e88a6a861a5edb65912defdf",
+    "crates/vb_runtime/src/recovery.rs": "7bbe2a28545b35a4ce3444e588ba1dffe4bc3cb1796d1882148335e881590739"
+  }
+}

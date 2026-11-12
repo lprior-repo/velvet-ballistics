@@ -1,0 +1,21 @@
+{
+  "published_main": "775bbb38f83428ea0025cf6a260a12711c26fb6d",
+  "verified_at_utc": "2026-10-22T13:08:02.104705+00:00",
+  "beads_closed": [
+    "vb-8li6d",
+    "vb-hz0p6",
+    "vb-ef0hg",
+    "vb-9qdjg",
+    "vb-aelha",
+    "vb-oxzbo"
+  ],
+  "dolt_push": "actual push completed after six closes",
+  "source_sha256": "ccac03cccff3787bcd57aab6603dd61709c1be85cd236a89c5a511ce84f1d1ba",
+  "scope": "CLI lifecycle test isolation, independent reviews, v1 gap audit and measured-source benchmark evidence",
+  "acceptance": "80 tests, killed shared-helper mutation,16 canonical scoped tasks,66 rawmeasurement checks",
+  "not_complete": [
+    "vb-ny068 live-effect authorization and replay separation",
+    "remaining v1 production and formal acceptance work"
+  ],
+  "preservation": "no prior stashes, models, durable data or worktrees removed; oversized decompressed traces kept outside Git with compressed equivalents and hashes tracked"
+}

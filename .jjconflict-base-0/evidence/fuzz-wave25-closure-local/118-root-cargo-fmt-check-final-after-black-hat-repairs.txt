@@ -1,0 +1,3 @@
+COMMAND: cargo fmt --all -- --check
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+EXIT_STATUS=0

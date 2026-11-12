@@ -1,0 +1,230 @@
+{
+  "status": "BOUNDED_OWN_PATCH_REPRESENTED_NO_RESTORATION_NEEDED",
+  "current_source": "0dd55b94cbdd05c21951e6e239313d393816a99d",
+  "historical_own_commit": "0f71f398cf66a3c8acb881826683aa36f6d7c850",
+  "scope": "Only6file owncommit delta. Actualproductionframe_pool wholefilebyteidentical. All183nonempty addedlines present179exact and4whitespacewrapped inonehunk; actual23Gitunifiedhunks vspriorwrong30/31 corrected. Local3090 reads source/assertions, notname-only. No source modified.",
+  "hunks": [
+    {
+      "path": "crates/vb_runtime/src/frame_pool.rs",
+      "file_hunk": 1,
+      "header": "@@ -24,45 +24,61 @@ pub struct FramePool {",
+      "nonempty_added_lines": 37,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "file_hunk": 1,
+      "header": "@@ -41,7 +41,7 @@ fn pool_rejects_excessive_capacity() {",
+      "nonempty_added_lines": 1,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "file_hunk": 2,
+      "header": "@@ -57,7 +57,7 @@ fn release_and_reuse_frame() {",
+      "nonempty_added_lines": 1,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "file_hunk": 3,
+      "header": "@@ -68,45 +68,85 @@ fn release_drops_when_at_capacity() {",
+      "nonempty_added_lines": 54,
+      "added_lines_not_exact": [
+        "    assert_eq!(pool.is_empty(), false, \"pool is pre-allocated with capacity frames\");",
+        "    assert_eq!(pool.available(), 8, \"all 8 frames pre-allocated at construction\");",
+        "    let _f1 = pool.take(RunId::new(1), StepIdx::new(0)).expect(\"first take\");",
+        "    let _f2 = pool.take(RunId::new(2), StepIdx::new(0)).expect(\"second take\");"
+      ],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "file_hunk": 4,
+      "header": "@@ -114,9 +154,9 @@ fn frame_pool_new_creates_pool_with_capacity() {",
+      "nonempty_added_lines": 2,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "file_hunk": 5,
+      "header": "@@ -141,7 +181,7 @@ fn frame_pool_release_returns_frame_to_pool() {",
+      "nonempty_added_lines": 1,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "file_hunk": 6,
+      "header": "@@ -153,7 +193,7 @@ fn frame_pool_is_empty_when_all_acquired() {",
+      "nonempty_added_lines": 1,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "file_hunk": 7,
+      "header": "@@ -176,7 +216,7 @@ fn frame_pool_is_not_empty_after_release() {",
+      "nonempty_added_lines": 1,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "file_hunk": 8,
+      "header": "@@ -238,11 +278,11 @@ fn frame_pool_multiple_release_and_take_cycle() {",
+      "nonempty_added_lines": 2,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "file_hunk": 9,
+      "header": "@@ -275,13 +315,13 @@ fn frame_pool_new_with_different_slot_counts() {",
+      "nonempty_added_lines": 4,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "file_hunk": 10,
+      "header": "@@ -420,12 +460,12 @@ fn frame_pool_reused_frame_clears_prior_state() {",
+      "nonempty_added_lines": 3,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "file_hunk": 11,
+      "header": "@@ -442,33 +482,42 @@ fn frame_pool_capacity_is_const() {",
+      "nonempty_added_lines": 19,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "file_hunk": 12,
+      "header": "@@ -488,23 +537,21 @@ fn frame_pool_release_never_panics_or_overflows_capacity() {",
+      "nonempty_added_lines": 11,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "file_hunk": 13,
+      "header": "@@ -572,13 +619,14 @@ fn frame_pool_take_release_take_preserves_pool_consistency_under_rapid_cycle() {",
+      "nonempty_added_lines": 5,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "file_hunk": 14,
+      "header": "@@ -608,7 +656,7 @@ fn frame_pool_large_capacity_at_boundary_succeeds() {",
+      "nonempty_added_lines": 1,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "file_hunk": 15,
+      "header": "@@ -633,24 +681,27 @@ fn frame_pool_reused_frame_step_count_matches_pool_config() {",
+      "nonempty_added_lines": 8,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "file_hunk": 16,
+      "header": "@@ -658,20 +709,18 @@ fn frame_pool_concurrent_dimension_pools_do_not_interfere() {",
+      "nonempty_added_lines": 11,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_003.rs",
+      "file_hunk": 1,
+      "header": "@@ -107,7 +107,8 @@ fn finished_run_releases_frame_to_dimension_pool() -> Result<(), String> {",
+      "nonempty_added_lines": 2,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_003.rs",
+      "file_hunk": 2,
+      "header": "@@ -129,7 +130,8 @@ fn cancelled_run_releases_frame_to_dimension_pool() -> Result<(), String> {",
+      "nonempty_added_lines": 2,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_003.rs",
+      "file_hunk": 3,
+      "header": "@@ -139,7 +141,8 @@ fn cancelled_run_releases_frame_to_dimension_pool() -> Result<(), String> {",
+      "nonempty_added_lines": 2,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_010.rs",
+      "file_hunk": 1,
+      "header": "@@ -30,11 +30,12 @@ fn shard_submit_run_reuses_frame_from_pool_after_prior_finish() {",
+      "nonempty_added_lines": 3,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_017.rs",
+      "file_hunk": 1,
+      "header": "@@ -194,21 +194,23 @@ fn bh_shd_06_submit_with_inputs_writes_slots_before_validation() {",
+      "nonempty_added_lines": 8,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_024.rs",
+      "file_hunk": 1,
+      "header": "@@ -174,16 +174,18 @@ fn vb1u88_cancel_removes_run_and_releases_frame() {",
+      "nonempty_added_lines": 4,
+      "added_lines_not_exact": [],
+      "all_added_lines_found_after_whitespace_normalization": true
+    }
+  ],
+  "limitations": [
+    "Line presence and whitespace normalization are preservation diagnostics, not independent behavioral proof.",
+    "No allocator instrumentation or performance claim; existingcycle test doesnotprovezeroallocations.",
+    "Existingearlyreturnweakness inoldtestsnotrepairedbythisaudit.",
+    "No test execution inthisworkspace andno inheritedbranchdelta/fullv1 closure.",
+    "Model historicalowncommit language means commit delta only; reviewer didnotauthor historicalcommit."
+  ],
+  "source_hashes": [
+    {
+      "path": "crates/vb_runtime/src/frame_pool.rs",
+      "sha256": "41cfca92f4c06ec83b7dda5e15b51511efef96a54fb0eacba2d0f050771d6b38"
+    },
+    {
+      "path": "crates/vb_runtime/src/frame_pool/tests.rs",
+      "sha256": "c3c85205d92faff7de7fe5084004b47249d112e9d6697bd2a8d3a531015b0651"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_003.rs",
+      "sha256": "45b3a2de092badd05413907e337da84bf85152b2f2ccfbef7495475df32ecc80"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_010.rs",
+      "sha256": "59a93399ae80c160cf093bf1988bc8b391e5c0cadb0a5c3f86a0c30381f70595"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_017.rs",
+      "sha256": "5823f93b8e782c62e23fd887369e26a082f69fdec7b4685d6120cc3f68203dc7"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_024.rs",
+      "sha256": "fe5db185fb49e344d929294fdecb2f17110ed94329d0e3d80b72ee4bdc86c2fb"
+    }
+  ]
+}

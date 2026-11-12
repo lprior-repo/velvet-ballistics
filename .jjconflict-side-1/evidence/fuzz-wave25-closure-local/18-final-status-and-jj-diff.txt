@@ -1,0 +1,376 @@
++zsh:1> pwd
+/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
++zsh:1> git rev-parse --show-toplevel
+/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
++zsh:1> jj root
+/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
++zsh:1> jj status
+Working copy changes:
+M .gitignore
+A evidence/fuzz-wave25-closure-local/00-root-checks.txt
+A evidence/fuzz-wave25-closure-local/01-env-disk-targets.txt
+A evidence/fuzz-wave25-closure-local/02-root-cargo-fmt-check.txt
+A evidence/fuzz-wave25-closure-local/03-fuzz-cargo-fmt-check.txt
+A evidence/fuzz-wave25-closure-local/04-root-cargo-metadata-locked.txt
+A evidence/fuzz-wave25-closure-local/05-fuzz-cargo-metadata-locked.txt
+A evidence/fuzz-wave25-closure-local/06-root-cargo-clippy-strict.txt
+A evidence/fuzz-wave25-closure-local/07-fuzz-cargo-clippy-strict-all-targets.txt
+A evidence/fuzz-wave25-closure-local/08-fuzz-cargo-clippy-warnings-all-targets.txt
+A evidence/fuzz-wave25-closure-local/09-cargo-fuzz-build-all-targets.txt
+A evidence/fuzz-wave25-closure-local/10-key-targets-libfuzzer-asan-smoke.txt
+A evidence/fuzz-wave25-closure-local/11-replay-events-timeout-artifact-repro-timeout60.txt
+A evidence/fuzz-wave25-closure-local/12-replay-events-libfuzzer-asan-smoke-timeout60.txt
+A evidence/fuzz-wave25-closure-local/13-key-targets-libfuzzer-asan-passing-smoke.txt
+A evidence/fuzz-wave25-closure-local/14-fjall-and-fuzz-lock-preservation.txt
+A evidence/fuzz-wave25-closure-local/15-root-cargo-check-all-targets-all-features.txt
+A evidence/fuzz-wave25-closure-local/16-fuzz-cargo-check-all-targets-all-features.txt
+A evidence/fuzz-wave25-closure-local/17-evidence-tracking-check.txt
+A evidence/fuzz-wave25-closure-local/18-final-status-and-jj-diff.txt
+A evidence/fuzz-wave25-closure-local/19-root-cargo-test-no-run-all-features.txt
+A evidence/fuzz-wave25-closure-local/20-root-cargo-test-all-features.txt
+A evidence/fuzz-wave25-closure-local/21-fuzz-cargo-test-all-features.txt
+A evidence/fuzz-wave25-closure-local/evidence-package.md
+A fuzz/Cargo.lock
+M fuzz/Cargo.toml
+M fuzz/fuzz_targets/canonical_digest_ask.rs
+M fuzz/fuzz_targets/check_doc_taint_consistency_accepts_arbitrary_markdown.rs
+M fuzz/fuzz_targets/choose_lowering_fuzzer.rs
+M fuzz/fuzz_targets/decode_record.rs
+M fuzz/fuzz_targets/expr_eval.rs
+M fuzz/fuzz_targets/expression.rs
+M fuzz/fuzz_targets/fuzz_choose_depth.rs
+M fuzz/fuzz_targets/fuzz_choose_when_parse.rs
+M fuzz/fuzz_targets/fuzz_collect_lowering.rs
+M fuzz/fuzz_targets/fuzz_finish_digest_encoding.rs
+M fuzz/fuzz_targets/fuzz_for_each_lowering.rs
+M fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs
+M fuzz/fuzz_targets/fuzz_retry_postcard_codec.rs
+M fuzz/fuzz_targets/fuzz_retry_record_attempt.rs
+M fuzz/fuzz_targets/fuzz_retry_validate_completion.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_digest.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_header.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_kind_family.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_payload_corruption.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_roundtrip.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_schema_version.rs
+M fuzz/fuzz_targets/ipc_frame.rs
+M fuzz/fuzz_targets/journal_decode.rs
+M fuzz/fuzz_targets/journal_event.rs
+M fuzz/fuzz_targets/kind_validation.rs
+M fuzz/fuzz_targets/parse_workflow_source_fuzz.rs
+M fuzz/fuzz_targets/span_bridge_fuzz.rs
+M fuzz/fuzz_targets/tooling_flux_check_selector.rs
+M fuzz/fuzz_targets/tooling_guard_zero_parser.rs
+M fuzz/fuzz_targets/tooling_kani_list_args.rs
+M fuzz/fuzz_targets/vb_rpch_hydrate_events_fuzz.rs
+M fuzz/fuzz_targets/vb_rpch_hydrate_snapshot_tail_fuzz.rs
+M fuzz/fuzz_targets/vb_rpch_replay_events_fuzz.rs
+M fuzz/fuzz_targets/vb_rpch_seed_dimensions_fuzz.rs
+A fuzz/fuzz_targets/vb_rpch_slot_extra_collect_fuzz.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_001.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_002.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_003.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_004.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_005.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_007.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_008.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_009.rs
+M fuzz/fuzz_targets/wait_digest_exhaustive_collision.rs
+M fuzz/fuzz_targets/wait_digest_sensitivity.rs
+M fuzz/fuzz_targets/wait_sentinel_collision.rs
+M fuzz/src/expression_target.rs
+M fuzz/src/ipc_target.rs
+M fuzz/src/journal_target/admission.rs
+M fuzz/src/journal_target/errors.rs
+M fuzz/src/journal_target/event.rs
+M fuzz/src/journal_target/persisted.rs
+M fuzz/src/journal_target/readback.rs
+M fuzz/src/lib.rs
+M fuzz/src/validation_target/capability.rs
+M fuzz/src/validation_target/verifier.rs
+M fuzz/src/workflow_target/accessor.rs
+M fuzz/src/workflow_target/budget.rs
+M fuzz/src/workflow_target/collect.rs
+M fuzz/src/workflow_target/node_slots.rs
+M fuzz/tests/proptest_digest_coherence.rs
+M fuzz/tests/proptest_ipc_error_exhaustiveness.rs
+M fuzz/tests/proptest_journal_error_exhaustiveness.rs
+M fuzz/tests/proptest_roundtrip_determinism.rs
+Working copy  (@) : vrsompwt f090f384 wave25 fuzz targets: vb-k7bsz vb-3or6p vb-i0fkp vb-1f4h3 vb-87qtk
+Parent commit (@-): lumrtywu c190b285 main main@origin | fix: align runtime recovery and shutdown tests
++zsh:1> git status --short
+ M .gitignore
+ A evidence/fuzz-wave25-closure-local/00-root-checks.txt
+ A evidence/fuzz-wave25-closure-local/01-env-disk-targets.txt
+ A evidence/fuzz-wave25-closure-local/02-root-cargo-fmt-check.txt
+ A evidence/fuzz-wave25-closure-local/03-fuzz-cargo-fmt-check.txt
+ A evidence/fuzz-wave25-closure-local/04-root-cargo-metadata-locked.txt
+ A evidence/fuzz-wave25-closure-local/05-fuzz-cargo-metadata-locked.txt
+ A evidence/fuzz-wave25-closure-local/06-root-cargo-clippy-strict.txt
+ A evidence/fuzz-wave25-closure-local/07-fuzz-cargo-clippy-strict-all-targets.txt
+ A evidence/fuzz-wave25-closure-local/08-fuzz-cargo-clippy-warnings-all-targets.txt
+ A evidence/fuzz-wave25-closure-local/09-cargo-fuzz-build-all-targets.txt
+ A evidence/fuzz-wave25-closure-local/10-key-targets-libfuzzer-asan-smoke.txt
+ A evidence/fuzz-wave25-closure-local/11-replay-events-timeout-artifact-repro-timeout60.txt
+ A evidence/fuzz-wave25-closure-local/12-replay-events-libfuzzer-asan-smoke-timeout60.txt
+ A evidence/fuzz-wave25-closure-local/13-key-targets-libfuzzer-asan-passing-smoke.txt
+ A evidence/fuzz-wave25-closure-local/14-fjall-and-fuzz-lock-preservation.txt
+ A evidence/fuzz-wave25-closure-local/15-root-cargo-check-all-targets-all-features.txt
+ A evidence/fuzz-wave25-closure-local/16-fuzz-cargo-check-all-targets-all-features.txt
+ A evidence/fuzz-wave25-closure-local/17-evidence-tracking-check.txt
+ A evidence/fuzz-wave25-closure-local/18-final-status-and-jj-diff.txt
+ A evidence/fuzz-wave25-closure-local/19-root-cargo-test-no-run-all-features.txt
+ A evidence/fuzz-wave25-closure-local/20-root-cargo-test-all-features.txt
+ A evidence/fuzz-wave25-closure-local/21-fuzz-cargo-test-all-features.txt
+ A evidence/fuzz-wave25-closure-local/evidence-package.md
+ A fuzz/Cargo.lock
+ M fuzz/Cargo.toml
+ M fuzz/fuzz_targets/canonical_digest_ask.rs
+ M fuzz/fuzz_targets/check_doc_taint_consistency_accepts_arbitrary_markdown.rs
+ M fuzz/fuzz_targets/choose_lowering_fuzzer.rs
+ M fuzz/fuzz_targets/decode_record.rs
+ M fuzz/fuzz_targets/expr_eval.rs
+ M fuzz/fuzz_targets/expression.rs
+ M fuzz/fuzz_targets/fuzz_choose_depth.rs
+ M fuzz/fuzz_targets/fuzz_choose_when_parse.rs
+ M fuzz/fuzz_targets/fuzz_collect_lowering.rs
+ M fuzz/fuzz_targets/fuzz_finish_digest_encoding.rs
+ M fuzz/fuzz_targets/fuzz_for_each_lowering.rs
+ M fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs
+ M fuzz/fuzz_targets/fuzz_retry_postcard_codec.rs
+ M fuzz/fuzz_targets/fuzz_retry_record_attempt.rs
+ M fuzz/fuzz_targets/fuzz_retry_validate_completion.rs
+ M fuzz/fuzz_targets/fuzz_storage_codec_digest.rs
+ M fuzz/fuzz_targets/fuzz_storage_codec_header.rs
+ M fuzz/fuzz_targets/fuzz_storage_codec_kind_family.rs
+ M fuzz/fuzz_targets/fuzz_storage_codec_payload_corruption.rs
+ M fuzz/fuzz_targets/fuzz_storage_codec_roundtrip.rs
+ M fuzz/fuzz_targets/fuzz_storage_codec_schema_version.rs
+ M fuzz/fuzz_targets/ipc_frame.rs
+ M fuzz/fuzz_targets/journal_decode.rs
+ M fuzz/fuzz_targets/journal_event.rs
+ M fuzz/fuzz_targets/kind_validation.rs
+ M fuzz/fuzz_targets/parse_workflow_source_fuzz.rs
+ M fuzz/fuzz_targets/span_bridge_fuzz.rs
+ M fuzz/fuzz_targets/tooling_flux_check_selector.rs
+ M fuzz/fuzz_targets/tooling_guard_zero_parser.rs
+ M fuzz/fuzz_targets/tooling_kani_list_args.rs
+ M fuzz/fuzz_targets/vb_rpch_hydrate_events_fuzz.rs
+ M fuzz/fuzz_targets/vb_rpch_hydrate_snapshot_tail_fuzz.rs
+ M fuzz/fuzz_targets/vb_rpch_replay_events_fuzz.rs
+ M fuzz/fuzz_targets/vb_rpch_seed_dimensions_fuzz.rs
+ A fuzz/fuzz_targets/vb_rpch_slot_extra_collect_fuzz.rs
+ M fuzz/fuzz_targets/vb_vzcuf_PS_001.rs
+ M fuzz/fuzz_targets/vb_vzcuf_PS_002.rs
+ M fuzz/fuzz_targets/vb_vzcuf_PS_003.rs
+ M fuzz/fuzz_targets/vb_vzcuf_PS_004.rs
+ M fuzz/fuzz_targets/vb_vzcuf_PS_005.rs
+ M fuzz/fuzz_targets/vb_vzcuf_PS_007.rs
+ M fuzz/fuzz_targets/vb_vzcuf_PS_008.rs
+ M fuzz/fuzz_targets/vb_vzcuf_PS_009.rs
+ M fuzz/fuzz_targets/wait_digest_exhaustive_collision.rs
+ M fuzz/fuzz_targets/wait_digest_sensitivity.rs
+ M fuzz/fuzz_targets/wait_sentinel_collision.rs
+ M fuzz/src/expression_target.rs
+ M fuzz/src/ipc_target.rs
+ M fuzz/src/journal_target/admission.rs
+ M fuzz/src/journal_target/errors.rs
+ M fuzz/src/journal_target/event.rs
+ M fuzz/src/journal_target/persisted.rs
+ M fuzz/src/journal_target/readback.rs
+ M fuzz/src/lib.rs
+ M fuzz/src/validation_target/capability.rs
+ M fuzz/src/validation_target/verifier.rs
+ M fuzz/src/workflow_target/accessor.rs
+ M fuzz/src/workflow_target/budget.rs
+ M fuzz/src/workflow_target/collect.rs
+ M fuzz/src/workflow_target/node_slots.rs
+ M fuzz/tests/proptest_digest_coherence.rs
+ M fuzz/tests/proptest_ipc_error_exhaustiveness.rs
+ M fuzz/tests/proptest_journal_error_exhaustiveness.rs
+ M fuzz/tests/proptest_roundtrip_determinism.rs
++zsh:1> jj diff --summary
+M .gitignore
+A evidence/fuzz-wave25-closure-local/00-root-checks.txt
+A evidence/fuzz-wave25-closure-local/01-env-disk-targets.txt
+A evidence/fuzz-wave25-closure-local/02-root-cargo-fmt-check.txt
+A evidence/fuzz-wave25-closure-local/03-fuzz-cargo-fmt-check.txt
+A evidence/fuzz-wave25-closure-local/04-root-cargo-metadata-locked.txt
+A evidence/fuzz-wave25-closure-local/05-fuzz-cargo-metadata-locked.txt
+A evidence/fuzz-wave25-closure-local/06-root-cargo-clippy-strict.txt
+A evidence/fuzz-wave25-closure-local/07-fuzz-cargo-clippy-strict-all-targets.txt
+A evidence/fuzz-wave25-closure-local/08-fuzz-cargo-clippy-warnings-all-targets.txt
+A evidence/fuzz-wave25-closure-local/09-cargo-fuzz-build-all-targets.txt
+A evidence/fuzz-wave25-closure-local/10-key-targets-libfuzzer-asan-smoke.txt
+A evidence/fuzz-wave25-closure-local/11-replay-events-timeout-artifact-repro-timeout60.txt
+A evidence/fuzz-wave25-closure-local/12-replay-events-libfuzzer-asan-smoke-timeout60.txt
+A evidence/fuzz-wave25-closure-local/13-key-targets-libfuzzer-asan-passing-smoke.txt
+A evidence/fuzz-wave25-closure-local/14-fjall-and-fuzz-lock-preservation.txt
+A evidence/fuzz-wave25-closure-local/15-root-cargo-check-all-targets-all-features.txt
+A evidence/fuzz-wave25-closure-local/16-fuzz-cargo-check-all-targets-all-features.txt
+A evidence/fuzz-wave25-closure-local/17-evidence-tracking-check.txt
+A evidence/fuzz-wave25-closure-local/18-final-status-and-jj-diff.txt
+A evidence/fuzz-wave25-closure-local/19-root-cargo-test-no-run-all-features.txt
+A evidence/fuzz-wave25-closure-local/20-root-cargo-test-all-features.txt
+A evidence/fuzz-wave25-closure-local/21-fuzz-cargo-test-all-features.txt
+A evidence/fuzz-wave25-closure-local/evidence-package.md
+A fuzz/Cargo.lock
+M fuzz/Cargo.toml
+M fuzz/fuzz_targets/canonical_digest_ask.rs
+M fuzz/fuzz_targets/check_doc_taint_consistency_accepts_arbitrary_markdown.rs
+M fuzz/fuzz_targets/choose_lowering_fuzzer.rs
+M fuzz/fuzz_targets/decode_record.rs
+M fuzz/fuzz_targets/expr_eval.rs
+M fuzz/fuzz_targets/expression.rs
+M fuzz/fuzz_targets/fuzz_choose_depth.rs
+M fuzz/fuzz_targets/fuzz_choose_when_parse.rs
+M fuzz/fuzz_targets/fuzz_collect_lowering.rs
+M fuzz/fuzz_targets/fuzz_finish_digest_encoding.rs
+M fuzz/fuzz_targets/fuzz_for_each_lowering.rs
+M fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs
+M fuzz/fuzz_targets/fuzz_retry_postcard_codec.rs
+M fuzz/fuzz_targets/fuzz_retry_record_attempt.rs
+M fuzz/fuzz_targets/fuzz_retry_validate_completion.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_digest.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_header.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_kind_family.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_payload_corruption.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_roundtrip.rs
+M fuzz/fuzz_targets/fuzz_storage_codec_schema_version.rs
+M fuzz/fuzz_targets/ipc_frame.rs
+M fuzz/fuzz_targets/journal_decode.rs
+M fuzz/fuzz_targets/journal_event.rs
+M fuzz/fuzz_targets/kind_validation.rs
+M fuzz/fuzz_targets/parse_workflow_source_fuzz.rs
+M fuzz/fuzz_targets/span_bridge_fuzz.rs
+M fuzz/fuzz_targets/tooling_flux_check_selector.rs
+M fuzz/fuzz_targets/tooling_guard_zero_parser.rs
+M fuzz/fuzz_targets/tooling_kani_list_args.rs
+M fuzz/fuzz_targets/vb_rpch_hydrate_events_fuzz.rs
+M fuzz/fuzz_targets/vb_rpch_hydrate_snapshot_tail_fuzz.rs
+M fuzz/fuzz_targets/vb_rpch_replay_events_fuzz.rs
+M fuzz/fuzz_targets/vb_rpch_seed_dimensions_fuzz.rs
+A fuzz/fuzz_targets/vb_rpch_slot_extra_collect_fuzz.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_001.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_002.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_003.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_004.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_005.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_007.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_008.rs
+M fuzz/fuzz_targets/vb_vzcuf_PS_009.rs
+M fuzz/fuzz_targets/wait_digest_exhaustive_collision.rs
+M fuzz/fuzz_targets/wait_digest_sensitivity.rs
+M fuzz/fuzz_targets/wait_sentinel_collision.rs
+M fuzz/src/expression_target.rs
+M fuzz/src/ipc_target.rs
+M fuzz/src/journal_target/admission.rs
+M fuzz/src/journal_target/errors.rs
+M fuzz/src/journal_target/event.rs
+M fuzz/src/journal_target/persisted.rs
+M fuzz/src/journal_target/readback.rs
+M fuzz/src/lib.rs
+M fuzz/src/validation_target/capability.rs
+M fuzz/src/validation_target/verifier.rs
+M fuzz/src/workflow_target/accessor.rs
+M fuzz/src/workflow_target/budget.rs
+M fuzz/src/workflow_target/collect.rs
+M fuzz/src/workflow_target/node_slots.rs
+M fuzz/tests/proptest_digest_coherence.rs
+M fuzz/tests/proptest_ipc_error_exhaustiveness.rs
+M fuzz/tests/proptest_journal_error_exhaustiveness.rs
+M fuzz/tests/proptest_roundtrip_determinism.rs
++zsh:1> jj diff --stat
+.gitignore                                         |    1 +
+...ce/fuzz-wave25-closure-local/00-root-checks.txt |  149 +
+...zz-wave25-closure-local/01-env-disk-targets.txt |  114 +
+...ave25-closure-local/02-root-cargo-fmt-check.txt |    3 +
+...ave25-closure-local/03-fuzz-cargo-fmt-check.txt |    3 +
+...closure-local/04-root-cargo-metadata-locked.txt |    4 +
+...closure-local/05-fuzz-cargo-metadata-locked.txt |    6 +
+...5-closure-local/06-root-cargo-clippy-strict.txt |  100 +
+...cal/07-fuzz-cargo-clippy-strict-all-targets.txt |  381 ++++
+...l/08-fuzz-cargo-clippy-warnings-all-targets.txt |    5 +
+...osure-local/09-cargo-fuzz-build-all-targets.txt |   19 +
+...e-local/10-key-targets-libfuzzer-asan-smoke.txt |  319 +++
+...lay-events-timeout-artifact-repro-timeout60.txt |   22 +
+...eplay-events-libfuzzer-asan-smoke-timeout60.txt |   20 +
+...13-key-targets-libfuzzer-asan-passing-smoke.txt |  213 ++
+...e-local/14-fjall-and-fuzz-lock-preservation.txt |   29 +
+...5-root-cargo-check-all-targets-all-features.txt |   41 +
+...6-fuzz-cargo-check-all-targets-all-features.txt |    5 +
+...25-closure-local/17-evidence-tracking-check.txt |    8 +
+...5-closure-local/18-final-status-and-jj-diff.txt |  283 +++
+...ocal/19-root-cargo-test-no-run-all-features.txt |  385 ++++
+...osure-local/20-root-cargo-test-all-features.txt | 1721 ++++++++++++++++++
+...osure-local/21-fuzz-cargo-test-all-features.txt |   75 +
+...e/fuzz-wave25-closure-local/evidence-package.md |   61 +
+fuzz/Cargo.lock                                    | 2032 ++++++++++++++++++++++
+fuzz/Cargo.toml                                    |   11 +-
+fuzz/fuzz_targets/canonical_digest_ask.rs          |    2 +-
+...taint_consistency_accepts_arbitrary_markdown.rs |    2 +-
+fuzz/fuzz_targets/choose_lowering_fuzzer.rs        |    8 +-
+fuzz/fuzz_targets/decode_record.rs                 |   19 +-
+fuzz/fuzz_targets/expr_eval.rs                     |   22 +-
+fuzz/fuzz_targets/expression.rs                    |   11 +-
+fuzz/fuzz_targets/fuzz_choose_depth.rs             |    5 +-
+fuzz/fuzz_targets/fuzz_choose_when_parse.rs        |    5 +-
+fuzz/fuzz_targets/fuzz_collect_lowering.rs         |    7 +-
+fuzz/fuzz_targets/fuzz_finish_digest_encoding.rs   |    2 +-
+fuzz/fuzz_targets/fuzz_for_each_lowering.rs        |    6 +-
+fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs   |    6 +-
+fuzz/fuzz_targets/fuzz_retry_postcard_codec.rs     |   20 +-
+fuzz/fuzz_targets/fuzz_retry_record_attempt.rs     |   20 +-
+.../fuzz_targets/fuzz_retry_validate_completion.rs |    6 +-
+fuzz/fuzz_targets/fuzz_storage_codec_digest.rs     |   32 +-
+fuzz/fuzz_targets/fuzz_storage_codec_header.rs     |   35 +-
+.../fuzz_targets/fuzz_storage_codec_kind_family.rs |   82 +-
+...argets/fuzz_storage_codec_payload_corruption.rs |  315 ++-
+fuzz/fuzz_targets/fuzz_storage_codec_roundtrip.rs  |  145 +-
+...zz_targets/fuzz_storage_codec_schema_version.rs |  216 +-
+fuzz/fuzz_targets/ipc_frame.rs                     |   38 +-
+fuzz/fuzz_targets/journal_decode.rs                |   26 +-
+fuzz/fuzz_targets/journal_event.rs                 |   33 +-
+fuzz/fuzz_targets/kind_validation.rs               |   25 +-
+fuzz/fuzz_targets/parse_workflow_source_fuzz.rs    |    4 +-
+fuzz/fuzz_targets/span_bridge_fuzz.rs              |   56 +-
+fuzz/fuzz_targets/tooling_flux_check_selector.rs   |    6 +-
+fuzz/fuzz_targets/tooling_guard_zero_parser.rs     |    5 +-
+fuzz/fuzz_targets/tooling_kani_list_args.rs        |    6 +-
+fuzz/fuzz_targets/vb_rpch_hydrate_events_fuzz.rs   |  132 +-
+...z_targets/vb_rpch_hydrate_snapshot_tail_fuzz.rs |  131 +-
+fuzz/fuzz_targets/vb_rpch_replay_events_fuzz.rs    |  190 +-
+fuzz/fuzz_targets/vb_rpch_seed_dimensions_fuzz.rs  |   48 +-
+...fuzz_targets/vb_rpch_slot_extra_collect_fuzz.rs |  251 ++
+fuzz/fuzz_targets/vb_vzcuf_PS_001.rs               |   36 +-
+fuzz/fuzz_targets/vb_vzcuf_PS_002.rs               |   40 +-
+fuzz/fuzz_targets/vb_vzcuf_PS_003.rs               |   40 +-
+fuzz/fuzz_targets/vb_vzcuf_PS_004.rs               |   73 +-
+fuzz/fuzz_targets/vb_vzcuf_PS_005.rs               |   78 +-
+fuzz/fuzz_targets/vb_vzcuf_PS_007.rs               |   25 +-
+fuzz/fuzz_targets/vb_vzcuf_PS_008.rs               |   98 +-
+fuzz/fuzz_targets/vb_vzcuf_PS_009.rs               |   80 +-
+...uzz_targets/wait_digest_exhaustive_collision.rs |   18 +-
+fuzz/fuzz_targets/wait_digest_sensitivity.rs       |   30 +-
+fuzz/fuzz_targets/wait_sentinel_collision.rs       |   12 +-
+fuzz/src/expression_target.rs                      |   17 +-
+fuzz/src/ipc_target.rs                             |   16 +-
+fuzz/src/journal_target/admission.rs               |   22 +-
+fuzz/src/journal_target/errors.rs                  |   55 +-
+fuzz/src/journal_target/event.rs                   |   16 +-
+fuzz/src/journal_target/persisted.rs               |    9 +-
+fuzz/src/journal_target/readback.rs                |    9 +-
+fuzz/src/lib.rs                                    |   50 +-
+fuzz/src/validation_target/capability.rs           |   30 +-
+fuzz/src/validation_target/verifier.rs             |    4 +-
+fuzz/src/workflow_target/accessor.rs               |   39 +-
+fuzz/src/workflow_target/budget.rs                 |    8 +-
+fuzz/src/workflow_target/collect.rs                |   20 +-
+fuzz/src/workflow_target/node_slots.rs             |   17 +-
+fuzz/tests/proptest_digest_coherence.rs            |   28 +-
+fuzz/tests/proptest_ipc_error_exhaustiveness.rs    |   24 +-
+.../tests/proptest_journal_error_exhaustiveness.rs |   24 +-
+fuzz/tests/proptest_roundtrip_determinism.rs       |   28 +-
+90 files changed, 8205 insertions(+), 668 deletions(-)
+
+exit_status=0

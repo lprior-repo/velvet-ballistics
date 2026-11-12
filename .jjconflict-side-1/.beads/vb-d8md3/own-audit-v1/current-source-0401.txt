@@ -1,0 +1,100 @@
+current-source:401:         assert!(matches!(
+current-source:402:             result,
+current-source:403:             Err(ActionQueueError::InvalidCapacity {
+current-source:404:                 requested: value,
+current-source:405:                 reason: InvalidActionQueueCapacity::AboveMaximum { maximum },
+current-source:406:             }) if value == requested && maximum == MAX_ACTION_COMPLETION_QUEUE_CAPACITY
+current-source:407:         ));
+current-source:408:     }
+current-source:409: 
+current-source:410:     #[test]
+current-source:411:     fn bounded_action_queue_preallocates_vecdeque_to_validated_capacity() {
+current-source:412:         let queue = BoundedActionCompletionQueue::new(13).unwrap();
+current-source:413:         let inner = queue.inner.lock().unwrap();
+current-source:414:         assert_eq!(inner.items.capacity(), 13);
+current-source:415:     }
+current-source:416: 
+current-source:417:     #[test]
+current-source:418:     fn bounded_action_queue_enqueue_single_item_succeeds() {
+current-source:419:         let queue = BoundedActionCompletionQueue::new(3).unwrap();
+current-source:420:         let ticket = make_ticket(0);
+current-source:421:         let result = queue.enqueue(ticket);
+current-source:422:         assert!(result.is_ok());
+current-source:423:     }
+current-source:424: 
+current-source:425:     #[test]
+current-source:426:     fn bounded_action_queue_enqueue_at_capacity_returns_queue_full_error() {
+current-source:427:         let queue = BoundedActionCompletionQueue::new(3).unwrap();
+current-source:428:         for i in 0..3 {
+current-source:429:             queue.enqueue(make_ticket(i)).unwrap();
+current-source:430:         }
+current-source:431:         let result = queue.enqueue(make_ticket(100));
+current-source:432:         assert!(matches!(
+current-source:433:             result,
+current-source:434:             Err(ActionQueueError::QueueFull { capacity }) if capacity.get() == 3
+current-source:435:         ));
+current-source:436:     }
+current-source:437: 
+current-source:438:     #[test]
+current-source:439:     fn bounded_action_queue_dequeue_from_empty_returns_none() {
+current-source:440:         let queue = BoundedActionCompletionQueue::new(4).unwrap();
+current-source:441:         let result = queue.dequeue();
+current-source:442:         assert_eq!(result, None);
+current-source:443:     }
+current-source:444: 
+current-source:445:     #[test]
+current-source:446:     fn bounded_action_queue_dequeue_returns_fifo_order() {
+current-source:447:         let queue = BoundedActionCompletionQueue::new(3).unwrap();
+current-source:448:         queue.enqueue(make_ticket(0)).unwrap();
+current-source:449:         queue.enqueue(make_ticket(1)).unwrap();
+current-source:450:         queue.enqueue(make_ticket(2)).unwrap();
+current-source:451: 
+current-source:452:         assert_eq!(queue.dequeue().map(|t| t.seq.get()), Some(0));
+current-source:453:         assert_eq!(queue.dequeue().map(|t| t.seq.get()), Some(1));
+current-source:454:         assert_eq!(queue.dequeue().map(|t| t.seq.get()), Some(2));
+current-source:455:     }
+current-source:456: 
+current-source:457:     #[test]
+current-source:458:     fn bounded_action_queue_remaining_capacity_decrements_after_enqueue() {
+current-source:459:         let queue = BoundedActionCompletionQueue::new(8).unwrap();
+current-source:460:         assert_eq!(queue.remaining_capacity(), 8);
+current-source:461:         queue.enqueue(make_ticket(0)).unwrap();
+current-source:462:         assert_eq!(queue.remaining_capacity(), 7);
+current-source:463:     }
+current-source:464: 
+current-source:465:     #[test]
+current-source:466:     fn bounded_action_queue_remaining_capacity_increments_after_dequeue() {
+current-source:467:         let queue = BoundedActionCompletionQueue::new(8).unwrap();
+current-source:468:         queue.enqueue(make_ticket(0)).unwrap();
+current-source:469:         queue.enqueue(make_ticket(1)).unwrap();
+current-source:470:         assert_eq!(queue.remaining_capacity(), 6);
+current-source:471:         let _ = queue.dequeue();
+current-source:472:         assert_eq!(queue.remaining_capacity(), 7);
+current-source:473:     }
+current-source:474: 
+current-source:475:     #[test]
+current-source:476:     fn bounded_action_queue_invariant_len_plus_remaining_equals_capacity() {
+current-source:477:         let queue = BoundedActionCompletionQueue::new(7).unwrap();
+current-source:478:         assert_eq!(queue.len() + queue.remaining_capacity(), 7);
+current-source:479:         queue.enqueue(make_ticket(0)).unwrap();
+current-source:480:         assert_eq!(queue.len() + queue.remaining_capacity(), 7);
+current-source:481:         let _ = queue.dequeue();
+current-source:482:         assert_eq!(queue.len() + queue.remaining_capacity(), 7);
+current-source:483:     }
+current-source:484: 
+current-source:485:     // =============================================================================
+current-source:486:     // Group F: Action Queue Backpressure (POST-006, INV-005)
+current-source:487:     // Scenario F1: Queue full returns error — covered by
+current-source:488:     // bounded_action_queue_enqueue_at_capacity_returns_queue_full_error
+current-source:489:     // Scenario F2: 80% capacity triggers backpressure warning — tested below
+current-source:490:     // Scenario F3: 79% does not trigger backpressure — tested below
+current-source:491:     // Scenario F4: Invariant — len never exceeds capacity — tested below
+current-source:492:     // =============================================================================
+current-source:493: 
+current-source:494:     #[test]
+current-source:495:     fn action_queue_emits_backpressure_warning_at_80_percent_capacity() {
+current-source:496:         // Given: capacity=10, backpressure threshold = (10*8)/10 = 8 (80%)
+current-source:497:         let capacity = 10;
+current-source:498:         let (queue, rx) = BoundedActionCompletionQueue::with_backpressure(capacity).unwrap();
+current-source:499: 
+current-source:500:         // Enqueue 7 items (70%) — no warning expected

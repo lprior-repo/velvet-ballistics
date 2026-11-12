@@ -1,0 +1,46 @@
+vb-rihha.1.3: enforce helper argument contracts
+
+Cover Has raw-bytecode boundaries alongside Contains parity.
+
+- crates/vb_compile/src/type_taint_expr.rs
+- crates/vb_core/src/engine/expr_eval/ops_text_list/contains_hot_parity_tests.rs
+- crates/vb_core/src/engine/expr_eval/ops_text_list/contains_list_parity_tests.rs
+- crates/vb_core/src/engine/expr_eval/ops_text_list/tests.rs
+- crates/vb_core/src/engine/expr_eval/ops_text_list.rs
+- crates/vb_core/src/engine/expr_eval/tests/string_list_ops.rs
+- crates/vb_core/src/replay/helpers.rs
+- crates/vb_core/src/replay/ops/contains_replay_parity_tests.rs
+- crates/vb_core/src/replay/ops/contains_replay_workflow_tests.rs
+- crates/vb_core/src/replay/ops/has_bytecode_boundary_hot_tests.rs
+- crates/vb_core/src/replay/ops/has_bytecode_boundary_replay_tests.rs
+- crates/vb_core/src/replay/ops/has_bytecode_boundary_tests.rs
+- crates/vb_core/src/replay/ops/tests.rs
+- crates/vb_core/src/replay/ops/tests_expr.rs
+- crates/vb_expr/src/expr_eval/helper_store.rs
+- crates/vb_expr/src/expr_eval/helper_store_values.rs
+- crates/vb_expr/src/expr_eval_tests_core.rs
+- crates/vb_expr/src/expr_eval_tests_store.rs
+- crates/vb_expr/src/expr_typecheck/helper_typecheck.rs
+- crates/vb_expr/src/expr_typecheck/tests/contains_argument_types.rs
+- crates/vb_expr/src/expr_typecheck/tests.rs
+- crates/workspace_tests/tests/contains_compound_identity.rs
+- crates/workspace_tests/tests/contains_direct_helper_edges.rs
+- crates/workspace_tests/tests/contains_list_store_parity.rs
+- crates/workspace_tests/tests/contains_route_edges.rs
+- crates/workspace_tests/tests/contains_static_cold_guards.rs
+- crates/workspace_tests/tests/has_store_bytecode_boundaries.rs
+- crates/workspace_tests/tests/helper_bytecode_argument_order.rs
+- crates/workspace_tests/tests/support/contains_three_routes.rs
+
+vb-rihha.1.3: retain expression parity evidence
+
+- .beads/vb-rihha.1.3/expression-parity-evidence-v1/* (all 17 files)
+
+vb-eirmk.26.1: cover timer journal failure retry
+
+- crates/vb_runtime/src/shard/lifecycle.rs
+- crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_failure_retry_regressions.rs
+
+vb-eirmk.26.1: retain retry integration evidence
+
+- .beads/vb-eirmk.26.1/retry-integration-evidence-v1/* (all 9 files)

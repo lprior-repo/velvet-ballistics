@@ -1,0 +1,20 @@
+Running as unit: vb-has-store-fixed-20261110.scope; invocation ID: 7c80d2feb2d5468fbdf7f5ad3cfba1f0
+────────────
+ Nextest run ID 7e3cbb5a-f355-418e-a03b-2867eb095baa with nextest profile: default
+    Starting 14 tests across 1 binary
+        PASS [   0.002s] ( 1/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_object_reference_checked_first
+        PASS [   0.002s] ( 2/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_helper_arity_three_args
+        PASS [   0.002s] ( 3/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_false_when_field_absent
+        PASS [   0.002s] ( 4/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_false_on_empty_object
+        PASS [   0.002s] ( 5/14) velvet-ballistics-workspace-tests::has_store_key_validation has_context_free_helper_arity_zero_args
+        PASS [   0.002s] ( 6/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_type_mismatch_wrong_key_type
+        PASS [   0.002s] ( 7/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_false_on_other_field
+        PASS [   0.002s] ( 8/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_helper_arity_one_arg
+        PASS [   0.002s] ( 9/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_invalid_symbol_empty_object
+        PASS [   0.003s] (10/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_helper_arity_zero_args
+        PASS [   0.020s] (11/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_true_when_field_present
+        PASS [   0.020s] (12/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_type_mismatch_wrong_receiver
+        PASS [   0.020s] (13/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_key_type_checked_before_object_lookup
+        PASS [   0.020s] (14/14) velvet-ballistics-workspace-tests::has_store_key_validation has_store_invalid_symbol_nonempty_object
+────────────
+     Summary [   0.020s] 14 tests run: 14 passed, 0 skipped

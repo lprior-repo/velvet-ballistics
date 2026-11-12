@@ -1,0 +1,39 @@
+## Implementation Repair Complete: vb-3l40a Error Equality
+
+**Workspace verified:** Git root and JJ root both resolve to `/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090`
+
+### Root Cause
+`RuntimeError::eq` fell through to `_ => false` for `Recovery`, `ContractValidationError`, and `RuntimeInputSlotKindMismatch`, causing structurally identical instances to compare unequal.
+
+### Fix Applied
+Added fieldwise equality cases to `crates/vb_runtime/src/error/equality.rs`:
+- `Recovery`: compare `error` strings
+- `RuntimeInputSlotKindMismatch`: compare `slot`, `expected`, `actual`
+- `ContractValidationError`: compare `action` and `error`
+
+All existing equality cases preserved; no Debug-string comparisons.
+
+### Tests Added
+New module `crates/vb_runtime/src/error/tests_equality.rs` (16 tests):
+- Reflexivity for all three variants
+- Identical instances equal
+- Each field differs → unequal
+- Cross-variant inequality
+
+### Verification Results
+- **New equality tests:** 16 passed / 0 failed
+- **Full vb_runtime lib suite:** 1894 passed / 0 failed
+- **Recovery subsystem tests:** 32 passed / 0 failed
+
+### Evidence
+Logged to `.beads/vb-3l40a/evidence/error-equality/`:
+- `error-equality-report.md` — complete report
+- `equality-tests-output.txt` — raw test output
+- `full-lib-tests-output.txt` — full lib suite output
+
+### Files Modified
+- `crates/vb_runtime/src/error/equality.rs` — implementation fix
+- `crates/vb_runtime/src/error/tests_equality.rs` — new tests
+- `crates/vb_runtime/src/error/mod.rs` — test module registration
+
+No push made (per instructions). Ready for root to merge.

@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-final-measurements",
+  "argv": [
+    "python3",
+    ".beads/vb-j3e3s/collect_benchmark_evidence.py",
+    "--root",
+    "/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-final-measurements",
+    "--commit",
+    "647ae7e9e87d75dba91dd6879741a1986d6bd3d8",
+    "--output-dir",
+    "/home/lewis/.cache/velvet-integration-preserved-20261022/actual-benchmark-collection-v1"
+  ],
+  "exit_code": 1,
+  "seconds": 58.807,
+  "timeout_seconds": 1800,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-j3e3s/evidence/actual-three-metrics-v1"
+}

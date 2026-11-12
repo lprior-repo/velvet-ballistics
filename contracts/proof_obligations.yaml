@@ -137,7 +137,10 @@ obligations:
       Running → Succeeded, Failed, Waiting, Asking, Cancelled, Skipped
       Waiting → Running
       Asking → Running
-      Terminal states (Succeeded, Failed, Cancelled, Skipped) → only themselves
+      Succeeded → Pending (bounded loop body re-entry), Succeeded
+      Failed → (terminal)
+      Cancelled → (terminal)
+      Skipped → (terminal)
     proof_level: L4
     crate: vb_core
     files:

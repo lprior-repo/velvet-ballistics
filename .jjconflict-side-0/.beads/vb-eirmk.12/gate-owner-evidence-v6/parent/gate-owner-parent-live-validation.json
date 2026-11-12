@@ -1,0 +1,21 @@
+{
+  "design_sha256": "91693b0972b9cc82ccc573ac7615ab599bd6ccbcd1609a74f9fca2b0c5c36392",
+  "normalized_requirements": 190,
+  "all_completion_false_missing_null": true,
+  "full_plan_accepted": false,
+  "issue12_status": "in_progress",
+  "issue11_status": "open",
+  "metadata": {
+    "master_requirement_ids": [
+      "gate:feature-powerset",
+      "gate:miri",
+      "gate:coverage",
+      "gate:mutants-smoke",
+      "gate:bench-build",
+      "gate:benchmark-regression-policy",
+      "gate:fuzz-smoke"
+    ],
+    "qualification_only": true
+  },
+  "dependency_count": 137
+}

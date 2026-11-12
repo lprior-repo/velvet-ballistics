@@ -1,0 +1,21 @@
+# State 2 Explore Repair Transcript: vb-shvxy
+
+Invocation: vb-shvxy-state2-explore-repair-attempt2
+Delegate: explore
+State: 2
+Sublane: explore-repair
+Workdir: /home/lewis/isolated/velvet-ballistics-fresh-replacements/vb-shvxy
+
+Actions performed:
+- Loaded explore skill.
+- Read existing State 2 scout artifacts: .beads/vb-shvxy/codebase-map.md and .beads/vb-shvxy/delivery-scope.jsonl.
+- Read existing .beads/vb-shvxy/agent-invocation-ledger.jsonl and validator failure instructions.
+- Did not edit production Rust, tests, proofs, configs, dependency files, bead state, or prior evidence directories.
+- Repaired provenance ledger fields for State 2 using only relative artifact paths that exist in this isolated workspace.
+- Created this transcript artifact and recomputed current SHA-256 artifact hashes and ledger entry hash chain.
+
+Validator failure repaired:
+- State 2 row now has host_session_id, input_artifact_hashes, reviewed_artifacts_existed_before_start, transcript_artifact, and transcript_hash.
+- Removed absolute prior evidence path from ledger inputs.
+- Replaced stale artifact hashes with current hashes for existing relative artifacts.
+- Recomputed row1 and row2 entry_hash values using canonical sorted JSON excluding entry_hash and chained row2 previous_entry_hash to row1 entry_hash.

@@ -1,0 +1,16 @@
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local5090-full-record/crates/vb_storage)
+error[E0282]: type annotations needed for `(_, _, _)`
+  --> crates/vb_storage/src/events/wire_deserialize_policy.rs:21:9
+   |
+21 |     let (run, seq, decision) = variant.newtype_variant()?;
+   |         ^^^^^^^^^^^^^^^^^^^^
+22 |     if decision.ticket.run != run {
+   |        -------- type must be known at this point
+   |
+help: consider giving this pattern a type, where the placeholders `_` are specified
+   |
+21 |     let (run, seq, decision): (_, _, _) = variant.newtype_variant()?;
+   |                             +++++++++++
+
+For more information about this error, try `rustc --explain E0282`.
+error: could not compile `vb_storage` (lib) due to 1 previous error

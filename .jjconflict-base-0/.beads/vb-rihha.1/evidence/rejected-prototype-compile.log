@@ -1,0 +1,120 @@
+error[E0277]: can't compare `&str` with `str`
+   --> crates/workspace_tests/tests/helper_scalar_typecheck.rs:230:27
+    |
+230 |                     field == "set.value" && expected == "list" && found == "i64"
+    |                           ^^ no implementation for `&str == str`
+    |
+    = help: the trait `PartialEq<str>` is not implemented for `&str`
+    = note: required for `&&str` to implement `PartialEq<&str>`
+help: consider dereferencing here
+    |
+230 |                     *field == "set.value" && expected == "list" && found == "i64"
+    |                     +
+
+error[E0277]: can't compare `&str` with `str`
+   --> crates/workspace_tests/tests/helper_scalar_typecheck.rs:230:54
+    |
+230 |                     field == "set.value" && expected == "list" && found == "i64"
+    |                                                      ^^ no implementation for `&str == str`
+    |
+    = help: the trait `PartialEq<str>` is not implemented for `&str`
+    = note: required for `&&str` to implement `PartialEq<&str>`
+help: consider dereferencing here
+    |
+230 |                     field == "set.value" && *expected == "list" && found == "i64"
+    |                                             +
+
+error[E0277]: can't compare `&str` with `str`
+   --> crates/workspace_tests/tests/helper_scalar_typecheck.rs:230:73
+    |
+230 |                     field == "set.value" && expected == "list" && found == "i64"
+    |                                                                         ^^ no implementation for `&str == str`
+    |
+    = help: the trait `PartialEq<str>` is not implemented for `&str`
+    = note: required for `&&str` to implement `PartialEq<&str>`
+help: consider dereferencing here
+    |
+230 |                     field == "set.value" && expected == "list" && *found == "i64"
+    |                                                                   +
+
+error[E0277]: can't compare `&str` with `str`
+   --> crates/workspace_tests/tests/helper_scalar_typecheck.rs:254:27
+    |
+254 |                     field == "set.value" && expected == "list" && found == "boolean"
+    |                           ^^ no implementation for `&str == str`
+    |
+    = help: the trait `PartialEq<str>` is not implemented for `&str`
+    = note: required for `&&str` to implement `PartialEq<&str>`
+help: consider dereferencing here
+    |
+254 |                     *field == "set.value" && expected == "list" && found == "boolean"
+    |                     +
+
+error[E0277]: can't compare `&str` with `str`
+   --> crates/workspace_tests/tests/helper_scalar_typecheck.rs:254:54
+    |
+254 |                     field == "set.value" && expected == "list" && found == "boolean"
+    |                                                      ^^ no implementation for `&str == str`
+    |
+    = help: the trait `PartialEq<str>` is not implemented for `&str`
+    = note: required for `&&str` to implement `PartialEq<&str>`
+help: consider dereferencing here
+    |
+254 |                     field == "set.value" && *expected == "list" && found == "boolean"
+    |                                             +
+
+error[E0277]: can't compare `&str` with `str`
+   --> crates/workspace_tests/tests/helper_scalar_typecheck.rs:254:73
+    |
+254 |                     field == "set.value" && expected == "list" && found == "boolean"
+    |                                                                         ^^ no implementation for `&str == str`
+    |
+    = help: the trait `PartialEq<str>` is not implemented for `&str`
+    = note: required for `&&str` to implement `PartialEq<&str>`
+help: consider dereferencing here
+    |
+254 |                     field == "set.value" && expected == "list" && *found == "boolean"
+    |                                                                   +
+
+error[E0277]: can't compare `&str` with `str`
+   --> crates/workspace_tests/tests/helper_scalar_typecheck.rs:278:27
+    |
+278 |                     field == "set.value" && expected == "list" && found == "f64"
+    |                           ^^ no implementation for `&str == str`
+    |
+    = help: the trait `PartialEq<str>` is not implemented for `&str`
+    = note: required for `&&str` to implement `PartialEq<&str>`
+help: consider dereferencing here
+    |
+278 |                     *field == "set.value" && expected == "list" && found == "f64"
+    |                     +
+
+error[E0277]: can't compare `&str` with `str`
+   --> crates/workspace_tests/tests/helper_scalar_typecheck.rs:278:54
+    |
+278 |                     field == "set.value" && expected == "list" && found == "f64"
+    |                                                      ^^ no implementation for `&str == str`
+    |
+    = help: the trait `PartialEq<str>` is not implemented for `&str`
+    = note: required for `&&str` to implement `PartialEq<&str>`
+help: consider dereferencing here
+    |
+278 |                     field == "set.value" && *expected == "list" && found == "f64"
+    |                                             +
+
+error[E0277]: can't compare `&str` with `str`
+   --> crates/workspace_tests/tests/helper_scalar_typecheck.rs:278:73
+    |
+278 |                     field == "set.value" && expected == "list" && found == "f64"
+    |                                                                         ^^ no implementation for `&str == str`
+    |
+    = help: the trait `PartialEq<str>` is not implemented for `&str`
+    = note: required for `&&str` to implement `PartialEq<&str>`
+help: consider dereferencing here
+    |
+278 |                     field == "set.value" && expected == "list" && *found == "f64"
+    |                                                                   +
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "helper_scalar_typecheck") due to 9 previous errors
+error: command `/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/bin/cargo test --no-run --message-format json-render-diagnostics --package velvet-ballistics-workspace-tests --test helper_scalar_typecheck --all-features --quiet` exited with code 101

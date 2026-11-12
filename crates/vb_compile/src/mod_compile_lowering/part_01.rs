@@ -28,6 +28,17 @@ use source_declarations::prepare_source_declarations;
 #[path = "compile_source_finish.rs"]
 mod compile_source_finish;
 use compile_source_finish::finalize_compiled_workflow;
+#[path = "body_width_walk.rs"]
+mod body_width_walk;
+
+#[path = "part_01/width.rs"]
+mod width;
+pub(super) use width::{body_width, canonical_body_step_width, choose_width, together_width};
+#[path = "part_01/layout.rs"]
+mod layout;
+pub(super) use layout::{
+    canonical_step_names, layout_start, layout_width, named_workflow_error, next_layout_start,
+};
 
 /// Compile the canonical cold YAML authoring AST into numeric runtime IR.
 pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, CompileErrors> {
@@ -140,144 +151,4 @@ pub(super) fn canonical_step_width_with_condition(
         return Ok(2);
     }
     canonical_step_width(&step.primitive)
-}
-
-#[path = "body_width_walk.rs"]
-mod body_width_walk;
-
-pub(super) fn body_width(body: &[crate::StepAst], overhead: usize) -> Result<usize, CompileError> {
-    body_width_walk::body_width(body, overhead)
-}
-
-pub(super) fn choose_width(branches: &[crate::ChooseBranch]) -> Result<usize, CompileError> {
-    let mut width = 1usize;
-    for branch in branches {
-        width = width
-            .checked_add(body_width(&branch.steps, 0)?)
-            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
-    }
-    Ok(width)
-}
-
-pub(super) fn together_width(branches: &[crate::TogetherBranch]) -> Result<usize, CompileError> {
-    let mut width = 2usize;
-    for branch in branches {
-        width = width
-            .checked_add(body_width(&branch.steps, 1)?)
-            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
-    }
-    Ok(width)
-}
-
-/// Width of one step nested inside a loop body or choose branch.
-///
-/// Mirrors [`canonical_step_width`] for the container primitives that own
-/// multi-step bodies, so layout reserves exactly the nodes recursive body
-/// emission produces. Value-position containers (`aggregate`, `together`) and
-/// boundary/terminal primitives stay rejected here exactly as in emission.
-pub(super) fn canonical_body_step_width(
-    primitive: &crate::StepPrimitive,
-) -> Result<usize, CompileError> {
-    match primitive {
-        crate::StepPrimitive::Set { .. } | crate::StepPrimitive::Do { .. } => Ok(1),
-        crate::StepPrimitive::ForEach { body, .. } => body_width(body, 2),
-        crate::StepPrimitive::Collect { body, .. } | crate::StepPrimitive::Repeat { body, .. } => {
-            body_width(body, 3)
-        }
-        crate::StepPrimitive::Choose { branches, .. } => choose_width(branches),
-        other => Err(CompileError::UnsupportedStepPrimitive {
-            step: 0,
-            primitive: canonical_primitive_name(other),
-        }),
-    }
-}
-
-pub(super) fn canonical_step_names(
-    steps: &[crate::StepAst],
-    layout: &[CanonicalStepLayout],
-) -> Result<Vec<Box<str>>, CompileError> {
-    let total = layout
-        .last()
-        .map(|entry| {
-            entry.start.as_usize().checked_add(entry.width).ok_or(
-                CompileError::StepIndexOutOfRange {
-                    value: entry.start.as_usize(),
-                },
-            )
-        })
-        .transpose()?
-        .unwrap_or(0);
-    let mut names = Vec::with_capacity(total);
-    for (index, step) in steps.iter().enumerate() {
-        let width = layout_width(layout, index)?;
-        for _ in 0..width {
-            names.push(Box::from(step.id.as_str()));
-        }
-    }
-    Ok(names)
-}
-
-pub(super) fn layout_start(
-    layout: &[CanonicalStepLayout],
-    index: usize,
-) -> Result<StepIdx, CompileError> {
-    layout
-        .get(index)
-        .map(|entry| entry.start)
-        .ok_or(CompileError::StepIndexOutOfRange { value: index })
-}
-
-pub(super) fn layout_width(
-    layout: &[CanonicalStepLayout],
-    index: usize,
-) -> Result<usize, CompileError> {
-    layout
-        .get(index)
-        .map(|entry| entry.width)
-        .ok_or(CompileError::StepIndexOutOfRange { value: index })
-}
-
-/// Name steps in backward-edge errors by walking the source layout; no
-/// compiled parts are cloned to build the diagnostic.
-pub(super) fn named_workflow_error(
-    error: CompileError,
-    steps: &[crate::StepAst],
-    layout: &[CanonicalStepLayout],
-) -> CompileError {
-    let CompileError::Workflow(vb_core::WorkflowError::BackwardEdge { from, to }) = &error else {
-        return error;
-    };
-    CompileError::BackwardEdgeNamed {
-        from: from.as_usize(),
-        to: to.as_usize(),
-        from_name: Box::from(step_id_at(steps, layout, from.as_usize())),
-        to_name: Box::from(step_id_at(steps, layout, to.as_usize())),
-    }
-}
-
-fn step_id_at<'a>(
-    steps: &'a [crate::StepAst],
-    layout: &[CanonicalStepLayout],
-    index: usize,
-) -> &'a str {
-    let mut cursor = 0_usize;
-    for (position, step) in steps.iter().enumerate() {
-        let width = layout.get(position).map_or(1, |entry| entry.width);
-        let end = cursor.saturating_add(width);
-        if index >= cursor && index < end {
-            return step.id.as_str();
-        }
-        cursor = end;
-    }
-    "?"
-}
-
-pub(super) fn next_layout_start(
-    layout: &[CanonicalStepLayout],
-    index: usize,
-) -> Result<Option<StepIdx>, CompileError> {
-    let next = index
-        .checked_add(1)
-        .ok_or(CompileError::StepIndexOutOfRange { value: index })?;
-    Ok(layout.get(next).map(|entry| entry.start))
 }

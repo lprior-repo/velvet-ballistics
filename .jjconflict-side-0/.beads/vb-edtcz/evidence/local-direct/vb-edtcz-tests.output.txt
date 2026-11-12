@@ -1,0 +1,137 @@
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Regression tests for scripts/check-miri-smoke-result.sh
+# Run from repository root.
+
+CHECKER="scripts/check-miri-smoke-result.sh"
+
+if [ ! -f "$CHECKER" ]; then
+    echo "ERROR: checker script not found at $CHECKER"
+    exit 1
+fi
+
+TMPDIR_WORK=$(mktemp -d)
+trap 'rm -rf "$TMPDIR_WORK"' EXIT
+
+PASS=0
+FAIL=0
+
+run_test() {
+    local name="$1"
+    local expected="$2"
+    local input="$3"
+
+    local fixture="$TMPDIR_WORK/transcript"
+    printf '%s' "$input" > "$fixture"
+
+    local actual=0
+    if bash "$CHECKER" "$fixture"; then
+        actual=0
+    else
+        actual=$?
+    fi
+
+    if [ "$actual" -eq "$expected" ]; then
+        PASS=$((PASS + 1))
+        echo "PASS: $name"
+    else
+        FAIL=$((FAIL + 1))
+        echo "FAIL: $name (expected exit $expected, got $actual)"
+    fi
+}
+
+run_test_args() {
+    local name="$1"
+    local expected="$2"
+    shift 2
+    local actual=0
+    if bash "$CHECKER" "$@"; then
+        actual=0
+    else
+        actual=$?
+    fi
+
+    if [ "$actual" -eq "$expected" ]; then
+        PASS=$((PASS + 1))
+        echo "PASS: $name"
+    else
+        FAIL=$((FAIL + 1))
+        echo "FAIL: $name (expected exit $expected, got $actual)"
+    fi
+}
+
+# Valid: exactly one running and one result line
+run_test "valid_exactly1" 0 "running 1 test
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+"
+
+# Zero: no running or result lines
+run_test "zero" 1 "some other output
+"
+
+# Failed: test failed
+run_test "failed1" 1 "running 1 test
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+"
+
+# Ignored: test ignored
+run_test "ignored1" 1 "running 1 test
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.01s
+"
+
+# Missing running line
+run_test "missing_running" 1 "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+"
+
+# Missing result line
+run_test "missing_result" 1 "running 1 test
+"
+
+# Duplicate running lines
+run_test "duplicate_running" 1 "running 1 test
+running 1 test
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+"
+
+# Duplicate result lines
+run_test "duplicate_result" 1 "running 1 test
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+"
+
+# Malformed running prefix (wrong test count)
+run_test "malformed_running_prefix" 1 "running 2 tests
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+"
+
+# Malformed result prefix (wrong passed count)
+run_test "malformed_result_prefix" 1 "running 1 test
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+"
+
+# Summary with trailing junk
+run_test "trailing_junk" 1 "running 1 test
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s extra
+"
+
+# Empty file
+run_test "empty_file" 1 ""
+
+# Nonexistent file
+run_test_args "nonexistent_file" 2 "/tmp/nonexistent_miri_test_file_xyz"
+
+# No argument
+run_test_args "no_argument" 2
+
+# Extra args
+run_test_args "extra_args" 2 "/tmp/somefile" "/tmp/anotherfile"
+
+TOTAL=$((PASS + FAIL))
+printf "Tests: %d passed, %d failed, %d total\n" "$PASS" "$FAIL" "$TOTAL"
+
+if [ "$FAIL" -gt 0 ]; then
+    exit 1
+fi
+```

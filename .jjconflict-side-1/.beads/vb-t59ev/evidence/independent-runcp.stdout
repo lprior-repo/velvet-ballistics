@@ -1,0 +1,7 @@
+
+running 2 tests
+test run_checkpoint_tests::restore_rejects_a_checkpoint_for_a_different_workflow ... ok
+test run_checkpoint_tests::capture_resets_only_retry_step_and_preserves_action_attempts ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 1936 filtered out; finished in 0.00s
+

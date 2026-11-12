@@ -1,0 +1,8 @@
+{"id":"KANI-EXPR-BYTECODE-001","status":"PASS","evidence":"machine-gate-report.md"}
+{"id":"KANI-SLOT-REF-001","status":"PASS","evidence":"machine-gate-report.md"}
+{"id":"KANI-CONSTANT-POOL-001","status":"PASS","evidence":"machine-gate-report.md"}
+{"id":"KANI-ACCESSOR-REF-001","status":"PASS","evidence":"machine-gate-report.md"}
+{"id":"INV-007-NODEDUP-001","status":"PASS","evidence":"machine-gate-report.md"}
+{"id":"KANI-ADMISSION-001-MALFORMED-GATE-PROOF-REJECT","status":"PASS","evidence":"machine-gate-report.md"}
+{"id":"KANI-ADMISSION-001-CAPABILITY-REJECT","status":"PASS","evidence":"machine-gate-report.md"}
+{"id":"KANI-ADMISSION-001-VALID-ACCEPT","status":"PASS","evidence":"machine-gate-report.md"}

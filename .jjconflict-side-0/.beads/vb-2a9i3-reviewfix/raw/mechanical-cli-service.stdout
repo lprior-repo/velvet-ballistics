@@ -1,0 +1,8 @@
+
+running 3 tests
+test ipc_serve::tests::service_turn_preserves_and_reports_failed_journal_staging ... ok
+test ipc_serve::tests::service_turn_commits_accepted_journal_work_before_shutdown ... ok
+test ipc_serve::tests::shutdown_acknowledgement_is_readable_before_service_exits ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 352 filtered out; finished in 0.01s
+

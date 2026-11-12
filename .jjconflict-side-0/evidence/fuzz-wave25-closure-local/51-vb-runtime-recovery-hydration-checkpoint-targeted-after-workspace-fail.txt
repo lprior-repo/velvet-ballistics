@@ -1,0 +1,10 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.81s
+     Running tests/recovery_hydration_tests.rs (target/debug/deps/recovery_hydration_tests-35143c3e9f97c0e2)
+
+running 1 test
+test checkpoint_snapshot_roundtrip_preserves_all_fields ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 43 filtered out; finished in 0.01s
+

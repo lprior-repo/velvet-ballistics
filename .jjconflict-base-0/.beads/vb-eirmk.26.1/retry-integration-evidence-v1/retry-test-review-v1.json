@@ -1,0 +1,77 @@
+{
+  "review_kind": "bounded independent timer retry behavior test review",
+  "candidate_source": {
+    "commit": "013489a00a0c1a5f07f2611cb0bdbcab4e00cbdf",
+    "parent": "d5e4b6a3b17622734fa900d3afc3299a1c8cc6bc",
+    "test_file": "crates/vb_runtime/src/shard/lifecycle_tests/timer_wheel_failure_retry_regressions.rs",
+    "test_file_sha256": "2de8392cac900a6caaffb5a25b4bed4e57ab48d9cdbc6ecb41e57493429b7461",
+    "registration": "crates/vb_runtime/src/shard/lifecycle.rs:49"
+  },
+  "comparison_parent": {
+    "commit": "9661872b95e3af01b98070367b021dfb8c59795a",
+    "merge_base": "dba6db5594bd7dfdf545302ed1ceb31c2de24323",
+    "ancestry_note": "Candidate is not descended from comparison parent; candidate is two commits ahead and comparison parent one commit ahead of merge base."
+  },
+  "bounded_verdict": "PASS",
+  "requirement_matrix": [
+    {
+      "requirement": "Actual one-shot journal append failure with exact typed runtime error",
+      "status": "PASS",
+      "evidence": "OneShotWaitFailureJournal atomically consumes its armed failure only for WaitResolved; test requires RuntimeError::StorageJournalAppend wrapping JournalError::WriteLockPoisoned."
+    },
+    {
+      "requirement": "Both due-run authority snapshots and per-run journal sequences unchanged on failure",
+      "status": "PASS",
+      "evidence": "Snapshots compare run state, pending timer map, boundary snapshot, counters, and full journal events for both runs; separate assertions compare both journal_sequences entries; pending_timer_count remains 2."
+    },
+    {
+      "requirement": "Deterministic lower RunId first after retry",
+      "status": "PASS",
+      "evidence": "Both deadlines are equal; successful retry requires the sole first WaitResolved run to be low_run and requires high_run state and timer to remain unchanged."
+    },
+    {
+      "requirement": "Peer invariance scoped to peer authority during the other run's success",
+      "status": "PASS",
+      "evidence": "After low_run resolves, test compares high_run RunState and exact PendingTimer while allowing the shared journal to advance."
+    },
+    {
+      "requirement": "Each due wait resolves exactly once and idle tick leaves full journal unchanged",
+      "status": "PASS",
+      "evidence": "Observed WaitResolved run sequence must equal [low_run, high_run]; then a later idle tick must preserve the full RuntimeJournalEvent snapshot, with one high_run resolution."
+    },
+    {
+      "requirement": "Focused native evidence is for the reviewed pin",
+      "status": "PASS",
+      "evidence": "The evidence workspace HEAD is 013489a00a0c1a5f07f2611cb0bdbcab4e00cbdf; its log reports 1 test passed and 3022 filtered, and the matching native exit receipt is 0."
+    }
+  ],
+  "findings": [],
+  "integration_comparison_caveat": {
+    "status": "NOT_A_TIMER_TEST_DEFECT",
+    "summary": "Comparing full trees at 966 and 013 shows the candidate tree omits parent-side Contains test work. Do not treat the entire candidate tree as a replacement for 966; integrate the timer-only change while preserving the parent tree.",
+    "paths_missing_from_candidate_tree": [
+      "crates/workspace_tests/tests/contains_compound_identity.rs",
+      "crates/workspace_tests/tests/contains_route_edges.rs",
+      "crates/workspace_tests/tests/support/contains_three_routes.rs"
+    ],
+    "other_contains_deltas": [
+      "crates/vb_expr/src/expr_typecheck/tests/contains_argument_types.rs",
+      "crates/workspace_tests/tests/contains_static_cold_guards.rs"
+    ]
+  },
+  "native_evidence": {
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-has-hot-fixtures-luna",
+    "workspace_head": "013489a00a0c1a5f07f2611cb0bdbcab4e00cbdf",
+    "log": "/home/lewis/src/isoloated/velvet-ballistics-has-hot-fixtures-luna/target/core-build-20261110/evidence/timer-failure-retry-luna-final.log",
+    "log_sha256": "d3fc2a46be800c5e6e5d3ea758217d93350ba9f556c2318064affe10fba467be",
+    "observed_result": "1 passed, 3022 filtered",
+    "exit_receipt": "/home/lewis/src/isoloated/velvet-ballistics-has-hot-fixtures-luna/target/core-build-20261110/evidence/timer-failure-retry-luna-final.exit",
+    "native_exit": 0,
+    "exit_receipt_sha256": "aa7b9032e30a23d35090c33991b13943c26862e4b514e29dd279ba1314572053"
+  },
+  "not_established": [
+    "Full lifecycle suite or canonical Moon acceptance",
+    "Production correctness beyond the behavior exercised by this test",
+    "Whole-tree integration equivalence with comparison parent 966"
+  ]
+}

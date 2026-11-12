@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-bbf56-deepseek-faithful",
+  "argv": [
+    "bash",
+    "scripts/check-production-inner-drift.sh"
+  ],
+  "exit_code": 0,
+  "seconds": 3.163,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-bbf56/evidence/faithful-drift-final",
+  "coordinator_message": "Skills exact paths: /home/lewis/.agents/skills/jj/SKILL.md and /home/lewis/.agents/skills/verus/SKILL.md. Avoid broad home scans. Final frozen canonical CI is running in separate root-owned workspace; do not run broad cargo gates. Focus actual mirror equivalence and exact ledgers, honest bounded verifier evidence.\nCanonical CI found actual Verus ICE at recovery_verification.rs::production::CANNOT_RESUME_REASONS: thir_body query may require erasure but VerusErasureCtxt uninitialized; log suggests --no-lifetime. Do not blindly disable lifetime checking/weakengate. Investigate this affected recovery binding while preserving production contract, record actual toolbug vs proof failure and legitimate scoped repair. Full raw log in /home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-final-ci/.beads/vb-2lyiw/evidence/canonical-frozen-baseline.stdout (read-only). Root handles CI orchestration.\n"
+}

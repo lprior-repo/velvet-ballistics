@@ -1,0 +1,100 @@
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:71:             .ok_or_else(|| format!("artifact {i} not found in journal"))?;
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:72:         if record.digest != artifact.digest {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:73:             return Err(format!("record digest mismatch for artifact {i}"));
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:74:         }
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:75:         let decoded: AcceptedArtifact = postcard::from_bytes(&record.ir)
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:76:             .map_err(|e| format!("postcard decode failed for artifact {i}: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:77:         if decoded != *artifact {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:78:             return Err(format!("decoded artifact differs from original at {i}"));
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:79:         }
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:80:         if record.digest != artifact.digest {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:81:             return Err(format!("record digest mismatch for artifact {i}"));
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:82:         }
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:83: 
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:84:         // Canonical verification assertions.
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:85:         verify_accepted_artifact_for_policy(artifact, RuntimePolicy::Relaxed)
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:86:             .map_err(|e| format!("verify failed for artifact {i}: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:87:         let computed = accepted_artifact_digest(artifact)
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:88:             .map_err(|e| format!("accepted_artifact_digest failed for {i}: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:89:         if computed != artifact.digest {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:90:             return Err(format!("digest mismatch for artifact {i}"));
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:91:         }
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:92:         if computed != artifact.verification.digest {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:93:             return Err(format!("verification digest mismatch for artifact {i}"));
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:94:         }
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:95:     }
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:96: 
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:97:     // Verify next submission gets seq 9.
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:98:     let workflow = minimal_workflow()?;
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:99:     let next = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed)
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:100:         .map_err(|e| format!("seq 9 submission failed: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:101:     if next.accepted_at_seq.get() != 9 {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:102:         return Err(format!(
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:103:             "next artifact should have seq 9, got {}",
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:104:             next.accepted_at_seq.get()
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:105:         ));
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:106:     }
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:107: 
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:108:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:109: }
+FILE crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:1: //! Failure-mode tests for the artifact acceptance sequence counter and issuance path.
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:2: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:3: use crate::admission::*;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:4: use crate::error::JournalError;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:5: use crate::types::EventSeq;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:6: use vb_core::RuntimePolicy;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:7: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:8: use super::{minimal_workflow, temp_journal};
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:9: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:10: /// Shared helper: read counter value or report error/absent.
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:11: fn counter_value(journal: &crate::FjallJournal) -> Result<Option<u64>, String> {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:12:     let raw = journal
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:13:         .artifact_acceptance
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:14:         .get(b"last_issued")
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:15:         .map_err(|e| format!("counter read failed: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:16:     match raw {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:17:         None => Ok(None),
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:18:         Some(slice) => {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:19:             let bytes = slice.as_ref();
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:20:             if bytes.len() != 8 {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:21:                 return Err(format!("counter wrong length: {}", bytes.len()));
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:22:             }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:23:             let arr: [u8; 8] = bytes
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:24:                 .try_into()
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:25:                 .map_err(|_| "counter slice conversion failed".to_string())?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:26:             Ok(Some(u64::from_be_bytes(arr)))
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:27:         }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:28:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:29: }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:30: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:31: /// Shared helper: verify compiled-IR keyspace is empty.
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:32: fn compiled_empty(journal: &crate::FjallJournal) -> Result<(), String> {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:33:     if journal.compiled_ir.iter().next().is_some() {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:34:         return Err("compiled_ir should be empty but has entries".to_string());
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:35:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:36:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:37: }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:38: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:39: /// Shared helper: full artifact readback and verification.
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:40: fn verify_artifact_readback(
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:41:     journal: &crate::FjallJournal,
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:42:     digest: vb_core::WorkflowDigest,
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:43:     expected: &AcceptedArtifact,
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:44:     policy: RuntimePolicy,
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:45: ) -> Result<(), String> {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:46:     let record = journal
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:47:         .compiled_ir(digest)
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:48:         .map_err(|e| format!("compiled_ir readback failed: {e}"))?
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:49:         .ok_or_else(|| "artifact record not found".to_string())?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:50:     if record.digest != digest {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:51:         return Err("record digest does not match expected".to_string());
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:52:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:53:     let decoded: AcceptedArtifact =
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:54:         postcard::from_bytes(&record.ir).map_err(|e| format!("postcard decode failed: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:55:     if accepted_artifact_digest(&decoded)
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:56:         .map_err(|e| format!("accepted_artifact_digest failed: {e}"))?
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:57:         != decoded.digest
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:58:     {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:59:         return Err("decoded artifact digest is inconsistent".to_string());
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:60:     }

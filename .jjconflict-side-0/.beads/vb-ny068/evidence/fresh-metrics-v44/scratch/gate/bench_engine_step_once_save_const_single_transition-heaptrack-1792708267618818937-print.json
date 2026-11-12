@@ -1,0 +1,15 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-policy-dispatch-v1",
+  "argv": [
+    "heaptrack_print",
+    "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/heaptrack/ht-bench_engine_step_once_save_const_single_transition.zst"
+  ],
+  "exit_code": 0,
+  "seconds": 0.164,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-root-integrated-metrics-v44/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792708267618818937-print"
+}

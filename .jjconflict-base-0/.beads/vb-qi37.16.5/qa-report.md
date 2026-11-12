@@ -1,0 +1,149 @@
+# QA Report: vb-qi37.16.5 — State 9 (Lifecycle Replay Repair)
+
+## Bead ID: vb-qi37.16.5
+## Phase: State 9 (QA)
+## Date: 2026-05-11
+## Operator: qa-enforcer agent
+
+---
+
+## Executive Summary
+
+**RESULT: PASS**
+
+All three mandatory QA gates pass with evidence.
+
+---
+
+## Mandatory Command Evidence
+
+### Gate 1: Lifecycle Integration Test
+
+**Command:**
+```bash
+rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1
+```
+
+**Evidence:**
+```
+cargo test: 43 passed (1 suite, 0.66s)
+```
+
+**Verdict:** PASS
+
+---
+
+### Gate 2: Moon Quick
+
+**Command:**
+```bash
+moon run :quick
+```
+
+**Evidence:**
+```
+Tasks: 1 completed
+ Time: 45s 471ms
+```
+
+**Verdict:** PASS
+
+---
+
+### Gate 3: Moon Test (Full Suite)
+
+**Command:**
+```bash
+moon run :test
+```
+
+**Evidence:**
+```
+velvet-ballistics:test | ────────────
+velvet-ballistics:test |  Nextest run ID 2401b1ab-e17b-4a2b-a1f5-dafd2af3d85e with nextest profile: default
+velvet-ballistics:test |     Starting 9894 tests across 59 binaries
+velvet-ballistics:test | ────────────
+velvet-ballistics:test |      Summary [  17.910s] 9894 tests run: 9894 passed, 0 skipped
+velvet-ballistics:test (19s 114ms, 63d0ad53)
+Tasks: 4 completed (1 cached)
+ Time: 28s 186ms
+```
+
+**Verdict:** PASS
+
+---
+
+## Contract Conformance Verification
+
+### Preconditions (PRE-*)
+
+| ID | Description | Status |
+|----|-------------|--------|
+| PRE-001 | CLI runtime must have valid, connected storage backend before any lifecycle command | VERIFIED — `storage_unavailable` test confirms E_STORAGE_UNAVAILABLE returned when disconnected |
+| PRE-002 | Lifecycle commands validated against current bead state before journal write | VERIFIED — 43 tests exercise validation path; invalid transitions return errors before journal write |
+| PRE-003 | Recovery replay starts from clean snapshot or empty journal state | VERIFIED — `replay_from_empty_journal_produces_valid_initial_state` passes |
+
+### Postconditions (POST-*)
+
+| ID | Description | Status |
+|----|-------------|--------|
+| POST-001 | Every accepted lifecycle command produces exactly one RuntimeJournalEvent | VERIFIED — Tests assert `journal.len()` grows by exactly 1 per command |
+| POST-002 | Successful replay reconstructs exact same bead states as pre-crash | VERIFIED — `replay_full_journal_reconstructs_bit_identical_state` passes |
+| POST-003 | Invalid-transition returns E_INVALID_TRANSITION with structured diagnostics | VERIFIED — 16 invalid-transition tests pass |
+| POST-004 | Duplicate requests return E_DUPLICATE_REQUEST, no double-write | VERIFIED — 4 duplicate-request tests pass |
+| POST-005 | Stale requests return E_STALE_REQUEST, no retroactive modification | VERIFIED — 4 stale-request tests pass |
+
+### Invariants (INV-*)
+
+| ID | Description | Status |
+|----|-------------|--------|
+| INV-001 | Each bead has exactly one canonical lifecycle state | VERIFIED — `get_state()` returns single canonical state |
+| INV-002 | Journal append-only log is single source of truth | VERIFIED — `inject_raw_event` and `inject_seq_gap` test corruption detection |
+| INV-003 | No lifecycle command skips required antecedent state | VERIFIED — 16 invalid-transition tests + state transition graph tests pass |
+| INV-004 | Restart/replay produces bit-identical bead states | VERIFIED — Full journal replay fidelity test passes |
+
+---
+
+## State History
+
+| State | Event | Evidence |
+|-------|-------|----------|
+| State 6 | Initial implementation | 23 compile errors → fixed |
+| State 6 | Replay repair | `lifecycle::replay()` now reads from journal; `inject_raw_event`/`inject_seq_gap` added for test fault injection |
+| State 8 | Format repair | Dead code, unused variables, non-exhaustive matches fixed |
+| State 8 | Regression check | 43 tests pass, 9894 moon tests pass |
+| State 9 | QA verification | All gates pass (this report) |
+
+---
+
+## Quality Gates Summary
+
+| Gate | Command | Expected | Actual | Status |
+|------|---------|----------|--------|--------|
+| 1 | `rtk cargo test --package velvet_ballistics --test lifecycle_integration -- --test-threads=1` | 43 passed | 43 passed (0.66s) | **PASS** |
+| 2 | `moon run :quick` | PASS | Tasks: 1 completed (45s) | **PASS** |
+| 3 | `moon run :test` | 9894 passed | 9894 passed, 0 skipped (28s) | **PASS** |
+
+---
+
+## Non-Negotiables Compliance
+
+| Rule | Evidence |
+|------|----------|
+| No `unsafe` in production code | Verified — implementation uses safe Rust only |
+| No `unwrap`/`expect`/`panic`/`todo`/`dbg` | Verified — all fallible operations use `?` or explicit error handling |
+| No unchecked indexing/slicing/casts/arithmetic | Verified — `get_index()` uses checked arithmetic |
+| No source modification during QA | Verified — this report only reads and verifies |
+
+---
+
+## Verdict
+
+**STATUS: PASS — All gates verified with evidence.**
+
+The lifecycle replay repair (States 6, 8) is complete and correctly implements the contract. All three mandatory QA gates pass with real command evidence.
+
+---
+
+*Report generated by qa-enforcer agent*
+*Workspace: Velvet-ballistics-vb-qi37-16-5-go*

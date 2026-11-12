@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 10,
+  "sublane": "implementation-repair",
+  "delegate": "holzman-rust",
+  "attempt": 3,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "State 10 attempt 2 cleared original CLI failures but moon ci now fails IPC in-memory submit path with admission artifact not found",
+  "input_artifacts": [".beads/vb-vt2f/implementation.md", ".beads/vb-vt2f/machine-gate-report.md", ".beads/vb-vt2f/regression-diff.md", ".beads/vb-vt2f/formal-verification-report.md", ".beads/vb-vt2f/verification-ledger.jsonl", ".beads/vb-vt2f/test-plan-review.md", ".beads/vb-vt2f/test-suite-review.md"],
+  "output_artifacts": [".beads/vb-vt2f/implementation.md", "production code changes"],
+  "status": "QUEUED"
+}

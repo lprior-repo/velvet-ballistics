@@ -1,0 +1,80 @@
+
+running 22 tests
+test given_budget_over_capacity_when_admission_with_budget_runs_then_resource_capacity_error_is_preserved ... ok
+test given_missing_artifact_when_strict_run_created_then_artifact_not_found_before_allocation ... ok
+test given_malformed_bytes_when_strict_run_created_then_decode_failed_with_rejected_digest ... ok
+test given_existence_only_artifact_check_when_strict_admission_then_bypass_is_denied ... ok
+test accepted_ledger_distinguishes_runtime_validated_from_operator_attested ... FAILED
+test given_valid_accepted_artifact_when_runtime_admits_then_yaml_json_decoder_is_not_called ... ok
+test given_unverified_legacy_evidence_when_strict_run_created_then_evidence_denies ... ok
+test given_evidence_schema_tamper_matrix_when_strict_run_created_then_typed_invalid_diagnostic_denies ... ok
+test given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_store_is_required ... ok
+test given_digest_mismatch_when_strict_run_created_then_digest_mismatch_denies ... ok
+test given_checked_artifact_when_prepared_then_gate_count_and_durability_are_not_admission_authority ... ok
+test given_stale_artifact_when_strict_run_created_then_stale_certificate_denies ... ok
+test given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_digest_and_cause_are_preserved ... FAILED
+test given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated ... FAILED
+test given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile ... ok
+test given_required_capability_with_extras_or_duplicates_then_denied ... ok
+test proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted ... FAILED
+test given_missing_prefix_or_action_mismatched_capability_then_capability_denied ... ok
+test proptest_diagnostic_mapping_is_injective_over_admission_error_categories ... ok
+test proptest_evidence_schema_version_fails_closed ... ok
+test proptest_verification_digest_must_equal_artifact_digest ... ok
+test given_raw_or_malformed_storage_bytes_when_strict_run_created_then_decode_failed_matrix_denies ... ok
+
+failures:
+
+---- accepted_ledger_distinguishes_runtime_validated_from_operator_attested stdout ----
+
+thread 'accepted_ledger_distinguishes_runtime_validated_from_operator_attested' (2725009) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:580:21:
+EffectSafety must remain an explicit external assumption
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_digest_and_cause_are_preserved stdout ----
+
+thread 'given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_digest_and_cause_are_preserved' (2725013) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1027:9:
+assertion `left == right` failed: public diagnostic case digest_mismatch
+  left: PublicAdmissionDiagnostic { category: "digest_mismatch", digest: Some(WorkflowDigest([102, 240, 229, 206, 139, 137, 227, 248, 192, 103, 28, 213, 131, 179, 19, 195, 119, 75, 99, 49, 176, 64, 33, 53, 46, 75, 28, 254, 163, 87, 7, 217])), cause: "requested_record_envelope_mismatch" }
+ right: PublicAdmissionDiagnostic { category: "digest_mismatch", digest: Some(WorkflowDigest([102, 167, 189, 158, 141, 137, 237, 192, 106, 237, 37, 141, 126, 19, 22, 176, 159, 54, 174, 206, 22, 165, 66, 210, 132, 55, 190, 87, 100, 44, 5, 89])), cause: "requested_record_envelope_mismatch" }
+
+---- given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated stdout ----
+
+thread 'given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated' (2725010) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1096:9:
+assertion `left == right` failed: denial diagnostic case digest_mismatch
+  left: PublicAdmissionDiagnostic { category: "digest_mismatch", digest: Some(WorkflowDigest([102, 240, 229, 206, 139, 137, 227, 248, 192, 103, 28, 213, 131, 179, 19, 195, 119, 75, 99, 49, 176, 64, 33, 53, 46, 75, 28, 254, 163, 87, 7, 217])), cause: "requested_record_envelope_mismatch" }
+ right: PublicAdmissionDiagnostic { category: "digest_mismatch", digest: Some(WorkflowDigest([102, 167, 189, 158, 141, 137, 237, 192, 106, 237, 37, 141, 126, 19, 22, 176, 159, 54, 174, 206, 22, 165, 66, 210, 132, 55, 190, 87, 100, 44, 5, 89])), cause: "requested_record_envelope_mismatch" }
+
+---- proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted stdout ----
+proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+thread 'proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted' (2725027) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1204:95:
+called `Result::unwrap()` on an `Err` value: "compiled artifact validation failed: CAPABILITY_NAME_INVALID: action_id 0, capability_index 0, name network.service.4"
+
+thread 'proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted' (2725027) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1204:95:
+called `Result::unwrap()` on an `Err` value: "compiled artifact validation failed: CAPABILITY_NAME_INVALID: action_id 0, capability_index 0, name network.service.2"
+
+thread 'proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted' (2725027) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1204:95:
+called `Result::unwrap()` on an `Err` value: "compiled artifact validation failed: CAPABILITY_NAME_INVALID: action_id 0, capability_index 0, name network.service.1"
+proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+proptest: Saving this and future failures in /home/lewis/src/isoloated/velvet-ballistics-vb-my3b3-deepseek-qi37/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.proptest-regressions
+proptest: If this test was run on a CI system, you may wish to add the following line to your copy of the file. (You may need to create it.)
+cc 9be88cd3b30b2ec914e04280267dbe2bff632bab6cbc635ca783e5187dedb558
+
+thread 'proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted' (2725027) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1196:1:
+Test failed: called `Result::unwrap()` on an `Err` value: "compiled artifact validation failed: CAPABILITY_NAME_INVALID: action_id 0, capability_index 0, name network.service.1".
+minimal failing input: name_suffix = 1, mutation = 0
+	successes: 0
+	local rejects: 0
+	global rejects: 0
+
+
+
+failures:
+    accepted_ledger_distinguishes_runtime_validated_from_operator_attested
+    given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated
+    given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_digest_and_cause_are_preserved
+    proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted
+
+test result: FAILED. 18 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+

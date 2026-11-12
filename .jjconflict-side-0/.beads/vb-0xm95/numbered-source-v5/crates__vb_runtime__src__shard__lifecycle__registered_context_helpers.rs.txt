@@ -1,0 +1,82 @@
+1: //! Focused helpers for building a registered action evaluation context.
+2: //!
+3: //! Extracted from `Shard::registered_action_context` to keep the caller
+4: //! under 25 logical lines while preserving exact ownership guard, artifact
+5: //! load, input validation, encoding, and output build semantics.
+6: 
+7: use crate::shard::types::RunState;
+8: use crate::{RuntimeError, RuntimeResult};
+9: use vb_core::CompiledNodeKind;
+10: use vb_core::action::{ActionOutputReady, ActionTicket};
+11: use vb_core::{SlotIdx, SlotValue, Taint};
+12: 
+13: /// Validate the action node, matching action ID, and Clean input taint.
+14: pub(super) fn validate_action_input(
+15:     state: &RunState,
+16:     ticket: ActionTicket,
+17: ) -> RuntimeResult<SlotIdx> {
+18:     let node = state
+19:         .workflow
+20:         .node(ticket.step)
+21:         .ok_or(RuntimeError::InvalidActionCompletion)?;
+22:     let CompiledNodeKind::Do { action, input } = node.kind else {
+23:         return Err(RuntimeError::InvalidActionCompletion);
+24:     };
+25:     let input_taint = state
+26:         .frame
+27:         .read_taint(input)
+28:         .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+29:     if action != ticket.action || input_taint != Taint::Clean {
+30:         return Err(RuntimeError::InvalidActionCompletion);
+31:     }
+32:     Ok(input)
+33: }
+34: 
+35: /// Read an I64 slot value by index, erroring on type mismatch or read failure.
+36: pub(super) fn read_slot_i64(state: &RunState, slot: SlotIdx) -> RuntimeResult<i64> {
+37:     let SlotValue::I64(value) = state
+38:         .frame
+39:         .read_slot(slot)
+40:         .map_err(|_| RuntimeError::InvalidActionCompletion)?
+41:     else {
+42:         return Err(RuntimeError::InvalidActionCompletion);
+43:     };
+44:     Ok(*value)
+45: }
+46: 
+47: /// Read the I64 input value for a registered action and validate the
+48: /// action node, input taint, and slot type.
+49: pub(super) fn resolve_action_input(
+50:     state: &RunState,
+51:     ticket: ActionTicket,
+52: ) -> RuntimeResult<(i64, Taint)> {
+53:     let input = validate_action_input(state, ticket)?;
+54:     let value = read_slot_i64(state, input)?;
+55:     Ok((value, Taint::Clean))
+56: }
+57: 
+58: /// Encode an I64 value to canonical postcard bytes for the evaluation context.
+59: pub(super) fn encode_action_input(value: i64) -> RuntimeResult<Vec<u8>> {
+60:     postcard::to_allocvec(&SlotValue::I64(value)).map_err(|_| RuntimeError::EncodeFailed)
+61: }
+62: 
+63: /// Build the action output descriptor from the value and encoded bytes.
+64: pub(super) fn build_action_output(
+65:     state: &RunState,
+66:     ticket: ActionTicket,
+67:     value: i64,
+68:     encoded: &[u8],
+69: ) -> RuntimeResult<ActionOutputReady> {
+70:     let node = state
+71:         .workflow
+72:         .node(ticket.step)
+73:         .ok_or(RuntimeError::InvalidActionCompletion)?;
+74:     let output_slot = node.output.ok_or(RuntimeError::InvalidActionCompletion)?;
+75:     let encoded_len = u32::try_from(encoded.len()).map_err(|_| RuntimeError::EncodeFailed)?;
+76:     Ok(ActionOutputReady {
+77:         output_slot,
+78:         value: SlotValue::I64(value),
+79:         taint: Taint::Clean,
+80:         encoded_len,
+81:     })
+82: }

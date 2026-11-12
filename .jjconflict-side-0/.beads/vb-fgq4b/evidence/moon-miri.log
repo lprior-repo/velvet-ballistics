@@ -1,0 +1,16 @@
+[ WARN 2026-10-21 16:26:45.265] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+▮▮▮▮ velvet-ballistics:miri (2deed3a6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2387 filtered out; finished in 5.98s
+
+[ WARN 16:27:08.887] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="2deed3a63bcb5ebe666d573bdbd94fe45f8923a52611435bef66e7363d62b29f" blob_hash="2deed3a63bcb5ebe666d573bdbd94fe45f8923a52611435bef66e7363d62b29f" details=[] code=Internal
+[ WARN 16:27:08.887] moon_remote::grpc_remote_client  Failed to upload blob: Internal error  hash="2deed3a63bcb5ebe666d573bdbd94fe45f8923a52611435bef66e7363d62b29f" blob_hash="c61a37a84f4b452aa3f563bdfa3ca5b629222cd36f47a6acf110bd65a924b8a5" details=[] code=Internal
+[ WARN 16:27:08.887] moon_remote::remote_service  Failed to cache action result: Failed to make gRPC call.
+Internal error: unexpected error opening temp file: open /home/lewis/.cache/bazel-remote/ac.v2/2d/2deed3a63bcb5ebe666d573bdbd94fe45f8923a52611435bef66e7363d62b29f-428700518: no such file or directory  hash="2deed3a63bcb5ebe666d573bdbd94fe45f8923a52611435bef66e7363d62b29f"
+▮▮▮▮ velvet-ballistics:miri (23s 575ms, 2deed3a6)
+
+Tasks: 1 completed
+ Time: 23s 736ms
+

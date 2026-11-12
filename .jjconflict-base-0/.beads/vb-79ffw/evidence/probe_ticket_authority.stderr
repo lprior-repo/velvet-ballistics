@@ -1,0 +1,424 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local3090-authority-review/crates/vb_runtime)
+warning: unused import: `RetryPolicy`
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:18:18
+   |
+18 |     Idempotency, RetryPolicy, RetrySafety, SideEffect,
+   |                  ^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0609]: no field `compiled` on type `WorkflowParts`
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:39:15
+   |
+39 |     canonical.compiled = Vec::new();
+   |               ^^^^^^^^ unknown field
+   |
+   = note: available fields are: `name`, `digest`, `semantic_source_identity`, `nodes`, `expressions` ... and 8 others
+
+error[E0560]: struct `WorkflowParts` has no field named `source`
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:48:9
+   |
+48 |         source: Vec::new(),
+   |         ^^^^^^ `WorkflowParts` does not have this field
+   |
+   = note: available fields are: `name`, `digest`, `semantic_source_identity`, `nodes`, `expressions` ... and 8 others
+
+error[E0560]: struct `WorkflowParts` has no field named `compiled`
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:49:9
+   |
+49 |         compiled: Vec::new(),
+   |         ^^^^^^^^ `WorkflowParts` does not have this field
+   |
+   = note: available fields are: `name`, `digest`, `semantic_source_identity`, `nodes`, `expressions` ... and 8 others
+
+error[E0560]: struct `CompiledNode` has no field named `input`
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:59:9
+   |
+59 |         input: Some(SlotIdx::new(0)),
+   |         ^^^^^ `CompiledNode` does not have this field
+   |
+   = note: available fields are: `on_error`, `error_slot`
+
+error[E0533]: expected value, found struct variant `CompiledNodeKind::Finish`
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:66:15
+   |
+66 |         kind: CompiledNodeKind::Finish,
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^ not a value
+   |
+help: you might have meant to create a new value of the struct
+   |
+66 |         kind: CompiledNodeKind::Finish { result: /* value */ },
+   |                                        +++++++++++++++++++++++
+
+error[E0560]: struct `CompiledNode` has no field named `input`
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:67:9
+   |
+67 |         input: None,
+   |         ^^^^^ `CompiledNode` does not have this field
+   |
+   = note: available fields are: `on_error`, `error_slot`
+
+error[E0308]: mismatched types
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:73:15
+   |
+73 |         name: "test_retry".to_string(),
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^ expected `Box<str>`, found `String`
+   |
+   = note: expected struct `Box<str>`
+              found struct `String`
+help: call `Into::into` on this expression to convert `String` into `Box<str>`
+   |
+73 |         name: "test_retry".to_string().into(),
+   |                                       +++++++
+
+error[E0560]: struct `CompiledWorkflow` has no field named `version`
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:74:9
+   |
+74 |         version: "1.0.0".to_string(),
+   |         ^^^^^^^ `CompiledWorkflow` does not have this field
+   |
+   = note: all struct fields are already assigned
+
+error[E0308]: mismatched types
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:75:16
+   |
+75 |         nodes: vec![action_node, finish_node],
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Box<[CompiledNode]>`, found `Vec<CompiledNode>`
+   |
+   = note: expected struct `Box<[CompiledNode]>`
+              found struct `Vec<CompiledNode>`
+help: call `Into::into` on this expression to convert `Vec<CompiledNode>` into `Box<[CompiledNode]>`
+   |
+75 |         nodes: vec![action_node, finish_node].into(),
+   |                                              +++++++
+
+error[E0560]: struct `CompiledWorkflow` has no field named `slots`
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:76:9
+   |
+76 |         slots: 3,
+   |         ^^^^^ `CompiledWorkflow` does not have this field
+   |
+   = note: all struct fields are already assigned
+
+error[E0063]: missing fields `allows_secret_results`, `max_accessors`, `max_collect_items` and 13 other fields in initializer of `ResourceContract`
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:77:28
+   |
+77 |         resource_contract: ResourceContract {
+   |                            ^^^^^^^^^^^^^^^^ missing `allows_secret_results`, `max_accessors`, `max_collect_items` and 13 other fields
+
+error[E0560]: struct `CompiledWorkflow` has no field named `artifact_digest`
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:81:9
+   |
+81 |         artifact_digest: digest,
+   |         ^^^^^^^^^^^^^^^ `CompiledWorkflow` does not have this field
+   |
+   = note: all struct fields are already assigned
+
+error[E0308]: mismatched types
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:89:15
+   |
+89 |         name: ActionName::new("test_action"),
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `ActionName`, found `Result<ActionName, ActionNameError>`
+   |
+   = note: expected struct `ActionName`
+                found enum `Result<ActionName, ActionNameError>`
+help: use the `?` operator to extract the `Result<ActionName, ActionNameError>` value, propagating a `Result::Err` value to the caller
+   |
+89 |         name: ActionName::new("test_action")?,
+   |                                             +
+
+error[E0599]: no variant, associated function, or constant named `NonIdempotent` found for enum `Idempotency` in the current scope
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:90:35
+   |
+90 |         idempotency: Idempotency::NonIdempotent,
+   |                                   ^^^^^^^^^^^^^ variant, associated function, or constant not found in `Idempotency`
+
+error[E0599]: no variant, associated function, or constant named `AtLeastOnce` found for enum `RetrySafety` in the current scope
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:91:36
+   |
+91 |         retry_safety: RetrySafety::AtLeastOnce,
+   |                                    ^^^^^^^^^^^ variant, associated function, or constant not found in `RetrySafety`
+
+error[E0599]: no variant, associated function, or constant named `Unknown` found for enum `vb_core::SideEffect` in the current scope
+  --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:98:34
+   |
+98 |         side_effect: SideEffect::Unknown,
+   |                                  ^^^^^^^ variant, associated function, or constant not found in `vb_core::SideEffect`
+
+error[E0599]: no associated function or constant named `builder` found for struct `ShardConfig` in the current scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:153:18
+    |
+153 |     ShardConfig::builder().build()
+    |                  ^^^^^^^ associated function or constant not found in `ShardConfig`
+    |
+note: if you're trying to build a new `ShardConfig`, consider using `impl_::<impl ShardConfig>::new` which returns `Result<ShardConfig, RuntimeError>`
+   --> crates/vb_runtime/src/shard/impl_parts/chunk_003.rs:5:5
+    |
+  5 | /     pub fn new(
+  6 | |         command_queue_capacity: usize,
+  7 | |         trace_capacity: usize,
+  8 | |         step_budget_per_tick: u64,
+  9 | |         max_active_runs: usize,
+ 10 | |         policy: vb_core::policy::RuntimePolicy,
+ 11 | |     ) -> RuntimeResult<Self> {
+    | |____________________________^
+
+error[E0599]: no variant, associated function, or constant named `default` found for enum `RuntimePolicy` in the current scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:171:28
+    |
+171 |             RuntimePolicy::default(),
+    |                            ^^^^^^^ variant, associated function, or constant not found in `RuntimePolicy`
+
+error[E0061]: this function takes 3 arguments but 6 arguments were supplied
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:169:23
+    |
+169 |         let runtime = Runtime::new(
+    |                       ^^^^^^^^^^^^
+...
+173 |             retry_action_workflow()?,
+    |             ------------------------ unexpected argument #4 of type `CompiledWorkflow`
+174 |             contracts()?,
+    |             ------------ unexpected argument #5 of type `Box<[ActionContract]>`
+175 |             Arc::new(CapabilitySet::empty()),
+    |             -------------------------------- unexpected argument #6 of type `Arc<CapabilitySet>`
+    |
+note: associated function defined here
+   --> crates/vb_runtime/src/runtime.rs:209:12
+    |
+209 |     pub fn new(
+    |            ^^^
+help: remove the extra arguments
+    |
+172 -             shared,
+173 -             retry_action_workflow()?,
+174 -             contracts()?,
+175 -             Arc::new(CapabilitySet::empty()),
+172 +             shared,
+    |
+
+error[E0599]: no method named `submit` found for struct `vb_runtime::runtime::Runtime` in the current scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:178:17
+    |
+178 |         runtime.submit(run, SlotValue::Null, None, None)
+    |                 ^^^^^^ method not found in `vb_runtime::runtime::Runtime`
+
+error[E0599]: no variant, associated function, or constant named `default` found for enum `RuntimePolicy` in the current scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:203:28
+    |
+203 |             RuntimePolicy::default(),
+    |                            ^^^^^^^ variant, associated function, or constant not found in `RuntimePolicy`
+
+error[E0061]: this function takes 3 arguments but 6 arguments were supplied
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:201:23
+    |
+201 |         let runtime = Runtime::new(
+    |                       ^^^^^^^^^^^^
+...
+205 |             retry_action_workflow()?,
+    |             ------------------------ unexpected argument #4 of type `CompiledWorkflow`
+206 |             contracts()?,
+    |             ------------ unexpected argument #5 of type `Box<[ActionContract]>`
+207 |             Arc::new(CapabilitySet::empty()),
+    |             -------------------------------- unexpected argument #6 of type `Arc<CapabilitySet>`
+    |
+note: associated function defined here
+   --> crates/vb_runtime/src/runtime.rs:209:12
+    |
+209 |     pub fn new(
+    |            ^^^
+help: remove the extra arguments
+    |
+204 -             shared,
+205 -             retry_action_workflow()?,
+206 -             contracts()?,
+207 -             Arc::new(CapabilitySet::empty()),
+204 +             shared,
+    |
+
+error[E0599]: no variant, associated function, or constant named `default` found for enum `RuntimePolicy` in the current scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:238:28
+    |
+238 |             RuntimePolicy::default(),
+    |                            ^^^^^^^ variant, associated function, or constant not found in `RuntimePolicy`
+
+error[E0061]: this function takes 3 arguments but 6 arguments were supplied
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:236:23
+    |
+236 |         let runtime = Runtime::new(
+    |                       ^^^^^^^^^^^^
+...
+240 |             retry_action_workflow()?,
+    |             ------------------------ unexpected argument #4 of type `CompiledWorkflow`
+241 |             contracts()?,
+    |             ------------ unexpected argument #5 of type `Box<[ActionContract]>`
+242 |             Arc::new(CapabilitySet::empty()),
+    |             -------------------------------- unexpected argument #6 of type `Arc<CapabilitySet>`
+    |
+note: associated function defined here
+   --> crates/vb_runtime/src/runtime.rs:209:12
+    |
+209 |     pub fn new(
+    |            ^^^
+help: remove the extra arguments
+    |
+239 -             shared,
+240 -             retry_action_workflow()?,
+241 -             contracts()?,
+242 -             Arc::new(CapabilitySet::empty()),
+239 +             shared,
+    |
+
+error[E0599]: no variant, associated function, or constant named `default` found for enum `RuntimePolicy` in the current scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:311:24
+    |
+311 |         RuntimePolicy::default(),
+    |                        ^^^^^^^ variant, associated function, or constant not found in `RuntimePolicy`
+
+error[E0061]: this function takes 3 arguments but 6 arguments were supplied
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:309:19
+    |
+309 |     let runtime = Runtime::new(
+    |                   ^^^^^^^^^^^^
+...
+313 |         retry_action_workflow()?,
+    |         ------------------------ unexpected argument #4 of type `CompiledWorkflow`
+314 |         contracts()?,
+    |         ------------ unexpected argument #5 of type `Box<[ActionContract]>`
+315 |         Arc::new(CapabilitySet::empty()),
+    |         -------------------------------- unexpected argument #6 of type `Arc<CapabilitySet>`
+    |
+note: associated function defined here
+   --> crates/vb_runtime/src/runtime.rs:209:12
+    |
+209 |     pub fn new(
+    |            ^^^
+help: remove the extra arguments
+    |
+312 -         shared,
+313 -         retry_action_workflow()?,
+314 -         contracts()?,
+315 -         Arc::new(CapabilitySet::empty()),
+312 +         shared,
+    |
+
+error[E0599]: no method named `submit` found for struct `vb_runtime::runtime::Runtime` in the current scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:318:13
+    |
+318 |     runtime.submit(run, SlotValue::Null, None, None)
+    |             ^^^^^^ method not found in `vb_runtime::runtime::Runtime`
+
+error[E0599]: no variant, associated function, or constant named `default` found for enum `RuntimePolicy` in the current scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:363:24
+    |
+363 |         RuntimePolicy::default(),
+    |                        ^^^^^^^ variant, associated function, or constant not found in `RuntimePolicy`
+
+error[E0061]: this function takes 3 arguments but 6 arguments were supplied
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:361:19
+    |
+361 |     let runtime = Runtime::new(
+    |                   ^^^^^^^^^^^^
+...
+365 |         retry_action_workflow()?,
+    |         ------------------------ unexpected argument #4 of type `CompiledWorkflow`
+366 |         contracts()?,
+    |         ------------ unexpected argument #5 of type `Box<[ActionContract]>`
+367 |         Arc::new(CapabilitySet::empty()),
+    |         -------------------------------- unexpected argument #6 of type `Arc<CapabilitySet>`
+    |
+note: associated function defined here
+   --> crates/vb_runtime/src/runtime.rs:209:12
+    |
+209 |     pub fn new(
+    |            ^^^
+help: remove the extra arguments
+    |
+364 -         shared,
+365 -         retry_action_workflow()?,
+366 -         contracts()?,
+367 -         Arc::new(CapabilitySet::empty()),
+364 +         shared,
+    |
+
+error[E0599]: no method named `submit` found for struct `vb_runtime::runtime::Runtime` in the current scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:370:13
+    |
+370 |     runtime.submit(run, SlotValue::Null, None, None)
+    |             ^^^^^^ method not found in `vb_runtime::runtime::Runtime`
+
+error[E0599]: no variant, associated function, or constant named `default` found for enum `RuntimePolicy` in the current scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:416:28
+    |
+416 |             RuntimePolicy::default(),
+    |                            ^^^^^^^ variant, associated function, or constant not found in `RuntimePolicy`
+
+error[E0061]: this function takes 3 arguments but 6 arguments were supplied
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:414:23
+    |
+414 |         let runtime = Runtime::new(
+    |                       ^^^^^^^^^^^^
+...
+418 |             retry_action_workflow()?,
+    |             ------------------------ unexpected argument #4 of type `CompiledWorkflow`
+419 |             contracts()?,
+    |             ------------ unexpected argument #5 of type `Box<[ActionContract]>`
+420 |             Arc::new(CapabilitySet::empty()),
+    |             -------------------------------- unexpected argument #6 of type `Arc<CapabilitySet>`
+    |
+note: associated function defined here
+   --> crates/vb_runtime/src/runtime.rs:209:12
+    |
+209 |     pub fn new(
+    |            ^^^
+help: remove the extra arguments
+    |
+417 -             shared,
+418 -             retry_action_workflow()?,
+419 -             contracts()?,
+420 -             Arc::new(CapabilitySet::empty()),
+417 +             shared,
+    |
+
+error[E0599]: no method named `submit` found for struct `vb_runtime::runtime::Runtime` in the current scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:423:17
+    |
+423 |         runtime.submit(run, SlotValue::Null, None, None)
+    |                 ^^^^^^ method not found in `vb_runtime::runtime::Runtime`
+
+error[E0599]: no variant, associated function, or constant named `default` found for enum `RuntimePolicy` in the current scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:446:28
+    |
+446 |             RuntimePolicy::default(),
+    |                            ^^^^^^^ variant, associated function, or constant not found in `RuntimePolicy`
+
+error[E0061]: this function takes 3 arguments but 6 arguments were supplied
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:444:23
+    |
+444 |         let runtime = Runtime::new(
+    |                       ^^^^^^^^^^^^
+...
+448 |             retry_action_workflow()?,
+    |             ------------------------ unexpected argument #4 of type `CompiledWorkflow`
+449 |             contracts()?,
+    |             ------------ unexpected argument #5 of type `Box<[ActionContract]>`
+450 |             Arc::new(CapabilitySet::empty()),
+    |             -------------------------------- unexpected argument #6 of type `Arc<CapabilitySet>`
+    |
+note: associated function defined here
+   --> crates/vb_runtime/src/runtime.rs:209:12
+    |
+209 |     pub fn new(
+    |            ^^^
+help: remove the extra arguments
+    |
+447 -             shared,
+448 -             retry_action_workflow()?,
+449 -             contracts()?,
+450 -             Arc::new(CapabilitySet::empty()),
+447 +             shared,
+    |
+
+Some errors have detailed explanations: E0061, E0063, E0308, E0533, E0560, E0599, E0609.
+For more information about an error, try `rustc --explain E0061`.
+warning: `vb_runtime` (test "vb_79ffw_ticket_authority_probe") generated 1 warning
+error: could not compile `vb_runtime` (test "vb_79ffw_ticket_authority_probe") due to 35 previous errors; 1 warning emitted

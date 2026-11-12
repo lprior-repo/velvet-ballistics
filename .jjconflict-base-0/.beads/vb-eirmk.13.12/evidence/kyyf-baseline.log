@@ -1,0 +1,30 @@
+Running as unit: vb-kyyf-prebuilt-pure-red-20261110.scope; invocation ID: f0bfc238ae9e4ebd863b3ec98d46944a
+────────────
+ Nextest run ID 28dc3dfe-ebed-47f1-bcff-b2cd463fd415 with nextest profile: default
+    Starting 1 test across 1 binary (16 tests skipped)
+        FAIL [   0.002s] (1/1) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism kyyf_prebuilt_cli_selector_honors_explicit_os_path
+  stdout ───
+
+    running 1 test
+    test kyyf_prebuilt_cli_selector_honors_explicit_os_path ... FAILED
+
+    failures:
+
+    failures:
+        kyyf_prebuilt_cli_selector_honors_explicit_os_path
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'kyyf_prebuilt_cli_selector_honors_explicit_os_path' (2563485) panicked at crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs:772:5:
+    assertion `left == right` failed
+      left: "/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/bin/cargo"
+     right: "/some/distinct/prebuilt/vb-cli"
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+  Cancelling due to test failure: 
+────────────
+     Summary [   0.002s] 1 test run: 0 passed, 1 failed, 16 skipped
+        FAIL [   0.002s] (1/1) velvet-ballistics-workspace-tests::vb_kyyf_cross_run_determinism kyyf_prebuilt_cli_selector_honors_explicit_os_path
+error: test run failed

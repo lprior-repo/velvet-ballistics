@@ -1,0 +1,24 @@
+{"contract_clause":"INV-001","tests":["TEST-UNIT-002"],"proofs":["VERUS-DECISION-002","KANI-RUNTIME-001","KANI-RUNTIME-002","KANI-RUNTIME-003","KANI-RUNTIME-004","KANI-RUNTIME-005","KANI-RUNTIME-006"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-002","tests":["TEST-UNIT-001"],"proofs":["VERUS-DECISION-003","KANI-DECISION-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-003","tests":["PROPTEST-001","TEST-UNIT-001"],"proofs":["VERUS-DECISION-001","KANI-DECISION-001","KANI-DECISION-002","KANI-DECISION-003","KANI-DECISION-004","KANI-DECISION-005"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-004","tests":["TEST-UNIT-002"],"proofs":["VERUS-RUNTIME-001","KANI-RUNTIME-006"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-001","tests":["TEST-UNIT-001"],"proofs":["KANI-DECISION-001","KANI-DECISION-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-003","tests":["TEST-UNIT-002"],"proofs":["VERUS-RUNTIME-002","KANI-RUNTIME-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-004","tests":["TEST-UNIT-002"],"proofs":["MIRI-RUNTIME-001","MIRI-RUNTIME-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-001","tests":["TEST-UNIT-001","PROPTEST-001"],"proofs":["KANI-DECISION-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-002","tests":["TEST-UNIT-001"],"proofs":["KANI-DECISION-003"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-003","tests":["TEST-UNIT-001"],"proofs":["KANI-DECISION-004"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-004","tests":["TEST-UNIT-001"],"proofs":["KANI-DECISION-005"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-005","tests":["TEST-UNIT-002","PROPTEST-002"],"proofs":["KANI-RUNTIME-001","VERUS-RUNTIME-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-006","tests":["TEST-UNIT-002"],"proofs":["KANI-RUNTIME-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-007","tests":["TEST-UNIT-002"],"proofs":["KANI-RUNTIME-003"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-008","tests":["TEST-UNIT-002"],"proofs":["KANI-RUNTIME-004"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-009","tests":["TEST-UNIT-002"],"proofs":["KANI-RUNTIME-005"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-010","tests":["TEST-INTEGRATION-001"],"proofs":["KANI-PARITY-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"ERR-001 (SideEffectingRetryUnsafe)","tests":["TEST-UNIT-001"],"proofs":["KANI-DECISION-003","VERUS-DECISION-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"ERR-002 (SideEffectingAtLeastOnceExternal)","tests":["TEST-UNIT-001"],"proofs":["KANI-DECISION-004","VERUS-DECISION-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"ERR-003 (SideEffectingDeterministicPure)","tests":["TEST-UNIT-001"],"proofs":["KANI-DECISION-005","VERUS-DECISION-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"ERR-004 (MissingKey)","tests":["TEST-UNIT-002"],"proofs":["KANI-RUNTIME-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"ERR-005 (SecretInKey)","tests":["TEST-UNIT-002"],"proofs":["KANI-RUNTIME-003"],"review":"contract-verification-review.md"}
+{"contract_clause":"ERR-006 (RandomInKey)","tests":["TEST-UNIT-002"],"proofs":["KANI-RUNTIME-004"],"review":"contract-verification-review.md"}
+{"contract_clause":"ERR-007 (TimeInKey)","tests":["TEST-UNIT-002"],"proofs":["KANI-RUNTIME-005"],"review":"contract-verification-review.md"}

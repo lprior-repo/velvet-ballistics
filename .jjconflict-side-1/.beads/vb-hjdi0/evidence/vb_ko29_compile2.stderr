@@ -1,0 +1,57 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-p51m8-local5090-finish/crates/workspace_tests)
+error[E0603]: function `produce_completed_run` is private
+   --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:361:37
+    |
+361 |     let ticket = vb_ko29_5_fixture::produce_completed_run(dir.path(), run)?;
+    |                                     ^^^^^^^^^^^^^^^^^^^^^ private function
+    |
+note: the function `produce_completed_run` is defined here
+   --> crates/workspace_tests/tests/vb_ko29_5_fixture/mod.rs:121:1
+    |
+121 | / fn produce_completed_run(
+122 | |     path: &std::path::Path,
+123 | |     run: RunId,
+124 | | ) -> Result<ActionTicket, String> {
+...   |
+163 | |     Ok(ticket)
+164 | | }
+    | |_^
+
+error[E0603]: function `produce_completed_run` is private
+   --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:406:38
+    |
+406 |     let ticket1 = vb_ko29_5_fixture::produce_completed_run(dir.path(), run1)?;
+    |                                      ^^^^^^^^^^^^^^^^^^^^^ private function
+    |
+note: the function `produce_completed_run` is defined here
+   --> crates/workspace_tests/tests/vb_ko29_5_fixture/mod.rs:121:1
+    |
+121 | / fn produce_completed_run(
+122 | |     path: &std::path::Path,
+123 | |     run: RunId,
+124 | | ) -> Result<ActionTicket, String> {
+...   |
+163 | |     Ok(ticket)
+164 | | }
+    | |_^
+
+error[E0603]: function `produce_completed_run` is private
+   --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:407:38
+    |
+407 |     let ticket2 = vb_ko29_5_fixture::produce_completed_run(dir.path(), run2)?;
+    |                                      ^^^^^^^^^^^^^^^^^^^^^ private function
+    |
+note: the function `produce_completed_run` is defined here
+   --> crates/workspace_tests/tests/vb_ko29_5_fixture/mod.rs:121:1
+    |
+121 | / fn produce_completed_run(
+122 | |     path: &std::path::Path,
+123 | |     run: RunId,
+124 | | ) -> Result<ActionTicket, String> {
+...   |
+163 | |     Ok(ticket)
+164 | | }
+    | |_^
+
+For more information about this error, try `rustc --explain E0603`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_ko29_5_public_idempotency") due to 3 previous errors

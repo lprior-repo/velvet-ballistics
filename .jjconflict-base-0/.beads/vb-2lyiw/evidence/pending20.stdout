@@ -1,0 +1,25 @@
+
+running 20 tests
+test recover_and_resume_rejects_admission_policy_mismatch ... ok
+test recover_and_resume_fails_closed_for_store_dependent_fjall_pending_action_after_reopen ... ok
+test recover_and_resume_fails_closed_for_fjall_timed_ask_after_reopen ... ok
+test recovered_fjall_open_ask_with_scalar_prompt_can_answer_after_reopen ... ok
+test recover_and_resume_rejects_capability_mismatch ... ok
+test recovered_fjall_pending_action_can_complete_after_reopen ... ok
+test recover_and_resume_fails_closed_for_fjall_wait_timer_after_reopen ... ok
+test recover_and_resume_rehydrates_fjall_pending_action_ticket_after_reopen ... ok
+test runtime_records_actual_action_abi_at_schedule_boundary ... ok
+test recover_and_resume_fails_closed_for_store_dependent_fjall_open_ask_after_reopen ... ok
+test recover_and_resume_rejects_action_abi_digest_mismatch ... ok
+test runtime_recover_product_cannot_resume_witness_carries_through_for_pending_asks ... ok
+test runtime_submit_drive_without_action_abi_authority_fails_before_ticket_persist ... ok
+test strict_submit_rejects_unbound_action_abi_before_ticket_persist ... ok
+test recover_and_resume_rejects_source_digest_as_artifact_digest ... ok
+test runtime_recover_product_cannot_resume_witness_carries_through_for_pending_timers ... ok
+test recover_and_resume_rejects_workflow_source_digest_mismatch ... ok
+test runtime_submit_drive_persists_recoverable_fjall_pending_action_abi_digest ... ok
+test recovered_fjall_open_ask_can_answer_after_reopen ... ok
+test runtime_recover_product_cannot_resume_witness_carries_through_for_store_missing ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+

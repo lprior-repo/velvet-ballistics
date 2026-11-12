@@ -1,0 +1,21 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 6,
+  "sublane": "proof-review-after-production-bound-verus-42-verified",
+  "delegate": "proof-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/implementation.md",
+    ".beads/vb-kyyf/proof-evidence.md",
+    ".beads/vb-kyyf/proof-architecture-report.md",
+    "crates/vb_proof_kernels/src/vb_kyyf_normalization.rs",
+    "verification/verus/vb_kyyf_normalization.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/proof-review.md",
+    ".beads/vb-kyyf/proof-findings.jsonl",
+    ".beads/vb-kyyf/proof-repair-guide.md"
+  ],
+  "attempt": 3
+}

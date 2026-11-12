@@ -1,0 +1,381 @@
++zsh:1> cargo clippy --workspace --all-targets --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock
+    Checking velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+error: indexing may panic
+  --> fuzz_targets/vb_vzcuf_PS_003.rs:88:11
+   |
+88 |     match data[0] % 2 {
+   |           ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+   = note: requested on the command line with `-D clippy::indexing-slicing`
+
+error: indexing may panic
+  --> fuzz_targets/wait_digest_exhaustive_collision.rs:20:17
+   |
+20 |     let byte1 = data[0];
+   |                 ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+   = note: requested on the command line with `-D clippy::indexing-slicing`
+
+error: slicing may panic
+  --> fuzz_targets/vb_vzcuf_PS_003.rs:89:41
+   |
+89 |         0 => fuzz_encode_record_errors(&data[1..]),
+   |                                         ^^^^^^^^^
+   |
+   = help: consider using `.get(n..)` or .get_mut(n..)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+  --> fuzz_targets/wait_digest_exhaustive_collision.rs:21:17
+   |
+21 |     let byte2 = data[1];
+   |                 ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+  --> fuzz_targets/wait_digest_exhaustive_collision.rs:22:32
+   |
+22 |     let event_num1 = u16::from(data[2]);
+   |                                ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: slicing may panic
+  --> fuzz_targets/vb_vzcuf_PS_003.rs:90:45
+   |
+90 |         _ => fuzz_admission_classification(&data[1..]),
+   |                                             ^^^^^^^^^
+   |
+   = help: consider using `.get(n..)` or .get_mut(n..)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+  --> fuzz_targets/wait_digest_exhaustive_collision.rs:23:32
+   |
+23 |     let event_num2 = u16::from(data[3]);
+   |                                ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing into a string may panic if the index is within a UTF-8 character
+  --> fuzz_targets/tooling_flux_check_selector.rs:14:10
+   |
+14 |         &input[..4096]
+   |          ^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#string_slice
+   = note: requested on the command line with `-D clippy::string-slice`
+
+error: indexing may panic
+  --> fuzz_targets/tooling_flux_check_selector.rs:25:23
+   |
+25 |     let package_arg = parts[0];
+   |                       ^^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+   = note: requested on the command line with `-D clippy::indexing-slicing`
+
+error: slicing may panic
+  --> fuzz_targets/tooling_flux_check_selector.rs:27:9
+   |
+27 |         parts[1..].to_vec()
+   |         ^^^^^^^^^^
+   |
+   = help: consider using `.get(n..)` or .get_mut(n..)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> fuzz_targets/tooling_flux_check_selector.rs:35:5
+   |
+35 | /     let _ = Command::new("bash")
+36 | |         .arg("scripts/flux-check-package.sh")
+37 | |         .args(&full_args)
+38 | |         .output();
+   | |__________________^
+   |
+   = help: consider explicitly using expression value
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_underscore_must_use
+   = note: requested on the command line with `-D clippy::let-underscore-must-use`
+
+error: using a potentially dangerous silent `as` conversion
+  --> fuzz_targets/fuzz_choose_when_parse.rs:70:26
+   |
+70 |             current.push(byte as char);
+   |                          ^^^^^^^^^^^^
+   |
+   = help: consider using a safe wrapper for this conversion
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#as_conversions
+   = note: requested on the command line with `-D clippy::as-conversions`
+
+error: could not compile `velvet-ballistics-fuzz` (bin "tooling_flux_check_selector") due to 4 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `velvet-ballistics-fuzz` (bin "wait_digest_exhaustive_collision") due to 4 previous errors
+error: could not compile `velvet-ballistics-fuzz` (bin "vb_vzcuf_PS_003") due to 3 previous errors
+error: could not compile `velvet-ballistics-fuzz` (bin "fuzz_choose_when_parse") due to 1 previous error
+error: indexing may panic
+  --> fuzz_targets/vb_vzcuf_PS_008.rs:34:18
+   |
+34 |     let key_ok = data[0] & 1 == 1;
+   |                  ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+   = note: requested on the command line with `-D clippy::indexing-slicing`
+
+error: indexing may panic
+  --> fuzz_targets/vb_vzcuf_PS_008.rs:35:18
+   |
+35 |     let dup_ok = data[1] & 1 == 1;
+   |                  ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+  --> fuzz_targets/vb_vzcuf_PS_008.rs:36:20
+   |
+36 |     let count_ok = data[2] & 1 == 1;
+   |                    ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+  --> fuzz_targets/vb_vzcuf_PS_008.rs:37:23
+   |
+37 |     let encoding_ok = data[3] & 1 == 1;
+   |                       ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+  --> fuzz_targets/vb_vzcuf_PS_008.rs:38:24
+   |
+38 |     let admission_ok = data[4] & 1 == 1;
+   |                        ^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+   --> fuzz_targets/vb_vzcuf_PS_008.rs:114:11
+    |
+114 |     match data[0] % 2 {
+    |           ^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: slicing may panic
+   --> fuzz_targets/vb_vzcuf_PS_008.rs:115:35
+    |
+115 |         0 => fuzz_guard_ordering(&data[1..]),
+    |                                   ^^^^^^^^^
+    |
+    = help: consider using `.get(n..)` or .get_mut(n..)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: slicing may panic
+   --> fuzz_targets/vb_vzcuf_PS_008.rs:116:40
+    |
+116 |         _ => fuzz_encode_record_guard(&data[1..]),
+    |                                        ^^^^^^^^^
+    |
+    = help: consider using `.get(n..)` or .get_mut(n..)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing into a string may panic if the index is within a UTF-8 character
+  --> fuzz_targets/tooling_kani_list_args.rs:17:10
+   |
+17 |         &input[..4096]
+   |          ^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#string_slice
+   = note: requested on the command line with `-D clippy::string-slice`
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> fuzz_targets/tooling_kani_list_args.rs:30:5
+   |
+30 | /     let _ = Command::new("bash")
+31 | |         .arg("scripts/kani-list.sh")
+32 | |         .args(&args)
+33 | |         .env("KANI_LIST_DIR", "/tmp/fuzz-kani-list")
+34 | |         .output();
+   | |__________________^
+   |
+   = help: consider explicitly using expression value
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_underscore_must_use
+   = note: requested on the command line with `-D clippy::let-underscore-must-use`
+
+error: could not compile `velvet-ballistics-fuzz` (bin "vb_vzcuf_PS_008") due to 8 previous errors
+error: could not compile `velvet-ballistics-fuzz` (bin "tooling_kani_list_args") due to 2 previous errors
+error: indexing may panic
+   --> fuzz_targets/vb_vzcuf_PS_004.rs:133:11
+    |
+133 |     match data[0] % 3 {
+    |           ^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+    = note: requested on the command line with `-D clippy::indexing-slicing`
+
+error: slicing may panic
+   --> fuzz_targets/vb_vzcuf_PS_004.rs:134:46
+    |
+134 |         0 => fuzz_encode_record_determinism(&data[1..]),
+    |                                              ^^^^^^^^^
+    |
+    = help: consider using `.get(n..)` or .get_mut(n..)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: slicing may panic
+   --> fuzz_targets/vb_vzcuf_PS_004.rs:135:46
+    |
+135 |         1 => fuzz_staged_state_preservation(&data[1..]),
+    |                                              ^^^^^^^^^
+    |
+    = help: consider using `.get(n..)` or .get_mut(n..)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: slicing may panic
+   --> fuzz_targets/vb_vzcuf_PS_004.rs:136:46
+    |
+136 |         _ => fuzz_rejection_batch_integrity(&data[1..]),
+    |                                              ^^^^^^^^^
+    |
+    = help: consider using `.get(n..)` or .get_mut(n..)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: could not compile `velvet-ballistics-fuzz` (bin "vb_vzcuf_PS_004") due to 4 previous errors
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> fuzz_targets/fuzz_retry_record_attempt.rs:37:5
+   |
+37 |     let _ = vb_runtime::shard::helpers::record_retry_attempt(&mut state, ticket, policy);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider explicitly using expression value
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_underscore_must_use
+   = note: requested on the command line with `-D clippy::let-underscore-must-use`
+
+error: indexing may panic
+   --> fuzz_targets/fuzz_retry_record_attempt.rs:122:9
+    |
+122 |         data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
+    |         ^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+    = note: requested on the command line with `-D clippy::indexing-slicing`
+
+error: indexing may panic
+   --> fuzz_targets/fuzz_retry_record_attempt.rs:122:18
+    |
+122 |         data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
+    |                  ^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+   --> fuzz_targets/fuzz_retry_record_attempt.rs:122:27
+    |
+122 |         data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
+    |                           ^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+   --> fuzz_targets/fuzz_retry_record_attempt.rs:122:36
+    |
+122 |         data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
+    |                                    ^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+   --> fuzz_targets/fuzz_retry_record_attempt.rs:122:45
+    |
+122 |         data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
+    |                                             ^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+   --> fuzz_targets/fuzz_retry_record_attempt.rs:122:54
+    |
+122 |         data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
+    |                                                      ^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+   --> fuzz_targets/fuzz_retry_record_attempt.rs:122:63
+    |
+122 |         data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
+    |                                                               ^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+   --> fuzz_targets/fuzz_retry_record_attempt.rs:122:72
+    |
+122 |         data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
+    |                                                                        ^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+   --> fuzz_targets/fuzz_retry_record_attempt.rs:128:29
+    |
+128 |         u16::from_le_bytes([data[10], data[11]])
+    |                             ^^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+   --> fuzz_targets/fuzz_retry_record_attempt.rs:128:39
+    |
+128 |         u16::from_le_bytes([data[10], data[11]])
+    |                                       ^^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+   --> fuzz_targets/fuzz_retry_record_attempt.rs:133:29
+    |
+133 |         u16::from_le_bytes([data[12], data[13]])
+    |                             ^^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+   --> fuzz_targets/fuzz_retry_record_attempt.rs:133:39
+    |
+133 |         u16::from_le_bytes([data[12], data[13]])
+    |                                       ^^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: could not compile `velvet-ballistics-fuzz` (bin "fuzz_retry_record_attempt") due to 13 previous errors
+
+exit_status=101

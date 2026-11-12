@@ -1,0 +1,1556 @@
+[
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_qi37_4_2_strict_runtime_admission",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs",
+        "line": 223,
+        "byte_start": 6323,
+        "byte_end": 6336
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_vt2f_direct_runtime_api_acceptance",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+        "line": 72,
+        "byte_start": 2127,
+        "byte_end": 2140
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "integration_validate_policy_enforcement",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/integration_validate_policy_enforcement.rs",
+        "line": 28,
+        "byte_start": 946,
+        "byte_end": 959
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_runtime_ipc_resource_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_runtime_ipc_resource_behavior.rs",
+        "line": 74,
+        "byte_start": 2355,
+        "byte_end": 2368
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_runtime_ipc_resource_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_runtime_ipc_resource_behavior.rs",
+        "line": 102,
+        "byte_start": 3247,
+        "byte_end": 3260
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_runtime_ipc_resource_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_runtime_ipc_resource_behavior.rs",
+        "line": 141,
+        "byte_start": 4420,
+        "byte_end": 4433
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "runtime_fjall_pending_action_recovery",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/runtime_fjall_pending_action_recovery.rs",
+        "line": 181,
+        "byte_start": 4922,
+        "byte_end": 4935
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "integration_storage_runtime_validate_pipeline",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/integration_storage_runtime_validate_pipeline.rs",
+        "line": 49,
+        "byte_start": 1958,
+        "byte_end": 1971
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "cancel_kill_lattice_tests",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/cancel_kill_lattice_tests.rs",
+        "line": 68,
+        "byte_start": 2278,
+        "byte_end": 2291
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_runtime_lifecycle_state_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_runtime_lifecycle_state_behavior.rs",
+        "line": 71,
+        "byte_start": 2588,
+        "byte_end": 2601
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_cli_diff_incident_behavior",
+    "code": "E0433",
+    "message": "cannot find module or crate `velvet_ballistics` in this scope",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_cli_diff_incident_behavior.rs",
+        "line": 5,
+        "byte_start": 164,
+        "byte_end": 181
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_cli_diff_incident_behavior",
+    "code": "E0433",
+    "message": "cannot find module or crate `velvet_ballistics` in this scope",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_cli_diff_incident_behavior.rs",
+        "line": 6,
+        "byte_start": 265,
+        "byte_end": 282
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_lp2v_admission_proptests",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_lp2v_admission_proptests.rs",
+        "line": 31,
+        "byte_start": 1388,
+        "byte_end": 1401
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_lp2v_admission_proptests",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_lp2v_admission_proptests.rs",
+        "line": 313,
+        "byte_start": 11359,
+        "byte_end": 11372
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "cold_start",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/benches/cold_start.rs",
+        "line": 65,
+        "byte_start": 1994,
+        "byte_end": 2007
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "memory_footprint",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/benches/memory_footprint.rs",
+        "line": 71,
+        "byte_start": 2342,
+        "byte_end": 2355
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "velvet_ballistics",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/benches/velvet_ballistics.rs",
+        "line": 959,
+        "byte_start": 32823,
+        "byte_end": 32836
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "velvet_ballistics",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/benches/velvet_ballistics.rs",
+        "line": 980,
+        "byte_start": 33512,
+        "byte_end": 33525
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "velvet_ballistics",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/benches/velvet_ballistics.rs",
+        "line": 1252,
+        "byte_start": 42805,
+        "byte_end": 42818
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "velvet_ballistics",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/benches/velvet_ballistics.rs",
+        "line": 1472,
+        "byte_start": 50665,
+        "byte_end": 50678
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "velvet_ballistics",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/benches/velvet_ballistics.rs",
+        "line": 1585,
+        "byte_start": 55108,
+        "byte_end": 55121
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "velvet_ballistics",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/benches/velvet_ballistics.rs",
+        "line": 1728,
+        "byte_start": 60414,
+        "byte_end": 60427
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_37lc_canonical_spelling_red",
+    "code": "E0433",
+    "message": "cannot find module or crate `velvet_ballistics` in this scope",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_37lc_canonical_spelling_red/common.rs",
+        "line": 5,
+        "byte_start": 73,
+        "byte_end": 90
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_validate_policy_enforce_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_validate_policy_enforce_behavior.rs",
+        "line": 34,
+        "byte_start": 1167,
+        "byte_end": 1180
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "raii_introspection_registry_tests",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/raii_introspection_registry_tests.rs",
+        "line": 73,
+        "byte_start": 2533,
+        "byte_end": 2546
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "snapshot_restore",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/benches/snapshot_restore.rs",
+        "line": 60,
+        "byte_start": 1644,
+        "byte_end": 1657
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "snapshot_save",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/benches/snapshot_save.rs",
+        "line": 62,
+        "byte_start": 1827,
+        "byte_end": 1840
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_c1s0_orchestration_runtime_tests",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs",
+        "line": 76,
+        "byte_start": 2676,
+        "byte_end": 2689
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_admission_trigger_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+        "line": 103,
+        "byte_start": 3324,
+        "byte_end": 3337
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_admission_trigger_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+        "line": 155,
+        "byte_start": 4898,
+        "byte_end": 4911
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_admission_trigger_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+        "line": 204,
+        "byte_start": 6571,
+        "byte_end": 6584
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_admission_trigger_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+        "line": 243,
+        "byte_start": 7841,
+        "byte_end": 7854
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_admission_trigger_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+        "line": 434,
+        "byte_start": 14721,
+        "byte_end": 14734
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_admission_trigger_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+        "line": 473,
+        "byte_start": 16097,
+        "byte_end": 16110
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_admission_trigger_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+        "line": 666,
+        "byte_start": 23195,
+        "byte_end": 23208
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_admission_trigger_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+        "line": 737,
+        "byte_start": 25841,
+        "byte_end": 25854
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_admission_trigger_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+        "line": 1126,
+        "byte_start": 39591,
+        "byte_end": 39604
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "ir_traversal",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/benches/ir_traversal.rs",
+        "line": 53,
+        "byte_start": 1898,
+        "byte_end": 1911
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "ir_traversal",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/benches/ir_traversal.rs",
+        "line": 139,
+        "byte_start": 4634,
+        "byte_end": 4647
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "ir_traversal",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/benches/ir_traversal.rs",
+        "line": 200,
+        "byte_start": 6759,
+        "byte_end": 6772
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "slot_written_ordering_integration_tests",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/slot_written_ordering_integration_tests.rs",
+        "line": 51,
+        "byte_start": 2060,
+        "byte_end": 2073
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_kyyf_cross_run_determinism",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs",
+        "line": 361,
+        "byte_start": 12546,
+        "byte_end": 12559
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_ko29_5_public_idempotency",
+    "code": "E0432",
+    "message": "unresolved import `velvet_ballistics`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs",
+        "line": 4,
+        "byte_start": 99,
+        "byte_end": 116
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 47,
+        "byte_start": 1801,
+        "byte_end": 1814
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 87,
+        "byte_start": 3167,
+        "byte_end": 3180
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 137,
+        "byte_start": 4886,
+        "byte_end": 4899
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 196,
+        "byte_start": 7115,
+        "byte_end": 7128
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 478,
+        "byte_start": 18158,
+        "byte_end": 18171
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 528,
+        "byte_start": 19854,
+        "byte_end": 19867
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 564,
+        "byte_start": 21178,
+        "byte_end": 21191
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 600,
+        "byte_start": 22493,
+        "byte_end": 22506
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 644,
+        "byte_start": 24039,
+        "byte_end": 24052
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 680,
+        "byte_start": 25391,
+        "byte_end": 25404
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 733,
+        "byte_start": 27204,
+        "byte_end": 27217
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 831,
+        "byte_start": 30419,
+        "byte_end": 30432
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 865,
+        "byte_start": 31630,
+        "byte_end": 31643
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 1048,
+        "byte_start": 38321,
+        "byte_end": 38334
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 1080,
+        "byte_start": 39407,
+        "byte_end": 39420
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 1123,
+        "byte_start": 40900,
+        "byte_end": 40913
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 1165,
+        "byte_start": 42370,
+        "byte_end": 42383
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 1209,
+        "byte_start": 44018,
+        "byte_end": 44031
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 1266,
+        "byte_start": 45953,
+        "byte_end": 45966
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 1312,
+        "byte_start": 47587,
+        "byte_end": 47600
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 1341,
+        "byte_start": 48588,
+        "byte_end": 48601
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 1388,
+        "byte_start": 50174,
+        "byte_end": 50187
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 1430,
+        "byte_start": 51627,
+        "byte_end": 51640
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_workflow_slot_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `vb_core::WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+        "line": 1499,
+        "byte_start": 54090,
+        "byte_end": 54103
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "derived_status_replay_timeline_tests",
+    "code": "E0433",
+    "message": "cannot find module or crate `velvet_ballistics` in this scope",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/derived_status_replay_timeline_tests.rs",
+        "line": 29,
+        "byte_start": 1423,
+        "byte_end": 1440
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "derived_status_replay_timeline_tests",
+    "code": "E0433",
+    "message": "cannot find module or crate `velvet_ballistics` in this scope",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/derived_status_replay_timeline_tests.rs",
+        "line": 30,
+        "byte_start": 1490,
+        "byte_end": 1507
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "derived_status_replay_timeline_tests",
+    "code": "E0433",
+    "message": "cannot find module or crate `velvet_ballistics` in this scope",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/derived_status_replay_timeline_tests.rs",
+        "line": 31,
+        "byte_start": 1534,
+        "byte_end": 1551
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "derived_status_replay_timeline_tests",
+    "code": "E0433",
+    "message": "cannot find module or crate `velvet_ballistics` in this scope",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/derived_status_replay_timeline_tests.rs",
+        "line": 244,
+        "byte_start": 8261,
+        "byte_end": 8278
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "derived_status_replay_timeline_tests",
+    "code": "E0433",
+    "message": "cannot find module or crate `velvet_ballistics` in this scope",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/derived_status_replay_timeline_tests.rs",
+        "line": 343,
+        "byte_start": 11728,
+        "byte_end": 11745
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "derived_status_replay_timeline_tests",
+    "code": "E0433",
+    "message": "cannot find module or crate `velvet_ballistics` in this scope",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/derived_status_replay_timeline_tests.rs",
+        "line": 370,
+        "byte_start": 12812,
+        "byte_end": 12829
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "derived_status_replay_timeline_tests",
+    "code": "E0433",
+    "message": "cannot find module or crate `velvet_ballistics` in this scope",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/derived_status_replay_timeline_tests.rs",
+        "line": 703,
+        "byte_start": 24002,
+        "byte_end": 24019
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "derived_status_replay_timeline_tests",
+    "code": "E0433",
+    "message": "cannot find module or crate `velvet_ballistics` in this scope",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/derived_status_replay_timeline_tests.rs",
+        "line": 758,
+        "byte_start": 25944,
+        "byte_end": 25961
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "derived_status_replay_timeline_tests",
+    "code": "E0433",
+    "message": "cannot find module or crate `velvet_ballistics` in this scope",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/derived_status_replay_timeline_tests.rs",
+        "line": 808,
+        "byte_start": 27717,
+        "byte_end": 27734
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_8mdp_7_resource_admission_props",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_8mdp_7_resource_admission_props.rs",
+        "line": 47,
+        "byte_start": 1814,
+        "byte_end": 1827
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_yaml_chain_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_yaml_chain_behavior.rs",
+        "line": 497,
+        "byte_start": 15226,
+        "byte_end": 15248
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_yaml_chain_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_yaml_chain_behavior.rs",
+        "line": 544,
+        "byte_start": 16669,
+        "byte_end": 16691
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_yaml_chain_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_yaml_chain_behavior.rs",
+        "line": 612,
+        "byte_start": 18773,
+        "byte_end": 18795
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_core_yaml_chain_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_core_yaml_chain_behavior.rs",
+        "line": 736,
+        "byte_start": 23151,
+        "byte_end": 23173
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_cli_storage_io_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_cli_storage_io_behavior.rs",
+        "line": 85,
+        "byte_start": 2481,
+        "byte_end": 2494
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "vb_test_validate_yaml_parsing_behavior",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/tests/vb_test_validate_yaml_parsing_behavior.rs",
+        "line": 34,
+        "byte_start": 1522,
+        "byte_end": 1535
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/workspace_tests#velvet-ballistics-workspace-tests@0.1.0",
+    "target": "action_queuing",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/workspace_tests/benches/action_queuing.rs",
+        "line": 47,
+        "byte_start": 1490,
+        "byte_end": 1503
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_validate#0.1.0",
+    "target": "gate_08_accessor_parity",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_validate/tests/gate_08_accessor_parity.rs",
+        "line": 36,
+        "byte_start": 899,
+        "byte_end": 912
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "resource_contract_type_integrity",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/resource_contract_type_integrity.rs",
+        "line": 81,
+        "byte_start": 2937,
+        "byte_end": 2950
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "resource_contract_type_integrity",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/resource_contract_type_integrity.rs",
+        "line": 127,
+        "byte_start": 4568,
+        "byte_end": 4581
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_validate#0.1.0",
+    "target": "red_phase_validation",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_validate/tests/red_phase_validation.rs",
+        "line": 18,
+        "byte_start": 728,
+        "byte_end": 741
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_validate#0.1.0",
+    "target": "red_phase_validation",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_validate/tests/red_phase_validation.rs",
+        "line": 250,
+        "byte_start": 8582,
+        "byte_end": 8595
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_validate#0.1.0",
+    "target": "capability_schema",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_validate/benches/capability_schema.rs",
+        "line": 11,
+        "byte_start": 427,
+        "byte_end": 440
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "resource_contract_validation",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/resource_contract_validation.rs",
+        "line": 48,
+        "byte_start": 1545,
+        "byte_end": 1558
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "vb_5m8w_step_budget_suspension",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/vb_5m8w_step_budget_suspension.rs",
+        "line": 13,
+        "byte_start": 581,
+        "byte_end": 594
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "vb_qi37_2_5_boundedness_adversarial",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/vb_qi37_2_5_boundedness_adversarial.rs",
+        "line": 47,
+        "byte_start": 1819,
+        "byte_end": 1832
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "vb_qi37_2_5_boundedness_adversarial",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/vb_qi37_2_5_boundedness_adversarial.rs",
+        "line": 84,
+        "byte_start": 3053,
+        "byte_end": 3066
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "section36_mandatory_coverage",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+        "line": 498,
+        "byte_start": 15116,
+        "byte_end": 15129
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "section36_mandatory_coverage",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+        "line": 596,
+        "byte_start": 18195,
+        "byte_end": 18208
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "section36_mandatory_coverage",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+        "line": 715,
+        "byte_start": 22086,
+        "byte_end": 22099
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "section36_mandatory_coverage",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+        "line": 819,
+        "byte_start": 25618,
+        "byte_end": 25631
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "section36_mandatory_coverage",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+        "line": 917,
+        "byte_start": 28727,
+        "byte_end": 28740
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "section36_mandatory_coverage",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+        "line": 1112,
+        "byte_start": 35459,
+        "byte_end": 35472
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "section36_mandatory_coverage",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+        "line": 1159,
+        "byte_start": 37076,
+        "byte_end": 37089
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "section36_mandatory_coverage",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+        "line": 1833,
+        "byte_start": 58231,
+        "byte_end": 58244
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "section36_mandatory_coverage",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+        "line": 2262,
+        "byte_start": 71718,
+        "byte_end": 71731
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_validate#0.1.0",
+    "target": "capability_contract_schema",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_validate/tests/capability_contract_schema.rs",
+        "line": 41,
+        "byte_start": 1345,
+        "byte_end": 1358
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "section38_behavioral_properties",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/section38_behavioral_properties.rs",
+        "line": 25,
+        "byte_start": 955,
+        "byte_end": 968
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "section38_behavioral_properties",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/section38_behavioral_properties.rs",
+        "line": 224,
+        "byte_start": 7678,
+        "byte_end": 7691
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_core#0.1.0",
+    "target": "section38_behavioral_properties",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_core/tests/section38_behavioral_properties.rs",
+        "line": 269,
+        "byte_start": 9295,
+        "byte_end": 9308
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_validate#0.1.0",
+    "target": "idempotency_contract_red",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_validate/tests/idempotency_contract_red.rs",
+        "line": 76,
+        "byte_start": 2092,
+        "byte_end": 2105
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_ipc#0.1.0",
+    "target": "vb_ipc",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_ipc/src/server/trace.rs",
+        "line": 200,
+        "byte_start": 6295,
+        "byte_end": 6308
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_storage#0.1.0",
+    "target": "accepted_artifact_red_phase",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_storage/tests/accepted_artifact_red_phase.rs",
+        "line": 20,
+        "byte_start": 720,
+        "byte_end": 733
+      }
+    ]
+  },
+  {
+    "package": "path+file:///home/lewis/src/isoloated/velvet-ballistics-vb-bwdf0-workspace-fixtures-5090/crates/vb_storage#0.1.0",
+    "target": "accepted_artifact_red_phase",
+    "code": "E0063",
+    "message": "missing field `input_slots` in initializer of `WorkflowParts`",
+    "spans": [
+      {
+        "file": "crates/vb_storage/tests/accepted_artifact_red_phase.rs",
+        "line": 295,
+        "byte_start": 9768,
+        "byte_end": 9800
+      }
+    ]
+  }
+]

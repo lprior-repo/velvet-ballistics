@@ -1,0 +1,4 @@
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:101: 
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:102:     assert_eq!(read_counter(&journal)?, Some(u64::MAX));
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:103:     fixture.check(&journal, &artifact, RuntimePolicy::Relaxed)
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:104: }

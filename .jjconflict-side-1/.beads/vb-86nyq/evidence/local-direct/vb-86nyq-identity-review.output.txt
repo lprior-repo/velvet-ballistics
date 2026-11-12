@@ -1,0 +1,17 @@
+**Recommendation: Update digest tests to assert runtime-artifact identity, not source identity.**
+
+The new hashing scheme (post-packed WorkflowParts with selfdigestzero) makes the compiled digest reflect the numeric IR, not source names. Tests must be updated accordingly:
+
+**In `error_variant_tests.rs` (`test_different_together_configurations_produce_different_digests`):**
+- **(a) Different branch counts:** Keep `assert_ne!` — structural change produces different IR.
+- **(b) Different branch labels:** Change to `assert_eq!` — labels resolve to branch indices; consistent rename yields identical IR.
+- **(c) Different sub-step IDs:** Change to `assert_eq!` — IDs resolve to slot indices; consistent rename yields identical IR.
+
+**In `proptest_finish_digest.rs`:**
+- **`finish_result_change_changes_digest_string`:** Change to `prop_assert_eq!` — this tests consistent rename (out_a→out_a vs out_b→out_b), which yields identical IR.
+- **`finish_position_change_changes_digest`:** Change to `prop_assert_eq!` — different step IDs with identical structure yield identical IR (IDs become indices).
+
+**Add new tests for actual value sensitivity** (distinct from name sensitivity):
+- A test where two workflows differ only in a constant value (e.g., `value: "10"` vs `value: "20"`) should assert `assert_ne!` on digests. This captures the branch-value-sensitivity requirement. Keep this assertion strict even though it currently fails due to the `body_constant_index` bug (vb-s105z) — do not weaken it.
+
+**Rationale:** The digest now identifies the runtime artifact (packed IR), not the source text. Source names, labels, and IDs are compile-time conveniences that resolve to indices. Only structural differences (branch/step counts) and value differences (constants) should produce different digests. This aligns with the master requirement for numeric IR identity separate from raw source identity.

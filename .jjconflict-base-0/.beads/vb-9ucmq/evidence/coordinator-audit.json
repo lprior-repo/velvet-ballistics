@@ -1,0 +1,17 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-9ucmq-local3090-deps",
+  "argv": [
+    "cargo",
+    "audit",
+    "--quiet"
+  ],
+  "exit_code": 0,
+  "seconds": 0.591,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-9ucmq/evidence/coordinator-audit",
+  "coordinator_message": "Do NOT cargo generate-lockfile: broad unrelatedupdates and exactfjall3.1.4 currentlyyanked breaksfreshresolution. Preserve existinglockedFjall. Use targeted cargo update -p crossbeam-epoch --precise0.9.20 and -p rtrb --precise0.3.5 only, including existingfuzzlock via --manifest-path ifreal separatelock. No needchangeFjall API/versionfor thispatch unless exacttechnicalconstraint provesblocked; reportbeforeexpanding. Rootischeckingdiffsfor unrelated churn. Commands via runner rawmetadata required, no successfulpipeline hidingfailedcargo.\n"
+}

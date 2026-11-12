@@ -1,0 +1,3 @@
+# Partial local3090 implementation checkpoint
+
+The initial long CLI turn was interrupted after442 actual command events to narrow remaining repair scope. Source changes are retained, not accepted. Fresh coordinator command with full raw output and actual exit: env RUSTC_WRAPPER= CARGO_BUILD_JOBS=2 timeout120 cargo test -p vb_runtime --lib --no-fail-fast. Exit101;1839pass70fail0ignore,1909total. Earlier piped summaries hid cargo exit and are not success evidence. Production diff removes cfg(test) handler substitutions and5fabrication helpers; current test fixtures/call-sites remain incomplete. New helper contains unwrap and unchecked capacity arithmetic requiring repair. No independent review approval, full CI pass, or bead closure.

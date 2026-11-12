@@ -1,0 +1,220 @@
+#![forbid(unsafe_code)]
+
+use super::super::super::JournalEvent;
+use super::super::tags::{
+    TAG_RETRY_CHECKPOINT, TAG_RUN_ACCEPTED, TAG_RUN_ANSWERED, TAG_RUN_CANCELLED, TAG_RUN_FAILED,
+    TAG_RUN_FINISHED, TAG_RUN_KILLED, TAG_RUN_RESUMED, TAG_RUN_RETRIED, TAG_TENANT_ADMISSION,
+};
+use super::{serialize_record_kind_variant, serialize_routing_error};
+use serde::Serializer;
+
+pub(super) fn serialize<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::RunAdmission { .. } => {
+            super::admission::serialize_admission(event, serializer)
+        }
+        JournalEvent::RunAdmissionBudget { .. } => {
+            super::admission::serialize_budget_admission(event, serializer)
+        }
+        JournalEvent::TenantAdmissionEvent { .. } => serialize_tenant_admission(event, serializer),
+        JournalEvent::RunAccepted { .. } => serialize_accepted(event, serializer),
+        JournalEvent::RetryCheckpoint { .. } => serialize_retry_checkpoint(event, serializer),
+        JournalEvent::RunCancelled { .. } => serialize_cancelled(event, serializer),
+        JournalEvent::RunKilled { .. } => serialize_killed(event, serializer),
+        JournalEvent::RunFinished { .. } => serialize_finished(event, serializer),
+        JournalEvent::RunFailedEvent { .. } => serialize_failed(event, serializer),
+        JournalEvent::RunResumed { .. } => serialize_resumed(event, serializer),
+        JournalEvent::RunRetried { .. } => serialize_retried(event, serializer),
+        JournalEvent::RunAnswered { .. } => serialize_answered(event, serializer),
+        _ => serialize_routing_error::<S>(),
+    }
+}
+
+fn serialize_tenant_admission<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::TenantAdmissionEvent {
+            run,
+            seq,
+            tenant,
+            cost_units,
+        } => serialize_record_kind_variant(
+            serializer,
+            TAG_TENANT_ADMISSION,
+            "TenantAdmissionEvent",
+            &(run, seq, tenant, cost_units),
+        ),
+        _ => serialize_routing_error::<S>(),
+    }
+}
+
+fn serialize_retry_checkpoint<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::RetryCheckpoint {
+            run,
+            seq,
+            attempt,
+            step,
+            payload_digest,
+            payload,
+        } => serialize_record_kind_variant(
+            serializer,
+            TAG_RETRY_CHECKPOINT,
+            "RetryCheckpoint",
+            &(run, seq, attempt, step, payload_digest, payload),
+        ),
+        _ => serialize_routing_error::<S>(),
+    }
+}
+
+fn serialize_accepted<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::RunAccepted { run, seq, workflow } => serialize_record_kind_variant(
+            serializer,
+            TAG_RUN_ACCEPTED,
+            "RunAccepted",
+            &(run, seq, workflow),
+        ),
+        _ => serialize_routing_error::<S>(),
+    }
+}
+
+fn serialize_cancelled<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::RunCancelled {
+            run,
+            seq,
+            attempt,
+            reason,
+        } => serialize_record_kind_variant(
+            serializer,
+            TAG_RUN_CANCELLED,
+            "RunCancelled",
+            &(run, seq, attempt, reason),
+        ),
+        _ => serialize_routing_error::<S>(),
+    }
+}
+
+fn serialize_killed<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::RunKilled { run, seq, attempt } => serialize_record_kind_variant(
+            serializer,
+            TAG_RUN_KILLED,
+            "RunKilled",
+            &(run, seq, attempt),
+        ),
+        _ => serialize_routing_error::<S>(),
+    }
+}
+
+fn serialize_finished<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::RunFinished {
+            run,
+            seq,
+            result,
+            attempt,
+        } => serialize_record_kind_variant(
+            serializer,
+            TAG_RUN_FINISHED,
+            "RunFinished",
+            &(run, seq, result, attempt),
+        ),
+        _ => serialize_routing_error::<S>(),
+    }
+}
+
+fn serialize_failed<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::RunFailedEvent { run, seq, attempt } => serialize_record_kind_variant(
+            serializer,
+            TAG_RUN_FAILED,
+            "RunFailedEvent",
+            &(run, seq, attempt),
+        ),
+        _ => serialize_routing_error::<S>(),
+    }
+}
+
+fn serialize_resumed<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::RunResumed {
+            run,
+            seq,
+            timestamp,
+        } => serialize_record_kind_variant(
+            serializer,
+            TAG_RUN_RESUMED,
+            "RunResumed",
+            &(run, seq, timestamp),
+        ),
+        _ => serialize_routing_error::<S>(),
+    }
+}
+
+fn serialize_retried<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::RunRetried {
+            run,
+            seq,
+            timestamp,
+        } => serialize_record_kind_variant(
+            serializer,
+            TAG_RUN_RETRIED,
+            "RunRetried",
+            &(run, seq, timestamp),
+        ),
+        _ => serialize_routing_error::<S>(),
+    }
+}
+
+fn serialize_answered<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::RunAnswered {
+            run,
+            seq,
+            slot_idx,
+            answer,
+            timestamp,
+        } => serialize_record_kind_variant(
+            serializer,
+            TAG_RUN_ANSWERED,
+            "RunAnswered",
+            &(run, seq, slot_idx, answer, timestamp),
+        ),
+        _ => serialize_routing_error::<S>(),
+    }
+}

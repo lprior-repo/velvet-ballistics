@@ -1,0 +1,22 @@
+{
+  "bead_id": "vb-rpch",
+  "state": 6,
+  "sublane": "contract-verification-review-over-frozen-proof-artifacts",
+  "delegate": "contract-verification-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/femdation-vb-rpch",
+  "input_artifacts": [
+    ".beads/vb-rpch/contract.md",
+    ".beads/vb-rpch/verification-layers.md",
+    ".beads/vb-rpch/proof-obligations.jsonl",
+    ".beads/vb-rpch/proof-obligations.planned.jsonl",
+    ".beads/vb-rpch/proof-writer-report.md",
+    ".beads/vb-rpch/proof-review.md",
+    ".beads/vb-rpch/proof-findings.jsonl",
+    ".beads/vb-rpch/proof-repair-guide.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-rpch/contract-verification-review.md"
+  ],
+  "attempt": 6
+}

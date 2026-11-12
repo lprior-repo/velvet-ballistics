@@ -1,0 +1,54 @@
+{
+  "protected_path": "scripts/check-panic-surface.sh",
+  "original_sha256": "d1ba5ced1fd50066c312d9b2a895df530b8b60b82860379271c859ddb6c5a88a",
+  "proposed_sha256": "fa0478eb4090aff3c0c88fe77d8137a40be4cbc2c94321fc0e3c4b59e5046369",
+  "patch_sha256": "6d16a7b92eaaf68f21cf0571d5d893078732c26584500977e6c0e69675c153f5",
+  "live_unchanged": true,
+  "scope": "Recognize exact standalone file-level test guard only as first nonblank non-line-comment line",
+  "cases": [
+    {
+      "case": "file_test_guard",
+      "expected": 0,
+      "exit": 0,
+      "source_sha256": "4a85253d4173707c5b319b2a303fab06e720ea6dd6eb88af93f9787fcefeb577"
+    },
+    {
+      "case": "production_assert",
+      "expected": 2,
+      "exit": 2,
+      "source_sha256": "b9560a02ae31e3e973beb54263659eeb4fe3a1468bd2a6802673cff5fd99c9b8"
+    },
+    {
+      "case": "line_comment_fake",
+      "expected": 2,
+      "exit": 2,
+      "source_sha256": "1f3c9e9a84138d1ff2c0d8dc0ca94ce02b5c2d8ce785aa5ab0d2570146c53ea7"
+    },
+    {
+      "case": "block_comment_fake",
+      "expected": 2,
+      "exit": 2,
+      "source_sha256": "e5087b657d778e11a7122a9626128ea197a34c6c718d973d0bfc6086ec149208"
+    },
+    {
+      "case": "raw_string_fake",
+      "expected": 2,
+      "exit": 2,
+      "source_sha256": "38997e67cc3143d187466b07742cedd36e35fcdfe55c200fd3b1d30d1a33a197"
+    },
+    {
+      "case": "conditional_feature_guard",
+      "expected": 2,
+      "exit": 2,
+      "source_sha256": "b40242a0fe0949ac05c632745194a60f7f53fd184fcb304c1a42a08e5163842e"
+    },
+    {
+      "case": "production_without_assert",
+      "expected": 0,
+      "exit": 0,
+      "source_sha256": "7ed4a69a138a907b2e98ccac2dc8b325fa193ec25819ba409c9ea38b4ee4c4ac"
+    }
+  ],
+  "full_candidate_preview_exit": 0,
+  "user_approval_required": true
+}

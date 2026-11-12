@@ -1,0 +1,4 @@
+{"id":"KANI-QUEUE-001","command":"cargo kani -p vb_runtime --harness command_queue_bounds","status":"PASS","evidence":"VERIFICATION:- SUCCESSFUL; 0 of 3 failed"}
+{"id":"TEST-QUEUE-001","command":"cargo test -p vb_runtime command_queue -- --nocapture","status":"PASS","evidence":"11 passed, 1450 filtered out"}
+{"id":"CHECK-RUNTIME-001","command":"cargo check -p vb_runtime","status":"PASS","evidence":"Finished dev profile"}
+{"id":"FMT-WORKSPACE-001","command":"cargo fmt --check","status":"DEFERRED_GLOBAL","evidence":"Fails on unrelated pre-existing files: crates/workspace_tests/tests/vb_qi37_12_state8_silent_discard_contract.rs, xtask/src/forbidden_scan.rs"}

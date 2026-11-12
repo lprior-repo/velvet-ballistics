@@ -1,0 +1,16 @@
+baseline raw drift lines=30
+candidate raw drift lines=78
+new lines (line mappings may shift)
+DRIFT: claimed range is empty after clamping: crates/vb_storage/src/events.rs:332-255 (file has 255 lines)
+DRIFT: claimed range is empty after clamping: crates/vb_storage/src/events.rs:366-255 (file has 255 lines)
+DRIFT: claimed range is empty after clamping: crates/vb_storage/src/events.rs:514-255 (file has 255 lines)
+DRIFT: production identifier `ExprBranch` (last segment `ExprBranch`) not found in crates/vb_core/src/workflow/mod.rs:254-270 (window 249-275)
+DRIFT: production identifier `ExprProgram` (last segment `ExprProgram`) not found in crates/vb_core/src/workflow/mod.rs:454-545 (window 449-550)
+DRIFT: production identifier `RecoveredPendingAction` (last segment `RecoveredPendingAction`) not found in crates/vb_storage/src/recovery/types.rs:812-819 (window 807-824)
+DRIFT: production identifier `RecoveredStepEntry` (last segment `RecoveredStepEntry`) not found in crates/vb_storage/src/recovery/types.rs:792-799 (window 787-804)
+DRIFT: production identifier `ShardCommandQueue` (last segment `ShardCommandQueue`) not found in crates/vb_runtime/src/shard/types.rs:550-639 (window 545-644)
+DRIFT: production identifier `SummaryRecoveryBoundary::hydrate_run_frame` (last segment `hydrate_run_frame`) not found in crates/vb_runtime/src/recovery.rs:194-209 (window 189-214)
+DRIFT: production identifier `validate_resource_contract` (last segment `validate_resource_contract`) not found in crates/vb_core/src/workflow/mod.rs:834-839 (window 829-844)
+DRIFT: production identifiers in crates/vb_storage/src/events.rs missing from mirror:
+DRIFT: production identifiers in crates/vb_storage/src/events/event.rs missing from mirror:
+DRIFT: production identifiers in crates/velvet_ballistics/src/exit_code.rs missing from mirror:

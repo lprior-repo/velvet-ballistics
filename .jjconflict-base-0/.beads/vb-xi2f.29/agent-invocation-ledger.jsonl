@@ -1,0 +1,3 @@
+{"timestamp":"2026-05-25T03:18:02Z","agent":"femdation","bead_id":"vb-xi2f.29","state":1,"action":"setup"}
+{"timestamp":"2026-05-25T20:15:00Z","agent":"proof-reviewer","bead_id":"vb-xi2f.29","state":7,"action":"proof-to-rust-review","invocation":"ptr-vb-xi2f29-2026-05-25-001","result":"REJECTED","blfs":4}
+{"timestamp":"2026-05-26T00:00:00Z","agent":"proof-reviewer","bead_id":"vb-xi2f.29","state":7,"action":"proof-to-rust-review-retry","invocation":"ptr-vb-xi2f29-2026-05-25-002","result":"APPROVED","blfs_resolved":4,"blfs_remaining":0}

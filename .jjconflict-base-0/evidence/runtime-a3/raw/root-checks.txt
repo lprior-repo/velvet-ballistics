@@ -1,0 +1,58 @@
+# command: git rev-parse --show-toplevel
+/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+
+# command: jj root
+/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+
+# command: jj status
+Working copy changes:
+M .config/source-length-exceptions.txt
+M .evidence/kani-list/vb_runtime.json
+M crates/vb_runtime/Cargo.toml
+M crates/vb_runtime/src/runtime.rs
+M crates/vb_runtime/src/runtime_tests.rs
+M crates/vb_runtime/src/shard/impl_parts/chunk_001.rs
+M crates/vb_runtime/src/shard/impl_parts/chunk_002.rs
+M crates/vb_runtime/src/shard/impl_parts/chunk_004.rs
+M crates/vb_runtime/src/shard/lifecycle/chunk_001.rs
+M crates/vb_runtime/src/shard/lifecycle/chunk_002.rs
+A crates/vb_runtime/src/shard/lifecycle/chunk_005.rs
+M crates/vb_runtime/src/shard/lifecycle.rs
+M crates/vb_runtime/src/shard/lifecycle_tests/chunk_004.rs
+A crates/vb_runtime/src/shard/lifecycle_tests/chunk_009.rs
+M crates/vb_runtime/src/shard/snapshot_chunks/chunk_002_shard_impl.rs
+M crates/vb_runtime/src/shard/tests/chunk_001.rs
+M crates/vb_runtime/src/shard/tests/chunk_003.rs
+M crates/vb_runtime/src/shard/tests/chunk_005.rs
+M crates/vb_runtime/src/shard/tests/chunk_013.rs
+M crates/vb_runtime/src/shard/tests/chunk_015.rs
+M crates/vb_runtime/src/shard/tests/chunk_016.rs
+M crates/vb_runtime/src/shard/tests/chunk_020.rs
+M crates/vb_runtime/src/shard/tests/chunk_024.rs
+M crates/vb_runtime/src/shard/tests/chunk_025.rs
+M crates/vb_runtime/src/shard/tests/chunk_026.rs
+M crates/vb_runtime/src/shard/tests/chunk_027.rs
+M crates/vb_runtime/src/shard/tests/chunk_029.rs
+M crates/vb_runtime/src/shard/tests/chunk_031.rs
+M crates/vb_runtime/src/shard/transitions.rs
+M crates/vb_runtime/src/shard/types.rs
+M crates/vb_runtime/src/verification/kani/kani_ask_answer_lifecycle.rs
+M crates/vb_runtime/src/verification/kani/kani_resume_state_machine.rs
+M crates/vb_runtime/src/verification/mod.rs
+A evidence/runtime-a3/formal-verification-report.md
+A evidence/runtime-a3/kani-status.md
+A evidence/runtime-a3/raw/check.txt
+A evidence/runtime-a3/raw/fmt.txt
+A evidence/runtime-a3/raw/kani-god-rule1-scan.txt
+A evidence/runtime-a3/raw/kani-list-vb_runtime.txt
+A evidence/runtime-a3/raw/kani-targeted-resume-non-resumable.txt
+A evidence/runtime-a3/raw/lint-src-clippy.txt
+A evidence/runtime-a3/raw/root-checks.txt
+A evidence/runtime-a3/raw/source-length.txt
+A evidence/runtime-a3/raw/vb_runtime-lib-tests.txt
+A evidence/runtime-a3/verification-ledger.jsonl
+M evidence/trusted-base-ledger.jsonl
+Working copy  (@) : yksmotnv 434673d8 vb-4969v runtime aggregate active/pending guard slice
+Parent commit (@-): lumrtywu c190b285 main main@origin | fix: align runtime recovery and shutdown tests
+
+# exit_status=0

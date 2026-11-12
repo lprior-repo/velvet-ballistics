@@ -1,0 +1,25 @@
+{
+  "bead_id": "GLOBAL-main-gate-vb-m5gp-for-vb-kyyf-landing",
+  "state": 14,
+  "sublane": "serial-vb-m5gp-compile-split-contract-repair",
+  "delegate": "holzman-rust",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/landing-report.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/vb-m5gp-global-repair-report.md"
+  ],
+  "attempt": 1,
+  "blocker": "Two vb_m5gp_compile_split_contract tests fail after final rebase due WorkflowDigest mismatch: produced [152,194,...] expected [63,64,...]",
+  "failure_locations": [
+    "crates/workspace_tests/tests/vb_m5gp_compile_split_contract.rs:436",
+    "crates/workspace_tests/tests/vb_m5gp_compile_split_contract.rs:485"
+  ],
+  "required_gates": [
+    "focused cargo test for vb_m5gp_compile_split_contract",
+    "moon ci with external TMPDIR if focused repair passes"
+  ],
+  "serial_section": "Global compile-split repair may mutate non-vb-kyyf files; no other landing or shared repair runs concurrently."
+}

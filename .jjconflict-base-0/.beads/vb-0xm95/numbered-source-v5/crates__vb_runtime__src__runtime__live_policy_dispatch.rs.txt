@@ -1,0 +1,114 @@
+1: use super::Runtime;
+2: use super::registered_executor::RegisteredExecutionError;
+3: use crate::{RuntimeError, RuntimeResult};
+4: use vb_core::ActionTicket;
+5: use vb_core::Taint;
+6: use vb_core::policy::{DecisionCode, DecisionRecord, PinnedAdmissionPolicy, PolicyLayer};
+7: use vb_storage::journal::EmergencyDenyState;
+8: 
+9: /// Context for evaluating and persisting admission decisions.
+10: pub(super) struct AdmissionEvalContext {
+11:     pub ticket: ActionTicket,
+12:     pub admission_pin: PinnedAdmissionPolicy,
+13:     pub encoded_bytes: Vec<u8>,
+14:     pub input_taint: Taint,
+15: }
+16: 
+17: /// Dispatch-layer policy decision helper.
+18: ///
+19: /// LivePolicy.evaluate returns Allowed/Denied/Suspended at the Live layer
+20: /// but does not reject Unverified admission. This helper forces Denied at
+21: /// the Admission layer for Unverified while preserving emergency overlay
+22: /// priority and true live evaluation outcomes.
+23: impl Runtime {
+24:     fn dispatch_policy_decision(&self, decision: DecisionRecord) -> RuntimeResult<DecisionRecord> {
+25:         // Emergency overlay is highest priority: always honor its decision.
+26:         if decision.layer == PolicyLayer::Emergency {
+27:             return Ok(decision);
+28:         }
+29: 
+30:         // Unverified admission must be denied at the Admission layer for
+31:         // every Unverified admission, regardless of prior outcome
+32:         // (Allowed/Denied/Suspended). Emergency layer remains highest priority.
+33:         if decision.admission == PinnedAdmissionPolicy::Unverified {
+34:             return Ok(DecisionRecord {
+35:                 ticket: decision.ticket,
+36:                 admission: decision.admission,
+37:                 current_live: decision.current_live,
+38:                 input_digest: decision.input_digest,
+39:                 taint: decision.taint,
+40:                 outcome: DecisionCode::Denied,
+41:                 layer: PolicyLayer::Admission,
+42:                 emergency_influence: decision.emergency_influence,
+43:                 compat_influence: decision.compat_influence,
+44:             });
+45:         }
+46: 
+47:         Ok(decision)
+48:     }
+49: 
+50:     /// Evaluate admission policy, apply admission priority, persist decision,
+51:     /// and return rejection if not Allowed.
+52:     ///
+53:     /// This helper reads the durable emergency marker, mirrors it into the
+54:     /// owned live policy, evaluates the actual ticket/admission_pin/encoded_bytes/
+55:     /// input_taint, applies the admission priority rule (Unverified → Denied at
+56:     /// Admission), persists the full final decision, and returns policy rejection
+57:     /// carrying the decision if not Allowed.
+58:     pub(super) fn evaluate_admission_and_persist(
+59:         &mut self,
+60:         ctx: AdmissionEvalContext,
+61:     ) -> Result<DecisionRecord, RegisteredExecutionError> {
+62:         let durable_emergency = self.read_durable_emergency_state()?;
+63:         if durable_emergency {
+64:             self.live_policy.activate_emergency_deny();
+65:         }
+66:         let decision = self.live_policy.evaluate(
+67:             ctx.ticket,
+68:             ctx.admission_pin,
+69:             &ctx.encoded_bytes,
+70:             ctx.input_taint,
+71:         )?;
+72:         let decision = self.dispatch_policy_decision(decision)?;
+73:         let shard = self.shard_for_mut(ctx.ticket.run)?;
+74:         shard.append_policy_decision_strict(decision.clone())?;
+75:         if decision.outcome != DecisionCode::Allowed {
+76:             return Err(RegisteredExecutionError::PolicyDenied(Box::new(decision)));
+77:         }
+78:         Ok(decision)
+79:     }
+80: 
+81:     /// Helper for configure_live_policy: updates owned live policy state.
+82:     /// Does not persist; configuration is actor-owned runtime state.
+83:     pub(super) fn configure_live_policy_helper(
+84:         &mut self,
+85:         digest: vb_core::policy::PolicyDigest,
+86:         rule: vb_core::policy::PolicyRule,
+87:     ) {
+88:         self.live_policy.configure(digest, rule);
+89:     }
+90: 
+91:     /// Helper for activate_emergency_deny: persists emergency marker,
+92:     /// verifies the returned state is Active, then mirrors into owned live policy.
+93:     pub(super) fn activate_emergency_deny_helper(&mut self) -> RuntimeResult<()> {
+94:         let journal = self
+95:             .journal
+96:             .storage_journal()
+97:             .ok_or(RuntimeError::RecoveryNotAvailable)?;
+98:         let state = journal.activate_emergency_deny()?;
+99:         if !matches!(state, EmergencyDenyState::Active) {
+100:             return Err(RuntimeError::RecoveryNotAvailable);
+101:         }
+102:         self.live_policy.activate_emergency_deny();
+103:         Ok(())
+104:     }
+105: 
+106:     fn read_durable_emergency_state(&self) -> RuntimeResult<bool> {
+107:         let journal = self
+108:             .journal
+109:             .storage_journal()
+110:             .ok_or(RuntimeError::RecoveryNotAvailable)?;
+111:         let state = journal.emergency_deny_state()?;
+112:         Ok(matches!(state, EmergencyDenyState::Active))
+113:     }
+114: }

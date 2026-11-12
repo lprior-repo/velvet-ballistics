@@ -1,0 +1,56 @@
+/tmp/vb-fixture-test-0LHGbO/disable-timeout-builtin.sh: line 1: enable: timeout: not a shell builtin
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGbO/timeout: line 8: exec: --: invalid option
+exec: usage: exec [-cl] [-a name] [command [argument ...]] [redirection ...]
+/tmp/vb-fixture-test-0LHGb

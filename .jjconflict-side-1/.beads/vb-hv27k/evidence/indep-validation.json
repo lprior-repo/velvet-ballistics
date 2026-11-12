@@ -1,0 +1,15 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-hv27k-deepseek-review",
+  "argv": [
+    "python3",
+    "/tmp/vb-hv27k-indep-check.py"
+  ],
+  "exit_code": 0,
+  "seconds": 0.025,
+  "timeout_seconds": 60,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-hv27k/evidence/indep-validation"
+}

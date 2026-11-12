@@ -1,0 +1,66 @@
+540:       - '.moon/tasks/all.yml'
+541:     options:
+542:       cache: false
+543:       runInCI: true
+544: 
+545:   fuzz-smoke:
+546:     script: |
+547:       set -euo pipefail
+548:       export PATH="/cache/cargo-shared/bin:${PATH}"
+549:       mkdir -p target/moon-locks
+550:       mkdir -p target/fuzz-smoke
+551:       if ! flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo fuzz build --target x86_64-unknown-linux-gnu --target-dir "$PWD/target/fuzz-asan/build" >target/fuzz-smoke/build.log 2>target/fuzz-smoke/build.err; then
+552:         cat target/fuzz-smoke/build.log
+553:         cat target/fuzz-smoke/build.err
+554:         exit 1
+555:       fi
+556:       mapfile -t fuzz_targets < <(cargo fuzz list)
+557:       if [ "${#fuzz_targets[@]}" -eq 0 ]; then
+558:         echo "cargo fuzz list returned no targets" >&2
+559:         exit 1
+560:       fi
+561:       bin_dir="target/fuzz-asan/build/x86_64-unknown-linux-gnu/release"
+562:       for fuzz_target in "${fuzz_targets[@]}"; do
+563:         bin="${bin_dir}/${fuzz_target}"
+564:         {
+565:           echo "=== compile evidence: ${fuzz_target} ==="
+566:           if [ -x "${bin}" ]; then
+567:             ls -la "${bin}"
+568:             echo "OK: binary present"
+569:           else
+570:             echo "MISSING: ${bin}"
+571:             exit 1
+572:           fi
+573:         } >"target/fuzz-smoke/${fuzz_target}.compile.log" 2>&1
+574:         corpus="target/fuzz-smoke/corpus/${fuzz_target}"
+575:         artifacts="target/fuzz-smoke/artifacts/${fuzz_target}"
+576:         rm -rf "${corpus}" "${artifacts}"
+577:         mkdir -p "${corpus}" "${artifacts}"
+578:         if [ -d "fuzz/corpus/${fuzz_target}" ]; then
+579:           cp -R "fuzz/corpus/${fuzz_target}/." "${corpus}/"
+580:         fi
+581:         flock --shared target/moon-locks/source-mutation.lock timeout 30s "${bin}" -artifact_prefix="${PWD}/${artifacts}/" -max_total_time=1 "${PWD}/${corpus}" >"target/fuzz-smoke/${fuzz_target}.log" 2>"target/fuzz-smoke/${fuzz_target}.err"
+582:       done
+583:     toolchains:
+584:       - rust
+585:     inputs:
+586:       - 'Cargo.toml'
+587:       - 'Cargo.lock'
+588:       - 'rust-toolchain.toml'
+589:       - 'fuzz/Cargo.toml'
+590:       - 'fuzz/Cargo.lock'
+591:       - 'fuzz/fuzz_targets.rs'
+592:       - 'fuzz/fuzz_targets/**/*'
+593:       - 'fuzz/src/**/*'
+594:       - 'crates/vb_core/**/*'
+595:       - 'crates/vb_compile/**/*'
+596:       - 'crates/vb_ipc/**/*'
+597:       - 'crates/vb_storage/**/*'
+598:     options:
+599:       runInCI: true
+600:     outputs:
+601:       - 'target/fuzz-smoke/**'
+602: 
+603:   fuzz-tsan:
+604:     script: |
+605:       set -euo pipefail

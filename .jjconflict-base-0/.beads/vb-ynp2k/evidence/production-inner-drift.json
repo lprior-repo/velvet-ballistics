@@ -1,0 +1,15 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-ynp2k-deepseek-mirror-review",
+  "argv": [
+    "bash",
+    "scripts/check-production-inner-drift.sh"
+  ],
+  "exit_code": 0,
+  "seconds": 3.065,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ynp2k/evidence/production-inner-drift"
+}

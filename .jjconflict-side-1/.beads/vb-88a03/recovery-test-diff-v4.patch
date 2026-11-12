@@ -1,0 +1,2744 @@
+diff --git a/crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs b/crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs
+index 44b6087f0..312705c28 100644
+--- a/crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs
++++ b/crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs
+@@ -22,12 +22,16 @@ fn action_recovery_test_contract()
+ 
+ fn action_recovery_contract_store(
+     digest: vb_core::ids::WorkflowDigest,
++    source_digest: vb_core::ids::WorkflowDigest,
++    policy_digest: vb_core::ids::WorkflowDigest,
+     workflow_ir: Vec<u8>,
+     contract: vb_core::action::ActionContract,
+ ) -> crate::admission::SharedAcceptedArtifactStore {
+     #[derive(Debug)]
+     struct ActionRecoveryContractStore {
+         digest: vb_core::ids::WorkflowDigest,
++        source_digest: vb_core::ids::WorkflowDigest,
++        policy_digest: vb_core::ids::WorkflowDigest,
+         workflow_ir: Vec<u8>,
+         contract: vb_core::action::ActionContract,
+     }
+@@ -45,8 +49,8 @@ fn action_recovery_contract_store(
+             }
+             Ok(vb_storage::admission::AcceptedArtifact {
+                 digest: self.digest,
+-                source_digest: self.digest,
+-                policy_digest: self.digest,
++                source_digest: self.source_digest,
++                policy_digest: self.policy_digest,
+                 ir: self.workflow_ir.clone(),
+                 verification: vb_storage::admission::VerificationProof {
+                     evidence: vb_core::artifact::ArtifactEvidence::Unverified,
+@@ -71,6 +75,8 @@ fn action_recovery_contract_store(
+ 
+     std::sync::Arc::new(ActionRecoveryContractStore {
+         digest,
++        source_digest,
++        policy_digest,
+         workflow_ir,
+         contract,
+     })
+@@ -81,6 +87,11 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
+ -> Result<(), Box<dyn std::error::Error>> {
+     let run_id = vb_core::ids::RunId::new(1);
+     let workflow_digest = vb_core::ids::WorkflowDigest::from_bytes([42u8; 32]);
++    // vb-peb9u: artifact identity differs from workflow identity. The artifact
++    // digest is the content hash of the compiled artifact; the workflow digest
++    // is the semantic hash of the workflow. Mocked as distinct byte patterns.
++    let artifact_digest = vb_core::ids::WorkflowDigest::from_bytes([43u8; 32]);
++    assert_ne!(artifact_digest, workflow_digest);
+ 
+     let do_node = vb_core::workflow::CompiledNode {
+         id: vb_core::ids::StepIdx::ZERO,
+@@ -122,6 +133,13 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
+     let workflow_ir = postcard::to_allocvec(&parts)?;
+     let contract = action_recovery_test_contract()?;
+ 
++    // Compute the actual policy digest from the workflow for fixture provenance.
++    // The parts are consumed here after serialization, so the mock store can
++    // carry the genuine computed digest rather than a made-up one.
++    let policy_digest = vb_storage::admission::compute_policy_digest(
++        &vb_core::workflow::CompiledWorkflow::try_from_parts(parts)?,
++    )?;
++
+     let config = crate::shard::ShardConfig {
+         command_queue_capacity: 64,
+         trace_capacity: 64,
+@@ -129,7 +147,17 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
+         max_active_runs: 8,
+         policy: vb_core::policy::RuntimePolicy::Relaxed,
+     };
+-    let store = action_recovery_contract_store(workflow_digest, workflow_ir, contract.clone());
++    // vb-peb9u: Mocked store with internally consistent provenance. The artifact
++    // digest is content hash [43u8;32]; source digest matches workflow identity
++    // [42u8;32]; policy digest is the real computed value. Full admission would
++    // accept these together; the Unverified pin remains the test subject.
++    let store = action_recovery_contract_store(
++        artifact_digest,
++        workflow_digest,
++        policy_digest,
++        workflow_ir,
++        contract.clone(),
++    );
+     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+     let shared_journal = journal.clone();
+     let mut shard = crate::shard::Shard::new_with_journal_and_artifact_store(
+@@ -147,7 +175,7 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
+     let command = RecoverRunCommand::new(
+         run_id,
+         frame,
+-        workflow_digest,
++        artifact_digest,
+         workflow_digest,
+         vb_storage::types::EventSeq::new(1),
+         crate::primitives::collect::CollectStates::new(),
+@@ -161,12 +189,60 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
+     let state = shard
+         .run_state_get(run_id)
+         .ok_or("run state not found after recovery; recovery failed")?;
+-    let expected_artifact = store.load_accepted_artifact(workflow_digest)?;
++    let expected_artifact = store.load_accepted_artifact(artifact_digest)?;
+     assert_eq!(
+         state.action_contracts, expected_artifact.action_contracts,
+         "recovered run action_contracts must exactly match artifact"
+     );
+ 
++    // vb-peb9u: Raw 7-argument recovery cannot gain a verified policy pin.
++    // The Unverified admission record is built from the accepted artifact's
++    // required capabilities and current runtime policy, but the pin remains
++    // Unverified. This must never promote to Pinned.
++    let admission = state
++        .admission
++        .as_ref()
++        .ok_or("raw recovery must build an Unverified admission from the accepted artifact")?;
++    assert_eq!(
++        admission.run_id(),
++        run_id,
++        "recovered admission must carry the correct run identity"
++    );
++    assert_eq!(
++        admission.artifact_digest(),
++        artifact_digest,
++        "recovered admission must carry the correct artifact digest"
++    );
++    assert_eq!(
++        admission.policy_pin(),
++        vb_storage::RunPolicyPin::Unverified,
++        "raw 7-argument recovery must remain Unverified; cannot gain policy pin"
++    );
++    assert_eq!(
++        admission.policy(),
++        vb_core::policy::RuntimePolicy::Relaxed,
++        "recovered admission must carry the current shard policy"
++    );
++    assert_eq!(
++        admission.granted_capabilities(),
++        &vb_core::CapabilitySet::from_grants(expected_artifact.required_capabilities.clone()),
++        "recovered admission must grant exactly the artifact's required capabilities"
++    );
++
++    // vb-peb9u: Raw 7-argument recovery produces Unverified admission (no policy pin).
++    // Now prove that when a genuine failed-state checkpoint IS supplied via the
++    // public .with_retry_checkpoint() builder, and the checkpoint carries a
++    // different policy pin than the artifact, the shard rejects it with the
++    // exact admission_policy_pin_mismatch error. This exercises the real
++    // checkpoint capture, frame hydration, and policy pin validation path.
++    let original_state_clone = state.clone();
++    assert_raw_checkpoint_wrong_pin_rejected(
++        &mut shard,
++        original_state_clone,
++        &journal,
++        artifact_digest,
++    )?;
++
+     // Verify the Do action was scheduled with the correct ticket fields
+     let ticket = shard
+         .pending_action_get(run_id)
+@@ -291,3 +367,319 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
+ 
+     Ok(())
+ }
++
++fn assert_raw_checkpoint_wrong_pin_rejected(
++    shard: &mut crate::shard::Shard,
++    original: crate::shard::types::RunState,
++    journal: &VolatileRuntimeJournal,
++    artifact_digest: vb_core::ids::WorkflowDigest,
++) -> Result<(), Box<dyn std::error::Error>> {
++    let run_id = original.frame.run_id();
++
++    // Record the complete original state before any probe.
++    let original_pending = shard.pending_boundary_snapshot(0, 8);
++    let original_journal = journal.snapshot()?;
++
++    // Clone the recovered state to build a failed fixture. The original frame
++    // is Running, so we must genuinely transition it to Failed via the real
++    // frame API — not pretend a non-failed frame can be checkpointed.
++    let mut failed = original.clone();
++    failed.frame.mark_failed(vb_core::ids::StepIdx::ZERO)?;
++
++    // Forge a policy pin that differs from the artifact's actual policy digest.
++    // The original recovered admission has an Unverified raw pin (no digest).
++    // Use a fabricated digest to guarantee the forged pin mismatches the real
++    // computed policy digest, proving the checkpoint pin validation path.
++    let wrong_pin = vb_core::ids::WorkflowDigest::from_bytes([44u8; 32]);
++    assert_ne!(
++        wrong_pin,
++        vb_storage::admission::compute_policy_digest(&original.workflow)?,
++        "forged pin must differ from the workflow's actual policy digest"
++    );
++    let forged_admission = failed
++        .admission
++        .as_ref()
++        .ok_or("failed fixture must carry an admission record")?
++        .clone()
++        .with_policy_pin(vb_storage::RunPolicyPin::Pinned(wrong_pin));
++    failed.admission = Some(forged_admission);
++
++    // Capture a genuinely valid checkpoint from the failed state. This exercises
++    // the real RunCheckpointV1::capture path with its admission validation.
++    let checkpoint = crate::run_checkpoint::RunCheckpointV1::capture(
++        run_id,
++        artifact_digest,
++        core::num::NonZeroU16::new(2).ok_or("invalid checkpoint attempt number")?,
++        vb_core::ids::StepIdx::ZERO,
++        1,
++        &failed,
++    )?;
++
++    // Hydrate a valid retry frame from the checkpoint for the recovery command.
++    let retry_frame = vb_core::frame::RunFrame::from_checkpoint_v1(checkpoint.frame.clone())
++        .map_err(|error| format!("retry frame fixture failed: {error:?}"))?;
++
++    // Build the public recovery command with the retry checkpoint attached via
++    // the exact .with_retry_checkpoint() builder path that production uses.
++    let command = RecoverRunCommand::new(
++        run_id,
++        retry_frame,
++        artifact_digest,
++        original.workflow.digest(),
++        vb_storage::types::EventSeq::new(2),
++        crate::primitives::collect::CollectStates::new(),
++        crate::recovery::RecoveredRunBoundary::none(),
++    )
++    .with_retry_checkpoint(checkpoint);
++
++    // The shard must reject this because the checkpoint's policy pin (forged to
++    // [44u8;32]) does not match the artifact's actual policy digest (derived
++    // from [43u8;32]).
++    let result = shard.handle_recover(command);
++    assert_eq!(
++        result,
++        Err(crate::RuntimeError::RecoveryCannotResume {
++            reason: "admission_policy_pin_mismatch".to_string()
++        }),
++        "shard must reject retry checkpoint with mismatched policy pin"
++    );
++
++    // The failed probe must leave the shard's state, pending boundaries, and
++    // journal exactly unchanged. Only the cloned failed fixture mutated; the
++    // real shard's recovered run is untouched.
++    assert_eq!(
++        shard.run_state_get(run_id),
++        Some(&original),
++        "shard run state must be unchanged after rejected checkpoint probe"
++    );
++    assert_eq!(
++        shard.pending_boundary_snapshot(0, 8),
++        original_pending,
++        "pending boundaries must be unchanged after rejected checkpoint probe"
++    );
++    assert_eq!(
++        journal.snapshot()?,
++        original_journal,
++        "journal must be unchanged after rejected checkpoint probe"
++    );
++
++    // Second probe: admission policy mismatch (Strict configured vs Relaxed
++    // actual shard policy) with a valid Unverified historical pin. The pin check
++    // passes, but the configured policy in the admission record does not match
++    // the shard's actual runtime policy. This should be rejected with
++    // admission_policy_mismatch.
++    // Use a fresh shard so the run is not already tracked (avoids RunAlreadyExists
++    // masking the policy admission check).
++    let mut failed_policy = original.clone();
++    failed_policy
++        .frame
++        .mark_failed(vb_core::ids::StepIdx::ZERO)?;
++
++    let strict_admission = crate::admission::RunAdmission::new(
++        artifact_digest,
++        run_id,
++        original
++            .admission
++            .as_ref()
++            .ok_or("original must carry admission record")?
++            .granted_capabilities()
++            .clone(),
++        vb_core::policy::RuntimePolicy::Strict,
++    )
++    .with_policy_pin(vb_storage::RunPolicyPin::Unverified);
++    failed_policy.admission = Some(strict_admission);
++
++    let policy_checkpoint = crate::run_checkpoint::RunCheckpointV1::capture(
++        run_id,
++        artifact_digest,
++        core::num::NonZeroU16::new(2).ok_or("invalid checkpoint attempt number")?,
++        vb_core::ids::StepIdx::ZERO,
++        1,
++        &failed_policy,
++    )?;
++
++    let policy_retry_frame =
++        vb_core::frame::RunFrame::from_checkpoint_v1(policy_checkpoint.frame.clone())
++            .map_err(|error| format!("policy retry frame fixture failed: {error:?}"))?;
++
++    let policy_command = RecoverRunCommand::new(
++        run_id,
++        policy_retry_frame,
++        artifact_digest,
++        original.workflow.digest(),
++        vb_storage::types::EventSeq::new(2),
++        crate::primitives::collect::CollectStates::new(),
++        crate::recovery::RecoveredRunBoundary::none(),
++    )
++    .with_retry_checkpoint(policy_checkpoint);
++
++    // Fresh shard with matching Relaxed policy, same config as original.
++    let fresh_config = crate::shard::ShardConfig {
++        command_queue_capacity: 64,
++        trace_capacity: 64,
++        step_budget_per_tick: 4,
++        max_active_runs: 8,
++        policy: vb_core::policy::RuntimePolicy::Relaxed,
++    };
++    let fresh_journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
++    let mut fresh_shard = crate::shard::Shard::new_with_journal_and_artifact_store(
++        fresh_config,
++        fresh_journal.clone(),
++        shard.artifact_store.clone(),
++    );
++
++    // Capture fresh shard pre-state: empty pending and journal.
++    let fresh_pending = fresh_shard.pending_boundary_snapshot(0, 8);
++    let fresh_journal_snapshot = fresh_journal.snapshot()?;
++
++    // The fresh shard must reject because the admission's configured policy (Strict)
++    // differs from the actual shard policy (Relaxed), even though the pin is
++    // Unverified (historical) and therefore passes the pin check.
++    let policy_result = fresh_shard.handle_recover(policy_command);
++    assert_eq!(
++        policy_result,
++        Err(crate::RuntimeError::RecoveryCannotResume {
++            reason: "admission_policy_mismatch".to_string()
++        }),
++        "fresh shard must reject retry checkpoint with admission policy mismatch"
++    );
++
++    // The rejected policy probe must leave the fresh shard with no run state
++    // and empty pending/journal.
++    assert_eq!(
++        fresh_shard.run_state_get(run_id),
++        None,
++        "fresh shard run state must be empty after rejected policy mismatch probe"
++    );
++    assert_eq!(
++        fresh_shard.pending_boundary_snapshot(0, 8),
++        fresh_pending,
++        "fresh shard pending boundaries must be unchanged after rejected policy mismatch probe"
++    );
++    assert_eq!(
++        fresh_journal.snapshot()?,
++        fresh_journal_snapshot,
++        "fresh shard journal must be unchanged after rejected policy mismatch probe"
++    );
++
++    // The original shard's state must also remain unchanged from the first probe.
++    assert_eq!(
++        shard.run_state_get(run_id),
++        Some(&original),
++        "original shard run state must be unchanged after both checkpoint probes"
++    );
++    assert_eq!(
++        shard.pending_boundary_snapshot(0, 8),
++        original_pending,
++        "original shard pending boundaries must be unchanged after both checkpoint probes"
++    );
++    assert_eq!(
++        journal.snapshot()?,
++        original_journal,
++        "original shard journal must be unchanged after both checkpoint probes"
++    );
++
++    // Positive control: a valid failed checkpoint with matching admission,
++    // correct artifact identity, and genuine policy provenance must recover
++    // successfully. This proves the checkpoint machinery works when fixtures
++    // are internally consistent, not just that invalid fixtures are rejected.
++    let mut valid_failed = original.clone();
++    valid_failed
++        .frame
++        .mark_failed(vb_core::ids::StepIdx::ZERO)?;
++
++    let valid_checkpoint = crate::run_checkpoint::RunCheckpointV1::capture(
++        run_id,
++        artifact_digest,
++        core::num::NonZeroU16::new(2).ok_or("invalid valid checkpoint attempt number")?,
++        vb_core::ids::StepIdx::ZERO,
++        1,
++        &valid_failed,
++    )?;
++
++    let valid_retry_frame =
++        vb_core::frame::RunFrame::from_checkpoint_v1(valid_checkpoint.frame.clone())
++            .map_err(|error| format!("valid retry frame fixture failed: {error:?}"))?;
++
++    let valid_command = RecoverRunCommand::new(
++        run_id,
++        valid_retry_frame,
++        artifact_digest,
++        original.workflow.digest(),
++        vb_storage::types::EventSeq::new(2),
++        crate::primitives::collect::CollectStates::new(),
++        crate::recovery::RecoveredRunBoundary::none(),
++    )
++    .with_retry_checkpoint(valid_checkpoint);
++
++    // Fresh shard with matching Relaxed policy. Must recover successfully.
++    let positive_config = crate::shard::ShardConfig {
++        command_queue_capacity: 64,
++        trace_capacity: 64,
++        step_budget_per_tick: 4,
++        max_active_runs: 8,
++        policy: vb_core::policy::RuntimePolicy::Relaxed,
++    };
++    let positive_journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
++    let mut positive_shard = crate::shard::Shard::new_with_journal_and_artifact_store(
++        positive_config,
++        positive_journal.clone(),
++        shard.artifact_store.clone(),
++    );
++
++    let valid_result = positive_shard.handle_recover(valid_command);
++    assert!(
++        valid_result.is_ok(),
++        "valid checkpoint with matching provenance must recover successfully"
++    );
++
++    let restored = positive_shard
++        .run_state_get(run_id)
++        .ok_or("positive control run state not found after recovery")?;
++
++    // Admission restored exactly from the valid checkpoint.
++    assert_eq!(
++        restored.admission, original.admission,
++        "positive control: admission must match original (Unverified, correct run/artifact/policy)"
++    );
++
++    assert_eq!(
++        restored.workflow.digest(),
++        original.workflow.digest(),
++        "positive control: workflow digest must match original"
++    );
++
++    assert_eq!(
++        restored.registered_execution,
++        crate::shard::types::RegisteredExecutionMode::ReconcileOnly,
++        "positive control: execution must be ReconcileOnly for recovered run"
++    );
++
++    // Verify the Do action was rescheduled after positive control recovery.
++    let restored_ticket = positive_shard
++        .pending_action_get(run_id)
++        .ok_or("positive control: pending action not found after recovery")?;
++    assert_eq!(restored_ticket.run, run_id);
++    assert_eq!(restored_ticket.step, vb_core::ids::StepIdx::ZERO);
++    assert_eq!(restored_ticket.action, vb_core::ids::ActionId::new(0));
++    assert_eq!(restored_ticket.attempt, 1);
++
++    // Original shard, its journal, and pending state remain unchanged.
++    assert_eq!(
++        shard.run_state_get(run_id),
++        Some(&original),
++        "original shard run state must be unchanged after positive control"
++    );
++    assert_eq!(
++        shard.pending_boundary_snapshot(0, 8),
++        original_pending,
++        "original shard pending boundaries must be unchanged after positive control"
++    );
++    assert_eq!(
++        journal.snapshot()?,
++        original_journal,
++        "original shard journal must be unchanged after positive control"
++    );
++
++    Ok(())
++}
+diff --git a/crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs b/crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs
+new file mode 100644
+index 000000000..6af805b0d
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs
+@@ -0,0 +1,266 @@
++#![forbid(unsafe_code)]
++// Runtime policy recovery: corrupt emergency marker with unsupported version.
++// Verifies that a corrupted emergency deny marker causes precise typed failure
++// rather than silent default to inactive.
++
++use std::num::NonZeroUsize;
++use std::sync::Arc;
++
++use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
++use vb_core::action_pack::{CapabilityScopeSpec, RecoveryClass};
++use vb_core::capability::{Capability, CapabilitySet};
++use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
++use vb_core::policy::{DecisionCode, PolicyDigest, PolicyRule, RuntimePolicy};
++use vb_core::value::SlotValue;
++use vb_core::workflow::{
++    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
++};
++use vb_runtime::journal::StorageRuntimeJournal;
++use vb_runtime::runtime::RegisteredExecutionError;
++use vb_runtime::runtime::Runtime;
++use vb_runtime::shard::ShardConfig;
++use vb_storage::JournalEvent;
++use vb_storage::executor::{ExecutorCatalog, FjallRegister};
++use vb_storage::{FjallConfig, FjallJournal};
++
++type TestResult = Result<(), Box<dyn std::error::Error>>;
++
++fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
++    NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
++}
++
++fn strict_config() -> ShardConfig {
++    ShardConfig {
++        command_queue_capacity: 32,
++        trace_capacity: 64,
++        step_budget_per_tick: 16,
++        max_active_runs: 8,
++        policy: RuntimePolicy::Strict,
++    }
++}
++
++fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
++    CompiledNode {
++        id: StepIdx::new(id),
++        output: output.map(SlotIdx::new),
++        next: next.map(StepIdx::new),
++        on_error: None,
++        error_slot: None,
++        kind,
++    }
++}
++
++fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
++    let mut parts = WorkflowParts {
++        name: "vb_c4hzw_corrupt_marker".into(),
++        semantic_source_identity: None,
++        input_slots: Box::new([]),
++        digest: WorkflowDigest::from_bytes([0; 32]),
++        nodes: Box::from([
++            node(
++                0,
++                Some(1),
++                Some(1),
++                CompiledNodeKind::Do {
++                    action: ActionId::new(0),
++                    input: SlotIdx::ZERO,
++                },
++            ),
++            node(
++                1,
++                None,
++                None,
++                CompiledNodeKind::Finish {
++                    result: SlotIdx::new(1),
++                },
++            ),
++        ]),
++        expressions: Box::from([]),
++        accessors: Box::from([]),
++        constants: Box::from([]),
++        slot_count: 2,
++        symbols_count: 0,
++        entry: StepIdx::ZERO,
++        step_names: Box::from([]),
++        resource_contract: ResourceContract::DEFAULT,
++    };
++    let hash_bytes = postcard::to_allocvec(&parts).map_err(|err| err.to_string())?;
++    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&hash_bytes).into());
++    CompiledWorkflow::try_from_parts(parts).map_err(|err| err.to_string())
++}
++
++fn external_contract(action: ActionId) -> Result<ActionContract, Box<dyn std::error::Error>> {
++    Ok(ActionContract {
++        id: action,
++        name: ActionName::new("vb_c4hzw_corrupt_marker")?,
++        input_slot_count: 1,
++        output_slot_count: 1,
++        max_input_bytes: 64,
++        max_output_bytes: 64,
++        timeout_ms: 1000,
++        idempotency: Idempotency::IdempotentExternal,
++        side_effect: SideEffect::Writes,
++        retry_safety: RetrySafety::KeyRequired,
++        required_capabilities: Box::new([Capability::new("velvet.register.write".into(), action)]),
++    })
++}
++
++fn scope() -> CapabilityScopeSpec {
++    CapabilityScopeSpec {
++        namespace: 15,
++        key: 29,
++    }
++}
++
++fn action_grants(action: ActionId) -> CapabilitySet {
++    CapabilitySet::from_grants(Box::from([Capability::new(
++        "velvet.register.write".into(),
++        action,
++    )]))
++}
++
++fn corrupt_emergency_marker(path: &std::path::Path) -> TestResult {
++    let db = fjall::Database::builder(path).cache_size(1 << 20).open()?;
++    let ks = db.keyspace("emergency_deny", fjall::KeyspaceCreateOptions::default)?;
++    ks.insert(b"active", [99u8])?;
++    db.persist(fjall::PersistMode::SyncAll)?;
++    drop(ks);
++    drop(db);
++    Ok(())
++}
++
++#[test]
++fn corrupt_emergency_marker_causes_precise_typed_failure() -> TestResult {
++    let dir = tempfile::tempdir()?;
++    let run = RunId::new(12_001);
++    let action = ActionId::new(0);
++    let workflow = action_then_finish_workflow()?;
++    let contract = external_contract(action)?;
++    let catalog = ExecutorCatalog::run_registered_conformance()?;
++    let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
++
++    // Phase 1: Persist accepted artifact only; no runtime execution
++    let journal = Arc::new(FjallJournal::open(
++        dir.path(),
++        Some(FjallConfig::default()),
++    )?);
++    let artifact = catalog.submit_artifact(
++        &journal,
++        &workflow,
++        RuntimePolicy::Strict,
++        &[contract.clone()],
++        &[pack],
++    )?;
++    drop(journal);
++
++    // Phase 2: Corrupt the emergency_deny keyspace with version 99
++    corrupt_emergency_marker(dir.path())?;
++
++    // Phase 3: Reopen fresh runtime, configure policy, submit new legal run
++    let journal_reopen = Arc::new(FjallJournal::open(
++        dir.path(),
++        Some(FjallConfig::default()),
++    )?);
++    let storage = StorageRuntimeJournal::shared_strict_with_catalog(
++        journal_reopen.clone(),
++        Arc::new(catalog.clone()),
++    );
++    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
++
++    let allowed_digest = PolicyDigest::from_bytes([0x33u8; 32]);
++    runtime.configure_live_policy(
++        allowed_digest,
++        PolicyRule {
++            action,
++            code: DecisionCode::Allowed,
++        },
++    )?;
++
++    let contract_for_submit = external_contract(action)?;
++    runtime.submit_direct_with_inputs_grants_and_contracts(
++        run,
++        workflow,
++        Box::from([(SlotIdx::ZERO, SlotValue::I64(100))]),
++        action_grants(action),
++        Box::from([contract_for_submit]),
++    )?;
++    runtime.tick_all()?;
++
++    // Derive actual ticket and catalog grant for real artifact
++    let ticket = runtime
++        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
++        .ok_or("expected pending action ticket")?;
++    let grant = catalog.issue_register_grant(&artifact, ticket, scope())?;
++
++    // Record full boundary snapshot BEFORE execute
++    let pending_before = runtime.pending_boundary_snapshot(8);
++
++    // Phase 4: Execute -> expect precise typed error from corrupt marker
++    let register_path = dir.path().join("register");
++    let mut adapter = FjallRegister::open(&register_path, 8)?;
++    let result = runtime.execute_registered_action(
++        &mut adapter,
++        run,
++        u64::from(StepIdx::ZERO.get()),
++        &grant,
++    );
++
++    // Verify precise typed error: StorageJournalAppend wrapping EmergencyDenyMarkerUnsupportedVersion { version: 99 }
++    let is_correct_error = matches!(
++        &result,
++        Err(RegisteredExecutionError::Runtime(err))
++            if matches!(
++                err,
++                vb_runtime::RuntimeError::StorageJournalAppend { source }
++                    if matches!(
++                        source.as_ref(),
++                        vb_storage::JournalError::EmergencyDenyMarkerUnsupportedVersion { version }
++                            if *version == 99
++                    )
++            )
++    );
++    assert!(
++        is_correct_error,
++        "expected precise typed error JournalError::EmergencyDenyMarkerUnsupportedVersion {{ version: 99 }}, got {result:?}"
++    );
++
++    // Verify zero effects
++    assert_eq!(
++        adapter.effect_count()?,
++        0,
++        "expected zero effects after corrupt marker failure"
++    );
++    assert!(
++        adapter.value(scope())?.is_none(),
++        "register target must be empty after failed execute"
++    );
++
++    // Verify boundary unchanged: full snapshot equal, ticket unchanged
++    let pending_after = runtime.pending_boundary_snapshot(8);
++    assert_eq!(
++        pending_before, pending_after,
++        "pending boundary must be unchanged after corrupt marker failure"
++    );
++    let ticket_after = runtime
++        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
++        .ok_or("ticket disappeared after failure")?;
++    assert_eq!(
++        ticket, ticket_after,
++        "exact ticket must be unchanged after corrupt marker failure"
++    );
++
++    // Verify no policy decision event persisted (error before strict decision)
++    let events = vb_storage::read_run_events(&journal_reopen, run)?;
++    let decision_events: Vec<&JournalEvent> = events
++        .iter()
++        .filter(|e| matches!(e, JournalEvent::PolicyDecisionEvent { .. }))
++        .collect();
++    assert!(
++        decision_events.is_empty(),
++        "no PolicyDecisionEvent expected when read fails before strict decision persist"
++    );
++
++    drop(runtime);
++    drop(journal_reopen);
++    Ok(())
++}
+diff --git a/crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs b/crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs
+new file mode 100644
+index 000000000..f2902f930
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs
+@@ -0,0 +1,249 @@
++#![forbid(unsafe_code)]
++// Emergency deny state survives journal reopen (vb-c4hzw).
++// Persists emergency marker, drops all handles, reopens journal,
++// and verifies a NEW legal live execution is still blocked at the
++// Emergency layer with a full 9-field decision record.
++
++#[path = "vb_c4hzw_emergency_reopen/oracle.rs"]
++mod oracle;
++
++#[path = "vb_c4hzw_emergency_reopen/fixtures.rs"]
++mod fixtures;
++
++use std::sync::Arc;
++
++use vb_core::ActionTicket;
++use vb_core::action_pack::RecoveryClass;
++use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
++use vb_core::policy::{
++    CurrentPolicyIdentity, DecisionCode, DecisionRecord, InfluenceState, PinnedAdmissionPolicy,
++    PolicyDigest, PolicyLayer, PolicyRule, RuntimePolicy,
++};
++use vb_core::value::{SlotValue, Taint};
++use vb_runtime::journal::StorageRuntimeJournal;
++use vb_runtime::runtime::Runtime;
++use vb_storage::executor::{ExecutorCatalog, FjallRegister};
++use vb_storage::journal::EmergencyDenyState;
++use vb_storage::{FjallConfig, FjallJournal};
++
++use fixtures::{action_grants, build_contract, build_workflow, scope, shard_count, strict_config};
++use oracle::{admission_pin_from_artifact, compute_expected_input_digest, current_live_configured};
++
++type TestResult = Result<(), Box<dyn std::error::Error>>;
++
++fn expected_emergency_decision(
++    ticket: ActionTicket,
++    admission_pin: PinnedAdmissionPolicy,
++    current_live: CurrentPolicyIdentity,
++    input_digest: PolicyDigest,
++) -> DecisionRecord {
++    DecisionRecord {
++        ticket,
++        admission: admission_pin,
++        current_live,
++        input_digest,
++        taint: Taint::Clean,
++        outcome: DecisionCode::Denied,
++        layer: PolicyLayer::Emergency,
++        emergency_influence: InfluenceState::Active,
++        compat_influence: InfluenceState::NotEvaluated,
++    }
++}
++
++fn prepare_artifact(
++    dir: &tempfile::TempDir,
++    action: ActionId,
++) -> Result<(ExecutorCatalog, vb_storage::AcceptedArtifact), Box<dyn std::error::Error>> {
++    let workflow = build_workflow()?;
++    let contract = build_contract(action)?;
++    let catalog = ExecutorCatalog::run_registered_conformance()?;
++    let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
++
++    let journal = Arc::new(FjallJournal::open(
++        dir.path(),
++        Some(FjallConfig::default()),
++    )?);
++    let artifact = catalog.submit_artifact(
++        &journal,
++        &workflow,
++        RuntimePolicy::Strict,
++        &[contract.clone()],
++        &[pack],
++    )?;
++
++    Ok((catalog, artifact))
++}
++
++fn trigger_emergency_deny(
++    dir: &tempfile::TempDir,
++    catalog: &ExecutorCatalog,
++    action: ActionId,
++) -> Result<(), Box<dyn std::error::Error>> {
++    let journal = Arc::new(FjallJournal::open(
++        dir.path(),
++        Some(FjallConfig::default()),
++    )?);
++    let storage = StorageRuntimeJournal::shared_strict_with_catalog(
++        journal.clone(),
++        Arc::new(catalog.clone()),
++    );
++    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage.clone());
++
++    let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
++    runtime.configure_live_policy(
++        allowed_digest,
++        PolicyRule {
++            action,
++            code: DecisionCode::Allowed,
++        },
++    )?;
++
++    runtime.activate_emergency_deny()?;
++
++    drop(runtime);
++    drop(storage);
++    drop(journal);
++    Ok(())
++}
++
++#[test]
++fn emergency_deny_survives_journal_reopen() -> TestResult {
++    let dir = tempfile::tempdir()?;
++    let action = ActionId::new(0);
++
++    let (catalog, artifact) = prepare_artifact(&dir, action)?;
++    trigger_emergency_deny(&dir, &catalog, action)?;
++
++    // Reopen and verify emergency state persisted
++    let journal_reopen = Arc::new(FjallJournal::open(
++        dir.path(),
++        Some(FjallConfig::default()),
++    )?);
++    let durable_state = journal_reopen.emergency_deny_state()?;
++    assert_eq!(
++        durable_state,
++        EmergencyDenyState::Active,
++        "emergency deny must be durable after reopen"
++    );
++
++    let storage_reopen = StorageRuntimeJournal::shared_strict_with_catalog(
++        journal_reopen.clone(),
++        Arc::new(catalog.clone()),
++    );
++    let mut runtime_reopen = Runtime::new(shard_count(1)?, strict_config(), storage_reopen);
++
++    // Submit a NEW legal run and attempt execution
++    let run = RunId::new(9_201);
++    let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
++    runtime_reopen.configure_live_policy(
++        allowed_digest,
++        PolicyRule {
++            action,
++            code: DecisionCode::Allowed,
++        },
++    )?;
++
++    runtime_reopen.submit_direct_with_inputs_grants_and_contracts(
++        run,
++        build_workflow()?,
++        Box::from([(SlotIdx::ZERO, SlotValue::I64(42))]),
++        action_grants(action),
++        Box::from([build_contract(action)?]),
++    )?;
++    runtime_reopen.tick_all()?;
++
++    let ticket = runtime_reopen
++        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
++        .ok_or("expected pending action ticket")?;
++
++    let grant = catalog.issue_register_grant(&artifact, ticket, scope())?;
++    let register_path = dir.path().join("register");
++    let mut adapter = FjallRegister::open(&register_path, 8)?;
++
++    let boundary_before = runtime_reopen.pending_boundary_snapshot(8);
++
++    let result = runtime_reopen.execute_registered_action(
++        &mut adapter,
++        run,
++        u64::from(StepIdx::ZERO.get()),
++        &grant,
++    );
++
++    let decision = match result {
++        Err(vb_runtime::runtime::RegisteredExecutionError::PolicyDenied(record)) => record,
++        other => {
++            return Err(format!("expected PolicyDenied, got {:?}", other).into());
++        }
++    };
++
++    // Verify full 9-field decision record
++    let expected_input_digest = compute_expected_input_digest(42, Taint::Clean, &ticket)?;
++    let expected_admission = admission_pin_from_artifact(artifact.policy_digest.as_bytes());
++    let expected_live = current_live_configured([0x11u8; 32]);
++    let expected = expected_emergency_decision(
++        ticket,
++        expected_admission,
++        expected_live,
++        expected_input_digest,
++    );
++
++    assert_eq!(
++        decision.as_ref(),
++        &expected,
++        "decision record must match full 9-field expected record"
++    );
++
++    // Ticket unchanged after denied execution
++    let ticket_after = runtime_reopen
++        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
++        .ok_or("expected pending action ticket after denied execution")?;
++    assert_eq!(
++        ticket_after, ticket,
++        "ticket must be unchanged after denied execution"
++    );
++
++    // No adapter effect
++    assert_eq!(
++        adapter.effect_count()?,
++        0,
++        "no adapter effect on denied execution"
++    );
++    assert_eq!(
++        adapter.value(scope())?,
++        None,
++        "adapter value must be None for denied execution"
++    );
++
++    // Boundary unchanged after denied execution
++    let boundary_after = runtime_reopen.pending_boundary_snapshot(8);
++    assert_eq!(
++        boundary_after, boundary_before,
++        "boundary must be unchanged after denied execution"
++    );
++
++    // Verify exact PolicyDecisionEvent persisted in journal
++    let events = vb_storage::read_run_events(&journal_reopen, run)?;
++    let policy_events: Vec<&vb_core::policy::DecisionRecord> = events
++        .iter()
++        .filter_map(|e| match e {
++            vb_storage::JournalEvent::PolicyDecisionEvent { decision, .. } => Some(decision),
++            _ => None,
++        })
++        .collect();
++    assert_eq!(
++        policy_events.len(),
++        1,
++        "exactly one policy decision event must be stored"
++    );
++    let stored_decision = policy_events.first().ok_or("expected one decision event")?;
++    assert_eq!(
++        *stored_decision, &expected,
++        "stored decision must match expected 9-field record"
++    );
++    assert_eq!(
++        stored_decision.ticket.run, run,
++        "stored decision must reference correct run"
++    );
++
++    Ok(())
++}
+diff --git a/crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs b/crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs
+new file mode 100644
+index 000000000..4fb9e9c53
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs
+@@ -0,0 +1,108 @@
++use std::num::NonZeroUsize;
++
++use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
++use vb_core::action_pack::CapabilityScopeSpec;
++use vb_core::capability::{Capability, CapabilitySet};
++use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
++use vb_core::policy::RuntimePolicy;
++use vb_core::workflow::{
++    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
++};
++use vb_runtime::shard::ShardConfig;
++
++pub(super) fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
++    NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
++}
++
++pub(super) fn strict_config() -> ShardConfig {
++    ShardConfig {
++        command_queue_capacity: 32,
++        trace_capacity: 64,
++        step_budget_per_tick: 16,
++        max_active_runs: 8,
++        policy: RuntimePolicy::Strict,
++    }
++}
++
++fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
++    CompiledNode {
++        id: StepIdx::new(id),
++        output: output.map(SlotIdx::new),
++        next: next.map(StepIdx::new),
++        on_error: None,
++        error_slot: None,
++        kind,
++    }
++}
++
++pub(super) fn build_workflow() -> Result<CompiledWorkflow, String> {
++    let parts = WorkflowParts {
++        semantic_source_identity: None,
++        input_slots: Box::new([]),
++        name: Box::from("vb_c4hzw_emergency_reopen"),
++        digest: WorkflowDigest::from_bytes([0; 32]),
++        nodes: Box::from([
++            node(
++                0,
++                Some(1),
++                Some(1),
++                CompiledNodeKind::Do {
++                    action: ActionId::new(0),
++                    input: SlotIdx::ZERO,
++                },
++            ),
++            node(
++                1,
++                None,
++                None,
++                CompiledNodeKind::Finish {
++                    result: SlotIdx::new(1),
++                },
++            ),
++        ]),
++        expressions: Box::from([]),
++        accessors: Box::from([]),
++        constants: Box::from([]),
++        slot_count: 2,
++        symbols_count: 0,
++        entry: StepIdx::ZERO,
++        step_names: Box::from([]),
++        resource_contract: ResourceContract::DEFAULT,
++    };
++    let hash = postcard::to_allocvec(&parts).map_err(|e| e.to_string())?;
++    let mut parts = parts;
++    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&hash).into());
++    CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
++}
++
++pub(super) fn build_contract(
++    action: ActionId,
++) -> Result<ActionContract, Box<dyn std::error::Error>> {
++    Ok(ActionContract {
++        id: action,
++        name: ActionName::new("vb_c4hzw_emergency_reopen_action")?,
++        input_slot_count: 1,
++        output_slot_count: 1,
++        max_input_bytes: 64,
++        max_output_bytes: 64,
++        timeout_ms: 1000,
++        idempotency: Idempotency::IdempotentExternal,
++        side_effect: SideEffect::Writes,
++        retry_safety: RetrySafety::KeyRequired,
++        required_capabilities: Box::new([Capability::new("velvet.register.write".into(), action)]),
++    })
++}
++
++pub(super) fn scope() -> CapabilityScopeSpec {
++    CapabilityScopeSpec {
++        namespace: 15,
++        key: 29,
++    }
++}
++
++pub(super) fn action_grants(action: ActionId) -> CapabilitySet {
++    CapabilitySet::from_grants(Box::from([Capability::new(
++        "velvet.register.write".into(),
++        action,
++    )]))
++}
+diff --git a/crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs b/crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs
+new file mode 100644
+index 000000000..7cd8cf3ee
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs
+@@ -0,0 +1,117 @@
++// Independent oracle for computing expected input digests and policy
++// identity values. Not a call to production LivePolicy.evaluate or
++// encode_taint_canonical; matches production encoding for verification.
++
++use blake3::Hasher;
++use vb_core::ActionTicket;
++use vb_core::policy::{CurrentPolicyIdentity, PinnedAdmissionPolicy, PolicyDigest};
++use vb_core::value::{SlotValue, Taint};
++
++fn serialize_input_bytes(value: i64) -> Result<Vec<u8>, String> {
++    postcard::to_allocvec(&SlotValue::I64(value))
++        .map_err(|e| format!("failed to serialize input: {e}"))
++}
++
++fn new_policy_hasher() -> Hasher {
++    Hasher::new()
++}
++
++fn hash_input_domain(hasher: &mut Hasher, input_bytes: &[u8]) {
++    hasher.update(b"velvet-ballistics:policy:input:");
++    hasher.update(input_bytes);
++}
++
++fn hash_taint_domain(hasher: &mut Hasher, taint_byte: u8) {
++    hasher.update(b"velvet-ballistics:policy:taint:");
++    hasher.update(&[taint_byte]);
++}
++
++fn hash_ticket_domain_prefix(hasher: &mut Hasher) {
++    hasher.update(b"velvet-ballistics:policy:ticket:");
++}
++
++fn hash_run_field(hasher: &mut Hasher, run: u64) {
++    hasher.update(b"run:");
++    hasher.update(&run.to_be_bytes());
++}
++
++fn hash_step_field(hasher: &mut Hasher, step: u16) {
++    hasher.update(b"step:");
++    hasher.update(&step.to_be_bytes());
++}
++
++fn hash_seq_field(hasher: &mut Hasher, seq: u64) {
++    hasher.update(b"seq:");
++    hasher.update(&seq.to_be_bytes());
++}
++
++fn hash_action_field(hasher: &mut Hasher, action: u16) {
++    hasher.update(b"action:");
++    hasher.update(&action.to_be_bytes());
++}
++
++fn hash_run_attempt_field(hasher: &mut Hasher, run_attempt: u16) {
++    hasher.update(b"run_attempt:");
++    hasher.update(&run_attempt.to_be_bytes());
++}
++
++fn hash_attempt_field(hasher: &mut Hasher, attempt: u16) {
++    hasher.update(b"attempt:");
++    hasher.update(&attempt.to_be_bytes());
++}
++
++fn hash_idempotency_key_field(hasher: &mut Hasher, key: u128) {
++    hasher.update(b"key:");
++    hasher.update(&key.to_be_bytes());
++}
++
++fn hash_capacity_field(hasher: &mut Hasher, capacity: u16) {
++    hasher.update(b"capacity:");
++    hasher.update(&capacity.to_be_bytes());
++}
++
++fn finalize_policy_hash(hasher: Hasher) -> PolicyDigest {
++    let result = hasher.finalize();
++    let mut output = [0u8; 32];
++    output.copy_from_slice(result.as_bytes());
++    PolicyDigest::from_bytes(output)
++}
++
++pub(super) fn compute_expected_input_digest(
++    value: i64,
++    taint: Taint,
++    ticket: &ActionTicket,
++) -> Result<PolicyDigest, String> {
++    let input_bytes = serialize_input_bytes(value)?;
++    let taint_byte = match taint {
++        Taint::Clean => 0,
++        other => {
++            return Err(format!("unexpected taint variant for oracle: {other:?}"));
++        }
++    };
++
++    let mut hasher = new_policy_hasher();
++    hash_input_domain(&mut hasher, &input_bytes);
++    hash_taint_domain(&mut hasher, taint_byte);
++    hash_ticket_domain_prefix(&mut hasher);
++    hash_run_field(&mut hasher, u64::from(ticket.run.get()));
++    hash_step_field(&mut hasher, u16::from(ticket.step.get()));
++    hash_seq_field(&mut hasher, ticket.seq.get());
++    hash_action_field(&mut hasher, u16::from(ticket.action.get()));
++    hash_run_attempt_field(&mut hasher, ticket.run_attempt);
++    hash_attempt_field(&mut hasher, ticket.attempt);
++    hash_idempotency_key_field(&mut hasher, ticket.idempotency_key);
++    hash_capacity_field(&mut hasher, ticket.capacity);
++
++    Ok(finalize_policy_hash(hasher))
++}
++
++pub(super) fn admission_pin_from_artifact(policy_digest: [u8; 32]) -> PinnedAdmissionPolicy {
++    PinnedAdmissionPolicy::Artifact(PolicyDigest::from_bytes(policy_digest))
++}
++
++pub(super) fn current_live_configured(digest: [u8; 32]) -> CurrentPolicyIdentity {
++    CurrentPolicyIdentity::Configured {
++        digest: PolicyDigest::from_bytes(digest),
++    }
++}
+diff --git a/crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs b/crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs
+new file mode 100644
+index 000000000..65b365aa8
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs
+@@ -0,0 +1,192 @@
++#![forbid(unsafe_code)]
++
++#[path = "vb_c4hzw_historical_replay/fixtures.rs"]
++mod fixtures;
++
++#[path = "vb_c4hzw_historical_replay/policy_dispatch.rs"]
++mod policy_dispatch;
++
++use std::sync::Arc;
++
++use vb_core::ids::{ActionId, RunId, SlotIdx};
++use vb_core::policy::{DecisionCode, PolicyDigest, PolicyRule, RuntimePolicy};
++use vb_core::value::{SlotValue, Taint};
++use vb_runtime::journal::StorageRuntimeJournal;
++use vb_runtime::recovery::{RecoveredRunBoundaryKind, RuntimeRecoveryProduct};
++use vb_runtime::runtime::Runtime;
++use vb_storage::executor::{ExecutorCatalog, FjallRegister};
++use vb_storage::journal::EmergencyDenyState;
++use vb_storage::{FjallConfig, FjallJournal};
++
++use fixtures::{action_grants, build_contract, build_workflow, scope, shard_count, strict_config};
++use vb_core::action_pack::RecoveryClass;
++
++fn run_historical_replay_test() -> Result<(), Box<dyn std::error::Error>> {
++    let dir = tempfile::tempdir()?;
++    let run = RunId::new(9_200);
++    let action = ActionId::new(0);
++
++    let workflow = build_workflow()?;
++    let contract = build_contract(action)?;
++    let catalog = ExecutorCatalog::run_registered_conformance()?;
++    let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
++
++    let journal = Arc::new(FjallJournal::open(
++        dir.path(),
++        Some(FjallConfig::default()),
++    )?);
++
++    let artifact = catalog.submit_artifact(
++        &journal,
++        &workflow,
++        RuntimePolicy::Strict,
++        &[contract.clone()],
++        &[pack.clone()],
++    )?;
++
++    let storage = StorageRuntimeJournal::shared_strict_with_catalog(
++        journal.clone(),
++        Arc::new(catalog.clone()),
++    );
++    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
++
++    let allowed_digest = PolicyDigest::from_bytes([0x33u8; 32]);
++    runtime.configure_live_policy(
++        allowed_digest,
++        PolicyRule {
++            action,
++            code: DecisionCode::Allowed,
++        },
++    )?;
++
++    runtime.submit_direct_with_inputs_grants_and_contracts(
++        run,
++        workflow,
++        Box::from([(SlotIdx::ZERO, SlotValue::I64(100))]),
++        action_grants(action),
++        Box::from([contract.clone()]),
++    )?;
++
++    runtime.tick_all()?;
++
++    let ticket = runtime
++        .lookup_pending_action_ticket(run, 0)
++        .ok_or("expected pending action ticket")?;
++    let grant = catalog.issue_register_grant(&artifact, ticket.clone(), scope())?;
++
++    let register_path = dir.path().join("register");
++    let mut adapter = FjallRegister::open(&register_path, 8)?;
++    let receipt = runtime.execute_registered_action(&mut adapter, run, 0, &grant)?;
++
++    assert_eq!(receipt.value(), 100);
++    assert_eq!(adapter.effect_count()?, 1);
++    assert_eq!(adapter.value(scope())?, Some(100));
++
++    // Crash window: real registered effect executed once, durable receipt recorded.
++    // Do NOT tick completion. Journal has scheduled PendingAction + historical Allowed.
++    // Recovery reconstructs PendingAction without re-executing nondeterministic Do.
++
++    let product_before = runtime.recover_product(run)?;
++    match &product_before {
++        RuntimeRecoveryProduct::Resumable(product) => {
++            assert_eq!(
++                product.boundary_kind(),
++                RecoveredRunBoundaryKind::PendingAction,
++                "pending action crash window must recover as resumable pending action"
++            );
++        }
++        other => {
++            panic!(
++                "expected Resumable with PendingAction boundary, got: {:?}",
++                other
++            );
++        }
++    }
++    let events_before = vb_storage::read_run_events(&journal, run)?;
++    let pending_before = runtime.pending_boundary_snapshot(8);
++
++    let stored_decisions_before = policy_dispatch::read_journal_decision_events(&journal, run)?;
++    assert_eq!(stored_decisions_before.len(), 1);
++
++    let denied_digest = PolicyDigest::from_bytes([0x55u8; 32]);
++    runtime.configure_live_policy(
++        denied_digest,
++        PolicyRule {
++            action,
++            code: DecisionCode::Denied,
++        },
++    )?;
++
++    runtime.activate_emergency_deny()?;
++
++    let deny_state = journal.emergency_deny_state()?;
++    assert_eq!(deny_state, EmergencyDenyState::Active);
++
++    let product_after = runtime.recover_product(run)?;
++    let events_after = vb_storage::read_run_events(&journal, run)?;
++    let pending_after = runtime.pending_boundary_snapshot(8);
++
++    assert_eq!(
++        product_before, product_after,
++        "recovery product must be identical before and after current deny"
++    );
++    assert_eq!(
++        product_before.summary(),
++        product_after.summary(),
++        "recovery summary must be identical before and after current deny"
++    );
++
++    assert_eq!(
++        events_before, events_after,
++        "full journal must be unchanged after current deny"
++    );
++
++    assert_eq!(
++        pending_before, pending_after,
++        "pending state must be unchanged after current deny"
++    );
++
++    assert_eq!(
++        adapter.effect_count()?,
++        1,
++        "effect count must remain 1 after current deny"
++    );
++    assert_eq!(
++        adapter.value(scope())?,
++        Some(100),
++        "register value must remain 100 after current deny"
++    );
++
++    let stored_decisions = policy_dispatch::read_journal_decision_events(&journal, run)?;
++    assert_eq!(stored_decisions.len(), 1);
++    let stored = stored_decisions
++        .first()
++        .ok_or("expected exactly one decision")?;
++    assert_eq!(
++        stored.outcome,
++        DecisionCode::Allowed,
++        "historical decision must remain Allowed"
++    );
++
++    let input_digest = policy_dispatch::compute_expected_input_digest(100, Taint::Clean, &ticket)?;
++    let expected = policy_dispatch::make_expected_decision(
++        ticket,
++        policy_dispatch::admission_pin_from_artifact(artifact.policy_digest.as_bytes()),
++        policy_dispatch::current_live_configured(allowed_digest.as_bytes()),
++        input_digest,
++        DecisionCode::Allowed,
++    );
++    assert_eq!(
++        stored_decisions,
++        vec![expected],
++        "historical decision record must match independent oracle"
++    );
++
++    Ok(())
++}
++
++#[test]
++fn historical_replay_preserves_state_under_current_deny() -> Result<(), Box<dyn std::error::Error>>
++{
++    run_historical_replay_test()
++}
+diff --git a/crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs b/crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs
+new file mode 100644
+index 000000000..4fb9e9c53
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs
+@@ -0,0 +1,108 @@
++use std::num::NonZeroUsize;
++
++use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
++use vb_core::action_pack::CapabilityScopeSpec;
++use vb_core::capability::{Capability, CapabilitySet};
++use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
++use vb_core::policy::RuntimePolicy;
++use vb_core::workflow::{
++    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
++};
++use vb_runtime::shard::ShardConfig;
++
++pub(super) fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
++    NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
++}
++
++pub(super) fn strict_config() -> ShardConfig {
++    ShardConfig {
++        command_queue_capacity: 32,
++        trace_capacity: 64,
++        step_budget_per_tick: 16,
++        max_active_runs: 8,
++        policy: RuntimePolicy::Strict,
++    }
++}
++
++fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
++    CompiledNode {
++        id: StepIdx::new(id),
++        output: output.map(SlotIdx::new),
++        next: next.map(StepIdx::new),
++        on_error: None,
++        error_slot: None,
++        kind,
++    }
++}
++
++pub(super) fn build_workflow() -> Result<CompiledWorkflow, String> {
++    let parts = WorkflowParts {
++        semantic_source_identity: None,
++        input_slots: Box::new([]),
++        name: Box::from("vb_c4hzw_emergency_reopen"),
++        digest: WorkflowDigest::from_bytes([0; 32]),
++        nodes: Box::from([
++            node(
++                0,
++                Some(1),
++                Some(1),
++                CompiledNodeKind::Do {
++                    action: ActionId::new(0),
++                    input: SlotIdx::ZERO,
++                },
++            ),
++            node(
++                1,
++                None,
++                None,
++                CompiledNodeKind::Finish {
++                    result: SlotIdx::new(1),
++                },
++            ),
++        ]),
++        expressions: Box::from([]),
++        accessors: Box::from([]),
++        constants: Box::from([]),
++        slot_count: 2,
++        symbols_count: 0,
++        entry: StepIdx::ZERO,
++        step_names: Box::from([]),
++        resource_contract: ResourceContract::DEFAULT,
++    };
++    let hash = postcard::to_allocvec(&parts).map_err(|e| e.to_string())?;
++    let mut parts = parts;
++    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&hash).into());
++    CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
++}
++
++pub(super) fn build_contract(
++    action: ActionId,
++) -> Result<ActionContract, Box<dyn std::error::Error>> {
++    Ok(ActionContract {
++        id: action,
++        name: ActionName::new("vb_c4hzw_emergency_reopen_action")?,
++        input_slot_count: 1,
++        output_slot_count: 1,
++        max_input_bytes: 64,
++        max_output_bytes: 64,
++        timeout_ms: 1000,
++        idempotency: Idempotency::IdempotentExternal,
++        side_effect: SideEffect::Writes,
++        retry_safety: RetrySafety::KeyRequired,
++        required_capabilities: Box::new([Capability::new("velvet.register.write".into(), action)]),
++    })
++}
++
++pub(super) fn scope() -> CapabilityScopeSpec {
++    CapabilityScopeSpec {
++        namespace: 15,
++        key: 29,
++    }
++}
++
++pub(super) fn action_grants(action: ActionId) -> CapabilitySet {
++    CapabilitySet::from_grants(Box::from([Capability::new(
++        "velvet.register.write".into(),
++        action,
++    )]))
++}
+diff --git a/crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs b/crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs
+new file mode 100644
+index 000000000..edf177cf3
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs
+@@ -0,0 +1,165 @@
++use std::sync::Arc;
++
++use blake3::Hasher;
++use vb_core::ActionTicket;
++use vb_core::policy::{
++    CurrentPolicyIdentity, DecisionCode, InfluenceState, PinnedAdmissionPolicy, PolicyDigest,
++    PolicyLayer,
++};
++use vb_core::value::{SlotValue, Taint};
++use vb_storage::FjallJournal;
++
++use super::*;
++
++// Oracle: compute the expected input digest independently of production code.
++// Uses canonical I64 bytes, byte 0 for Clean taint, and all 8 ticket fields
++// with domain separation. This matches the production encoding but is the
++// test's own oracle, not a call to LivePolicy.evaluate or encode_taint_canonical.
++
++fn serialize_input_bytes(value: i64) -> Result<Vec<u8>, String> {
++    postcard::to_allocvec(&SlotValue::I64(value))
++        .map_err(|e| format!("failed to serialize input: {e}"))
++}
++
++fn taint_byte_clean() -> u8 {
++    // Canonical encoding: Clean = 0
++    0
++}
++
++fn new_policy_hasher() -> Hasher {
++    Hasher::new()
++}
++
++fn hash_input_domain(hasher: &mut Hasher, input_bytes: &[u8]) {
++    hasher.update(b"velvet-ballistics:policy:input:");
++    hasher.update(input_bytes);
++}
++
++fn hash_taint_domain(hasher: &mut Hasher, taint_byte: u8) {
++    hasher.update(b"velvet-ballistics:policy:taint:");
++    hasher.update(&[taint_byte]);
++}
++
++fn hash_ticket_domain_prefix(hasher: &mut Hasher) {
++    hasher.update(b"velvet-ballistics:policy:ticket:");
++}
++
++fn hash_run_field(hasher: &mut Hasher, run: u64) {
++    hasher.update(b"run:");
++    hasher.update(&run.to_be_bytes());
++}
++
++fn hash_step_field(hasher: &mut Hasher, step: u16) {
++    hasher.update(b"step:");
++    hasher.update(&step.to_be_bytes());
++}
++
++fn hash_seq_field(hasher: &mut Hasher, seq: u64) {
++    hasher.update(b"seq:");
++    hasher.update(&seq.to_be_bytes());
++}
++
++fn hash_action_field(hasher: &mut Hasher, action: u16) {
++    hasher.update(b"action:");
++    hasher.update(&action.to_be_bytes());
++}
++
++fn hash_run_attempt_field(hasher: &mut Hasher, run_attempt: u16) {
++    hasher.update(b"run_attempt:");
++    hasher.update(&run_attempt.to_be_bytes());
++}
++
++fn hash_attempt_field(hasher: &mut Hasher, attempt: u16) {
++    hasher.update(b"attempt:");
++    hasher.update(&attempt.to_be_bytes());
++}
++
++fn hash_idempotency_key_field(hasher: &mut Hasher, key: u128) {
++    hasher.update(b"key:");
++    hasher.update(&key.to_be_bytes());
++}
++
++fn hash_capacity_field(hasher: &mut Hasher, capacity: u16) {
++    hasher.update(b"capacity:");
++    hasher.update(&capacity.to_be_bytes());
++}
++
++fn finalize_policy_hash(hasher: Hasher) -> PolicyDigest {
++    let result = hasher.finalize();
++    let mut output = [0u8; 32];
++    output.copy_from_slice(result.as_bytes());
++    PolicyDigest::from_bytes(output)
++}
++
++pub(super) fn compute_expected_input_digest(
++    value: i64,
++    taint: Taint,
++    ticket: &ActionTicket,
++) -> Result<PolicyDigest, String> {
++    let input_bytes = serialize_input_bytes(value)?;
++    let taint_byte = match taint {
++        Taint::Clean => taint_byte_clean(),
++        other => return Err(format!("unexpected taint variant for oracle: {other:?}")),
++    };
++
++    let mut hasher = new_policy_hasher();
++    hash_input_domain(&mut hasher, &input_bytes);
++    hash_taint_domain(&mut hasher, taint_byte);
++    hash_ticket_domain_prefix(&mut hasher);
++    hash_run_field(&mut hasher, ticket.run.get());
++    hash_step_field(&mut hasher, ticket.step.get());
++    hash_seq_field(&mut hasher, ticket.seq.get());
++    hash_action_field(&mut hasher, ticket.action.get());
++    hash_run_attempt_field(&mut hasher, ticket.run_attempt);
++    hash_attempt_field(&mut hasher, ticket.attempt);
++    hash_idempotency_key_field(&mut hasher, ticket.idempotency_key);
++    hash_capacity_field(&mut hasher, ticket.capacity);
++
++    Ok(finalize_policy_hash(hasher))
++}
++
++pub(super) fn make_expected_decision(
++    ticket: ActionTicket,
++    admission_pin: PinnedAdmissionPolicy,
++    current_live: CurrentPolicyIdentity,
++    input_digest: PolicyDigest,
++    outcome: DecisionCode,
++) -> vb_core::policy::DecisionRecord {
++    vb_core::policy::DecisionRecord {
++        ticket,
++        admission: admission_pin,
++        current_live,
++        input_digest,
++        taint: Taint::Clean,
++        outcome,
++        layer: PolicyLayer::Live,
++        emergency_influence: InfluenceState::Inactive,
++        compat_influence: InfluenceState::NotEvaluated,
++    }
++}
++
++pub(super) fn admission_pin_from_artifact(policy_digest: [u8; 32]) -> PinnedAdmissionPolicy {
++    PinnedAdmissionPolicy::Artifact(PolicyDigest::from_bytes(policy_digest))
++}
++
++pub(super) fn current_live_configured(digest: [u8; 32]) -> CurrentPolicyIdentity {
++    CurrentPolicyIdentity::Configured {
++        digest: PolicyDigest::from_bytes(digest),
++    }
++}
++
++pub(super) fn read_journal_decision_events(
++    journal: &Arc<FjallJournal>,
++    run: RunId,
++) -> Result<Vec<vb_core::policy::DecisionRecord>, Box<dyn std::error::Error>> {
++    let events = vb_storage::read_run_events(journal, run)?;
++    Ok(events
++        .iter()
++        .filter_map(|e| match e {
++            vb_storage::JournalEvent::PolicyDecisionEvent { decision, .. } => {
++                Some(decision.clone())
++            }
++            _ => None,
++        })
++        .collect())
++}
+diff --git a/crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs b/crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs
+new file mode 100644
+index 000000000..5a2123bee
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs
+@@ -0,0 +1,20 @@
++#![forbid(unsafe_code)]
++// vb-c4hzw: Legacy unverified admission recovered NEW legal Live effect denial.
++//
++// A genuine legacy RunAdmission with RunPolicyPin::Unverified is reconstructed
++// from an accepted artifact and complete historical event prefix. Current
++// Allowed policy cannot authorize its new effect: actual Runtime returns
++// Admission-layer Denied with genuine Unverified pin, full independent record
++// oracle, unchanged exact pending state and zero effects.
++
++#[path = "vb_c4hzw_legacy_admission/policy_dispatch.rs"]
++mod policy_dispatch;
++
++#[path = "vb_c4hzw_legacy_admission/legacy_workflow.rs"]
++mod legacy_workflow;
++
++#[path = "vb_c4hzw_legacy_admission/legacy_admission_test.rs"]
++mod legacy_admission_test;
++
++#[path = "vb_c4hzw_legacy_admission/forged_admission_test.rs"]
++mod forged_admission_test;
+diff --git a/crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs b/crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs
+new file mode 100644
+index 000000000..212c88eaa
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs
+@@ -0,0 +1,231 @@
++use std::num::NonZeroUsize;
++use std::sync::Arc;
++
++use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
++use vb_core::action_pack::{CapabilityScopeSpec, RecoveryClass};
++use vb_core::capability::{Capability, CapabilitySet};
++use vb_core::ids::{ActionId, RunId, StepIdx, WorkflowDigest};
++use vb_runtime::journal::StorageRuntimeJournal;
++use vb_runtime::runtime::Runtime;
++use vb_runtime::shard::ShardConfig;
++use vb_storage::executor::ExecutorCatalog;
++use vb_storage::executor::FjallRegister;
++use vb_storage::{JournalEvent, RunInputBinding, RunPolicyPin};
++
++use crate::legacy_admission_test::{append_events, open_journal};
++use crate::legacy_workflow::legacy_ask_action_workflow;
++
++type TestResult = Result<(), Box<dyn std::error::Error>>;
++
++fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
++    NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
++}
++
++fn strict_config() -> ShardConfig {
++    ShardConfig {
++        command_queue_capacity: 32,
++        trace_capacity: 64,
++        step_budget_per_tick: 16,
++        max_active_runs: 8,
++        policy: vb_core::policy::RuntimePolicy::Strict,
++    }
++}
++
++fn scope() -> CapabilityScopeSpec {
++    CapabilityScopeSpec {
++        namespace: 15,
++        key: 29,
++    }
++}
++
++fn external_contract(action: ActionId) -> Result<ActionContract, Box<dyn std::error::Error>> {
++    Ok(ActionContract {
++        id: action,
++        name: ActionName::new("vb_c4hzw_forged_action")?,
++        input_slot_count: 1,
++        output_slot_count: 1,
++        max_input_bytes: 64,
++        max_output_bytes: 64,
++        timeout_ms: 1000,
++        idempotency: Idempotency::IdempotentExternal,
++        side_effect: SideEffect::Writes,
++        retry_safety: RetrySafety::KeyRequired,
++        required_capabilities: Box::new([Capability::new("velvet.register.write".into(), action)]),
++    })
++}
++
++fn action_grants(action: ActionId) -> CapabilitySet {
++    CapabilitySet::from_grants(Box::from([Capability::new(
++        "velvet.register.write".into(),
++        action,
++    )]))
++}
++
++#[test]
++fn forged_policy_pin_rejected_before_recovery_mutation() -> TestResult {
++    let action = ActionId::new(0);
++    let run = RunId::new(4_421);
++    let temp = tempfile::tempdir()?;
++
++    let catalog = ExecutorCatalog::run_registered_conformance()?;
++    let workflow = legacy_ask_action_workflow(action)?;
++    let contract = external_contract(action)?;
++    let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
++
++    let journal = open_journal(temp.path())?;
++    let artifact = catalog.submit_artifact(
++        &journal,
++        &workflow,
++        vb_core::policy::RuntimePolicy::Strict,
++        &[contract],
++        &[pack],
++    )?;
++    drop(journal);
++
++    // Compute the genuine policy digest and construct a distinct wrong pin.
++    let real_policy_digest = artifact.policy_digest;
++    let wrong_pin = WorkflowDigest::from_bytes([0xFFu8; 32]);
++    assert_ne!(real_policy_digest, wrong_pin);
++
++    // Write the legacy prefix with a FORGED policy pin that does not match
++    // the accepted artifact's actual policy digest.
++    let journal = open_journal(temp.path())?;
++    let forged_events = [
++        JournalEvent::RunAccepted {
++            run,
++            seq: vb_storage::EventSeq::new(0),
++            workflow: workflow.digest(),
++        },
++        JournalEvent::RunAdmission {
++            input_digest: RunInputBinding::LegacyUnbound,
++            run,
++            seq: vb_storage::EventSeq::new(1),
++            artifact_digest: artifact.digest,
++            policy_pin: RunPolicyPin::Pinned(wrong_pin),
++            granted_capabilities: action_grants(action),
++            policy: vb_core::policy::RuntimePolicy::Strict,
++        },
++        JournalEvent::StepStarted {
++            run,
++            seq: vb_storage::EventSeq::new(2),
++            step: StepIdx::ZERO,
++            attempt: 1,
++        },
++        JournalEvent::AskScheduledEvent {
++            run,
++            seq: vb_storage::EventSeq::new(3),
++            step: StepIdx::ZERO,
++            attempt: 1,
++        },
++    ];
++    append_events(&journal, &forged_events)?;
++
++    // Capture full journal state before recovery.
++    let journal_before = vb_storage::read_run_events(&journal, run)?;
++    assert_eq!(
++        journal_before.len(),
++        4,
++        "forged journal has exactly the legacy prefix events"
++    );
++
++    drop(journal);
++
++    // Reopen for recovery.
++    let journal = open_journal(temp.path())?;
++    let shared = StorageRuntimeJournal::shared_strict_with_catalog(
++        journal.clone(),
++        Arc::new(catalog.clone()),
++    );
++    let runtime = Runtime::new(shard_count(1)?, strict_config(), shared);
++
++    // Capture full pending state before recovery.
++    let pending_before = runtime.pending_boundary_snapshot(8);
++
++    // Open a real FjallRegister to observe zero effects.
++    let register = FjallRegister::open(&temp.path().join("register"), 8)?;
++
++    // Verify register is clean before any recovery attempt.
++    assert_eq!(
++        register.effect_count()?,
++        0,
++        "register must be clean before recovery"
++    );
++    assert_eq!(
++        register.value(scope())?,
++        None,
++        "register must have no value before recovery"
++    );
++
++    // Recover product must reject the forged pin.
++    assert_eq!(
++        runtime.recover_product(run),
++        Err(vb_runtime::RuntimeError::RecoveryCannotResume {
++            reason: String::from("admission_policy_pin_mismatch")
++        })
++    );
++
++    // Verify full journal is unchanged after first rejected call.
++    let journal_after_product = vb_storage::read_run_events(&journal, run)?;
++    assert_eq!(
++        journal_before, journal_after_product,
++        "recover_product with forged policy pin must leave journal unmodified"
++    );
++
++    // Verify full pending state is unchanged after first rejected call.
++    let pending_after_product = runtime.pending_boundary_snapshot(8);
++    assert_eq!(
++        pending_before, pending_after_product,
++        "recover_product with forged policy pin must leave pending state unmodified"
++    );
++
++    // Verify register has no effects after first rejected call.
++    assert_eq!(
++        register.effect_count()?,
++        0,
++        "recover_product with forged pin must produce zero register effects"
++    );
++    assert_eq!(
++        register.value(scope())?,
++        None,
++        "recover_product with forged pin must not set scope value"
++    );
++
++    // Recover and resume must also reject the forged pin.
++    assert_eq!(
++        runtime.recover_and_resume(run),
++        Err(vb_runtime::RuntimeError::RecoveryCannotResume {
++            reason: String::from("admission_policy_pin_mismatch")
++        })
++    );
++
++    // Verify full journal is unchanged after second rejected call.
++    let journal_after_resume = vb_storage::read_run_events(&journal, run)?;
++    assert_eq!(
++        journal_before, journal_after_resume,
++        "recover_and_resume with forged policy pin must leave journal unmodified"
++    );
++
++    // Verify full pending state is unchanged after second rejected call.
++    let pending_after_resume = runtime.pending_boundary_snapshot(8);
++    assert_eq!(
++        pending_before, pending_after_resume,
++        "recover_and_resume with forged policy pin must leave pending state unmodified"
++    );
++
++    // Verify register has no effects after second rejected call.
++    assert_eq!(
++        register.effect_count()?,
++        0,
++        "recover_and_resume with forged pin must produce zero register effects"
++    );
++    assert_eq!(
++        register.value(scope())?,
++        None,
++        "recover_and_resume with forged pin must not set scope value"
++    );
++
++    drop(register);
++    drop(runtime);
++    drop(journal);
++    Ok(())
++}
+diff --git a/crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs b/crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs
+new file mode 100644
+index 000000000..d4795fdd9
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs
+@@ -0,0 +1,274 @@
++use std::num::NonZeroUsize;
++use std::sync::Arc;
++
++use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
++use vb_core::action_pack::{CapabilityScopeSpec, RecoveryClass};
++use vb_core::capability::{Capability, CapabilitySet};
++use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
++use vb_core::policy::{DecisionCode, PolicyDigest, PolicyRule, RuntimePolicy};
++use vb_core::value::SlotValue;
++use vb_runtime::journal::StorageRuntimeJournal;
++use vb_runtime::recovery::{RecoveredRunBoundaryKind, RuntimeRecoveryProduct};
++use vb_runtime::runtime::{RegisteredExecutionError, Runtime};
++use vb_runtime::shard::ShardConfig;
++use vb_storage::executor::{ExecutorCatalog, FjallRegister};
++use vb_storage::{FjallConfig, FjallJournal, JournalEvent, RunInputBinding, RunPolicyPin};
++
++use crate::legacy_workflow::legacy_ask_action_workflow;
++use crate::policy_dispatch::{
++    admission_pin_unverified, compute_expected_input_digest, current_live_configured,
++    make_expected_decision,
++};
++
++type TestResult = Result<(), Box<dyn std::error::Error>>;
++
++fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
++    NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
++}
++
++fn strict_config() -> ShardConfig {
++    ShardConfig {
++        command_queue_capacity: 32,
++        trace_capacity: 64,
++        step_budget_per_tick: 16,
++        max_active_runs: 8,
++        policy: RuntimePolicy::Strict,
++    }
++}
++
++fn scope() -> CapabilityScopeSpec {
++    CapabilityScopeSpec {
++        namespace: 15,
++        key: 29,
++    }
++}
++
++fn external_contract(action: ActionId) -> Result<ActionContract, Box<dyn std::error::Error>> {
++    Ok(ActionContract {
++        id: action,
++        name: ActionName::new("vb_c4hzw_legacy_action")?,
++        input_slot_count: 1,
++        output_slot_count: 1,
++        max_input_bytes: 64,
++        max_output_bytes: 64,
++        timeout_ms: 1000,
++        idempotency: Idempotency::IdempotentExternal,
++        side_effect: SideEffect::Writes,
++        retry_safety: RetrySafety::KeyRequired,
++        required_capabilities: Box::new([Capability::new("velvet.register.write".into(), action)]),
++    })
++}
++
++fn action_grants(action: ActionId) -> CapabilitySet {
++    CapabilitySet::from_grants(Box::from([Capability::new(
++        "velvet.register.write".into(),
++        action,
++    )]))
++}
++
++pub(super) fn open_journal(path: &std::path::Path) -> Result<Arc<FjallJournal>, String> {
++    Ok(Arc::new(
++        FjallJournal::open(path, Some(FjallConfig::default())).map_err(|err| err.to_string())?,
++    ))
++}
++
++pub(super) fn append_events(
++    journal: &FjallJournal,
++    events: impl AsRef<[JournalEvent]>,
++) -> Result<(), String> {
++    for event in events.as_ref() {
++        journal
++            .append_strict(event)
++            .map_err(|err| err.to_string())?;
++    }
++    Ok(())
++}
++
++#[test]
++fn legacy_unverified_admission_blocks_new_live_effect() -> TestResult {
++    let action = ActionId::new(0);
++    let run = RunId::new(4_420);
++    let allowed_digest = PolicyDigest::from_bytes([0x41u8; 32]);
++    let temp = tempfile::tempdir()?;
++
++    let catalog = ExecutorCatalog::run_registered_conformance()?;
++    let workflow = legacy_ask_action_workflow(action)?;
++    let contract = external_contract(action)?;
++    let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
++
++    let journal = open_journal(temp.path())?;
++    let artifact = catalog.submit_artifact(
++        &journal,
++        &workflow,
++        RuntimePolicy::Strict,
++        &[contract],
++        &[pack],
++    )?;
++    let parts: vb_core::workflow::WorkflowParts = postcard::from_bytes(&artifact.ir)?;
++    assert_eq!(parts.digest, workflow.digest());
++
++    let legacy_events = [
++        JournalEvent::RunAccepted {
++            run,
++            seq: vb_storage::EventSeq::new(0),
++            workflow: workflow.digest(),
++        },
++        JournalEvent::RunAdmission {
++            input_digest: RunInputBinding::LegacyUnbound,
++            run,
++            seq: vb_storage::EventSeq::new(1),
++            artifact_digest: artifact.digest,
++            policy_pin: RunPolicyPin::Unverified,
++            granted_capabilities: action_grants(action),
++            policy: RuntimePolicy::Strict,
++        },
++        JournalEvent::StepStarted {
++            run,
++            seq: vb_storage::EventSeq::new(2),
++            step: StepIdx::ZERO,
++            attempt: 1,
++        },
++        JournalEvent::AskScheduledEvent {
++            run,
++            seq: vb_storage::EventSeq::new(3),
++            step: StepIdx::ZERO,
++            attempt: 1,
++        },
++    ];
++    append_events(&journal, &legacy_events)?;
++    drop(journal);
++
++    let journal = open_journal(temp.path())?;
++    let shared = StorageRuntimeJournal::shared_strict_with_catalog(
++        journal.clone(),
++        Arc::new(catalog.clone()),
++    );
++    let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
++
++    let recovery = recovered
++        .recover_product(run)
++        .map_err(|err| err.to_string())?;
++    match recovery {
++        RuntimeRecoveryProduct::Resumable(product) => {
++            assert_eq!(product.boundary_kind(), RecoveredRunBoundaryKind::OpenAsk);
++        }
++        other => {
++            return Err(format!("expected open-ask resumable product, got {other:?}").into());
++        }
++    }
++    recovered
++        .recover_and_resume(run)
++        .map_err(|err| err.to_string())?;
++    recovered.tick_all().map_err(|err| err.to_string())?;
++
++    let ask_ticket = recovered
++        .lookup_pending_ask_ticket(run, StepIdx::ZERO)
++        .ok_or("recovered open ask must issue its persisted ticket")?;
++    recovered
++        .answer_ask(vb_runtime::shard::AskAnswer::with_encoded_len(
++            ask_ticket,
++            SlotIdx::new(1),
++            SlotValue::I64(99),
++            vb_core::value::Taint::Clean,
++            1,
++        ))
++        .map_err(|err| err.to_string())?;
++    recovered.tick_all().map_err(|err| err.to_string())?;
++
++    let action_ticket = recovered
++        .lookup_pending_action_ticket(run, u64::from(StepIdx::new(2).get()))
++        .ok_or("recovered Do action must issue its ticket")?;
++
++    let grant = catalog.issue_register_grant(&artifact, action_ticket, scope())?;
++
++    recovered.configure_live_policy(
++        allowed_digest,
++        PolicyRule {
++            action,
++            code: DecisionCode::Allowed,
++        },
++    )?;
++
++    let register_path = temp.path().join("register");
++    let mut adapter = FjallRegister::open(&register_path, 8)?;
++
++    let pending_before = recovered.pending_boundary_snapshot(8);
++    let result = recovered.execute_registered_action(
++        &mut adapter,
++        run,
++        u64::from(StepIdx::new(2).get()),
++        &grant,
++    );
++    let decision = match result {
++        Err(RegisteredExecutionError::PolicyDenied(dec)) => *dec,
++        other => {
++            return Err(format!("expected PolicyDenied, got: {other:?}").into());
++        }
++    };
++    assert_eq!(recovered.pending_boundary_snapshot(8), pending_before);
++
++    assert_eq!(decision.outcome, DecisionCode::Denied);
++    assert_eq!(decision.layer, vb_core::policy::PolicyLayer::Admission);
++    assert_eq!(decision.admission, admission_pin_unverified());
++    assert_eq!(
++        decision.current_live,
++        current_live_configured(allowed_digest.as_bytes())
++    );
++    assert_eq!(decision.ticket.run, run);
++    assert_eq!(decision.ticket.step, StepIdx::new(2));
++
++    let expected_digest =
++        compute_expected_input_digest(99, vb_core::value::Taint::Clean, &action_ticket)?;
++    assert_eq!(decision.input_digest, expected_digest);
++
++    let expected_decision = make_expected_decision(
++        action_ticket,
++        admission_pin_unverified(),
++        current_live_configured(allowed_digest.as_bytes()),
++        expected_digest,
++        DecisionCode::Denied,
++    );
++    assert_eq!(decision, expected_decision);
++
++    assert_eq!(adapter.effect_count()?, 0);
++    assert_eq!(
++        adapter.value(scope())?,
++        None,
++        "target value must remain unset after admission denial"
++    );
++
++    let after_ticket = recovered
++        .lookup_pending_action_ticket(run, u64::from(StepIdx::new(2).get()))
++        .ok_or("pending ticket must remain after admission denial")?;
++    assert_eq!(after_ticket, action_ticket);
++
++    let snapshot = recovered.pending_boundary_snapshot(8);
++    let shards = snapshot.shards();
++    let pending_actions: Vec<_> = shards
++        .iter()
++        .flat_map(|s| s.pending_actions())
++        .cloned()
++        .collect();
++    assert_eq!(
++        pending_actions.len(),
++        1,
++        "exactly one pending action after ask answer"
++    );
++    let first_pending = pending_actions
++        .first()
++        .ok_or("expected at least one pending action")?;
++    assert_eq!(first_pending.ticket(), action_ticket);
++
++    let stored = vb_storage::read_run_events(&journal, run)?;
++    let decisions: Vec<_> = stored
++        .iter()
++        .filter_map(|e| match e {
++            JournalEvent::PolicyDecisionEvent { decision, .. } => Some(decision.clone()),
++            _ => None,
++        })
++        .collect();
++    assert_eq!(decisions, vec![expected_decision]);
++
++    drop(recovered);
++    Ok(())
++}
+diff --git a/crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs b/crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs
+new file mode 100644
+index 000000000..6354b95b5
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs
+@@ -0,0 +1,81 @@
++use blake3::Hasher;
++use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
++use vb_core::workflow::{
++    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
++};
++
++fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
++    CompiledNode {
++        id: StepIdx::new(id),
++        output: output.map(SlotIdx::new),
++        next: next.map(StepIdx::new),
++        on_error: None,
++        error_slot: None,
++        kind,
++    }
++}
++
++/// Workflow with genuine Ask step (slot 0), AskResume (slot 1),
++/// Do action (slot 1→2), Finish (slot 2). Three slots.
++pub(super) fn legacy_ask_action_workflow(action: ActionId) -> Result<CompiledWorkflow, String> {
++    let mut parts = WorkflowParts {
++        semantic_source_identity: None,
++        input_slots: Box::new([]),
++        name: Box::from("vb_c4hzw_legacy_admission"),
++        digest: WorkflowDigest::from_bytes([0; 32]),
++        nodes: Box::from([
++            node(
++                0,
++                None,
++                Some(1),
++                CompiledNodeKind::Ask {
++                    prompt: SlotIdx::ZERO,
++                    timeout_slot: None,
++                },
++            ),
++            node(
++                1,
++                None,
++                Some(2),
++                CompiledNodeKind::AskResume {
++                    answer: SlotIdx::new(1),
++                },
++            ),
++            node(
++                2,
++                Some(2),
++                Some(3),
++                CompiledNodeKind::Do {
++                    action,
++                    input: SlotIdx::new(1),
++                },
++            ),
++            node(
++                3,
++                None,
++                None,
++                CompiledNodeKind::Finish {
++                    result: SlotIdx::new(2),
++                },
++            ),
++        ]),
++        expressions: Box::from([]),
++        accessors: Box::from([]),
++        constants: Box::from([]),
++        slot_count: 3,
++        symbols_count: 0,
++        entry: StepIdx::ZERO,
++        step_names: Box::from([]),
++        resource_contract: ResourceContract::DEFAULT,
++    };
++
++    let mut hasher = Hasher::new();
++    let parts_bytes = postcard::to_allocvec(&parts).map_err(|err| err.to_string())?;
++    hasher.update(&parts_bytes);
++    let result = hasher.finalize();
++    let mut digest_bytes = [0u8; 32];
++    digest_bytes.copy_from_slice(result.as_bytes());
++    parts.digest = WorkflowDigest::from_bytes(digest_bytes);
++
++    CompiledWorkflow::try_from_parts(parts).map_err(|err| err.to_string())
++}
+diff --git a/crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs b/crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs
+new file mode 100644
+index 000000000..10dd30243
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs
+@@ -0,0 +1,141 @@
++use blake3::Hasher;
++use vb_core::ActionTicket;
++use vb_core::policy::{
++    CurrentPolicyIdentity, DecisionCode, InfluenceState, PinnedAdmissionPolicy, PolicyDigest,
++    PolicyLayer,
++};
++use vb_core::value::{SlotValue, Taint};
++
++/// Oracle: compute the expected input digest independently of production code.
++/// Uses canonical I64 bytes, byte 0 for Clean taint, and all 8 ticket fields
++/// with domain separation.
++fn serialize_input_bytes(value: i64) -> Result<Vec<u8>, String> {
++    postcard::to_allocvec(&SlotValue::I64(value))
++        .map_err(|e| format!("failed to serialize input: {e}"))
++}
++
++fn taint_byte_clean() -> u8 {
++    0
++}
++
++fn new_policy_hasher() -> Hasher {
++    Hasher::new()
++}
++
++fn hash_input_domain(hasher: &mut Hasher, input_bytes: &[u8]) {
++    hasher.update(b"velvet-ballistics:policy:input:");
++    hasher.update(input_bytes);
++}
++
++fn hash_taint_domain(hasher: &mut Hasher, taint_byte: u8) {
++    hasher.update(b"velvet-ballistics:policy:taint:");
++    hasher.update(&[taint_byte]);
++}
++
++fn hash_ticket_domain_prefix(hasher: &mut Hasher) {
++    hasher.update(b"velvet-ballistics:policy:ticket:");
++}
++
++fn hash_run_field(hasher: &mut Hasher, run: u64) {
++    hasher.update(b"run:");
++    hasher.update(&run.to_be_bytes());
++}
++
++fn hash_step_field(hasher: &mut Hasher, step: u16) {
++    hasher.update(b"step:");
++    hasher.update(&step.to_be_bytes());
++}
++
++fn hash_seq_field(hasher: &mut Hasher, seq: u64) {
++    hasher.update(b"seq:");
++    hasher.update(&seq.to_be_bytes());
++}
++
++fn hash_action_field(hasher: &mut Hasher, action: u16) {
++    hasher.update(b"action:");
++    hasher.update(&action.to_be_bytes());
++}
++
++fn hash_run_attempt_field(hasher: &mut Hasher, run_attempt: u16) {
++    hasher.update(b"run_attempt:");
++    hasher.update(&run_attempt.to_be_bytes());
++}
++
++fn hash_attempt_field(hasher: &mut Hasher, attempt: u16) {
++    hasher.update(b"attempt:");
++    hasher.update(&attempt.to_be_bytes());
++}
++
++fn hash_idempotency_key_field(hasher: &mut Hasher, key: u128) {
++    hasher.update(b"key:");
++    hasher.update(&key.to_be_bytes());
++}
++
++fn hash_capacity_field(hasher: &mut Hasher, capacity: u16) {
++    hasher.update(b"capacity:");
++    hasher.update(&capacity.to_be_bytes());
++}
++
++fn finalize_policy_hash(hasher: Hasher) -> PolicyDigest {
++    let result = hasher.finalize();
++    let mut output = [0u8; 32];
++    output.copy_from_slice(result.as_bytes());
++    PolicyDigest::from_bytes(output)
++}
++
++pub(super) fn compute_expected_input_digest(
++    value: i64,
++    taint: Taint,
++    ticket: &ActionTicket,
++) -> Result<PolicyDigest, String> {
++    let input_bytes = serialize_input_bytes(value)?;
++    let taint_byte = match taint {
++        Taint::Clean => taint_byte_clean(),
++        other => return Err(format!("unexpected taint variant for oracle: {other:?}")),
++    };
++
++    let mut hasher = new_policy_hasher();
++    hash_input_domain(&mut hasher, &input_bytes);
++    hash_taint_domain(&mut hasher, taint_byte);
++    hash_ticket_domain_prefix(&mut hasher);
++    hash_run_field(&mut hasher, ticket.run.get());
++    hash_step_field(&mut hasher, ticket.step.get());
++    hash_seq_field(&mut hasher, ticket.seq.get());
++    hash_action_field(&mut hasher, ticket.action.get());
++    hash_run_attempt_field(&mut hasher, ticket.run_attempt);
++    hash_attempt_field(&mut hasher, ticket.attempt);
++    hash_idempotency_key_field(&mut hasher, ticket.idempotency_key);
++    hash_capacity_field(&mut hasher, ticket.capacity);
++
++    Ok(finalize_policy_hash(hasher))
++}
++
++pub(super) fn make_expected_decision(
++    ticket: ActionTicket,
++    admission_pin: PinnedAdmissionPolicy,
++    current_live: CurrentPolicyIdentity,
++    input_digest: PolicyDigest,
++    outcome: DecisionCode,
++) -> vb_core::policy::DecisionRecord {
++    vb_core::policy::DecisionRecord {
++        ticket,
++        admission: admission_pin,
++        current_live,
++        input_digest,
++        taint: Taint::Clean,
++        outcome,
++        layer: PolicyLayer::Admission,
++        emergency_influence: InfluenceState::Inactive,
++        compat_influence: InfluenceState::NotEvaluated,
++    }
++}
++
++pub(super) fn admission_pin_unverified() -> PinnedAdmissionPolicy {
++    PinnedAdmissionPolicy::Unverified
++}
++
++pub(super) fn current_live_configured(digest: [u8; 32]) -> CurrentPolicyIdentity {
++    CurrentPolicyIdentity::Configured {
++        digest: PolicyDigest::from_bytes(digest),
++    }
++}
+diff --git a/crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs b/crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs
+index d816e6ec5..8dd56691b 100644
+--- a/crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs
++++ b/crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs
+@@ -967,3 +967,6 @@ fn test_direct_api_evidence_target_constant_matches_catalog_contract() {
+         "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs"
+     );
+ }
++
++#[path = "vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs"]
++mod wrong_run_ask;
+diff --git a/crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs b/crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs
+new file mode 100644
+index 000000000..d8c757354
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs
+@@ -0,0 +1,161 @@
++use super::*;
++
++/// SCN-VT2F-006 / ERR-003: an ask ticket issued by a separate issuer runtime is rejected when
++/// submitted to an unrelated receiver runtime. The receiver's suspended run must be untouched.
++///
++/// This test proves that AskTicket is not a cross-runtime forgery vector: the genuine ticket
++/// from the issuer cannot be answered on a different receiver that has never seen the
++/// issuing run. The answer_ask boundary check short-circuits before any mutation.
++#[test]
++fn test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelated_run()
++-> Result<(), String> {
++    // Given: SCN-VT2F-006 / ERR-003 an issuer runtime with a suspended ask run and a
++    // separate receiver runtime with an unrelated suspended ask run.
++    let issuer_journal = Arc::new(VolatileRuntimeJournal::new());
++    let receiver_journal = Arc::new(VolatileRuntimeJournal::new());
++    let mut issuer = Runtime::new(shard_count(1)?, relaxed_config(), issuer_journal.clone());
++    let mut receiver = Runtime::new(shard_count(1)?, relaxed_config(), receiver_journal.clone());
++    let issuer_run = RunId::new(1606);
++    let receiver_run = RunId::new(2606);
++
++    // Issuer submits and suspends on ask, generating a genuine runtime-issued ticket.
++    assert_eq!(
++        issuer.submit_direct(issuer_run, ask_then_finish_workflow()?),
++        Ok(())
++    );
++    run_one_tick(&mut issuer)?;
++    let ticket = issuer
++        .lookup_pending_ask_ticket(issuer_run, StepIdx::new(2))
++        .ok_or("issuer suspended ask must have a runtime-issued ticket")?;
++
++    // Receiver submits and suspends on an unrelated ask workflow.
++    assert_eq!(
++        receiver.submit_direct(receiver_run, ask_then_finish_workflow()?),
++        Ok(())
++    );
++    run_one_tick(&mut receiver)?;
++    let receiver_ticket_before = receiver
++        .lookup_pending_ask_ticket(receiver_run, StepIdx::new(2))
++        .ok_or("receiver must have genuine ask ticket before rejection")?;
++
++    // Capture receiver observable state before the cross-runtime answer attempt.
++    let receiver_before = receiver.snapshot_run(receiver_run, 607);
++    let receiver_events_before = trace_events(&receiver, receiver_run)?;
++    let receiver_active_before = receiver
++        .list_active_runs(8, None)
++        .iter()
++        .map(|summary| summary.run_id)
++        .collect::<Vec<_>>();
++    let receiver_counters_before = receiver.counters_snapshot();
++    let receiver_boundary_before = receiver.pending_boundary_snapshot(8);
++
++    // Capture issuer observable state before the cross-runtime answer attempt.
++    let issuer_before = issuer.snapshot_run(issuer_run, 606);
++    let issuer_events_before = trace_events(&issuer, issuer_run)?;
++    let issuer_active_before = issuer
++        .list_active_runs(8, None)
++        .iter()
++        .map(|summary| summary.run_id)
++        .collect::<Vec<_>>();
++    let issuer_counters_before = issuer.counters_snapshot();
++    let issuer_boundary_before = issuer.pending_boundary_snapshot(8);
++
++    // Capture full journal state before the cross-runtime answer attempt.
++    let receiver_journal_before = receiver_journal.snapshot().map_err(|e| e.to_string())?;
++    let issuer_journal_before = issuer_journal.snapshot().map_err(|e| e.to_string())?;
++
++    // When: the issuer's genuine ticket is answered on the receiver runtime.
++    let answer = ask_answer(ticket, SlotValue::I64(42), Taint::Clean);
++    let answer_result = receiver.answer_ask(answer);
++
++    // Then: the receiver rejects with RunNotFound because the issuing run is not
++    // known to it. The issuer's ticket is valid, but the receiver's boundary check
++    // prevents cross-runtime mutation.
++    assert_eq!(answer_result, Err(RuntimeError::RunNotFound));
++
++    // Full journal equality: rejected cross-runtime answer must leave both journals unchanged.
++    let receiver_journal_after = receiver_journal.snapshot().map_err(|e| e.to_string())?;
++    let issuer_journal_after = issuer_journal.snapshot().map_err(|e| e.to_string())?;
++    assert_eq!(
++        receiver_journal_after, receiver_journal_before,
++        "receiver journal must be unchanged after rejected wrong-run answer"
++    );
++    assert_eq!(
++        issuer_journal_after, issuer_journal_before,
++        "issuer journal must be unchanged after rejected wrong-run answer"
++    );
++
++    // Receiver: the unrelated suspended run is completely unchanged.
++    assert_eq!(
++        receiver.snapshot_run(receiver_run, 607),
++        receiver_before,
++        "receiver snapshot must be unchanged after rejected wrong-run answer"
++    );
++    assert_eq!(
++        trace_events(&receiver, receiver_run)?,
++        receiver_events_before,
++        "receiver trace must be unchanged after rejected wrong-run answer"
++    );
++    assert_eq!(
++        receiver
++            .list_active_runs(8, None)
++            .iter()
++            .map(|summary| summary.run_id)
++            .collect::<Vec<_>>(),
++        receiver_active_before,
++        "receiver active list must be unchanged after rejected wrong-run answer"
++    );
++    assert_eq!(
++        receiver.counters_snapshot(),
++        receiver_counters_before,
++        "receiver counters must be unchanged after rejected wrong-run answer"
++    );
++    assert_eq!(
++        receiver.pending_boundary_snapshot(8),
++        receiver_boundary_before,
++        "receiver pending boundary must be unchanged after rejected wrong-run answer"
++    );
++
++    // Issuer: the originating run is also completely unchanged — the answer was rejected
++    // at the receiver's boundary before any propagation.
++    assert_eq!(
++        issuer.snapshot_run(issuer_run, 606),
++        issuer_before,
++        "issuer snapshot must be unchanged after rejected wrong-run answer"
++    );
++    assert_eq!(
++        trace_events(&issuer, issuer_run)?,
++        issuer_events_before,
++        "issuer trace must be unchanged after rejected wrong-run answer"
++    );
++    assert_eq!(
++        issuer
++            .list_active_runs(8, None)
++            .iter()
++            .map(|summary| summary.run_id)
++            .collect::<Vec<_>>(),
++        issuer_active_before,
++        "issuer active list must be unchanged after rejected wrong-run answer"
++    );
++    assert_eq!(
++        issuer.counters_snapshot(),
++        issuer_counters_before,
++        "issuer counters must be unchanged after rejected wrong-run answer"
++    );
++    assert_eq!(
++        issuer.pending_boundary_snapshot(8),
++        issuer_boundary_before,
++        "issuer pending boundary must be unchanged after rejected wrong-run answer"
++    );
++
++    // The receiver's run remains genuinely suspended with its own ticket unchanged.
++    let receiver_ticket = receiver
++        .lookup_pending_ask_ticket(receiver_run, StepIdx::new(2))
++        .ok_or("receiver unrelated run must still be suspended on ask after rejection")?;
++    assert_eq!(
++        receiver_ticket, receiver_ticket_before,
++        "receiver ticket must be unchanged after rejected wrong-run answer"
++    );
++
++    Ok(())
++}
+diff --git a/fuzz/src/yaml_target.rs b/fuzz/src/yaml_target.rs
+index c616bcb35..e404c56f2 100644
+--- a/fuzz/src/yaml_target.rs
++++ b/fuzz/src/yaml_target.rs
+@@ -13,7 +13,7 @@
+ #![allow(clippy::doc_markdown)]
+ #![allow(clippy::len_zero)]
+ 
+-const MAX_FUZZ_PAYLOAD_USIZE: usize = 4096;
++const MAX_FUZZ_PAYLOAD_USIZE: usize = 100_000;
+ 
+ fn assert_typed_yaml_error(error: vb_compile::YamlError) {
+     use vb_compile::YamlError;
+@@ -161,3 +161,51 @@ pub fn fuzz_span_bridge(data: &[u8]) {
+         // returns a span option without exercising it.
+     }
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn large_yaml_exceeds_4096_bound() -> Result<(), Box<dyn std::error::Error>> {
++        // Build valid YAML with >4096 events: a sequence of 5001 scalars
++        // stays within default max_sequence_len=10000 and max_source_bytes=1048576.
++        let item_count = 5001usize;
++        let mut yaml = "items:\n".to_string();
++        for i in 0..item_count {
++            yaml.push_str(&format!("  - item{}\n", i));
++        }
++
++        // Validate via the real compile pipeline
++        vb_compile::validate_yaml_profile(&yaml)?;
++
++        let events = vb_compile::parse_yaml_events(&yaml)?;
++        assert!(
++            events.len() > 4096,
++            "test YAML must produce >4096 events, got {}",
++            events.len()
++        );
++        assert!(
++            events.len() <= 100000,
++            "test YAML must stay within default max_nodes, got {}",
++            events.len()
++        );
++
++        let source_map = vb_compile::build_source_map(&yaml)?;
++        assert!(
++            source_map.len() > 4096,
++            "test YAML must produce >4096 source map entries, got {}",
++            source_map.len()
++        );
++        assert!(
++            source_map.len() <= 100000,
++            "test YAML must stay within default max_nodes, got {}",
++            source_map.len()
++        );
++
++        // This assertion will fail with MAX_FUZZ_PAYLOAD_USIZE=4096 (RED)
++        // and pass once the constant is fixed to 100000 (GREEN).
++        fuzz_yaml_events(yaml.as_bytes());
++        Ok(())
++    }
++}

@@ -1,0 +1,151 @@
+{
+  "status": "Focused green; independent final TEST review, raw checkpoint test, canonical integration and main pending",
+  "genuine_integration": "Real catalog accepted artifact distinct wrong pinned policy; actual Runtime recover_product and recover_and_resume reject exact admission_policy_pin_mismatch, complete journal/pending unchanged and actual FjallRegister zero effects. Two integration tests execute.",
+  "raw_unit": "Existing actual Shard.handle_recover seven-arg unit strengthened: mocked accepted artifact identity43 vs compiled workflow42, correct run/artifact/caps/policy and Unverified pin, real action completion/finish and exact duplicate error/fulljournal retained. One exact filtered test executes. Unit mock is not genuine catalog admission; genuine integration above is separate.",
+  "rejected_prototypes": [
+    "v6 newly named raw integration actually called validated Runtime path and was rejected, not counted; four compileerrors retained",
+    "v7 new mocked unit rewrite introduced forbidden unwrap/equal identities and was rejected; exact file quarantined outside repo, not accepted coverage"
+  ],
+  "source_sha256": {
+    "crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs": "ead50bd7d642fd849e634fcd4ac6ebe6bbaa7226e445dd7062b7d8e486b5dcf8",
+    "crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs": "d58de309ad9373e6dad4769ac8cf0fc688006d74086c194a8d7491048aa82d61",
+    "crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs": "93068d2dd4d8e9b033f0c1ed83c2f2cdf86b209dd3945268a4dce48b00179354",
+    "crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs": "62019bfa39b27e4d8d4380f610f39eb2d09086bbf82a6e46d3582f91db808878"
+  },
+  "actual_gates": [
+    {
+      "cwd": "/home/lewis/src/isoloated/vb-peb9u-authority-tests-v1",
+      "argv": [
+        "env",
+        "RUSTFLAGS=-Dwarnings",
+        "RUSTC_WRAPPER=",
+        "rustup",
+        "run",
+        "nightly-2026-04-28",
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "velvet-ballistics-workspace-tests",
+        "--test",
+        "vb_c4hzw_legacy_admission"
+      ],
+      "exit_code": 0,
+      "seconds": 0.444,
+      "timeout_seconds": 240,
+      "timed_out": false,
+      "env_overrides": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_AUTHORITY_TESTS_V4_TYPE_PLUMBING"
+    },
+    {
+      "cwd": "/home/lewis/src/isoloated/vb-peb9u-authority-tests-v1",
+      "argv": [
+        "env",
+        "RUSTFLAGS=-Dwarnings",
+        "RUSTC_WRAPPER=",
+        "rustup",
+        "run",
+        "nightly-2026-04-28",
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "vb_runtime",
+        "--all-features",
+        "--lib",
+        "recover_restores_action_contracts_schedules_completes_and_finishes"
+      ],
+      "exit_code": 0,
+      "seconds": 17.957,
+      "timeout_seconds": 240,
+      "timed_out": false,
+      "env_overrides": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_AUTHORITY_TESTS_V5_RAW_UNIT"
+    },
+    {
+      "cwd": "/home/lewis/src/isoloated/vb-peb9u-authority-tests-v1",
+      "argv": [
+        "env",
+        "RUSTFLAGS=-Dwarnings",
+        "RUSTC_WRAPPER=",
+        "rustup",
+        "run",
+        "nightly-2026-04-28",
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "velvet-ballistics-workspace-tests",
+        "--all-features",
+        "--test",
+        "vb_c4hzw_legacy_admission"
+      ],
+      "exit_code": 101,
+      "seconds": 0.156,
+      "timeout_seconds": 240,
+      "timed_out": false,
+      "env_overrides": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_AUTHORITY_TESTS_V6_RAW_DISTINCT"
+    },
+    {
+      "cwd": "/home/lewis/src/isoloated/vb-peb9u-authority-tests-v1",
+      "argv": [
+        "env",
+        "RUSTFLAGS=-Dwarnings",
+        "RUSTC_WRAPPER=",
+        "rustup",
+        "run",
+        "nightly-2026-04-28",
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "vb_runtime",
+        "--all-features",
+        "--lib",
+        "recover_restores_action_contracts_schedules_completes_and_finishes"
+      ],
+      "exit_code": 0,
+      "seconds": 1.713,
+      "timeout_seconds": 240,
+      "timed_out": false,
+      "env_overrides": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_AUTHORITY_TESTS_V8_DISTINCT_RAW_UNIT"
+    },
+    {
+      "cwd": "/home/lewis/src/isoloated/vb-peb9u-authority-tests-v1",
+      "argv": [
+        "env",
+        "RUSTFLAGS=-Dwarnings",
+        "RUSTC_WRAPPER=",
+        "rustup",
+        "run",
+        "nightly-2026-04-28",
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "velvet-ballistics-workspace-tests",
+        "--all-features",
+        "--test",
+        "vb_c4hzw_legacy_admission"
+      ],
+      "exit_code": 0,
+      "seconds": 0.393,
+      "timeout_seconds": 240,
+      "timed_out": false,
+      "env_overrides": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_AUTHORITY_TESTS_V9_FORMATTED_INTEGRATION"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+541:  
+542: diff --git a/crates/vb_runtime/src/shard/tests/chunk_017.rs b/crates/vb_runtime/src/shard/tests/chunk_017.rs
+543: index 75c8698f8..7a4d82e7c 100644
+544: --- a/crates/vb_runtime/src/shard/tests/chunk_017.rs
+545: +++ b/crates/vb_runtime/src/shard/tests/chunk_017.rs
+546: @@ -194,21 +194,23 @@ fn bh_shd_06_submit_with_inputs_writes_slots_before_validation() {
+547:      }
+548:  }
+549:  
+550: -// BH-SHD-07: Frame pool allocates beyond pool capacity.
+551: +// BH-SHD-07: Frame pool is bounded by capacity — no fresh allocation as fallback.
+552:  // Severity: Low. Mitigated by max_active_runs.
+553:  #[test]
+554: -fn bh_shd_07_frame_pool_allocates_beyond_pool_capacity() {
+555: +fn bh_shd_07_frame_pool_bounded_no_fresh_alloc() {
+556:      let mut pool = crate::frame_pool::FramePool::new(2, 1, 2)
+557:          .ok()
+558:          .unwrap_or_else(|| panic!("FramePool::new failed"));
+559: +    // With pre-allocation, taking 2 frames exhausts the pool
+560:      let f1 = pool.take(super::RunId::new(1), vb_core::ids::StepIdx::ZERO);
+561:      let f2 = pool.take(super::RunId::new(2), vb_core::ids::StepIdx::ZERO);
+562: +    assert!(f1.is_ok(), "BH-SHD-07: f1 should succeed (within capacity)");
+563: +    assert!(f2.is_ok(), "BH-SHD-07: f2 should succeed (within capacity)");
+564: +    // A 3rd take returns AllocationFailed (no fresh allocation fallback)
+565:      let f3 = pool.take(super::RunId::new(3), vb_core::ids::StepIdx::ZERO);
+566: -    assert!(f1.is_ok(), "BH-SHD-07: f1 should succeed");
+567: -    assert!(f2.is_ok(), "BH-SHD-07: f2 should succeed");
+568:      assert!(
+569: -        f3.is_ok(),
+570: -        "BH-SHD-07: f3 should succeed beyond pool capacity"
+571: +        matches!(f3, Err(vb_core::errors::CoreError::AllocationFailed)),
+572: +        "BH-SHD-07: f3 should fail with AllocationFailed (pool bounded, no fresh alloc)"
+573:      );
+574:  }
+575:  
+576: diff --git a/crates/vb_runtime/src/shard/tests/chunk_024.rs b/crates/vb_runtime/src/shard/tests/chunk_024.rs
+577: index 294da5f7b..b531c49f3 100644
+578: --- a/crates/vb_runtime/src/shard/tests/chunk_024.rs
+579: +++ b/crates/vb_runtime/src/shard/tests/chunk_024.rs
+580: @@ -174,16 +174,18 @@ fn vb1u88_cancel_removes_run_and_releases_frame() {
+581:          Ok(())
+582:      );
+583:      assert_eq!(shard.tick(), Ok(true));
+584: +    // Pool pre-allocated to capacity (4); one frame in use
+585:      assert_eq!(
+586:          shard.frame_pools.get(&(1, 1)).map(|p| p.available()),
+587: -        Some(0)
+588: +        Some(3)
+589:      );
+590:      assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+591:      assert_eq!(shard.tick(), Ok(true));
+592:      assert_eq!(shard.run_state_get(run), None);
+593: +    // After cancel, frame returned to pool; all 4 available
+594:      assert_eq!(
+595:          shard.frame_pools.get(&(1, 1)).map(|p| p.available()),
+596: -        Some(1)
+597: +        Some(4)
+598:      );
+599:      assert_eq!(shard.counters().snapshot().runs_failed, 1);
+600:  }

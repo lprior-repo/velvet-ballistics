@@ -1,0 +1,78 @@
+{
+  "historical_own_commit": "bd2920512bde46a801fc5663f392d3362272a525",
+  "current_frozen_source": "0dd55b94cbdd05c21951e6e239313d393816a99d",
+  "scope": "Only nine actual crates delta files. Whole historical commit has 33877 conflicting artifact files excluded as no product changes to blindly merge. No inherited branch disposition.",
+  "files": [
+    {
+      "path": "crates/vb_storage/src/batch/action_index.rs",
+      "exists": true,
+      "sha256": "d1d9db6d5958754ce08efdaec328188ed735f1f78a5513fb2f7f73be141bfce3"
+    },
+    {
+      "path": "crates/vb_storage/src/batch/append_event.rs",
+      "exists": true,
+      "sha256": "4c0ce3dec9255a020bee5273adb9528b9fefc582474162d701f2bf94ff10f592"
+    },
+    {
+      "path": "crates/vb_storage/src/batch/mod.rs",
+      "exists": true,
+      "sha256": "6590efb57b67e5d05ecc03d0e49f973aad05bc84ae0785f4c42bdccd6b1833a3"
+    },
+    {
+      "path": "crates/vb_storage/src/batch/putters.rs",
+      "exists": true,
+      "sha256": "97bf59cc24643f5ec6c5debc0638b0c6faee1f91c261a185da7963a62f0425d5"
+    },
+    {
+      "path": "crates/vb_storage/src/index_maintenance_tests.rs",
+      "exists": true,
+      "sha256": "a121b7aa0fd5b795ae232a2e0b5d84dbcca9c185d6e0cf8c8beca6e3951c4b20"
+    },
+    {
+      "path": "crates/vb_storage/src/indexes.rs",
+      "exists": true,
+      "sha256": "5f470ddd857d2c33c44cda37b542e532700256a9b2703e955a5a8839df9bbe46"
+    },
+    {
+      "path": "crates/vb_storage/src/journal/internal.rs",
+      "exists": true,
+      "sha256": "a3b9fcd35f8ce94a041faabdd8f5012e4c6ff61bd03d27154d0a53cdeb4fa510"
+    },
+    {
+      "path": "crates/vb_storage/src/lib.rs",
+      "exists": true,
+      "sha256": "b6137fcc7f4cf8b1e395d17eed3f57e94a18292e191641fdb32c198bbc92f441"
+    },
+    {
+      "path": "crates/workspace_tests/tests/journal_side_index_contracts.rs",
+      "exists": true,
+      "sha256": "8bf8218506ffe068b891cf1597d293dd2f41ee3b0f5c6f38d6037d67e1e6cab0"
+    }
+  ],
+  "packet_parts": [
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-01-0001.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-02-0001.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-03-0001.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-04-0001.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-04-0181.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-05-0001.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-05-0181.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-05-0361.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-05-0541.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-06-0001.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-07-0001.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-08-0001.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-08-0181.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-09-0001.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-09-0181.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-09-0361.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/current-09-0541.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/historical-own-crates-0001.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/historical-own-crates-0181.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/historical-own-crates-0361.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/historical-own-crates-0541.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/historical-own-crates-0721.txt",
+    ".beads/vb-fyktj/action-index-own-audit-v6/source-packet/historical-own-crates-0901.txt"
+  ],
+  "actual_git_unified_hunks": 14
+}

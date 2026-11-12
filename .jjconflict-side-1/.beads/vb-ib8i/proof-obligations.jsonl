@@ -1,0 +1,1 @@
+{"id":"PO-001","requirement_id":"REQ-001","contract_clause":"canonical-ci-pass","risk":"release-blocker","verifier":"moon","artifact":"machine-gate-report.md","command":"moon ci --force --summary normal","expected_evidence":"summary shows 22 completed actions, all pass","assumptions":[],"required":true,"mode":"standard","owner_state":11,"rerun_from":10,"status":"PASS"}

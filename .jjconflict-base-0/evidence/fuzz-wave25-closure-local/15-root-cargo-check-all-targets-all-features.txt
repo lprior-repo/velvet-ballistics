@@ -1,0 +1,41 @@
++zsh:1> cargo check --workspace --all-targets --all-features
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_core)
+    Checking proptest v1.11.0
+    Checking either v1.16.0
+   Compiling rayon-core v1.13.0
+    Checking crossbeam-deque v0.8.6
+    Checking half v2.7.1
+   Compiling alloca v0.4.0
+    Checking plotters-backend v0.3.7
+    Checking ciborium-io v0.2.2
+    Checking same-file v1.0.6
+    Checking cast v0.3.0
+    Checking tinytemplate v1.2.1
+    Checking page_size v0.6.0
+    Checking anes v0.1.6
+    Checking oorandom v11.1.5
+    Checking velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/workspace_tests)
+    Checking matchers v0.2.0
+    Checking itertools v0.13.0
+    Checking kani v0.0.1
+    Checking vb_queue_semantics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_queue_semantics)
+    Checking walkdir v2.5.0
+    Checking plotters-svg v0.3.7
+    Checking ciborium-ll v0.2.2
+    Checking tracing-subscriber v0.3.23
+    Checking plotters v0.3.7
+    Checking rayon v1.12.0
+    Checking ciborium v0.2.2
+    Checking loom v0.7.2
+    Checking criterion-plot v0.8.2
+    Checking criterion v0.8.2
+    Checking vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_validate)
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_storage)
+    Checking vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile)
+    Checking xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/xtask)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_runtime)
+    Checking vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_ipc)
+    Checking velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_cli)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.09s
+
+exit_status=0

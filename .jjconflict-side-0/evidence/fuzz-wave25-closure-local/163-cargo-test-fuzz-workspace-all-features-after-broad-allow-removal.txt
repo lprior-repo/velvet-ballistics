@@ -1,0 +1,7 @@
+COMMAND: cargo test --workspace --all-features
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running unittests src/lib.rs (target/debug/deps/lib-...)
+   ...test result lines...
+cargo test: 6 passed (6 suites, 1.37s)
+EXIT_STATUS=0

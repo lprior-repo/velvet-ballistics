@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-hrvix-local3090-input-validation",
+  "argv": [
+    "cargo",
+    "test",
+    "--lib",
+    "-p",
+    "vb_core",
+    "--",
+    "input_slot"
+  ],
+  "exit_code": 0,
+  "seconds": 12.617,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-hrvix/evidence/prod-tests-input-slots"
+}

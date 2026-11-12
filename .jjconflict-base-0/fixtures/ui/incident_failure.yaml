@@ -1,0 +1,88 @@
+name: incident_failure
+screen_kind: IncidentFailureConsole
+app_snapshot:
+  status:
+    storage_health: Degraded
+    writer_queue_depth: 12
+    journal_batch_healthy: false
+    snapshot_seq: 333
+    blob_store_ok: true
+    index_healthy: false
+    uptime_seconds: 99999
+    active_run_count: 5
+  active_runs:
+    - run_id: run_fail_01
+      workflow_id: wf_fail_01
+      status: Failure
+      started_at: 1715300000
+      finished_at: 1715300300
+      step_count: 4
+      event_count: 200
+  selected_run: null
+  selected_workflow:
+    workflow_id: wf_fail_01
+    workflow_digest: "0x7777777777777777777777777777777777777777777777777777777777777777"
+    nodes:
+      - step_idx: 0
+        label: Start
+        kind: Start
+        input_slot_count: 0
+        output_slot_count: 1
+      - step_idx: 1
+        label: Load
+        kind: Do
+        input_slot_count: 1
+        output_slot_count: 1
+      - step_idx: 2
+        label: Transform
+        kind: ForEach
+        input_slot_count: 1
+        output_slot_count: 1
+      - step_idx: 3
+        label: Save
+        kind: Do
+        input_slot_count: 1
+        output_slot_count: 1
+      - step_idx: 4
+        label: End
+        kind: Finish
+        input_slot_count: 1
+        output_slot_count: 0
+    edges:
+      - from_step: 0
+        to_step: 1
+        label: null
+      - from_step: 1
+        to_step: 2
+        label: null
+      - from_step: 2
+        to_step: 3
+        label: null
+      - from_step: 3
+        to_step: 4
+        label: null
+    node_x: [100, 250, 400, 550, 700]
+    node_y: [300, 300, 300, 300, 300]
+  verification: null
+  replay: null
+  incident:
+    run_id: run_fail_01
+    failure_step: 2
+    failure_action: action_transform
+    failure_code: TRANSFORM_ERR_NULL_INPUT
+    attempt: 2
+    timestamp: 1715300200
+    severity: Critical
+    safe_to_retry: true
+    idempotency_key_required: true
+    strict_durability: false
+    replay_safe: true
+    repair_hints:
+      - "Ensure input stream filters null values"
+      - "Add null-check guard before Transform step"
+      - "Consider adding a fallback default value"
+    evidence_chain:
+      scheduled_durable: true
+      completion_durable: true
+      side_effect_certainty: 0.99
+      journal_tail: 333

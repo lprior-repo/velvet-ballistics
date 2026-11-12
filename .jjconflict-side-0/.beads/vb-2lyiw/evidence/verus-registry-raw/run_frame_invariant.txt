@@ -1,0 +1,10 @@
+[verus] verus --crate-type=lib verification/verus/run_frame_invariant.rs
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/run_frame_invariant_production.rs:176:10
+    |
+176 | #[derive(Clone)]
+    |          ^^^^^
+
+verification results:: 47 verified, 0 errors
+warning: 1 warning emitted
+

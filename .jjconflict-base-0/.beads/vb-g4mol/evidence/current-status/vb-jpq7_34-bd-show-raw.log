@@ -1,0 +1,31 @@
+# vb-jpq7 closure evidence raw log
+# provenance binding command: bd show vb-jpq7.34
+# provenance binding cwd: /home/lewis/src/isoloated/velvet-ballistics-vb-g4mol-local3090-evidence
+# provenance binding timestamp: 2026-10-22T03:48:42Z
+# provenance binding exit_code: 0
+# provenance binding commit: 3f68528d54bb
+# provenance binding tool_version: Python 3.15.0; bd version 1.0.5 (dev)
+# provenance binding note: Current administrative closure-status query only; behavioral evidence not reverified here
+# --- stdout ---
+✓ vb-jpq7.34 · P0: fuzz yaml_events parser typed-error surface   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-06-03
+Close reason: Fuzz target yaml_events implemented and verified: registered in fuzz/Cargo.toml, builds with RUSTFLAGS=--cfg fuzzing, runs 800K+ invocations with no crashes, typed YamlError variants confirmed, corpus seeds present in fuzz/corpus/yaml_events/
+
+DESCRIPTION
+Split from vb-jpq7.6. Register and execute yaml_events fuzz target against hostile YAML/event syntax.
+
+ACCEPTANCE CRITERIA
+fuzz/Cargo.toml registers bin yaml_events; smoke fuzz executes meaningful hostile inputs with corpus/seed evidence; parser returns typed errors or clean rejection with no panic unwrap expect; raw run logs are attached.
+
+LABELS: backend-dod, fuzz, master-gap, parser, release-blocker, truth-serum, yaml
+
+PARENT
+  ↑ ✓ vb-jpq7: P0: Truth-serum backend blocker burn-down ● P0
+
+BLOCKS
+  ← ✓ vb-481r.8: P0: make fuzz-smoke run exact Section 37 target names ● P0
+  ← ✓ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+
+# --- stderr ---
+

@@ -1,0 +1,14 @@
+{
+  "production_review": "8df0c0a346ddf352f2b6e340e11ddd2fecf0b45d",
+  "source_candidate": "6de76b998c6b1f118b98d4bd1235619b34b252b7",
+  "production_files": 12,
+  "identical_production_files": 9,
+  "format_only_files": [
+    "crates/vb_storage/src/events/wire_deserialize.rs",
+    "crates/vb_storage/src/events/wire_serialize.rs",
+    "crates/vb_storage/src/journal/incident.rs"
+  ],
+  "format_changes": "two module declarations moved into alphabetical position; incident.rs use item reordered; no function bodies changed",
+  "scope": "full DecisionRecord storage only; runtime dispatch/admission/overlay persistence remain unaccepted",
+  "test_review": "vb-o0fgl rejected generic error assertions; pending local repair and independent rereview"
+}

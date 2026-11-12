@@ -1,0 +1,23 @@
+
+running 6 tests
+test idempotency_key_differs_across_run_attempts ... ok
+test ticket_key_valid_after_serialization ... ok
+test zero_run_attempt_ticket_rejected ... ok
+test future_run_attempt_ticket_rejected ... ok
+test cold_recovery_preserves_run_attempt ... ok
+test stale_completion_rejected_after_two_retries ... FAILED
+
+failures:
+
+---- stale_completion_rejected_after_two_retries stdout ----
+
+thread 'stale_completion_rejected_after_two_retries' (1144862) panicked at crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:250:9:
+stale failure (run_attempt=1 vs current=3) must be rejected
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    stale_completion_rejected_after_two_retries
+
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

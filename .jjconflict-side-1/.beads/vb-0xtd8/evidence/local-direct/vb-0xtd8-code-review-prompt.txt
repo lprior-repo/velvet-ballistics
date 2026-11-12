@@ -1,0 +1,77 @@
+You are independent code reviewer. Narrow repair vb-0xtd8. Contract: five legacy internal validator fixtures have no external input ports. Add input_slots: Box::new([]) only, preserving invalid fixture data and every assertion. No production behavior change. Review actual diff and evidence. Respond APPROVE or REJECT with actionable issues and limitations.
+diff --git a/crates/vb_validate/src/gate_08_accessor/tests.rs b/crates/vb_validate/src/gate_08_accessor/tests.rs
+index 45d6657c9..8295090e6 100644
+--- a/crates/vb_validate/src/gate_08_accessor/tests.rs
++++ b/crates/vb_validate/src/gate_08_accessor/tests.rs
+@@ -9,6 +9,7 @@ fn workflow_parts_with_accessors(
+     accessors: Box<[AccessorProgram]>,
+ ) -> WorkflowParts {
+     WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::from("test"),
+         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
+         nodes: Box::new([CompiledNode {
+diff --git a/crates/vb_validate/src/gate_tests.rs b/crates/vb_validate/src/gate_tests.rs
+index 45a99df30..90a98c657 100644
+--- a/crates/vb_validate/src/gate_tests.rs
++++ b/crates/vb_validate/src/gate_tests.rs
+@@ -14,6 +14,7 @@ use vb_core::workflow::{
+ 
+ fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
+     WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::from("test"),
+         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
+         nodes: nodes.into_boxed_slice(),
+diff --git a/crates/vb_validate/src/red_phase_proptest.rs b/crates/vb_validate/src/red_phase_proptest.rs
+index 6ec08e573..0f93be2e6 100644
+--- a/crates/vb_validate/src/red_phase_proptest.rs
++++ b/crates/vb_validate/src/red_phase_proptest.rs
+@@ -20,6 +20,7 @@ fn arb_parts(
+     accessors: Vec<AccessorProgram>,
+ ) -> WorkflowParts {
+     WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::from("prop"),
+         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
+         nodes: Box::new([CompiledNode {
+diff --git a/crates/vb_validate/src/shared/tests.rs b/crates/vb_validate/src/shared/tests.rs
+index ed812d697..f1f7386d6 100644
+--- a/crates/vb_validate/src/shared/tests.rs
++++ b/crates/vb_validate/src/shared/tests.rs
+@@ -9,6 +9,7 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
+ 
+ fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> crate::shared::WorkflowParts {
+     crate::shared::WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::from("test"),
+         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
+         nodes: nodes.into_boxed_slice(),
+diff --git a/crates/vb_validate/src/test_helpers.rs b/crates/vb_validate/src/test_helpers.rs
+index 103b442f4..b0f327b79 100644
+--- a/crates/vb_validate/src/test_helpers.rs
++++ b/crates/vb_validate/src/test_helpers.rs
+@@ -8,6 +8,7 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, Workfl
+ 
+ pub(crate) fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
+     WorkflowParts {
++        input_slots: Box::new([]),
+         name: Box::from("test"),
+         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
+         nodes: nodes.into_boxed_slice(),
+
+TEST RAW:
+
+running 869 tests
+....................................................................................... 87/869
+....................................................................................... 174/869
+....................................................................................... 261/869
+....................................................................................... 348/869
+....................................................................................... 435/869
+....................................................................................... 522/869
+....................................................................................... 609/869
+....................................................................................... 696/869
+....................................................................................... 783/869
+......................................................................................
+test result: ok. 869 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+

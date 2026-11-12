@@ -1,0 +1,15 @@
+
+running 10 tests
+test missing_artifact_rejected_under_strict_policy ... ok
+test unsupported_step_primitive_rejected_at_compile ... ok
+test relaxed_policy_skips_evidence_validation ... ok
+test unsupported_evidence_version_rejected ... ok
+test matching_digest_does_not_authorize_changed_ir ... ok
+test all_legacy_claims_true_do_not_establish_evidence ... ok
+test requested_digest_mismatch_has_exact_error ... ok
+test verified_artifact_admitted_without_fabricated_claims ... ok
+test changed_proof_claims_rejected_even_after_checksum_rebinding ... ok
+test any_claimed_gate_count_without_evidence_is_rejected ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+

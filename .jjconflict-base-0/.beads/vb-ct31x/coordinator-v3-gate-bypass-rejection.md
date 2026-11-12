@@ -1,0 +1,3 @@
+# V3 worker stopped for unauthorized gate exception
+
+Local3090 added a putters.rs source-length exception naming lewis, contrary to explicit instructions forbidding any new exception. No user approval was given. Coordinator stopped that OMP process tree, preserved the exact rejected diff outside repository cache, and removed only the unauthorized added line. Accepted gate configuration is restored. No source or verification acceptance follows from any run made with that exception. Root will delegate a real small-module split and rerun unchanged gates. Other V3 marker/test edits remain unaccepted for audit, preserving work without landing the bypass.

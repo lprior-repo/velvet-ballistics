@@ -1,0 +1,41 @@
+{"id":"VFR-R2-RUST-ATTACH-001","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#rust-attachment-blockers","reason":"owner_state 11 production proof attachment; State 5 did not edit production Rust"}
+{"id":"VFR-R2-RUST-ATTACH-002","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#rust-attachment-blockers","reason":"owner_state 11 production proof attachment; State 5 did not edit production Rust"}
+{"id":"VFR-R2-RUST-ATTACH-003","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#rust-attachment-blockers","reason":"owner_state 11 production proof attachment; State 5 did not edit production Rust"}
+{"id":"VFR-R2-RUST-ATTACH-004","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#rust-attachment-blockers","reason":"owner_state 11 production proof attachment; State 5 did not edit production Rust"}
+{"id":"VFR-R2-RUST-ATTACH-005","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#rust-attachment-blockers","reason":"owner_state 11 production proof attachment; State 5 did not edit production Rust"}
+{"id":"VFR-R2-RUST-ATTACH-006","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#rust-attachment-blockers","reason":"owner_state 11 production proof attachment; State 5 did not edit production Rust"}
+{"id":"VFR-R2-RUST-ATTACH-007","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#rust-attachment-blockers","reason":"owner_state 11 production proof attachment; State 5 did not edit production Rust"}
+{"id":"VFR-R2-VERUS-001","status":"WRITTEN","artifact":"verification/verus/vb_rpch_unsupported_recovery_state.rs","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#verus-smoke"}
+{"id":"VFR-R2-VERUS-002","status":"WRITTEN","artifact":"verification/verus/vb_rpch_seed_dimensions.rs","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#verus-smoke"}
+{"id":"VFR-R2-VERUS-003","status":"WRITTEN","artifact":"verification/verus/vb_rpch_action_replay_tracker.rs","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#verus-smoke"}
+{"id":"VFR-R2-VERUS-004","status":"WRITTEN","artifact":"verification/verus/vb_rpch_digest_check.rs","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#verus-smoke"}
+{"id":"VFR-R2-VERUS-005","status":"WRITTEN","artifact":"verification/verus/vb_rpch_hydrate_snapshot_tail.rs","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#verus-smoke"}
+{"id":"VFR-R2-VERUS-006","status":"WRITTEN","artifact":"verification/verus/vb_rpch_hydrate_events.rs","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#verus-smoke"}
+{"id":"VFR-R2-VERUS-007","status":"WRITTEN","artifact":"verification/verus/vb_rpch_replay_events.rs","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#verus-smoke"}
+{"id":"VFR-R2-KANI-001","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#kani-blockers"}
+{"id":"VFR-R2-KANI-002","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#kani-blockers"}
+{"id":"VFR-R2-KANI-003","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#kani-blockers"}
+{"id":"VFR-R2-KANI-004","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#kani-blockers"}
+{"id":"VFR-R2-KANI-005","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#kani-blockers"}
+{"id":"VFR-R2-KANI-006","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#kani-blockers"}
+{"id":"VFR-R2-KANI-007","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#kani-blockers"}
+{"id":"VFR-R2-FLUX-001","status":"BLOCKED_TOOLING","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#flux-discovery"}
+{"id":"VFR-R2-FLUX-002","status":"BLOCKED_TOOLING","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#flux-discovery"}
+{"id":"VFR-R2-FLUX-003","status":"BLOCKED_TOOLING","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#flux-discovery"}
+{"id":"VFR-R2-FLUX-004","status":"BLOCKED_TOOLING","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#flux-discovery"}
+{"id":"VFR-R2-FLUX-005","status":"BLOCKED_TOOLING","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#flux-discovery"}
+{"id":"VFR-R2-FLUX-006","status":"BLOCKED_TOOLING","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#flux-discovery"}
+{"id":"VFR-R2-FLUX-007","status":"BLOCKED_TOOLING","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#flux-discovery"}
+{"id":"VFR-R2-TLA-PRESERVE-001","status":"WRITTEN","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#tlc-preservation"}
+{"id":"VFR-R2-TLA-PRESERVE-002","status":"WRITTEN","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#tlc-preservation"}
+{"id":"VFR-R2-PROPTEST-001","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#proptest-fuzz-blockers"}
+{"id":"VFR-R2-PROPTEST-002","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#proptest-fuzz-blockers"}
+{"id":"VFR-R2-PROPTEST-003","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#proptest-fuzz-blockers"}
+{"id":"VFR-R2-PROPTEST-004","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#proptest-fuzz-blockers"}
+{"id":"VFR-R2-PROPTEST-005","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#proptest-fuzz-blockers"}
+{"id":"VFR-R2-PROPTEST-006","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#proptest-fuzz-blockers"}
+{"id":"VFR-R2-PROPTEST-007","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#proptest-fuzz-blockers"}
+{"id":"VFR-R2-FUZZ-001","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#proptest-fuzz-blockers"}
+{"id":"VFR-R2-FUZZ-002","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#proptest-fuzz-blockers"}
+{"id":"VFR-R2-FUZZ-003","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#proptest-fuzz-blockers"}
+{"id":"VFR-R2-FUZZ-004","status":"BLOCKED_SCOPE","evidence":".beads/vb-rpch/proof-evidence-verus-flux-rust-r2.md#proptest-fuzz-blockers"}

@@ -1,0 +1,24 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 11,
+  "sublane": "formal-verifier-after-stale-ask-implementation-repair",
+  "delegate": "formal-verifier",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/proof-obligations.planned.jsonl",
+    ".beads/vb-vt2f/proof-evidence.md",
+    ".beads/vb-vt2f/proof-review.md",
+    ".beads/vb-vt2f/contract-verification-review.md",
+    ".beads/vb-vt2f/test-plan-review.md",
+    ".beads/vb-vt2f/test-suite-review.md",
+    ".beads/vb-vt2f/implementation.md",
+    ".beads/vb-vt2f/machine-gate-report.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/formal-verification-report.md",
+    ".beads/vb-vt2f/verification-ledger.jsonl"
+  ],
+  "attempt": 4,
+  "repair_route": "State 11 rerun after stale ask implementation and machine gate pass"
+}

@@ -1,0 +1,12 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.24s
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-6f6e8a548a2649ec)
+
+running 4 tests
+test inputs::tests::retained_mapping_rejects_unbacked_arena_handles_and_zero_run ... ok
+test inputs::tests::retained_mapping_rejects_duplicate_undeclared_out_of_range_and_wrong_kind ... ok
+test inputs::tests::retained_mapping_preserves_extreme_values_and_empty_mapping ... ok
+test inputs::tests::retained_record_envelope_rejects_kind_sequence_trailing_bytes_and_checksum_corruption ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 1596 filtered out; finished in 0.00s
+

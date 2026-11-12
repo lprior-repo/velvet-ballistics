@@ -1,0 +1,3 @@
+=== compile evidence: taint_propagation ===
+-rwxr-xr-x 2 lewis lewis 1305576 Oct 22 17:21 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/taint_propagation
+OK: binary present

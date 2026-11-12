@@ -1,0 +1,7 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hz9v8-deepseek-boundaries/crates/vb_runtime)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hz9v8-deepseek-boundaries/crates/vb_compile)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hz9v8-deepseek-boundaries/crates/vb_ipc)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hz9v8-deepseek-boundaries/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.37s
+     Running tests/vb_7x0ol_probe_c6_continue.rs (target/debug/deps/vb_7x0ol_probe_c6_continue-46f3bf4bb971c7db)
+     Running tests/vb_md3w_retained_input_recovery.rs (target/debug/deps/vb_md3w_retained_input_recovery-bd963612f3d98c8b)

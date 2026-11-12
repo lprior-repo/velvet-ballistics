@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "verdict": "PASS",
+  "review_kind": "independent_bounded_CODE",
+  "source_pin": "0d866b09bed9a97b3d9a7562e6f816c0001b747d",
+  "baseline_guard_pin": "761ec0aec741a38702345100b8808a1ea0bdb887",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+  "roots_verified": {
+    "git": true,
+    "jj": true
+  },
+  "contract_path": "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/.beads/vb-eirmk.13.12/kyyf-runner-contract-v3.md",
+  "contract_sha256": "49a9bc984a143fc946055d4dd51ebf7bf7c3c3de9861038e397f62e29589b55b",
+  "relative_notes_path": "/home/lewis/src/isoloated/velvet-ballistics-yaml-source-map-luna/.beads/vb-eirmk.13.12/relative-path-resolution-notes-v2.md",
+  "relative_notes_sha256": "339d47dbac9afd6466cf8dc288a0ba7484c146c2a1c5cbbe44e0bd37b92cdad4",
+  "findings": [],
+  "prior_findings": [
+    {
+      "id": "P1",
+      "status": "RESOLVED",
+      "evidence": "Both runners pass an absolute configured program to Command::new: absolute paths remain unchanged; relative paths including bare filenames are joined to absolute CARGO_MANIFEST_DIR-derived workspace roots. No configured program PATH search remains."
+    },
+    {
+      "id": "R2",
+      "status": "SUPERSEDED_BY_EXPLICIT_CORRECTED_CONTRACT",
+      "evidence": "Coordinator explicitly authorizes trusted ../configured-cli; hash-bound contract V3 and relative notes V2 remove the unrequested confinement rule. Shared resolver preserves parent components lexically, exactly as authorized. Earlier rejection reports remain unchanged."
+    }
+  ],
+  "source_scope": [
+    {
+      "path": "crates/workspace_tests/tests/support/prebuilt_cli_path.rs",
+      "sha256": "d6c6b22643ca8b7cf1b2a1af027cd9fd7b503c14e1bbe825a8bddd110c9dd167"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs",
+      "sha256": "33e920b699859da3f49070d5084d0de38ed3df601ab61a2207fc7d8d26a7d788"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs",
+      "sha256": "a018f597b91c1bb6d05198c5665e055c2e61b94984a55d0634aa623b54006dc8"
+    }
+  ],
+  "assessment": [
+    "Exactly one CARGO_BIN_EXE_velvet-ballistics environment lookup exists across the three reviewed paths, in configured_prebuilt_cli. It uses var_os, so present empty/non-UTF8 values remain Some. Both actual process runners call that shared lookup and pure resolver.",
+    "resolve_prebuilt_cli uses PathBuf/Path without Unicode conversion, canonicalization or filesystem probes. Absolute paths and bytes are preserved; relative/bare/parent-component paths equal root.join(path). Empty supplied values resolve to the workspace directory and remain explicit, never absent.",
+    "Some invalid/unlaunchable values execute only the configured direct program and use each runner's existing visible error mapping. There is no retry/fallback after spawn failure, and no shared environment mutation.",
+    "None preserves NF2U cargo run --quiet --manifest-path <CARGO_MANIFEST_DIR>/../../Cargo.toml -p velvet-ballistics -- followed by original args, with workspace cwd.",
+    "None preserves KYYF env!(CARGO) run --quiet -p velvet-ballistics --bin velvet-ballistics -- <command_name> <run_arg> --db <db_path>. Both KYYF branches leave current_dir unset, preserving inherited cwd. KYYF explicit-path argv contains only the original command/run/--db/path arguments.",
+    "Both targets register the same support source through path modules. Relative/parent/absolute/empty/non-UTF8 resolver tests compare exact paths. KYYF pure selector asserts program and exact args without spawning; invalid explicit path guards assert selection before attempting spawn and exact NotFound outcome.",
+    "Function-body comparisons preserve all five NF2U scenarios. KYYF changes are limited to local command construction and added guards; its six replay/events/inspect calls, surrounding scenario functions, JSON/report/evidence decoding, output/status and semantic comparisons are unchanged against the compiling guard baseline.",
+    "Blast radius is private integration-test process selection for NF2U and KYYF only. No production CLI, public API, dependency, schema, gate/config or unrelated runner change in the reviewed delta.",
+    "All three current author source files match the exact frozen candidate bytes."
+  ],
+  "function_constraints": {
+    "maximum_relevant_new_or_changed_logical_lines_including_signature": 23,
+    "counts": {
+      "configured_prebuilt_cli": 2,
+      "resolve_prebuilt_cli": 6,
+      "resolve_bare_relative_name": 4,
+      "resolve_relative_with_parent": 4,
+      "resolve_absolute_path_unchanged": 4,
+      "resolve_empty_string": 4,
+      "resolve_non_utf8_relative": 6,
+      "standalone_cli_command": 13,
+      "cli_command": 12,
+      "run_cli": 12,
+      "prebuilt_cli_selector_honors_explicit_os_path": 15,
+      "absent_path_selects_cargo_with_exact_prefix": 16,
+      "invalid_explicit_path_is_classified_before_spawn": 15,
+      "prebuilt_path_preserves_non_utf8_os_bytes": 6,
+      "kyyf_standalone_command": 12,
+      "kyyf_cli_command": 17,
+      "run_velvet_ballistics_cli": 23,
+      "kyyf_prebuilt_cli_selector_honors_explicit_os_path": 18,
+      "kyyf_expected_cargo_arguments": 14,
+      "kyyf_none_builds_exact_cargo_command": 12,
+      "kyyf_explicit_invalid_path_fails_without_fallback": 21
+    },
+    "convention": "Count signatures and nonblank/noncomment lines, excluding only standalone braces. Closing punctuation lines count. No compressed-statement gaming.",
+    "forbidden_added_constructs": "None in reviewed helper/runner delta: no unsafe/unwrap/expect/panic/todo/unimplemented/dbg, unchecked indexing/arithmetic, ignored Result or environment mutation. Legacy oversized unrelated scenario functions are not waived."
+  },
+  "actual_evidence": {
+    "native_log": "/home/lewis/src/isoloated/velvet-ballistics-prebuilt-cli-integrated-local3090/target/core-build-20261110/evidence/prebuilt-cli-two-targets-native-v2.log",
+    "native_exit_receipt": "/home/lewis/src/isoloated/velvet-ballistics-prebuilt-cli-integrated-local3090/target/core-build-20261110/evidence/prebuilt-cli-two-targets-native-v2.exit",
+    "native_observed": "39 tests run: 39 passed, 0 skipped; NATIVE_EXIT=0",
+    "native_nextest_run_id": "901e0a2d-ea02-40df-91cc-f51148c4dc7a",
+    "baseline_log": "/home/lewis/src/isoloated/velvet-ballistics-prebuilt-cli-integrated-local3090/target/core-build-20261110/evidence/kyyf-prebuilt-baseline-native.log",
+    "baseline_exit_receipt": "/home/lewis/src/isoloated/velvet-ballistics-prebuilt-cli-integrated-local3090/target/core-build-20261110/evidence/kyyf-prebuilt-baseline-native.exit",
+    "baseline_observed": "1 selector test failed, 16 skipped; NATIVE_EXIT=100; actual program Cargo versus expected /some/distinct/prebuilt/vb-cli.",
+    "baseline_safety": "Read actual selector body and baseline builder: construction/inspection only; failed assertion precedes any spawn and does not execute legacy Cargo.",
+    "reviewer_execution": "No builds, native tests, CLI/DB commands or mutations run."
+  },
+  "limits": [
+    "PASS covers source behavior and bounded runner/guard preservation, not independent TEST approval, full CI, whole KYYF semantics or complete bead/master acceptance.",
+    "Actual selected-Moon prebuilt executable SHA before/after and executable provenance were not audited here. No full-run hash stability or attribution of an earlier binary writer claimed.",
+    "39-test result covers these two targets only. Shared resolver tests are registered in both binaries; they are not distinct production features or exhaustive path proof.",
+    "Only own requested report written via apply_patch. Earlier rejections preserved. No source edits, BD access, agents, JJ snapshots, cleanup/config changes, commits or pushes. Shell commands used TMPDIR=/run/user/1000/vbs."
+  ]
+}

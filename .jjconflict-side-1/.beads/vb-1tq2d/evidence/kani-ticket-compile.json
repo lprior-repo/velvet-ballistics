@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-1tq2d-deepseek-review",
+  "argv": [
+    "cargo",
+    "kani",
+    "-p",
+    "vb_core",
+    "--harness",
+    "kani_action_ticket_has_valid_key"
+  ],
+  "exit_code": 1,
+  "seconds": 5.108,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-1tq2d/evidence/kani-ticket-compile",
+  "coordinator_message": "Root: JJ templates use commit_id directly (no .hex()), e.g. jj log -r c816f6b3 --no-graph -T commit_id. git show/read-only ancestry permitted. Historical29 git stashes exist: do not drop/clear; original branch/source inventory may already account for them; preserve them and classify meaningful uncovered work if relevant. Scope current stopped9chats first, no arbitrary old feature reactivation. Root main clean andda633fe0. Finalcandidate78352490.\nRoot ran actual originalmain production-inner-drift gate in separateisolatedJJworkspace: exit1,30DRIFTlines. FinalCIcandidate78DRIFTlines (13unique normalizedheader lines, manycontextdetails). Rawbaseline /tmp/vb-2lyiw-baseline-drift.{json,stdout,stderr}; comparison/tmp/vb-2lyiw-drift-comparison.txt, candidatelogs .beads/vb-2lyiw/evidence/moon-ci-baseline.{stdout,stderr} in5090CIworkspace. This isCItriage, not currentreviewblocker scope; finishboundedfixture/sourcepreservation review before newproofwork. Kani fixture requirementonly preserves symbolicnewfield withkani::any no constants; sourceinspection canapprove migrationwithoutclaiming Kani proofexecuted. Actual5030proofrunsnotneeded for mechanicalfieldmigrationunless compilerdefect."
+}

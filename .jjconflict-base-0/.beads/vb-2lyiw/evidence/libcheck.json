@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-deepseek-repair",
+  "argv": [
+    "cargo",
+    "check",
+    "-p",
+    "vb_compile",
+    "-p",
+    "vb_runtime",
+    "--lib"
+  ],
+  "exit_code": 0,
+  "seconds": 7.022,
+  "timeout_seconds": 1700,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-2lyiw/evidence/libcheck"
+}

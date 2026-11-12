@@ -1,0 +1,26 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "cargo",
+    "nextest",
+    "run",
+    "-p",
+    "vb_storage",
+    "--test",
+    "accepted_artifact_red_phase",
+    "--all-features",
+    "--locked",
+    "--no-fail-fast"
+  ],
+  "exit_code": 0,
+  "seconds": 2.848,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_ARTIFACT_COUNTER_V44_INTEGRATION_TEST"
+}

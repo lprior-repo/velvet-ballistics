@@ -1,0 +1,658 @@
+#![forbid(unsafe_code)]
+
+//! Proptests for collect lowering: vb-8mdp.7
+//!
+//! Behaviors covered (single-step fixtures exercise the N = 1 shape;
+//! offsets scale with body length N per bounded_collect::plan_compute_edges):
+//!   B-013: Collect emits exactly N + 3 nodes with consecutive IDs
+//!   (CollectStart, N body nodes, CollectNext, CollectFinish).
+//!   B-014: CollectStart limit is pages * items; page_size is items;
+//!   source slot preserved, fresh collector slot shared by advance/finish.
+//!   B-015: Step offset property (body=id+1, advance=id+N+1, done=id+N+2).
+//!   B-016: At least one explicit positive bound; the missing bound defaults to 1.
+//!   B-017: Max valid start ID = u16::MAX - N - 2 (u16::MAX - 3 for N = 1).
+
+use proptest::prelude::*;
+use vb_compile::compile_workflow;
+use vb_core::workflow::NodeContinuation;
+use vb_core::{CompiledNodeKind, ids::StepIdx};
+
+// =========================================================================
+// Helper: access a node at a StepIdx, returning Option
+// =========================================================================
+
+/// Convenience: fetch node i from the compiled workflow.
+fn node_at(wf: &vb_core::CompiledWorkflow, step: u16) -> Option<&vb_core::CompiledNode> {
+    wf.node(StepIdx::new(step))
+}
+
+// =========================================================================
+// YAML generators
+// =========================================================================
+
+/// Build a complete YAML string for a workflow whose sole substantive step
+/// is a `collect` primitive with the given parameters, followed by a
+/// `finish` step.
+fn collect_yaml(
+    source_slot: &str,
+    pages: Option<u32>,
+    items: Option<u32>,
+    set_value: &str,
+) -> String {
+    let mut yaml = String::from(
+        "version: velvet-ballistics/v1\nname: collect_test\nwhen:\n  manual: {}\nsteps:\n",
+    );
+    // Collect step
+    yaml.push_str("  - id: collect_pages\n    collect:\n");
+    yaml.push_str("      variable: batch\n");
+    yaml.push_str(&format!("      source: \"{source_slot}\"\n"));
+    if let Some(p) = pages {
+        yaml.push_str(&format!("      pages: {p}\n"));
+    }
+    if let Some(i) = items {
+        yaml.push_str(&format!("      items: {i}\n"));
+    }
+    yaml.push_str("      steps:\n");
+    yaml.push_str("        - id: remember_page\n");
+    yaml.push_str("          set:\n");
+    yaml.push_str("            output: page_seen\n");
+    yaml.push_str(&format!("            value: \"{set_value}\"\n"));
+    // Finish step
+    yaml.push_str("  - id: done\n    finish:\n      result: 0\n");
+    yaml
+}
+
+/// Build a YAML string where the collect step is NOT the first step, so
+/// its StepIdx is offset from 0.
+fn collect_yaml_with_preamble(source_slot: &str, pages: Option<u32>, items: Option<u32>) -> String {
+    let mut yaml = String::from(
+        "version: velvet-ballistics/v1\nname: collect_test\nwhen:\n  manual: {}\nsteps:\n",
+    );
+    // Preamble: two set steps that consume IDs 0 and 1
+    yaml.push_str("  - id: setup_a\n    set:\n      output: a\n      value: \"10\"\n");
+    yaml.push_str("  - id: setup_b\n    set:\n      output: b\n      value: \"20\"\n");
+    // Collect step (starts at ID 2)
+    yaml.push_str("  - id: collect_pages\n    collect:\n");
+    yaml.push_str("      variable: batch\n");
+    yaml.push_str(&format!("      source: \"{}\"\n", source_slot));
+    if let Some(p) = pages {
+        yaml.push_str(&format!("      pages: {}\n", p));
+    }
+    if let Some(i) = items {
+        yaml.push_str(&format!("      items: {}\n", i));
+    }
+    yaml.push_str("      steps:\n");
+    yaml.push_str("        - id: remember_page\n");
+    yaml.push_str("          set:\n");
+    yaml.push_str("            output: page_seen\n");
+    yaml.push_str("            value: \"42\"\n");
+    // Finish step
+    yaml.push_str("  - id: done\n    finish:\n      result: 0\n");
+    yaml
+}
+
+/// YAML with explicit pages only (tests B-016 at least one bound required).
+fn collect_yaml_pages_only() -> String {
+    collect_yaml("0", Some(1), None, "7")
+}
+
+// =========================================================================
+// Strategies
+// =========================================================================
+
+/// Arbitrary collect parameters for proptesting.
+#[derive(Debug, Clone)]
+struct CollectParams {
+    source: String,
+    pages: Option<u32>,
+    items: Option<u32>,
+    set_value: String,
+}
+
+fn collect_params_strategy() -> impl Strategy<Value = CollectParams> {
+    (
+        "[0-9]+",
+        any::<Option<u32>>(),
+        any::<Option<u32>>(),
+        "[0-9]+",
+    )
+        .prop_map(|(source, pages, items, set_value)| CollectParams {
+            source,
+            pages,
+            items,
+            set_value,
+        })
+}
+
+/// Source slot as a digit string (small values for safety).
+fn source_digit_str() -> impl Strategy<Value = String> {
+    "[0-9]".prop_map(|s: String| s)
+}
+
+// =========================================================================
+// Proptest: B-013 — Exactly 4 collect nodes with consecutive IDs
+// =========================================================================
+
+proptest! {
+    /// B-013: For a valid collect YAML, the compiled workflow contains
+    /// exactly 4 collect-related nodes (CollectStart, SetConst body,
+    /// CollectNext, CollectFinish) with consecutive IDs relative to the
+    /// collect step's own StepIdx.
+    #[test]
+    fn collect_four_nodes_consecutive_ids(
+        params in collect_params_strategy(),
+    ) {
+        let yaml = collect_yaml(&params.source, params.pages, params.items, &params.set_value);
+        let result = compile_workflow(yaml.as_bytes());
+
+        // Source parsing can fail; skip invalid source strings
+        if result.is_ok() {
+            let wf = result.unwrap();
+            // Expect at least 5 nodes (4 collect + 1 finish)
+            prop_assert!(wf.node_count() >= 5,
+                "workflow with collect should have at least 5 nodes, got {}",
+                wf.node_count());
+
+            // Node 0 must be CollectStart
+            let start = node_at(&wf, 0).expect("node 0 must exist");
+            prop_assert_eq!(start.id.get(), 0,
+                "CollectStart must have ID 0");
+            prop_assert!(
+                matches!(&start.kind, CompiledNodeKind::CollectStart { .. }),
+                "node[0] must be CollectStart, got {:?}", start.kind
+            );
+
+            // Node 1 must be SetConst (body step)
+            let set_node = node_at(&wf, 1).expect("node 1 must exist");
+            prop_assert_eq!(set_node.id.get(), 1,
+                "body node must have ID 1 (id+1)");
+            prop_assert!(
+                matches!(&set_node.kind, CompiledNodeKind::SetConst { .. }),
+                "node[1] must be SetConst, got {:?}", set_node.kind
+            );
+
+            // Node 2 must be CollectNext
+            let page = node_at(&wf, 2).expect("node 2 must exist");
+            prop_assert_eq!(page.id.get(), 2,
+                "CollectNext must have ID 2 (id+2)");
+            prop_assert!(
+                matches!(&page.kind, CompiledNodeKind::CollectNext { .. }),
+                "node[2] must be CollectNext, got {:?}", page.kind
+            );
+
+            // Node 3 must be CollectFinish
+            let finish_node = node_at(&wf, 3).expect("node 3 must exist");
+            prop_assert_eq!(finish_node.id.get(), 3,
+                "CollectFinish must have ID 3 (id+3)");
+            prop_assert!(
+                matches!(&finish_node.kind, CompiledNodeKind::CollectFinish { .. }),
+                "node[3] must be CollectFinish, got {:?}", finish_node.kind
+            );
+        }
+    }
+
+    /// B-013: When collect is not the first step, the 4 collect nodes
+    /// still have consecutive IDs offset from the collect step's own
+    /// StepIdx.
+    #[test]
+    fn collect_four_consecutive_ids_after_preamble(
+        source in source_digit_str(),
+        pages in any::<Option<u32>>(),
+        items in any::<Option<u32>>(),
+    ) {
+        let yaml = collect_yaml_with_preamble(&source, pages, items);
+        let result = compile_workflow(yaml.as_bytes());
+
+        if result.is_ok() {
+            let wf = result.unwrap();
+            // Preamble takes IDs 0,1. Collect starts at ID 2.
+            let base: u16 = 2;
+
+            prop_assert!(wf.node_count() >= 6,
+                "workflow with preamble+collect should have at least 6 nodes, got {}",
+                wf.node_count());
+
+            // CollectStart at base
+            let start = node_at(&wf, base).expect("CollectStart must exist");
+            prop_assert_eq!(start.id.get(), base);
+            prop_assert!(
+                matches!(&start.kind, CompiledNodeKind::CollectStart { .. }),
+                "node at base must be CollectStart"
+            );
+
+            // SetConst at base+1
+            let body_node = node_at(&wf, base + 1).expect("body SetConst must exist");
+            prop_assert_eq!(body_node.id.get(), base + 1);
+            prop_assert!(
+                matches!(&body_node.kind, CompiledNodeKind::SetConst { .. }),
+                "node at base+1 must be SetConst"
+            );
+
+            // CollectNext at base+2
+            let page = node_at(&wf, base + 2).expect("CollectNext must exist");
+            prop_assert_eq!(page.id.get(), base + 2);
+            prop_assert!(
+                matches!(&page.kind, CompiledNodeKind::CollectNext { .. }),
+                "node at base+2 must be CollectNext"
+            );
+
+            // CollectFinish at base+3
+            let finish_node = node_at(&wf, base + 3).expect("CollectFinish must exist");
+            prop_assert_eq!(finish_node.id.get(), base + 3);
+            prop_assert!(
+                matches!(&finish_node.kind, CompiledNodeKind::CollectFinish { .. }),
+                "node at base+3 must be CollectFinish"
+            );
+        }
+    }
+}
+
+// =========================================================================
+// Proptest: B-014 & B-015 — CollectStart fields match input + offsets
+// =========================================================================
+
+proptest! {
+    /// B-014+B-015: CollectStart.limit and CollectStart.page_size match
+    /// the input `pages` and `items` (or default to 1). Source slot is
+    /// preserved in CollectStart but a fresh collector slot is shared
+    /// by CollectNext and CollectFinish, distinct from the source and
+    /// body result slots. Offsets: body=id+1, page=id+2, done=id+3.
+    #[test]
+fn collect_start_fields_match_input_and_offsets_correct(
+    source_digit in source_digit_str(),
+    pages in any::<Option<u32>>(),
+    items in any::<Option<u32>>(),
+) {
+    let yaml = collect_yaml(&source_digit, pages, items, "42");
+    if let Ok(wf) = compile_workflow(yaml.as_bytes()) {
+        let source: u16 = source_digit.parse::<u16>().map_err(|e| TestCaseError::fail(format!("{e}")))?;
+        let limit = pages.unwrap_or(1).checked_mul(items.unwrap_or(1)).ok_or_else(|| TestCaseError::fail("overflow compiled"))?;
+        assert_canonical_collect_roles(&wf, source, limit, items.unwrap_or(1)).map_err(TestCaseError::fail)?;
+    }
+}
+
+}
+
+// =========================================================================
+// Deterministic tests: B-016 — Budget defaults
+// =========================================================================
+
+#[test]
+fn collect_defaults_missing_items_to_one() {
+    let yaml = collect_yaml_pages_only();
+    let result = compile_workflow(yaml.as_bytes());
+
+    assert!(
+        result.is_ok(),
+        "collect with explicit pages and default items should compile"
+    );
+    let wf = result.unwrap();
+
+    let start = node_at(&wf, 0).expect("CollectStart must exist");
+    match &start.kind {
+        CompiledNodeKind::CollectStart {
+            limit, page_size, ..
+        } => {
+            assert_eq!(
+                limit.get(),
+                1,
+                "default limit (pages) should be 1 when omitted"
+            );
+            assert_eq!(
+                *page_size, 1,
+                "default page_size (items) should be 1 when omitted"
+            );
+        }
+        other => assert!(false, "expected CollectStart, got {other:?}"),
+    }
+}
+
+// =========================================================================
+// Deterministic tests: B-017 — Max valid start ID
+// =========================================================================
+
+#[test]
+fn step_idx_checked_add_three_at_boundary() {
+    // u16::MAX - 3 = 65532: should succeed
+    let valid = StepIdx::new(65532);
+    let result = valid.checked_add(3);
+    assert!(
+        result.is_some(),
+        "id = 65532 (u16::MAX - 3) should allow +3 offset"
+    );
+    if let Some(stepped) = result {
+        assert_eq!(stepped.get(), 65535, "65532 + 3 = 65535 (u16::MAX)");
+    }
+
+    // u16::MAX - 2 = 65533: should fail
+    let overflow = StepIdx::new(65533);
+    assert!(
+        overflow.checked_add(3).is_none(),
+        "id = 65533 (u16::MAX - 2) must return None for +3 offset"
+    );
+}
+
+#[test]
+fn step_idx_max_is_u16_max_minus_three_for_offset_three() {
+    // Explicitly prove that the maximum safe start ID for a +3 offset is
+    // exactly u16::MAX - 3.
+    for offset in 0u16..=3u16 {
+        let max_id = u16::MAX.saturating_sub(offset);
+        let step = StepIdx::new(max_id);
+        let result = step.checked_add(offset);
+        assert!(
+            result.is_some(),
+            "id={max_id} should allow +{offset} offset"
+        );
+        if let Some(s) = result {
+            assert_eq!(s.get(), max_id.saturating_add(offset));
+        }
+    }
+    // One beyond: fails
+    let over = StepIdx::new(u16::MAX.wrapping_sub(2)); // 65533
+    assert!(
+        over.checked_add(3).is_none(),
+        "id=65533 must fail for +3 offset"
+    );
+}
+
+/// B-013/B-015 with N = 2: a two-step lexical body emits N + 3 nodes and
+/// the advance/done edges scale (advance = id+3, done = id+4).
+#[test]
+fn collect_two_step_body_scales_edges() {
+    let yaml = String::from(
+        "version: velvet-ballistics/v1\nname: collect_two\nwhen:\n  manual: {}\nsteps:\n  - id: collect_pages\n    collect:\n      variable: batch\n      source: \"0\"\n      pages: 1\n      items: 1\n      steps:\n        - id: first_page\n          set:\n            output: seen_a\n            value: \"7\"\n        - id: second_page\n          set:\n            output: seen_b\n            value: \"8\"\n  - id: done\n    finish:\n      result: 0\n",
+    );
+
+    let result = compile_workflow(yaml.as_bytes());
+    assert!(
+        result.is_ok(),
+        "two-step collect should compile: {:?}",
+        result.err()
+    );
+    let wf = result.unwrap();
+    assert_eq!(
+        wf.node_count(),
+        6,
+        "N=2 body emits 5 collect nodes + finish"
+    );
+
+    let start = node_at(&wf, 0).expect("CollectStart must exist at id 0");
+    assert!(matches!(&start.kind, CompiledNodeKind::CollectStart { .. }));
+    let advance = node_at(&wf, 3).expect("CollectNext must exist at id 3");
+    assert!(matches!(
+        &advance.kind,
+        CompiledNodeKind::CollectNext { .. }
+    ));
+    let finish_node = node_at(&wf, 4).expect("CollectFinish must exist at id 4");
+    assert!(matches!(
+        &finish_node.kind,
+        CompiledNodeKind::CollectFinish { .. }
+    ));
+
+    match &start.kind {
+        CompiledNodeKind::CollectStart { body, done, .. } => {
+            assert_eq!(body.get(), 1, "body = id+1 = 1");
+            assert_eq!(done.get(), 4, "done = id+N+2 = 4");
+        }
+        _ => assert!(false, "expected CollectStart"),
+    }
+    match &advance.kind {
+        CompiledNodeKind::CollectNext { body, done, .. } => {
+            assert_eq!(body.get(), 1, "advance body = id+1 = 1");
+            assert_eq!(done.get(), 4, "advance done = id+N+2 = 4");
+        }
+        _ => assert!(false, "expected CollectNext"),
+    }
+}
+
+/// B-017: With a moderate preamble (100 steps), verify the collect step
+/// still computes correct body/page/done offsets. The type-level boundary
+/// at u16::MAX - 3 is tested by `step_idx_checked_add_three_at_boundary`
+/// and `step_idx_max_is_u16_max_minus_three_for_offset_three`.
+#[test]
+fn collect_with_moderate_preamble_has_correct_offsets() {
+    let mut yaml = String::from(
+        "version: velvet-ballistics/v1\nname: collect_mod\nwhen:\n  manual: {}\nsteps:\n",
+    );
+    // 100 preamble set steps consume IDs 0..99
+    for i in 0u16..100u16 {
+        yaml.push_str(&format!(
+            "  - id: pre_{i}\n    set:\n      output: v_{i}\n      value: \"1\"\n"
+        ));
+    }
+    // Collect step at ID 100
+    yaml.push_str("  - id: collect_pages\n    collect:\n");
+    yaml.push_str("      variable: batch\n");
+    yaml.push_str("      source: \"0\"\n");
+    yaml.push_str("      pages: 1\n");
+    yaml.push_str("      items: 1\n");
+    yaml.push_str("      steps:\n");
+    yaml.push_str("        - id: remember_page\n");
+    yaml.push_str("          set:\n");
+    yaml.push_str("            output: page_seen\n");
+    yaml.push_str("            value: \"7\"\n");
+    // Finish step at ID 104
+    yaml.push_str("  - id: done\n    finish:\n      result: 0\n");
+
+    let result = compile_workflow(yaml.as_bytes());
+    assert!(
+        result.is_ok(),
+        "collect after 100-step preamble should compile: {:?}",
+        result.err()
+    );
+    let wf = result.unwrap();
+
+    // CollectStart at ID 100
+    let start = node_at(&wf, 100).expect("CollectStart must exist at id 100");
+    assert!(matches!(&start.kind, CompiledNodeKind::CollectStart { .. }));
+    assert_eq!(start.id.get(), 100);
+
+    // SetConst at ID 101
+    let set_node = node_at(&wf, 101).expect("SetConst must exist at id 101");
+    assert!(matches!(&set_node.kind, CompiledNodeKind::SetConst { .. }));
+
+    // CollectNext at ID 102
+    let page = node_at(&wf, 102).expect("CollectNext must exist at id 102");
+    assert!(matches!(&page.kind, CompiledNodeKind::CollectNext { .. }));
+
+    // CollectFinish at ID 103
+    let finish_node = node_at(&wf, 103).expect("CollectFinish must exist at id 103");
+    assert!(matches!(
+        &finish_node.kind,
+        CompiledNodeKind::CollectFinish { .. }
+    ));
+
+    match &start.kind {
+        CompiledNodeKind::CollectStart { body, done, .. } => {
+            assert_eq!(body.get(), 101, "body = id+1 = 101");
+            assert_eq!(done.get(), 103, "done = id+3 = 103");
+        }
+        _ => assert!(false, "expected CollectStart"),
+    }
+}
+
+fn assert_canonical_collect_roles(
+    wf: &vb_core::CompiledWorkflow,
+    source: u16,
+    expected_limit: u32,
+    expected_page_size: u32,
+) -> Result<(), String> {
+    use vb_core::CompiledNodeKind;
+    use vb_core::ids::{SlotIdx, StepIdx};
+
+    if wf.node_count() != 5 {
+        return Err(format!("expected 5 nodes, got {}", wf.node_count()));
+    }
+
+    let start = wf.node(StepIdx::new(0)).ok_or("missing node 0")?;
+    if start.id != StepIdx::new(0) {
+        return Err(format!("node 0 has wrong id: {:?}", start.id));
+    }
+    let collector = match &start.kind {
+        CompiledNodeKind::CollectStart {
+            source: src,
+            limit,
+            page_size,
+            body,
+            done,
+        } => {
+            if src.get() != source {
+                return Err(format!(
+                    "CollectStart source mismatch: {} vs {}",
+                    src.get(),
+                    source
+                ));
+            }
+            if limit.get() != expected_limit {
+                return Err(format!(
+                    "CollectStart limit mismatch: {} vs {}",
+                    limit.get(),
+                    expected_limit
+                ));
+            }
+            if *page_size != expected_page_size {
+                return Err(format!(
+                    "CollectStart page_size mismatch: {} vs {}",
+                    *page_size, expected_page_size
+                ));
+            }
+            if *body != StepIdx::new(1) {
+                return Err(format!("CollectStart body mismatch: {:?} vs 1", *body));
+            }
+            if *done != StepIdx::new(3) {
+                return Err(format!("CollectStart done mismatch: {:?} vs 3", *done));
+            }
+            start
+                .output
+                .slot()
+                .ok_or("CollectStart has no output slot")?
+        }
+        other => return Err(format!("node 0 wrong kind: {:?}", other)),
+    };
+
+    let body = wf.node(StepIdx::new(1)).ok_or("missing node 1")?;
+    if body.id != StepIdx::new(1) {
+        return Err(format!("node 1 has wrong id: {:?}", body.id));
+    }
+    match &body.kind {
+        CompiledNodeKind::SetConst { .. } => {}
+        other => return Err(format!("node 1 wrong kind: {:?}", other)),
+    }
+    let body_result = body.output.slot().ok_or("SetConst has no output slot")?;
+    if body.routing.next != NodeContinuation::Step(StepIdx::new(2)) {
+        return Err(format!("node 1 next mismatch: {:?}", body.routing.next));
+    }
+    if SlotIdx::new(source).get() == collector.get() {
+        return Err("source and collector slots are not distinct".to_string());
+    }
+    if SlotIdx::new(source).get() == body_result.get() {
+        return Err("source and body_result slots are not distinct".to_string());
+    }
+    if collector.get() == body_result.get() {
+        return Err("collector and body_result slots are not distinct".to_string());
+    }
+
+    let next = wf.node(StepIdx::new(2)).ok_or("missing node 2")?;
+    if next.id != StepIdx::new(2) {
+        return Err(format!("node 2 has wrong id: {:?}", next.id));
+    }
+    match &next.kind {
+        CompiledNodeKind::CollectNext {
+            collector_slot,
+            body: b,
+            done,
+        } => {
+            if *collector_slot != collector {
+                return Err(format!(
+                    "CollectNext collector mismatch: {:?} vs {:?}",
+                    *collector_slot, collector
+                ));
+            }
+            if *b != StepIdx::new(1) {
+                return Err(format!("CollectNext body mismatch: {:?} vs 1", *b));
+            }
+            if *done != StepIdx::new(3) {
+                return Err(format!("CollectNext done mismatch: {:?} vs 3", *done));
+            }
+        }
+        other => return Err(format!("node 2 wrong kind: {:?}", other)),
+    }
+
+    let finish = wf.node(StepIdx::new(3)).ok_or("missing node 3")?;
+    if finish.id != StepIdx::new(3) {
+        return Err(format!("node 3 has wrong id: {:?}", finish.id));
+    }
+    match &finish.kind {
+        CompiledNodeKind::CollectFinish { collector_slot } => {
+            if *collector_slot != collector {
+                return Err(format!(
+                    "CollectFinish collector mismatch: {:?} vs {:?}",
+                    *collector_slot, collector
+                ));
+            }
+        }
+        other => return Err(format!("node 3 wrong kind: {:?}", other)),
+    }
+    let finish_output = finish
+        .output
+        .slot()
+        .ok_or("CollectFinish has no output slot")?;
+    if finish_output == collector {
+        return Err("finish output equals collector slot".to_string());
+    }
+    if finish_output == body_result {
+        return Err("finish output equals body output slot".to_string());
+    }
+    if finish.routing.next != NodeContinuation::Step(StepIdx::new(4)) {
+        return Err(format!("node 3 next mismatch: {:?}", finish.routing.next));
+    }
+
+    let term = wf.node(StepIdx::new(4)).ok_or("missing node 4")?;
+    if term.id != StepIdx::new(4) {
+        return Err(format!("node 4 has wrong id: {:?}", term.id));
+    }
+    match &term.kind {
+        CompiledNodeKind::Finish { result } => {
+            if *result != SlotIdx::new(0) {
+                return Err(format!("Finish result mismatch: {:?} vs 0", *result));
+            }
+        }
+        other => return Err(format!("node 4 wrong kind: {:?}", other)),
+    }
+    if term.routing.next != NodeContinuation::End {
+        return Err(format!(
+            "node 4 next should be End, got {:?}",
+            term.routing.next
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
+fn canonical_collect_total_limit_and_distinct_roles() -> Result<(), String> {
+    let yaml = collect_yaml("0", Some(3), Some(5), "42");
+    let wf = compile_workflow(yaml.as_bytes()).map_err(|e| format!("{e:?}"))?;
+    assert_canonical_collect_roles(&wf, 0, 15, 5)?;
+    Ok(())
+}
+
+#[test]
+fn canonical_collect_product_overflow_is_exact() -> Result<(), String> {
+    let yaml = collect_yaml("0", Some(u32::MAX), Some(2), "42");
+    match compile_workflow(yaml.as_bytes()) {
+        Err(errors) => {
+            assert_eq!(
+                errors,
+                vb_compile::CompileErrors(vec![vb_compile::CompileError::StepFieldShape {
+                    step: 0,
+                    field: "collect",
+                    expected: "pages * items must fit u32",
+                }])
+            );
+        }
+        Ok(_) => return Err("overflow compiled".into()),
+    }
+    Ok(())
+}

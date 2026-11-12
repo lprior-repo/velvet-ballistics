@@ -1,0 +1,220 @@
++        encoded_len,
++    })
++}
+FILE crates/vb_runtime/src/shard/types.rs SHA256 c34eb18fcc77620309ea707fd36e55632ba8a4b78ba4b171e0003ade9b9cc57d
+diff --git a/crates/vb_runtime/src/shard/types.rs b/crates/vb_runtime/src/shard/types.rs
+index dd2c2d847..49b7a4ef7 100644
+--- a/crates/vb_runtime/src/shard/types.rs
++++ b/crates/vb_runtime/src/shard/types.rs
+@@ -1,56 +1,56 @@
+ #![forbid(unsafe_code)]
+ //! Single-threaded shard owning mutable run state directly.
+ 
+ use core::num::NonZeroU16;
+ use crossbeam_queue::ArrayQueue;
+ use indexmap::{IndexMap, IndexSet};
+ use std::time::Instant;
+ use vb_core::action::{ActionContract, ActionTicket};
+ use vb_core::capability::CapabilitySet;
+-use vb_core::frame::RunFrame;
++use vb_core::frame::{RunFrame, RunFrameCheckpointV1};
+ use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+ use vb_core::value::{SlotValue, Taint};
+ use vb_core::value_store::ValueStore;
+ use vb_core::workflow::CompiledWorkflow;
+ use vb_storage::EventSeq;
+ 
+ use crate::RuntimeResult;
+ use crate::counters::ShardCounters;
+ use crate::frame_pool::FramePool;
+ use crate::journal::SharedRuntimeJournal;
+-use crate::primitives::collect::CollectStates;
++use crate::primitives::collect::{CollectStates, CollectStatesCheckpointV1};
+ 
+ use crate::trace::TraceRing;
+ 
+ // Aggregate resource model touchpoints for vb-qi37.2.1:
+ // ShardConfig aggregate_capacity, Shard active_usage, Shard reservations,
+ // RunState AggregateReservation, ShardStatus active_usage aggregate_capacity.
+ 
+ type FramePoolKey = (u16, u16);
+ 
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ #[non_exhaustive]
+ pub enum PendingTimerKind {
+     Wait,
+     Ask,
+ }
+ 
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub struct PendingTimer {
+     pub step: StepIdx,
+     pub kind: PendingTimerKind,
+     pub generation: u64,
+     pub deadline: Instant,
+ }
+ 
+ impl PendingTimer {
+     #[must_use]
+     pub fn matches_authority(
+         self,
+         generation: u64,
+         deadline: Instant,
+         kind: PendingTimerKind,
+     ) -> bool {
+         self.generation == generation && self.deadline == deadline && self.kind == kind
+     }
+ }
+@@ -174,150 +174,219 @@ pub enum ShardCommand {
+     Cancel {
+         /// Run identifier.
+         run: RunId,
+         /// Optional cancellation reason.
+         reason: Option<String>,
+     },
+     /// Kill an active run unconditionally.
+     Kill {
+         /// Run identifier.
+         run: RunId,
+         /// Optional kill reason.
+         reason: Option<String>,
+     },
+     /// Inspect run state for diagnostic purposes.
+     Inspect {
+         /// Run identifier.
+         run: RunId,
+         /// Caller correlation identifier echoed in the response.
+         correlation: u64,
+     },
+     /// Shut down the shard gracefully.
+     Shutdown,
+     /// Recover a run from durable Fjall journal evidence.
+     ///
+     /// The runtime has already reconstructed a `RunFrame` from the journal
+     /// replay and validated full recovery context. The typed
+     /// `RecoverRunCommand` carries artifact verification, journal sequencing,
+     /// collect pagination, and boundary classification in a single value.
+     Recover { command: Box<RecoverRunCommand> },
+ }
+ 
+ /// Typed recovery command carrying full recovery context from journal replay.
+ ///
+ /// Constructed by recovery machinery after validating journal evidence
+ /// and before enqueueing a Recover shard command.
++/// Distinguishes a recovered historical admission from an absence
++/// of durable admission evidence (legacy raw recovery path).
++#[derive(Debug, Clone, PartialEq, Eq)]
++pub(crate) enum RecoveredAdmissionKind {
++    /// No durable admission record exists. Legacy/raw recovery path.
++    /// Carries only run identity for validation.
++    Unverified {
++        run_id: RunId,
++        artifact_digest: WorkflowDigest,
++    },
++    /// Historical admission recovered from durable storage or checkpoint.
++    Historical(crate::admission::RunAdmission),
++}
++
+ #[derive(Debug, Clone, PartialEq, Eq)]
+ pub struct RecoverRunCommand {
+     /// Run identifier being recovered.
+     pub run: RunId,
+     /// Hydrated run frame from journal replay.
+     pub frame: RunFrame,
+     /// Artifact digest for artifact store verification.
+     pub artifact_digest: WorkflowDigest,
+     /// Workflow digest for artifact store lookup during recovery.
+     pub workflow_digest: WorkflowDigest,
+     /// Next durable journal sequence for this run.
+     pub next_seq: EventSeq,
+     /// Collect pagination states to resume after recovery.
+     pub collect_states: CollectStates,
+     /// Validated full state to restore for a durable retry, when present.
+     pub retry_checkpoint: Option<crate::run_checkpoint::RunCheckpointV1>,
+     /// Recovery boundary classification.
+     pub boundary: crate::recovery::RecoveredRunBoundary,
++    /// Admission evidence carried by the recovery command. The Unverified
++    /// variant represents missing historical evidence rather than a fabricated
++    /// verified pin. Callers on the raw command path cannot gain verified
++    /// authority from the current artifact; that requires the validated
++    /// recovery product path.
++    pub(crate) admission: RecoveredAdmissionKind,
+ }
+ 
+ impl RecoverRunCommand {
+-    /// Constructs a recovery command from validated journal replay evidence.
++    /// Constructs a legacy recovery command with no historical admission evidence.
++    ///
++    /// The command carries an Unverified admission record by default, representing
++    /// missing historical evidence rather than a fabricated verified pin. Callers
++    /// on the raw command path cannot gain verified authority from the current
++    /// artifact; that requires the validated recovery product path.
+     #[must_use]
+     pub fn new(
+         run: RunId,
+         frame: RunFrame,
+         artifact_digest: WorkflowDigest,
+         workflow_digest: WorkflowDigest,
+         next_seq: EventSeq,
+         collect_states: CollectStates,
+         boundary: crate::recovery::RecoveredRunBoundary,
+     ) -> Self {
+         Self {
+             run,
+             frame,
+             artifact_digest,
+             workflow_digest,
+             next_seq,
+             collect_states,
+             retry_checkpoint: None,
+             boundary,
++            admission: RecoveredAdmissionKind::Unverified {
++                run_id: run,
++                artifact_digest,
++            },
+         }
+     }
+ 
++    /// Attaches a validated historical admission from a recovery product.
++    ///
++    /// Crate-private: only the validated recovery prefix flow should call this,
++    /// after `validate_recovered_admission_evidence` has checked the admission
++    /// against the run, artifact, workflow, and policy.
++    #[must_use]
++    pub(crate) fn with_validated_admission(
++        mut self,
++        admission: crate::admission::RunAdmission,
++    ) -> Self {
++        self.admission = RecoveredAdmissionKind::Historical(admission);
++        self
++    }
++
+     /// Attaches full retry state whose identity is checked against the loaded accepted artifact.
+     #[must_use]
+     pub fn with_retry_checkpoint(
+         mut self,
+         checkpoint: crate::run_checkpoint::RunCheckpointV1,
+     ) -> Self {
+         self.retry_checkpoint = Some(checkpoint);
+         self
+     }
+ 
++    /// Restores a RunFrame from checkpoint data.
++    fn restore_retry_frame(frame_data: RunFrameCheckpointV1) -> RuntimeResult<RunFrame> {
++        RunFrame::from_checkpoint_v1(frame_data).map_err(|error| crate::RuntimeError::Recovery {
++            error: format!("retry checkpoint frame restore failed: {error:?}"),
++        })
++    }
++
++    /// Restores CollectStates from checkpoint data.
++    fn restore_retry_collect_states(
++        data: CollectStatesCheckpointV1,
++    ) -> RuntimeResult<CollectStates> {
++        CollectStates::from_checkpoint_v1(data).map_err(|error| crate::RuntimeError::Recovery {
++            error: format!("retry checkpoint collect restore failed: {error:?}"),
++        })
++    }
++
++    fn retry_admission(
++        checkpoint: &crate::run_checkpoint::RunCheckpointV1,
++    ) -> RecoveredAdmissionKind {

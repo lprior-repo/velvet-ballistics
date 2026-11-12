@@ -1,0 +1,100 @@
+verification/verus/signals_invariant.rs:101: 
+verification/verus/signals_invariant.rs:102: /// Spec-side view of `MAX_STEP_BUDGET`.
+verification/verus/signals_invariant.rs:103: pub open spec fn max_step_budget() -> int {
+verification/verus/signals_invariant.rs:104:     SPEC_MAX_STEP_BUDGET as int
+verification/verus/signals_invariant.rs:105: }
+verification/verus/signals_invariant.rs:106: 
+verification/verus/signals_invariant.rs:107: // =============================================================================
+verification/verus/signals_invariant.rs:108: // Spec invariants and functions (production-anchored via assume_specification)
+verification/verus/signals_invariant.rs:109: // =============================================================================
+verification/verus/signals_invariant.rs:110: 
+verification/verus/signals_invariant.rs:111: /// The StepBudget invariant: remaining is always in [0, MAX_STEP_BUDGET].
+verification/verus/signals_invariant.rs:112: pub open spec fn spec_step_budget_invariant(remaining: int) -> bool {
+verification/verus/signals_invariant.rs:113:     0 <= remaining && remaining <= max_step_budget()
+verification/verus/signals_invariant.rs:114: }
+verification/verus/signals_invariant.rs:115: 
+verification/verus/signals_invariant.rs:116: /// Spec model of `StepBudget::new(v)`: clamps v to MAX_STEP_BUDGET.
+verification/verus/signals_invariant.rs:117: pub open spec fn spec_new(v: int) -> int {
+verification/verus/signals_invariant.rs:118:     if v > max_step_budget() {
+verification/verus/signals_invariant.rs:119:         max_step_budget()
+verification/verus/signals_invariant.rs:120:     } else {
+verification/verus/signals_invariant.rs:121:         v
+verification/verus/signals_invariant.rs:122:     }
+verification/verus/signals_invariant.rs:123: }
+verification/verus/signals_invariant.rs:124: 
+verification/verus/signals_invariant.rs:125: /// Spec model of `StepBudget::try_take(remaining)`: returns
+verification/verus/signals_invariant.rs:126: /// `(took_ok, new_remaining)`. This spec is precisely aligned with
+verification/verus/signals_invariant.rs:127: /// the production contract attached via `assume_specification` on
+verification/verus/signals_invariant.rs:128: /// `production::StepBudget::try_take`. Three branches mirror production:
+verification/verus/signals_invariant.rs:129: ///
+verification/verus/signals_invariant.rs:130: ///   - `remaining > 0 && remaining <= MAX` → `(true, remaining - 1)`
+verification/verus/signals_invariant.rs:131: ///   - `remaining == 0`                    → `(false, 0)`
+verification/verus/signals_invariant.rs:132: ///   - `remaining > MAX`                   → `(false, remaining)` (defense-in-depth overflow guard)
+verification/verus/signals_invariant.rs:133: pub open spec fn spec_try_take(remaining: int) -> (bool, int) {
+verification/verus/signals_invariant.rs:134:     if remaining > 0 && remaining <= max_step_budget() {
+verification/verus/signals_invariant.rs:135:         (true, remaining - 1)
+verification/verus/signals_invariant.rs:136:     } else if remaining == 0 {
+verification/verus/signals_invariant.rs:137:         (false, 0)
+verification/verus/signals_invariant.rs:138:     } else {
+verification/verus/signals_invariant.rs:139:         (false, remaining)
+verification/verus/signals_invariant.rs:140:     }
+verification/verus/signals_invariant.rs:141: }
+verification/verus/signals_invariant.rs:142: 
+verification/verus/signals_invariant.rs:143: // =============================================================================
+verification/verus/signals_invariant.rs:144: // assume_specification bridges — production contract surface
+verification/verus/signals_invariant.rs:145: // =============================================================================
+verification/verus/signals_invariant.rs:146: //
+verification/verus/signals_invariant.rs:147: // Each `assume_specification` bridge attaches a Verus-native spec
+verification/verus/signals_invariant.rs:148: // contract to the MIRROR exec method. The mirror module is
+verification/verus/signals_invariant.rs:149: // `#[path]`-included from `production_inner/signals_production.rs`,
+verification/verus/signals_invariant.rs:150: // so the method paths `production::StepBudget::*` resolve to the
+verification/verus/signals_invariant.rs:151: // verbatim mirror impls (with `#[verifier::external]` bodies). The
+verification/verus/signals_invariant.rs:152: // spec proofs below exercise the contracts via exec fns that call
+verification/verus/signals_invariant.rs:153: // the mirror methods directly.
+verification/verus/signals_invariant.rs:154: 
+verification/verus/signals_invariant.rs:155: /// Bridge contract: `production::StepBudget::new(v)` returns a
+verification/verus/signals_invariant.rs:156: /// StepBudget whose `remaining` field equals `min(v,
+verification/verus/signals_invariant.rs:157: /// MAX_STEP_BUDGET)` and satisfies the bounded invariant.
+verification/verus/signals_invariant.rs:158: ///
+verification/verus/signals_invariant.rs:159: /// Mirrors the production body at
+verification/verus/signals_invariant.rs:160: /// `crates/vb_core/src/engine/signals.rs:27-35`.
+verification/verus/signals_invariant.rs:161: pub assume_specification[ production::StepBudget::new ](
+verification/verus/signals_invariant.rs:162:     value: u64,
+verification/verus/signals_invariant.rs:163: ) -> (budget: production::StepBudget)
+verification/verus/signals_invariant.rs:164:     ensures
+verification/verus/signals_invariant.rs:165:         budget.remaining as int == spec_new(value as int),
+verification/verus/signals_invariant.rs:166:         spec_step_budget_invariant(budget.remaining as int),
+verification/verus/signals_invariant.rs:167: ;
+verification/verus/signals_invariant.rs:168: 
+verification/verus/signals_invariant.rs:169: /// Bridge contract: `production::StepBudget::try_take` either returns
+verification/verus/signals_invariant.rs:170: /// `Ok(true)` and decrements remaining by 1, returns `Ok(false)` and
+verification/verus/signals_invariant.rs:171: /// leaves remaining unchanged (only when remaining == 0), or returns
+verification/verus/signals_invariant.rs:172: /// `Err(EngineError::StepCounterOverflow)` and leaves remaining
+verification/verus/signals_invariant.rs:173: /// unchanged (only when remaining > MAX_STEP_BUDGET — the
+verification/verus/signals_invariant.rs:174: /// defense-in-depth overflow guard).
+verification/verus/signals_invariant.rs:175: ///
+verification/verus/signals_invariant.rs:176: /// The postcondition encodes the production logic of
+verification/verus/signals_invariant.rs:177: /// `crates/vb_core/src/engine/signals.rs:50-60`:
+verification/verus/signals_invariant.rs:178: ///   1. overflow guard returns Err iff `remaining > MAX_STEP_BUDGET`
+verification/verus/signals_invariant.rs:179: ///   2. remaining == 0 returns Ok(false), remaining unchanged
+verification/verus/signals_invariant.rs:180: ///   3. remaining > 0 returns Ok(true), remaining -= 1
+verification/verus/signals_invariant.rs:181: ///
+verification/verus/signals_invariant.rs:182: /// These branch preconditions let Verus prove exec-fn postconditions
+verification/verus/signals_invariant.rs:183: /// that depend on which branch was taken.
+verification/verus/signals_invariant.rs:184: pub assume_specification[ production::StepBudget::try_take ](
+verification/verus/signals_invariant.rs:185:     budget: &mut production::StepBudget,
+verification/verus/signals_invariant.rs:186: ) -> (r: Result<bool, production::EngineError>)
+verification/verus/signals_invariant.rs:187:     requires
+verification/verus/signals_invariant.rs:188:         spec_step_budget_invariant(old(budget).remaining as int),
+verification/verus/signals_invariant.rs:189:     ensures
+verification/verus/signals_invariant.rs:190:         match r {
+verification/verus/signals_invariant.rs:191:             Ok(true) =>
+verification/verus/signals_invariant.rs:192:                 old(budget).remaining as int > 0
+verification/verus/signals_invariant.rs:193:                 && final(budget).remaining as int == old(budget).remaining as int - 1,
+verification/verus/signals_invariant.rs:194:             Ok(false) =>
+verification/verus/signals_invariant.rs:195:                 old(budget).remaining as int == 0
+verification/verus/signals_invariant.rs:196:                 && final(budget).remaining as int == old(budget).remaining as int,
+verification/verus/signals_invariant.rs:197:             Err(_) =>
+verification/verus/signals_invariant.rs:198:                 old(budget).remaining as int > max_step_budget()
+verification/verus/signals_invariant.rs:199:                 && final(budget).remaining as int == old(budget).remaining as int,
+verification/verus/signals_invariant.rs:200:         },

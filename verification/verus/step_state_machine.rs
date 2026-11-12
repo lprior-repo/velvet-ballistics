@@ -299,6 +299,10 @@ pub open spec fn is_suspended_mirror(s: SpecStepStateMirror) -> bool {
 // ============================================================================
 // Spec state-machine transition table (carried over from prior spec for
 // parity with VB-CORE-STATE-001 / StepState.tla / kani_step_state_transition)
+//
+// Succeeded -> Pending is the spec §45 bounded loop body re-entry
+// exception; StepState.tla notes the same gap as a Pt 23 open item and
+// is left untouched by this change.
 // ============================================================================
 //
 // These spec fns and proofs reason over the same transition contract as
@@ -362,7 +366,10 @@ pub open spec fn non_idempotent_transition(current: SpecStepState, next: SpecSte
             SpecStepState::Running => true,
             _ => false,
         },
-        SpecStepState::Succeeded => false,
+        SpecStepState::Succeeded => match next {
+            SpecStepState::Pending => true,
+            _ => false,
+        },
         SpecStepState::Failed => false,
         SpecStepState::Cancelled => false,
         SpecStepState::Skipped => false,
@@ -409,6 +416,7 @@ pub exec fn validate_transition_exec(current: SpecStepState, next: SpecStepState
         },
         SpecStepState::Succeeded => match next {
             SpecStepState::Succeeded => true,
+            SpecStepState::Pending => true,
             _ => false,
         },
         SpecStepState::Failed => match next {
@@ -427,7 +435,8 @@ pub exec fn validate_transition_exec(current: SpecStepState, next: SpecStepState
 }
 
 // ============================================================================
-// Step-state transition lemmas (carry-over from prior spec, unchanged)
+// Step-state transition lemmas (carry-over from prior spec, except the
+// Succeeded -> Pending re-entry exception below, spec §45)
 // ============================================================================
 pub proof fn proof_idempotent_remark_allowed(current: SpecStepState)
     ensures
@@ -436,20 +445,40 @@ pub proof fn proof_idempotent_remark_allowed(current: SpecStepState)
     assert(current == current);
 }
 
+/// Terminal states block outward transitions, except the single spec §45
+/// exception: Succeeded may return to Pending for interpreter-controlled
+/// bounded loop body re-entry through `jump_to_body` (production
+/// `crates/vb_core/src/frame.rs` `is_valid_step_state_transition` and
+/// `crates/vb_runtime/src/primitives/helpers/mod.rs` `jump_to_body`).
+/// Succeeded never transitions back to Running.
 pub proof fn proof_terminal_blocks_outward(current: SpecStepState, next: SpecStepState)
     requires
         is_terminal(current),
         current != next,
     ensures
-        !validate_transition(current, next),
+        !validate_transition(current, next) || (current == SpecStepState::Succeeded && next
+            == SpecStepState::Pending),
 {
     match current {
-        SpecStepState::Succeeded => assert(!validate_transition(current, next)),
+        SpecStepState::Succeeded => assert(!validate_transition(current, next) || (current
+            == SpecStepState::Succeeded && next == SpecStepState::Pending)),
         SpecStepState::Failed => assert(!validate_transition(current, next)),
         SpecStepState::Cancelled => assert(!validate_transition(current, next)),
         SpecStepState::Skipped => assert(!validate_transition(current, next)),
         _ => assert(false),
     }
+}
+
+/// From Succeeded, the only outward transition is back to Pending.
+pub proof fn proof_succeeded_reentry_only_to_pending(current: SpecStepState, next: SpecStepState)
+    requires
+        current == SpecStepState::Succeeded,
+        current != next,
+        validate_transition(current, next),
+    ensures
+        next == SpecStepState::Pending,
+{
+    assert(next == SpecStepState::Pending);
 }
 
 pub proof fn proof_suspended_resumes_only_to_running(current: SpecStepState, next: SpecStepState)
@@ -492,7 +521,9 @@ pub proof fn proof_all_pairs()
         validate_transition(SpecStepState::Asking, SpecStepState::Running) == true,
         validate_transition(SpecStepState::Asking, SpecStepState::Waiting) == false,
         validate_transition(SpecStepState::Succeeded, SpecStepState::Succeeded) == true,
+        validate_transition(SpecStepState::Succeeded, SpecStepState::Pending) == true,
         validate_transition(SpecStepState::Succeeded, SpecStepState::Running) == false,
+        validate_transition(SpecStepState::Succeeded, SpecStepState::Failed) == false,
         validate_transition(SpecStepState::Failed, SpecStepState::Failed) == true,
         validate_transition(SpecStepState::Failed, SpecStepState::Succeeded) == false,
         validate_transition(SpecStepState::Cancelled, SpecStepState::Cancelled) == true,
@@ -523,7 +554,9 @@ pub proof fn proof_all_pairs()
     assert(validate_transition(SpecStepState::Asking, SpecStepState::Running) == true);
     assert(validate_transition(SpecStepState::Asking, SpecStepState::Waiting) == false);
     assert(validate_transition(SpecStepState::Succeeded, SpecStepState::Succeeded) == true);
+    assert(validate_transition(SpecStepState::Succeeded, SpecStepState::Pending) == true);
     assert(validate_transition(SpecStepState::Succeeded, SpecStepState::Running) == false);
+    assert(validate_transition(SpecStepState::Succeeded, SpecStepState::Failed) == false);
     assert(validate_transition(SpecStepState::Failed, SpecStepState::Failed) == true);
     assert(validate_transition(SpecStepState::Failed, SpecStepState::Succeeded) == false);
     assert(validate_transition(SpecStepState::Cancelled, SpecStepState::Cancelled) == true);

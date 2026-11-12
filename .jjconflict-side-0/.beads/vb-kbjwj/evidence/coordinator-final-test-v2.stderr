@@ -1,0 +1,3 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests src/lib.rs (target/debug/deps/vb_core-bfe5690cbd7c1ef9)
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-665d823205417eeb)

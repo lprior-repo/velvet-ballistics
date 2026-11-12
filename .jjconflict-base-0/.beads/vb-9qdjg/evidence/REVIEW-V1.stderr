@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/lewis/src/isoloated/velvet-ballistics-vb-9qdjg-local5090-benchmark-review/.beads/vb-9qdjg/verify_measurements.py", line 181, in <module>
+    count, total_bytes, peak_bytes = parse_heaptrack_trace(trace_text)
+                                     ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/home/lewis/src/isoloated/velvet-ballistics-vb-9qdjg-local5090-benchmark-review/.beads/vb-j3e3s/collect_benchmark_evidence.py", line 329, in parse_heaptrack_trace
+    raise CollectorError("heaptrack trace missing v3 version header")
+collect_benchmark_evidence.CollectorError: heaptrack trace missing v3 version header

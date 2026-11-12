@@ -1,0 +1,141 @@
+{
+  "bead": "vb-rihha.1",
+  "review": "independent TEST bounded integrated scalar-helper suite",
+  "verdict": "PASS",
+  "scope": "Four registered helper_scalar_typecheck integration groups at frozen integrated source only; not full RIHHA/whole-IR/master-domain/CI/formal acceptance.",
+  "pins": {
+    "integrated_change": "susxpultktxrqmsqxuzrprplrkmrmnkt",
+    "integrated_commit": "0cb3ac1167cd686ece968c61b60d1cb5feac154d",
+    "production_guard_commit": "df89acd5adc491c658d0046b800f6d0dc8a9000e",
+    "test_commit": "b0e4773530bf0a39574679261bbdacf8b8efa7d0",
+    "contract_commit": "178512867bcecde4532b65f6636442af9eae37d7"
+  },
+  "contract": {
+    "path": ".beads/vb-rihha.1/contract.md",
+    "sha256": "cbb6b29c114dce20bbb20bd8c214be60c5549dad132ab85196a356ceb57b3e4f",
+    "oracle_derivation": "Contract independently requires expected=list and found labels i64/boolean/f64 for known I64/Bool/F64 operands of length/count/empty. Compiler contract additionally requires field=set.value. Null/List/Unknown remain accepted; Text/Object current behavior preserved pending master conflict. Output types are I64 for length/count and Bool for empty."
+  },
+  "roots_verified": {
+    "git": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+    "jj": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol"
+  },
+  "findings": [],
+  "checks": [
+    {
+      "path": "crates/workspace_tests/tests/helper_scalar_typecheck.rs",
+      "lines": [
+        7,
+        13,
+        54,
+        69
+      ],
+      "result": "PASS",
+      "detail": "Direct tests exercise public lex_expr -> parse_expr -> typecheck_expr with exact full Result equality. Three helpers x three scalar literals, plus three helpers x three known scalar reference types:9+9 mandatory error comparisons. Wrong Ok, wrong variant or either wrong type label fails; lex/parse failure is not swallowed."
+    },
+    {
+      "path": "crates/workspace_tests/tests/helper_scalar_typecheck.rs",
+      "lines": [
+        13,
+        18,
+        19
+      ],
+      "source_confirmation": [
+        "crates/vb_expr/src/expr_lexer/mod.rs:109-111,155",
+        "crates/vb_expr/src/expr_parser/mod.rs:67-70",
+        "crates/vb_expr/src/expr_typecheck/mod.rs:49-59,73"
+      ],
+      "result": "PASS",
+      "detail": "Test context inserts FULL reference strings including $, matching lexer Reference slice, parser name and exact TypeContext lookup. $known is statically I64/Bool/F64, not accidental Unknown; reference path therefore reaches intended scalar rejection."
+    },
+    {
+      "path": "crates/workspace_tests/tests/helper_scalar_typecheck.rs",
+      "lines": [
+        22,
+        28,
+        32,
+        36,
+        49,
+        50,
+        107
+      ],
+      "source_confirmation": "crates/vb_compile/src/mod_compile_lowering/canonical_types.rs:20-27,94-100,137-148",
+      "result": "PASS",
+      "detail": "Nine real public compile_workflow YAML calls contain entire helper expressions in Set, avoiding bare integer fast path. Helper requires total CompileErrors count exactly1 and collected TypeMismatch tuples exactly[(set.value,list,found)]. Unexpected Ok gives count0; extra error fails count; one wrong variant leaves empty tuple Vec; any wrong field/type payload fails exact equality. Filtering has no optional acceptance path."
+    },
+    {
+      "path": "crates/workspace_tests/tests/helper_scalar_typecheck.rs",
+      "lines": [
+        88,
+        94,
+        95,
+        101
+      ],
+      "result": "PASS_BOUNDED_COMPATIBILITY",
+      "detail": "Three helpers each require exact successful result type for null literal and List/Unknown/Text/Object full references:15 positive comparisons. Independently inspected return-type mapping and literal/reference inference. Baseline positive group also actually passes. Text/Object assertions pin existing static behavior only, not resolution of the master accepted-domain conflict or runtime Object semantics."
+    },
+    {
+      "path": "crates/vb_expr/src/expr_typecheck/helper_typecheck.rs",
+      "lines": [
+        16,
+        18,
+        24,
+        31,
+        32,
+        57,
+        60
+      ],
+      "source_confirmation": "crates/vb_expr/src/expr_typecheck/mod.rs:151-172,221-230",
+      "result": "SOURCE_CONTRACT_PARITY",
+      "detail": "Actual dispatch sends length/count/empty through known scalar guard; shared helper arity validated before argument type inference. Scalar labels independently checked against type_name mapping. No oracle calls production type_name or guard to generate expected values. Other helper/typechecker behavior is outside this TEST disposition."
+    },
+    {
+      "path": "crates/workspace_tests/tests/helper_scalar_typecheck.rs",
+      "result": "PASS_INTEGRITY",
+      "detail": "Entire113-line test source inspected. Four test attributes, deterministic static nested loops, no ignored cases, optional extraction, catch-and-continue, early success or discarded Result. Only standard assertion/format macros, no generated test macros or minified control flow. Eight function lengths including signatures:5,8,5,24,13,17,17,7; maximum24 physical lines conservatively <=25 logical lines. Long workflow YAML string is fixture data."
+    },
+    {
+      "path": "crates/workspace_tests/Cargo.toml",
+      "result": "REGISTRATION_CONFIRMED",
+      "detail": "New tests/helper_scalar_typecheck.rs is an autodiscovered integration target; manifest does not disable autotests. Raw baseline/fixed Nextest logs list all four exact test names. Candidate diff relative to contract source consists only of helper production file plus new test file; no dependency/API/gate/schema changes."
+    }
+  ],
+  "coverage_accounting": {
+    "registered_test_groups": 4,
+    "direct_literal_negative_pairs": 9,
+    "known_reference_negative_pairs": 9,
+    "public_compiler_negative_pairs": 9,
+    "positive_result_type_comparisons": 15,
+    "fixed_execution_interpretation": "Four passing groups with mandatory loops and no bypass execute all enumerated comparisons; pairs are not separately registered Nextest tests.",
+    "baseline_execution_limit": "Three negative groups abort at first failing comparison. Do not report nine individually observed baseline failures or27 baseline negative executions."
+  },
+  "evidence": {
+    "mode": "Existing baseline/fixed raw logs and numeric exit receipts read; no independent native/CI/formal/mutation execution.",
+    "baseline": {
+      "log": "/home/lewis/src/isoloated/velvet-ballistics-helper-tests-repair-luna/target/core-build-20261110/evidence/helper-scalar-native.log",
+      "exit_file": "/home/lewis/src/isoloated/velvet-ballistics-helper-tests-repair-luna/target/core-build-20261110/evidence/helper-scalar-native.exit",
+      "actual_exit": 100,
+      "run_id": "05ace00f-a34d-4134-bdd6-b8666d9f46a5",
+      "observed": "4run:1passed,3failed,0skipped. Literal/reference first comparisons see Ok(I64) instead of exact list/i64 error; compiler first comparison sees error_count0 instead of1. Positive compatibility group passes.",
+      "production_binding": "Author baseline helper file independently hashed as Git blob4f6c73741d03672ee63071643db3ffe05afbaca2, equal contract-source production blob. Baseline test file byte-identical to reviewed final test."
+    },
+    "fixed": {
+      "log": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-scalar-fixed.log",
+      "exit_file": "/home/lewis/src/isoloated/velvet-ballistics-helper-scalars-validation/target/core-build-20261110/evidence/helper-scalar-fixed-exit.txt",
+      "actual_exit": "FIXED_NATIVE_EXIT=0",
+      "run_id": "8d47fb24-ecf2-4ef4-bfcf-7139b72a608d",
+      "observed": "4tests run:4passed,0skipped. All four exact reviewed groups listed.",
+      "source_binding": "Validation current production and test bytes match frozen integrated source. Integrated helper equals df89acd5; integrated test equals b0e47735."
+    }
+  },
+  "hashes": {
+    "test_sha256": "da08ff4d25923503476200c7293afcbdb382d8fd85d6ac5bf0599983deac6606",
+    "fixed_helper_sha256": "c0d1b6513c40e356d20a1ff496b3ee72388b50d34ea11ca9001dbbc1f982e20f"
+  },
+  "limits": [
+    "Only bounded scalar operand/result-type behavior reviewed. Full RIHHA, whole IR type correctness and Text/Object master-domain conflict remain open.",
+    "No zero-arity/other-helper/operator/control-flow/runtime evaluation acceptance inferred from these matrices.",
+    "Mutation resistance assessed statically: deleting scalar dispatch/guard, weakening payloads or mismapping compiler field/error count would fail named groups; mutants not run.",
+    "Native command flags/build provenance beyond inspected logs and exit receipts not independently re-executed or reconstructed.",
+    "No CODE report read or CODE reasoning relied on. Only requested JSON written; no DB/source/test/gate/tracker/author changes, agents or root temporary-directory access."
+  ]
+}

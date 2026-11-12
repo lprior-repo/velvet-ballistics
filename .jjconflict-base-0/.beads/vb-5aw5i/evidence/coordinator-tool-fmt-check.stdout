@@ -1,0 +1,24 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-5aw5i-local3090-tool-fixtures/crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:6:
+ 
+ use vb_core::{ActionId, RunId, SeqNo, StepIdx, WorkflowId};
+ use vb_storage::{
++    JournalError, RecordKind,
+     codec::{decode_record_header, encode_record},
+     keys,
+     types::EventSeq,
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-5aw5i-local3090-tool-fixtures/crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:12:
+-    JournalError, RecordKind,
+ };
+ // =============================================================================
+ // Helper Functions
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-5aw5i-local3090-tool-fixtures/crates/workspace_tests/tests/vb_kkvb_xtask_command_shell_coverage.rs:44:
+ 
+ #[test]
+ #[ignore] // UI commands moved to velvet-optional repo
+-fn xtask_legacy_separator_routes_ui_overlap_check_and_reports_missing_screen(
+-) -> Result<(), Box<dyn Error>> {
++fn xtask_legacy_separator_routes_ui_overlap_check_and_reports_missing_screen()
++-> Result<(), Box<dyn Error>> {
+     // Given
+     let workspace = TempDir::new()?;
+ 

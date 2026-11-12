@@ -1,0 +1,36 @@
+COMMAND: cargo test -p velvet-ballistics --all-features --test vb_qi37_14_1_run_step
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_cli)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.19s
+     Running tests/vb_qi37_14_1_run_step.rs (target/debug/deps/vb_qi37_14_1_run_step-a956197ff1743944)
+
+running 25 tests
+test run_step_compile_error_yaml_includes_errors ... ok
+test run_step_compile_error_reports_failure ... ok
+test run_step_durability_not_none_exits_with_validation_failed ... ok
+test run_step_error_in_yaml_format_reports_error_and_message ... ok
+test run_step_rejects_durability_journaled ... ok
+test run_step_success_exits_with_code_0 ... ok
+test run_step_invalid_step_id_reports_not_found ... ok
+test run_step_rejects_durability_strict ... ok
+test run_step_validation_failure_exits_with_code_2 ... ok
+test run_step_empty_step_input_succeeds ... ok
+test run_step_delta_yaml_state_deltas_has_before_after ... ok
+test run_step_malformed_step_input_exits_with_code_2 ... ok
+test run_step_postcard_flag_produces_valid_postcard ... ok
+test run_step_invalid_step_id_yaml_includes_error_details ... ok
+test run_step_finished_includes_output_slot_value_and_taint ... ok
+test run_step_postcard_output_is_valid_postcard ... ok
+test run_step_delta_yaml_taint_deltas_is_array ... ok
+test run_step_yaml_flag_produces_valid_yaml ... ok
+test run_step_delta_yaml_pc_delta_has_before_and_after ... ok
+test run_step_delta_yaml_slot_deltas_is_array_with_changes ... ok
+test run_step_executes_single_step_and_reports_correct_index ... ok
+test run_step_yaml_output_includes_step_kind_signal ... ok
+test run_step_yaml_output_has_required_schema_fields ... ok
+test run_step_error_in_postcard_format_reports_error_object ... ok
+test run_step_text_output_is_human_readable ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+EXIT_STATUS=0

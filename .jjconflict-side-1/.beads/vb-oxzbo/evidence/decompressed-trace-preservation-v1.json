@@ -1,0 +1,38 @@
+[
+  {
+    "path": ".beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673199137909603-zstd.stdout",
+    "bytes": 17343302,
+    "sha256": "9b763a6966edde3a5a2c7dc63b9f5afb6b5cbeac76dfd28edadd471000dba3f8",
+    "disposition": "untracked decompressed copy; original remains under corresponding external actual-benchmarks cache and compressed trace tracked in scratch/heaptrack"
+  },
+  {
+    "path": ".beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673222474742651-zstd.stdout",
+    "bytes": 16025357,
+    "sha256": "70f9700ed1b009b0d36031fae45b290c09fd8842c3ca3e7c5bcf54069a23f729",
+    "disposition": "untracked decompressed copy; original remains under corresponding external actual-benchmarks cache and compressed trace tracked in scratch/heaptrack"
+  },
+  {
+    "path": ".beads/vb-oxzbo/evidence/actual-collection-v2/scratch/gate/ipc_frame_decode-heaptrack-1792673208039200047-zstd.stdout",
+    "bytes": 210131625,
+    "sha256": "8f3401f7ff4bab2034e2a70c9b81a9623ca74fd0bb861cc4e1770816601e1cba",
+    "disposition": "untracked decompressed copy; original remains under corresponding external actual-benchmarks cache and compressed trace tracked in scratch/heaptrack"
+  },
+  {
+    "path": ".beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673496191348968-zstd.stdout",
+    "bytes": 20032335,
+    "sha256": "c7733363ec38700f16daabf22677da1fa4bb95933bf50b7bf2b6cac167dcd474",
+    "disposition": "untracked decompressed copy; original remains under corresponding external actual-benchmarks cache and compressed trace tracked in scratch/heaptrack"
+  },
+  {
+    "path": ".beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792673520199487707-zstd.stdout",
+    "bytes": 15932400,
+    "sha256": "b4a908fff379cf40af14a13b745cf339bc778f941026a84e1212a4ae4c011bb5",
+    "disposition": "untracked decompressed copy; original remains under corresponding external actual-benchmarks cache and compressed trace tracked in scratch/heaptrack"
+  },
+  {
+    "path": ".beads/vb-oxzbo/evidence/actual-collection-v3/scratch/gate/ipc_frame_decode-heaptrack-1792673505434841348-zstd.stdout",
+    "bytes": 205706723,
+    "sha256": "911c40cd407f6fbdddc74486a4584a28fb19fcbc7e77391d6743a9d58c20d4c7",
+    "disposition": "untracked decompressed copy; original remains under corresponding external actual-benchmarks cache and compressed trace tracked in scratch/heaptrack"
+  }
+]

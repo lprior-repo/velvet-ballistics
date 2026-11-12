@@ -1,0 +1,163 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-integration-3090/crates/vb_runtime)
+warning: unused variable: `snap`
+   --> crates/vb_runtime/src/runtime_tests.rs:767:13
+    |
+767 |         let snap = runtime.counters_snapshot();
+    |             ^^^^ help: if this is intentional, prefix it with an underscore: `_snap`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:346:13
+    |
+346 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:394:13
+    |
+394 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:163:9
+    |
+163 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:182:9
+    |
+182 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:203:9
+    |
+203 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:224:9
+    |
+224 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:259:9
+    |
+259 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:291:9
+    |
+291 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:349:9
+    |
+349 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:367:9
+    |
+367 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:442:9
+    |
+442 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:462:9
+    |
+462 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:484:9
+    |
+484 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:505:9
+    |
+505 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:530:9
+    |
+530 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: `vb_runtime` (lib test) generated 16 warnings (run `cargo fix --lib -p vb_runtime --tests` to apply 16 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.67s
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-44a6b870dcba4c37)
+
+running 5 tests
+test shard::tests::submission_parity::submit_with_contracts_empty_caps_denied ... ok
+test shard::tests::submission_parity::submit_empty_caps_no_fabrication ... ok
+test shard::tests::submission_parity::submit_with_inputs_empty_caps_no_fabrication ... ok
+test shard::tests::submission_parity::bare_submit_no_input_fabrication ... FAILED
+test shard::tests::submission_parity::submit_with_inputs_no_fabrication ... FAILED
+
+failures:
+
+---- shard::tests::submission_parity::bare_submit_no_input_fabrication stdout ----
+
+thread 'shard::tests::submission_parity::bare_submit_no_input_fabrication' (958123) panicked at crates/vb_runtime/src/shard/tests/submission_parity.rs:183:5:
+assertion failed: state.action_contracts.is_empty()
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- shard::tests::submission_parity::submit_with_inputs_no_fabrication stdout ----
+
+thread 'shard::tests::submission_parity::submit_with_inputs_no_fabrication' (958127) panicked at crates/vb_runtime/src/shard/tests/submission_parity.rs:225:5:
+assertion failed: state.action_contracts.is_empty()
+
+
+failures:
+    shard::tests::submission_parity::bare_submit_no_input_fabrication
+    shard::tests::submission_parity::submit_with_inputs_no_fabrication
+
+test result: FAILED. 3 passed; 2 failed; 0 ignored; 0 measured; 1909 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p vb_runtime --lib`

@@ -1,0 +1,351 @@
+status: pass
+total_screens: 8
+passed_screens: 8
+failed_screens: 0
+fixture_backed: true
+core_runtime_parity_claim: unsupported
+screens:
+  - screen_name: execution_overview
+    fixture_id: execution_overview
+    artifact_path: .evidence/vb-nf2u/ui_snapshots/execution_overview.fixture.txt
+    digest: blake3:4f93fedc7047eab8677eae11ca793843fdb469abbfbd1da4f1bda0490b44be52
+    passed: true
+    diagnostics: []
+    execution_marker: vb-nf2u-execution_overview
+    checks:
+      - kind: Overlap
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-execution_overview-Overlap
+        origin: layout_predicate_outcomes
+      - kind: Clipping
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-execution_overview-Clipping
+        origin: layout_predicate_outcomes
+      - kind: Bounds
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-execution_overview-Bounds
+        origin: layout_predicate_outcomes
+      - kind: ChipReadability
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-execution_overview-ChipReadability
+        origin: layout_predicate_outcomes
+      - kind: SelectedState
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-execution_overview-SelectedState
+        origin: layout_predicate_outcomes
+      - kind: FixtureArtifactProvenance
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-execution_overview-FixtureArtifactProvenance
+        origin: snapshot_inventory_validation
+      - kind: Redaction
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-execution_overview-Redaction
+        origin: redaction_scanner_outcomes
+  - screen_name: workflow_graph_authoring
+    fixture_id: workflow_graph_authoring
+    artifact_path: .evidence/vb-nf2u/ui_snapshots/workflow_graph_authoring.fixture.txt
+    digest: blake3:2637ce650543de78922168066166bdf1747152a0c645d7cf567d1d8897417065
+    passed: true
+    diagnostics: []
+    execution_marker: vb-nf2u-workflow_graph_authoring
+    checks:
+      - kind: Overlap
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-workflow_graph_authoring-Overlap
+        origin: layout_predicate_outcomes
+      - kind: Clipping
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-workflow_graph_authoring-Clipping
+        origin: layout_predicate_outcomes
+      - kind: Bounds
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-workflow_graph_authoring-Bounds
+        origin: layout_predicate_outcomes
+      - kind: ChipReadability
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-workflow_graph_authoring-ChipReadability
+        origin: layout_predicate_outcomes
+      - kind: SelectedState
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-workflow_graph_authoring-SelectedState
+        origin: layout_predicate_outcomes
+      - kind: FixtureArtifactProvenance
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-workflow_graph_authoring-FixtureArtifactProvenance
+        origin: snapshot_inventory_validation
+      - kind: Redaction
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-workflow_graph_authoring-Redaction
+        origin: redaction_scanner_outcomes
+  - screen_name: execution_details
+    fixture_id: execution_details
+    artifact_path: .evidence/vb-nf2u/ui_snapshots/execution_details.fixture.txt
+    digest: blake3:db87b7ff95f8d80608ce8a616b72ea253cf9a08a7d6c7977c5ef446fc00337bc
+    passed: true
+    diagnostics: []
+    execution_marker: vb-nf2u-execution_details
+    checks:
+      - kind: Overlap
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-execution_details-Overlap
+        origin: layout_predicate_outcomes
+      - kind: Clipping
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-execution_details-Clipping
+        origin: layout_predicate_outcomes
+      - kind: Bounds
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-execution_details-Bounds
+        origin: layout_predicate_outcomes
+      - kind: ChipReadability
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-execution_details-ChipReadability
+        origin: layout_predicate_outcomes
+      - kind: SelectedState
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-execution_details-SelectedState
+        origin: layout_predicate_outcomes
+      - kind: FixtureArtifactProvenance
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-execution_details-FixtureArtifactProvenance
+        origin: snapshot_inventory_validation
+      - kind: Redaction
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-execution_details-Redaction
+        origin: redaction_scanner_outcomes
+  - screen_name: verification_certificate
+    fixture_id: verification_certificate
+    artifact_path: .evidence/vb-nf2u/ui_snapshots/verification_certificate.fixture.txt
+    digest: blake3:2bbfb97ca2476209c37f97dafc8ed74ab6efb35be611ac8bb4bf3b2b3016017d
+    passed: true
+    diagnostics: []
+    execution_marker: vb-nf2u-verification_certificate
+    checks:
+      - kind: Overlap
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-verification_certificate-Overlap
+        origin: layout_predicate_outcomes
+      - kind: Clipping
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-verification_certificate-Clipping
+        origin: layout_predicate_outcomes
+      - kind: Bounds
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-verification_certificate-Bounds
+        origin: layout_predicate_outcomes
+      - kind: ChipReadability
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-verification_certificate-ChipReadability
+        origin: layout_predicate_outcomes
+      - kind: SelectedState
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-verification_certificate-SelectedState
+        origin: layout_predicate_outcomes
+      - kind: FixtureArtifactProvenance
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-verification_certificate-FixtureArtifactProvenance
+        origin: snapshot_inventory_validation
+      - kind: Redaction
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-verification_certificate-Redaction
+        origin: redaction_scanner_outcomes
+  - screen_name: replay_theater
+    fixture_id: replay_theater
+    artifact_path: .evidence/vb-nf2u/ui_snapshots/replay_theater.fixture.txt
+    digest: blake3:513c33962ea27c739713b1aabaa0b1865679066b6ec67ddc2433bd3f3129d721
+    passed: true
+    diagnostics: []
+    execution_marker: vb-nf2u-replay_theater
+    checks:
+      - kind: Overlap
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-replay_theater-Overlap
+        origin: layout_predicate_outcomes
+      - kind: Clipping
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-replay_theater-Clipping
+        origin: layout_predicate_outcomes
+      - kind: Bounds
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-replay_theater-Bounds
+        origin: layout_predicate_outcomes
+      - kind: ChipReadability
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-replay_theater-ChipReadability
+        origin: layout_predicate_outcomes
+      - kind: SelectedState
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-replay_theater-SelectedState
+        origin: layout_predicate_outcomes
+      - kind: FixtureArtifactProvenance
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-replay_theater-FixtureArtifactProvenance
+        origin: snapshot_inventory_validation
+      - kind: Redaction
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-replay_theater-Redaction
+        origin: redaction_scanner_outcomes
+  - screen_name: incident_failure
+    fixture_id: incident_failure
+    artifact_path: .evidence/vb-nf2u/ui_snapshots/incident_failure.fixture.txt
+    digest: blake3:e8fa0fbefdad2202e3bb34fa5faa2dfd12fd79e2bc19303a97a32241d889237b
+    passed: true
+    diagnostics: []
+    execution_marker: vb-nf2u-incident_failure
+    checks:
+      - kind: Overlap
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-incident_failure-Overlap
+        origin: layout_predicate_outcomes
+      - kind: Clipping
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-incident_failure-Clipping
+        origin: layout_predicate_outcomes
+      - kind: Bounds
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-incident_failure-Bounds
+        origin: layout_predicate_outcomes
+      - kind: ChipReadability
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-incident_failure-ChipReadability
+        origin: layout_predicate_outcomes
+      - kind: SelectedState
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-incident_failure-SelectedState
+        origin: layout_predicate_outcomes
+      - kind: FixtureArtifactProvenance
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-incident_failure-FixtureArtifactProvenance
+        origin: snapshot_inventory_validation
+      - kind: Redaction
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-incident_failure-Redaction
+        origin: redaction_scanner_outcomes
+  - screen_name: action_registry
+    fixture_id: action_registry
+    artifact_path: .evidence/vb-nf2u/ui_snapshots/action_registry.fixture.txt
+    digest: blake3:ed2f9ee146ed8bae0944fcf637df18b9997c643e22a2740b3cca4f7cf6b45887
+    passed: true
+    diagnostics: []
+    execution_marker: vb-nf2u-action_registry
+    checks:
+      - kind: Overlap
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-action_registry-Overlap
+        origin: layout_predicate_outcomes
+      - kind: Clipping
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-action_registry-Clipping
+        origin: layout_predicate_outcomes
+      - kind: Bounds
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-action_registry-Bounds
+        origin: layout_predicate_outcomes
+      - kind: ChipReadability
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-action_registry-ChipReadability
+        origin: layout_predicate_outcomes
+      - kind: SelectedState
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-action_registry-SelectedState
+        origin: layout_predicate_outcomes
+      - kind: FixtureArtifactProvenance
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-action_registry-FixtureArtifactProvenance
+        origin: snapshot_inventory_validation
+      - kind: Redaction
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-action_registry-Redaction
+        origin: redaction_scanner_outcomes
+  - screen_name: storage_doctor_ai_context
+    fixture_id: storage_doctor_ai_context
+    artifact_path: .evidence/vb-nf2u/ui_snapshots/storage_doctor_ai_context.fixture.txt
+    digest: blake3:9fd9baa9321f1ac17790fdded1abb833111f15ca8ff1be71e9f62f261d6f33b2
+    passed: true
+    diagnostics: []
+    execution_marker: vb-nf2u-storage_doctor_ai_context
+    checks:
+      - kind: Overlap
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-storage_doctor_ai_context-Overlap
+        origin: layout_predicate_outcomes
+      - kind: Clipping
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-storage_doctor_ai_context-Clipping
+        origin: layout_predicate_outcomes
+      - kind: Bounds
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-storage_doctor_ai_context-Bounds
+        origin: layout_predicate_outcomes
+      - kind: ChipReadability
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-storage_doctor_ai_context-ChipReadability
+        origin: layout_predicate_outcomes
+      - kind: SelectedState
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-storage_doctor_ai_context-SelectedState
+        origin: layout_predicate_outcomes
+      - kind: FixtureArtifactProvenance
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-storage_doctor_ai_context-FixtureArtifactProvenance
+        origin: snapshot_inventory_validation
+      - kind: Redaction
+        passed: true
+        diagnostics: []
+        execution_marker: vb-nf2u-storage_doctor_ai_context-Redaction
+        origin: redaction_scanner_outcomes

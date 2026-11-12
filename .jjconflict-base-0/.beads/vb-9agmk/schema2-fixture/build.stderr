@@ -1,0 +1,43 @@
+error[E0277]: the trait bound `AcceptedArtifact: serde::Serialize` is not satisfied
+   --> .beads/vb-9agmk/schema2-fixture/emit.rs:7:74
+    |
+  7 |     std::fs::write(root.join("artifact.postcard"), postcard::to_allocvec(&artifact)?)?;
+    |                                                    --------------------- ^^^^^^^^^ the trait `serde_core::ser::Serialize` is not implemented for `AcceptedArtifact`
+    |                                                    |
+    |                                                    required by a bound introduced by this call
+    |
+    = note: for local types consider adding `#[derive(serde::Serialize)]` to your `AcceptedArtifact` type
+    = note: for types from other crates check whether the crate offers a `serde` feature flag
+note: there are multiple different versions of crate `serde_core` in the dependency graph
+   --> /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/serde_core-1.0.228/src/ser/mod.rs:234:1
+    |
+234 | pub trait Serialize {
+    | ------------------- this is the found trait
+    |
+   ::: /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/serde_core-1.0.228/src/ser/mod.rs:234:1
+    |
+234 | pub trait Serialize {
+    | ^^^^^^^^^^^^^^^^^^^ this is the expected trait
+    = help: you can use `cargo tree` to explore your dependency tree
+    = help: the following other types implement trait `serde_core::ser::Serialize`:
+              &'a T
+              &'a mut T
+              ()
+              (T,)
+              (T0, T1)
+              (T0, T1, T2)
+              (T0, T1, T2, T3)
+              (T0, T1, T2, T3, T4)
+            and 113 others
+note: required by a bound in `to_allocvec`
+   --> /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/postcard-1.1.3/src/ser/mod.rs:226:8
+    |
+224 | pub fn to_allocvec<T>(value: &T) -> Result<alloc::vec::Vec<u8>>
+    |        ----------- required by a bound in this function
+225 | where
+226 |     T: Serialize + ?Sized,
+    |        ^^^^^^^^^ required by this bound in `to_allocvec`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

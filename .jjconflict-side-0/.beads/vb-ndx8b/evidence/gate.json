@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-ndx8b-local3090-integrity",
+  "argv": [
+    "bash",
+    "scripts/check-test-integrity.sh"
+  ],
+  "exit_code": 0,
+  "seconds": 0.296,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ndx8b/evidence/gate",
+  "coordinator_message": "Review of in-progress filter: hunk_test_path currently uses ONLY +++ b/ new path, so deleted/renamed-out tests can be skipped (scan_deleted_files catches D but not R). Preserve BOTH old and new relevant paths when deciding block relevance, and do not silently skip binary patches of relevant .rs files (Git emits Binary files differ with no +++ when NUL present). Actual relevant current/base file contents must remain strictUTF8; add nonUTF8-relevantRust case including NUL, plus rename test path to non-test/archive path regression to prove checker does not silently forget coverage. No blanket is_test_path(new) shortcut or relevant bytes lossy. Existing unrelated binarydata allowed, original assertion/deletion findings still fail. Run actual selftests and actual integration gate; report findings without suppressing them."
+}

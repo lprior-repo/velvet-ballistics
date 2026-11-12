@@ -1,0 +1,2 @@
+COMMAND: cargo fmt --check
+STATUS: 0

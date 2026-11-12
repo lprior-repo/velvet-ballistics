@@ -1,0 +1,41 @@
+# vb-jpq7 closure evidence raw log
+# provenance binding command: bd show vb-jpq7.49
+# provenance binding cwd: /home/lewis/src/isoloated/velvet-ballistics-vb-g4mol-local3090-evidence
+# provenance binding timestamp: 2026-10-22T03:48:42Z
+# provenance binding exit_code: 0
+# provenance binding commit: 3f68528d54bb
+# provenance binding tool_version: Python 3.15.0; bd version 1.0.5 (dev)
+# provenance binding note: Current administrative closure-status query only; behavioral evidence not reverified here
+# --- stdout ---
+✓ vb-jpq7.49 · P0: block proof and evidence laundering   [● P0 · CLOSED]
+Owner: Lewis · Assignee: Lewis · Type: task
+Created: 2026-05-22 · Updated: 2026-06-03
+Close reason: Closed after external final proof/black-hat review returned APPROVED. Live checker passes with closed_children=35. Ledger checker passes. vb-rud5 remains open as explicit split-followup debt, not PASS laundering. Evidence workspace: /home/lewis/src/vb-jpq7-49-anti-laundering-gpt55.
+
+DESCRIPTION
+Split from vb-jpq7.8/vb-jpq7.5. Enforce the non-negotiable closure rule so prose summaries stale logs skipped commands and subagent claims cannot close release-blocker beads.
+
+NOTES
+Blocked-state note superseded after closure: dependencies vb-jpq7.48 and vb-jpq7.27 are closed. Anti-laundering live checker findings are represented by the closure evidence manifest in /home/lewis/src/vb-jpq7-48-evidence-checker-gpt55-recovered/.beads/vb-jpq7/closure-evidence-manifest.jsonl; prose-only or stale closure rows must be reopened or superseded by vb-rud5/backfill work before they can count as closure evidence.
+
+ACCEPTANCE CRITERIA
+Closure notes require exact command cwd commit SHA tool version timestamp raw stdout/stderr log path exit code and skipped/deferred/global-failure explanation; summary-only evidence is marked UNVERIFIED; stale PASS claims are reopened or superseded; remaining failures create child beads.
+
+LABELS: anti-laundering, backend-dod, beads, evidence, master-gap, process, release-blocker, truth-serum
+
+PARENT
+  ↑ ✓ vb-jpq7: P0: Truth-serum backend blocker burn-down ● P0
+
+DEPENDS ON
+  → ✓ vb-jpq7.27: P0: rebuild proof obligation ledger with raw evidence ● P0
+  → ✓ vb-jpq7.48: P0: make blocker closure evidence machine-checkable ● P0
+
+BLOCKS
+  ← ✓ vb-jpq7.13: P0: enforce blocker epic dependency and closure guard ● P0
+
+DISCOVERED
+  ◊ ✓ vb-ccyi: P0: land or retire closed proof follow-up worktree diffs ● P0
+  ◊ ✓ vb-r3q8: P0: add vb-jpq7.48 closure manifest row after approved close ● P0
+
+# --- stderr ---
+

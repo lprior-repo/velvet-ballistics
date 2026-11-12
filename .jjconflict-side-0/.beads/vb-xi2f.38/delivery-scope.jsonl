@@ -1,0 +1,28 @@
+{"file":"vb_compile/src/mod_compile_lowering/part_05.rs","api":"digest_step_primitive","issue":"MISSING: Collect field hashing in digest_step_primitive - only primitive name is hashed, not variable/source/pages/items/body fields","line_range":"140-161"}
+{"file":"vb_compile/src/compile/mod.rs","api":"digest_step_primitive","issue":"DUPLICATE: Same missing Collect field hashing issue as part_05.rs","line_range":"243-261"}
+{"file":"vb_compile/src/mod_compile_lowering/part_05.rs","api":"canonical_digest","issue":"SOURCE: Calls digest_step_primitive which misses Collect fields","line_range":"116-138"}
+{"file":"vb_compile/src/compile/mod.rs","api":"canonical_digest","issue":"SOURCE: Duplicate implementation, same issue","line_range":"220-241"}
+{"file":"vb_compile/src/mod_compile_core.rs","api":"compute_compiled_digest","issue":"ARTIFACT: BLAKE3 of serialized WorkflowParts - depends on source digest being correct","line_range":"114-116"}
+{"file":"vb_compile/src/compile/mod.rs","api":"compute_compiled_digest","issue":"ARTIFACT: Duplicate implementation","line_range":"709-711"}
+{"file":"vb_yaml/src/ast/types.rs","api":"StepPrimitive::Collect","issue":"DEFINITION: Collect variant has variable/source/pages/items/body fields not covered in digest","line_range":"207-218"}
+{"file":"vb_yaml/src/ast/parse_steps.rs","api":"parse_collect","issue":"PARSER: Creates Collect primitive with all fields","line_range":"206-220"}
+{"file":"vb_core/src/workflow/mod.rs","api":"CompiledNodeKind::CollectStart","issue":"IR: CollectStart with source/limit/page_size/body/done fields","line":"967"}
+{"file":"vb_core/src/workflow/mod.rs","api":"CompiledNodeKind::CollectPage","issue":"IR: CollectPage with collector_slot/body/done fields","line":"974"}
+{"file":"vb_core/src/workflow/mod.rs","api":"CompiledNodeKind::CollectFinish","issue":"IR: CollectFinish with collector_slot field","line":"984"}
+{"file":"vb_core/src/workflow/mod.rs","api":"CompiledWorkflow::try_from_parts","issue":"VERIFICATION: Validates WorkflowParts including collect nodes","line":"35"}
+{"file":"vb_core/src/workflow/mod.rs","api":"WorkflowParts","issue":"STRUCT: Contains digest field that should reflect collect semantics","line":"274-297"}
+{"file":"vb_core/src/ids/mod.rs","api":"WorkflowDigest","issue":"TYPE: 32-byte BLAKE3 digest wrapper","line":"342-356"}
+{"file":"vb_compile/src/mod_compile_lowering/part_03.rs","api":"lower_canonical_collect","issue":"LOWERING: Emits 4 nodes for collect - source of IR that carries collect semantics","line":"159-212"}
+{"file":"vb_runtime/src/primitives/collect.rs","api":"collect_start","issue":"RUNTIME: Executes CollectStart - pagination with source/list/page semantics","line":"388-415"}
+{"file":"vb_runtime/src/primitives/collect.rs","api":"collect_page","issue":"RUNTIME: Re-entry for body processing","line":"419-429"}
+{"file":"vb_runtime/src/primitives/collect.rs","api":"collect_next","issue":"RUNTIME: Advances pagination cursor","line":"527-553"}
+{"file":"vb_runtime/src/primitives/collect.rs","api":"collect_finish","issue":"RUNTIME: Writes final result","line":"603-617"}
+{"file":"vb_runtime/src/primitives/collect.rs","api":"CollectPaginationState","issue":"STATE: Carries source/page/cursor/limit/page_size for collect iteration","line":"24-45"}
+{"file":"vb_validate/src/gates.rs","api":"validate_node_pairing","issue":"VALIDATION: Validates CollectStart/Page/Finish pairing","line":"507-548"}
+{"file":"crates/vb_compile/src/tests/error_variant_tests.rs","api":"compute_compiled_digest determinism","issue":"TEST: Verifies digest is deterministic for same source","line":"762-801"}
+{"file":"crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs","api":"DigestStatus","issue":"TEST: Cross-run digest determinism verification","line":"12-175"}
+{"file":"crates/vb_storage/tests/vb_core_atomic_admission_red.rs","api":"ArtifactDigestMismatch","issue":"TEST: Artifact digest admission checks","line":"856"}
+{"file":"verification/tla/collect_body_model.tla","api":"Spec","issue":"VERIFICATION: TLA+ model of 4-node collect emission","line":"1-169"}
+{"file":"verification/verus/collect_ir_structure.rs","api":"spec_collect_ir_nodes","issue":"VERIFICATION: PO-012 lower_canonical_collect IR structure","line":"48-74"}
+{"file":"verification/verus/collect_lowering.rs","api":"lemma_lower_canonical_collect_emits_4_nodes","issue":"VERIFICATION: PO-002 lower_canonical_collect pre/post","line":"78"}
+{"file":"verification/kani/collect_try_from_parts.rs","api":"kani_collect_try_from_parts","issue":"VERIFICATION: PO-022 try_from_parts panic-free for collect IR","line":"27-99"}

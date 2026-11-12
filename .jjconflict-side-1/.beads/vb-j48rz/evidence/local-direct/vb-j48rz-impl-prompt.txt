@@ -1,0 +1,16 @@
+Implement accepted contract exact JSON array oneentry no prose. path crates/vb_runtime/src/shard/tests/test_fixtures.rs old let target = u16::from(max_action.get()); new let target = max_action.get(); No otherchanges.
+**Contract: Remove redundant u16 conversion in test fixtures**
+
+**File:** `crates/vb_runtime/src/shard/tests/test_fixtures.rs`
+
+**Change:** Remove `u16::from()` wrapper around `max_action.get()` because `ActionId::get()` already returns `u16`. The target variable is `u16`; the conversion is a no-op.
+
+**Scope:** Single expression in test fixture setup. Loop bounds, capability checks, and registry semantics remain identical.
+
+**Build context:** shard/mod.rs currently declares pub mod tests without cfg(test); its new shared helper therefore compiles in the normal library. vb_runtime has no test-util feature. The earlier explanation was wrong and is corrected before implementation.
+
+**Acceptance:**
+1. `cargo clippy -p vb_runtime --lib -- -D warnings` passes with zero warnings
+2. Five submission regression tests execute and pass unchanged
+
+**Exclusions:** No behavioral claims, no proof obligations, no runtime guarantees beyond compilation and existing test results.

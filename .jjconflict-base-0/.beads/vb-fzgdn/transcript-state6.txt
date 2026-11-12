@@ -1,0 +1,9 @@
+proof-reviewer state 6 attempt 2 adversarial review completed.
+Verus: FAIL (GOD RULE 2 — all 10 proofs define local models, no production binding via extern_spec/requires/ensures)
+Kani: PASS (production-bound: TimerWheel::insert/cancel/fire_expired, PendingTimer::matches_authority, timer_registration_required — minor unwrap violations)
+Proptest: PASS (production-bound: TimerWheel, PendingTimer, timer_registration_required with CompiledWorkflow/RunState)
+Fuzz: PASS (production-bound: timer_registration_required fuzzed with arbitrary bytes)
+Flux: PARTIAL (real annotations present, heavy #[trusted] usage)
+Loom: PARTIAL (Arc<Mutex<...>> with real interleavings, but local types)
+Status: REJECTED. 7/11 attempt 1 findings resolved. 1 CRITICAL remains (Verus).
+See proof-review.md and proof-review-findings.jsonl for detailed findings.

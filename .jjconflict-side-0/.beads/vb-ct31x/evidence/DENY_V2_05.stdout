@@ -1,0 +1,83 @@
+▮▮▮▮ Loading changed files
+Base revision: N/A
+Head revision: HEAD
+Changed files:
+	.beads/vb-ct31x/contract.md
+	.beads/vb-ct31x/coordinator-v1-rejection.md
+	.beads/vb-ct31x/evidence/DENY_V1_01.json
+	.beads/vb-ct31x/evidence/DENY_V1_01.stderr
+	.beads/vb-ct31x/evidence/DENY_V1_01.stdout
+	.beads/vb-ct31x/evidence/DENY_V1_02.json
+	.beads/vb-ct31x/evidence/DENY_V1_02.stderr
+	.beads/vb-ct31x/evidence/DENY_V1_02.stdout
+	.beads/vb-ct31x/evidence/DENY_V1_03.json
+	.beads/vb-ct31x/evidence/DENY_V1_03.stderr
+	.beads/vb-ct31x/evidence/DENY_V1_03.stdout
+	.beads/vb-ct31x/handoff.md
+	crates/vb_storage/src/batch/putters.rs
+	crates/vb_storage/src/constants.rs
+	crates/vb_storage/src/error/codes.rs
+	crates/vb_storage/src/error/mod.rs
+	crates/vb_storage/src/journal/core.rs
+	crates/vb_storage/src/journal/emergency_deny.rs
+	crates/vb_storage/src/journal/emergency_deny_tests.rs
+	crates/vb_storage/src/journal/mod.rs
+	crates/vb_storage/src/journal/readonly.rs
+	crates/vb_storage/src/journal/tests.rs
+	crates/vb_storage/src/tests.rs
+▮▮▮▮ Building action graph
+Action count: 11
+Requested targets: 3
+	:fmt
+	:source-length
+	:lint-src
+Resolved targets: 3
+	velvet-ballistics:lint-src
+	velvet-ballistics:source-length
+	velvet-ballistics:fmt
+▮▮▮▮ Executing action pipeline
+▮▮▮▮ velvet-ballistics:workspace-assertions (80ae4217)
+▮▮▮▮ velvet-ballistics:workspace-assertions (367ms, 80ae4217)
+▮▮▮▮ velvet-ballistics:test-integrity (2a9c8909)
+▮▮▮▮ velvet-ballistics:fmt (108ebe56)
+velvet-ballistics:test-integrity | test integrity: PASS base=HEAD
+▮▮▮▮ velvet-ballistics:test-integrity (422ms, 2a9c8909)
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (be760fe1)
+velvet-ballistics:ignored-fallible-results | FixturePass: clean production-like fixture exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-001 bare fallible call exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-002 let underscore exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 ok err lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 embedded ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 split ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-004 swallowed Err exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-005 drop fallible exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-006 undocumented allow marker exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: path-bound justified exception exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: overbroad exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | FixturePass: malformed exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | ScanDomain: crates/*/src xtask/src
+velvet-ballistics:ignored-fallible-results | NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+▮▮▮▮ velvet-ballistics:fmt (1s 511ms, 108ebe56)
+▮▮▮▮ velvet-ballistics:panic-surface (350498d3)
+velvet-ballistics:panic-surface | CWD: /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair
+velvet-ballistics:panic-surface | CommitSHA: 32e383287d59c6fa163e5038cf7bcbfa2a663a10
+velvet-ballistics:panic-surface | Toolchain: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+velvet-ballistics:panic-surface | Command: bash scripts/check-panic-surface.sh
+velvet-ballistics:panic-surface | ScanDomain: crates/*/src
+velvet-ballistics:panic-surface | NonProductionPathExcluded: tests benches examples fuzz target .beads fixtures build.rs path-scoped tests.rs *_tests.rs kani harnesses loom models
+velvet-ballistics:panic-surface | NoViolationFound
+velvet-ballistics:panic-surface | ExitCode: 0
+▮▮▮▮ velvet-ballistics:panic-surface (4s 180ms, 350498d3)
+▮▮▮▮ velvet-ballistics:unsafe-audit (7c57d237)
+▮▮▮▮ velvet-ballistics:unsafe-audit (10ms, 7c57d237)
+velvet-ballistics:ignored-fallible-results | NoViolationFound
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (27s 839ms, be760fe1)
+▮▮▮▮ velvet-ballistics:lint-src (7a8cea2b)
+▮▮▮▮ velvet-ballistics:banned-token-gates (no op, ad4060c8)
+▮▮▮▮ velvet-ballistics:source-length (5dea487d)
+▮▮▮▮ velvet-ballistics:source-length (4s 527ms, 5dea487d)
+▮▮▮▮ velvet-ballistics:lint-src (12s 994ms, 7a8cea2b)
+
+Tasks: 8 completed, 1 failed
+ Time: 41s 915ms
+

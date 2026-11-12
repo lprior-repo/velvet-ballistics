@@ -1,0 +1,291 @@
+use std::error::Error;
+use vb_core::ActionFailureCode;
+use vb_core::SlotValue;
+use vb_core::action::RetryPolicy as VbRetryPolicy;
+use vb_core::ids::{ActionId, ConstIdx, SlotIdx, WorkflowDigest};
+use vb_core::workflow::{ CompiledNodeKind, ResourceContract, WorkflowParts};
+
+use crate::RuntimeError;
+use crate::counters::ShardCounters;
+use crate::frame_pool::FramePool;
+use crate::journal::{NoopRuntimeJournal, RuntimeJournalEvent, SharedRuntimeJournal};
+use crate::trace::{TraceEvent, TraceRing};
+
+use super::{
+    AskAnswer, AskTicket, InspectResponse, InspectSnapshot, MAX_COMMAND_QUEUE_CAPACITY, RunState,
+    Shard, ShardCommand, ShardConfig,
+};
+use crate::shard::types::{PendingTimer, PendingTimerKind};
+
+fn timer_command(shard: &Shard, run: super::RunId) -> Option<ShardCommand> {
+    let entry = shard.timer_entry(run)?;
+    // A timer may only be delivered once its deadline is due; wait out the
+    // fixture's short timeout so the captured authority is still valid.
+    std::thread::sleep(entry.deadline.saturating_duration_since(std::time::Instant::now()));
+    Some(ShardCommand::TimerFired {
+        run: entry.run,
+        generation: entry.generation,
+        deadline: entry.deadline,
+        kind: entry.kind,
+    })
+}
+
+fn invalid_timer_command(run: super::RunId) -> ShardCommand {
+    ShardCommand::TimerFired {
+        run,
+        generation: 0,
+        deadline: std::time::Instant::now(),
+        kind: PendingTimerKind::Wait,
+    }
+}
+
+fn insert_pending_timer_for_live_run(
+    shard: &mut Shard,
+    run: super::RunId,
+    timer: PendingTimer,
+) -> crate::RuntimeResult<Option<PendingTimer>> {
+    if !shard.run_state_contains(run) && !shard.checked_out_run_contains(run) {
+        shard.checked_out_run_insert(run)?;
+    }
+    shard.pending_timer_insert(run, timer)
+}
+
+fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let node = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::new(0), }, Some(SlotIdx::ZERO), None);
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        name: Box::from("suspended"),
+        digest: WorkflowDigest::from_bytes([1; 32]),
+        nodes: Box::from([node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+fn action_with_error_handler_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let guard = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::ErrorHandler { body: vb_core::ids::StepIdx::new(1), handler: vb_core::ids::StepIdx::new(2), error_slot: None.into(), }, None, None);
+    let action = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::new(0), }, Some(SlotIdx::new(0)), Some(vb_core::ids::StepIdx::new(3)));
+    let handler = vb_core::workflow::node(vb_core::ids::StepIdx::new(2), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(0)), Some(vb_core::ids::StepIdx::new(3)));
+    let finish = vb_core::workflow::node(vb_core::ids::StepIdx::new(3), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        name: Box::from("action_with_error_handler"),
+        digest: WorkflowDigest::from_bytes([3; 32]),
+        nodes: Box::from([guard, action, handler, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([vb_core::value::ConstValue::Bool(false)]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: vb_core::ids::StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+fn action_ticket(run: super::RunId, step: vb_core::ids::StepIdx) -> vb_core::action::ActionTicket {
+    let seq = vb_core::ids::SeqNo::ZERO;
+    let action = ActionId::new(0);
+    vb_core::action::ActionTicket {
+        run,
+        step,
+        seq,
+        action,
+        run_attempt: 1,
+        attempt: 1,
+        idempotency_key: vb_core::action::compute_action_idempotency_key(run, 1, seq, action),
+        capacity: 1,
+     fencing_token: 0, }
+}
+
+fn pending_action_ticket(
+    shard: &Shard,
+    run: super::RunId,
+    step: vb_core::ids::StepIdx,
+    attempt: u16,
+) -> vb_core::action::ActionTicket {
+    let ticket = shard.pending_action_get(run);
+    assert!(
+        ticket.is_some(),
+        "pending action ticket must exist for run {run:?}"
+    );
+    let Some(ticket) = ticket else {
+        return action_ticket(run, step);
+    };
+    assert_eq!(ticket.step, step);
+    assert_eq!(ticket.attempt, attempt);
+    ticket
+}
+
+fn timeout_failure() -> vb_core::action::ActionFailure {
+    vb_core::action::ActionFailure {
+        code: ActionFailureCode::Timeout,
+        retry_policy: VbRetryPolicy::NonRetryable,
+        taint: vb_core::value::Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    }
+}
+
+#[test]
+fn retry_attempt_counter_increments_until_policy_exhaustion() {
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let frame = match vb_core::frame::RunFrame::new(
+        super::RunId::new(9),
+        vb_core::ids::StepIdx::ZERO,
+        1,
+        1,
+    ) {
+        Ok(frame) => frame,
+        Err(_) => return,
+    };
+    let mut state = RunState {
+        run_attempt: core::num::NonZeroU16::MIN,
+        registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
+        frame,
+        workflow,
+        store: vb_core::value_store::ValueStore::new(),
+        action_attempts: super::new_action_attempts(1),
+        admission: None,
+        run_started_millis: None,
+        collect_states: crate::primitives::collect::CollectStates::new(),
+        journal_bytes_written: 0,
+        action_contracts: Box::new([]),
+    };
+    let ticket = vb_core::action::ActionTicket {
+        run: super::RunId::new(9),
+        step: vb_core::ids::StepIdx::ZERO,
+        seq: vb_core::ids::SeqNo::new(1),
+        action: ActionId::new(0),
+        run_attempt: 1,
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 1,
+     fencing_token: 0, };
+    let policy = crate::engine::RetryPolicy {
+        max_attempts: 2,
+        base_delay_ms: 0,
+        exponential_backoff: false,
+    };
+    assert_eq!(
+        super::record_retry_attempt(&mut state, ticket, policy),
+        Ok(true)
+    );
+    assert_eq!(state.action_attempts.get(0).copied(), Some(2));
+    assert_eq!(
+        super::record_retry_attempt(&mut state, ticket, policy),
+        Ok(false)
+    );
+}
+
+#[test]
+fn action_failed_routes_to_nearby_error_handler() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = action_with_error_handler_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(301);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let ticket = pending_action_ticket(&shard, run, vb_core::ids::StepIdx::new(1), 1);
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket,
+            failure: timeout_failure(),
+        }),
+        Ok(())
+    );
+
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    assert_eq!(shard.counters().snapshot().runs_failed, 0);
+}
+
+#[test]
+fn action_failed_without_error_handler_fails_run() -> Result<(), Box<dyn Error>> {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let workflow = suspended_workflow().ok_or("no workflow")?;
+    let run = super::RunId::new(302);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let ticket = shard.pending_action_get(run).ok_or("missing ticket")?;
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket,
+            failure: timeout_failure(),
+        }),
+        Ok(())
+    );
+
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
+}
+
+#[test]
+fn submit_rejects_duplicate_run_id() -> Result<(), Box<dyn Error>> {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let workflow = suspended_workflow().ok_or("no workflow")?;
+    let run = super::RunId::new(451);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow: workflow.clone(),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+        }),
+        Ok(())
+    );
+
+    assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+    assert_eq!(shard.active_run_count(), 1);
+    Ok(())
+}

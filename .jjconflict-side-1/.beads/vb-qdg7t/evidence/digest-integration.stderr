@@ -1,0 +1,6 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-qdg7t-digest-review/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.12s
+     Running tests/compiled_digest_payload.rs (target/debug/deps/compiled_digest_payload-55ecf25e206353b1)
+     Running tests/digest_compilation_pipeline.rs (target/debug/deps/digest_compilation_pipeline-6d530936976c5587)
+     Running tests/digest_duplicate_parity.rs (target/debug/deps/digest_duplicate_parity-564e08204222cf64)
+error: test failed, to rerun pass `-p vb_compile --test digest_duplicate_parity`

@@ -1,0 +1,9 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol/crates/vb_storage)
+error[E0425]: cannot find function `rewrite_payload_digest_for_test` in this scope
+  --> crates/vb_storage/src/codec/tests/admission_receipt.rs:87:5
+   |
+87 |     rewrite_payload_digest_for_test(&mut bytes)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+For more information about this error, try `rustc --explain E0425`.
+error: could not compile `vb_storage` (lib test) due to 1 previous error

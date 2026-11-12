@@ -1,0 +1,14 @@
+STATUS APPROVED
+
+Fixture repair is correct: `input_slots` now declares one slot (slot0, I64) matching `slot_count: 1` and the valid payload `I64(42)` consumed by `Finish(slot0)`. The declaration uses the actual `CompiledInputSlot` fields (`slot`, `kind`) with no invented names, required flags, or defaults.
+
+All nine scenarios remain valid:
+- The valid artifact test requires a correctly declared input slot to pass; the repair enables this.
+- The eight malformed artifact tests intentionally break other IR aspects (unreachable nodes, backward edges, bad constant/accessor/symbol references). They rely on the fixture's valid `input_slots` so failures surface for the intended reasons, not input slot validation. The repair does not mask these failures.
+
+Assertion strengths:
+- Malformed tests check for specific diagnostic substrings ("not reachable", "backward edge", "constant", "accessor", "symbol"), ensuring the correct validation rule fires.
+- The valid test checks for "run completed" in stdout, confirming successful execution.
+- The corpus test compares YAML vs. compiled IR exit codes and asserts no IR validation error, verifying runtime semantics are reached.
+
+No assertion weaknesses relevant to this change. The one-field repair is minimal and targeted; it fixes the fixture to match the actual IR structure without altering test logic or production code. The separate full-package build failure (vb-16buk) is unrelated to this test suite.

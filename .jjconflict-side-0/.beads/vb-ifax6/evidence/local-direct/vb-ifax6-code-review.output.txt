@@ -1,0 +1,30 @@
+**Review: vb-ifax6 — Rust Lint Cleanup**
+
+**Scope:** Semantic safety of needless-borrow removal and dead private declaration pruning.
+
+**Findings:**
+
+1.  **Compiler needless borrow (`vb_compile`):**
+    *   Change: `allocate_input_slots(&source.inputs(), ...)` → `allocate_input_slots(source.inputs(), ...)`.
+    *   `source.inputs()` returns `&[InputField]`. The explicit `&` created `&&[InputField]`, which Rust auto-deref'd. Removal is idiomatic and semantically neutral.
+    *   **Safe.**
+
+2.  **CLI dead enum variant (`velvet_ballistics`):**
+    *   Change: Removed `InputMappingError::SlotIndexOutOfRange` and its `Display` arm.
+    *   `map_runtime_inputs` uses `zip`, which truncates to the shorter iterator. It explicitly checks `values.len() > input_slots.len()` for `SlotCountExceeded`. No code path constructs `SlotIndexOutOfRange`.
+    *   **Safe.**
+
+3.  **CLI dead constant (`velvet_ballistics`):**
+    *   Change: Removed `INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE` and its re-export.
+    *   The constant was only referenced by the removed `Display` arm. No other references exist.
+    *   **Safe.**
+
+**Distinction Verified:**
+*   `CompileError::SlotIndexOutOfRange` (compiler, `vb_compile`) is **retained** and actively used in `part_01.rs` for compile-time validation.
+*   `InputMappingError::SlotIndexOutOfRange` (CLI, `velvet_ballistics`) is **removed** as dead runtime code.
+*   The two types are distinct; no confusion or accidental removal of the compiler error.
+
+**Conclusion:**
+All changes are mechanical lint fixes with no behavioral, API, or wire-format impact. Dead code is genuinely unreachable.
+
+**STATUS: APPROVED**

@@ -1,0 +1,827 @@
+# command: env TMPDIR=target/tmp RUSTC_WRAPPER= RUSTFLAGS=-Dwarnings timeout 10m rustup run nightly-2026-04-28 cargo test -p velvet-ballistics-workspace-tests provenance --all-features
+# workdir: /home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3
+   Compiling serde_core v1.0.228
+   Compiling num-traits v0.2.19
+   Compiling memchr v2.8.0
+   Compiling log v0.4.29
+   Compiling byteorder v1.5.0
+   Compiling zmij v1.0.21
+   Compiling arraydeque v0.5.1
+   Compiling zerocopy v0.8.48
+   Compiling itoa v1.0.18
+   Compiling anstyle v1.0.14
+   Compiling foldhash v0.1.5
+   Compiling simd-adler32 v0.3.9
+   Compiling utf8parse v0.2.2
+   Compiling crc32fast v1.5.0
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling colorchoice v1.0.5
+   Compiling adler2 v2.0.1
+   Compiling anstyle-parse v1.0.0
+   Compiling hashbrown v0.15.5
+   Compiling sfa v1.0.0
+   Compiling anstyle-query v1.1.5
+   Compiling logos-codegen v0.15.1
+   Compiling miniz_oxide v0.8.9
+   Compiling encoding_rs v0.8.35
+   Compiling unicode-width v0.2.2
+   Compiling hash32 v0.2.1
+   Compiling anstream v1.0.0
+   Compiling clap_lex v1.1.0
+   Compiling strsim v0.11.1
+   Compiling either v1.16.0
+   Compiling lsm-tree v3.1.4
+   Compiling winnow v1.0.3
+   Compiling saphyr-parser-bw v0.0.611
+   Compiling annotate-snippets v0.12.16
+   Compiling fdeflate v0.3.7
+   Compiling crossbeam-deque v0.8.6
+   Compiling aho-corasick v1.1.4
+   Compiling flate2 v1.1.9
+   Compiling toml_parser v1.1.2+spec-1.1.0
+   Compiling hashlink v0.10.0
+   Compiling clap_builder v4.6.0
+   Compiling ordered-float v5.3.0
+   Compiling crossbeam-channel v0.5.15
+   Compiling plotters-backend v0.3.7
+   Compiling unsafe-libyaml v0.2.11
+   Compiling base64 v0.22.1
+   Compiling saphyr-parser v0.0.6
+   Compiling pxfm v0.1.29
+   Compiling ryu v1.0.23
+   Compiling nohash-hasher v0.2.0
+   Compiling encoding_rs_io v0.1.7
+   Compiling winnow v0.7.15
+   Compiling ciborium-io v0.2.2
+   Compiling toml_writer v1.1.1+spec-1.1.0
+   Compiling plotters-svg v0.3.7
+   Compiling saphyr v0.0.6
+   Compiling png v0.18.1
+   Compiling rayon-core v1.13.0
+   Compiling itertools v0.13.0
+   Compiling mio v1.2.0
+   Compiling regex-automata v0.4.14
+   Compiling logos-derive v0.15.1
+   Compiling same-file v1.0.6
+   Compiling logos v0.15.1
+   Compiling cast v0.3.0
+   Compiling bytemuck v1.25.0
+   Compiling walkdir v2.5.0
+   Compiling rayon v1.12.0
+   Compiling alloca v0.4.0
+   Compiling plotters v0.3.7
+   Compiling anyhow v1.0.102
+   Compiling page_size v0.6.0
+   Compiling oorandom v11.1.5
+   Compiling serde v1.0.228
+   Compiling serde_json v1.0.150
+   Compiling serde_spanned v1.1.1
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling fjall v3.1.4
+   Compiling semver v1.0.28
+   Compiling camino v1.2.2
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling criterion-plot v0.8.2
+   Compiling bytes v1.11.1
+   Compiling chrono v0.4.44
+   Compiling heapless v0.7.17
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling clap v4.6.1
+   Compiling cargo-platform v0.1.9
+   Compiling cargo_metadata v0.19.2
+   Compiling tinytemplate v1.2.1
+   Compiling anes v0.1.6
+   Compiling postcard v1.1.3
+   Compiling moxcms v0.8.1
+   Compiling regex v1.12.3
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/crates/vb_core)
+   Compiling ppv-lite86 v0.2.21
+   Compiling ahash v0.8.12
+   Compiling half v2.7.1
+   Compiling rand_chacha v0.9.0
+   Compiling serde-saphyr v0.0.25
+   Compiling ciborium-ll v0.2.2
+   Compiling rand v0.9.4
+   Compiling ciborium v0.2.2
+   Compiling criterion v0.8.2
+   Compiling proptest v1.11.0
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/crates/workspace_tests)
+   Compiling image v0.25.10
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/crates/vb_storage)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/crates/vb_validate)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/crates/vb_compile)
+   Compiling xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/xtask)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/crates/vb_runtime)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/crates/vb_ipc)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-runtime-a3/crates/vb_cli)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.37s
+     Running unittests src/lib.rs (target/debug/deps/velvet_ballistics_workspace_tests-fb3bcb44e58f638b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.00s
+
+     Running tests/bdd_idempotency.rs (target/debug/deps/bdd_idempotency-7666822abda46a0b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.00s
+
+     Running tests/bdd_runner_tests.rs (target/debug/deps/bdd_runner_tests-6523ca6f8439b4f8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.00s
+
+     Running tests/behavior_symbolic_code_serde.rs (target/debug/deps/behavior_symbolic_code_serde-cc99992084d0cfba)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/bounded_memory_lease_tests.rs (target/debug/deps/bounded_memory_lease_tests-c9131f8df330295b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+     Running tests/cancel_kill_lattice_props.rs (target/debug/deps/cancel_kill_lattice_props-e9679df033ffc13b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.00s
+
+     Running tests/cancel_kill_lattice_tests.rs (target/debug/deps/cancel_kill_lattice_tests-22c2466f620aad95)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.00s
+
+     Running tests/contracts_as_data_kani.rs (target/debug/deps/contracts_as_data_kani-52d3c47d2eb06325)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/contracts_as_data_props.rs (target/debug/deps/contracts_as_data_props-ba9c9a74a8640ee4)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 17 filtered out; finished in 0.00s
+
+     Running tests/contracts_integration.rs (target/debug/deps/contracts_integration-5af9e1150fae30c2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 30 filtered out; finished in 0.00s
+
+     Running tests/contracts_production_binding.rs (target/debug/deps/contracts_production_binding-c1a3f13e01c16e5c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 31 filtered out; finished in 0.00s
+
+     Running tests/derived_status_replay_timeline_tests.rs (target/debug/deps/derived_status_replay_timeline_tests-18a8d21648991907)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.00s
+
+     Running tests/diagnostic_code_ranges_test.rs (target/debug/deps/diagnostic_code_ranges_test-0fecf3b5a0e5625e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/e2e_diagnostic_chain.rs (target/debug/deps/e2e_diagnostic_chain-c9a3c6d2ee31a85c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+     Running tests/fjall_keyspace_manifest_tests.rs (target/debug/deps/fjall_keyspace_manifest_tests-159ef6d6780bb6db)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 0.00s
+
+     Running tests/integration_boundary_inventory_evidence_validation.rs (target/debug/deps/integration_boundary_inventory_evidence_validation-b6e3938751806012)
+
+running 4 tests
+test evidence_kind_provenance_is_valid ... ok
+test validate_record_accepts_bead_id_as_external_provenance ... ok
+test validate_record_accepts_external_provenance_with_sha256 ... ok
+test validate_record_rejects_external_provenance_without_sha256 ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 28 filtered out; finished in 0.00s
+
+     Running tests/integration_compile_error_message_quality.rs (target/debug/deps/integration_compile_error_message_quality-ff1e4aba8920641d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 25 filtered out; finished in 0.00s
+
+     Running tests/integration_runtime_storage_fault_tolerance.rs (target/debug/deps/integration_runtime_storage_fault_tolerance-4f53a2b388ea85d1)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.00s
+
+     Running tests/integration_storage_runtime_recovery.rs (target/debug/deps/integration_storage_runtime_recovery-cdeae93e047b1cd5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
+
+     Running tests/integration_storage_runtime_validate_pipeline.rs (target/debug/deps/integration_storage_runtime_validate_pipeline-ee2084f4ee3c88b6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.00s
+
+     Running tests/integration_strict_persist_drop_reopen.rs (target/debug/deps/integration_strict_persist_drop_reopen-33aa9b08ed7d4e63)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/integration_subprocess_wal_crash_recovery.rs (target/debug/deps/integration_subprocess_wal_crash_recovery-3860e6e29156437e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/integration_validate_policy_enforcement.rs (target/debug/deps/integration_validate_policy_enforcement-708861e4d9b45cdd)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 26 filtered out; finished in 0.00s
+
+     Running tests/integration_validate_yaml_parsing.rs (target/debug/deps/integration_validate_yaml_parsing-bc229788f7cbdff0)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 29 filtered out; finished in 0.00s
+
+     Running tests/journal_batch_accounting_tests.rs (target/debug/deps/journal_batch_accounting_tests-0117848c25fad747)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.00s
+
+     Running tests/journal_side_index_contracts.rs (target/debug/deps/journal_side_index_contracts-d1828c22dcefb323)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/phase0_scaffold_test.rs (target/debug/deps/phase0_scaffold_test-48a711dd98ca98f6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/postcard_envelope_wire_tests.rs (target/debug/deps/postcard_envelope_wire_tests-0480f94ed1115f17)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.00s
+
+     Running tests/proptest_compile_error_codes.rs (target/debug/deps/proptest_compile_error_codes-f822610e6d6853da)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/proptest_diagnostic_codes.rs (target/debug/deps/proptest_diagnostic_codes-22bc8f7f633667ca)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/proptest_equality.rs (target/debug/deps/proptest_equality-694ba225ca3d8510)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.00s
+
+     Running tests/proptest_error_types_nonzero_codes.rs (target/debug/deps/proptest_error_types_nonzero_codes-72f29adf136f251f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests/proptest_error_types_registration.rs (target/debug/deps/proptest_error_types_registration-1768a60e9bb4f54d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/raii_introspection_registry_tests.rs (target/debug/deps/raii_introspection_registry_tests-1f0b504df07a8c18)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.00s
+
+     Running tests/recovery_watermark_tests.rs (target/debug/deps/recovery_watermark_tests-076b41e28e4da4ee)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+     Running tests/restate_adapter_contamination_guard.rs (target/debug/deps/restate_adapter_contamination_guard-7c9a57cb88e20a9a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/restate_completion_watermark_tests.rs (target/debug/deps/restate_completion_watermark_tests-8ff8070b1ca4f168)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/restate_decode_error_taxonomy_tests.rs (target/debug/deps/restate_decode_error_taxonomy_tests-094e4bf7624b2e07)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/restate_doctor_key_decode_tests.rs (target/debug/deps/restate_doctor_key_decode_tests-03a4f9d56fec9a2d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 48 filtered out; finished in 0.00s
+
+     Running tests/restate_doctor_storage_scan_decode_tests.rs (target/debug/deps/restate_doctor_storage_scan_decode_tests-c1bc1a936dadd749)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 69 filtered out; finished in 0.00s
+
+     Running tests/restate_explicit_migration_skeleton_tests.rs (target/debug/deps/restate_explicit_migration_skeleton_tests-3e45e396e41d9e72)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 51 filtered out; finished in 0.00s
+
+     Running tests/restate_fifo_backpressure_tests.rs (target/debug/deps/restate_fifo_backpressure_tests-083052e77e817d84)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 17 filtered out; finished in 0.00s
+
+     Running tests/restate_ipc_flag_matrix_tests.rs (target/debug/deps/restate_ipc_flag_matrix_tests-449af9bdabed9849)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 38 filtered out; finished in 0.00s
+
+     Running tests/restate_journal_tail_scan_fallback_tests.rs (target/debug/deps/restate_journal_tail_scan_fallback_tests-1012142ebcc016bb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 50 filtered out; finished in 0.00s
+
+     Running tests/restate_postcard_newtype_compat_tests.rs (target/debug/deps/restate_postcard_newtype_compat_tests-36d7fd2e98e94d7f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 39 filtered out; finished in 0.00s
+
+     Running tests/restate_retry_policy_math_tests.rs (target/debug/deps/restate_retry_policy_math_tests-2fa156a740533fe8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/restate_shard_partition_math_properties.rs (target/debug/deps/restate_shard_partition_math_properties-7483881c41c28096)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.00s
+
+     Running tests/restate_shutdown_drain_tests.rs (target/debug/deps/restate_shutdown_drain_tests-9842b0b9c09378c9)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 0.00s
+
+     Running tests/restate_storage_blackhat_fixture_corpus.rs (target/debug/deps/restate_storage_blackhat_fixture_corpus-e99147eadb48d8da)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+     Running tests/restate_sync_drr_scheduler_tests.rs (target/debug/deps/restate_sync_drr_scheduler_tests-cf313fec1dd21a82)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 0.00s
+
+     Running tests/restate_timer_deadline_primitive_tests.rs (target/debug/deps/restate_timer_deadline_primitive_tests-ec7b19be97038c85)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 141 filtered out; finished in 0.00s
+
+     Running tests/restate_typed_partitioned_id_tests.rs (target/debug/deps/restate_typed_partitioned_id_tests-d1c2fb183d90124d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/runtime_version_barrier_tests.rs (target/debug/deps/runtime_version_barrier_tests-e251f41eb1e0dc35)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 0.00s
+
+     Running tests/section17_runtime_code_coverage_report.rs (target/debug/deps/section17_runtime_code_coverage_report-ad801a4595bbeb5e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/section17_runtime_code_reverse_parity.rs (target/debug/deps/section17_runtime_code_reverse_parity-eb1f78b7471126db)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/slot_written_ordering_integration_tests.rs (target/debug/deps/slot_written_ordering_integration_tests-f78aca0e67cbee91)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.00s
+
+     Running tests/snapshot_sequence_precondition_tests.rs (target/debug/deps/snapshot_sequence_precondition_tests-a0201e31d71901e1)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/storage_contract_pack_runner.rs (target/debug/deps/storage_contract_pack_runner-2f6cc4bc217c7f34)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/storage_ipc_resource_scenarios.rs (target/debug/deps/storage_ipc_resource_scenarios-4519b25248b653e2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/symbolic_code_behavior_tests.rs (target/debug/deps/symbolic_code_behavior_tests-e250e00f36af4dac)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 32 filtered out; finished in 0.00s
+
+     Running tests/vb_37lc_canonical_spelling_red.rs (target/debug/deps/vb_37lc_canonical_spelling_red-ea4869673f91aa42)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 76 filtered out; finished in 0.00s
+
+     Running tests/vb_5xs4_test_loop_inventory_red.rs (target/debug/deps/vb_5xs4_test_loop_inventory_red-5981731919a19776)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 78 filtered out; finished in 0.00s
+
+     Running tests/vb_8ma2_workspace_assertions.rs (target/debug/deps/vb_8ma2_workspace_assertions-05ac6dac39311c8d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+     Running tests/vb_8mdp_7_resource_admission_props.rs (target/debug/deps/vb_8mdp_7_resource_admission_props-976a746aaca7347c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+     Running tests/vb_c1s0_orchestration_runtime_tests.rs (target/debug/deps/vb_c1s0_orchestration_runtime_tests-4e277f547739eace)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 29 filtered out; finished in 0.00s
+
+     Running tests/vb_c3k9_current_api_mutation_plan.rs (target/debug/deps/vb_c3k9_current_api_mutation_plan-529a495df191d0e5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests/vb_core_yaml_e2e_chain_contract.rs (target/debug/deps/vb_core_yaml_e2e_chain_contract-e08b64b178be652d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.00s
+
+     Running tests/vb_doc_boundary_inventory_integration.rs (target/debug/deps/vb_doc_boundary_inventory_integration-8f1c487034fa49fc)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 34 filtered out; finished in 0.00s
+
+     Running tests/vb_doc_taint_regression.rs (target/debug/deps/vb_doc_taint_regression-06d073311ad4abe3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+     Running tests/vb_eepg_bdd_tests.rs (target/debug/deps/vb_eepg_bdd_tests-c3fb7ce9d30d4f55)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 33 filtered out; finished in 0.00s
+
+     Running tests/vb_fzx7_benchmark_groups.rs (target/debug/deps/vb_fzx7_benchmark_groups-2f2e7b16f64214eb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.00s
+
+     Running tests/vb_fzx7_budget_arithmetic.rs (target/debug/deps/vb_fzx7_budget_arithmetic-7837b4720eaba503)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 25 filtered out; finished in 0.00s
+
+     Running tests/vb_fzx7_error_variants.rs (target/debug/deps/vb_fzx7_error_variants-e4d0e570478801c8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 28 filtered out; finished in 0.00s
+
+     Running tests/vb_fzx7_evidence_gate.rs (target/debug/deps/vb_fzx7_evidence_gate-92d870d0059f6a1c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.00s
+
+     Running tests/vb_fzx7_invariants.rs (target/debug/deps/vb_fzx7_invariants-99a084ae4f53a73b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+     Running tests/vb_hxm0_acceptance_catalog.rs (target/debug/deps/vb_hxm0_acceptance_catalog-7c09f785ae35dd94)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
+
+     Running tests/vb_jpq7_3_fail_closed_storage_recovery_contract.rs (target/debug/deps/vb_jpq7_3_fail_closed_storage_recovery_contract-b4da155ae04b39d9)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/vb_kkvb_xtask_command_shell_coverage.rs (target/debug/deps/vb_kkvb_xtask_command_shell_coverage-d0cfebc7b3843591)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests/vb_kkvb_xtask_density_explicit.rs (target/debug/deps/vb_kkvb_xtask_density_explicit-8fae23a97fce5d38)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+     Running tests/vb_kkvb_xtask_red_phase.rs (target/debug/deps/vb_kkvb_xtask_red_phase-4a66ae527df0be0f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/vb_ko29_5_public_idempotency.rs (target/debug/deps/vb_ko29_5_public_idempotency-f460cf571b1b1d20)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
+
+     Running tests/vb_kyyf_cross_run_determinism.rs (target/debug/deps/vb_kyyf_cross_run_determinism-1f5484f2d29c8ad0)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.00s
+
+     Running tests/vb_l2d7_doc_reconciliation_contract_red.rs (target/debug/deps/vb_l2d7_doc_reconciliation_contract_red-3dfe715eb92bb420)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 70 filtered out; finished in 0.00s
+
+     Running tests/vb_lp2v_admission_integration.rs (target/debug/deps/vb_lp2v_admission_integration-e83b24e46702cb8b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/vb_lp2v_admission_proptests.rs (target/debug/deps/vb_lp2v_admission_proptests-817d344067e3df71)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/vb_lp2v_proof_admission_bdd.rs (target/debug/deps/vb_lp2v_proof_admission_bdd-54595911417c642b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/vb_nf2u_ui_release_acceptance.rs (target/debug/deps/vb_nf2u_ui_release_acceptance-ccfbb54c80b22abf)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests/vb_njju_mutation_fuzz_property_closure.rs (target/debug/deps/vb_njju_mutation_fuzz_property_closure-7cb165b9398d0c0c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/vb_qi37_1_1_red_recovery_contract_test.rs (target/debug/deps/vb_qi37_1_1_red_recovery_contract_test-0f53af84361b82c7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 0.00s
+
+     Running tests/vb_qi37_25_quality_gates.rs (target/debug/deps/vb_qi37_25_quality_gates-2e3f646c6e217c66)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/vb_qi37_2_4_integration_budget_errors.rs (target/debug/deps/vb_qi37_2_4_integration_budget_errors-be284149a1d5fdac)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 47 filtered out; finished in 0.00s
+
+     Running tests/vb_qi37_4_2_strict_runtime_admission.rs (target/debug/deps/vb_qi37_4_2_strict_runtime_admission-5f69a586b90c4f90)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.00s
+
+     Running tests/vb_qi37_6_state8_setup.rs (target/debug/deps/vb_qi37_6_state8_setup-63dffbf0ac5651ed)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/vb_s25h2_full_journal_reader.rs (target/debug/deps/vb_s25h2_full_journal_reader-0ef69c8a2ad93ad1)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/vb_s25h2_recover_entry_points.rs (target/debug/deps/vb_s25h2_recover_entry_points-4a1b78f10039c137)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/vb_ssei_verification_admission_acceptance.rs (target/debug/deps/vb_ssei_verification_admission_acceptance-8ff43dcae7d5ecc3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+     Running tests/vb_te1i_binary_ipc_acceptance.rs (target/debug/deps/vb_te1i_binary_ipc_acceptance-d08bfc3e1bd6c452)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+     Running tests/vb_test_cli_diff_incident_behavior.rs (target/debug/deps/vb_test_cli_diff_incident_behavior-41466f6d2e4e51e8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 48 filtered out; finished in 0.00s
+
+     Running tests/vb_test_cli_run_lifecycle_behavior.rs (target/debug/deps/vb_test_cli_run_lifecycle_behavior-caf769ebcfc09797)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+     Running tests/vb_test_cli_storage_io_behavior.rs (target/debug/deps/vb_test_cli_storage_io_behavior-2f0aa79c0a1889ab)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.00s
+
+     Running tests/vb_test_compile_error_quality_behavior.rs (target/debug/deps/vb_test_compile_error_quality_behavior-ebc208c3824d7932)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.00s
+
+     Running tests/vb_test_compile_parse_validate_behavior.rs (target/debug/deps/vb_test_compile_parse_validate_behavior-cb558eac2f420a71)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 43 filtered out; finished in 0.00s
+
+     Running tests/vb_test_core_admission_trigger_behavior.rs (target/debug/deps/vb_test_core_admission_trigger_behavior-0ce6018edf4534fe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 52 filtered out; finished in 0.00s
+
+     Running tests/vb_test_core_workflow_slot_behavior.rs (target/debug/deps/vb_test_core_workflow_slot_behavior-5fe0c7a9f94e8f04)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 39 filtered out; finished in 0.00s
+
+     Running tests/vb_test_core_yaml_chain_behavior.rs (target/debug/deps/vb_test_core_yaml_chain_behavior-686100ff611e15c7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 37 filtered out; finished in 0.00s
+
+     Running tests/vb_test_runtime_ipc_resource_behavior.rs (target/debug/deps/vb_test_runtime_ipc_resource_behavior-f87227968710c6a6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.00s
+
+     Running tests/vb_test_runtime_lifecycle_state_behavior.rs (target/debug/deps/vb_test_runtime_lifecycle_state_behavior-b8fae182d0af9d19)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 40 filtered out; finished in 0.00s
+
+     Running tests/vb_test_runtime_queue_timer_behavior.rs (target/debug/deps/vb_test_runtime_queue_timer_behavior-ebeb1740b334f372)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.00s
+
+     Running tests/vb_test_util_crate.rs (target/debug/deps/vb_test_util_crate-06b5d977608bbbf5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests/vb_test_validate_diagnostic_behavior.rs (target/debug/deps/vb_test_validate_diagnostic_behavior-03ddc9c5a31bbd00)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 140 filtered out; finished in 0.00s
+
+     Running tests/vb_test_validate_policy_enforce_behavior.rs (target/debug/deps/vb_test_validate_policy_enforce_behavior-231227ad5ae1c4a7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 42 filtered out; finished in 0.00s
+
+     Running tests/vb_test_validate_yaml_parsing_behavior.rs (target/debug/deps/vb_test_validate_yaml_parsing_behavior-489d71f1c69a561f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 62 filtered out; finished in 0.00s
+
+     Running tests/vb_vt2f_direct_runtime_api_acceptance.rs (target/debug/deps/vb_vt2f_direct_runtime_api_acceptance-dc09304ab88b2cb8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+     Running tests/vb_y1zq_boundary_inventory_contract.rs (target/debug/deps/vb_y1zq_boundary_inventory_contract-7d7410d2162f951c)
+
+running 7 tests
+test parser_evidence::validate_evidence_reference_bytes_rejects_partial_external_provenance_markers ... ok
+test parser_evidence::validate_evidence_reference_bytes_returns_external_provenance_when_bead_id_is_valid ... ok
+test parser_evidence::validate_evidence_reference_bytes_returns_external_provenance_when_external_digest_exists ... ok
+test parser_evidence::validate_evidence_reference_bytes_returns_repo_local_provenance_when_path_exists ... ok
+test validation_evidence_review::validate_inventory_returns_invalid_evidence_path_when_external_provenance_lacks_digest ... ok
+test validation_evidence_review::validate_inventory_accepts_external_sha256_provenance_as_evidence_path ... ok
+test validation_evidence_review::validate_inventory_accepts_bead_id_provenance_as_evidence_path ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 105 filtered out; finished in 0.00s
+
+     Running tests/vb_y1zq_boundary_inventory_properties.rs (target/debug/deps/vb_y1zq_boundary_inventory_properties-f84e7541daba2ba9)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/vb_y1zq_boundary_inventory_properties_v2.rs (target/debug/deps/vb_y1zq_boundary_inventory_properties_v2-bf51d365c9b6a9a6)
+
+running 1 test
+test validate_evidence_reference_accepts_external_provenance_with_sha256 ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.01s
+
+
+# exit_status=0

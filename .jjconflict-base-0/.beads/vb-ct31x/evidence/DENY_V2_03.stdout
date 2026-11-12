@@ -1,0 +1,400 @@
+▮▮▮▮ Loading changed files
+Base revision: N/A
+Head revision: HEAD
+Changed files:
+	.beads/vb-ct31x/contract.md
+	.beads/vb-ct31x/coordinator-v1-rejection.md
+	.beads/vb-ct31x/evidence/DENY_V1_01.json
+	.beads/vb-ct31x/evidence/DENY_V1_01.stderr
+	.beads/vb-ct31x/evidence/DENY_V1_01.stdout
+	.beads/vb-ct31x/evidence/DENY_V1_02.json
+	.beads/vb-ct31x/evidence/DENY_V1_02.stderr
+	.beads/vb-ct31x/evidence/DENY_V1_02.stdout
+	.beads/vb-ct31x/evidence/DENY_V1_03.json
+	.beads/vb-ct31x/evidence/DENY_V1_03.stderr
+	.beads/vb-ct31x/evidence/DENY_V1_03.stdout
+	.beads/vb-ct31x/handoff.md
+	crates/vb_storage/src/batch/putters.rs
+	crates/vb_storage/src/constants.rs
+	crates/vb_storage/src/error/codes.rs
+	crates/vb_storage/src/error/mod.rs
+	crates/vb_storage/src/journal/core.rs
+	crates/vb_storage/src/journal/emergency_deny.rs
+	crates/vb_storage/src/journal/emergency_deny_tests.rs
+	crates/vb_storage/src/journal/mod.rs
+	crates/vb_storage/src/journal/readonly.rs
+	crates/vb_storage/src/journal/tests.rs
+	crates/vb_storage/src/tests.rs
+▮▮▮▮ Building action graph
+Action count: 11
+Requested targets: 3
+	:fmt
+	:source-length
+	:lint-src
+Resolved targets: 3
+	velvet-ballistics:lint-src
+	velvet-ballistics:source-length
+	velvet-ballistics:fmt
+▮▮▮▮ Executing action pipeline
+▮▮▮▮ velvet-ballistics:test-integrity (e5616cd6)
+▮▮▮▮ velvet-ballistics:fmt (05c78e30)
+velvet-ballistics:test-integrity | test integrity: PASS base=HEAD
+▮▮▮▮ velvet-ballistics:test-integrity (370ms, e5616cd6)
+▮▮▮▮ velvet-ballistics:panic-surface (d5220a61)
+velvet-ballistics:panic-surface | CWD: /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair
+velvet-ballistics:panic-surface | CommitSHA: 32e383287d59c6fa163e5038cf7bcbfa2a663a10
+velvet-ballistics:panic-surface | Toolchain: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+velvet-ballistics:panic-surface | Command: bash scripts/check-panic-surface.sh
+velvet-ballistics:panic-surface | ScanDomain: crates/*/src
+velvet-ballistics:panic-surface | NonProductionPathExcluded: tests benches examples fuzz target .beads fixtures build.rs path-scoped tests.rs *_tests.rs kani harnesses loom models
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/batch/putters.rs:297:
+          velvet-ballistics:fmt |      /// at the fixed key. This is committed atomically with other batch
+          velvet-ballistics:fmt |      /// operations. Crate-private: binds the fixed key internally, no
+          velvet-ballistics:fmt |      /// arbitrary key/value public API.
+          velvet-ballistics:fmt | -    pub(crate) fn put_emergency_deny(
+          velvet-ballistics:fmt | -        &mut self,
+          velvet-ballistics:fmt | -        value: [u8; 1],
+          velvet-ballistics:fmt | -    ) -> Result<(), JournalError> {
+          velvet-ballistics:fmt | -        self.inner.insert(&self.journal.emergency_deny, b"active", value);
+          velvet-ballistics:fmt | +    pub(crate) fn put_emergency_deny(&mut self, value: [u8; 1]) -> Result<(), JournalError> {
+          velvet-ballistics:fmt | +        self.inner
+          velvet-ballistics:fmt | +            .insert(&self.journal.emergency_deny, b"active", value);
+          velvet-ballistics:fmt |          Ok(())
+          velvet-ballistics:fmt |      }
+          velvet-ballistics:fmt |  }
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/error/codes.rs:82:
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt |      /// Diagnostic code for emergency-deny marker with unsupported version
+          velvet-ballistics:fmt |      /// (`JournalError::EmergencyDenyMarkerUnsupportedVersion`).
+          velvet-ballistics:fmt | -    pub const EMERGENCY_DENY_UNSUPPORTED_VERSION_CODE: DiagnosticCode =
+          velvet-ballistics:fmt | -        DiagnosticCode::new(0x4042);
+          velvet-ballistics:fmt | +    pub const EMERGENCY_DENY_UNSUPPORTED_VERSION_CODE: DiagnosticCode = DiagnosticCode::new(0x4042);
+          velvet-ballistics:fmt |      /// Diagnostic code for malformed emergency-deny marker
+          velvet-ballistics:fmt |      /// (`JournalError::EmergencyDenyMarkerMalformed`).
+          velvet-ballistics:fmt |      pub const EMERGENCY_DENY_MALFORMED_CODE: DiagnosticCode = DiagnosticCode::new(0x4043);
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/core.rs:20:
+          velvet-ballistics:fmt |      types::{FjallConfig, KeyspaceProfile},
+          velvet-ballistics:fmt |  };
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt | -
+          velvet-ballistics:fmt | -
+          velvet-ballistics:fmt |  /// Bounded replay limit for journal event collection.
+          velvet-ballistics:fmt |  #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+          velvet-ballistics:fmt |  pub struct EventReplayLimit {
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny.rs:13:
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt |  use crate::error::JournalError;
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt | -
+          velvet-ballistics:fmt |  /// Emergency-deny overlay state persisted in the Fjall journal store.
+          velvet-ballistics:fmt |  ///
+          velvet-ballistics:fmt |  /// `Inactive` means no emergency-deny marker is present. `Active` means a
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny.rs:58:
+          velvet-ballistics:fmt |          }
+          velvet-ballistics:fmt |          // Validate version byte
+          velvet-ballistics:fmt |          if bytes[0] != EMERGENCY_DENY_VERSION {
+          velvet-ballistics:fmt | -            return Err(JournalError::EmergencyDenyMarkerUnsupportedVersion {
+          velvet-ballistics:fmt | -                version: bytes[0],
+          velvet-ballistics:fmt | -            });
+          velvet-ballistics:fmt | +            return Err(JournalError::EmergencyDenyMarkerUnsupportedVersion { version: bytes[0] });
+          velvet-ballistics:fmt |          }
+          velvet-ballistics:fmt |          Ok(EmergencyDenyState::Active)
+          velvet-ballistics:fmt |      }
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny_tests.rs:15:
+          velvet-ballistics:fmt |  //! - Already Active retry still performs strict persistence
+          velvet-ballistics:fmt |  //! - Original run event history unchanged after activation
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt | -use crate::events::JournalEvent;
+          velvet-ballistics:fmt |  use crate::error::JournalError;
+          velvet-ballistics:fmt | +use crate::events::JournalEvent;
+          velvet-ballistics:fmt |  use crate::journal::EmergencyDenyState;
+          velvet-ballistics:fmt |  use crate::journal::FjallJournal;
+          velvet-ballistics:fmt |  use std::path::PathBuf;
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny_tests.rs:119:
+          velvet-ballistics:fmt |      let err = result.err().expect("wrong length should error");
+          velvet-ballistics:fmt |      match err {
+          velvet-ballistics:fmt |          JournalError::EmergencyDenyMarkerMalformed => {}
+          velvet-ballistics:fmt | -        other => return Err(JournalError::Fjall(fjall::Error::Io(
+          velvet-ballistics:fmt | -            std::io::Error::new(
+          velvet-ballistics:fmt | +        other => {
+          velvet-ballistics:fmt | +            return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+          velvet-ballistics:fmt |                  std::io::ErrorKind::Other,
+          velvet-ballistics:fmt |                  format!("expected Malformed error, got {:?}", other),
+          velvet-ballistics:fmt | -            ),
+          velvet-ballistics:fmt | -        ))),
+          velvet-ballistics:fmt | +            ))));
+          velvet-ballistics:fmt | +        }
+          velvet-ballistics:fmt |      }
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt |      // Activation should also reject corrupt state without overwriting
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny_tests.rs:131:
+          velvet-ballistics:fmt |      let result = journal.activate_emergency_deny();
+          velvet-ballistics:fmt | -    let err = result.err().expect("activation should reject corrupt state");
+          velvet-ballistics:fmt | +    let err = result
+          velvet-ballistics:fmt | +        .err()
+          velvet-ballistics:fmt | +        .expect("activation should reject corrupt state");
+          velvet-ballistics:fmt |      match err {
+          velvet-ballistics:fmt |          JournalError::EmergencyDenyMarkerMalformed => {}
+          velvet-ballistics:fmt | -        other => return Err(JournalError::Fjall(fjall::Error::Io(
+          velvet-ballistics:fmt | -            std::io::Error::new(
+          velvet-ballistics:fmt | +        other => {
+          velvet-ballistics:fmt | +            return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+          velvet-ballistics:fmt |                  std::io::ErrorKind::Other,
+          velvet-ballistics:fmt |                  format!("expected Malformed error on activation, got {:?}", other),
+          velvet-ballistics:fmt | -            ),
+          velvet-ballistics:fmt | -        ))),
+          velvet-ballistics:fmt | +            ))));
+          velvet-ballistics:fmt | +        }
+          velvet-ballistics:fmt |      }
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt |      // Verify raw bad bytes preserved (not silently overwritten)
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny_tests.rs:146:
+          velvet-ballistics:fmt |          .get(b"active")
+          velvet-ballistics:fmt |          .map_err(JournalError::Fjall)?;
+          velvet-ballistics:fmt |      if stored.is_none() {
+          velvet-ballistics:fmt | -        return Err(JournalError::Fjall(fjall::Error::Io(
+          velvet-ballistics:fmt | -            std::io::Error::new(
+          velvet-ballistics:fmt | -                std::io::ErrorKind::Other,
+          velvet-ballistics:fmt | -                "expected bad marker to still be present",
+          velvet-ballistics:fmt | -            ),
+          velvet-ballistics:fmt | -        )));
+          velvet-ballistics:fmt | +        return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+          velvet-ballistics:fmt | +            std::io::ErrorKind::Other,
+          velvet-ballistics:fmt | +            "expected bad marker to still be present",
+          velvet-ballistics:fmt | +        ))));
+          velvet-ballistics:fmt |      }
+          velvet-ballistics:fmt |      let stored_bytes = stored.unwrap().to_vec();
+          velvet-ballistics:fmt |      if stored_bytes.len() != 5 {
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny_tests.rs:158:
+          velvet-ballistics:fmt | -        return Err(JournalError::Fjall(fjall::Error::Io(
+          velvet-ballistics:fmt | -            std::io::Error::new(
+          velvet-ballistics:fmt | -                std::io::ErrorKind::Other,
+          velvet-ballistics:fmt | -                format!("expected 5 bytes preserved, got {}", stored_bytes.len()),
+          velvet-ballistics:fmt | -            ),
+          velvet-ballistics:fmt | -        )));
+          velvet-ballistics:fmt | +        return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+          velvet-ballistics:fmt | +            std::io::ErrorKind::Other,
+          velvet-ballistics:fmt | +            format!("expected 5 bytes preserved, got {}", stored_bytes.len()),
+          velvet-ballistics:fmt | +        ))));
+          velvet-ballistics:fmt |      }
+          velvet-ballistics:fmt |      Ok(())
+          velvet-ballistics:fmt |  }
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny_tests.rs:183:
+          velvet-ballistics:fmt |      match err {
+          velvet-ballistics:fmt |          JournalError::EmergencyDenyMarkerUnsupportedVersion { version } => {
+          velvet-ballistics:fmt |              if version != 99 {
+          velvet-ballistics:fmt | -                return Err(JournalError::Fjall(fjall::Error::Io(
+          velvet-ballistics:fmt | -                    std::io::Error::new(
+          velvet-ballistics:fmt | -                        std::io::ErrorKind::Other,
+          velvet-ballistics:fmt | -                        format!("expected version 99, got {}", version),
+          velvet-ballistics:fmt | -                    ),
+          velvet-ballistics:fmt | -                )));
+          velvet-ballistics:fmt | +                return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+          velvet-ballistics:fmt | +                    std::io::ErrorKind::Other,
+          velvet-ballistics:fmt | +                    format!("expected version 99, got {}", version),
+          velvet-ballistics:fmt | +                ))));
+          velvet-ballistics:fmt |              }
+          velvet-ballistics:fmt |          }
+          velvet-ballistics:fmt | -        other => return Err(JournalError::Fjall(fjall::Error::Io(
+          velvet-ballistics:fmt | -            std::io::Error::new(
+          velvet-ballistics:fmt | +        other => {
+          velvet-ballistics:fmt | +            return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+          velvet-ballistics:fmt |                  std::io::ErrorKind::Other,
+          velvet-ballistics:fmt |                  format!("expected UnsupportedVersion error, got {:?}", other),
+          velvet-ballistics:fmt | -            ),
+          velvet-ballistics:fmt | -        ))),
+          velvet-ballistics:fmt | +            ))));
+          velvet-ballistics:fmt | +        }
+          velvet-ballistics:fmt |      }
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt |      // Activation should also reject unsupported version without overwriting
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny_tests.rs:203:
+          velvet-ballistics:fmt |      let result = journal.activate_emergency_deny();
+          velvet-ballistics:fmt | -    let err = result.err().expect("activation should reject unsupported version");
+          velvet-ballistics:fmt | +    let err = result
+          velvet-ballistics:fmt | +        .err()
+          velvet-ballistics:fmt | +        .expect("activation should reject unsupported version");
+          velvet-ballistics:fmt |      match err {
+          velvet-ballistics:fmt |          JournalError::EmergencyDenyMarkerUnsupportedVersion { version } => {
+          velvet-ballistics:fmt |              if version != 99 {
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny_tests.rs:208:
+          velvet-ballistics:fmt | -                return Err(JournalError::Fjall(fjall::Error::Io(
+          velvet-ballistics:fmt | -                    std::io::Error::new(
+          velvet-ballistics:fmt | -                        std::io::ErrorKind::Other,
+          velvet-ballistics:fmt | -                        format!("expected version 99 on activation, got {}", version),
+          velvet-ballistics:fmt | -                    ),
+          velvet-ballistics:fmt | -                )));
+          velvet-ballistics:fmt | +                return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+          velvet-ballistics:fmt | +                    std::io::ErrorKind::Other,
+          velvet-ballistics:fmt | +                    format!("expected version 99 on activation, got {}", version),
+          velvet-ballistics:fmt | +                ))));
+          velvet-ballistics:fmt |              }
+          velvet-ballistics:fmt |          }
+          velvet-ballistics:fmt | -        other => return Err(JournalError::Fjall(fjall::Error::Io(
+          velvet-ballistics:fmt | -            std::io::Error::new(
+          velvet-ballistics:fmt | +        other => {
+          velvet-ballistics:fmt | +            return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+          velvet-ballistics:fmt |                  std::io::ErrorKind::Other,
+          velvet-ballistics:fmt | -                format!("expected UnsupportedVersion error on activation, got {:?}", other),
+          velvet-ballistics:fmt | -            ),
+          velvet-ballistics:fmt | -        ))),
+          velvet-ballistics:fmt | +                format!(
+          velvet-ballistics:fmt | +                    "expected UnsupportedVersion error on activation, got {:?}",
+          velvet-ballistics:fmt | +                    other
+          velvet-ballistics:fmt | +                ),
+          velvet-ballistics:fmt | +            ))));
+          velvet-ballistics:fmt | +        }
+          velvet-ballistics:fmt |      }
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt |      // Verify raw bad bytes preserved
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny_tests.rs:227:
+          velvet-ballistics:fmt |          .get(b"active")
+          velvet-ballistics:fmt |          .map_err(JournalError::Fjall)?;
+          velvet-ballistics:fmt |      if stored.is_none() {
+          velvet-ballistics:fmt | -        return Err(JournalError::Fjall(fjall::Error::Io(
+          velvet-ballistics:fmt | -            std::io::Error::new(
+          velvet-ballistics:fmt | -                std::io::ErrorKind::Other,
+          velvet-ballistics:fmt | -                "expected bad marker to still be present",
+          velvet-ballistics:fmt | -            ),
+          velvet-ballistics:fmt | -        )));
+          velvet-ballistics:fmt | +        return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+          velvet-ballistics:fmt | +            std::io::ErrorKind::Other,
+          velvet-ballistics:fmt | +            "expected bad marker to still be present",
+          velvet-ballistics:fmt | +        ))));
+          velvet-ballistics:fmt |      }
+          velvet-ballistics:fmt |      let stored_bytes = stored.unwrap().to_vec();
+          velvet-ballistics:fmt |      if stored_bytes.len() != 1 || stored_bytes[0] != 99 {
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny_tests.rs:239:
+          velvet-ballistics:fmt | -        return Err(JournalError::Fjall(fjall::Error::Io(
+          velvet-ballistics:fmt | -            std::io::Error::new(
+          velvet-ballistics:fmt | -                std::io::ErrorKind::Other,
+          velvet-ballistics:fmt | -                "expected [99] preserved",
+          velvet-ballistics:fmt | -            ),
+          velvet-ballistics:fmt | -        )));
+          velvet-ballistics:fmt | +        return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+          velvet-ballistics:fmt | +            std::io::ErrorKind::Other,
+          velvet-ballistics:fmt | +            "expected [99] preserved",
+          velvet-ballistics:fmt | +        ))));
+          velvet-ballistics:fmt |      }
+          velvet-ballistics:fmt |      Ok(())
+          velvet-ballistics:fmt |  }
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny_tests.rs:258:
+          velvet-ballistics:fmt |      let err = result.err().expect("failed persist should return error");
+          velvet-ballistics:fmt |      match err {
+          velvet-ballistics:fmt |          JournalError::Fjall(_) => {}
+          velvet-ballistics:fmt | -        other => return Err(JournalError::Fjall(fjall::Error::Io(
+          velvet-ballistics:fmt | -            std::io::Error::new(
+          velvet-ballistics:fmt | +        other => {
+          velvet-ballistics:fmt | +            return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+          velvet-ballistics:fmt |                  std::io::ErrorKind::Other,
+          velvet-ballistics:fmt |                  format!("expected Fjall error, got {:?}", other),
+          velvet-ballistics:fmt | -            ),
+          velvet-ballistics:fmt | -        ))),
+          velvet-ballistics:fmt | +            ))));
+          velvet-ballistics:fmt | +        }
+          velvet-ballistics:fmt |      }
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt |      // Verify state is still Inactive (activation didn't succeed)
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny_tests.rs:285:
+          velvet-ballistics:fmt |      let err = result.err().expect("first activation should fail");
+          velvet-ballistics:fmt |      match err {
+          velvet-ballistics:fmt |          JournalError::Fjall(_) => {}
+          velvet-ballistics:fmt | -        other => return Err(JournalError::Fjall(fjall::Error::Io(
+          velvet-ballistics:fmt | -            std::io::Error::new(
+          velvet-ballistics:fmt | +        other => {
+          velvet-ballistics:fmt | +            return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+          velvet-ballistics:fmt |                  std::io::ErrorKind::Other,
+          velvet-ballistics:fmt |                  format!("expected Fjall error, got {:?}", other),
+          velvet-ballistics:fmt | -            ),
+          velvet-ballistics:fmt | -        ))),
+          velvet-ballistics:fmt | +            ))));
+          velvet-ballistics:fmt | +        }
+          velvet-ballistics:fmt |      }
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt |      // Retry succeeds
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny_tests.rs:317:
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt |      // Retry activation should still attempt persistence (not shortcut)
+          velvet-ballistics:fmt |      let result = journal.activate_emergency_deny();
+          velvet-ballistics:fmt | -    let err = result.err().expect("retry activation should fail on injected fault");
+          velvet-ballistics:fmt | +    let err = result
+          velvet-ballistics:fmt | +        .err()
+          velvet-ballistics:fmt | +        .expect("retry activation should fail on injected fault");
+          velvet-ballistics:fmt |      match err {
+          velvet-ballistics:fmt |          JournalError::Fjall(_) => {}
+          velvet-ballistics:fmt | -        other => return Err(JournalError::Fjall(fjall::Error::Io(
+          velvet-ballistics:fmt | -            std::io::Error::new(
+          velvet-ballistics:fmt | +        other => {
+          velvet-ballistics:fmt | +            return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+          velvet-ballistics:fmt |                  std::io::ErrorKind::Other,
+          velvet-ballistics:fmt |                  format!("expected Fjall error on retry, got {:?}", other),
+          velvet-ballistics:fmt | -            ),
+          velvet-ballistics:fmt | -        ))),
+          velvet-ballistics:fmt | +            ))));
+          velvet-ballistics:fmt | +        }
+          velvet-ballistics:fmt |      }
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt |      // Real retry after fault clears
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/emergency_deny_tests.rs:365:
+          velvet-ballistics:fmt |      // Verify run event is still intact with exact event vector
+          velvet-ballistics:fmt |      let events = journal.events_for_run(run)?;
+          velvet-ballistics:fmt |      if events.len() != 1 {
+          velvet-ballistics:fmt | -        return Err(JournalError::Fjall(fjall::Error::Io(
+          velvet-ballistics:fmt | -            std::io::Error::new(
+          velvet-ballistics:fmt | -                std::io::ErrorKind::Other,
+          velvet-ballistics:fmt | -                format!("expected 1 event, got {}", events.len()),
+          velvet-ballistics:fmt | -            ),
+          velvet-ballistics:fmt | -        )));
+          velvet-ballistics:fmt | +        return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+          velvet-ballistics:fmt | +            std::io::ErrorKind::Other,
+          velvet-ballistics:fmt | +            format!("expected 1 event, got {}", events.len()),
+          velvet-ballistics:fmt | +        ))));
+          velvet-ballistics:fmt |      }
+          velvet-ballistics:fmt |      assert_eq!(events[0], event);
+          velvet-ballistics:fmt |      Ok(())
+          velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair/crates/vb_storage/src/journal/mod.rs:17:
+          velvet-ballistics:fmt |  pub(crate) mod source;
+          velvet-ballistics:fmt |  
+          velvet-ballistics:fmt |  #[cfg(test)]
+          velvet-ballistics:fmt | -mod journal_event_tests;
+          velvet-ballistics:fmt | -#[cfg(test)]
+          velvet-ballistics:fmt |  mod emergency_deny_tests;
+          velvet-ballistics:fmt | +#[cfg(test)]
+          velvet-ballistics:fmt | +mod journal_event_tests;
+          velvet-ballistics:fmt |  #[cfg(test)]
+          velvet-ballistics:fmt |  mod regression_tests_vb_1rqz7;
+          velvet-ballistics:fmt |  #[cfg(test)]
+▮▮▮▮ velvet-ballistics:fmt (1s 494ms, 05c78e30)
+▮▮▮▮ velvet-ballistics:workspace-assertions (80ae4217)
+▮▮▮▮ velvet-ballistics:workspace-assertions (100ms, 80ae4217)
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (511fbb15)
+velvet-ballistics:ignored-fallible-results | FixturePass: clean production-like fixture exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-001 bare fallible call exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-002 let underscore exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 ok err lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 embedded ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 split ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-004 swallowed Err exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-005 drop fallible exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-006 undocumented allow marker exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: path-bound justified exception exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: overbroad exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | FixturePass: malformed exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | ScanDomain: crates/*/src xtask/src
+velvet-ballistics:ignored-fallible-results | NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+velvet-ballistics:panic-surface | NoViolationFound
+velvet-ballistics:panic-surface | ExitCode: 0
+▮▮▮▮ velvet-ballistics:panic-surface (3s 412ms, d5220a61)
+▮▮▮▮ velvet-ballistics:unsafe-audit (ac722d61)
+▮▮▮▮ velvet-ballistics:unsafe-audit (9ms, ac722d61)
+velvet-ballistics:ignored-fallible-results | NoViolationFound
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (25s 612ms, 511fbb15)
+▮▮▮▮ velvet-ballistics:lint-src (b059061c)
+▮▮▮▮ velvet-ballistics:banned-token-gates (no op, 7c38115b)
+▮▮▮▮ velvet-ballistics:source-length (87bd0399)
+▮▮▮▮ velvet-ballistics:source-length (4s 258ms, 87bd0399)
+▮▮▮▮ velvet-ballistics:lint-src (10s 829ms, b059061c)
+
+Tasks: 6 completed, 3 failed
+ Time: 38s 309ms
+

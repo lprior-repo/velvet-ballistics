@@ -1,0 +1,24 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-s4hfc-v11",
+  "argv": [
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_eepg_bdd_tests",
+    "--all-features"
+  ],
+  "exit_code": 0,
+  "seconds": 0.826,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-s4hfc/evidence/FIXTURE_V11_03",
+  "coordinator_message": "Coordinator review: your new explicit kind38 Err arm uses forbidden panic!, contrary to instructions. Remove that new panic branch. Put exact positive kind38 assertion in the ALREADY Result-returning decode_accepts_all_known_journal_event_kinds test: decode_record_header(...)? then assert_eq!(decoded.record_kind,38); preserve all original assertions. Leave valid-kinds test returning () if unchanged. Do not change production. Rerun fresh gate prefixes FIXTURE_V11_03 (focused suite) and04(fmt). Earlier01 was reused/overwritten after invalid env command; retain final rawfiles but handoff must acknowledge invalid invocation logs unavailable, root will use fresh03. Use env CARGO_TARGET_DIR=... before rustup inside recordedargv, not variable assignment as executable. No broadworkspace. Root owns VCS/bd.\n"
+}

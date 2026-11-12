@@ -1,0 +1,14 @@
+
+running 9 tests
+test c_independent_suspended_run_still_recovers ... ok
+test d_independent_wrong_prior_seq_rejected ... ok
+test d_independent_wrong_run_attempt_rejected ... ok
+test b_independent_verify_strict_durability_barrier ... ok
+test d_independent_cross_run_checkpoint_rejected ... ok
+test cross_independent_no_mutation_on_rejected_retry ... ok
+test d_independent_valid_retry_still_works ... ok
+test d_independent_consumed_checkpoint_reuse_rejected ... ok
+test c_independent_multiple_auto_recovery_calls ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

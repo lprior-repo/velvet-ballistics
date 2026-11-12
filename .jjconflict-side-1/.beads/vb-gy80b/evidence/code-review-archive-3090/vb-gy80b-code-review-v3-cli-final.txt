@@ -1,0 +1,14 @@
+Code review complete. Report written to `.beads/vb-gy80b/evidence/code-review-3090.md`.
+
+**Verdict: APPROVED**
+
+The candidate (cd6a8e85) correctly replaces a vacuous, warning-generating unit test with a genuine compile-time doctest that verifies the `expr_proofs` migration path resolves. Key findings:
+
+- ✅ Old `use crate::expr_proofs;` test imported module name only (no items used), generated unused-import warning under `-D warnings`
+- ✅ New doctest `use vb_compile::expr_proofs;` is a real compile-time check — broken-path mutation (`expr_proofs_broken`) fails with `E0432`
+- ✅ No runtime API/behavior changes; pure test infrastructure relocation
+- ✅ No `ExprProofsModule` production marker in `vb_expr`
+- ⚠️ Pre-existing fmt gate failures on both files (identical on baseline e72b905d) — not introduced by this candidate
+- ✅ Test count: 497→496 unit tests, 0→1 doctest (honest accounting)
+
+Holzman Rule 10 (warnings as errors) is improved. No verification laundering. Bounded review only; separate test reviewer follows.

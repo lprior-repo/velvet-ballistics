@@ -1,0 +1,100 @@
+crates/vb_storage/src/inputs/submission.rs:1: use super::RunInputsRecord;
+crates/vb_storage/src/inputs/submission.rs:2: use crate::{
+crates/vb_storage/src/inputs/submission.rs:3:     AcceptedArtifact, CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
+crates/vb_storage/src/inputs/submission.rs:4:     RunHeaderRecord, WorkflowSourceRecord,
+crates/vb_storage/src/inputs/submission.rs:5: };
+crates/vb_storage/src/inputs/submission.rs:6: use vb_core::RuntimePolicy;
+crates/vb_storage/src/inputs/submission.rs:7: 
+crates/vb_storage/src/inputs/submission.rs:8: /// Complete prepared admission. Private members prevent partial publication.
+crates/vb_storage/src/inputs/submission.rs:9: pub struct RunSubmission {
+crates/vb_storage/src/inputs/submission.rs:10:     source: WorkflowSourceRecord,
+crates/vb_storage/src/inputs/submission.rs:11:     artifact: AcceptedArtifact,
+crates/vb_storage/src/inputs/submission.rs:12:     inputs: RunInputsRecord,
+crates/vb_storage/src/inputs/submission.rs:13:     header: RunHeaderRecord,
+crates/vb_storage/src/inputs/submission.rs:14: }
+crates/vb_storage/src/inputs/submission.rs:15: 
+crates/vb_storage/src/inputs/submission.rs:16: impl RunSubmission {
+crates/vb_storage/src/inputs/submission.rs:17:     /// Binds retained inputs, source and header to the exact executable artifact.
+crates/vb_storage/src/inputs/submission.rs:18:     pub fn new(
+crates/vb_storage/src/inputs/submission.rs:19:         source: WorkflowSourceRecord,
+crates/vb_storage/src/inputs/submission.rs:20:         artifact: AcceptedArtifact,
+crates/vb_storage/src/inputs/submission.rs:21:         inputs: RunInputsRecord,
+crates/vb_storage/src/inputs/submission.rs:22:         header: RunHeaderRecord,
+crates/vb_storage/src/inputs/submission.rs:23:     ) -> Result<Self, JournalError> {
+crates/vb_storage/src/inputs/submission.rs:24:         let submission = Self {
+crates/vb_storage/src/inputs/submission.rs:25:             source,
+crates/vb_storage/src/inputs/submission.rs:26:             artifact,
+crates/vb_storage/src/inputs/submission.rs:27:             inputs,
+crates/vb_storage/src/inputs/submission.rs:28:             header,
+crates/vb_storage/src/inputs/submission.rs:29:         };
+crates/vb_storage/src/inputs/submission.rs:30:         submission.validate_binding()?;
+crates/vb_storage/src/inputs/submission.rs:31:         Ok(submission)
+crates/vb_storage/src/inputs/submission.rs:32:     }
+crates/vb_storage/src/inputs/submission.rs:33: 
+crates/vb_storage/src/inputs/submission.rs:34:     fn validate_binding(&self) -> Result<(), JournalError> {
+crates/vb_storage/src/inputs/submission.rs:35:         self.validate_identities()?;
+crates/vb_storage/src/inputs/submission.rs:36:         crate::journal::verify_content_digest(&self.source.source, &self.source.digest.as_bytes())?;
+crates/vb_storage/src/inputs/submission.rs:37:         let workflow = crate::admission::verify_accepted_artifact(&self.artifact)?;
+crates/vb_storage/src/inputs/submission.rs:38:         self.inputs.validate_workflow(&workflow)?;
+crates/vb_storage/src/inputs/submission.rs:39:         if crate::admission::compute_policy_digest(&workflow)? != self.artifact.policy_digest {
+crates/vb_storage/src/inputs/submission.rs:40:             return Err(JournalError::PayloadDigestMismatch);
+crates/vb_storage/src/inputs/submission.rs:41:         }
+crates/vb_storage/src/inputs/submission.rs:42:         Ok(())
+crates/vb_storage/src/inputs/submission.rs:43:     }
+crates/vb_storage/src/inputs/submission.rs:44: 
+crates/vb_storage/src/inputs/submission.rs:45:     fn validate_identities(&self) -> Result<(), JournalError> {
+crates/vb_storage/src/inputs/submission.rs:46:         let digest = crate::admission::accepted_artifact_digest(&self.artifact)?;
+crates/vb_storage/src/inputs/submission.rs:47:         if digest != self.artifact.digest
+crates/vb_storage/src/inputs/submission.rs:48:             || digest != self.artifact.verification.digest
+crates/vb_storage/src/inputs/submission.rs:49:             || digest != self.inputs.artifact_digest()
+crates/vb_storage/src/inputs/submission.rs:50:             || self.header.run != self.inputs.run()
+crates/vb_storage/src/inputs/submission.rs:51:             || self.header.compiled_digest != self.inputs.workflow_digest()
+crates/vb_storage/src/inputs/submission.rs:52:             || self.source.digest != self.inputs.source_digest()
+crates/vb_storage/src/inputs/submission.rs:53:             || self.artifact.source_digest != self.inputs.workflow_digest()
+crates/vb_storage/src/inputs/submission.rs:54:         {
+crates/vb_storage/src/inputs/submission.rs:55:             return Err(JournalError::PayloadDigestMismatch);
+crates/vb_storage/src/inputs/submission.rs:56:         }
+crates/vb_storage/src/inputs/submission.rs:57:         Ok(())
+crates/vb_storage/src/inputs/submission.rs:58:     }
+crates/vb_storage/src/inputs/submission.rs:59: 
+crates/vb_storage/src/inputs/submission.rs:60:     fn validate_policy(&self, policy: RuntimePolicy) -> Result<(), JournalError> {
+crates/vb_storage/src/inputs/submission.rs:61:         if !matches!(
+crates/vb_storage/src/inputs/submission.rs:62:             policy,
+crates/vb_storage/src/inputs/submission.rs:63:             RuntimePolicy::Relaxed | RuntimePolicy::Journaled | RuntimePolicy::Strict
+crates/vb_storage/src/inputs/submission.rs:64:         ) {
+crates/vb_storage/src/inputs/submission.rs:65:             return Err(JournalError::AdmissionRequired);
+crates/vb_storage/src/inputs/submission.rs:66:         }
+crates/vb_storage/src/inputs/submission.rs:67:         if !self.artifact.required_capabilities.is_empty() {
+crates/vb_storage/src/inputs/submission.rs:68:             return Err(JournalError::CapabilityDenied);
+crates/vb_storage/src/inputs/submission.rs:69:         }
+crates/vb_storage/src/inputs/submission.rs:70:         crate::admission::verify_accepted_artifact_for_policy(&self.artifact, policy)?;
+crates/vb_storage/src/inputs/submission.rs:71:         Ok(())
+crates/vb_storage/src/inputs/submission.rs:72:     }
+crates/vb_storage/src/inputs/submission.rs:73: 
+crates/vb_storage/src/inputs/submission.rs:74:     fn commit(&self, journal: &FjallJournal, policy: RuntimePolicy) -> Result<(), JournalError> {
+crates/vb_storage/src/inputs/submission.rs:75:         let mut batch = journal.batch();
+crates/vb_storage/src/inputs/submission.rs:76:         self.stage(&mut batch)?;
+crates/vb_storage/src/inputs/submission.rs:77:         self.stage_acceptance(&mut batch, policy)?;
+crates/vb_storage/src/inputs/submission.rs:78:         match policy {
+crates/vb_storage/src/inputs/submission.rs:79:             RuntimePolicy::Strict => batch.strict().commit(),
+crates/vb_storage/src/inputs/submission.rs:80:             _ => batch.commit(),
+crates/vb_storage/src/inputs/submission.rs:81:         }
+crates/vb_storage/src/inputs/submission.rs:82:     }
+crates/vb_storage/src/inputs/submission.rs:83: 
+crates/vb_storage/src/inputs/submission.rs:84:     fn stage(&self, batch: &mut crate::JournalWriteBatch<'_>) -> Result<(), JournalError> {
+crates/vb_storage/src/inputs/submission.rs:85:         batch.put_workflow_source(&self.source)?;
+crates/vb_storage/src/inputs/submission.rs:86:         let ir =
+crates/vb_storage/src/inputs/submission.rs:87:             postcard::to_allocvec(&self.artifact).map_err(JournalError::PostcardEncodeFailed)?;
+crates/vb_storage/src/inputs/submission.rs:88:         batch.put_compiled_ir(&CompiledIrRecord {
+crates/vb_storage/src/inputs/submission.rs:89:             digest: self.artifact.digest,
+crates/vb_storage/src/inputs/submission.rs:90:             ir,
+crates/vb_storage/src/inputs/submission.rs:91:         })?;
+crates/vb_storage/src/inputs/submission.rs:92:         batch.put_run_inputs(&self.inputs)?;
+crates/vb_storage/src/inputs/submission.rs:93:         batch.put_run_header(&self.header)?;
+crates/vb_storage/src/inputs/submission.rs:94:         batch.put_workflow_index(self.header.workflow_id, self.header.run)?;
+crates/vb_storage/src/inputs/submission.rs:95:         batch.put_status_index(
+crates/vb_storage/src/inputs/submission.rs:96:             crate::IndexStatusState::Submitted,
+crates/vb_storage/src/inputs/submission.rs:97:             self.header.accepted_at_ms,
+crates/vb_storage/src/inputs/submission.rs:98:             self.header.run,
+crates/vb_storage/src/inputs/submission.rs:99:         )
+crates/vb_storage/src/inputs/submission.rs:100:     }

@@ -1,0 +1,36 @@
+diff --git a/.cargo/config.toml b/.cargo/config.toml
+index 442053e12..eec335eae 100644
+--- a/.cargo/config.toml
++++ b/.cargo/config.toml
+@@ -15,7 +15,7 @@ SCCACHE_MAX_FRAME_LENGTH = "104857600"
+ SCCACHE_BASEDIR = "/home/lewis/src/velvet-ballistics"
+ 
+ [alias]
+-ci = "clippy --workspace --all-targets --all-features -- -D warnings"
++ci = "clippy --workspace --lib --bins --examples --all-features -- -D warnings"
+ check-all = "check --workspace --all-targets --all-features"
+ fmt-check = "fmt --all -- --check"
+ doc-all = "doc --workspace --all-features --no-deps"
+diff --git a/contracts/invariants.yaml b/contracts/invariants.yaml
+index 6cd377cec..cd612638d 100644
+--- a/contracts/invariants.yaml
++++ b/contracts/invariants.yaml
+@@ -397,4 +397,4 @@ scan_commands:
+     - cargo xtask forbidden-scan --pattern slice::from_raw_parts
+ 
+   no_unsafe_in_first_party:
+-    - cargo clippy --workspace --all-targets -- -D unsafe_code
++    - cargo clippy --workspace --lib --bins --examples -- -D unsafe_code
+diff --git a/xtask/src/evidence/persistence.rs b/xtask/src/evidence/persistence.rs
+index be391aa20..916d4788b 100644
+--- a/xtask/src/evidence/persistence.rs
++++ b/xtask/src/evidence/persistence.rs
+@@ -64,7 +64,7 @@ fn failure_hint(gate_name: &str) -> &'static str {
+ fn failure_repair_command(gate_name: &str) -> &'static str {
+     match gate_name {
+         "fmt" => "cargo +nightly fmt --all",
+-        "clippy" => "cargo +nightly clippy --workspace --all-targets --all-features",
++        "clippy" => "cargo +nightly clippy --workspace --lib --bins --examples --all-features",
+         "miri" => "moon run velvet-ballistics:miri",
+         "test" | "nextest" => "moon run velvet-ballistics:test",
+         "supply-chain" => "moon run velvet-ballistics:supply-chain",

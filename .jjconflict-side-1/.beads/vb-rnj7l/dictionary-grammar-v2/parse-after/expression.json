@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-rnj7l-dictionary-grammar-fix-v2",
+  "argv": [
+    "/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/decode_record",
+    "-runs=100",
+    "-dict=/home/lewis/src/isoloated/vb-rnj7l-dictionary-grammar-fix-v2/fuzz/fuzz_targets/expression.dict"
+  ],
+  "exit_code": 0,
+  "seconds": 0.013,
+  "timeout_seconds": 30,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/dictionary-parse-after-v2/expression"
+}

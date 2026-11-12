@@ -1,0 +1,53 @@
+[ WARN 2026-10-22 18:31:21.551] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 18:31:21.910] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 18:31:21.965] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 18:31:23.125] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 18:31:25.622] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 18:31:25.970] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 18:31:31.249] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 18:31:31.620] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 18:31:49.298] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 18:32:46.990] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 18:32:48.065] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |  Nextest run ID 157ed958-a30f-4496-bf57-9d7b41f90c45 with nextest profile: default
+                       velvet-ballistics:test |     Starting 14490 tests across 299 binaries (27 tests skipped)
+[ WARN 18:33:56.213] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+              velvet-ballistics:source-length | source-length gate summary:
+              velvet-ballistics:source-length |   generated          scanned=1     excluded (no limit)
+              velvet-ballistics:source-length |   perf               scanned=0     excluded (no limit)
+              velvet-ballistics:source-length |   kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+              velvet-ballistics:source-length |   test_in_src        scanned=320   warn=48   over_limit=0    limit=1500 warn_at=1200
+              velvet-ballistics:source-length |   test_top_level     scanned=415   warn=6    over_limit=0    limit=3000 warn_at=2400
+              velvet-ballistics:source-length |   production         scanned=958   warn=196  over_limit=0    limit=300 warn_at=240
+              velvet-ballistics:source-length |   ledger rows used:    383
+                       velvet-ballistics:test |         FAIL [   1.041s] ( 9358/14490) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_records_zero_accepted_at_seq
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test accepted_artifact_encoder_records_zero_accepted_at_seq ... FAILED
+
+                       velvet-ballistics:test |     failures:
+
+                       velvet-ballistics:test |     failures:
+                       velvet-ballistics:test |         accepted_artifact_encoder_records_zero_accepted_at_seq
+
+                       velvet-ballistics:test |     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 1.04s
+
+                       velvet-ballistics:test |   stderr ───
+
+                       velvet-ballistics:test |     thread 'accepted_artifact_encoder_records_zero_accepted_at_seq' (395027) panicked at crates/vb_storage/tests/accepted_artifact_red_phase.rs:248:5:
+                       velvet-ballistics:test |     assertion `left == right` failed
+                       velvet-ballistics:test |       left: 1
+                       velvet-ballistics:test |      right: 0
+                       velvet-ballistics:test |     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+                       velvet-ballistics:test |   Cancelling due to test failure: 31 tests still running
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |      Summary [ 374.882s] 9389/14490 tests run: 9388 passed (5 slow), 1 failed, 27 skipped
+                       velvet-ballistics:test |         FAIL [   1.041s] ( 9358/14490) vb_storage::accepted_artifact_red_phase accepted_artifact_encoder_records_zero_accepted_at_seq
+                       velvet-ballistics:test | warning: 5101/14490 tests were not run due to test failure (run with --no-fail-fast to run all tests, or run with --max-fail)
+                       velvet-ballistics:test | error: test run failed

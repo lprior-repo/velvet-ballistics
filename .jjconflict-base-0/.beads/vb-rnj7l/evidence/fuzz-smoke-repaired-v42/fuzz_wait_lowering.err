@@ -1,0 +1,23 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 3639791068
+INFO: Loaded 1 modules   (578 inline 8-bit counters): 578 [0x561b831bddb0, 0x561b831bdff2), 
+INFO: Loaded 1 PC tables (578 PCs): 578 [0x561b831bdff8,0x561b831c0418), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/fuzz_wait_lowering
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED exec/s: 0 rss: 32Mb
+WARNING: no interesting inputs were found so far. Is the code instrumented for coverage?
+This may also happen if the target rejected all inputs we tried so far
+	NEW_FUNC[1/15]: 0x561b83116e00  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_wait_lowering+0x118e00) (BuildId: b8d8666441ea50010e630c7814ff940ca573c3c0)
+	NEW_FUNC[2/15]: 0x561b83116fe0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_wait_lowering+0x118fe0) (BuildId: b8d8666441ea50010e630c7814ff940ca573c3c0)
+#215	NEW    cov: 85 ft: 86 corp: 2/7b lim: 6 exec/s: 0 rss: 33Mb L: 6/6 MS: 3 InsertRepeatedBytes-ChangeByte-CopyPart-
+#216	NEW    cov: 86 ft: 87 corp: 3/13b lim: 6 exec/s: 0 rss: 35Mb L: 6/6 MS: 1 ChangeBit-
+#242	NEW    cov: 89 ft: 94 corp: 4/19b lim: 6 exec/s: 0 rss: 35Mb L: 6/6 MS: 1 ChangeByte-
+#261	NEW    cov: 91 ft: 96 corp: 5/25b lim: 6 exec/s: 0 rss: 35Mb L: 6/6 MS: 4 ShuffleBytes-CopyPart-CrossOver-ChangeBinInt-
+#299	NEW    cov: 92 ft: 97 corp: 6/31b lim: 6 exec/s: 0 rss: 35Mb L: 6/6 MS: 3 ChangeByte-ShuffleBytes-CMP- DE: "\000\000"-
+#536	NEW    cov: 92 ft: 98 corp: 7/39b lim: 8 exec/s: 0 rss: 36Mb L: 8/8 MS: 2 ChangeBit-CopyPart-
+#1505171	DONE   cov: 92 ft: 98 corp: 7/39b lim: 4096 exec/s: 752585 rss: 149Mb
+###### Recommended dictionary. ######
+"\000\000" # Uses: 142980
+###### End of recommended dictionary. ######
+Done 1505171 runs in 2 second(s)

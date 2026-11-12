@@ -45,14 +45,14 @@
 //                                       (mirror of crates/vb_core/src/budget/traversal_error.rs:13-37, 39-52)
 //   - `WorkflowError`              <- extern_budget_monotonic.rs
 //                                       `workflow` submodule
-//                                       (mirror of workflow/mod.rs:666-880)
+//                                       (mirror of crates/vb_core/src/workflow/error.rs:13-227)
 //   - `ResourceContract`           <- extern_budget_monotonic.rs
-//                                       (mirror of workflow/mod.rs:252-289)
+//                                       (mirror of crates/vb_core/src/workflow/resource_contract.rs:8-45)
 //   - `CompiledNode`, `CompiledNodeKind`
 //                                   <- extern_budget_monotonic.rs
 //                                       `workflow` submodule
-//                                       (mirror of workflow/mod.rs:995-1004,
-//                                       :1191-1357)
+//                                       (mirror of crates/vb_core/src/workflow/node.rs:14-23,
+//                                       crates/vb_core/src/workflow/node_kind.rs:14-180)
 //
 // ============================================================================
 // TRUST BOUNDARY

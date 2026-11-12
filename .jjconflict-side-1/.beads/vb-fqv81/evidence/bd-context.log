@@ -1,0 +1,15 @@
+bd version:     1.0.5
+
+Repository:
+  beads dir:    /home/lewis/src/velvet-ballistics/.beads
+  repo root:    /home/lewis/src/velvet-ballistics
+  cwd repo:     /home/lewis/src/isoloated/velvet-ballistics-vb-fqv81-beads-metadata-3090
+  worktree:     yes
+  role:         maintainer
+
+Backend:
+  type:         dolt
+  mode:         server
+  database:     velvet-ballistics
+  server:       127.0.0.1:44101
+  project id:   3265bb22-ec7c-4f87-b1a5-6001b941b612

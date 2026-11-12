@@ -1,0 +1,172 @@
+   Compiling serde_core v1.0.228
+   Compiling serde_json v1.0.150
+   Compiling regex-automata v0.4.14
+   Compiling clap_builder v4.6.0
+   Compiling ppv-lite86 v0.2.21
+   Compiling arrayvec v0.7.6
+   Compiling blake3 v1.8.5
+   Compiling rand_chacha v0.9.0
+   Compiling proptest v1.11.0
+   Compiling clap v4.6.1
+   Compiling regex v1.12.3
+   Compiling serde v1.0.228
+   Compiling chrono v0.4.44
+   Compiling bytes v1.11.1
+   Compiling ciborium v0.2.2
+   Compiling heapless v0.7.17
+   Compiling tinytemplate v1.2.1
+   Compiling postcard v1.1.3
+   Compiling criterion v0.8.2
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.16s
+     Running tests/aggregate_resource_budget_red.rs (target/debug/deps/aggregate_resource_budget_red-f67aad79e4a31143)
+
+running 97 tests
+
+thread 'admission_accepts_available_capacity_argument' (3703365) panicked at crates/vb_core/tests/aggregate_resource_budget_red.rs:335:1:
+assertion `left == right` failed: missing aggregate resource contract token: available: AggregateResourceCapacity
+  left: false
+ right: true
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'admission_accepts_requested_budget_argument' (3703366) panicked at crates/vb_core/tests/aggregate_resource_budget_red.rs:330:1:
+assertion `left == right` failed: missing aggregate resource contract token: requested: AggregateResourceBudget
+  left: false
+ right: true
+
+thread 'admission_error_preserves_requested_value' (3703368) panicked at crates/vb_core/tests/aggregate_resource_budget_red.rs:345:1:
+assertion `left == right` failed: missing aggregate resource contract token: requested
+  left: false
+ right: true
+
+thread 'admission_error_preserves_available_value' (3703367) panicked at crates/vb_core/tests/aggregate_resource_budget_red.rs:350:1:
+assertion `left == right` failed: missing aggregate resource contract token: available
+  left: false
+ right: true
+
+thread 'admission_with_budget_still_checks_artifacts' (3703371) panicked at crates/vb_core/tests/aggregate_resource_budget_red.rs:355:1:
+assertion `left == right` failed: missing aggregate resource contract token: compiled_ir_exists
+  left: false
+ right: true
+
+thread 'aggregate_admission_with_budget_exists' (3703372) panicked at crates/vb_core/tests/aggregate_resource_budget_red.rs:249:1:
+assertion `left == right` failed: missing aggregate resource contract token: pub fn admit_run_with_budget(
+  left: false
+ right: true
+test admission_accepts_available_capacity_argument ... FAILED
+test admission_accepts_requested_budget_argument ... FAILED
+test admission_error_preserves_requested_value ... FAILED
+test admission_error_preserves_resource_name ... ok
+test admission_record_exposes_budget_when_extended ... ok
+test admission_error_preserves_available_value ... FAILED
+test admission_with_budget_still_checks_artifacts ... FAILED
+test aggregate_admission_with_budget_exists ... FAILED
+test aggregate_budget_does_not_saturate_add_for_each ... ok
+test aggregate_budget_exports_from_core ... ok
+test aggregate_budget_from_whole_budget_exists ... ok
+test aggregate_budget_has_for_each_dimension ... ok
+test aggregate_budget_has_action_tickets_dimension ... ok
+test aggregate_budget_has_gather_items_dimension ... ok
+test aggregate_budget_has_journal_batch_dimension ... ok
+test aggregate_budget_does_not_saturate_add_action_tickets ... ok
+test aggregate_budget_from_workflow_exists ... ok
+test aggregate_budget_has_gather_pages_dimension ... ok
+test aggregate_budget_does_not_saturate_add_gather_items ... ok
+test aggregate_budget_has_queue_depth_dimension ... ok
+test aggregate_budget_does_not_saturate_add_gather_pages ... ok
+test aggregate_budget_does_not_saturate_branch_count ... ok
+test aggregate_budget_does_not_saturate_steps_conversion ... ok
+test aggregate_budget_has_repeat_dimension ... ok
+test aggregate_budget_has_result_bytes_dimension ... ok
+test aggregate_budget_has_retries_dimension ... ok
+test aggregate_budget_has_parallel_dimension ... ok
+test aggregate_budget_has_runtime_dimension ... ok
+test aggregate_budget_has_slots_dimension ... ok
+test aggregate_budget_has_steps_dimension ... ok
+test aggregate_budget_has_together_dimension ... ok
+test aggregate_budget_type_is_declared ... ok
+test aggregate_capacity_exports_from_core ... ok
+test aggregate_budget_validator_exists ... ok
+test aggregate_capacity_has_action_tickets_dimension ... ok
+test aggregate_capacity_has_active_runs_dimension ... ok
+test aggregate_capacity_has_gather_items_dimension ... ok
+test aggregate_capacity_has_gather_pages_dimension ... ok
+test aggregate_capacity_has_journal_batch_dimension ... ok
+test aggregate_capacity_has_parallel_dimension ... ok
+test aggregate_capacity_has_queue_depth_dimension ... ok
+test aggregate_capacity_has_slots_dimension ... ok
+test aggregate_capacity_type_is_declared ... ok
+test aggregate_capacity_has_result_bytes_dimension ... ok
+test aggregate_error_exports_from_core ... ok
+test aggregate_reservation_exports_from_core ... ok
+test aggregate_capacity_has_steps_dimension ... ok
+test aggregate_usage_exports_from_core ... ok
+test aggregate_error_type_is_declared ... ok
+test aggregate_reservation_type_is_declared ... ok
+test aggregate_usage_try_add_exists ... ok
+test aggregate_usage_fits_within_exists ... ok
+test aggregate_usage_try_subtract_exists ... ok
+test budget_conversion_uses_try_from ... ok
+test budget_arithmetic_uses_checked_add ... ok
+test capacity_comparison_names_available ... ok
+test capacity_comparison_names_requested ... ok
+test budget_arithmetic_uses_checked_sub ... ok
+test capacity_exceeded_error_variant_exists ... ok
+test budget_arithmetic_uses_checked_mul ... ok
+test aggregate_usage_type_is_declared ... ok
+test invalid_capacity_error_variant_exists ... ok
+test validate_budget_checks_action_policy ... ok
+test validate_budget_checks_for_each_policy ... ok
+test validate_budget_checks_journal_policy ... ok
+test validate_budget_checks_parallel_policy ... ok
+test static_budget_model_has_no_forbidden_constructs_in_new_aggregate_surface ... ok
+test validate_budget_checks_repeat_policy ... ok
+test validate_budget_checks_queue_policy ... ok
+test run_state_can_carry_budget_reservation ... ok
+test validate_budget_checks_result_policy ... ok
+test validate_budget_checks_retries_policy ... ok
+test overflow_error_variant_exists ... ok
+test policy_exceeded_names_actual ... ok
+test policy_exceeded_error_variant_exists ... ok
+test shard_status_reports_active_usage ... ok
+
+thread 'runtime_resource_capacity_error_variant_exists' (3703439) panicked at crates/vb_core/tests/aggregate_resource_budget_red.rs:281:1:
+assertion `left == right` failed: missing aggregate resource contract token: ResourceCapacityExceeded
+  left: false
+ right: true
+test reservation_tracks_requested_budget ... ok
+test validate_budget_checks_steps_policy ... ok
+test reservation_not_found_error_variant_exists ... ok
+test policy_exceeded_names_limit ... ok
+test validate_budget_checks_together_policy ... ok
+test workflow_budget_error_variant_exists ... ok
+test validate_budget_checks_gather_items_policy ... ok
+test underflow_error_variant_exists ... ok
+test validate_budget_checks_gather_pages_policy ... ok
+test shard_status_reports_aggregate_capacity ... ok
+test reservation_tracks_run_id ... ok
+test validate_budget_checks_runtime_policy ... ok
+test runtime_admission_does_not_parse_json_for_capacity ... ok
+test runtime_admission_does_not_parse_yaml_for_capacity ... ok
+test shard_config_carries_aggregate_capacity ... ok
+test shard_state_carries_reservations ... ok
+test runtime_admission_does_not_parse_http_for_capacity ... ok
+test runtime_resource_capacity_error_variant_exists ... FAILED
+test validate_budget_checks_slots_policy ... ok
+test runtime_admission_does_not_parse_string_commands_for_capacity ... ok
+test shard_state_carries_active_usage ... ok
+
+failures:
+
+failures:
+    admission_accepts_available_capacity_argument
+    admission_accepts_requested_budget_argument
+    admission_error_preserves_available_value
+    admission_error_preserves_requested_value
+    admission_with_budget_still_checks_artifacts
+    aggregate_admission_with_budget_exists
+    runtime_resource_capacity_error_variant_exists
+
+test result: FAILED. 90 passed; 7 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p vb_core --test aggregate_resource_budget_red`

@@ -1,0 +1,11 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hjdi0-local3090-replay-repair/crates/workspace_tests)
+error: function `digest_hex` is never used
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:52:4
+   |
+52 | fn digest_hex(digest: &WorkflowDigest) -> String {
+   |    ^^^^^^^^^^
+   |
+   = note: `-D dead-code` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_ko29_5_public_idempotency") due to 1 previous error

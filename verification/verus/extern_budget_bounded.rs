@@ -211,7 +211,7 @@ fn prod_methods_drift_check(
 
     // Reference every variant of CompiledNodeKind used by the spec:
     // ForEachStart, CollectStart (production
-    // workflow/mod.rs:1191-1357). Constructing them with the
+    // crates/vb_core/src/workflow/node_kind.rs:14-180). Constructing them with the
     // production fields pins the mirror against field drift even
     // though the spec never constructs them.
     let step = production_inner::StepIdx::new(0);
@@ -249,7 +249,7 @@ fn prod_methods_drift_check(
     let _ = production_inner::sub_dim(0u64, 0u64, "");
 
     // Reference the workflow::CompiledNode struct shape
-    // (workflow/mod.rs:995-1004) so a field drift breaks the build.
+    // (crates/vb_core/src/workflow/node.rs:14-23) so a field drift breaks the build.
     // Constructing both routing shapes pins every variant of the
     // NodeOutput / NodeContinuation / ErrorRouting mirrors.
     let node_step = production_inner::StepIdx::new(0);

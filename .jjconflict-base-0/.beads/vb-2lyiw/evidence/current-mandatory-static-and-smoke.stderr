@@ -1,0 +1,883 @@
+[ WARN 2026-10-21 23:48:32.044] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 23:48:32.880] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 23:48:36.569] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 23:48:37.579] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 23:48:37.648] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 23:48:39.245] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+             velvet-ballistics:test-integrity | test integrity: ERROR git diff --find-renames --unified=0 da633fe0bbde9e414173d5f7aabe314a37f8752d -- returned non-UTF8 stdout: invalid utf-8 sequence of 1 bytes from index 33279512
+[ WARN 23:49:03.613] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 23:49:03.692] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 23:49:04.198] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 23:49:04.199] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 23:49:12.630] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+    velvet-ballistics:sanitizer-address-check | Blocking waiting for file lock on package cache
+    velvet-ballistics:sanitizer-address-check |     Blocking waiting for file lock on package cache
+    velvet-ballistics:sanitizer-address-check |     Blocking waiting for file lock on package cache
+    velvet-ballistics:sanitizer-address-check |     Blocking waiting for file lock on build directory
+    velvet-ballistics:sanitizer-address-check |    Compiling compiler_builtins v0.1.160 (/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/compiler-builtins/compiler-builtins)
+    velvet-ballistics:sanitizer-address-check |    Compiling core v0.0.0 (/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core)
+    velvet-ballistics:sanitizer-address-check |    Compiling libc v0.2.185
+    velvet-ballistics:sanitizer-address-check |    Compiling object v0.37.3
+    velvet-ballistics:sanitizer-address-check |    Compiling std v0.0.0 (/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std)
+    velvet-ballistics:sanitizer-address-check |    Compiling test v0.0.0 (/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/test)
+    velvet-ballistics:sanitizer-address-check |    Compiling proc-macro2 v1.0.106
+    velvet-ballistics:sanitizer-address-check |    Compiling unicode-ident v1.0.24
+    velvet-ballistics:sanitizer-address-check |    Compiling quote v1.0.45
+    velvet-ballistics:sanitizer-address-check |    Compiling syn v2.0.117
+    velvet-ballistics:sanitizer-address-check |    Compiling libc v0.2.186
+    velvet-ballistics:sanitizer-address-check |    Compiling serde_core v1.0.228
+    velvet-ballistics:sanitizer-address-check |    Compiling serde v1.0.228
+    velvet-ballistics:sanitizer-address-check |    Compiling serde_derive v1.0.228
+    velvet-ballistics:sanitizer-address-check |    Compiling autocfg v1.5.1
+    velvet-ballistics:sanitizer-address-check |    Compiling num-traits v0.2.19
+    velvet-ballistics:sanitizer-address-check |    Compiling jobserver v0.1.35
+    velvet-ballistics:sanitizer-address-check |    Compiling find-msvc-tools v0.1.9
+    velvet-ballistics:sanitizer-address-check |    Compiling shlex v1.3.0
+    velvet-ballistics:sanitizer-address-check |    Compiling cc v1.2.62
+    velvet-ballistics:sanitizer-address-check |    Compiling thiserror v2.0.18
+    velvet-ballistics:sanitizer-address-check |    Compiling thiserror-impl v2.0.18
+    velvet-ballistics:sanitizer-address-check |    Compiling zerocopy v0.8.48
+    velvet-ballistics:sanitizer-address-check |    Compiling zerocopy-derive v0.8.48
+    velvet-ballistics:sanitizer-address-check |    Compiling getrandom v0.4.2
+    velvet-ballistics:sanitizer-address-check |    Compiling rustix v1.1.4
+    velvet-ballistics:sanitizer-address-check |    Compiling getrandom v0.3.4
+    velvet-ballistics:sanitizer-address-check |    Compiling semver v1.0.28
+    velvet-ballistics:sanitizer-address-check |    Compiling rustc_version v0.4.1
+    velvet-ballistics:sanitizer-address-check |    Compiling heapless v0.7.17
+    velvet-ballistics:sanitizer-address-check |    Compiling blake3 v1.8.5
+    velvet-ballistics:sanitizer-address-check |    Compiling crossbeam-utils v0.8.21
+    velvet-ballistics:sanitizer-address-check |    Compiling crossbeam-epoch v0.9.20
+    velvet-ballistics:sanitizer-address-check |    Compiling parking_lot_core v0.9.12
+    velvet-ballistics:sanitizer-address-check |    Compiling enum_dispatch v0.3.13
+    velvet-ballistics:sanitizer-address-check |    Compiling crc32c v0.6.8
+    velvet-ballistics:sanitizer-address-check |    Compiling zmij v1.0.21
+    velvet-ballistics:sanitizer-address-check |    Compiling serde_json v1.0.150
+    velvet-ballistics:sanitizer-address-check |    Compiling logos-codegen v0.15.1
+    velvet-ballistics:sanitizer-address-check |    Compiling beef v0.5.2
+    velvet-ballistics:sanitizer-address-check |    Compiling lazy_static v1.5.0
+    velvet-ballistics:sanitizer-address-check |    Compiling rustc-std-workspace-core v1.99.0 (/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/rustc-std-workspace-core)
+    velvet-ballistics:sanitizer-address-check |    Compiling alloc v0.0.0 (/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc)
+    velvet-ballistics:sanitizer-address-check |    Compiling unwind v0.0.0 (/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/unwind)
+    velvet-ballistics:sanitizer-address-check |    Compiling adler2 v2.0.1
+    velvet-ballistics:sanitizer-address-check |    Compiling memchr v2.7.6
+    velvet-ballistics:sanitizer-address-check |    Compiling cfg-if v1.0.4
+    velvet-ballistics:sanitizer-address-check |    Compiling rustc-demangle v0.1.27
+    velvet-ballistics:sanitizer-address-check |    Compiling rustc-std-workspace-alloc v1.99.0 (/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/rustc-std-workspace-alloc)
+    velvet-ballistics:sanitizer-address-check |    Compiling gimli v0.32.3
+    velvet-ballistics:sanitizer-address-check |    Compiling std_detect v0.1.5 (/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std_detect)
+    velvet-ballistics:sanitizer-address-check |    Compiling hashbrown v0.17.0
+    velvet-ballistics:sanitizer-address-check |    Compiling addr2line v0.25.1
+    velvet-ballistics:sanitizer-address-check |    Compiling miniz_oxide v0.8.9
+    velvet-ballistics:sanitizer-address-check |    Compiling panic_unwind v0.0.0 (/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/panic_unwind)
+    velvet-ballistics:sanitizer-address-check |    Compiling panic_abort v0.0.0 (/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/panic_abort)
+    velvet-ballistics:sanitizer-address-check |    Compiling rustc-literal-escaper v0.0.7
+    velvet-ballistics:sanitizer-address-check |    Compiling logos-derive v0.15.1
+    velvet-ballistics:sanitizer-address-check |    Compiling heck v0.5.0
+    velvet-ballistics:sanitizer-address-check |    Compiling clap_derive v4.6.1
+    velvet-ballistics:sanitizer-address-check |    Compiling crc32fast v1.5.0
+    velvet-ballistics:sanitizer-address-check |    Compiling version_check v0.9.5
+    velvet-ballistics:sanitizer-address-check |    Compiling ahash v0.8.12
+    velvet-ballistics:sanitizer-address-check |    Compiling camino v1.2.2
+    velvet-ballistics:sanitizer-address-check |    Compiling anyhow v1.0.102
+    velvet-ballistics:sanitizer-address-check |    Compiling rayon-core v1.13.0
+    velvet-ballistics:sanitizer-address-check |    Compiling alloca v0.4.0
+    velvet-ballistics:sanitizer-address-check |    Compiling libfuzzer-sys v0.4.13
+    velvet-ballistics:sanitizer-address-check |    Compiling rustc-std-workspace-std v1.99.0 (/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/rustc-std-workspace-std)
+    velvet-ballistics:sanitizer-address-check |    Compiling getopts v0.2.24
+    velvet-ballistics:sanitizer-address-check |    Compiling proc_macro v0.0.0 (/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/proc_macro)
+    velvet-ballistics:sanitizer-address-check |    Compiling rustversion v1.0.22
+    velvet-ballistics:sanitizer-address-check |    Compiling generator v0.8.8
+    velvet-ballistics:sanitizer-address-check |    Compiling once_cell v1.21.4
+    velvet-ballistics:sanitizer-address-check |    Compiling equivalent v1.0.2
+    velvet-ballistics:sanitizer-address-check |    Compiling bitflags v2.11.1
+    velvet-ballistics:sanitizer-address-check |    Compiling hashbrown v0.17.1
+    velvet-ballistics:sanitizer-address-check |    Compiling indexmap v2.14.0
+    velvet-ballistics:sanitizer-address-check |    Compiling linux-raw-sys v0.12.1
+    velvet-ballistics:sanitizer-address-check |    Compiling iana-time-zone v0.1.65
+    velvet-ballistics:sanitizer-address-check |    Compiling fastrand v2.4.1
+    velvet-ballistics:sanitizer-address-check |    Compiling tempfile v3.27.0
+    velvet-ballistics:sanitizer-address-check |    Compiling chrono v0.4.44
+    velvet-ballistics:sanitizer-address-check |    Compiling bytes v1.11.1
+    velvet-ballistics:sanitizer-address-check |    Compiling regex-syntax v0.8.10
+    velvet-ballistics:sanitizer-address-check |    Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_core)
+    velvet-ballistics:sanitizer-address-check |    Compiling scopeguard v1.2.0
+    velvet-ballistics:sanitizer-address-check |    Compiling lock_api v0.4.14
+    velvet-ballistics:sanitizer-address-check |    Compiling arrayvec v0.7.6
+    velvet-ballistics:sanitizer-address-check |    Compiling spin v0.9.8
+    velvet-ballistics:sanitizer-address-check |    Compiling byteorder v1.5.0
+    velvet-ballistics:sanitizer-address-check |    Compiling hash32 v0.2.1
+    velvet-ballistics:sanitizer-address-check |    Compiling stable_deref_trait v1.2.1
+    velvet-ballistics:sanitizer-address-check |    Compiling cobs v0.3.0
+    velvet-ballistics:sanitizer-address-check |    Compiling arrayref v0.3.9
+    velvet-ballistics:sanitizer-address-check |    Compiling cpufeatures v0.3.0
+    velvet-ballistics:sanitizer-address-check |    Compiling constant_time_eq v0.4.2
+    velvet-ballistics:sanitizer-address-check |    Compiling postcard v1.1.3
+    velvet-ballistics:sanitizer-address-check |    Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_validate)
+    velvet-ballistics:sanitizer-address-check |    Compiling memchr v2.8.0
+    velvet-ballistics:sanitizer-address-check |    Compiling log v0.4.29
+    velvet-ballistics:sanitizer-address-check |    Compiling smallvec v1.15.1
+    velvet-ballistics:sanitizer-address-check |    Compiling byteorder-lite v0.1.0
+    velvet-ballistics:sanitizer-address-check |    Compiling twox-hash v2.1.2
+    velvet-ballistics:sanitizer-address-check |    Compiling compare v0.0.6
+    velvet-ballistics:sanitizer-address-check |    Compiling hashbrown v0.16.1
+    velvet-ballistics:sanitizer-address-check |    Compiling xxhash-rust v0.8.15
+    velvet-ballistics:sanitizer-address-check |    Compiling sfa v1.0.0
+    velvet-ballistics:sanitizer-address-check |    Compiling quick_cache v0.6.22
+    velvet-ballistics:sanitizer-address-check |    Compiling interval-heap v0.0.5
+    velvet-ballistics:sanitizer-address-check |    Compiling lz4_flex v0.13.1
+    velvet-ballistics:sanitizer-address-check |    Compiling crossbeam-skiplist v0.1.3
+    velvet-ballistics:sanitizer-address-check |    Compiling self_cell v1.2.2
+    velvet-ballistics:sanitizer-address-check |    Compiling varint-rs v2.2.0
+    velvet-ballistics:sanitizer-address-check |    Compiling hashbrown v0.14.5
+    velvet-ballistics:sanitizer-address-check |    Compiling byteview v0.10.1
+    velvet-ballistics:sanitizer-address-check |    Compiling rustc-hash v2.1.2
+    velvet-ballistics:sanitizer-address-check |    Compiling lsm-tree v3.1.4
+    velvet-ballistics:sanitizer-address-check |    Compiling dashmap v6.2.1
+    velvet-ballistics:sanitizer-address-check |    Compiling flume v0.12.0
+    velvet-ballistics:sanitizer-address-check |    Compiling aho-corasick v1.1.4
+    velvet-ballistics:sanitizer-address-check |    Compiling regex-automata v0.4.14
+    velvet-ballistics:sanitizer-address-check |    Compiling fjall v3.1.4
+    velvet-ballistics:sanitizer-address-check |    Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_storage)
+    velvet-ballistics:sanitizer-address-check |    Compiling rand_core v0.9.5
+    velvet-ballistics:sanitizer-address-check |    Compiling ppv-lite86 v0.2.21
+    velvet-ballistics:sanitizer-address-check |    Compiling rand_chacha v0.9.0
+    velvet-ballistics:sanitizer-address-check |    Compiling arraydeque v0.5.1
+    velvet-ballistics:sanitizer-address-check |    Compiling rand v0.9.4
+    velvet-ballistics:sanitizer-address-check |    Compiling wait-timeout v0.2.1
+    velvet-ballistics:sanitizer-address-check |    Compiling anstyle v1.0.14
+    velvet-ballistics:sanitizer-address-check |    Compiling foldhash v0.1.5
+    velvet-ballistics:sanitizer-address-check |    Compiling bit-vec v0.8.0
+    velvet-ballistics:sanitizer-address-check |    Compiling fnv v1.0.7
+    velvet-ballistics:sanitizer-address-check |    Compiling quick-error v1.2.3
+    velvet-ballistics:sanitizer-address-check |    Compiling itoa v1.0.18
+    velvet-ballistics:sanitizer-address-check |    Compiling rusty-fork v0.3.1
+    velvet-ballistics:sanitizer-address-check |    Compiling bit-set v0.8.0
+    velvet-ballistics:sanitizer-address-check |    Compiling hashbrown v0.15.5
+    velvet-ballistics:sanitizer-address-check |    Compiling rand_xorshift v0.4.0
+    velvet-ballistics:sanitizer-address-check |    Compiling crossbeam-queue v0.3.12
+    velvet-ballistics:sanitizer-address-check |    Compiling rtrb v0.3.5
+    velvet-ballistics:sanitizer-address-check |    Compiling unarray v0.1.4
+    velvet-ballistics:sanitizer-address-check |    Compiling hashlink v0.10.0
+    velvet-ballistics:sanitizer-address-check |    Compiling proptest v1.11.0
+    velvet-ballistics:sanitizer-address-check |    Compiling saphyr-parser v0.0.6
+    velvet-ballistics:sanitizer-address-check |    Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_runtime)
+    velvet-ballistics:sanitizer-address-check |    Compiling ordered-float v5.3.0
+    velvet-ballistics:sanitizer-address-check |    Compiling saphyr v0.0.6
+    velvet-ballistics:sanitizer-address-check |    Compiling logos v0.15.1
+    velvet-ballistics:sanitizer-address-check |    Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_expr)
+    velvet-ballistics:sanitizer-address-check |    Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_yaml)
+    velvet-ballistics:sanitizer-address-check |    Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_compile)
+    velvet-ballistics:sanitizer-address-check |    Compiling utf8parse v0.2.2
+    velvet-ballistics:sanitizer-address-check |    Compiling anstyle-parse v1.0.0
+    velvet-ballistics:sanitizer-address-check |    Compiling anstyle-query v1.1.5
+    velvet-ballistics:sanitizer-address-check |    Compiling is_terminal_polyfill v1.70.2
+    velvet-ballistics:sanitizer-address-check |    Compiling colorchoice v1.0.5
+    velvet-ballistics:sanitizer-address-check |    Compiling anstream v1.0.0
+    velvet-ballistics:sanitizer-address-check |    Compiling clap_lex v1.1.0
+    velvet-ballistics:sanitizer-address-check |    Compiling strsim v0.11.1
+    velvet-ballistics:sanitizer-address-check |    Compiling clap_builder v4.6.0
+    velvet-ballistics:sanitizer-address-check |    Compiling regex v1.12.3
+    velvet-ballistics:sanitizer-address-check |    Compiling crossbeam-channel v0.5.15
+    velvet-ballistics:sanitizer-address-check |    Compiling mio v1.2.0
+    velvet-ballistics:sanitizer-address-check |    Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_ipc)
+    velvet-ballistics:sanitizer-address-check |    Compiling clap v4.6.1
+    velvet-ballistics:sanitizer-address-check |    Compiling encoding_rs v0.8.35
+    velvet-ballistics:sanitizer-address-check |    Compiling unicode-width v0.2.2
+    velvet-ballistics:sanitizer-address-check |    Compiling annotate-snippets v0.12.16
+    velvet-ballistics:sanitizer-address-check |    Compiling encoding_rs_io v0.1.7
+    velvet-ballistics:sanitizer-address-check |    Compiling saphyr-parser-bw v0.0.611
+    velvet-ballistics:sanitizer-address-check |    Compiling nohash-hasher v0.2.0
+    velvet-ballistics:sanitizer-address-check |    Compiling base64 v0.22.1
+    velvet-ballistics:sanitizer-address-check |    Compiling simd-adler32 v0.3.9
+    velvet-ballistics:sanitizer-address-check |    Compiling serde-saphyr v0.0.25
+    velvet-ballistics:sanitizer-address-check |    Compiling winnow v1.0.3
+    velvet-ballistics:sanitizer-address-check |    Compiling toml_parser v1.1.2+spec-1.1.0
+    velvet-ballistics:sanitizer-address-check |    Compiling flate2 v1.1.9
+    velvet-ballistics:sanitizer-address-check |    Compiling fdeflate v0.3.7
+    velvet-ballistics:sanitizer-address-check |    Compiling toml_datetime v0.7.5+spec-1.1.0
+    velvet-ballistics:sanitizer-address-check |    Compiling serde_spanned v1.1.1
+    velvet-ballistics:sanitizer-address-check |    Compiling toml_writer v1.1.1+spec-1.1.0
+    velvet-ballistics:sanitizer-address-check |    Compiling winnow v0.7.15
+    velvet-ballistics:sanitizer-address-check |    Compiling ryu v1.0.23
+    velvet-ballistics:sanitizer-address-check |    Compiling unsafe-libyaml v0.2.11
+    velvet-ballistics:sanitizer-address-check |    Compiling pxfm v0.1.29
+    velvet-ballistics:sanitizer-address-check |    Compiling toml v0.9.12+spec-1.1.0
+    velvet-ballistics:sanitizer-address-check |    Compiling serde_yaml v0.9.34+deprecated
+    velvet-ballistics:sanitizer-address-check |    Compiling moxcms v0.8.1
+    velvet-ballistics:sanitizer-address-check |    Compiling png v0.18.1
+    velvet-ballistics:sanitizer-address-check |    Compiling cargo-platform v0.1.9
+    velvet-ballistics:sanitizer-address-check |    Compiling bytemuck v1.25.0
+    velvet-ballistics:sanitizer-address-check |    Compiling cargo_metadata v0.19.2
+    velvet-ballistics:sanitizer-address-check |    Compiling either v1.16.0
+    velvet-ballistics:sanitizer-address-check |    Compiling crossbeam-deque v0.8.6
+    velvet-ballistics:sanitizer-address-check |    Compiling half v2.7.1
+    velvet-ballistics:sanitizer-address-check |    Compiling plotters-backend v0.3.7
+    velvet-ballistics:sanitizer-address-check |    Compiling ciborium-io v0.2.2
+    velvet-ballistics:sanitizer-address-check |    Compiling ciborium-ll v0.2.2
+    velvet-ballistics:sanitizer-address-check |    Compiling image v0.25.10
+    velvet-ballistics:sanitizer-address-check |    Compiling plotters-svg v0.3.7
+    velvet-ballistics:sanitizer-address-check |    Compiling itertools v0.13.0
+    velvet-ballistics:sanitizer-address-check |    Compiling same-file v1.0.6
+    velvet-ballistics:sanitizer-address-check |    Compiling cast v0.3.0
+    velvet-ballistics:sanitizer-address-check |    Compiling criterion-plot v0.8.2
+    velvet-ballistics:sanitizer-address-check |    Compiling xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/xtask)
+    velvet-ballistics:sanitizer-address-check |    Compiling walkdir v2.5.0
+    velvet-ballistics:sanitizer-address-check |    Compiling rayon v1.12.0
+    velvet-ballistics:sanitizer-address-check |    Compiling plotters v0.3.7
+    velvet-ballistics:sanitizer-address-check |    Compiling ciborium v0.2.2
+    velvet-ballistics:sanitizer-address-check |    Compiling tinytemplate v1.2.1
+    velvet-ballistics:sanitizer-address-check |    Compiling page_size v0.6.0
+    velvet-ballistics:sanitizer-address-check |    Compiling oorandom v11.1.5
+    velvet-ballistics:sanitizer-address-check |    Compiling anes v0.1.6
+    velvet-ballistics:sanitizer-address-check |    Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/velvet_ballistics)
+    velvet-ballistics:sanitizer-address-check |    Compiling criterion v0.8.2
+    velvet-ballistics:sanitizer-address-check |    Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests)
+    velvet-ballistics:sanitizer-address-check |    Compiling arbitrary v1.4.2
+    velvet-ballistics:sanitizer-address-check |    Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/fuzz)
+    velvet-ballistics:sanitizer-address-check |    Compiling tracing-core v0.1.36
+    velvet-ballistics:sanitizer-address-check |    Compiling pin-project-lite v0.2.17
+    velvet-ballistics:sanitizer-address-check |    Compiling sharded-slab v0.1.7
+    velvet-ballistics:sanitizer-address-check |    Compiling tracing v0.1.44
+    velvet-ballistics:sanitizer-address-check |    Compiling tracing-log v0.2.0
+    velvet-ballistics:sanitizer-address-check |    Compiling matchers v0.2.0
+    velvet-ballistics:sanitizer-address-check |    Compiling thread_local v1.1.9
+    velvet-ballistics:sanitizer-address-check |    Compiling nu-ansi-term v0.50.3
+    velvet-ballistics:sanitizer-address-check |    Compiling tracing-subscriber v0.3.23
+    velvet-ballistics:sanitizer-address-check |    Compiling scoped-tls v1.0.1
+    velvet-ballistics:sanitizer-address-check |    Compiling loom v0.7.2
+    velvet-ballistics:sanitizer-address-check |     Finished `test` profile [unoptimized + debuginfo] target(s) in 2m 34s
+    velvet-ballistics:sanitizer-address-check |   Executable unittests src/lib.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_compile-2d954585ceffc16f)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/compiled_digest_payload.rs (target/x86_64-unknown-linux-gnu/debug/deps/compiled_digest_payload-4b1b6665dfb16eb7)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/digest_ask_determinism.rs (target/x86_64-unknown-linux-gnu/debug/deps/digest_ask_determinism-13339db8c9690afe)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/digest_ask_empty_prompt.rs (target/x86_64-unknown-linux-gnu/debug/deps/digest_ask_empty_prompt-509142315e8ec654)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/digest_ask_explicit_arm.rs (target/x86_64-unknown-linux-gnu/debug/deps/digest_ask_explicit_arm-201493b5778f248f)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/digest_ask_prompt_sensitivity.rs (target/x86_64-unknown-linux-gnu/debug/deps/digest_ask_prompt_sensitivity-b725ba95a91694c0)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/digest_ask_timeout_sensitivity.rs (target/x86_64-unknown-linux-gnu/debug/deps/digest_ask_timeout_sensitivity-bcdf6b4f9b6b90f0)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/digest_compilation_pipeline.rs (target/x86_64-unknown-linux-gnu/debug/deps/digest_compilation_pipeline-ecff10a0572c7c9c)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/digest_framing_collision.rs (target/x86_64-unknown-linux-gnu/debug/deps/digest_framing_collision-4bfef9c66310069a)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/digest_repeat_unit.rs (target/x86_64-unknown-linux-gnu/debug/deps/digest_repeat_unit-a4b05345652503b1)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/digest_set_finish_regression.rs (target/x86_64-unknown-linux-gnu/debug/deps/digest_set_finish_regression-316da4e217c22dad)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/digest_structural_fields.rs (target/x86_64-unknown-linux-gnu/debug/deps/digest_structural_fields-212298a1668960a8)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/digest_yaml_e2e.rs (target/x86_64-unknown-linux-gnu/debug/deps/digest_yaml_e2e-74d499b149c85452)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/finish_digest_integration.rs (target/x86_64-unknown-linux-gnu/debug/deps/finish_digest_integration-cc23f435347578ae)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/finish_digest_structural.rs (target/x86_64-unknown-linux-gnu/debug/deps/finish_digest_structural-ef9aeeca2881f421)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/idempotency_parity.rs (target/x86_64-unknown-linux-gnu/debug/deps/idempotency_parity-596ae51e41158536)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/integration_choose_body.rs (target/x86_64-unknown-linux-gnu/debug/deps/integration_choose_body-0e1291c5d525c559)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest/proptest_choose_depth.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_choose_depth-d49f128f8aee3aed)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest/proptest_choose_emission.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_choose_emission-84affe3f336505ea)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest/proptest_choose_fallthrough.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_choose_fallthrough-3ce8d374aa3dc11f)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest/proptest_choose_otherwise.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_choose_otherwise-3c7477aff93bd4cc)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest/proptest_choose_width.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_choose_width-e86a173a11fd92d3)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_digest_ask_ordering.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_digest_ask_ordering-815907ff7c4daa30)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_digest_ask_prompt_sensitivity.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_digest_ask_prompt_sensitivity-9691cec3fd2425ec)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_digest_ask_timeout_sensitivity.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_digest_ask_timeout_sensitivity-413cc4948038a89f)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_digest_determinism.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_digest_determinism-60cffd33023f013b)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_digest_foreach.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_digest_foreach-3d174fc9f925e6c1)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_secret_results_digest_sensitivity.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_secret_results_digest_sensitivity-a295c0192c5649cb)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/repeat_digest_integration.rs (target/x86_64-unknown-linux-gnu/debug/deps/repeat_digest_integration-02ba7b02889a780b)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/repeat_digest_proptest.rs (target/x86_64-unknown-linux-gnu/debug/deps/repeat_digest_proptest-3b7321905e5eb349)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/together_digest_sensitivity.rs (target/x86_64-unknown-linux-gnu/debug/deps/together_digest_sensitivity-90e901aa4646b3a3)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/v1_primitive_lowering.rs (target/x86_64-unknown-linux-gnu/debug/deps/v1_primitive_lowering-38a8558f12fff62c)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_8mdp_7_collect_lowering_props.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_8mdp_7_collect_lowering_props-a3851934ab2b3f0a)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_a001_for_each_topology.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_a001_for_each_topology-a3ebccf7ac3ed5e8)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_core_yaml_e2e_chain_strict_yaml.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_core_yaml_e2e_chain_strict_yaml-44aa276a5d20b827)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_xi2f_compile_source_proptest.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_xi2f_compile_source_proptest-1721dc835bffdcd4)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_xi2f_error_variant_proptest.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_xi2f_error_variant_proptest-abd054e6aeadbe0f)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_xi2f_nested_do_lowering.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_xi2f_nested_do_lowering-482da3e5310c655c)
+    velvet-ballistics:sanitizer-address-check |   Executable unittests src/lib.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_core-bbe617bd8861a23d)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/aggregate_resource_budget_kani_red.rs (target/x86_64-unknown-linux-gnu/debug/deps/aggregate_resource_budget_kani_red-c5de14195ebfba80)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/aggregate_resource_budget_properties_red.rs (target/x86_64-unknown-linux-gnu/debug/deps/aggregate_resource_budget_properties_red-4285d7952014e729)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/aggregate_resource_budget_red.rs (target/x86_64-unknown-linux-gnu/debug/deps/aggregate_resource_budget_red-372c0558f5e48c64)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/aggregate_resource_budget_snapshot_red.rs (target/x86_64-unknown-linux-gnu/debug/deps/aggregate_resource_budget_snapshot_red-10e9ab319264bd7f)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/phase1_core_types.rs (target/x86_64-unknown-linux-gnu/debug/deps/phase1_core_types-b22ac31aa2d57936)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_choose_replay.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_choose_replay-6bf1e20658e76fd2)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_core_error_codes.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_core_error_codes-e07cf124faa811a7)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_core_types.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_core_types-63ac98a0e90d49ff)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_diagnostic_code_determinism.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_diagnostic_code_determinism-b5296721fee2f0bc)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_diagnostic_constructor.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_diagnostic_constructor-f243ec8174223e48)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_error_code_registration.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_error_code_registration-1bf2e8ea740b5bbb)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_registry_consistency.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_registry_consistency-6f9d327caabac525)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_runtime_code_determinism.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_runtime_code_determinism-7d4e64816863a3f2)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_section16_parity.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_section16_parity-ed51ca4ad5e263eb)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_serde_roundtrip.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_serde_roundtrip-6eee156496ce0895)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_span_try_new.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_span_try_new-b46c65a9ce0b981f)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_supported_codes.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_supported_codes-06de03d2f3096892)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_symbolic_code.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_symbolic_code-b1d7a0be951768e9)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_symbolic_code_determinism.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_symbolic_code_determinism-dd53192002944889)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/resource_contract_type_integrity.rs (target/x86_64-unknown-linux-gnu/debug/deps/resource_contract_type_integrity-29e3a888b06c66a5)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/resource_contract_validation.rs (target/x86_64-unknown-linux-gnu/debug/deps/resource_contract_validation-c91b22ca890caac0)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/section36_mandatory_coverage.rs (target/x86_64-unknown-linux-gnu/debug/deps/section36_mandatory_coverage-8a6412ab10d14b3d)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/section38_behavioral_properties.rs (target/x86_64-unknown-linux-gnu/debug/deps/section38_behavioral_properties-8417e230f4619932)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_5m8w_step_budget_suspension.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_5m8w_step_budget_suspension-4e625fd340e0ed78)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_qi37_2_5_boundedness_adversarial.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_qi37_2_5_boundedness_adversarial-4f1995ccb999ee9a)
+    velvet-ballistics:sanitizer-address-check |   Executable unittests src/lib.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_expr-6dc09b3a0d506093)
+    velvet-ballistics:sanitizer-address-check |   Executable unittests src/lib.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_ipc-7ad586ab7f6dd63b)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/ipc_command_properties.rs (target/x86_64-unknown-linux-gnu/debug/deps/ipc_command_properties-cf7149603cc39d6d)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_ipc_error_codes.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_ipc_error_codes-b71b6b5ea8c421a6)
+    velvet-ballistics:sanitizer-address-check |   Executable unittests src/lib.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_runtime-d5608a04308da466)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/atomic_fire_enqueue_test.rs (target/x86_64-unknown-linux-gnu/debug/deps/atomic_fire_enqueue_test-bd6a608e922e047f)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/authority_validation_test.rs (target/x86_64-unknown-linux-gnu/debug/deps/authority_validation_test-008208b5ff1a245b)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/capacity_bounds_test.rs (target/x86_64-unknown-linux-gnu/debug/deps/capacity_bounds_test-0e1fd39c61b3ed7a)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/clock_advancement_test.rs (target/x86_64-unknown-linux-gnu/debug/deps/clock_advancement_test-8b9e6c0665a9a0eb)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/duplicate_key_test.rs (target/x86_64-unknown-linux-gnu/debug/deps/duplicate_key_test-d78cff7c60095b49)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/durability_matrix_integration.rs (target/x86_64-unknown-linux-gnu/debug/deps/durability_matrix_integration-96091fb6ecf47f51)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/durable_resume_red_phase.rs (target/x86_64-unknown-linux-gnu/debug/deps/durable_resume_red_phase-cad0aad41cd34ff8)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/durable_retry_boundary.rs (target/x86_64-unknown-linux-gnu/debug/deps/durable_retry_boundary-ba30e7f5921e4221)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/durable_retry_execution.rs (target/x86_64-unknown-linux-gnu/debug/deps/durable_retry_execution-143f1a47dce1a2d8)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/durable_retry_red_phase.rs (target/x86_64-unknown-linux-gnu/debug/deps/durable_retry_red_phase-390522cde1a902f5)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/durable_retry_run_attempt_authority.rs (target/x86_64-unknown-linux-gnu/debug/deps/durable_retry_run_attempt_authority-26bd4ecdd5065e02)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/generation_exhaustion_test.rs (target/x86_64-unknown-linux-gnu/debug/deps/generation_exhaustion_test-5f63793ac65a808d)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/numeric_timer_state_test.rs (target/x86_64-unknown-linux-gnu/debug/deps/numeric_timer_state_test-47cb8db92fda0fd5)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_admission_error_paths.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_admission_error_paths-c200cacf77bcbc4f)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_runtime_error_codes.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_runtime_error_codes-f93a154ddffc6a36)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/rb_r7o2a_phantom.rs (target/x86_64-unknown-linux-gnu/debug/deps/rb_r7o2a_phantom-81d2c77b82402d62)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/recovery_bdd_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/recovery_bdd_tests-9d394cc76c6cc456)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/recovery_hydration_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/recovery_hydration_tests-80824a18c6581ba7)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/recovery_integration.rs (target/x86_64-unknown-linux-gnu/debug/deps/recovery_integration-03937708284e9beb)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/replay_resume.rs (target/x86_64-unknown-linux-gnu/debug/deps/replay_resume-f5e171f13d42ff65)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/rs_026_phantom.rs (target/x86_64-unknown-linux-gnu/debug/deps/rs_026_phantom-92150bfa6005ec5e)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/slot_validation_test.rs (target/x86_64-unknown-linux-gnu/debug/deps/slot_validation_test-36521fb0a6e4c8ad)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/static_analysis_gates_test.rs (target/x86_64-unknown-linux-gnu/debug/deps/static_analysis_gates_test-3fef88905451a2e0)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/ticket_authority_matrix.rs (target/x86_64-unknown-linux-gnu/debug/deps/ticket_authority_matrix-70e95253c306b9d5)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/timer_deadline_safety_test.rs (target/x86_64-unknown-linux-gnu/debug/deps/timer_deadline_safety_test-35d302744df23d1d)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/timer_lifecycle_e2e_test.rs (target/x86_64-unknown-linux-gnu/debug/deps/timer_lifecycle_e2e_test-bbace026de2bce2a)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/timer_wheel_behavior_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/timer_wheel_behavior_tests-e6544c00292ad397)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_4qog3_independent_review.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_4qog3_independent_review-d35503432832d7ea)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_5m8w_step_budget_suspension_runtime.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_5m8w_step_budget_suspension_runtime-caa116e58671690e)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_h6ix_integration.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_h6ix_integration-781e85dba0d72b82)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_jggy_journal_event_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_jggy_journal_event_tests-2fbc07851a1ddd7a)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_jggy_lifecycle_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_jggy_lifecycle_tests-bd33004636ffcebe)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_jggy_property_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_jggy_property_tests-e732504f47f8fa5e)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_ko29_7_idempotency_miri.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_ko29_7_idempotency_miri-3ddfb93e225cb4eb)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_l2d7_joined_taint_propagation_red.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_l2d7_joined_taint_propagation_red-99ce5157d53e7f50)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_qi37_12_2_resume_error_propagation.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_qi37_12_2_resume_error_propagation-6e06baa0c4bd4b17)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_r4fm9_event_generation.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_r4fm9_event_generation-af285088db6f3d13)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_wave16_mqa.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_wave16_mqa-0542664388932e7e)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/zero_duration_test.rs (target/x86_64-unknown-linux-gnu/debug/deps/zero_duration_test-f63622949ceced23)
+    velvet-ballistics:sanitizer-address-check |   Executable unittests src/lib.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_storage-4a94eade1e2013b2)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/accepted_artifact_red_phase.rs (target/x86_64-unknown-linux-gnu/debug/deps/accepted_artifact_red_phase-86202b3d848ec43b)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/manual_qa_smoke.rs (target/x86_64-unknown-linux-gnu/debug/deps/manual_qa_smoke-288ff8629fb571f0)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_journal_error_codes.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_journal_error_codes-3edee17cfd1943b1)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_journal_idempotency.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_journal_idempotency-99d167a5e79f411d)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_vb_vzcuf_PS_001.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_vb_vzcuf_PS_001-87e165aba2b03944)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_vb_vzcuf_PS_002.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_vb_vzcuf_PS_002-30138a3e6246942b)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_vb_vzcuf_PS_003.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_vb_vzcuf_PS_003-1499d0482aab2f2e)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_vb_vzcuf_PS_004.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_vb_vzcuf_PS_004-5bd5dc6ce6cf1709)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_vb_vzcuf_PS_005.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_vb_vzcuf_PS_005-6b5285ee2ad61bcc)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_vb_vzcuf_PS_006.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_vb_vzcuf_PS_006-f362f6f2e6283b34)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_vb_vzcuf_PS_007.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_vb_vzcuf_PS_007-6019991e9cadad25)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_vb_vzcuf_PS_008.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_vb_vzcuf_PS_008-396224b7cfcbbae9)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_vb_vzcuf_PS_009.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_vb_vzcuf_PS_009-bd6d5a4090f4f052)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/recovery_property_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/recovery_property_tests-c7c1bae2f0659096)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_core_atomic_admission_red.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_core_atomic_admission_red-19c68d9f6f93799e)
+    velvet-ballistics:sanitizer-address-check |   Executable unittests src/lib.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_validate-b303590282db8db2)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/capability_contract_schema.rs (target/x86_64-unknown-linux-gnu/debug/deps/capability_contract_schema-1f02ee9f144997f0)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/capability_schema_kani.rs (target/x86_64-unknown-linux-gnu/debug/deps/capability_schema_kani-0387ff9062f15fbf)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/gate_08_accessor_parity.rs (target/x86_64-unknown-linux-gnu/debug/deps/gate_08_accessor_parity-6e2735015c5526fd)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/idempotency_contract_red.rs (target/x86_64-unknown-linux-gnu/debug/deps/idempotency_contract_red-f3dfbd067c16445e)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_diag_codes_promotion.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_diag_codes_promotion-9419523777cdede2)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_validation_error_code_registry_extended.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_validation_error_code_registry_extended-010d6d356fbef8b5)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_validation_error_codes.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_validation_error_codes-ba673b7abfe0b890)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/red_phase_validation.rs (target/x86_64-unknown-linux-gnu/debug/deps/red_phase_validation-fbc159ebd37aa631)
+    velvet-ballistics:sanitizer-address-check |   Executable unittests src/lib.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_yaml-78751225b5e8b03d)
+    velvet-ballistics:sanitizer-address-check |   Executable unittests src/lib.rs (target/x86_64-unknown-linux-gnu/debug/deps/velvet_ballistics-d71074084fc0664d)
+    velvet-ballistics:sanitizer-address-check |   Executable unittests src/main.rs (target/x86_64-unknown-linux-gnu/debug/deps/velvet_ballistics-6d0df89c1a85f70c)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/admission_durability_code.rs (target/x86_64-unknown-linux-gnu/debug/deps/admission_durability_code-9ccd8dcec79ba1e9)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/admission_evidence_integration.rs (target/x86_64-unknown-linux-gnu/debug/deps/admission_evidence_integration-69f591e31c85daaa)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/agent_context_snapshot.rs (target/x86_64-unknown-linux-gnu/debug/deps/agent_context_snapshot-c7e5f88201f57251)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/cli_integration.rs (target/x86_64-unknown-linux-gnu/debug/deps/cli_integration-ae1a4ae5bf6e1432)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/cli_trace_integration.rs (target/x86_64-unknown-linux-gnu/debug/deps/cli_trace_integration-8e0de3b1447184af)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/cli_vb_m214_bdd_scenarios.rs (target/x86_64-unknown-linux-gnu/debug/deps/cli_vb_m214_bdd_scenarios-41254e92f0671520)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/cli_verify_integration.rs (target/x86_64-unknown-linux-gnu/debug/deps/cli_verify_integration-eeecd02f178c61a0)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/cross_crate_adversarial.rs (target/x86_64-unknown-linux-gnu/debug/deps/cross_crate_adversarial-496bec4331880700)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/deliver_sink_integration.rs (target/x86_64-unknown-linux-gnu/debug/deps/deliver_sink_integration-be477cc2de66c1a6)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/durable_retry_cli.rs (target/x86_64-unknown-linux-gnu/debug/deps/durable_retry_cli-d4b817c8bae1059b)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/error_chain_integration.rs (target/x86_64-unknown-linux-gnu/debug/deps/error_chain_integration-0943be4780b739d6)
+    velvet-ballistics:sanitizer-address-check |   Executable ../workspace_tests/tests/cli/finish_input_execution.rs (target/x86_64-unknown-linux-gnu/debug/deps/finish_input_execution-c6c1d0b6c9e947b2)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/input_mapping_boundary.rs (target/x86_64-unknown-linux-gnu/debug/deps/input_mapping_boundary-b3783d04a8651724)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/ir_artifact_admission.rs (target/x86_64-unknown-linux-gnu/debug/deps/ir_artifact_admission-e53fde447a1a8004)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/lifecycle_integration.rs (target/x86_64-unknown-linux-gnu/debug/deps/lifecycle_integration-983f158ac7235f90)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/mode_activation_integration_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/mode_activation_integration_tests-7cd1e3e729fbe7f6)
+    velvet-ballistics:sanitizer-address-check |   Executable ../workspace_tests/tests/cli/submit_input_boundary.rs (target/x86_64-unknown-linux-gnu/debug/deps/submit_input_boundary-6d024fce8a8be556)
+    velvet-ballistics:sanitizer-address-check |   Executable ../workspace_tests/tests/cli/submit_retained_inputs.rs (target/x86_64-unknown-linux-gnu/debug/deps/submit_retained_inputs-fdb1cb55aecb1787)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_7x0ol_probe_c6_continue.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_7x0ol_probe_c6_continue-246c978c6eddc2f2)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_md3w_retained_input_recovery.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_md3w_retained_input_recovery-6118d7c083dbf9fd)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_qi37_14_1_run_step.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_qi37_14_1_run_step-a6841791f9327545)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_qi37_17_1_incident_command.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_qi37_17_1_incident_command-a2eb13259dfb42f0)
+    velvet-ballistics:sanitizer-address-check |   Executable ../workspace_tests/tests/cli/verify_budget_profiles.rs (target/x86_64-unknown-linux-gnu/debug/deps/verify_budget_profiles-2258360200bbc728)
+    velvet-ballistics:sanitizer-address-check |   Executable unittests src/lib.rs (target/x86_64-unknown-linux-gnu/debug/deps/fuzz_lib-edf7e6b00adaad72)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_digest_coherence.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_digest_coherence-0f20e62a361c7d9c)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_ipc_error_exhaustiveness.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_ipc_error_exhaustiveness-94cd078121116a86)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_journal_error_exhaustiveness.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_journal_error_exhaustiveness-7db0780640b1331c)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_roundtrip_determinism.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_roundtrip_determinism-c180394829aaac9b)
+    velvet-ballistics:sanitizer-address-check |   Executable unittests src/lib.rs (target/x86_64-unknown-linux-gnu/debug/deps/velvet_ballistics_workspace_tests-f6e9ce886e9ff4b2)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/bdd_idempotency.rs (target/x86_64-unknown-linux-gnu/debug/deps/bdd_idempotency-955198841e0ba800)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/bdd_runner_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/bdd_runner_tests-27a66bfb970764a2)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/behavior_symbolic_code_serde.rs (target/x86_64-unknown-linux-gnu/debug/deps/behavior_symbolic_code_serde-831424ba6043f339)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/bounded_memory_lease_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/bounded_memory_lease_tests-515b37d691988b24)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/cancel_kill_lattice_props.rs (target/x86_64-unknown-linux-gnu/debug/deps/cancel_kill_lattice_props-1610ecd8a9a9a6b5)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/cancel_kill_lattice_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/cancel_kill_lattice_tests-c6556eb307f2ec21)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/compiler_input_schema_kinds.rs (target/x86_64-unknown-linux-gnu/debug/deps/compiler_input_schema_kinds-ac55ae646271d04b)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/contracts_as_data_kani.rs (target/x86_64-unknown-linux-gnu/debug/deps/contracts_as_data_kani-2e8d68538fc76317)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/contracts_as_data_props.rs (target/x86_64-unknown-linux-gnu/debug/deps/contracts_as_data_props-df5d75bef43fe4f2)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/contracts_integration.rs (target/x86_64-unknown-linux-gnu/debug/deps/contracts_integration-6403cceaa0679e65)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/contracts_production_binding.rs (target/x86_64-unknown-linux-gnu/debug/deps/contracts_production_binding-c17a0fadf75c80f1)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/derived_status_replay_timeline_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/derived_status_replay_timeline_tests-3e0947f98610046f)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/diagnostic_code_ranges_test.rs (target/x86_64-unknown-linux-gnu/debug/deps/diagnostic_code_ranges_test-275138a46086ea3d)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/e2e_diagnostic_chain.rs (target/x86_64-unknown-linux-gnu/debug/deps/e2e_diagnostic_chain-57f2825e4e45b2f7)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/finish_input_binding.rs (target/x86_64-unknown-linux-gnu/debug/deps/finish_input_binding-a80945666a7c71ea)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/fjall_keyspace_manifest_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/fjall_keyspace_manifest_tests-2d7616ecfd418f1a)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/integration_boundary_inventory_evidence_validation.rs (target/x86_64-unknown-linux-gnu/debug/deps/integration_boundary_inventory_evidence_validation-92b78e11aa874dc1)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/integration_compile_error_message_quality.rs (target/x86_64-unknown-linux-gnu/debug/deps/integration_compile_error_message_quality-8e3e9ea60930b733)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/integration_runtime_storage_fault_tolerance.rs (target/x86_64-unknown-linux-gnu/debug/deps/integration_runtime_storage_fault_tolerance-c3087e2884e03245)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/integration_storage_runtime_recovery.rs (target/x86_64-unknown-linux-gnu/debug/deps/integration_storage_runtime_recovery-31cdf68e78fd311c)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/integration_storage_runtime_validate_pipeline.rs (target/x86_64-unknown-linux-gnu/debug/deps/integration_storage_runtime_validate_pipeline-8d071eedf8810693)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/integration_strict_persist_drop_reopen.rs (target/x86_64-unknown-linux-gnu/debug/deps/integration_strict_persist_drop_reopen-ae935a039c624f45)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/integration_subprocess_wal_crash_recovery.rs (target/x86_64-unknown-linux-gnu/debug/deps/integration_subprocess_wal_crash_recovery-5ba86532eb956444)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/integration_validate_policy_enforcement.rs (target/x86_64-unknown-linux-gnu/debug/deps/integration_validate_policy_enforcement-21789a988b43680d)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/integration_validate_yaml_parsing.rs (target/x86_64-unknown-linux-gnu/debug/deps/integration_validate_yaml_parsing-d829d3c96943a62c)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/journal_batch_accounting_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/journal_batch_accounting_tests-856aacd0c5de1c25)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/journal_side_index_contracts.rs (target/x86_64-unknown-linux-gnu/debug/deps/journal_side_index_contracts-4a5a42814bfd4d14)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/legacy_wire_decoder.rs (target/x86_64-unknown-linux-gnu/debug/deps/legacy_wire_decoder-441979dcc89fcabe)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/phase0_scaffold_test.rs (target/x86_64-unknown-linux-gnu/debug/deps/phase0_scaffold_test-6c53bca5c564432f)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/postcard_envelope_wire_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/postcard_envelope_wire_tests-4b904bcd8c200476)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_compile_error_codes.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_compile_error_codes-169891a4db43031a)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_diagnostic_codes.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_diagnostic_codes-b4142410c499bde6)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_equality.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_equality-86b82400ba07fb7d)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_error_types_nonzero_codes.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_error_types_nonzero_codes-63ece53abb807bdd)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/proptest_error_types_registration.rs (target/x86_64-unknown-linux-gnu/debug/deps/proptest_error_types_registration-88e49efb8b371920)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/raii_introspection_registry_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/raii_introspection_registry_tests-d68f29a288878e65)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/recovery_watermark_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/recovery_watermark_tests-38460deb12438703)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_adapter_contamination_guard.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_adapter_contamination_guard-59545ab3747b9119)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_completion_watermark_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_completion_watermark_tests-246d7b52d7a60747)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_decode_error_taxonomy_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_decode_error_taxonomy_tests-ec809148ebda85e3)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_doctor_key_decode_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_doctor_key_decode_tests-73d14453891ce73d)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_doctor_storage_scan_decode_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_doctor_storage_scan_decode_tests-789ed757e2c3353a)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_explicit_migration_skeleton_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_explicit_migration_skeleton_tests-718095f70d9076f7)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_fifo_backpressure_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_fifo_backpressure_tests-b6acf54b5466a1a2)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_ipc_flag_matrix_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_ipc_flag_matrix_tests-4c1d93dbb3455115)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_journal_tail_scan_fallback_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_journal_tail_scan_fallback_tests-af797159573476f1)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_postcard_newtype_compat_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_postcard_newtype_compat_tests-58ffb92624e3a673)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_retry_policy_math_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_retry_policy_math_tests-700f74b46d32ee67)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_shard_partition_math_properties.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_shard_partition_math_properties-28be4a0a3c84be8f)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_shutdown_drain_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_shutdown_drain_tests-83b92e00fbf572b1)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_storage_blackhat_fixture_corpus.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_storage_blackhat_fixture_corpus-27bc24a274275243)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_sync_drr_scheduler_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_sync_drr_scheduler_tests-59600039dbe78da5)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_timer_deadline_primitive_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_timer_deadline_primitive_tests-3d3105064d4820ac)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/restate_typed_partitioned_id_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_typed_partitioned_id_tests-736dbafbf692e934)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/runtime_fjall_pending_action_recovery.rs (target/x86_64-unknown-linux-gnu/debug/deps/runtime_fjall_pending_action_recovery-313b681e55093e70)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/runtime_input_schema_kinds.rs (target/x86_64-unknown-linux-gnu/debug/deps/runtime_input_schema_kinds-9461a1ac957b486d)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/runtime_version_barrier_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/runtime_version_barrier_tests-3884f1f6ae33a9c5)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/section17_runtime_code_coverage_report.rs (target/x86_64-unknown-linux-gnu/debug/deps/section17_runtime_code_coverage_report-4637f34ab63d6082)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/section17_runtime_code_reverse_parity.rs (target/x86_64-unknown-linux-gnu/debug/deps/section17_runtime_code_reverse_parity-22d79f23eda76263)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/slot_written_ordering_integration_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/slot_written_ordering_integration_tests-0180cd8eb492b1d3)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/snapshot_sequence_precondition_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/snapshot_sequence_precondition_tests-6d8d9d77b8f47663)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/storage_contract_pack_runner.rs (target/x86_64-unknown-linux-gnu/debug/deps/storage_contract_pack_runner-264ab5272945f49b)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/storage_ipc_resource_scenarios.rs (target/x86_64-unknown-linux-gnu/debug/deps/storage_ipc_resource_scenarios-486ee7506511aa4a)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/symbolic_code_behavior_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/symbolic_code_behavior_tests-dde8528b7098bcfa)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_37lc_canonical_spelling_red.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_37lc_canonical_spelling_red-70658162321c6e33)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_5xs4_test_loop_inventory_red.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_5xs4_test_loop_inventory_red-37bb56640d069687)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_79ffw_ticket_authority_probe.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_79ffw_ticket_authority_probe-de474867a527e1b0)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_7r7jv_executor_conformance.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_7r7jv_executor_conformance-a635c8e09623cf74)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_7x0ol_probe_registered_executor.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_7x0ol_probe_registered_executor-fe4ecc1aebfcf2a0)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_8ma2_workspace_assertions.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_8ma2_workspace_assertions-9adceeaf0624a59d)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_8mdp_7_resource_admission_props.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_8mdp_7_resource_admission_props-3215c67c18e0899d)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_9agmk_artifact_evidence.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_9agmk_artifact_evidence-4df19442a3846870)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_c1s0_orchestration_runtime_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_c1s0_orchestration_runtime_tests-9aa64910f8534b05)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_c3k9_current_api_mutation_plan.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_c3k9_current_api_mutation_plan-64eef4fb943eeb2e)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_core_yaml_e2e_chain_contract.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_core_yaml_e2e_chain_contract-791a9c5687c0a766)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_doc_boundary_inventory_integration.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_doc_boundary_inventory_integration-f6c98763c3625694)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_doc_taint_regression.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_doc_taint_regression-ad1505a36aa2d8c9)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_eepg_bdd_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_eepg_bdd_tests-2033be4600538b8f)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_eyij7_migration_regression.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_eyij7_migration_regression-37cb95393f2a3a21)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_fzx7_benchmark_groups.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_fzx7_benchmark_groups-df9e12aa4ee5ac5e)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_fzx7_budget_arithmetic.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_fzx7_budget_arithmetic-be021a416a528646)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_fzx7_error_variants.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_fzx7_error_variants-e54b39f92ef9b744)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_fzx7_evidence_gate.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_fzx7_evidence_gate-76382d7aef36cfd8)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_fzx7_invariants.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_fzx7_invariants-901dc5aff5b2f513)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_hxm0_acceptance_catalog.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_hxm0_acceptance_catalog-9dcf5faa5393de98)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_jpq7_3_fail_closed_storage_recovery_contract.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_jpq7_3_fail_closed_storage_recovery_contract-4b8d84d9e0aff522)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_kkvb_xtask_command_shell_coverage.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_kkvb_xtask_command_shell_coverage-89a94b539c87cf6a)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_kkvb_xtask_density_explicit.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_kkvb_xtask_density_explicit-a9e49353f3fbc6a4)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_kkvb_xtask_red_phase.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_kkvb_xtask_red_phase-3375d118049ad3b9)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_ko29_5_public_idempotency.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_ko29_5_public_idempotency-de897f87522581d3)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_kyyf_cross_run_determinism.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_kyyf_cross_run_determinism-bb74d2ce7fd99b4c)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_l2d7_doc_reconciliation_contract_red.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_l2d7_doc_reconciliation_contract_red-f55cb8cedb1fe070)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_lp2v_admission_integration.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_lp2v_admission_integration-055f16fcbf2d32b2)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_lp2v_admission_proptests.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_lp2v_admission_proptests-7596d1803ba3b4e4)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_lp2v_proof_admission_bdd.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_lp2v_proof_admission_bdd-89875b15dab095f2)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_nf2u_current_scope_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_nf2u_current_scope_tests-277f74f1b805b550)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_njju_mutation_fuzz_property_closure.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_njju_mutation_fuzz_property_closure-0c7e30555412673c)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_qi37_1_1_red_recovery_contract_test.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_qi37_1_1_red_recovery_contract_test-e9a2adb5a329b44c)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_qi37_25_quality_gates.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_qi37_25_quality_gates-361e5b3946700501)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_qi37_2_4_integration_budget_errors.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_qi37_2_4_integration_budget_errors-3e7b06f08ff8e43f)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_qi37_4_2_strict_runtime_admission.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_qi37_4_2_strict_runtime_admission-3cb21abf6f93a7fa)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_qi37_6_state8_setup.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_qi37_6_state8_setup-fd6752a756b2bcc4)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_s25h2_full_journal_reader.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_s25h2_full_journal_reader-7de372a504b06193)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_s25h2_recover_entry_points.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_s25h2_recover_entry_points-2a14a86046ea3424)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_ssei_verification_admission_acceptance.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_ssei_verification_admission_acceptance-29dd814d536820d4)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_te1i_binary_ipc_acceptance.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_te1i_binary_ipc_acceptance-45d12caff3890c53)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_test_cli_diff_incident_behavior.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_test_cli_diff_incident_behavior-e58d179061f7fb49)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_test_cli_run_lifecycle_behavior.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_test_cli_run_lifecycle_behavior-8dd0097ac0362e33)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_test_cli_storage_io_behavior.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_test_cli_storage_io_behavior-362bb96117c1dd5e)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_test_compile_error_quality_behavior.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_test_compile_error_quality_behavior-69567d310d9d71cd)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_test_compile_parse_validate_behavior.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_test_compile_parse_validate_behavior-d9fc7bbbde04fdd3)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_test_core_admission_trigger_behavior.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_test_core_admission_trigger_behavior-a7fb272fa3417d19)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_test_core_workflow_slot_behavior.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_test_core_workflow_slot_behavior-678f6da94d637a83)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_test_core_yaml_chain_behavior.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_test_core_yaml_chain_behavior-129a7370f4938a34)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_test_runtime_ipc_resource_behavior.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_test_runtime_ipc_resource_behavior-44900a56a4fbb496)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_test_runtime_lifecycle_state_behavior.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_test_runtime_lifecycle_state_behavior-6bb89507321db589)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_test_runtime_queue_timer_behavior.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_test_runtime_queue_timer_behavior-e27fdf7129d03f34)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_test_util_crate.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_test_util_crate-ac0ddfec90c977a4)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_test_validate_diagnostic_behavior.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_test_validate_diagnostic_behavior-72a385df729b7b2c)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_test_validate_policy_enforce_behavior.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_test_validate_policy_enforce_behavior-16628d7a052db00e)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_test_validate_yaml_parsing_behavior.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_test_validate_yaml_parsing_behavior-f70fcc00516aef78)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_vt2f_direct_runtime_api_acceptance.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_vt2f_direct_runtime_api_acceptance-8c0184e6975429aa)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_y1zq_boundary_inventory_contract.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_y1zq_boundary_inventory_contract-71e37f2c01c4ac93)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_y1zq_boundary_inventory_properties.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_y1zq_boundary_inventory_properties-a8d22e02b681bdc0)
+    velvet-ballistics:sanitizer-address-check |   Executable tests/vb_y1zq_boundary_inventory_properties_v2.rs (target/x86_64-unknown-linux-gnu/debug/deps/vb_y1zq_boundary_inventory_properties_v2-5ba21c27d0736e4a)
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |  Nextest run ID 1d224f9b-9693-4ac4-881a-15a12215d754 with nextest profile: default
+                       velvet-ballistics:test |     Starting 14349 tests across 290 binaries (27 tests skipped)
+                       velvet-ballistics:test |         FAIL [   0.004s] (13413/14349) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated ... FAILED
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     failures:
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     failures:
+                       velvet-ballistics:test |         given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     thread 'given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated' (2542629) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1471:9:
+                       velvet-ballistics:test |     assertion `left == right` failed: denial diagnostic case decode_failed
+                       velvet-ballistics:test |       left: PublicAdmissionDiagnostic { category: "invalid_envelope", digest: Some(WorkflowDigest([102, 167, 189, 158, 141, 137, 237, 192, 106, 237, 37, 141, 126, 19, 22, 176, 159, 54, 174, 206, 22, 165, 66, 210, 132, 55, 190, 87, 100, 44, 5, 89])), cause: "artifact_envelope_invalid" }
+                       velvet-ballistics:test |      right: PublicAdmissionDiagnostic { category: "decode_failed", digest: Some(WorkflowDigest([102, 167, 189, 158, 141, 137, 237, 192, 106, 237, 37, 141, 126, 19, 22, 176, 159, 54, 174, 206, 22, 165, 66, 210, 132, 55, 190, 87, 100, 44, 5, 89])), cause: "artifact_envelope_decode_failed" }
+                       velvet-ballistics:test |     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |   Cancelling due to test failure: 31 tests still running
+                       velvet-ballistics:test |   Cancelling due to signal: 19 tests still running
+                       velvet-ballistics:test |      SIGTERM [ 408.828s] (13426/14349) vb_storage::proptest_vb_vzcuf_PS_003 ps003_dup_fields
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps003_dup_fields has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 408.866s] (13427/14349) vb_storage::proptest_vb_vzcuf_PS_001 ps001_duplicate_rejected
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps001_duplicate_rejected has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 408.868s] (13428/14349) vb_storage::proptest_vb_vzcuf_PS_001 ps001_append_increments
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps001_append_increments has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 408.816s] (13429/14349) vb_storage::proptest_vb_vzcuf_PS_004 ps004_empty_commit_after_rej
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps004_empty_commit_after_rej has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 408.628s] (13430/14349) vb_storage::proptest_vb_vzcuf_PS_006 ps006_new_empty
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps006_new_empty has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 348.906s] (13431/14349) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_relaxed
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test pi_02_digest_roundtrip_relaxed has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 408.808s] (13432/14349) vb_storage::proptest_vb_vzcuf_PS_004 ps004_no_persist
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps004_no_persist has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 408.764s] (13433/14349) vb_storage::proptest_vb_vzcuf_PS_004 ps004_rejection_preserves
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps004_rejection_preserves has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 408.659s] (13434/14349) vb_storage::proptest_vb_vzcuf_PS_006 ps006_commit
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps006_commit has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 408.603s] (13435/14349) vb_storage::proptest_vb_vzcuf_PS_008 ps008_dup_before_queue
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps008_dup_before_queue has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 359.636s] (13436/14349) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract source_digest_mismatch_returns_payload_digest_mismatch_when_claimed_digest_differs
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test source_digest_mismatch_returns_payload_digest_mismatch_when_claimed_digest_differs has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 408.641s] (13437/14349) vb_storage::proptest_vb_vzcuf_PS_006 ps006_len_mono
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps006_len_mono has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 408.597s] (13438/14349) vb_storage::proptest_vb_vzcuf_PS_008 ps008_persisted
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps008_persisted has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 408.588s] (13439/14349) vb_storage::proptest_vb_vzcuf_PS_009 ps009_dup_rejected
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps009_dup_rejected has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 408.817s] (13440/14349) vb_storage::proptest_vb_vzcuf_PS_004 ps004_len_mono
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps004_len_mono has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 408.869s] (13441/14349) vb_storage::proptest_vb_vzcuf_PS_001 ps001_new_batch_empty
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps001_new_batch_empty has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 349.046s] (13442/14349) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_journaled
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test pi_02_digest_roundtrip_journaled has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 408.600s] (13443/14349) vb_storage::proptest_vb_vzcuf_PS_008 ps008_key_first
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps008_key_first has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |      SIGTERM [ 348.726s] (13444/14349) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_strict
+                       velvet-ballistics:test |   stdout ───
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test pi_02_digest_roundtrip_strict has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+                       velvet-ballistics:test | 
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |      Summary [ 453.252s] 13444/14349 tests run: 13424 passed (10 slow), 20 failed, 27 skipped
+                       velvet-ballistics:test |         FAIL [   0.004s] (13413/14349) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated
+                       velvet-ballistics:test |      SIGTERM [ 408.828s] (13426/14349) vb_storage::proptest_vb_vzcuf_PS_003 ps003_dup_fields
+                       velvet-ballistics:test |      SIGTERM [ 408.866s] (13427/14349) vb_storage::proptest_vb_vzcuf_PS_001 ps001_duplicate_rejected
+                       velvet-ballistics:test |      SIGTERM [ 408.868s] (13428/14349) vb_storage::proptest_vb_vzcuf_PS_001 ps001_append_increments
+                       velvet-ballistics:test |      SIGTERM [ 408.816s] (13429/14349) vb_storage::proptest_vb_vzcuf_PS_004 ps004_empty_commit_after_rej
+                       velvet-ballistics:test |      SIGTERM [ 408.628s] (13430/14349) vb_storage::proptest_vb_vzcuf_PS_006 ps006_new_empty
+                       velvet-ballistics:test |      SIGTERM [ 348.906s] (13431/14349) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_relaxed
+                       velvet-ballistics:test |      SIGTERM [ 408.808s] (13432/14349) vb_storage::proptest_vb_vzcuf_PS_004 ps004_no_persist
+                       velvet-ballistics:test |      SIGTERM [ 408.764s] (13433/14349) vb_storage::proptest_vb_vzcuf_PS_004 ps004_rejection_preserves
+                       velvet-ballistics:test |      SIGTERM [ 408.659s] (13434/14349) vb_storage::proptest_vb_vzcuf_PS_006 ps006_commit
+                       velvet-ballistics:test |      SIGTERM [ 408.603s] (13435/14349) vb_storage::proptest_vb_vzcuf_PS_008 ps008_dup_before_queue
+                       velvet-ballistics:test |      SIGTERM [ 359.636s] (13436/14349) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract source_digest_mismatch_returns_payload_digest_mismatch_when_claimed_digest_differs
+                       velvet-ballistics:test |      SIGTERM [ 408.641s] (13437/14349) vb_storage::proptest_vb_vzcuf_PS_006 ps006_len_mono
+                       velvet-ballistics:test |      SIGTERM [ 408.597s] (13438/14349) vb_storage::proptest_vb_vzcuf_PS_008 ps008_persisted
+                       velvet-ballistics:test |      SIGTERM [ 408.588s] (13439/14349) vb_storage::proptest_vb_vzcuf_PS_009 ps009_dup_rejected
+                       velvet-ballistics:test |      SIGTERM [ 408.817s] (13440/14349) vb_storage::proptest_vb_vzcuf_PS_004 ps004_len_mono
+                       velvet-ballistics:test |      SIGTERM [ 408.869s] (13441/14349) vb_storage::proptest_vb_vzcuf_PS_001 ps001_new_batch_empty
+                       velvet-ballistics:test |      SIGTERM [ 349.046s] (13442/14349) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_journaled
+                       velvet-ballistics:test |      SIGTERM [ 408.600s] (13443/14349) vb_storage::proptest_vb_vzcuf_PS_008 ps008_key_first
+                       velvet-ballistics:test |      SIGTERM [ 348.726s] (13444/14349) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_strict
+                       velvet-ballistics:test | warning: 905/14349 tests were not run due to signal
+                       velvet-ballistics:test | error: test run failed
+[ WARN 23:59:12.703] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features` on vb_core (1/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features bench` on vb_core (2/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features default` on vb_core (3/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-diagnostic-codes` on vb_core (4/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features test-util` on vb_core (5/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features verus-kernels` on vb_core (6/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features volatile` on vb_core (7/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features` on vb_yaml (8/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features default` on vb_yaml (9/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features test-util` on vb_yaml (10/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features` on vb_validate (11/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features default` on vb_validate (12/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features verus` on vb_validate (13/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features` on vb_expr (14/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features default` on vb_expr (15/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features` on vb_compile (16/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features default` on vb_compile (17/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features test-util` on vb_compile (18/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features` on vb_storage (19/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features default` on vb_storage (20/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-recovery` on vb_storage (21/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-typed-partitioned-ids` on vb_storage (22/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-vb-u8gi-decode-taxonomy` on vb_storage (23/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-vb-vzcuf` on vb_storage (24/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features legacy-kani` on vb_storage (25/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features` on vb_runtime (26/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features default` on vb_runtime (27/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-admission-store` on vb_runtime (28/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-capability-harnesses` on vb_runtime (29/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-engine-yaml-admission` on vb_runtime (30/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-shard-command-queue` on vb_runtime (31/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-sxkz6-answer-ask` on vb_runtime (32/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-sxkz6-capture-timer` on vb_runtime (33/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-sxkz6-list-events` on vb_runtime (34/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-sxkz6-shard-for-run` on vb_runtime (35/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-sxkz6-take-inspect` on vb_runtime (36/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-sxkz6-timer-fired` on vb_runtime (37/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-trace-ring` on vb_runtime (38/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-vb-4969v-aggregate-invariant` on vb_runtime (39/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-vb-4969v-runtime-a3` on vb_runtime (40/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-vt2f-runtime-facade` on vb_runtime (41/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-vt2f-shard-lower-semantics` on vb_runtime (42/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features kani-yaml-e2e-admission-matrix` on vb_runtime (43/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features vb-y9d3v-attempt-fence` on vb_runtime (44/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet --no-default-features --features vb-y9d3v-flux-refinements` on vb_runtime (45/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet` on vb_ipc (46/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet` on velvet-ballistics (47/48)
+
+           velvet-ballistics:feature-powerset | info: running `cargo check --quiet` on velvet-ballistics-workspace-tests (48/48)
+[ WARN 2026-10-22 00:00:40.358] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 00:00:57.587] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                   velvet-ballistics:coverage | info: cargo-llvm-cov currently setting cfg(coverage) and cfg(coverage_nightly); you can opt-out it by passing --no-cfg-coverage and --no-cfg-coverage-nightly
+
+                   velvet-ballistics:coverage |     Finished report saved to target/llvm-cov/lcov.info
+              velvet-ballistics:mutants-smoke |  WARN No mutants were viable: perhaps there is a problem with building in a scratch directory. Look in mutants.out/log/* for more information.
+[ WARN 00:01:20.561] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+velvet-ballistics:benchmark-regression-policy | Error: benchmark evidence line 1 commit is stale: evidence=2990ccb0e5db2f15046562adb20a5ea4e2d9591f current_head=cabd6f6599a98b42d5bc7164c195f94076853511
+[ WARN 00:04:58.412] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 

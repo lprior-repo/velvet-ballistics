@@ -1,0 +1,14 @@
+COMMAND: cargo fmt --check
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+Diff in /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile/src/mod_compile_validation/part_03.rs:157:
+     Ok(())
+ }
+ 
+[31m-pub(super) fn validate_ast_step_shapes(
+(B[m[31m-    steps: &saphyr::Sequence<'_>,
+(B[m[31m-) -> Result<(), CompileError> {
+(B[m[32m+pub(super) fn validate_ast_step_shapes(steps: &saphyr::Sequence<'_>) -> Result<(), CompileError> {
+(B[m     let last_step = steps.len().checked_sub(1).ok_or(CompileError::EmptySteps)?;
+     for (index, step) in steps.iter().enumerate() {
+         let StepSpec { primitive, body } = step_spec(step, index)?;
+EXIT_STATUS=1

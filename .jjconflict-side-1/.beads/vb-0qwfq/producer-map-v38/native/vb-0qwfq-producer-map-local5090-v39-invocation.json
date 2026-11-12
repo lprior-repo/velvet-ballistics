@@ -1,0 +1,11 @@
+{
+  "model": "local-5090-ninfer/qwen3.8-27b-uncensored",
+  "workspace": "/home/lewis/src/isoloated/vb-0qwfq-producer-map-local5090-v38",
+  "prompt": "/tmp/vb-0qwfq-producer-map-local5090-v39.txt",
+  "cloud_fallback": false,
+  "thinking": "high",
+  "runner": "mise exec -- omp",
+  "per_run_config": "/tmp/vb-omp-local-text-tools-guarded.yml",
+  "tools": "native text read exact replace edit bash write grep glob",
+  "images_blocked": true
+}

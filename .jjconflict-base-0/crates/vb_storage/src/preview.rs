@@ -1,0 +1,184 @@
+#![forbid(unsafe_code)]
+//! Bounded keyspace preview for doctor inspection.
+//!
+//! `preview_keyspace` processes a stream of key-value entries and
+//! applies `PreviewConfig` caps to produce a `DecodedPreview`.
+//!
+//! The function is I/O-free: it takes a pre-collected entry slice
+//! (key bytes + value bytes). The caller (doctor command) is responsible
+//! for reading entries from the journal keyspace.
+
+use crate::JournalError;
+use crate::error::KeyDecodeError;
+use crate::keys::{KeyspaceScanPolicy, decode_storage_key};
+use crate::types::{DecodedPreview, PreviewConfig, PreviewPayload, StorageKey};
+
+/// Produces a bounded preview from a slice of keyspace entries.
+///
+/// Each entry is a `(key_bytes, value_bytes)` pair as read from the
+/// journal. The function:
+///
+/// 1. Decodes each key via `decode_storage_key()`. The supplied
+///    [`KeyspaceScanPolicy`] selects whether corrupt keys are
+///    skipped silently (`SkipMalformed`) or surface as a typed
+///    [`JournalError::MalformedKeyspaceRow`] (`FailClosed`).
+/// 2. Applies `max_records` cap: stops including records once the cap
+///    is reached.
+/// 3. Applies `max_bytes` HARD cap: a record is NOT included if its
+///    value bytes would cause `bytes_accumulated + payload_len > max_bytes`.
+/// 4. Sets `truncated = true` if iteration stopped before processing
+///    all entries due to either cap.
+///
+/// # Contract Guarantees
+///
+/// - `result.entries.len() <= config.max_records().get()`
+/// - Total bytes accumulated across all entries <= `config.max_bytes()`
+/// - `result.truncated` is true iff a cap was hit before all entries
+///   were processed.
+/// - Under `KeyspaceScanPolicy::SkipMalformed`, malformed keys are
+///   silently skipped and do not affect the cap accounting (the cap
+///   applies only to records that survive decode).
+/// - Under `KeyspaceScanPolicy::FailClosed`, the first malformed key
+///   aborts the scan and the function returns
+///   [`JournalError::MalformedKeyspaceRow`].
+/// - The `scratch` buffer is mutated in-place for every included entry:
+///   it is cleared, extended with the entry's value bytes, then swapped
+///   out via `mem::take` so the buffer can be reused on the next
+///   iteration without re-allocating. The caller's `scratch` is left
+///   empty (capacity retained) on return. CC-003 fix: avoids a fresh
+///   `Vec<u8>` allocation per included entry.
+///
+/// # Errors
+///
+/// Returns `JournalError::PayloadTooLarge` if any entry's value bytes
+/// length exceeds `u32::MAX`, guarding against silent truncation on
+/// 64-bit platforms. Returns `JournalError::MalformedKeyspaceRow`
+/// (only under `KeyspaceScanPolicy::FailClosed`) on the first row
+/// whose key cannot be decoded.
+pub fn preview_keyspace(
+    policy: KeyspaceScanPolicy,
+    config: PreviewConfig,
+    entries: &[(Vec<u8>, Vec<u8>)],
+    scratch: &mut Vec<u8>,
+) -> Result<DecodedPreview, JournalError> {
+    let max_records_val = config.max_records().get();
+    let max_bytes_val = config.max_bytes();
+
+    let mut result_entries: Vec<(StorageKey, Vec<u8>, PreviewPayload)> = Vec::new();
+    let mut records_yielded: usize = 0;
+    let mut bytes_accumulated: u32 = 0;
+    let mut truncated = false;
+    let total_entries =
+        u64::try_from(entries.len()).map_err(|_| JournalError::PayloadTooLarge {
+            len: u32::MAX,
+            max: u32::MAX,
+        })?;
+
+    for (key_bytes, value_bytes) in entries {
+        // Decode the key. The `KeyspaceScanPolicy` selects the failure
+        // path: `SkipMalformed` continues, `FailClosed` aborts with a
+        // typed `MalformedKeyspaceRow`.
+        let key = match decode_storage_key(key_bytes) {
+            Ok(k) => k,
+            Err(err) => match policy {
+                KeyspaceScanPolicy::SkipMalformed => continue,
+                KeyspaceScanPolicy::FailClosed => {
+                    return Err(malformed_to_journal_error(err, key_bytes.len()));
+                }
+            },
+        };
+
+        let payload_len =
+            u32::try_from(value_bytes.len()).map_err(|_| JournalError::PayloadTooLarge {
+                len: u32::MAX,
+                max: u32::MAX,
+            })?;
+
+        // Record cap: stop if we've already yielded max_records.
+        if records_yielded >= max_records_val {
+            truncated = true;
+            break;
+        }
+
+        // Byte cap: HARD cap — do NOT include this record if it would
+        // cause bytes_accumulated to exceed max_bytes.
+        // Uses saturating_add as defensive coding (GOD RULE 3).
+        let projected = bytes_accumulated.saturating_add(payload_len);
+        if projected > max_bytes_val {
+            truncated = true;
+            break;
+        }
+
+        // Both caps not hit: include this record.
+        // CC-003 fix: reuse the caller's scratch buffer instead of
+        // allocating a fresh `Vec<u8>` per included entry. After
+        // `extend_from_slice`, `mem::take(scratch)` swaps in an empty
+        // `Vec` so the next iteration can keep using the same buffer
+        // without losing the bytes we just pushed.
+        bytes_accumulated = projected; // Safe: checked projected <= max_bytes_val
+        scratch.clear();
+        scratch.extend_from_slice(value_bytes);
+        result_entries.push((key, std::mem::take(scratch), PreviewPayload::Raw));
+        records_yielded = records_yielded.saturating_add(1);
+    }
+
+    Ok(DecodedPreview {
+        entries: result_entries,
+        total_keyspace_records: total_entries,
+        truncated,
+    })
+}
+
+// ---------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------
+
+// Translates a `KeyDecodeError` into the typed `MalformedKeyspaceRow`
+// variant that production paths surface. Used only on the
+// `FailClosed` policy path.
+//
+// `KeyDecodeError::KeyLengthMismatch` already carries the same three
+// fields the typed error expects, so the happy path is a struct
+// rename. The other variants (empty key, unknown prefix, semantic
+// field rejections) are reduced to a `MalformedKeyspaceRow` with the
+// observed `actual_len` and `expected_len = 0` so the operator can
+// still pinpoint the offending row.
+fn malformed_to_journal_error(err: KeyDecodeError, actual_len: usize) -> JournalError {
+    match err {
+        KeyDecodeError::KeyLengthMismatch {
+            prefix,
+            expected,
+            actual,
+        } => JournalError::MalformedKeyspaceRow {
+            prefix,
+            expected_len: expected,
+            actual_len: actual,
+        },
+        KeyDecodeError::UnknownPrefix { prefix } => JournalError::MalformedKeyspaceRow {
+            prefix,
+            expected_len: 0,
+            actual_len,
+        },
+        KeyDecodeError::EmptyKey => JournalError::MalformedKeyspaceRow {
+            prefix: 0,
+            expected_len: 0,
+            actual_len: 0,
+        },
+        KeyDecodeError::InvalidRunId | KeyDecodeError::ReservedSeqSentinel => {
+            // Semantic field rejection — the structural decode succeeded
+            // so the prefix and length were already validated. Surface a
+            // typed error with `expected_len = 0` to indicate "semantic,
+            // not structural" mismatch; the caller can recover the prefix
+            // from the first byte if it needs it.
+            JournalError::MalformedKeyspaceRow {
+                prefix: 0,
+                expected_len: 0,
+                actual_len,
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+#[path = "preview/tests.rs"]
+mod tests;

@@ -1,0 +1,17 @@
+
+running 12 tests
+test policy::tests::decision_record_preserves_policy_identities ... ok
+test policy::tests::changing_ticket_field_changes_digest ... ok
+test policy::tests::changing_taint_changes_digest ... ok
+test policy::tests::emergency_overlay_denies_all ... ok
+test policy::tests::explicit_deny ... ok
+test policy::tests::decision_record_preserves_ticket_identity ... ok
+test policy::tests::explicit_permit ... ok
+test policy::tests::overlay_remains_restrictive_after_configure ... ok
+test policy::tests::explicit_suspend ... ok
+test policy::tests::unconfigured_deny ... ok
+test policy::tests::unknown_action_deny ... ok
+test policy::tests::missing_admission_distinguishable_from_artifact ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 1938 filtered out; finished in 0.00s
+

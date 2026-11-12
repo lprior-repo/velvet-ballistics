@@ -1,0 +1,56 @@
+```rust
+#[test]
+fn test_deterministic_compile_and_digest() -> Result<(), Box<dyn std::error::Error>> {
+    let src = source("number");
+    let compiled1 = vb_compile::compile_workflow(src.as_bytes())?;
+    let compiled2 = vb_compile::compile_workflow(src.as_bytes())?;
+    assert_eq!(compiled1.digest(), compiled2.digest());
+
+    let parts = compiled1.to_parts();
+    let zero = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+    assert_ne!(parts.digest, zero);
+
+    let mut parts_for_recompute = parts.clone();
+    parts_for_recompute.digest = zero;
+    let computed = vb_core::WorkflowDigest::from_bytes(
+        blake3::hash(&postcard::to_allocvec(&parts_for_recompute)?).into()
+    );
+    assert_eq!(computed, parts.digest);
+    Ok(())
+}
+
+#[test]
+fn test_constant_change_alters_digest() -> Result<(), Box<dyn std::error::Error>> {
+    let src_a = source("number");
+    let src_b = src_a.replace("value: '42'", "value: '43'");
+    let compiled_a = vb_compile::compile_workflow(src_a.as_bytes())?;
+    let compiled_b = vb_compile::compile_workflow(src_b.as_bytes())?;
+    assert_ne!(compiled_a.digest(), compiled_b.digest());
+
+    let parts_a = compiled_a.to_parts();
+    let parts_b = compiled_b.to_parts();
+    assert_ne!(parts_a.constants, parts_b.constants);
+    Ok(())
+}
+
+#[test]
+fn test_journal_rejects_mutated_payload() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
+    let journal = vb_storage::FjallJournal::open(dir.path(), None)?;
+    let src = source("number");
+    let compiled = vb_compile::compile_workflow(src.as_bytes())?;
+    let accepted = vb_storage::submit_artifact(&journal, &compiled, vb_core::RuntimePolicy::Strict)?;
+    assert_eq!(accepted.workflow_digest, compiled.digest());
+
+    let parts = compiled.to_parts();
+    let mut parts_mut = parts.clone();
+    let slot = parts_mut.input_slots.first_mut().ok_or("missing port")?;
+    slot.kind = vb_core::InputSlotKind::Bool;
+    let rebuilt = vb_core::CompiledWorkflow::try_from_parts(parts_mut)?;
+    assert!(matches!(
+        vb_storage::submit_artifact(&journal, &rebuilt, vb_core::RuntimePolicy::Strict),
+        Err(vb_storage::JournalError::PayloadDigestMismatch)
+    ));
+    Ok(())
+}
+```

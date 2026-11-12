@@ -1,0 +1,80 @@
+
+running 6 tests
+test evidence_gate::tests::benchmark_evidence_complete_has_all_fields ... ok
+test evidence_gate::tests::benchmark_evidence_empty_baseline_is_incomplete ... ok
+test evidence_gate::tests::benchmark_evidence_missing_baseline_is_incomplete ... ok
+test evidence_gate::tests::enrich_benchmark_evidence_adds_command_and_environment ... ok
+test evidence_gate::tests::evidence_bundle_validates_missing_benchmark_baseline_blocks_speed_claim ... ok
+test evidence_gate::tests::parse_criterion_output_extracts_benchmark_names ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 61 filtered out; finished in 0.00s
+
+
+running 29 tests
+test benchmark_policy::tests::detects_integer_regression_threshold ... ok
+test benchmark_policy::tests::rejects_placeholder_instruction_metadata ... ok
+test benchmark_policy::tests::rejects_empty_evidence_for_budgeted_metrics ... ok
+test benchmark_policy::tests::rejects_deferred_mode_in_claim ... ok
+test benchmark_policy::tests::rejects_non_hex_commit_format ... ok
+test benchmark_policy::tests::rejects_deferred_generated_budget ... ok
+test benchmark_freshness::tests::non_commit_blob_rejected ... ok
+test benchmark_freshness::tests::resolve_commit_unique_prefix ... ok
+test benchmark_freshness::tests::resolve_commit_full_sha ... ok
+test benchmark_freshness::tests::missing_commit_rejected ... ok
+test benchmark_freshness::tests::staged_change_same_head_rejected ... ok
+test benchmark_freshness::tests::toolchain_mutation_rejected ... ok
+test benchmark_freshness::tests::cargo_lock_mutation_rejected ... ok
+test benchmark_freshness::tests::dirty_working_tree_same_head_rejected ... ok
+test benchmark_freshness::tests::perf_budget_mutation_rejected ... ok
+test benchmark_freshness::tests::committed_source_change_rejected ... ok
+test benchmark_freshness::tests::script_mutation_rejected ... ok
+test benchmark_freshness::tests::xtask_policy_mutation_rejected ... ok
+test benchmark_freshness::tests::non_ancestor_commit_rejected ... ok
+test benchmark_freshness::tests::clean_same_head_is_fresh ... ok
+test benchmark_freshness::tests::touched_then_reverted_source_is_fresh ... ok
+test benchmark_freshness::tests::unrelated_dirty_file_is_fresh ... ok
+test benchmark_freshness::tests::untracked_irrelevant_file_is_fresh ... ok
+test benchmark_freshness::tests::ignored_build_output_not_flagged ... ok
+test benchmark_freshness::tests::untracked_relevant_rust_rejected ... ok
+test benchmark_freshness::tests::bench_fixture_mutation_rejected ... ok
+test benchmark_freshness::tests::evidence_only_descendant_is_fresh ... ok
+test benchmark_freshness::tests::untracked_relevant_config_rejected ... ok
+test benchmark_freshness::tests::gitignored_relevant_config_rejected ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 38 filtered out; finished in 0.04s
+
+
+running 5 tests
+test benchmark_policy_missing_commit_rejected_end_to_end ... ok
+test benchmark_policy_dirty_source_same_head_rejected_end_to_end ... ok
+test benchmark_policy_staged_source_rejected_end_to_end ... ok
+test benchmark_policy_clean_same_head_passes_end_to_end ... ok
+test benchmark_policy_evidence_only_descendant_passes_end_to_end ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+

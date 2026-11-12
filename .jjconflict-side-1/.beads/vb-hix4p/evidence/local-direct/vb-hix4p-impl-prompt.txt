@@ -1,0 +1,7 @@
+Implementation only: accepted contract requires exactly one new field input_slots: Box::new([]), inside each actual WorkflowParts fixture below. No other edits. Return ONLY JSON array of {file,old,new}, each old being the exact step_names field line below, new equal old plus correctly-indented input_slots line. No shell commands.
+
+FILE crates/workspace_tests/tests/vb_test_validate_policy_enforce_behavior.rs
+        step_names: Box::new([]),
+
+FILE crates/vb_ipc/src/server/trace.rs
+            step_names: Box::from([]),
