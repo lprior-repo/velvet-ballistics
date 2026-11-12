@@ -25,7 +25,7 @@
 //        -> extern `count_total_steps_step_increment`
 //
 //   2. `count_body_region_nodes` per-body increment
-//        -> crates/vb_core/src/budget/loop_region.rs:47-52
+//        -> crates/vb_core/src/budget/loop_region.rs:50-55
 //        -> extern `body_region_step_increment`
 //
 //   3. `count_and_push_loop_body` body * iter_count
@@ -137,7 +137,7 @@ pub use production::{
 pub const U32_MAX: u32 = 4_294_967_295;
 
 /// Production u64::MAX mirror (18_446_744_073_709_551_615) — the upper
-/// bound on `total` step arithmetic (budget/loop_body.rs:43, 229, 234-239, budget/loop_region.rs:47-52).
+/// bound on `total` step arithmetic (budget/loop_body.rs:43, 237, 242-247, budget/loop_region.rs:50-55).
 #[allow(non_upper_case_globals)]
 pub const U64_MAX: u64 = 18_446_744_073_709_551_615;
 
@@ -478,7 +478,7 @@ pub assume_specification[ production::count_total_steps_step_increment ](
 
 /// Bridge contract: `body_region_step_increment` returns
 /// `Ok(new_count)` iff `count + 1 <= u64::MAX`. Mirrors
-/// `crates/vb_core/src/budget/loop_region.rs:47-52`.
+/// `crates/vb_core/src/budget/loop_region.rs:50-55`.
 #[allow(dead_code)]
 pub assume_specification[ production::body_region_step_increment ](count: u64) -> (result: Result<
     u64,
@@ -521,7 +521,7 @@ pub fn exec_count_total_steps_step_increment(total: u64, current: StepIdx) -> (r
 }
 
 /// Exec fn: production-bound per-body increment for
-/// `count_body_region_nodes`. Mirrors `crates/vb_core/src/budget/loop_region.rs:47-52`.
+/// `count_body_region_nodes`. Mirrors `crates/vb_core/src/budget/loop_region.rs:50-55`.
 #[allow(dead_code)]
 pub fn exec_body_region_step_increment(count: u64) -> (result: Result<u64, BudgetError>)
     ensures
@@ -633,7 +633,7 @@ pub fn exec_collect_start_update_metrics(
 //      u32::MAX as u64` (production guard at budget/loop_body.rs:56, 71).
 //
 //   2. `total + product` is bounded by `u64::MAX` when `total` and
-//      `product` are both u64 (production checked_add at budget/loop_body.rs:235).
+//      `product` are both u64 (production checked_add at budget/loop_body.rs:243).
 //
 //   3. `max_gather_pages + pages` (with `pages = ceil(limit /
 //      max(page_size, 1))`) is bounded by `u32::MAX` when
