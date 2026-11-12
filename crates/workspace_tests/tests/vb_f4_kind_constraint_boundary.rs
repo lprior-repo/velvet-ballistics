@@ -37,7 +37,7 @@ fn public_parts_reject_kind_incompatible_keywords_at_root_and_nested_fields() ->
                 "min_length" => constraint.min_length = Some(1),
                 "max_length" => constraint.max_length = Some(2),
                 "element" => constraint.element = Some(InputSlotKind::Bool),
-                "allow_extra" => constraint.allow_extra = Some(false),
+                "allow_extra" => constraint.extra = vb_core::ExtraFields::Reject,
                 "fields" => constraint.fields = Some(Box::from([])),
                 _ => return Err("unknown fixture keyword".into()),
             }

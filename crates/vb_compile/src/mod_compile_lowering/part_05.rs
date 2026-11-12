@@ -14,9 +14,7 @@ pub(crate) use digest::{
 pub use ir::{lower_do, lower_set, lower_steps_to_ir};
 #[cfg(test)]
 pub(super) use utility::parse_i64_field;
-pub(super) use utility::{
-    canonical_finish_slot, optional_slot_from_text, slot_from_text,
-};
+pub(super) use utility::{canonical_finish_slot, optional_slot_from_text, slot_from_text};
 
 // Unit tests for canonical_digest and digest_step_primitive live in a
 // separate file to keep this module under the source-length limit.

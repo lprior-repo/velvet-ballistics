@@ -118,7 +118,7 @@ fn self_consistent_wrong_schema_projection_is_not_recovered() -> TestResult {
                 .first_mut()
                 .ok_or("declaration")?
                 .constraint
-                .allow_extra = Some(true);
+                .extra = vb_core::ExtraFields::Allow;
             Ok(())
         },
         true,

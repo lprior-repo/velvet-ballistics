@@ -81,6 +81,39 @@ mod tests {
     use super::*;
 
     #[test]
+    fn policy_integer_width_boundaries_preserve_exact_violations() {
+        let policy = PolicyBounds {
+            absolute_max_action_tickets: u32::MAX,
+            absolute_max_parallel: u16::MAX,
+            absolute_max_run_time_seconds: u64::MAX,
+            absolute_max_result_bytes: u32::MAX,
+            absolute_max_steps_executable: u32::MAX,
+        };
+        let mut budget = BudgetAccumulator {
+            max_action_tickets: u64::from(u32::MAX),
+            max_parallel_in_flight: u64::from(u16::MAX),
+            max_run_time_seconds: u64::MAX,
+            max_result_bytes: u64::from(u32::MAX),
+            max_steps_executable: u64::from(u32::MAX),
+            ..BudgetAccumulator::default()
+        };
+        assert_eq!(budget.within_policy(&policy), Vec::<String>::new());
+        budget.max_action_tickets = 4_294_967_296;
+        budget.max_parallel_in_flight = 65_536;
+        budget.max_result_bytes = 4_294_967_296;
+        budget.max_steps_executable = 4_294_967_296;
+        assert_eq!(
+            budget.within_policy(&policy),
+            vec![
+                "max_action_tickets 4294967296 exceeds policy 4294967295",
+                "max_parallel_in_flight 65536 exceeds policy 65535",
+                "max_result_bytes 4294967296 exceeds policy 4294967295",
+                "max_steps_executable 4294967296 exceeds policy 4294967295",
+            ]
+        );
+    }
+
+    #[test]
     fn test_sequential_sum() {
         let mut a = BudgetAccumulator::new();
         a.max_steps_executable = 10;

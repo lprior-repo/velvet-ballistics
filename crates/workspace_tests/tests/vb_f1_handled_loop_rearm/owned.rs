@@ -115,7 +115,7 @@ fn exercise_with_capacity(
                 &mut store,
                 input,
                 item_slot,
-                vb_core::ids::FanoutLimit::new(limit),
+                limit,
                 body,
                 done,
                 start.output.slot(),

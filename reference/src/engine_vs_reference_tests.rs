@@ -179,7 +179,10 @@ fn assert_terminal_frame_divergence(workflow: &CompiledWorkflow) -> Result<(), S
         }
         match prod {
             Err(EngineError::InternalInvariantViolation { reason }) => {
-                assert_eq!(reason, vb_core::InvariantKind::from("invalid_state_transition"));
+                assert_eq!(
+                    reason,
+                    vb_core::InvariantKind::from("invalid_state_transition")
+                );
             }
             other => {
                 return Err(format!(

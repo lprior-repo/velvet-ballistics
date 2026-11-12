@@ -1,10 +1,10 @@
 #![forbid(unsafe_code)]
 
+use super::canonical_reduce_initial::parse_typed_initial;
 use super::{
     emit_scoped_typed_body, lower_canonical_set_expression_with_binding,
     resolve_slot_reference_scoped,
 };
-use super::canonical_reduce_initial::parse_typed_initial;
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use crate::mod_compile_lowering::{
     CanonicalScope, SlotCompiler, body_width, checked_step_offset, reduce_direct_body,
@@ -58,8 +58,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_aggregate(
     let accumulator = builder
         .allocate_slot()
         .map_err(|e| CompileErrors(vec![e]))?;
-    let (initial, initial_type) =
-        parse_typed_initial(config.initial, index)?;
+    let (initial, initial_type) = parse_typed_initial(config.initial, index)?;
     let initial = builder
         .push_constant(initial)
         .map_err(|e| CompileErrors(vec![e]))?;

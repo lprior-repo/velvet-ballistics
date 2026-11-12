@@ -250,6 +250,6 @@ fn observe_view(branches: &[SlotBranch], otherwise: Option<StepIdx>, slots: u16)
         two_branches,
         shifted_roots: base == 1,
         reverse_roots: first.condition.get() != base,
-        otherwise: otherwise.step().is_some(),
+        otherwise: otherwise.is_some(),
     })
 }

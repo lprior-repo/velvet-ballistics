@@ -36,7 +36,7 @@ fn legacy_parts() -> Result<WorkflowParts, Box<dyn std::error::Error>> {
                 StepIdx::new(1),
                 K::Ask {
                     prompt: SlotIdx::ZERO,
-                    timeout_slot: None,
+                    timeout_slot: None.into(),
                 },
                 None,
                 Some(StepIdx::new(2)),
@@ -224,7 +224,7 @@ fn public_verifier_rejects_ask_error_and_resume_bypass() -> TestResult {
             condition: SlotIdx::ZERO,
             target: StepIdx::new(1),
         }]),
-        otherwise: Some(StepIdx::new(2)),
+        otherwise: Some(StepIdx::new(2)).into(),
     };
     bypass.nodes.get_mut(0).ok_or("missing branch")?.output = None.into();
     bypass
@@ -235,7 +235,7 @@ fn public_verifier_rejects_ask_error_and_resume_bypass() -> TestResult {
         .next = None.into();
     bypass.nodes.get_mut(1).ok_or("missing Ask")?.kind = K::Ask {
         prompt: SlotIdx::new(3),
-        timeout_slot: None,
+        timeout_slot: None.into(),
     };
     bypass.slot_count = 4;
     bypass.input_slots = Box::from([

@@ -105,7 +105,7 @@ pub(super) fn together(numeric: bool) -> Result<WorkflowParts, WorkflowError> {
         node(
             branch,
             K::TogetherBranch {
-                branch: 0,
+                branch: 0.into(),
                 entry: StepIdx::new(8),
                 join,
                 accumulator: cursor,
@@ -124,7 +124,7 @@ pub(super) fn together(numeric: bool) -> Result<WorkflowParts, WorkflowError> {
         node(
             join,
             K::TogetherJoin {
-                branch_count: 1,
+                branch_count: 1.into(),
                 accumulator: cursor,
             },
             Some(value),

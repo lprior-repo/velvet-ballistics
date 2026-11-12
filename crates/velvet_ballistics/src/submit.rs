@@ -88,63 +88,62 @@ fn prepare_records(
     let run = vb_core::RunId::new(generate_submit_run_id());
     let source_record = source_record(source);
     let header = submission_header(run, compiled.digest());
-    let admission = if compiled
-        .input_slots()
-        .iter()
-        .any(|slot| slot.constraint.default_cold.is_some())
-    {
-        let mut store = vb_core::value_store::ValueStore::with_max_slots(
-            compiled.resource_contract().max_slots,
-        );
-        if let Some(metadata) = compiled.source_metadata() {
-            vb_core::workflow::source_metadata::seed_source_symbols(metadata, &mut store).map_err(
-                |error| {
-                    vb_storage::OwnedInputError::Bundle(
-                        vb_core::root_bundle::OwnedRootBundleError::Checkpoint(error),
-                    )
-                },
-            )?;
-        }
-        let roots = inputs
+    let admission =
+        if compiled
+            .input_slots()
             .iter()
-            .map(|(slot, value)| {
-                let secret = compiled
-                    .input_slots()
-                    .iter()
-                    .any(|input| input.slot == *slot && input.constraint.secret);
-                (
-                    *slot,
-                    *value,
-                    if secret {
-                        vb_core::Taint::Secret
-                    } else {
-                        vb_core::Taint::Clean
-                    },
-                )
-            })
-            .collect::<Vec<_>>()
-            .into_boxed_slice();
-        let bundle =
-            vb_core::root_bundle::OwnedRootBundle::new(roots, store.checkpoint_v1(), compiled)
-                .map_err(vb_storage::OwnedInputError::Bundle)?;
-        let retained = vb_storage::OwnedRunInputsRecordV1::new(
-            run,
-            artifact.digest,
-            source_record.digest,
-            &bundle,
-            compiled,
-        )?;
-        vb_storage::RunSubmission::owned(source_record, artifact, retained, header)?
-    } else {
-        let retained = vb_storage::RunInputsRecord::new(
-            run,
-            artifact.digest,
-            source_record.digest,
-            compiled,
-            inputs,
-        )?;
-        vb_storage::RunSubmission::new(source_record, artifact, retained, header)?
-    };
+            .any(|slot| slot.constraint.default_cold.is_some())
+        {
+            let mut store = vb_core::value_store::ValueStore::with_max_slots(
+                compiled.resource_contract().max_slots,
+            );
+            if let Some(metadata) = compiled.source_metadata() {
+                vb_core::workflow::source_metadata::seed_source_symbols(metadata, &mut store)
+                    .map_err(|error| {
+                        vb_storage::OwnedInputError::Bundle(
+                            vb_core::root_bundle::OwnedRootBundleError::Checkpoint(error),
+                        )
+                    })?;
+            }
+            let roots = inputs
+                .iter()
+                .map(|(slot, value)| {
+                    let secret = compiled.input_slots().iter().any(|input| {
+                        input.slot == *slot && input.constraint.secretness.is_secret()
+                    });
+                    (
+                        *slot,
+                        *value,
+                        if secret {
+                            vb_core::Taint::Secret
+                        } else {
+                            vb_core::Taint::Clean
+                        },
+                    )
+                })
+                .collect::<Vec<_>>()
+                .into_boxed_slice();
+            let bundle =
+                vb_core::root_bundle::OwnedRootBundle::new(roots, store.checkpoint_v1(), compiled)
+                    .map_err(vb_storage::OwnedInputError::Bundle)?;
+            let retained = vb_storage::OwnedRunInputsRecordV1::new(
+                run,
+                artifact.digest,
+                source_record.digest,
+                &bundle,
+                compiled,
+            )?;
+            vb_storage::RunSubmission::owned(source_record, artifact, retained, header)?
+        } else {
+            let retained = vb_storage::RunInputsRecord::new(
+                run,
+                artifact.digest,
+                source_record.digest,
+                compiled,
+                inputs,
+            )?;
+            vb_storage::RunSubmission::new(source_record, artifact, retained, header)?
+        };
     Ok(PreparedSubmission {
         admission,
         run,

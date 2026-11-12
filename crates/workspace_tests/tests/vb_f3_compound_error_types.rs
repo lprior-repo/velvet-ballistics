@@ -60,7 +60,7 @@ fn fixture(numeric: bool, external: bool) -> Result<WorkflowParts, WorkflowError
             K::ForEachStart {
                 input: items,
                 item_slot: item,
-                limit: 1,
+                limit: 1.into(),
                 body,
                 done,
             },

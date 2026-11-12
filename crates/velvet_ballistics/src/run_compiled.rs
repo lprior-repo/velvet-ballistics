@@ -132,7 +132,7 @@ pub(crate) fn map_runtime_inputs(
     let mut mapped = Vec::with_capacity(values.len());
     for (slot, value) in input_slots.iter().zip(values.iter()) {
         let value_kind = vb_core::input_validation::input_value_kind(*value);
-        if !(*value == vb_core::SlotValue::Null && slot.constraint.nullable)
+        if !(*value == vb_core::SlotValue::Null && slot.constraint.nullability.allows_null())
             && slot.kind != vb_core::InputSlotKind::Any
             && value_kind != slot.kind
         {

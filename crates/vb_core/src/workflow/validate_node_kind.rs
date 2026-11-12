@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-//! Node-kind reference validation.
 
 use super::validate_refs::{
     validate_branch_route, validate_const, validate_expr, validate_optional_slot,

@@ -200,7 +200,7 @@ fn accepted_together_executes_all_ordered_branches() -> TestResult {
         cn(
             1,
             K::TogetherBranch {
-                branch: 0,
+                branch: 0.into(),
                 entry: step(2),
                 join: step(5),
                 accumulator: slot(0),
@@ -219,7 +219,7 @@ fn accepted_together_executes_all_ordered_branches() -> TestResult {
         cn(
             3,
             K::TogetherBranch {
-                branch: 1,
+                branch: 1.into(),
                 entry: step(4),
                 join: step(5),
                 accumulator: slot(0),
@@ -231,7 +231,7 @@ fn accepted_together_executes_all_ordered_branches() -> TestResult {
         cn(
             5,
             K::TogetherJoin {
-                branch_count: 2,
+                branch_count: 2.into(),
                 accumulator: slot(0),
             },
             Some(1),

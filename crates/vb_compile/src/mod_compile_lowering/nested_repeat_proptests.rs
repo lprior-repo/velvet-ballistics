@@ -4,8 +4,8 @@
 //!
 //! - `repeat_max_attempts_prop`: `max_attempts == 0` fails with the exact
 //!   `repeat.max_attempts` shape; any positive value compiles with nodes.
-//! - `for_each_concurrency_prop`: `at_once` is accepted only when omitted
-//!   or `1`; any other `u32` fails with the exact `for_each.at_once` shape.
+//! - `for_each_concurrency_prop`: `at_once` is a positive upper bound,
+//!   defaulting to 1; zero fails with the exact `for_each.at_once` shape.
 
 use crate::{CompileError, compile_workflow};
 use proptest::prelude::*;

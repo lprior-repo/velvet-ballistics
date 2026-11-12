@@ -81,7 +81,7 @@ fn fixture(reduce: bool, nested: bool) -> TestResult<WorkflowParts> {
             node(
                 t(5),
                 K::RepeatStart {
-                    max_attempts: 2,
+                    max_attempts: 2.into(),
                     body: t(6),
                     done: t(11),
                 },
@@ -150,7 +150,7 @@ fn start(reduce: bool, body: u16, done: u16) -> K {
         K::ForEachStart {
             input: s(3),
             item_slot: s(5),
-            limit: 2,
+            limit: 2.into(),
             body: t(body),
             done: t(done),
         }
@@ -434,7 +434,7 @@ fn all_implicit_foreign_writers_are_checked_independently_of_node_output() -> Te
             K::ForEachStart {
                 input: s(3),
                 item_slot: s(6),
-                limit: 2,
+                limit: 2.into(),
                 body: t(7),
                 done: t(8),
             },
@@ -465,7 +465,7 @@ fn all_implicit_foreign_writers_are_checked_independently_of_node_output() -> Te
         (
             K::CollectStart {
                 source: s(6),
-                limit: 2,
+                limit: 2.into(),
                 page_size: 1,
                 body: t(7),
                 done: t(8),
@@ -482,7 +482,7 @@ fn all_implicit_foreign_writers_are_checked_independently_of_node_output() -> Te
         ),
         (
             K::TogetherBranch {
-                branch: 1,
+                branch: 1.into(),
                 entry: t(7),
                 join: t(8),
                 accumulator: s(6),
@@ -491,7 +491,7 @@ fn all_implicit_foreign_writers_are_checked_independently_of_node_output() -> Te
         ),
         (
             K::TogetherJoin {
-                branch_count: 1,
+                branch_count: 1.into(),
                 accumulator: s(6),
             },
             Some(s(4)),
@@ -568,7 +568,7 @@ fn ask_host_answer_boundary_cannot_replace_an_active_cursor() -> TestResult {
         let ask = edit(&mut parts, 6)?;
         ask.kind = K::Ask {
             prompt: s(0),
-            timeout_slot: None,
+            timeout_slot: None.into(),
         };
         ask.output = NodeOutput::Discard;
         let mut nodes = parts.nodes.iter().take(7).cloned().collect::<Vec<_>>();
@@ -609,7 +609,7 @@ fn nested_foreach_can_read_an_outer_cursor_without_writing_it() -> TestResult {
     inner.kind = K::ForEachStart {
         input: s(6),
         item_slot: s(5),
-        limit: 2,
+        limit: 2.into(),
         body: t(7),
         done: t(9),
     };

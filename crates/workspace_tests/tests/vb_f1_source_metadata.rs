@@ -62,7 +62,7 @@ fn source_prefix_is_idempotent_and_rejects_conflicting_existing_arenas() -> Test
     assert!(matches!(
         seed_source_symbols(metadata, &mut wrong),
         Err(vb_core::CoreError::InternalInvariantViolation {
-            reason: "compiled_source_symbol_prefix"
+            reason: vb_core::InvariantKind::Unknown("compiled_source_symbol_prefix")
         })
     ));
     Ok(())
@@ -132,7 +132,7 @@ fn owned_symbol_relocation_preserves_nested_values_and_static_payloads() -> Test
         vb_core::root_bundle::validate_runtime_store(&frame, &checkpoint, &workflow),
         Err(vb_core::root_bundle::OwnedRootBundleError::Checkpoint(
             vb_core::CoreError::InternalInvariantViolation {
-                reason: "compiled_source_symbol_prefix"
+                reason: vb_core::InvariantKind::Unknown("compiled_source_symbol_prefix")
             }
         ))
     ));

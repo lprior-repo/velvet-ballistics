@@ -48,7 +48,7 @@ fn run(
                 .find_map(|(name, slot)| (name.key == field.key).then_some(slot))
                 .ok_or_else(|| format!("unknown input {}", field.key))?;
             let value = author_value_to_owned(&field.value).map_err(|error| error.to_string())?;
-            let taint = if declaration.constraint.secret {
+            let taint = if declaration.constraint.secretness.is_secret() {
                 Taint::Secret
             } else {
                 Taint::Clean

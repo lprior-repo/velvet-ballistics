@@ -24,7 +24,7 @@ fn fixture_for_family(family: u8, numeric: bool) -> TestResultParts {
         0 => K::ForEachStart {
             input: source,
             item_slot: counter,
-            limit: 2,
+            limit: 2.into(),
             body,
             done,
         },
@@ -38,13 +38,13 @@ fn fixture_for_family(family: u8, numeric: bool) -> TestResultParts {
         },
         2 => K::CollectStart {
             source,
-            limit: 2,
+            limit: 2.into(),
             page_size: 1,
             body,
             done,
         },
         3 => K::RepeatStart {
-            max_attempts: 1,
+            max_attempts: 1.into(),
             body,
             done,
         },

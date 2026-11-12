@@ -228,7 +228,7 @@ impl SourceRun {
             return Err("missing ForEachStart after root bridge".into());
         };
         assert_eq!(*input, self.input_slot);
-        assert_eq!(*limit, max);
+        assert_eq!(*limit, max.into());
         let item = *item_slot;
         let cursor = self.output(start.id)?;
         let K::EvalExpr { expr } = &bridge.kind else {

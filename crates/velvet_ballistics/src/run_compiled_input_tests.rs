@@ -367,7 +367,7 @@ fn nullable_null_mapping_matches_the_scalar_root_validator() -> TestResult<()> {
                 slot: SlotIdx::new(2),
                 kind,
                 constraint: vb_core::CompiledInputConstraint {
-                    nullable,
+                    nullability: nullable.into(),
                     ..vb_core::CompiledInputConstraint::unconstrained()
                 },
             }]))?;

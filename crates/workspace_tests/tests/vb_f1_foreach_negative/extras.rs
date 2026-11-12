@@ -177,7 +177,7 @@ pub(super) fn assert_bound(
             _ => None,
         })
         .collect::<Vec<_>>();
-    assert_eq!(bounds, [(input.slot, expected_limit)]);
+    assert_eq!(bounds, [(input.slot, expected_limit.into())]);
     let budget = vb_core::budget::WholeWorkflowBudget::compute(
         &parts.nodes,
         parts.entry,

@@ -67,7 +67,7 @@ fn immutable_secret_roots_reject_implicit_writers() -> TestResult {
         CompiledNodeKind::ErrorHandler {
             body: step(1),
             handler: step(2),
-            error_slot: Some(slot),
+            error_slot: Some(slot).into(),
         },
     ];
     for kind in kinds {
@@ -83,7 +83,7 @@ fn immutable_secret_roots_reject_implicit_writers() -> TestResult {
     let mut parts = workflow.to_parts();
     parts.nodes.first_mut().ok_or("Ask")?.kind = CompiledNodeKind::Ask {
         prompt: slot,
-        timeout_slot: None,
+        timeout_slot: None.into(),
     };
     parts.nodes.first_mut().ok_or("Ask output")?.output = vb_core::workflow::NodeOutput::Discard;
     parts.nodes.get_mut(1).ok_or("AskResume")?.kind = CompiledNodeKind::AskResume { answer: slot };
@@ -137,7 +137,7 @@ fn raw_shard_submission_cannot_bypass_presence_or_forge_an_opaque_root() -> Test
             caps: CapabilitySet::empty()
         }),
         Err(vb_core::CoreError::InternalInvariantViolation {
-            reason: "secret_input_binding"
+            reason: vb_core::InvariantKind::Unknown("secret_input_binding")
         }
         .into())
     );
@@ -188,7 +188,7 @@ fn restored_frame_keeps_exact_secret_handle_and_taint() -> TestResult {
             assert_eq!(
                 error,
                 vb_core::CoreError::InternalInvariantViolation {
-                    reason: "secret_input_binding"
+                    reason: vb_core::InvariantKind::Unknown("secret_input_binding")
                 }
             );
         }

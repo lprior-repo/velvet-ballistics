@@ -128,7 +128,9 @@ fn base_step(hasher: &mut Hasher, step: &StepAst) {
             hasher.update(&[1]);
             base_author_value(hasher, value);
         }
-        None => { hasher.update(&[0]); }
+        None => {
+            hasher.update(&[0]);
+        }
     }
     hasher.update(b"step_retry:");
     if let Some(retry) = &step.retry {
@@ -613,8 +615,18 @@ fn digest_nested_with_payload_matches_recursive_baseline() {
     let mut step = set_leaf("payload");
     step.with = Some(AuthorValue::Mapping(vec![AuthorEntry {
         key: "args".into(),
-        value: AuthorValue::Sequence(vec![AuthorValue::Bool(true), AuthorValue::I64(7), AuthorValue::Text("$vars.seed".into())]),
+        value: AuthorValue::Sequence(vec![
+            AuthorValue::Bool(true),
+            AuthorValue::I64(7),
+            AuthorValue::Text("$vars.seed".into()),
+        ]),
     }]));
-    let primitive = StepPrimitive::Repeat { max_attempts: 2, body: vec![step] };
-    assert_eq!(prod_primitive_bytes(&primitive), base_primitive_bytes(&primitive));
+    let primitive = StepPrimitive::Repeat {
+        max_attempts: 2,
+        body: vec![step],
+    };
+    assert_eq!(
+        prod_primitive_bytes(&primitive),
+        base_primitive_bytes(&primitive)
+    );
 }

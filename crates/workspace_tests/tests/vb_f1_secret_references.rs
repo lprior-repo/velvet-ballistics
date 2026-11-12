@@ -160,7 +160,7 @@ fn secret_binding_survives_postcard_and_rejects_foreign_writers_and_defaults() -
                 .find(|input| input.slot == slot)
                 .ok_or("input")?;
             if change == 0 {
-                input.constraint.secret = false;
+                input.constraint.secretness = vb_core::Secretness::NonSecret;
             } else {
                 input.constraint.default_cold =
                     Some(vb_core::InputDefaultValue::Text("token".into()));
@@ -217,7 +217,7 @@ fn scalar_and_owned_roots_cannot_substitute_secret_handles_or_downgrade_taint() 
         assert_eq!(
             error,
             vb_core::CoreError::InternalInvariantViolation {
-                reason: "secret_input_binding"
+                reason: vb_core::InvariantKind::Unknown("secret_input_binding")
             }
         );
     }
