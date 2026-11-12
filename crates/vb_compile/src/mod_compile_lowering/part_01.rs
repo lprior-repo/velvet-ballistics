@@ -28,6 +28,9 @@ use source_declarations::prepare_source_declarations;
 #[path = "compile_source_finish.rs"]
 mod compile_source_finish;
 use compile_source_finish::finalize_compiled_workflow;
+#[path = "body_width_walk.rs"]
+mod body_width_walk;
+
 #[path = "part_01/width.rs"]
 mod width;
 pub(super) use width::{body_width, canonical_body_step_width, choose_width, together_width};
@@ -89,7 +92,6 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
         semantic_source_identity,
         builder,
         step_names,
-        steps,
         &layout,
     )
 }

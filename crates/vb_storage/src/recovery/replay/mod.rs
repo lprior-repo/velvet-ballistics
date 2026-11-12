@@ -17,6 +17,7 @@ pub use core::{
 pub use summary::{
     RecoveryFrameSeedBuilder, apply_summary_event, recover_raw_runtime_frame_seed_from_events,
     recover_raw_runtime_frame_seed_from_events_with_workflow, recover_run_admission_from_events,
-    recover_runtime_frame_seed_from_events, recover_runtime_frame_seed_from_events_with_workflow,
-    summarize_recovery_events,
+    recover_runtime_frame_seed_from_events,
+    recover_runtime_frame_seed_from_events_with_replay_inputs,
+    recover_runtime_frame_seed_from_events_with_workflow, summarize_recovery_events,
 };

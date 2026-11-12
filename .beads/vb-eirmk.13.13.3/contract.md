@@ -1,0 +1,9 @@
+# Candidate composition with main88296a54
+
+Preserve both frozen candidate0c4ae8edcbffa045304e8bdc1ed88ad2eb5771e0 and incomingmain88296a54441f49806fdc3fa21410042476d5297d from commonbase456662785cb5d72651f3eaffa1f45a5b11b14b1a. The read-only merge-tree preflight counted38incoming paths,27overlaps and10content conflicts. Its raw tree/messages and full path lists are in the source-bound ignored integration receipt. Main coordination checkout remains untouched.
+
+Create a new JJ merge change; preserve all old ancestors and each author workspace. Nine conflicted paths retain exact incoming upstream bytes because incoming changes add stronger typed assertions, canonical helper reuse, or identical typed-port syntax. canonical_reduce_tests.rs also retains exact incoming bytes: the candidate delta in that file is formatting only, while incoming tests and stronger bounds/error oracles must remain intact. Any required new formatting of foreign source is a separate ignored proposal pending review and exact approval.
+
+Record every incoming path, old/base/current/new Git blob and composition choice. Automatic merges require review for semantic preservation as well as conflict-marker absence. Keep all original tests, all newly added upstream tests and existing typed expected errors. Never accept one side across an entire repository, weaken assertions, suppress checks, change schemas or rewrite history.
+
+Qualified delivery requires independently reviewed combined source plus fresh native and canonical CI evidence at that exact pin. Earlier source results remain scoped to their named revisions. Recheck origin/main before landing; a further advance requires a new composition contract. Strict test-integrity ledger rows must bind the actual base/source/destinations, never broaden a matching rule.

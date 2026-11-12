@@ -40,6 +40,23 @@ include!("compat/decision.rs");
 
 include!("compat/gates.rs");
 
+/// Inputs for artifact IR version classification with an explicit required
+/// version. Used when the caller specifies the target version rather than
+/// using the current baseline.
+#[must_use]
+pub const fn artifact_ir_version_inputs_for(
+    held: SchemaVersion,
+    required: SchemaVersion,
+) -> CompatInputs {
+    CompatInputs {
+        boundary: CompatBoundary::IrVersion,
+        held,
+        required,
+        migration_available: false,
+        replay_only: false,
+    }
+}
+
 #[cfg(test)]
 // Only deny-level lints are allowed here: the forbid-level lints
 // (expect_used, panic, unwrap_used) cannot be allowed back, so the tests

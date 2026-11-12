@@ -64,10 +64,11 @@
 //   - `StepIdx::new`                       <- crates/vb_core/src/ids/mod.rs:36-36
 //   - `StepIdx::get`                       <- crates/vb_core/src/ids/mod.rs:70-70
 //   - `StepIdx::checked_add`               <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206
-//   - `lower_bounded_collect`              <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277
-//   - `plan_compute_edges`                 <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:117-127
-//   - `CollectStart` / `CollectNext` /
-//     `CollectFinish`                      <- crates/vb_core/src/workflow/node_kind.rs:86-107
+//   - `lower_bounded_collect` <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:241-261 (kind `function_item`; owner `-`; trait `-`).
+//   - `plan_compute_edges` <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:98-108 (kind `function_item`; owner `-`; trait `-`).
+//   - `CollectStart` <- crates/vb_core/src/workflow/node_kind.rs:87-93 (kind `enum_variant`; owner `CompiledNodeKind`; trait `-`).
+//   - `CollectNext` <- crates/vb_core/src/workflow/node_kind.rs:101-105 (kind `enum_variant`; owner `CompiledNodeKind`; trait `-`).
+//   - `CollectFinish` <- crates/vb_core/src/workflow/node_kind.rs:107-107 (kind `enum_variant`; owner `CompiledNodeKind`; trait `-`).
 //   - `SlotCompiler::record_slot`          <- crates/vb_compile/src/mod_compile_lowering/part_08.rs:111-117
 //   - `SlotCompiler::allocate_slot`        <- crates/vb_compile/src/mod_compile_lowering/part_08.rs:29-38
 //   - `emit_scoped_flat_body`              <- crates/vb_compile/src/mod_compile_lowering/canonical_branch_body.rs:20-42

@@ -249,21 +249,18 @@ fn inflight_body_rejects_rearm_source() -> TestResult {
     Ok(())
 }
 
-#[test]
-fn mid_repeat_budget_exhaustion_suspends_and_resumes() -> TestResult {
-    let wf = compile(&repeat_source(3))?;
-    let (control, body, _) = control_body(&wf)?;
-    let mut run = frame(&wf)?;
-    let mut store = ValueStore::new();
+fn drive_repeat_budget_cut(
+    wf: &CompiledWorkflow,
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+) -> Result<RuntimeSignal, String> {
     let mut ev = EvidenceCollector::new();
     let mut cs = CollectStates::new();
-    // Budget covers the two outer sets plus the repeat start, then exhausts
-    // inside the repeat body (pc lands within body..=control).
-    let sig = drive_deterministic_full(
-        &wf,
-        &mut run,
+    drive_deterministic_full(
+        wf,
+        run,
         &mut StepBudget::new(3),
-        &mut store,
+        store,
         &[],
         RetryPolicy::NEVER,
         &mut ev,
@@ -271,22 +268,21 @@ fn mid_repeat_budget_exhaustion_suspends_and_resumes() -> TestResult {
         &CapabilitySet::empty(),
         1,
     )
-    .map_err(|e| format!("drive: {e:?}"))?;
-    assert_eq!(sig, RuntimeSignal::StepBudgetExhausted);
-    let pc = run.pc();
-    assert!(
-        pc.get() >= body.get() && pc.get() <= control.get(),
-        "exhaustion must land mid-repeat: pc={pc:?} body={body:?} control={control:?}"
-    );
-    // Resume with a fresh budget on the same frame: all three attempts run
-    // and the run finishes deterministically.
+    .map_err(|e| format!("drive: {e:?}"))
+}
+
+fn resume_repeat_after_cut(
+    wf: &CompiledWorkflow,
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+) -> Result<(RuntimeSignal, EvidenceCollector), String> {
     let mut ev2 = EvidenceCollector::new();
     let mut cs2 = CollectStates::new();
     let sig = drive_deterministic_full(
-        &wf,
-        &mut run,
+        wf,
+        run,
         &mut StepBudget::new(128),
-        &mut store,
+        store,
         &[],
         RetryPolicy::NEVER,
         &mut ev2,
@@ -295,6 +291,27 @@ fn mid_repeat_budget_exhaustion_suspends_and_resumes() -> TestResult {
         1,
     )
     .map_err(|e| format!("resume: {e:?}"))?;
+    Ok((sig, ev2))
+}
+
+#[test]
+fn mid_repeat_budget_exhaustion_suspends_and_resumes() -> TestResult {
+    let wf = compile(&repeat_source(3))?;
+    let (control, body, _) = control_body(&wf)?;
+    let mut run = frame(&wf)?;
+    let mut store = ValueStore::new();
+    // Budget covers the two outer sets plus the repeat start, then exhausts
+    // inside the repeat body (pc lands within body..=control).
+    let sig = drive_repeat_budget_cut(&wf, &mut run, &mut store)?;
+    assert_eq!(sig, RuntimeSignal::StepBudgetExhausted);
+    let pc = run.pc();
+    assert!(
+        pc.get() >= body.get() && pc.get() <= control.get(),
+        "exhaustion must land mid-repeat: pc={pc:?} body={body:?} control={control:?}"
+    );
+    // Resume with a fresh budget on the same frame: all three attempts run
+    // and the run finishes deterministically.
+    let (sig, mut ev2) = resume_repeat_after_cut(&wf, &mut run, &mut store)?;
     assert_eq!(sig, RuntimeSignal::Finished(SlotValue::I64(42)));
     assert_eq!(body_values(&wf, &ev2.drain()), vec![7, 11, 7, 11, 7, 11]);
     Ok(())

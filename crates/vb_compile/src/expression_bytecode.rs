@@ -3,7 +3,7 @@
 
 use crate::CompileError;
 use crate::expression::ParsedExpression;
-use vb_core::{AccessorProgram, ConstValue, ExprOp, ExprProgram, SlotIdx, WorkflowError};
+use vb_core::{AccessorProgram, ConstValue, ExprOp, ExprProgram, SlotIdx, SymbolId, WorkflowError};
 
 #[path = "expression_bytecode_slot_refs.rs"]
 #[cfg(test)]
@@ -94,6 +94,12 @@ pub(crate) fn compile_expr_to_bytecode_with_resolver(
 pub(crate) trait ExpressionReferenceResolver {
     /// Returns the bytecode operation for a source reference.
     fn resolve_reference(&mut self, reference: &str) -> Result<ExprOp, CompileError>;
+
+    fn intern_text(&mut self, _text: &str) -> Result<SymbolId, CompileError> {
+        Err(CompileError::ExpressionLoweringUnsupported {
+            feature: "text constants".into(),
+        })
+    }
 }
 
 fn split_reference_tail(tail: &str) -> (&str, Option<&str>) {

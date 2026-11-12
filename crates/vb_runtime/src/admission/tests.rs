@@ -56,5 +56,8 @@ fn test_digest() -> WorkflowDigest {
 pub(super) mod evidence_test_support;
 use evidence_test_support::accepted_artifact_with_caps;
 
+#[path = "version_guard_tests.rs"]
+mod version_guard_tests;
+
 include!("tests/tests_admission_core.rs");
 include!("tests/tests_admission_budget.rs");

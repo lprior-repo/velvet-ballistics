@@ -4,6 +4,7 @@ use std::sync::Arc;
 use vb_core::DiagnosticCode;
 
 #[cfg(test)]
+#[path = "tests_diagnostics/diagnostic_code_tests.rs"]
 mod proptest_vb_edvbj_diagnostic_code;
 
 #[test]

@@ -8,7 +8,7 @@ use crate::engine::validate::validate_compiled_workflow;
 use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx};
 use crate::value::ConstValue;
 use crate::workflow::{
-    CompiledNodeKind, ExprBranch, ExprOp, ExprProgram, WorkflowError, WorkflowParts, node,
+    CompiledNodeKind, ExprBranch, ExprOp, ExprProgram, WorkflowError, WorkflowParts,
 };
 
 mod cycle_detection_and_backward_edges {

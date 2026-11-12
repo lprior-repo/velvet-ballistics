@@ -127,7 +127,8 @@ fn action_dispatch_crash_points() -> Result<(), Box<dyn std::error::Error>> {
     let workflow_digest = WorkflowDigest::from_bytes([42u8; 32]);
     let artifact_digest = WorkflowDigest::from_bytes([43u8; 32]);
     let parts = crash_lab_minimal_parts(workflow_digest);
-    let workflow_ir = postcard::to_allocvec(&parts)?;
+    let (parts, workflow_ir, workflow_digest) = canonical_action_recovery_parts(parts)?;
+    assert_ne!(artifact_digest, workflow_digest);
     let workflow = require_workflow(
         "crash-lab-minimal",
         CompiledWorkflow::try_from_parts(parts).ok(),

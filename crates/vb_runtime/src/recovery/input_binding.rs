@@ -6,6 +6,9 @@ use vb_storage::{FjallJournal, JournalEvent, RetainedRunInputs, RunInputsRecord}
 
 use crate::{RuntimeError, RuntimeResult};
 
+mod preparation;
+use preparation::{prepare_owned_record, prepare_scalar_roots, validate_owned_identity};
+
 /// Validates that a retained input record matches an admission event's binding.
 /// Returns Err if the binding is inconsistent or the record is for a different run.
 pub fn validate_input_record_binding(
@@ -186,10 +189,7 @@ fn scalar_retained_inputs(
         .iter()
         .map(|(slot, value)| (*slot, *value, Taint::Clean))
         .collect();
-    Ok(RecoveredRetainedInputs {
-        initial_inputs,
-        store: None,
-    })
+    prepare_scalar_roots(workflow, initial_inputs)
 }
 
 fn owned_retained_inputs(
@@ -198,22 +198,7 @@ fn owned_retained_inputs(
     run: RunId,
     admission_event: &JournalEvent,
 ) -> RuntimeResult<RecoveredRetainedInputs> {
-    if record.run() != run {
-        return Err(RuntimeError::Recovery {
-            error: format!(
-                "recovery: retained owned input run mismatch: expected {run:?}, got {:?}",
-                record.run()
-            ),
-        });
-    }
-    // Binds the record to the durable admission: the admission's input digest
-    // covers the record (including its embedded source digest), so the
-    // presented arenas are the admitted ones.
-    record
-        .validate_admission(admission_event)
-        .map_err(|error| RuntimeError::Recovery {
-            error: format!("recovery: retained owned input admission binding invalid: {error}"),
-        })?;
+    validate_owned_identity(record, run, admission_event)?;
     // Revalidates the complete bundle (projection, roots, arenas, references,
     // taints, caps, digest) against the independently loaded workflow before
     // any arena handle is trusted.
@@ -222,13 +207,9 @@ fn owned_retained_inputs(
         .map_err(|error| RuntimeError::Recovery {
             error: format!("recovery: retained owned input validation failed: {error}"),
         })?;
-    let store = ValueStore::from_checkpoint_v1(record.checkpoint().clone()).map_err(|error| {
-        RuntimeError::Recovery {
-            error: format!("recovery: retained value store restore failed: {error:?}"),
-        }
-    })?;
-    Ok(RecoveredRetainedInputs {
-        initial_inputs: record.roots().to_vec(),
-        store: Some(store),
-    })
+    prepare_owned_record(record, workflow)
 }
+
+#[cfg(test)]
+#[path = "input_binding/bound_symbols_tests.rs"]
+mod bound_symbols_tests;

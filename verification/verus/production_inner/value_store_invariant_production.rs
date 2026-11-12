@@ -16,24 +16,24 @@
 // `verification/verus/extern_value_store_invariant.rs`, which carries
 // verbatim copies of the production source at:
 //
-//   - `ObjectField::clean`              <- crates/vb_core/src/value_store/objects.rs:15-21
-//   - `ObjectField::with_taint`         <- crates/vb_core/src/value_store/objects.rs:24-26
-//   - `ValueStore::with_max_slots`      <- crates/vb_core/src/value_store.rs:77-88
-//   - `ValueStore::total_arena_count`   <- crates/vb_core/src/value_store.rs:116-123
-//   - `ValueStore::max_arena_entries`   <- crates/vb_core/src/value_store.rs:127-129
-//   - `ValueStore::check_arena_cap`     <- crates/vb_core/src/value_store.rs:132-144
+//   - `ObjectField::clean` <- crates/vb_core/src/value_store/objects.rs:15-21 (kind `function_item`; owner `ObjectField`; trait `-`).
+//   - `ObjectField::with_taint` <- crates/vb_core/src/value_store/objects.rs:24-26 (kind `function_item`; owner `ObjectField`; trait `-`).
+//   - `ValueStore::with_max_slots` <- crates/vb_core/src/value_store.rs:80-91 (kind `function_item`; owner `ValueStore`; trait `-`).
+//   - `ValueStore::total_arena_count` <- crates/vb_core/src/value_store.rs:119-126 (kind `function_item`; owner `ValueStore`; trait `-`).
+//   - `ValueStore::max_arena_entries` <- crates/vb_core/src/value_store.rs:130-132 (kind `function_item`; owner `ValueStore`; trait `-`).
+//   - `ValueStore::check_arena_cap` <- crates/vb_core/src/value_store.rs:135-147 (kind `function_item`; owner `ValueStore`; trait `-`).
 //
 // This stub mirrors the production `ValueStore::max_arena_entries`
 // field as the smallest drift-detection surface.
 //
 // DRIFT POLICY: `crates/vb_core/src/value_store.rs:44-144`
 // Production source coverage:
-//   - `ObjectField::clean`              <- crates/vb_core/src/value_store/objects.rs:15-21
-//   - `ObjectField::with_taint`         <- crates/vb_core/src/value_store/objects.rs:24-26
-//   - `ValueStore::with_max_slots`      <- crates/vb_core/src/value_store.rs:77-88
-//   - `ValueStore::total_arena_count`   <- crates/vb_core/src/value_store.rs:116-123
-//   - `ValueStore::max_arena_entries`   <- crates/vb_core/src/value_store.rs:127-129
-//   - `ValueStore::check_arena_cap`     <- crates/vb_core/src/value_store.rs:132-144
+//   - `ObjectField::clean` <- crates/vb_core/src/value_store/objects.rs:15-21 (kind `function_item`; owner `ObjectField`; trait `-`).
+//   - `ObjectField::with_taint` <- crates/vb_core/src/value_store/objects.rs:24-26 (kind `function_item`; owner `ObjectField`; trait `-`).
+//   - `ValueStore::with_max_slots` <- crates/vb_core/src/value_store.rs:80-91 (kind `function_item`; owner `ValueStore`; trait `-`).
+//   - `ValueStore::total_arena_count` <- crates/vb_core/src/value_store.rs:119-126 (kind `function_item`; owner `ValueStore`; trait `-`).
+//   - `ValueStore::max_arena_entries` <- crates/vb_core/src/value_store.rs:130-132 (kind `function_item`; owner `ValueStore`; trait `-`).
+//   - `ValueStore::check_arena_cap` <- crates/vb_core/src/value_store.rs:135-147 (kind `function_item`; owner `ValueStore`; trait `-`).
 // Regenerate this file whenever production changes. Any rename of
 // `max_arena_entries` or change to `check_arena_cap` body breaks the
 // `extern_value_store_invariant` Verus build.

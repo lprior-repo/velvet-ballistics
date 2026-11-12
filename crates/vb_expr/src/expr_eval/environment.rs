@@ -166,13 +166,7 @@ fn eval_helper_unique(args: &[SlotValue]) -> ExprResult<SlotValue> {
 }
 
 fn eval_helper_contains(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let (list_val, item_val) = two_args(args, ExprHelper::Contains)?;
-    if matches!(*list_val, SlotValue::F64(_)) || matches!(*item_val, SlotValue::F64(_)) {
-        return Err(ExprError::TypeMismatch {
-            expected: "list, text, or object".into(),
-            found: "number".into(),
-        });
-    }
+    let (list_val, _item_val) = two_args(args, ExprHelper::Contains)?;
     let _list_id = expect_list(*list_val)?;
     Err(ExprError::TypeMismatch {
         expected: "value-store context required for list contains check".into(),

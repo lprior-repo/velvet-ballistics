@@ -1,0 +1,129 @@
+{
+  "artifact_sha256": "fd8ee490bf63a2db8e4d5ca8c48f3c815d20e5a690013d9f46cc9f8bcecace1b",
+  "executor_sha256": "5a071b4d4a7c86bf83d6525c32b8e4f37c5f63d58bd3db2be5e480a0a1d8cbc6",
+  "verdict": "REJECT",
+  "review_kind": "independent bounded controlled Gate V5 contract/executor CODE review and offline guards",
+  "contract_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-apply-contract-v5.json",
+  "executor_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-authority-repair-luna/target/core-build-20261110/evidence/gate-owner-resume-v5/executor.rb",
+  "proposal_sha256": "e16e633cb711bc58eddd5c67049272214b59b856720355a77469964273f0d8f4",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-code-sol",
+  "git_and_jj_roots_verified": true,
+  "findings": [
+    {
+      "id": "E1",
+      "severity": "blocking",
+      "path": "gate-owner-resume-v5/executor.rb",
+      "line": 494,
+      "end_line": 499,
+      "title": "Negative-control helper swallows its own unexpected-acceptance failure",
+      "actual": "expect_reject yields, raises GuardError when the block returns, then rescues GuardError over both operations and returns true.",
+      "observed_counterexample": {
+        "call": "expect_reject(\"deliberately accepting block\") { true }",
+        "result": true,
+        "bd_calls": 0,
+        "live_mutations": 0
+      },
+      "expected": "The negative control must fail when its block is accepted.",
+      "impact": "Title/edge/path/target/design negative probes wrapped here cannot distinguish actual rejection from erroneous acceptance. Their observed offline PASS is a vacuous oracle.",
+      "correction": "Rescue only the exception thrown by the yielded operation; raise unexpected-acceptance failure outside that rescue. Add a meta-control proving an intentionally accepting block fails. Preserve actual guards and controls, then re-freeze executor and every contract/nested review executor digest.",
+      "underlying_guards": "Nine independent strict negative probes rejected actual invalid inputs. This does not excuse the defective frozen harness."
+    }
+  ],
+  "binding_checks": {
+    "both_requested_final_hashes_match_actual_files": true,
+    "contract_executor_path_and_SHA_match_actual_script": true,
+    "both_nested_executor_review_binding_values_equal_actual_script_SHA": true,
+    "planning_CODE_report_SHA": "d6c470d47959266500703d2dd2ea21d5e47d11aec16a304a1eef523f8683e1eb",
+    "planning_TEST_report_SHA": "1b864651af94cb43736fe7805b2fe4ff10858500b6c33af91d0e74063482625b",
+    "planning_report_actual_hashes_PASS_and_proposal_bindings_verified": true,
+    "executor_reviews": "Separate actual CODE artifact_sha256 and TEST proposal_sha256 must equal current contract digest; both executor_sha256 fields must equal current script digest. Final paths/fields/nested values checked.",
+    "transient_draft_hash_not_used": true
+  },
+  "live_path_source_assessment": {
+    "exact_read_allowlist": [
+      "show11 readonly",
+      "show12 readonly",
+      "dep list11 readonly"
+    ],
+    "exact_write_allowlist": [
+      "update11 --metadata @<fixed OUT>/metadata-after.json",
+      "update12 --design-file <fixed OUT>/design-after.raw"
+    ],
+    "no_arbitrary_shell_create_status_edge_history_or_other_field_write": true,
+    "command_environment": {
+      "BEADS_DOLT_SERVER_PORT": "37225",
+      "BD_DOLT_SERVER_PORT": "37225",
+      "BD_BACKUP_ENABLED": "false",
+      "TMPDIR": "/run/user/1000/vbs"
+    },
+    "environment_scope": "Per subprocess only; no persistent setting or backup-health/recovery claim.",
+    "issue11": "Exact full before business record and137 distinct typed edges, no self-edge. Null/absent metadata only before; exact seven-ID union plus qualification_only after. Actual update response identity/metadata/timestamp required; full post-record equals before plus only metadata and response updated_at.",
+    "issue12": "Only id and exact raw design guard the issue; notes/progress do not stale it. Derive seven-row/fourteen-check49-scalar map; check exact old tokens, nonoverlap, outside-byte digests, semantic reversal, before/after digests and all190 false/null.",
+    "source_counts": {
+      "rows": 7,
+      "checks": 14,
+      "scalars": 49,
+      "requirements": 190,
+      "typed_edges": 137
+    },
+    "before_design_SHA": "c1b35a6974bb43aa69cf5f37a11fefe5d1ab68548a51130f9b8c6bbdb4e400c9",
+    "after_design_SHA": "91693b0972b9cc82ccc573ac7615ab599bd6ccbcd1609a74f9fca2b0c5c36392",
+    "before_issue11_canonical_SHA": "9eb4a387e744582713ec95a94c35a5a0b6d106f24bc6430deb2b6b8358cf5951",
+    "evidence": "Unique absent OUT and fixed apply workspace. Exact per-command stdout/stderr/exit/hash receipts; fsynced metadata and raw design files before first mutation.",
+    "order": "Fresh11/edges/reviews/master -> metadata update -> exact full11/edge postreadback -> fresh12 design-only guard -> design update -> exact final design/full11/edges.",
+    "fail_stop": "Non-atomic two-write sequence; command/parse/guard failure aborts. No automatic retry, rollback, edge write or continuation of failed first stage; existing OUT refuses reuse.",
+    "limitation": "Source assessment only; no live CLI behavior, database state, successful mutation or global invariant is certified."
+  },
+  "offline_evidence": {
+    "executed_mode": "--offline-controls",
+    "actual_exit": 0,
+    "observed_stdout": {
+      "offline_controls": "PASS",
+      "v5_planning_reviews": 2,
+      "design_targets": 49,
+      "typed_edges": 137,
+      "bd_calls": 0,
+      "live_mutations": 0
+    },
+    "observed_PASS_not_accepted_as_negative_proof": true,
+    "accepting_block_counterexample_confirmed": true,
+    "independent_strict_negative_probes": {
+      "independent_strict_negatives_rejected": 9,
+      "labels": [
+        "title drift",
+        "missing typed edge",
+        "forbidden patch field",
+        "missing patch target",
+        "raw design drift",
+        "planning code declared binding",
+        "nested code executor binding",
+        "planning test declared binding",
+        "nested test executor binding"
+      ],
+      "bd_calls": 0,
+      "live_mutations": 0
+    },
+    "independent_probe_method": "Loaded only inspected function definitions before the command-dispatch fence; replaced bd with an unconditional forbidden-call exception. Called actual guards with in-memory altered inputs and a rejection wrapper whose unexpected-acceptance failure is outside its rescue. No source/snapshot/review fixture was modified.",
+    "actual_apply_invocations": 0,
+    "live_BD_calls": 0,
+    "database_mutations": 0
+  },
+  "readiness": {
+    "accepted": false,
+    "apply_approved": false,
+    "sole_bounded_blocker": "E1",
+    "successor_requirements": [
+      "Freeze corrected rejection harness and matching contract/nested executor hashes.",
+      "Run meta-control and actual offline negatives with zero BD calls; retain raw evidence.",
+      "Obtain fresh independent CODE and TEST PASS bound to final contract and executor before any separately authorized apply.",
+      "Independently post-audit actual metadata response/timestamp, full business/edge preservation and exact49-token raw design patch."
+    ]
+  },
+  "limits": [
+    "Only offline guards/probes executed; no --apply, BD process, native/build command, source/tracker/gate edits or agents.",
+    "No live cycle/history audit; allowed commands cannot directly mutate historical owners, and full11 nested dependency business views are compared.",
+    "Two writes are not transactional; partial application requires new explicit recovery review, never automatic retry.",
+    "No full190 plan, gate execution, runtime/product, full CI, formal or backup-health acceptance."
+  ],
+  "full_plan_accepted": false
+}

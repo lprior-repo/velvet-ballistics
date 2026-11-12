@@ -4,7 +4,7 @@
 // IN-TREE PRODUCTION-SOURCE MIRROR for `CompiledWorkflow::try_from_parts`
 // ============================================================================
 //
-// This file is a VERBATIM copy of the production `try_from_parts` exec
+// This file retains declared structural projections of the production `try_from_parts` exec
 // method body and the `WorkflowParts` / `ResourceContract` struct
 // declarations from `crates/vb_core/src/workflow/mod.rs`, with minimal
 // substitutions required to compile under `verus --crate-type=lib`
@@ -60,6 +60,15 @@
 #![allow(non_snake_case)]
 #![allow(unused_imports)]
 
+#[path = "try_from_parts_production_input_constraint.rs"]
+mod input_constraint;
+#[path = "try_from_parts_production_input_types.rs"]
+mod input_types;
+pub use input_constraint::CompiledInputConstraint;
+use input_constraint::{validate_input_constraint, validate_input_slot_order};
+#[path = "try_from_parts_production_source_metadata.rs"]
+mod source_metadata;
+
 // ---------------------------------------------------------------------------
 // Numeric-id and scalar mirrors: `production_inner/`
 // `try_from_parts_production_ids.rs`
@@ -87,7 +96,7 @@ pub use ids_and_scalars::WorkflowDigest;
 // Local stub: `vb_core::workflow::ResourceContract`
 // ---------------------------------------------------------------------------
 //
-// Production `ResourceContract` at workflow/mod.rs:189-228 with
+// Named source `crates/vb_core/src/workflow/resource_contract.rs:8-45` (named `ResourceContract`; kind `struct_item`; owner `-`; trait `-`).
 // `#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]`.
 // Mirror preserves the field NAMES and TYPES exactly.
 
@@ -114,7 +123,7 @@ pub struct ResourceContract {
 }
 
 impl ResourceContract {
-    /// Production `ResourceContract::DEFAULT` at workflow/mod.rs:232-251.
+    // Named source `crates/vb_core/src/workflow/resource_contract.rs:182-201` (named `ResourceContract::DEFAULT`; kind `const_item`; owner `ResourceContract`; trait `-`).
     pub const DEFAULT: Self = Self {
         max_steps: 10_000,
         max_slots: 1_024,
@@ -141,7 +150,7 @@ impl ResourceContract {
 // Local stub: `vb_core::workflow::PathSegment`
 // ---------------------------------------------------------------------------
 //
-// Production `PathSegment` enum at workflow/mod.rs:309-316 with
+// Named source `crates/vb_core/src/workflow/parts.rs:58-63` (named `PathSegment`; kind `enum_item`; owner `-`; trait `-`).
 // `#[non_exhaustive]`. Mirror preserves the variants.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -154,7 +163,7 @@ pub enum PathSegment {
 // Local stub: `vb_core::workflow::AccessorProgram`
 // ---------------------------------------------------------------------------
 //
-// Production `AccessorProgram` at workflow/mod.rs:300-306 with
+// Named source `crates/vb_core/src/workflow/parts.rs:48-53` (named `AccessorProgram`; kind `struct_item`; owner `-`; trait `-`).
 // `Box<[PathSegment]>`. Mirror uses `Vec<PathSegment>` because
 // `Box<[T]>` is not registered as an extern type in Verus single-file
 // mode. The element type and field shape are preserved exactly.
@@ -169,8 +178,8 @@ pub struct AccessorProgram {
 // Local stub: `vb_core::workflow::ExprProgram` and `ExprOp`
 // ---------------------------------------------------------------------------
 //
-// Production `ExprProgram` at workflow/mod.rs:454-484 and `ExprOp`
-// at workflow/mod.rs:486-545. The mirror preserves the field names
+// Named source `crates/vb_core/src/workflow/expr_program.rs:11-16` (named `ExprProgram`; kind `struct_item`; owner `-`; trait `-`).
+// Named source `crates/vb_core/src/workflow/expr_program.rs:41-100` (named `ExprOp`; kind `enum_item`; owner `-`; trait `-`).
 // and types for the production fields `ops`, `input_slot`, etc.
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -215,9 +224,9 @@ pub enum ExprOp {
 // Local stub: `vb_core::workflow::CompiledNode` and `CompiledNodeKind`
 // ---------------------------------------------------------------------------
 //
-// Production `CompiledNode` at workflow/mod.rs:995-1004 with
+// Named source `crates/vb_core/src/workflow/node.rs:14-23` (named `CompiledNode`; kind `struct_item`; owner `-`; trait `-`).
 // `#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]`.
-// Production `CompiledNodeKind` at workflow/mod.rs:1191-1357 has ~40
+// Named source `crates/vb_core/src/workflow/node_kind.rs:14-180` (named `CompiledNodeKind`; kind `enum_item`; owner `-`; trait `-`).
 // variants. The mirror preserves the field shape and retains the
 // production variants referenced by sibling lowering fns.
 
@@ -230,7 +239,7 @@ pub struct CompiledNode {
 }
 
 /// Mirror of production `NodeOutput` at
-/// `crates/vb_core/src/workflow/mod.rs:1008-1013`.
+// Named source `crates/vb_core/src/workflow/node.rs:27-32` (named `NodeOutput`; kind `enum_item`; owner `-`; trait `-`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeOutput {
     Discard,
@@ -247,7 +256,7 @@ impl NodeOutput {
 }
 
 /// Mirror of production `NodeRouting` at
-/// `crates/vb_core/src/workflow/mod.rs:1028-1033`.
+// Named source `crates/vb_core/src/workflow/node.rs:47-52` (named `NodeRouting`; kind `struct_item`; owner `-`; trait `-`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NodeRouting {
     pub next: NodeContinuation,
@@ -255,7 +264,7 @@ pub struct NodeRouting {
 }
 
 /// Mirror of production `NodeContinuation` at
-/// `crates/vb_core/src/workflow/mod.rs:1037-1042`.
+// Named source `crates/vb_core/src/workflow/node.rs:56-61` (named `NodeContinuation`; kind `enum_item`; owner `-`; trait `-`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeContinuation {
     End,
@@ -272,7 +281,7 @@ impl NodeContinuation {
 }
 
 /// Mirror of production `ErrorRouting` at
-/// `crates/vb_core/src/workflow/mod.rs:1083-1093`.
+// Named source `crates/vb_core/src/workflow/node.rs:102-112` (named `ErrorRouting`; kind `enum_item`; owner `-`; trait `-`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErrorRouting {
     None,
@@ -303,8 +312,8 @@ pub enum CompiledNodeKind {
 // Local stub: `vb_core::workflow::ExprBranch` / `SlotBranch`
 // ---------------------------------------------------------------------------
 //
-// Production `ExprBranch` at workflow/mod.rs:282-288 and `SlotBranch`
-// at workflow/mod.rs:291-296. Final choose IR scaffolding targets.
+// Named source `crates/vb_core/src/workflow/input_slot.rs:10-15` (named `ExprBranch`; kind `struct_item`; owner `-`; trait `-`).
+// Named source `crates/vb_core/src/workflow/input_slot.rs:19-24` (named `SlotBranch`; kind `struct_item`; owner `-`; trait `-`).
 // Mirror preserves field NAMES and TYPES exactly.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -323,8 +332,8 @@ pub struct SlotBranch {
 // Local stub: `vb_core::workflow::InputSlotKind` / `CompiledInputSlot`
 // ---------------------------------------------------------------------------
 //
-// Production `InputSlotKind` at workflow/mod.rs:301-320 (9-variant enum)
-// and `CompiledInputSlot` at workflow/mod.rs:328-335. Mirror preserves
+// Named source `crates/vb_core/src/workflow/input_slot.rs:29-48` (named `InputSlotKind`; kind `enum_item`; owner `-`; trait `-`).
+// Named source `crates/vb_core/src/workflow/input_slot.rs:56-67` (named `CompiledInputSlot`; kind `struct_item`; owner `-`; trait `-`).
 // the variant NAMES and field NAMES/TYPES exactly.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -344,13 +353,13 @@ pub enum InputSlotKind {
 pub struct CompiledInputSlot {
     pub slot: SlotIdx,
     pub kind: InputSlotKind,
+    pub constraint: CompiledInputConstraint,
 }
-
 // ===========================================================================
 // VERBATIM PRODUCTION: `WorkflowParts` struct declaration
 // ===========================================================================
 //
-// Source: crates/vb_core/src/workflow/parts.rs:11-44
+// Production `crates/vb_core/src/workflow/parts.rs:11-44` (named `WorkflowParts`; kind `struct_item`; owner `-`; trait `-`).
 // Drift policy: any change to the field NAMES or TYPES in production
 // MUST be mirrored here. The `Box<[T]>` production fields are replaced
 // with `Vec<T>` because `Box<[T]>` requires the `alloc` crate to be
@@ -377,18 +386,18 @@ pub struct WorkflowParts {
 // VERBATIM PRODUCTION: `CompiledWorkflow::try_from_parts` method body
 // ===========================================================================
 //
-// Source: crates/vb_core/src/workflow/compiled.rs:34-57
+// Production `crates/vb_core/src/workflow/compiled.rs:39-63` (named `CompiledWorkflow::try_from_parts`; kind `function_item`; owner `CompiledWorkflow`; trait `-`).
 // Drift policy: any change to this function in production MUST be
 // mirrored here. The spec proofs reason about the structural
 // invariants the production `try_from_parts` enforces (entry in
 // nodes bounds, slot_count u16-bounded, symbols_count u32-bounded,
 // nodes non-empty), but the full body is included verbatim so any
 // rename of `validate_parts`, `loop_regions::validate`,
-// `loop_regions::nested_activation_map`, `loop_regions::merge_slots`,
-// `validate_budget`, `validate_input_slots`, `parts.name`, or any field
-// breaks this mirror at compile time.
+// `loop_regions::nested_activation_map`, `validate_budget`,
+// `validate_input_slots`, `parts.name`, or any field breaks this mirror
+// at compile time.
 
-/// Production `CompiledWorkflow` at compiled.rs:15-31. The mirror
+// Named source `crates/vb_core/src/workflow/compiled.rs:19-35` (named `CompiledWorkflow`; kind `struct_item`; owner `-`; trait `-`).
 /// preserves the field NAMES exactly; the field VISIBILITY is `pub` so
 /// the verification surface can read the fields.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -407,19 +416,19 @@ pub struct CompiledWorkflow {
     pub step_names: Vec<Box<str>>,
     pub input_slots: Vec<CompiledInputSlot>,
     pub loop_slots: Vec<LoopRegionSlot>,
+    pub source_symbols: Option<source_metadata::WorkflowSourceMetadata>,
 }
 
 impl CompiledWorkflow {
     /// Verbatim copy of production `CompiledWorkflow::try_from_parts`
-    /// at crates/vb_core/src/workflow/compiled.rs:34-57. The body delegates
+    // Named source `crates/vb_core/src/workflow/compiled.rs:39-63` (named `CompiledWorkflow::try_from_parts`; kind `function_item`; owner `CompiledWorkflow`; trait `-`).
     /// to production `validate_parts`, `loop_regions::validate`,
-    /// `loop_regions::nested_activation_map`, `loop_regions::merge_slots`,
-    /// `validate_budget`, and `validate_input_slots`. `validate_parts`,
-    /// `validate_budget`, `loop_regions::validate`,
-    /// `loop_regions::nested_activation_map`, and `loop_regions::merge_slots`
-    /// are stub bodies (return Ok / empty) because the spec proofs reason
+    /// `loop_regions::nested_activation_map`, `validate_budget`, and
+    /// `validate_input_slots`. `validate_parts`, `validate_budget`,
+    /// `loop_regions::validate`, and `loop_regions::nested_activation_map`
+    /// are stub bodies (return Ok) because the spec proofs reason
     /// about the postcondition contracts. `validate_input_slots` is
-    /// a faithful body matching production.
+    /// a faithful body matching production, including constraint validation; merge_slots has the real four-way body.
     pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
         validate_parts(&parts)?;
         let loop_regions = loop_regions::validate(&parts)?;
@@ -442,6 +451,7 @@ impl CompiledWorkflow {
             step_names: parts.step_names,
             input_slots: parts.input_slots,
             loop_slots,
+            source_symbols: None,
         })
     }
 }
@@ -450,7 +460,7 @@ impl CompiledWorkflow {
 // VERBATIM PRODUCTION: `WorkflowError` enum declaration
 // ===========================================================================
 //
-// Source: crates/vb_core/src/workflow/error.rs:13-227
+// Production `crates/vb_core/src/workflow/error.rs:13-233` (named `WorkflowError`; kind `enum_item`; owner `-`; trait `-`).
 // Drift policy: any change to the `WorkflowError` discriminant set in
 // production MUST be mirrored here. The mirror preserves the variant
 // NAMES and FIELD STRUCTURES verbatim; the `thiserror::Error` derive
@@ -460,6 +470,9 @@ impl CompiledWorkflow {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorkflowError {
+    InvalidSymbolMetadata {
+        source: source_metadata::SourceMetadataError,
+    },
     RepeatCounterForeignWrite {
         owner: StepIdx,
         writer: StepIdx,
@@ -582,7 +595,7 @@ pub enum CoreError {
 // Local stub: `vb_core::workflow::InputConstraintIssue`
 // ===========================================================================
 //
-// Production `InputConstraintIssue` at crates/vb_core/src/workflow/mod.rs:598-605
+// Named source `crates/vb_core/src/workflow/input_constraint.rs:109-116` (named `InputConstraintIssue`; kind `enum_item`; owner `-`; trait `-`).
 // declares a 3-variant enum. The mirror reproduces it verbatim; it is the
 // payload type of `WorkflowError::InconsistentInputConstraint`.
 
@@ -597,7 +610,7 @@ pub enum InputConstraintIssue {
 // Local stub: `vb_core::workflow::ContractResource`
 // ===========================================================================
 //
-// Production `ContractResource` at crates/vb_core/src/workflow/mod.rs:299-342
+// Named source `crates/vb_core/src/workflow/resource_contract.rs:55-98` (named `ContractResource`; kind `enum_item`; owner `-`; trait `-`).
 // declares a 21-variant enum. The mirror declares a single-variant stub
 // because production `WorkflowError` carries `ContractResource` only via
 // the `ResourceContractExceeded` / `ResourceContractTooLarge` payloads
@@ -627,8 +640,8 @@ pub enum BudgetDimension {
 // PRODUCTION MIRROR: stub validation helpers + faithful input-slot body
 // ===========================================================================
 //
-// Production `validate_parts` at workflow/mod.rs:850-874 and
-// `validate_budget` at workflow/mod.rs:908-914. The mirror bodies
+// Named source `crates/vb_core/src/workflow/validate.rs:20-45` (named `validate_parts`; kind `function_item`; owner `-`; trait `-`).
+// Named source `crates/vb_core/src/workflow/validate.rs:108-114` (named `validate_budget`; kind `function_item`; owner `-`; trait `-`).
 // return `Ok(())` because the spec proofs reason about the
 // postcondition contracts, not about the validation implementation
 // details. Drift in the function SIGNATURES (parameter types, return
@@ -641,7 +654,7 @@ pub fn validate_parts(_parts: &WorkflowParts) -> Result<(), WorkflowError> {
 pub fn validate_budget(_parts: &WorkflowParts) -> Result<(), WorkflowError> {
     Ok(())
 }
-// Production crates/vb_core/src/workflow/mod.rs:1394-1425
+// Named source `crates/vb_core/src/workflow/validate.rs:47-78` (named `validate_input_slots`; kind `function_item`; owner `-`; trait `-`).
 // Drift policy: any change to this function body in production MUST be
 // mirrored here. The spec proofs depend on the faithful implementation.
 
@@ -649,7 +662,7 @@ pub fn validate_input_slots(parts: &WorkflowParts) -> Result<(), WorkflowError> 
     let slot_count = parts.slot_count;
     let mut prev_slot: Option<SlotIdx> = None;
     for input_slot in parts.input_slots.iter() {
-        let current: SlotIdx = input_slot.slot;
+        let current = input_slot.slot;
         let current_value = current.get();
         if current_value >= slot_count {
             return Err(WorkflowError::InputSlotOutOfBounds {
@@ -657,98 +670,13 @@ pub fn validate_input_slots(parts: &WorkflowParts) -> Result<(), WorkflowError> 
                 kind: input_slot.kind,
             });
         }
-        if let Some(prev) = prev_slot {
-            let prev_value = prev.get();
-            if current_value == prev_value {
-                return Err(WorkflowError::DuplicateInputSlot {
-                    slot: current,
-                    kind: input_slot.kind,
-                });
-            }
-            if current_value < prev_value {
-                return Err(WorkflowError::NonCanonicalInputSlotOrder {
-                    prev_slot: prev,
-                    curr_slot: current,
-                });
-            }
-        }
+        validate_input_slot_order(input_slot, prev_slot)?;
+        validate_input_constraint(current, &input_slot.constraint)?;
         prev_slot = Some(current);
     }
     Ok(())
 }
 
-// ===========================================================================
-// PRODUCTION MIRROR: loop-region ownership cache stubs
-// ===========================================================================
-//
-// Production `CompiledLoopRegion` at
-// `crates/vb_core/src/workflow/loop_regions.rs:14-19`, `validate` at
-// `crates/vb_core/src/workflow/loop_regions.rs:96-109`,
-// `nested_activation_map` at
-// `crates/vb_core/src/workflow/loop_regions.rs:115-120`, and
-// `merge_slots` at `crates/vb_core/src/workflow/loop_regions.rs:126-140`.
-// `LoopRegionSlot` at `crates/vb_core/src/workflow/loop_regions.rs:27-36`.
-// The mirror bodies return `Ok` with empty collections because the spec
-// proofs reason about the postcondition contracts, not about the
-// validation implementation details. Drift in the struct FIELDS or
-// function SIGNATURES breaks this mirror at compile time. The production
-// `Box<[...]>` return types are mirrored as `Vec<...>` per the file
-// header substitution rule.
-
-/// Mirror of production `CompiledLoopRegion`: immutable,
-/// constructor-validated ownership of one loop backedge. Field names and
-/// types match production; visibility is `pub` per this file's convention.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CompiledLoopRegion {
-    pub start: StepIdx,
-    pub body: StepIdx,
-    pub control: StepIdx,
-    pub done: StepIdx,
-}
-
-/// Mirror of production `LoopRegionSlot`: total per-step loop cache state.
-/// Every step maps to exactly one slot, replacing the former parallel
-/// `Option<CompiledLoopRegion>` cache and boolean nested-entry mask.
-/// Variant names and shapes match production; visibility is `pub` per
-/// this file's convention.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LoopRegionSlot {
-    /// Neither a loop control nor a nested activation entry.
-    Empty,
-    /// A loop control owning this region.
-    Region(CompiledLoopRegion),
-    /// A nested activation entry without a loop region.
-    NestedEntry,
-    /// A loop control whose step is also a nested activation entry.
-    RegionAndNested(CompiledLoopRegion),
-}
-
-pub mod loop_regions {
-    use super::{CompiledLoopRegion, LoopRegionSlot, WorkflowError, WorkflowParts};
-
-    /// Stub for production `loop_regions::validate`: builds a
-    /// control-indexed cache without changing serialized workflow parts.
-    pub fn validate(
-        _parts: &WorkflowParts,
-    ) -> Result<Vec<Option<CompiledLoopRegion>>, WorkflowError> {
-        Ok(Vec::new())
-    }
-
-    /// Stub for production `loop_regions::nested_activation_map`: derives
-    /// the nested activation entry map from validated loop regions.
-    pub fn nested_activation_map(
-        _parts: &WorkflowParts,
-        _regions: &[Option<CompiledLoopRegion>],
-    ) -> Result<Vec<bool>, WorkflowError> {
-        Ok(Vec::new())
-    }
-
-    /// Stub for production `loop_regions::merge_slots`: merges validated
-    /// regions and the nested-entry mask into total per-step slots.
-    pub fn merge_slots(
-        _regions: &[Option<CompiledLoopRegion>],
-        _nested: &[bool],
-    ) -> Vec<LoopRegionSlot> {
-        Vec::new()
-    }
-}
+#[path = "try_from_parts_production_loop_cache.rs"]
+pub mod loop_regions;
+pub use loop_regions::{CompiledLoopRegion, LoopRegionSlot};

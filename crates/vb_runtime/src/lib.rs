@@ -72,6 +72,7 @@ pub mod kani_shard_command_queue;
 #[path = "verification/kani/kani_trace_ring.rs"]
 pub mod kani_trace_ring;
 pub mod manual_gate;
+mod prepared_inputs;
 
 #[cfg(kani)]
 #[path = "verification/kani/kani_vb_edvbj_storage_event_no_fabricate.rs"]

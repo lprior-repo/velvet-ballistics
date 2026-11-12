@@ -19,40 +19,38 @@ pub(crate) fn cmd_run_compiled(
         Err(code) => return code,
     };
 
-    let compiled: vb_core::CompiledWorkflow =
-        match postcard::from_bytes::<vb_core::WorkflowParts>(&ir_bytes) {
-            Ok(parts) => match vb_core::CompiledWorkflow::try_from_parts(parts) {
-                Ok(c) => c,
-                Err(e) => {
-                    if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "error": format!("compiled IR validation error: {e}")
-                            }),
-                            output,
-                        );
-                    } else {
-                        errln!("compiled IR validation error: {e}");
-                    }
-                    return CliExitCode::CompileFailed.into();
-                }
-            },
-            Err(e) => {
-                if output != OutputFormat::Text {
-                    json_error(
-                        &serde_json::json!({
-                            "success": false,
-                            "error": format!("error deserializing compiled IR: {e}")
-                        }),
-                        output,
-                    );
-                } else {
-                    errln!("error deserializing compiled IR: {e}");
-                }
-                return CliExitCode::CompileFailed.into();
+    let compiled: vb_core::CompiledWorkflow = match vb_storage::decode_compiled_ir(&ir_bytes, None)
+    {
+        Ok(c) => c,
+        Err(vb_storage::JournalError::WorkflowReconstruction(e)) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("compiled IR validation error: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("compiled IR validation error: {e}");
             }
-        };
+            return CliExitCode::CompileFailed.into();
+        }
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error deserializing compiled IR: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error deserializing compiled IR: {e}");
+            }
+            return CliExitCode::CompileFailed.into();
+        }
+    };
 
     let inputs = match map_runtime_inputs(&compiled, &input_data) {
         Ok(inputs) => inputs,

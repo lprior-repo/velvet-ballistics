@@ -4,6 +4,7 @@
 mod display;
 mod finite;
 mod slot;
+mod slot_cell;
 mod taint;
 
 pub use display::SlotValueDisplay;

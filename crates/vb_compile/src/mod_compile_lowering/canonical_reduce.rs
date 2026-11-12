@@ -4,7 +4,7 @@
 mod body;
 
 use super::canonical_reduce_initial::parse_typed_initial;
-use super::emit_single_body_set;
+use super::field_error;
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use crate::mod_compile_lowering::part_02::for_each_capture;
 use crate::mod_compile_lowering::part_14::BodyCtx;
@@ -178,14 +178,6 @@ fn validate_body(index: usize, config: &ReduceLowering<'_>) -> Result<(), Compil
         return Err(field_error(index, "steps", "at least one set or do step"));
     }
     for_each_capture::validate_reduce_capture(config.variable, config.body)
-}
-
-fn field_error(step: usize, field: &'static str, expected: &'static str) -> CompileErrors {
-    CompileErrors(vec![CompileError::StepFieldShape {
-        step,
-        field,
-        expected,
-    }])
 }
 
 #[cfg(test)]

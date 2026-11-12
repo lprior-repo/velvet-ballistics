@@ -71,12 +71,12 @@
 //                                               crates/vb_core/src/budget/traversal_error.rs:13-37)
 //   - `WholeWorkflowBudget`                 <- extern_budget_monotonic.rs
 //                                               (mirror of
-//                                               crates/vb_core/src/budget/compute.rs:17-93)
-// Production `crates/vb_core/src/budget/compute.rs:17-93`
+//                                               crates/vb_core/src/budget/compute.rs:19-97)
+// Production `crates/vb_core/src/budget/compute.rs:19-97`
 //   - `WholeWorkflowBudget::compute`        <- extern_budget_monotonic.rs
 //                                               `whole_workflow_budget_compute`
 //                                               (mirror of
-//                                               crates/vb_core/src/budget/compute.rs:100-106)
+//                                               crates/vb_core/src/budget/compute.rs:104-110)
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -573,12 +573,12 @@ pub enum BudgetTraversalError {
 // WholeWorkflowBudget — production mirror
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget/compute.rs:17-93`. Every field name, type,
+// Mirror of `crates/vb_core/src/budget/compute.rs:19-97`. Every field name, type,
 // and visibility matches production exactly. Drift in any field breaks
 // the mirror.
 
 /// Mirror of production `WholeWorkflowBudget` at
-/// `crates/vb_core/src/budget/compute.rs:17-93`. Field-by-field copy of the
+/// `crates/vb_core/src/budget/compute.rs:19-97`. Field-by-field copy of the
 /// production struct. The exec fn `WholeWorkflowBudget::compute` below
 /// is `#[verifier::external]` and accepts the production signature.
 #[derive(Clone, Copy)]

@@ -8,6 +8,7 @@
 //! change. See the open-registry rationale in `crate::errors`.
 
 use crate::ids::{RunId, TenantId};
+#[cfg(not(kani))]
 use crate::workflow::WorkflowError;
 use thiserror::Error;
 

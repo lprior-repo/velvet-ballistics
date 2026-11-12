@@ -25,6 +25,13 @@ pub(crate) struct FencingTokens {
     next: FencingToken,
 }
 
+#[cfg(test)]
+impl FencingTokens {
+    pub(crate) fn recovery_snapshot(&self) -> (HashMap<RunId, FencingToken>, FencingToken) {
+        (self.current.clone(), self.next)
+    }
+}
+
 impl FencingTokens {
     /// Creates an empty tracker.
     #[must_use]

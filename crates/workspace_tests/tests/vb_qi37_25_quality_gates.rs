@@ -35,9 +35,7 @@ fn write_file(path: &Path, contents: &str) -> Result<(), std::io::Error> {
     fs::write(path, contents)
 }
 
-fn workspace() -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
-    let dir = tempfile::tempdir()?;
-    let root = dir.path();
+fn copy_assertion_scripts(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all(root.join("scripts"))?;
     let source_root = repo_root()?;
     fs::copy(
@@ -45,9 +43,20 @@ fn workspace() -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
         root.join("scripts/check-workspace-assertions.rs"),
     )?;
     fs::copy(
+        source_root.join("scripts/check_workspace_assertions_driver.rs"),
+        root.join("scripts/check_workspace_assertions_driver.rs"),
+    )?;
+    fs::copy(
         source_root.join("scripts/check-workspace-assertions.sh"),
         root.join("scripts/check-workspace-assertions.sh"),
     )?;
+    Ok(())
+}
+
+fn workspace() -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
+    let root = dir.path();
+    copy_assertion_scripts(root)?;
     let member_lines = MEMBERS
         .iter()
         .map(|(path, _name)| format!("    \"{path}\",\n"))

@@ -155,6 +155,10 @@ struct StorageWorkflowResolver {
     journal: Arc<vb_storage::FjallJournal>,
 }
 
+#[cfg(test)]
+#[path = "ipc_versioned_tests.rs"]
+mod versioned_tests;
+
 impl vb_ipc::server::WorkflowResolver for StorageWorkflowResolver {
     fn resolve_workflow(
         &mut self,
@@ -185,7 +189,7 @@ fn decode_compiled_record(
     requested: vb_core::WorkflowDigest,
 ) -> Result<vb_core::CompiledWorkflow, vb_ipc::server::WorkflowResolutionError> {
     if raw_payload_digest(record) == record.digest {
-        return decode_workflow_parts(record.ir.as_slice());
+        return decode_compiled_bytes(record.ir.as_slice(), None);
     }
 
     let artifact = postcard::from_bytes::<vb_storage::AcceptedArtifact>(record.ir.as_slice())
@@ -199,19 +203,18 @@ fn decode_compiled_record(
     if !(digest_matches && lookup_matches) {
         return Err(vb_ipc::server::WorkflowResolutionError::InvalidArtifact);
     }
-    decode_workflow_parts(artifact.ir.as_slice())
+    decode_compiled_bytes(artifact.ir.as_slice(), Some(artifact.artifact_version))
 }
 
 fn raw_payload_digest(record: &vb_storage::CompiledIrRecord) -> vb_core::WorkflowDigest {
     vb_core::WorkflowDigest::from_bytes(blake3::hash(record.ir.as_slice()).into())
 }
 
-fn decode_workflow_parts(
+fn decode_compiled_bytes(
     bytes: &[u8],
+    outer_version: Option<vb_storage::compat::SchemaVersion>,
 ) -> Result<vb_core::CompiledWorkflow, vb_ipc::server::WorkflowResolutionError> {
-    let parts = postcard::from_bytes::<vb_core::WorkflowParts>(bytes)
-        .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)?;
-    vb_core::CompiledWorkflow::try_from_parts(parts)
+    vb_storage::decode_compiled_ir(bytes, outer_version)
         .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)
 }
 

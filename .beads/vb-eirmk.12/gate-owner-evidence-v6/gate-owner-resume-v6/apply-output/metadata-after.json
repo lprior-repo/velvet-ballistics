@@ -1,0 +1,12 @@
+{
+  "master_requirement_ids": [
+    "gate:feature-powerset",
+    "gate:miri",
+    "gate:coverage",
+    "gate:mutants-smoke",
+    "gate:bench-build",
+    "gate:benchmark-regression-policy",
+    "gate:fuzz-smoke"
+  ],
+  "qualification_only": true
+}

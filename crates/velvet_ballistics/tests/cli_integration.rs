@@ -12,6 +12,9 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, Workfl
 #[path = "../src/cli_postcard.rs"]
 mod cli_postcard;
 
+#[path = "cli_integration/input_bin_case_tests.rs"]
+mod input_bin_case;
+
 const CLI_WORKFLOW: &str = r"version: velvet-ballistics/v1
 name: cli_subprocess
 when:
@@ -26,7 +29,7 @@ steps:
       result: saved
 ";
 
-fn input_slot_parts() -> WorkflowParts {
+fn input_slot_parts() -> Result<WorkflowParts, Box<dyn std::error::Error>> {
     let finish = vb_core::workflow::node(
         StepIdx::ZERO,
         CompiledNodeKind::Finish {
@@ -35,25 +38,18 @@ fn input_slot_parts() -> WorkflowParts {
         None,
         None,
     );
-    WorkflowParts {
-        semantic_source_identity: None,
-        name: Box::from("cli-input"),
-        digest: WorkflowDigest::from_bytes([7u8; 32]),
-        input_slots: Box::from([vb_core::workflow::CompiledInputSlot {
-            slot: SlotIdx::ZERO,
-            kind: vb_core::workflow::InputSlotKind::I64,
-            constraint: vb_core::workflow::CompiledInputConstraint::unconstrained(),
-        }]),
-        nodes: Box::from([finish]),
-        expressions: Box::from([]),
-        accessors: Box::from([]),
-        constants: Box::from([]),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::ZERO,
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::default(),
-    }
+    let mut parts = minimal_parts(Box::from([finish]));
+    parts.name = Box::from("cli-input");
+    parts.input_slots = Box::from([vb_core::workflow::CompiledInputSlot {
+        slot: SlotIdx::ZERO,
+        kind: vb_core::workflow::InputSlotKind::I64,
+        constraint: vb_core::workflow::CompiledInputConstraint::unconstrained(),
+    }]);
+    parts.slot_count = 1;
+    parts.digest = vb_compile::compute_compiled_ir_digest(
+        &vb_core::workflow::VersionedWorkflowParts::V1(parts.clone()),
+    )?;
+    Ok(parts)
 }
 
 // ---------------------------------------------------------------------------

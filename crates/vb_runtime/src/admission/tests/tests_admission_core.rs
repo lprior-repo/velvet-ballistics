@@ -600,7 +600,7 @@ fn admission_admit_run_strict_with_present_artifact() -> Result<(), String> {
 #[test]
 fn admit_artifact_run_rejects_future_major_ir_version() -> Result<(), String> {
     let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
-    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(2, 0, 0);
+    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(3, 0, 0);
     let digest =
         vb_storage::admission::accepted_artifact_digest(&artifact).map_err(|e| e.to_string())?;
     artifact.digest = digest;
@@ -667,7 +667,7 @@ fn check_artifact_ir_version_allows_only_live_effect_classes() -> Result<(), Str
         decision.new_schema_digest,
         vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION)
     );
-    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(2, 0, 0);
+    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(3, 0, 0);
     assert!(
         matches!(
             check_artifact_ir_version(&artifact),

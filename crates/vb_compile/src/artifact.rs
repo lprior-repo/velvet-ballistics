@@ -175,17 +175,17 @@ pub fn verify_compiled_artifact(
     workflow: &CompiledWorkflow,
     contracts: &[ActionContract],
 ) -> Result<VerifiedCompilation, ArtifactVerificationError> {
-    let mut parts = workflow.to_parts();
-    let workflow = CompiledWorkflow::try_from_parts(parts.clone())?;
+    let parts = workflow.to_parts();
+    let workflow = reconstruct_versioned_workflow(workflow)?;
     vb_validate::shared::validate_with_contracts(&parts, contracts)?;
     vb_core::action::validate_action_registry(contracts)?;
     check_idempotency_gates(contracts)?;
-    let payload = postcard::to_allocvec(&parts)?.into_boxed_slice();
-    parts.digest = WorkflowDigest::from_bytes([0; 32]);
+    let versioned = workflow.to_versioned_parts();
+    let payload = crate::compiled_ir::encode_versioned_parts(&versioned)?.into_boxed_slice();
     check_digest(
         CompilationBinding::Workflow,
         workflow.digest(),
-        &postcard::to_allocvec(&parts)?,
+        &crate::compiled_ir::canonical_preimage(&versioned)?,
     )?;
     let budget = WholeWorkflowBudget::compute(&parts.nodes, parts.entry, &parts.resource_contract)?;
     Ok(VerifiedCompilation {
@@ -198,6 +198,19 @@ pub fn verify_compiled_artifact(
         policy_digest: digest(&postcard::to_allocvec(&parts.resource_contract)?),
         budget,
     })
+}
+
+fn reconstruct_versioned_workflow(
+    workflow: &CompiledWorkflow,
+) -> Result<CompiledWorkflow, WorkflowError> {
+    match workflow.to_versioned_parts() {
+        vb_core::workflow::VersionedWorkflowParts::V1(parts) => {
+            CompiledWorkflow::try_from_parts(parts)
+        }
+        vb_core::workflow::VersionedWorkflowParts::V2(ir) => {
+            CompiledWorkflow::try_from_parts_with_symbols(ir.parts, ir.symbol_payloads)
+        }
+    }
 }
 
 fn digest(bytes: &[u8]) -> WorkflowDigest {

@@ -1,0 +1,177 @@
+{
+  "bead": "vb-eirmk.23.2",
+  "review": "independent TEST execution-evidence audit",
+  "verdict": "PASS",
+  "scope": "Raw build, smoke and statistical-measurement receipts for six bounded V4 component benchmark cases only; not whole-master performance acceptance.",
+  "source_pin": "23749f4b5b0b1822243a956ae22dd1b59912a0e1",
+  "verified_review_roots": {
+    "git": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+    "jj": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol"
+  },
+  "findings": [],
+  "source_binding": {
+    "source_hashes": {
+      "Cargo.lock": "307cb7e5ecaa002ebe817d6963fab48c681b3d42927081863a2f35d4ea4b37fd",
+      "crates/workspace_tests/benches/rtrb.rs": "160401766df2bbe5ddd533644b2e7fb5fc5a48e6e025821896db56266d15cfb2",
+      "crates/workspace_tests/benches/trace_ring_public.rs": "826ed3a9dcf63bba467b545043b5497b5423586582527cc3780f1950fe9d2449",
+      "crates/vb_runtime/src/trace.rs": "44239b791169e7a19a43cccac05766433474d429b14e390d91e401df59241b2c",
+      "crates/vb_runtime/src/frame_pool.rs": "f9b0eaf8af48accb4f3a349a286a849ee83f636adbbc72e3183f62e8fac78f63"
+    },
+    "verification": "Independently hashed all five files from full frozen JJ pin and current parent files; every hash matches provenance. Trace benchmark module hash is reviewed V4 826ed3a9dcf63bba467b545043b5497b5423586582527cc3780f1950fe9d2449; six fixed-batch sites and exact six case names verified directly from frozen source.",
+    "compiled_executable": "/home/lewis/src/isoloated/velvet-ballistics-core-current-review/target/release/deps/rtrb-79219df668c9c02c",
+    "executable_sha256_at_audit": "d3278d7f47abf307d09e00319ab6504ce5514687910a32fb9e14c3b07e757e0a",
+    "artifact_binding": "Raw compiler-artifact targets workspace-tests bench rtrb at matching source path, executable identical to executable.txt and both execution commands, fresh=false. Raw build-finished success=true. Build log records actual bench-profile compilation."
+  },
+  "execution_receipts": {
+    "build": {
+      "log": "trace-benchmark-run/build.log",
+      "exit": "BENCH_BUILD_EXIT=0",
+      "profile_from_raw_compiler_artifact": {
+        "opt_level": "3",
+        "debuginfo": 2,
+        "debug_assertions": false,
+        "overflow_checks": false,
+        "test": true
+      },
+      "configuration_recorded_in_provenance": {
+        "profile": "bench",
+        "lto": "thin",
+        "codegen_units": 1,
+        "jobs": 2,
+        "rustflags": "-Dwarnings",
+        "memory_high": "20G",
+        "memory_max": "24G",
+        "swap_max": 0,
+        "timeout_seconds": 900
+      },
+      "resource_evidence_limit": "Build scope invocation observed in raw log; jobs/RUSTFLAGS/LTO and build resource settings are recorded provenance, not independently observed historical cgroup telemetry or a separate retained build-command array."
+    },
+    "smoke": {
+      "command_file": "trace-benchmark-run/smoke-command.json",
+      "log": "trace-benchmark-run/smoke.log",
+      "exit": "SMOKE_EXIT=0",
+      "observed": "Exactly six expected Testing names each immediately followed by Success; independently parsed and compared to reviewed source and smoke-validation.json.",
+      "mode": "Direct executable with --bench --test trace_ring_public --noplot.",
+      "requested_limits": "MemoryHigh=1G, MemoryMax=2G, MemorySwapMax=0; timeout120s, kill-after10s."
+    },
+    "measurement": {
+      "command_file": "trace-benchmark-run/measurement-command.json",
+      "log": "trace-benchmark-run/measurement.log",
+      "exit": "MEASUREMENT_EXIT=0",
+      "observed": "All six exact reviewed case names have warming, Collecting20 samples and Analyzing lines. Twenty raw samples each, not a test-only invocation.",
+      "mode": "Direct executable with --bench, no --test; filter trace_ring_public; --sample-size20, --warm-up-time1, --measurement-time2, --save-baseline vb_eirmk_23_2_v4_20261110, --noplot.",
+      "requested_limits": "MemoryHigh=1G, MemoryMax=2G, MemorySwapMax=0; timeout300s, kill-after10s."
+    },
+    "installed_cli_check": "Criterion0.8.2 lib.rs958-964 inspected: (--bench,true --test) selects Test; --bench without --test selects benchmark; missing --bench would select Test. Actual command arrays use correct distinct modes."
+  },
+  "raw_artifact_validation": {
+    "directory": "trace-benchmark-run/criterion",
+    "result": "Six unique new/benchmark.json full_id names exactly match source, smoke, measurement log and measurements.json; no old raw-rtrb case included. Each sample.json has20 positive finite integer iteration counts and20 positive finite times. Every nonnull estimate point/standard-error/confidence bound is positive finite. Mean confidence intervals contain point estimates at confidence0.95. Independent arithmetic mean(times/iters) agrees with raw mean point within1e-12 relative tolerance; measurements.json means, confidence intervals, sample counts, total iterations and raw paths agree exactly. Archived named-baseline benchmark/sample/estimates bytes equal new files.",
+    "cases": [
+      {
+        "id": "trace_ring_public/raw_pop_16",
+        "samples": 20,
+        "mean_ns": 35.73863284000669,
+        "mean_confidence_interval": {
+          "confidence_level": 0.95,
+          "lower_bound": 35.52328321317025,
+          "upper_bound": 35.982424042374376
+        }
+      },
+      {
+        "id": "trace_ring_public/raw_push_empty",
+        "samples": 20,
+        "mean_ns": 13.711930275344116,
+        "mean_confidence_interval": {
+          "confidence_level": 0.95,
+          "lower_bound": 13.603068584633462,
+          "upper_bound": 13.811991704161986
+        }
+      },
+      {
+        "id": "trace_ring_public/raw_push_full_and_verify_returned_event",
+        "samples": 20,
+        "mean_ns": 15.75533990881319,
+        "mean_confidence_interval": {
+          "confidence_level": 0.95,
+          "lower_bound": 15.642794434380622,
+          "upper_bound": 15.86200094816978
+        }
+      },
+      {
+        "id": "trace_ring_public/wrapper_drain_16",
+        "samples": 20,
+        "mean_ns": 41.3493718720414,
+        "mean_confidence_interval": {
+          "confidence_level": 0.95,
+          "lower_bound": 41.26008694828754,
+          "upper_bound": 41.45160481875072
+        }
+      },
+      {
+        "id": "trace_ring_public/wrapper_push_empty",
+        "samples": 20,
+        "mean_ns": 13.778547428180335,
+        "mean_confidence_interval": {
+          "confidence_level": 0.95,
+          "lower_bound": 13.64136666391274,
+          "upper_bound": 13.92806821652339
+        }
+      },
+      {
+        "id": "trace_ring_public/wrapper_push_full_and_observe_dropped",
+        "samples": 20,
+        "mean_ns": 13.101941934080685,
+        "mean_confidence_interval": {
+          "confidence_level": 0.95,
+          "lower_bound": 13.03629477125583,
+          "upper_bound": 13.178633008801171
+        }
+      }
+    ]
+  },
+  "freshness": {
+    "criterion_home": "Both execution command arrays specify fresh dedicated trace-benchmark-run/criterion, as parent observed.",
+    "corroboration": "Compiler-artifact fresh=false; measurement log independently shows collection and analysis of every expected case. Smoke log mtime2026-11-10T17:43:01Z precedes every new benchmark artifact mtime17:44:10Z..17:44:27Z; measurement log ends17:44:27Z. New artifact/raw sample consistency and saved-baseline byte identity verified. No stale-only result or skipped case observed.",
+    "historical_limit": "Fresh directory creation and no estimates after smoke/before measurement are explicit parent observations. Inspected retained package has no separate premeasurement empty-directory manifest; historical absence cannot be reconstructed solely from current filesystem timestamps. This audit does not mislabel that observation as independently executed freshness control."
+  },
+  "provenance": {
+    "file": "trace-benchmark-run/provenance.json",
+    "sha256": "b4dd03942c697a9df1266e1f39bc81ba05bf1460e1f4182395437e4d38757f5b",
+    "cpu_model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+    "governor": "performance",
+    "kernel_record": "Linux7.2.11-arch1-1 x86_64 GNU/Linux",
+    "rustc_record": "rustc1.97.0-nightly 52b6e2c20, commit52b6e2c208b73276ccb36ec0b68456913a801c96, hostx86_64-unknown-linux-gnu, LLVM22.1.2",
+    "fixture": {
+      "event": "StepStarted",
+      "run": 1,
+      "step": 1,
+      "capacity": 128,
+      "drain": 16,
+      "batch_maximum": 32
+    },
+    "hardware_limit": "Hardware/governor/load are recorded run provenance, not independently remeasured during this read-only audit."
+  },
+  "interpretation": {
+    "unit": "nanoseconds per component harness iteration",
+    "confidence_interval": "Mean estimate confidence interval is uncertainty in mean, not event-latency p95/p99. Linear Criterion console time estimates are not substituted for the separately retained raw mean.",
+    "overheads": "Fixed batching, routine/output movement and Vec::extend, black_box, measurement instrumentation and timed validation remain part of component-harness observations. Setup is outside routine measurement; fixtures remain owned until after it.",
+    "full_case_comparison": "Raw full case validates returned event while wrapper full case observes and validates dropped count; different work, no isolated push ratio or wrapper-speed inference.",
+    "excluded_claims": [
+      "allocation counts or allocated bytes",
+      "event-latency percentiles",
+      "speedup or regression threshold",
+      "whole-engine tracing-on/off overhead",
+      "whole-master performance acceptance",
+      "formal proof",
+      "full canonical CI or protected live-ledger approval"
+    ]
+  },
+  "limits": [
+    "Audit reads parent execution evidence; no benchmark/native/smoke/build/formal commands rerun. Independent execution limited to bounded file parsing, arithmetic, source/hash comparisons and repository inspection.",
+    "Exit0 establishes reported bounded runs completed, not peak-memory measurement, machine isolation, thermal stability or reproducibility across hosts.",
+    "Outlier warnings in measurement.log retained; no samples removed or thresholds invented by this audit.",
+    "Parent-reported selected Moon suite/source-length results are outside this benchmark receipt audit and not recast as full CI.",
+    "Only requested report written; no other review reports read, live source/gate/tracker edits, agents or root temporary-directory access."
+  ]
+}

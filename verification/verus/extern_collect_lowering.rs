@@ -104,7 +104,7 @@
 //                                                  (the exact variant produced by
 //                                                  `checked_body_length_offset` when
 //                                                  body_len+extra overflows u16)
-//   - `lower_bounded_collect`                   <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:241-261
+//   - `lower_bounded_collect` <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:241-261 (kind `function_item`; owner `-`; trait `-`).
 //                                                  (plan build + start/body/next/finish emission;
 //                                                  edges computed by plan_compute_edges,
 //                                                  bounded_collect.rs:117-127)

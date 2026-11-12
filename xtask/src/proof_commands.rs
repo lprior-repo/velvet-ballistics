@@ -34,6 +34,11 @@ pub(crate) fn diff_test_command(entry: &str) -> String {
 /// crate. Shared by `tests`, `property_tests`, and `differential_tests`.
 #[must_use]
 pub(crate) fn nextest_command(crate_name: &str, test: &str) -> String {
+    if crate_name == "reference" {
+        return format!(
+            "cargo nextest run -p velvet-ballistics-workspace-tests --test reference_model_regressions {test}"
+        );
+    }
     format!("cargo nextest run -p {crate_name} {test}")
 }
 
@@ -79,6 +84,18 @@ mod tests {
         assert_eq!(
             nextest_command("vb_core", "whole_workflow_budget_within_policy"),
             "cargo nextest run -p vb_core whole_workflow_budget_within_policy"
+        );
+    }
+
+    #[test]
+    fn reference_commands_select_the_registered_integration_target() {
+        assert_eq!(
+            nextest_command("reference", "engine_vs_reference"),
+            "cargo nextest run -p velvet-ballistics-workspace-tests --test reference_model_regressions engine_vs_reference"
+        );
+        assert_eq!(
+            nextest_command("reference", "taint_vs_reference"),
+            "cargo nextest run -p velvet-ballistics-workspace-tests --test reference_model_regressions taint_vs_reference"
         );
     }
 

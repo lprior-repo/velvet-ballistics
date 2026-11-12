@@ -6,82 +6,250 @@
 //!
 //! **Bounds:** shard_count ∈ [1, 32], keyspace start == 0, unwind = 36
 //!
-//! **Kani optimization:** Uses fixed-size array instead of Vec to avoid
-//! allocation complexity. The contract algorithm (Kmax/N, cursor from 0)
-//! is used to avoid u128 arithmetic which is expensive for SMT solvers.
-//!
-//! **Model equivalence:** For keyspaces starting at 0, this algorithm is
-//! mathematically equivalent to the span-based model implementation.
-//! Proptest covers the full keyspace domain including non-zero starts.
+//! Shared helper `checked_partition` validates construction, asserts exact
+//! success/failure classification, and returns Option<PartitionPlan>.
+//! Success iff span >= n; failure must be exact InvalidKeyRange.
 
 #![forbid(unsafe_code)]
 
-use super::{KeyRange, PartitionError};
+use crate::shard::partition::{
+    KeyRange, PartitionConfig, PartitionError, PartitionPlan, ShardCount,
+};
 
 const MAX: usize = 32;
 
-/// Fixed-size partition result. Uses array with explicit length.
-struct FixedPlan {
-    ranges: [KeyRange; MAX],
-    len: usize,
-}
+// Construction validation helpers
 
-/// Partition algorithm using fixed-size array (no Vec allocation).
-/// Uses the contract algorithm: step = kmax / n.
-/// Assumes kmin = 0 (verified by proptest for general keyspaces).
-fn fixed_partition(n: usize, kmax: u64) -> Result<FixedPlan, PartitionError> {
-    let nu = n as u64;
-    if nu == 0 {
-        return Err(PartitionError::ZeroShardCount);
-    }
-
-    // Default-initialize with full_keyspace placeholders
-    let default_range = KeyRange::new(0, 0)?;
-    let mut ranges = [default_range; MAX];
-
-    if nu == 1 {
-        ranges[0] = KeyRange::new(0, kmax)?;
-        return Ok(FixedPlan { ranges, len: 1 });
-    }
-
-    let step = match kmax.checked_div(nu) {
-        Some(s) => s,
-        None => return Err(PartitionError::ArithmeticOverflow { shard_index: 0 }),
-    };
-    let rem = kmax.wrapping_rem(nu); // Safe: nu > 0
-
-    let mut cursor: u64 = 0;
-    let n_minus_1 = nu.saturating_sub(1);
-
-    for i in 0..n_minus_1 {
-        let extra = if i < rem { 1u64 } else { 0u64 };
-        let size = match step.checked_add(extra) {
-            Some(s) => s,
-            None => return Err(PartitionError::ArithmeticOverflow { shard_index: i }),
-        };
-        let end = match cursor.checked_add(size).and_then(|s| s.checked_sub(1)) {
-            Some(e) => e,
-            None => return Err(PartitionError::ArithmeticOverflow { shard_index: i }),
-        };
-        if end > kmax {
-            return Err(PartitionError::ArithmeticOverflow { shard_index: i });
+fn build_shard_count(n: usize) -> Option<ShardCount> {
+    match ShardCount::try_new(n) {
+        Ok(sc) => Some(sc),
+        Err(_) => {
+            kani::assert(false, "ShardCount::try_new failed for n in [1, 32]");
+            None
         }
-        ranges[i as usize] = KeyRange::new(cursor, end)?;
-        cursor = match end.checked_add(1) {
-            Some(c) => c,
-            None => return Err(PartitionError::ArithmeticOverflow { shard_index: i }),
-        };
     }
-
-    ranges[(nu - 1) as usize] = KeyRange::new(cursor, kmax)?;
-
-    Ok(FixedPlan { ranges, len: n })
 }
 
-// ============================================================================
-// PO-010a: No-panic for N ∈ [1, 32]
-// ============================================================================
+fn build_keyspace(kmax: u64) -> Option<KeyRange> {
+    match KeyRange::new(0, kmax) {
+        Ok(kr) => Some(kr),
+        Err(_) => {
+            kani::assert(false, "KeyRange::new(0, kmax) failed for any kmax");
+            None
+        }
+    }
+}
 
+fn span_from_kmax(kmax: u64) -> u128 {
+    match u128::from(kmax).checked_add(1) {
+        Some(s) => s,
+        None => {
+            kani::assert(false, "span computation overflowed u128");
+            0
+        }
+    }
+}
+
+fn n_to_u128(n: usize) -> u128 {
+    match u128::try_from(n) {
+        Ok(value) => value,
+        Err(_) => {
+            kani::assert(false, "n to u128 conversion failed");
+            0
+        }
+    }
+}
+
+fn build_plan_from_parts(sc: ShardCount, kr: KeyRange) -> Result<PartitionPlan, PartitionError> {
+    let config = PartitionConfig::new(sc, kr);
+    PartitionPlan::from_config(&config)
+}
+
+// Result classification helpers
+
+fn classify_success(span: u128, n128: u128) -> bool {
+    if span >= n128 {
+        return true;
+    }
+    kani::assert(span >= n128, "successful construction requires span >= n");
+    false
+}
+
+fn classify_failure(span: u128, n128: u128) -> bool {
+    if span < n128 {
+        return true;
+    }
+    kani::assert(span < n128, "sufficient keys must always construct");
+    false
+}
+
+fn classify_error_exact(kmax: u64, error: PartitionError) {
+    match kmax.checked_add(1) {
+        Some(start) => {
+            kani::assert(
+                error == PartitionError::InvalidKeyRange { start, end: kmax },
+                "exact InvalidKeyRange error required for undersized keyspace",
+            );
+        }
+        None => {
+            kani::assert(false, "unexpected kmax+1 overflow");
+        }
+    }
+}
+
+fn handle_success(span: u128, n128: u128, plan: PartitionPlan) -> Option<PartitionPlan> {
+    let ok = classify_success(span, n128);
+    if ok { Some(plan) } else { None }
+}
+
+fn handle_failure(
+    span: u128,
+    n128: u128,
+    kmax: u64,
+    error: PartitionError,
+) -> Option<PartitionPlan> {
+    let ok = classify_failure(span, n128);
+    if ok {
+        classify_error_exact(kmax, error);
+        kani::cover!(span < n128, "undersized keyspace rejection");
+    }
+    None
+}
+
+fn handle_plan_result(
+    span: u128,
+    n128: u128,
+    kmax: u64,
+    result: Result<PartitionPlan, PartitionError>,
+) -> Option<PartitionPlan> {
+    match result {
+        Ok(plan) => handle_success(span, n128, plan),
+        Err(error) => handle_failure(span, n128, kmax, error),
+    }
+}
+
+/// Shared helper: validate partition construction and assert exact behavior.
+/// Returns Some(plan) on success, None on expected failure.
+/// All legitimate errors classified; no other error accepted.
+fn checked_partition(n: usize, kmax: u64) -> Option<PartitionPlan> {
+    let sc = match build_shard_count(n) {
+        Some(sc) => sc,
+        None => return None,
+    };
+    let kr = match build_keyspace(kmax) {
+        Some(kr) => kr,
+        None => return None,
+    };
+    let span = span_from_kmax(kmax);
+    let n128 = n_to_u128(n);
+    let result = build_plan_from_parts(sc, kr);
+    handle_plan_result(span, n128, kmax, result)
+}
+
+// PO-010b invariant checkers
+
+fn invariant_length(n: usize, ranges: &[KeyRange]) {
+    let len = ranges.len();
+    kani::assert(len == n, "plan length must equal n");
+    kani::assert(len > 0, "plan must have at least one range");
+}
+
+fn invariant_endpoints(kmax: u64, ranges: &[KeyRange]) {
+    match ranges.first() {
+        Some(first) => {
+            kani::assert(first.start() == 0, "first range must start at 0");
+        }
+        None => kani::assert(false, "first range missing"),
+    }
+    match ranges.last() {
+        Some(last) => {
+            kani::assert(last.end() == kmax, "last range must end at kmax");
+        }
+        None => kani::assert(false, "last range missing"),
+    }
+}
+
+fn check_pair_contiguity(pair: &[KeyRange]) {
+    match (pair.first(), pair.get(1)) {
+        (Some(curr), Some(next)) => match curr.end().checked_add(1) {
+            Some(expected) => {
+                kani::assert(expected == next.start(), "ranges must be contiguous");
+            }
+            None => {
+                kani::assert(false, "end+1 overflow");
+            }
+        },
+        _ => kani::assert(false, "pair missing range"),
+    }
+}
+
+fn invariant_contiguity(ranges: &[KeyRange]) {
+    for pair in ranges.windows(2) {
+        check_pair_contiguity(pair);
+    }
+}
+
+fn check_range_disjoint(i: usize, left: &KeyRange, ranges: &[KeyRange]) {
+    for (j, right) in ranges.iter().enumerate() {
+        if i < j {
+            kani::assert(left.is_disjoint(*right), "ranges must be disjoint");
+        }
+    }
+}
+
+fn invariant_disjoint(ranges: &[KeyRange]) {
+    for (i, left) in ranges.iter().enumerate() {
+        check_range_disjoint(i, left, ranges);
+    }
+}
+
+fn cover_post_conditions(n: usize, kmax: u64, len: usize) {
+    if len > 1 {
+        kani::cover!(true, "multi-shard plan");
+    }
+    kani::cover!(kmax == u64::MAX && n == MAX, "full keyspace, max shards");
+}
+
+// PO-010b coverage checkers
+
+fn coverage_check_length(n: usize, ranges: &[KeyRange]) {
+    let len = ranges.len();
+    kani::assert(len == n, "plan length must equal n");
+}
+
+fn coverage_check_endpoints(kmax: u64, ranges: &[KeyRange]) {
+    match ranges.first() {
+        Some(first) => {
+            kani::assert(first.start() == 0, "first range must start at 0");
+        }
+        None => kani::assert(false, "first range missing"),
+    }
+    match ranges.last() {
+        Some(last) => {
+            kani::assert(last.end() == kmax, "last range must end at kmax");
+        }
+        None => kani::assert(false, "last range missing"),
+    }
+}
+
+fn check_gap(left: &KeyRange, right: &KeyRange) {
+    match left.end().checked_add(1) {
+        Some(expected) => {
+            kani::assert(expected == right.start(), "no gaps between ranges");
+        }
+        None => {
+            kani::assert(false, "end+1 overflow");
+        }
+    }
+}
+
+fn coverage_check_gaps(ranges: &[KeyRange]) {
+    for (left, right) in ranges.iter().zip(ranges.iter().skip(1)) {
+        check_gap(left, right);
+    }
+}
+
+/// PO-010a: PartitionPlan::from_config() is panic-free for N ∈ [1, 32].
 #[kani::proof]
 #[kani::unwind(36)]
 fn partition_plan_from_config_no_panic() {
@@ -89,23 +257,16 @@ fn partition_plan_from_config_no_panic() {
     kani::assume(n >= 1 && n <= MAX);
     let kmax: u64 = kani::any();
 
-    let result = fixed_partition(n, kmax);
+    let outcome = checked_partition(n, kmax);
 
-    match result {
-        Ok(_) => {}
-        Err(_) => {}
-    }
-
+    kani::cover!(outcome.is_some(), "successful construction");
     kani::cover!(n == 1, "single shard");
     kani::cover!(n == MAX, "max shards");
     kani::cover!(kmax == u64::MAX, "full keyspace");
     kani::cover!(kmax == 0, "singleton keyspace");
 }
 
-// ============================================================================
-// PO-010b: Output correctness — 5 construction invariants
-// ============================================================================
-
+/// PO-010b: Successful construction satisfies 5 construction invariants.
 #[kani::proof]
 #[kani::unwind(36)]
 fn partition_plan_post_conditions() {
@@ -113,58 +274,23 @@ fn partition_plan_post_conditions() {
     kani::assume(n >= 1 && n <= MAX);
     let kmax: u64 = kani::any();
 
-    let result = fixed_partition(n, kmax);
+    let outcome = checked_partition(n, kmax);
 
-    match result {
-        Ok(plan) => {
-            let ranges = &plan.ranges;
-            let len = plan.len;
+    let len = if let Some(plan) = &outcome {
+        let ranges = plan.ranges();
+        invariant_length(n, ranges);
+        invariant_endpoints(kmax, ranges);
+        invariant_contiguity(ranges);
+        invariant_disjoint(ranges);
+        ranges.len()
+    } else {
+        0
+    };
 
-            // Invariant 1: plan.len == n
-            kani::assert(len == n, "plan length must equal n");
-            kani::assert(len > 0, "plan must have at least one range");
-
-            // Invariant 2: ranges[0].start == 0
-            kani::assert(ranges[0].start() == 0, "first range must start at 0");
-
-            // Invariant 3: ranges[N-1].end == kmax
-            kani::assert(ranges[len - 1].end() == kmax, "last range must end at kmax");
-
-            // Invariant 4: Contiguity
-            for i in 0..len.saturating_sub(1) {
-                let curr_end = ranges[i].end();
-                let next_start = ranges[i + 1].start();
-                match curr_end.checked_add(1) {
-                    Some(expected) => {
-                        kani::assert(expected == next_start, "ranges must be contiguous");
-                    }
-                    None => {
-                        kani::assert(false, "end+1 overflow: no next range expected");
-                    }
-                }
-            }
-
-            // Invariant 5: No overlap
-            for i in 0..len {
-                for j in (i + 1)..len {
-                    kani::assert(ranges[i].is_disjoint(ranges[j]), "ranges must be disjoint");
-                }
-            }
-
-            if len > 1 {
-                kani::cover!(true, "multi-shard plan");
-            }
-        }
-        Err(_) => {}
-    }
-
-    kani::cover!(kmax == u64::MAX && n == MAX, "full keyspace, max shards");
+    cover_post_conditions(n, kmax, len);
 }
 
-// ============================================================================
-// Supplemental: keyspace coverage
-// ============================================================================
-
+/// Supplemental: Successful plans cover the full keyspace with no gaps.
 #[kani::proof]
 #[kani::unwind(36)]
 fn partition_plan_covers_keyspace() {
@@ -172,17 +298,15 @@ fn partition_plan_covers_keyspace() {
     kani::assume(n >= 1 && n <= MAX);
     let kmax: u64 = kani::any();
 
-    if let Ok(plan) = fixed_partition(n, kmax) {
-        let len = plan.len;
-        if len > 0 {
-            for i in 0..len.saturating_sub(1) {
-                match plan.ranges[i].end().checked_add(1) {
-                    Some(expected) => {
-                        kani::assert(expected == plan.ranges[i + 1].start(), "no gaps");
-                    }
-                    None => {}
-                }
-            }
-        }
+    let outcome = checked_partition(n, kmax);
+
+    if let Some(plan) = outcome {
+        let ranges = plan.ranges();
+        coverage_check_length(n, ranges);
+        coverage_check_endpoints(kmax, ranges);
+        coverage_check_gaps(ranges);
+        kani::cover!(kmax == u64::MAX, "full keyspace covered");
+        kani::cover!(n == 1, "single shard covers all");
+        kani::cover!(kmax == 0, "singleton keyspace covered");
     }
 }

@@ -72,26 +72,29 @@ impl Shard {
     fn append_ask_answer_events(&mut self, run: RunId, answer: AskAnswer) -> RuntimeResult<bool> {
         let encoded_answer_value =
             postcard::to_allocvec(&answer.value).map_err(|_| RuntimeError::EncodeFailed)?;
-        self.append_command_journal_events(run, [
-            RuntimeJournalEvent::SlotWritten {
-                run,
-                slot: answer.answer_slot,
-                value: encoded_answer_value,
-                taint: answer.taint,
-                extra: None,
-            },
-            RuntimeJournalEvent::AskAnswered {
-                run,
-                step: answer.ticket.ask_step,
-                slot: answer.answer_slot,
-            },
-            RuntimeJournalEvent::StepSucceeded {
-                run,
-                step: answer.ticket.ask_step,
-                output: answer.answer_slot,
-                attempt: 1,
-            },
-        ])
+        self.append_command_journal_events(
+            run,
+            [
+                RuntimeJournalEvent::SlotWritten {
+                    run,
+                    slot: answer.answer_slot,
+                    value: encoded_answer_value,
+                    taint: answer.taint,
+                    extra: None,
+                },
+                RuntimeJournalEvent::AskAnswered {
+                    run,
+                    step: answer.ticket.ask_step,
+                    slot: answer.answer_slot,
+                },
+                RuntimeJournalEvent::StepSucceeded {
+                    run,
+                    step: answer.ticket.ask_step,
+                    output: answer.answer_slot,
+                    attempt: 1,
+                },
+            ],
+        )
     }
 
     fn apply_ask_answer_to_run(&mut self, run: RunId, answer: AskAnswer) -> RuntimeResult<()> {
@@ -114,70 +117,6 @@ impl Shard {
             slot: answer.answer_slot,
         });
         self.drive_run(run)
-    }
-
-    pub(crate) fn handle_timer(
-        &mut self,
-        run: RunId,
-        generation: u64,
-        deadline: std::time::Instant,
-        kind: PendingTimerKind,
-    ) -> RuntimeResult<()> {
-        let Some(current_timer) = self.pending_timer_get(run) else {
-            return Err(RuntimeError::InvalidTimerFire);
-        };
-        if !current_timer.matches_authority(generation, deadline, kind) {
-            return Err(RuntimeError::InvalidTimerFire);
-        }
-        if current_timer.deadline > std::time::Instant::now() {
-            return Err(RuntimeError::InvalidTimerFire);
-        }
-        let state_ref = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
-        crate::shard::helpers::validate_timer_fire(state_ref, current_timer)?;
-        let budget_exceeded = self.append_timer_resolution_event(run, current_timer)?;
-        if kind == PendingTimerKind::Ask {
-            self.clear_pending_ask_authority(run);
-        }
-        if budget_exceeded {
-            return self.fail_command_run_on_journal_budget(run);
-        }
-        let mut state = self.take_run_state(run)?;
-        let timer = match self.pending_timer_remove(run) {
-            Some(timer) => timer,
-            None => {
-                self.run_state_insert(run, state)?;
-                return Err(RuntimeError::InvalidTimerFire);
-            }
-        };
-        crate::shard::helpers::advance_after_timer_fire(&mut state, timer)?;
-        let rollback_state = state.clone();
-        let mut evidence = EvidenceCollector::new();
-        let result = self.drive_state(run, &mut state, self.step_budget_per_tick, &mut evidence);
-        match self.apply_drive_result(run, state, result, &mut evidence) {
-            Ok(()) => Ok(()),
-            Err(DriveApplyFailure::BeforeCommit(error)) => {
-                self.restore_run_state_after_drive_failure(run, rollback_state, error)
-            }
-            Err(DriveApplyFailure::AfterCommit(error)) => Err(error),
-        }
-    }
-
-    fn append_timer_resolution_event(
-        &mut self,
-        run: RunId,
-        timer: PendingTimer,
-    ) -> RuntimeResult<bool> {
-        let event = match timer.kind {
-            PendingTimerKind::Wait => RuntimeJournalEvent::WaitResolved {
-                run,
-                step: timer.step,
-            },
-            PendingTimerKind::Ask => RuntimeJournalEvent::AskTimedOut {
-                run,
-                step: timer.step,
-            },
-        };
-        self.append_command_journal_events(run, [event])
     }
 
     pub(crate) fn handle_cancel(

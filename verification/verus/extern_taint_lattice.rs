@@ -55,11 +55,8 @@
 // ============================================================================
 // BINDING LEDGER
 // ============================================================================
-//   - Production `Taint` enum (Clean=0, DerivedFromSecret=1, Secret=2,
-//     Random=3, TimeDependent=4)
-//                              <- crates/vb_core/src/value.rs:14-25
-//   - Production `join_taint(a, b) -> Taint`
-//                              <- crates/vb_core/src/value.rs:29-45
+//   - `Taint` <- crates/vb_core/src/value/taint.rs:10-21 (kind `enum_item`; owner `-`; trait `-`).
+//   - `join_taint` <- crates/vb_core/src/value/taint.rs:25-41 (kind `function_item`; owner `-`; trait `-`).
 //   - Mirror `Taint` enum      <- production_inner/taint_lattice_production.rs
 //   - Mirror `taint_rank(self_) -> u8`
 //                              <- production_inner/taint_lattice_production.rs

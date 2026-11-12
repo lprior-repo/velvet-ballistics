@@ -5,8 +5,28 @@ pub(crate) struct RunAggregate {
     runtime_states: IndexMap<RunId, RuntimeState>,
     checked_out_runs: IndexSet<RunId>,
     terminal_runs: IndexSet<RunId>,
-    pending_timers: IndexMap<RunId, PendingTimer>,
+    /// Timer wheel owns deadline/run/kind/generation indexing.
+    pending_timer_wheel: TimerWheel,
+    /// Sidecar preserves step metadata and deterministic iteration order.
+    pending_timer_steps: IndexMap<RunId, StepIdx>,
     pending_actions: IndexMap<RunId, ActionTicket>,
+}
+
+#[cfg(test)]
+impl RunAggregate {
+    pub(crate) fn recovery_membership_snapshot(
+        &self,
+    ) -> (
+        IndexMap<RunId, RuntimeState>,
+        IndexSet<RunId>,
+        IndexSet<RunId>,
+    ) {
+        (
+            self.runtime_states.clone(),
+            self.checked_out_runs.clone(),
+            self.terminal_runs.clone(),
+        )
+    }
 }
 
 impl RunAggregate {
@@ -15,7 +35,8 @@ impl RunAggregate {
             runtime_states: IndexMap::new(),
             checked_out_runs: IndexSet::new(),
             terminal_runs: IndexSet::new(),
-            pending_timers: IndexMap::new(),
+            pending_timer_wheel: TimerWheel::new(),
+            pending_timer_steps: IndexMap::new(),
             pending_actions: IndexMap::new(),
         }
     }

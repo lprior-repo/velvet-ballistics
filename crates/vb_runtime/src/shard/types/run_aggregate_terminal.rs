@@ -24,7 +24,7 @@ impl RunAggregate {
         self.reserve_terminal_slot(run, capacity)?;
         self.runtime_state_remove(run);
         self.checked_out_remove(run);
-        let _removed_timer = self.pending_timers.swap_remove(&run);
+        let _removed_timer = self.pending_timer_remove(run);
         let _removed_action = self.pending_actions.swap_remove(&run);
         Ok(self.terminal_runs.insert(run))
     }
@@ -79,7 +79,7 @@ impl RunAggregate {
     }
 
     pub(crate) fn pending_timer_len(&self) -> usize {
-        self.pending_timers.len()
+        self.pending_timer_wheel.len()
     }
 
     pub(crate) fn reserve_pending_timer_slot(
@@ -87,13 +87,13 @@ impl RunAggregate {
         run: RunId,
         capacity: usize,
     ) -> RuntimeResult<()> {
-        if self.pending_timers.contains_key(&run) {
+        if self.pending_timer_contains(run) {
             return Ok(());
         }
-        if self.pending_timers.len() >= capacity {
+        if self.pending_timer_wheel.len() >= capacity {
             return Err(crate::RuntimeError::ActiveRunCapacityExceeded { capacity });
         }
-        self.pending_timers
+        self.pending_timer_steps
             .try_reserve(1)
             .map_err(|_| crate::RuntimeError::ActiveRunCapacityExceeded { capacity })
     }
@@ -109,31 +109,87 @@ impl RunAggregate {
             return Err(crate::RuntimeError::RunNotFound);
         }
         self.reserve_pending_timer_slot(run, capacity)?;
-        Ok(self.pending_timers.insert(run, timer))
+        let previous = self.pending_timer_get(run);
+        let _replaced_step = self.pending_timer_steps.insert(run, timer.step);
+        self.pending_timer_wheel.insert_exact_generation(
+            run,
+            timer.generation,
+            timer.deadline,
+            timer.kind,
+        );
+        Ok(previous)
     }
 
     pub(crate) fn pending_timer_get(&self, run: RunId) -> Option<PendingTimer> {
-        self.pending_timers.get(&run).copied()
+        let step = self.pending_timer_steps.get(&run).copied()?;
+        let entry = self.pending_timer_wheel.get_entry(run)?;
+        Some(PendingTimer {
+            step,
+            kind: entry.kind,
+            generation: entry.generation,
+            deadline: entry.deadline,
+        })
     }
 
     pub(crate) fn pending_timer_clone(&self) -> IndexMap<RunId, PendingTimer> {
-        self.pending_timers.clone()
+        let mut result = IndexMap::with_capacity(self.pending_timer_steps.len());
+        for (&run, &step) in self.pending_timer_steps.iter() {
+            if let Some(entry) = self.pending_timer_wheel.get_entry(run) {
+                result.insert(
+                    run,
+                    PendingTimer {
+                        step,
+                        kind: entry.kind,
+                        generation: entry.generation,
+                        deadline: entry.deadline,
+                    },
+                );
+            }
+        }
+        result
     }
 
     pub(crate) fn pending_timer_remove(&mut self, run: RunId) -> Option<PendingTimer> {
-        self.pending_timers.swap_remove(&run)
+        let timer = self.pending_timer_get(run);
+        let _removed_step = self.pending_timer_steps.swap_remove(&run);
+        self.pending_timer_wheel.cancel(run);
+        timer
     }
 
     pub(crate) fn pending_timer_contains(&self, run: RunId) -> bool {
-        self.pending_timers.contains_key(&run)
+        self.pending_timer_wheel.get_entry(run).is_some()
     }
 
-    pub(crate) fn pending_timer_iter(&self) -> impl Iterator<Item = (&RunId, &PendingTimer)> {
-        self.pending_timers.iter()
+    pub(crate) fn pending_timer_due_peek(&self, now: Instant) -> Option<TimerEntry> {
+        self.pending_timer_wheel.due_peek(now)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn pending_timer_next_deadline(&self) -> Option<Instant> {
+        self.pending_timer_wheel.next_deadline()
+    }
+
+    pub(crate) fn pending_timer_iter(&self) -> impl Iterator<Item = (RunId, PendingTimer)> + '_ {
+        self.pending_timer_steps
+            .iter()
+            .filter_map(move |(&run, &step)| {
+                self.pending_timer_wheel.get_entry(run).map(|entry| {
+                    (
+                        run,
+                        PendingTimer {
+                            step,
+                            kind: entry.kind,
+                            generation: entry.generation,
+                            deadline: entry.deadline,
+                        },
+                    )
+                })
+            })
     }
 
     pub(crate) fn pending_timer_clear(&mut self) {
-        self.pending_timers.clear();
+        self.pending_timer_wheel = TimerWheel::new();
+        self.pending_timer_steps.clear();
     }
 
     pub(crate) fn pending_action_len(&self) -> usize {

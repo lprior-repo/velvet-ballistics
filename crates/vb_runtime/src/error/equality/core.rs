@@ -61,6 +61,10 @@ fn runtime_error_operation_eq(left: &RuntimeError, right: &RuntimeError) -> bool
         ) => a == b,
         (RuntimeError::Core { source: a }, RuntimeError::Core { source: b }) => a == b,
         (
+            RuntimeError::InputSymbolBinding { source: a },
+            RuntimeError::InputSymbolBinding { source: b },
+        ) => a == b,
+        (
             RuntimeError::EngineDriveFailed { run: a, source: sa },
             RuntimeError::EngineDriveFailed { run: b, source: sb },
         ) => a == b && sa.diagnostic_code() == sb.diagnostic_code(),

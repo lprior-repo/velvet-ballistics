@@ -1,12 +1,16 @@
 #![forbid(unsafe_code)]
 //! Immutable compiled workflow assembled from validated parts.
 
-use super::loop_regions;
+#[path = "bound_symbols.rs"]
+mod bound_symbols;
+pub use bound_symbols::{VersionedWorkflowParts, WorkflowIrV2};
+
 use super::validate::{validate_budget, validate_input_slots, validate_parts};
 use super::{
     AccessorProgram, CompiledInputSlot, CompiledLoopRegion, CompiledNode, CompiledNodeKind,
     ExprProgram, LoopRegionSlot, ResourceContract, WorkflowError, WorkflowParts,
 };
+use super::{loop_regions, source_metadata};
 use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, StepIdx, WorkflowDigest};
 use crate::value::ConstValue;
 
@@ -27,6 +31,7 @@ pub struct CompiledWorkflow {
     step_names: Box<[Box<str>]>,
     input_slots: Box<[CompiledInputSlot]>,
     loop_slots: Box<[LoopRegionSlot]>,
+    source_symbols: Option<source_metadata::WorkflowSourceMetadata>,
 }
 
 impl CompiledWorkflow {
@@ -53,6 +58,7 @@ impl CompiledWorkflow {
             step_names: parts.step_names,
             input_slots: parts.input_slots,
             loop_slots,
+            source_symbols: None,
         })
     }
 
@@ -77,6 +83,7 @@ impl CompiledWorkflow {
             step_names: parts.step_names,
             input_slots: parts.input_slots,
             loop_slots: Box::new([]),
+            source_symbols: None,
         }
     }
 
@@ -99,6 +106,7 @@ impl CompiledWorkflow {
             step_names: parts.step_names,
             input_slots: parts.input_slots,
             loop_slots: Box::new([]),
+            source_symbols: None,
         }
     }
 
@@ -218,7 +226,8 @@ impl CompiledWorkflow {
         self.loop_slots.get(step.as_usize())
     }
 
-    /// Converts back to the serializable parts representation for artifact emission.
+    /// Returns the legacy parts-only projection without bound symbol payloads.
+    /// Use [`Self::to_versioned_parts`] to retain the bound representation.
     #[must_use]
     pub fn to_parts(&self) -> WorkflowParts {
         WorkflowParts {

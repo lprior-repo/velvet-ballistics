@@ -91,11 +91,9 @@ pub(super) fn eval_helper_op(
 
 fn eval_contains(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {
     let (haystack, needle) = pop_pair(stack)?;
-    let haystack_id = expect_symbol(haystack)?;
-    let needle_id = expect_symbol(needle)?;
-    let haystack_str = store.symbol(haystack_id).map_err(|_| failed())?;
-    let needle_str = store.symbol(needle_id).map_err(|_| failed())?;
-    stack.push(SlotValue::Bool(haystack_str.contains(needle_str)))
+    let list_id = expect_list(haystack)?;
+    let items = store.list(list_id).map_err(|_| failed())?;
+    stack.push(SlotValue::Bool(items.contains(&needle)))
 }
 
 fn eval_starts_with(
@@ -120,10 +118,13 @@ fn eval_ends_with(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result
 }
 
 fn eval_has(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {
-    let (list, item) = pop_pair(stack)?;
-    let list_id = expect_list(list)?;
-    let items = store.list(list_id).map_err(|_| failed())?;
-    stack.push(SlotValue::Bool(items.contains(&item)))
+    let (receiver, key) = pop_pair(stack)?;
+    let obj_id = expect_object(receiver)?;
+    let key_id = expect_symbol(key)?;
+    let fields = store.object(obj_id).map_err(|_| failed())?;
+    store.symbol(key_id).map_err(|_| failed())?;
+    let has = fields.iter().any(|field| field.key == key_id);
+    stack.push(SlotValue::Bool(has))
 }
 
 fn eval_exists(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {

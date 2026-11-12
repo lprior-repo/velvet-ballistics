@@ -190,26 +190,7 @@ pub fn admit_compiled_artifact(
     journal: &FjallJournal,
     workflow: &vb_core::CompiledWorkflow,
 ) -> Result<vb_core::WorkflowDigest, JournalError> {
-    let parts = workflow.to_parts();
-
-    // Structure validation: must reconstruct successfully.
-    vb_core::CompiledWorkflow::try_from_parts(parts.clone())
-        .map_err(JournalError::WorkflowReconstruction)?;
-
-    // Checksum validation: hash content fields (digest zeroed) and compare
-    // to the claimed digest to avoid the circular dependency where the digest
-    // field is part of its own hash input.
-    let mut parts_for_hash = parts.clone();
-    parts_for_hash.digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
-    let hash_bytes =
-        postcard::to_allocvec(&parts_for_hash).map_err(JournalError::PostcardEncodeFailed)?;
-    let computed = blake3::hash(&hash_bytes);
-    if computed.as_bytes() != &workflow.digest().as_bytes() {
-        return Err(JournalError::ArtifactChecksumMismatch);
-    }
-
-    // Persist accepted artifact with full serialization (includes digest).
-    let bytes = postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
+    let bytes = crate::encode_compiled_ir(workflow)?.into_vec();
     let digest = vb_core::WorkflowDigest::from_bytes(blake3::hash(&bytes).into());
     let record = CompiledIrRecord { digest, ir: bytes };
     journal.put_compiled_ir(&record)?;
@@ -220,3 +201,7 @@ pub fn admit_compiled_artifact(
 #[cfg(test)]
 #[path = "admission/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "admission/versioned_codec_tests.rs"]
+mod versioned_codec_tests;

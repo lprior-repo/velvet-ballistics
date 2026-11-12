@@ -9,6 +9,8 @@ use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use rtrb::{Consumer, Producer, RingBuffer};
 use std::hint::black_box;
 
+mod trace_ring_public;
+
 const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence";
 
 fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
@@ -251,5 +253,5 @@ fn bench_rtrb(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_rtrb);
+criterion_group!(benches, bench_rtrb, trace_ring_public::bench_trace_ring);
 criterion_main!(benches);

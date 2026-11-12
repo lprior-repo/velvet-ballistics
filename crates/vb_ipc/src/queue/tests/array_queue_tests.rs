@@ -799,6 +799,31 @@ proptest! {
             }
         }
     }
+
+    /// Exact-content FIFO invariant: every submitted frame is received back
+    /// with identical run_id, workflow, and payload, then queue reports empty.
+    #[test]
+    fn ingress_queue_preserves_exact_frame_content_through_fifo_cycle(frames in proptest::collection::vec(arb_ingress_frame(), 0..=16)) {
+        // Given: a bounded queue with capacity >= frame count
+        let ingress = MemoryIngress::bounded(QueueCapacity::new(NonZeroUsize::new(16).ok_or_else(|| TestCaseError::fail("capacity"))?));
+
+        // When: all frames are submitted (cloned for later comparison)
+        for frame in frames.iter() {
+            ingress.try_submit(frame.clone()).map_err(|e| TestCaseError::fail(format!("submit failed: {:?}", e)))?;
+        }
+
+        // Then: each frame is received back in order with exact content match
+        for expected in frames.iter() {
+            let actual = ingress.try_recv().map_err(|e| TestCaseError::fail(format!("recv failed: {:?}", e)))?;
+            prop_assert_eq!(actual, Some(expected.clone()), "received frame must match submitted frame exactly");
+        }
+
+        // And: queue reports empty after all frames consumed
+        let final_recv = ingress.try_recv().map_err(|e| TestCaseError::fail(format!("final recv failed: {:?}", e)))?;
+        prop_assert_eq!(final_recv, None, "final recv must return None");
+        prop_assert_eq!(ingress.is_empty(), true, "queue must be empty");
+        prop_assert_eq!(ingress.len(), 0, "queue length must be 0");
+    }
 }
 
 /// Invariant: capacity-1 queue must exhibit correct full/empty signaling.

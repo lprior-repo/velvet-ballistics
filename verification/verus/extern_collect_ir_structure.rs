@@ -109,7 +109,7 @@
 //                                                  (the exact variant produced by
 //                                                  `checked_body_length_offset` when
 //                                                  body_len+extra overflows u16)
-//   - `lower_bounded_collect`                   <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277
+//   - `lower_bounded_collect` <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:241-261 (kind `function_item`; owner `-`; trait `-`).
 //                                                  (plan build + start/body/next/finish emission;
 //                                                  edges computed by plan_compute_edges,
 //                                                  bounded_collect.rs:117-127)
@@ -117,8 +117,9 @@
 //                                                  (mirror of `plan_compute_edges`:
 //                                                  body=id+1, advance=id+body_len+1,
 //                                                  done=id+body_len+2)
-//   - `CollectStart` / `CollectNext` /
-//     `CollectFinish`                           <- crates/vb_core/src/workflow/node_kind.rs:86-107
+//   - `CollectStart` <- crates/vb_core/src/workflow/node_kind.rs:87-93 (kind `enum_variant`; owner `CompiledNodeKind`; trait `-`).
+//   - `CollectNext` <- crates/vb_core/src/workflow/node_kind.rs:101-105 (kind `enum_variant`; owner `CompiledNodeKind`; trait `-`).
+//   - `CollectFinish` <- crates/vb_core/src/workflow/node_kind.rs:107-107 (kind `enum_variant`; owner `CompiledNodeKind`; trait `-`).
 //                                                  (CollectStart { source, limit, page_size,
 //                                                  body, done }; CollectNext
 //                                                  { collector_slot, body, done };

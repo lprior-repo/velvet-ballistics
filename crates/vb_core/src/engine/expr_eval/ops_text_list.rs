@@ -6,24 +6,19 @@ use crate::value::SlotValue;
 use crate::value_store::ValueStore;
 
 use super::stack::{
-    ExprStack, expect_i64, expect_list, expect_symbol, pop_pair, pop_triple, push_value,
+    ExprStack, expect_i64, expect_list, expect_object, expect_symbol, pop_pair, pop_triple,
+    push_value,
 };
 
 // ===== Text operations =====
 
 pub(super) fn eval_contains(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
     let (haystack, needle) = pop_pair(stack)?;
-    let haystack_id = expect_symbol(haystack)?;
-    let needle_id = expect_symbol(needle)?;
-    let haystack_str = store
-        .symbol(haystack_id)
-        .map_err(|_| EngineError::SymbolOutOfBounds {
-            symbol: haystack_id,
-        })?;
-    let needle_str = store
-        .symbol(needle_id)
-        .map_err(|_| EngineError::SymbolOutOfBounds { symbol: needle_id })?;
-    push_value(stack, SlotValue::Bool(haystack_str.contains(needle_str)))
+    let list_id = expect_list(haystack)?;
+    let items = store
+        .list(list_id)
+        .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
+    push_value(stack, SlotValue::Bool(items.contains(&needle)))
 }
 
 pub(super) fn eval_starts_with(
@@ -58,12 +53,16 @@ pub(super) fn eval_ends_with(stack: &mut ExprStack, store: &ValueStore) -> Resul
 // ===== List operations =====
 
 pub(super) fn eval_has(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
-    let (list, item) = pop_pair(stack)?;
-    let list_id = expect_list(list)?;
-    let items = store
-        .list(list_id)
-        .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
-    let found = items.contains(&item);
+    let (receiver, key) = pop_pair(stack)?;
+    let obj_id = expect_object(receiver)?;
+    let key_id = expect_symbol(key)?;
+    let fields = store
+        .object(obj_id)
+        .map_err(|_| EngineError::ObjectOutOfBounds { object: obj_id })?;
+    store
+        .symbol(key_id)
+        .map_err(|_| EngineError::SymbolOutOfBounds { symbol: key_id })?;
+    let found = fields.iter().any(|field| field.key == key_id);
     push_value(stack, SlotValue::Bool(found))
 }
 

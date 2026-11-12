@@ -22,19 +22,25 @@ pub fn replay_legs() -> &'static [(&'static str, &'static str)] {
         ("vb_runtime", "journal_before_dispatch"),
         ("vb_runtime", "crash_recovery"),
         ("vb_storage", "snapshot_tail_matches_full_journal"),
-        ("reference", "engine_vs_reference"),
-        ("reference", "taint_vs_reference"),
+        ("velvet-ballistics-workspace-tests", "engine_vs_reference"),
+        ("velvet-ballistics-workspace-tests", "taint_vs_reference"),
     ]
 }
 
+fn nextest_args<'a>(package: &'a str, filter: &'a str) -> Vec<&'a str> {
+    let mut args = vec!["nextest", "run", "-p", package];
+    if package == "velvet-ballistics-workspace-tests" {
+        args.extend(["--test", "reference_model_regressions"]);
+    }
+    args.push(filter);
+    args
+}
+
 fn run_nextest(package: &str, filter: &str, workspace_root: &Path) -> anyhow::Result<()> {
-    eprintln!("Running nextest -p {package} {filter}");
+    let args = nextest_args(package, filter);
+    eprintln!("Running cargo {args:?}");
     let status = Command::new("cargo")
-        .arg("nextest")
-        .arg("run")
-        .arg("-p")
-        .arg(package)
-        .arg(filter)
+        .args(&args)
         .current_dir(workspace_root)
         .status()
         .context("Failed to run replay-lab tests (is cargo-nextest installed?)")?;
@@ -69,8 +75,8 @@ mod tests {
                 ("vb_runtime", "journal_before_dispatch"),
                 ("vb_runtime", "crash_recovery"),
                 ("vb_storage", "snapshot_tail_matches_full_journal"),
-                ("reference", "engine_vs_reference"),
-                ("reference", "taint_vs_reference"),
+                ("velvet-ballistics-workspace-tests", "engine_vs_reference"),
+                ("velvet-ballistics-workspace-tests", "taint_vs_reference"),
             ]
         );
     }
@@ -79,5 +85,31 @@ mod tests {
     fn replay_lab_routes_to_the_legacy_cli() {
         let parsed = parse_xtask_command(["xtask".into(), "replay-lab".into()]);
         assert_eq!(parsed, Ok(XtaskCommand::Legacy("replay-lab")));
+    }
+
+    #[test]
+    fn reference_legs_select_the_registered_integration_target() {
+        assert_eq!(
+            nextest_args("velvet-ballistics-workspace-tests", "engine_vs_reference"),
+            vec![
+                "nextest",
+                "run",
+                "-p",
+                "velvet-ballistics-workspace-tests",
+                "--test",
+                "reference_model_regressions",
+                "engine_vs_reference"
+            ]
+        );
+        assert_eq!(
+            nextest_args("vb_runtime", "journal_before_dispatch"),
+            vec![
+                "nextest",
+                "run",
+                "-p",
+                "vb_runtime",
+                "journal_before_dispatch"
+            ]
+        );
     }
 }

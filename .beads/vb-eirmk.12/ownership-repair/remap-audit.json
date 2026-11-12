@@ -1,0 +1,226 @@
+{
+  "requirement_count": 190,
+  "changed_scalar_paths": [
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        5,
+        "canonical_qualification_owner_id"
+      ],
+      "before": "vb-core-yaml-ast",
+      "after": "vb-eirmk.48"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        5,
+        "current_owner_status"
+      ],
+      "before": "closed",
+      "after": "open"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        5,
+        "resolved_from_proposal_key"
+      ],
+      "before": null,
+      "after": "proposal:current-qualification:phase:4"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        5,
+        "unresolved_checks",
+        0,
+        "accountable_bead_id"
+      ],
+      "before": "vb-core-yaml-ast",
+      "after": "vb-eirmk.48"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        5,
+        "unresolved_checks",
+        0,
+        "proposal_key"
+      ],
+      "before": null,
+      "after": "proposal:current-qualification:phase:4"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        18,
+        "canonical_qualification_owner_id"
+      ],
+      "before": "vb-tzsfr",
+      "after": "vb-eirmk.49"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        18,
+        "current_owner_status"
+      ],
+      "before": "closed",
+      "after": "open"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        18,
+        "resolved_from_proposal_key"
+      ],
+      "before": null,
+      "after": "proposal:current-qualification:phase:17"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        18,
+        "unresolved_checks",
+        0,
+        "accountable_bead_id"
+      ],
+      "before": "vb-tzsfr",
+      "after": "vb-eirmk.49"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        18,
+        "unresolved_checks",
+        0,
+        "proposal_key"
+      ],
+      "before": null,
+      "after": "proposal:current-qualification:phase:17"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        21,
+        "canonical_qualification_owner_id"
+      ],
+      "before": "vb-2bbo",
+      "after": "vb-eirmk.50"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        21,
+        "current_owner_status"
+      ],
+      "before": "closed",
+      "after": "open"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        21,
+        "resolved_from_proposal_key"
+      ],
+      "before": null,
+      "after": "proposal:current-qualification:phase:20"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        21,
+        "unresolved_checks",
+        0,
+        "accountable_bead_id"
+      ],
+      "before": "vb-2bbo",
+      "after": "vb-eirmk.50"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        21,
+        "unresolved_checks",
+        0,
+        "proposal_key"
+      ],
+      "before": null,
+      "after": "proposal:current-qualification:phase:20"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        22,
+        "canonical_qualification_owner_id"
+      ],
+      "before": "vb-heqb",
+      "after": "vb-eirmk.51"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        22,
+        "current_owner_status"
+      ],
+      "before": "closed",
+      "after": "open"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        22,
+        "resolved_from_proposal_key"
+      ],
+      "before": null,
+      "after": "proposal:current-qualification:phase:21"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        22,
+        "unresolved_checks",
+        0,
+        "accountable_bead_id"
+      ],
+      "before": "vb-heqb",
+      "after": "vb-eirmk.51"
+    },
+    {
+      "path": [
+        "normalized_current_190_ownership",
+        "requirements",
+        22,
+        "unresolved_checks",
+        0,
+        "proposal_key"
+      ],
+      "before": null,
+      "after": "proposal:current-qualification:phase:21"
+    }
+  ],
+  "unchanged_bytes_outside_selected_tokens": true,
+  "completion_verified_false": true,
+  "before_sha256": "9b3529dffcd966d5854782572101e9c2628c2e3d0e39188b808bb81c9783f03a",
+  "after_sha256": "cdb6d341fd36c2196e797be8cd17b3758e112be3c57556d8d4b437089e9c39e6",
+  "full_plan_accepted": false
+}

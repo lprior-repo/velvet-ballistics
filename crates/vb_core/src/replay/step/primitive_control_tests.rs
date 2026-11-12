@@ -62,16 +62,6 @@ fn replay_err_to_core(error: ReplayError) -> CoreError {
     }
 }
 
-fn write_list(
-    store: &mut ValueStore,
-    run: &mut RunFrame,
-    slot: SlotIdx,
-    values: &[SlotValue],
-) -> Result<(), CoreError> {
-    let id = store.insert_list(values.to_vec().into_boxed_slice())?;
-    run.write_slot(slot, SlotValue::List(id))
-}
-
 fn finish_node(step: u16) -> CompiledNode {
     crate::workflow::node(
         StepIdx::new(step),

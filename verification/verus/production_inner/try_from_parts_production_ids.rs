@@ -31,7 +31,8 @@
 // drift-detection mechanism for the try_from_parts binding.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_core/src/value.rs:72-180` and `crates/vb_core/src/ids/mod.rs`
+// Production `crates/vb_core/src/value/finite.rs:29-29` (named `FiniteF64`; kind `struct_item`; owner `-`; trait `-`).
+// Production `crates/vb_core/src/value/slot.rs:54-65` (named `ConstValue`; kind `enum_item`; owner `-`; trait `-`).
 // whenever production changes. The mirror is annotated at the top of
 // every section with the originating production line range so
 // regeneration is mechanical.
@@ -156,7 +157,9 @@ impl WorkflowDigest {
 // Local stub: `vb_core::value::FiniteF64`
 // ---------------------------------------------------------------------------
 //
-// Production `FiniteF64` at `crates/vb_core/src/value.rs:72-104` is a
+// Named source `crates/vb_core/src/value/finite.rs:29-29` (named `FiniteF64`; kind `struct_item`; owner `-`; trait `-`).
+// Named source `crates/vb_core/src/value/finite.rs:31-31` (named `FiniteF64`; kind `impl_item`; owner `-`; trait `Eq`).
+// Named source `crates/vb_core/src/value/finite.rs:41-47` (named `FiniteF64::new`; kind `function_item`; owner `FiniteF64`; trait `-`).
 // `#[repr(transparent)]` newtype over `f64` that rejects NaN and
 // infinities at construction. The mirror carries the same payload type
 // and the manual `Eq` impl; the construction-time finiteness invariant
@@ -171,7 +174,7 @@ impl Eq for FiniteF64 {}
 // Local stub: `vb_core::value::ConstValue`
 // ---------------------------------------------------------------------------
 //
-// Production `crates/vb_core/src/value/slot.rs:54-65` declares `ConstValue`
+// Production `crates/vb_core/src/value/slot.rs:54-65` (named `ConstValue`; kind `enum_item`; owner `-`; trait `-`).
 // with five scalar variants. The mirror carries all five in production
 // order, plus a mirror-only `String` variant retained from the earlier
 // subset (production has no `String` variant).

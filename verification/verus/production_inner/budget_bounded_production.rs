@@ -50,25 +50,25 @@
 // ============================================================================
 // BINDING LEDGER
 // ============================================================================
-//   - `WholeWorkflowBudget`                  <- crates/vb_core/src/budget/compute.rs:17-93
-// Production `crates/vb_core/src/budget/compute.rs:17-93`
-//   - `WholeWorkflowBudget::compute`         <- crates/vb_core/src/budget/compute.rs:100-106
-// Production `crates/vb_core/src/budget/compute.rs:100-106`
+//   - `WholeWorkflowBudget`                  <- crates/vb_core/src/budget/compute.rs:19-97
+// Production `crates/vb_core/src/budget/compute.rs:19-97`
+//   - `WholeWorkflowBudget::compute`         <- crates/vb_core/src/budget/compute.rs:104-110
+// Production `crates/vb_core/src/budget/compute.rs:104-110`
 //   - `BoundednessPolicy`                    <- crates/vb_core/src/budget/validate.rs:9-56
 // Production `crates/vb_core/src/budget/validate.rs:9-56`
 //   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget/validate.rs:88-147
 // Production `crates/vb_core/src/budget/validate.rs:88-147`
 //   - `BudgetError`                          <- crates/vb_core/src/budget/validate_error.rs:10-57
-//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:11-49
-// Production `crates/vb_core/src/budget/aggregate.rs:11-49`
+//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:17-55
+// Production `crates/vb_core/src/budget/aggregate.rs:17-55`
 //   - `AggregateResourceBudget::from_workflow`  <- crates/vb_core/src/budget/aggregate_validate.rs:12-23
 //   - `AggregateResourceBudget::from_whole_workflow_budget`
 //                                            <- crates/vb_core/src/budget/aggregate_validate.rs:25-59
 // Production `crates/vb_core/src/budget/aggregate_validate.rs:25-59`
-//   - `AggregateResourceCapacity`            <- crates/vb_core/src/budget/aggregate.rs:53-94
-// Production `crates/vb_core/src/budget/aggregate.rs:53-94`
-//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:98-132
-// Production `crates/vb_core/src/budget/aggregate.rs:98-132`
+//   - `AggregateResourceCapacity`            <- crates/vb_core/src/budget/aggregate.rs:59-100
+// Production `crates/vb_core/src/budget/aggregate.rs:59-100`
+//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:104-138
+// Production `crates/vb_core/src/budget/aggregate.rs:104-138`
 //   - `AggregateResourceUsage::try_add_budget`
 //                                            <- crates/vb_core/src/budget/usage_arith.rs:9-123
 // Production `crates/vb_core/src/budget/usage_arith.rs:9-123`
@@ -247,12 +247,12 @@ pub struct ResourceContract {
 // WholeWorkflowBudget — production mirror
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget/compute.rs:17-93`. Every field name, type,
+// Mirror of `crates/vb_core/src/budget/compute.rs:19-97`. Every field name, type,
 // and visibility matches production exactly. Drift in any field breaks
 // the mirror.
 
 /// Mirror of production `WholeWorkflowBudget` at
-/// `crates/vb_core/src/budget/compute.rs:17-93`. Field-by-field copy of the
+/// `crates/vb_core/src/budget/compute.rs:19-97`. Field-by-field copy of the
 /// production struct. The exec fn `WholeWorkflowBudget::compute` below
 /// is `#[verifier::external]` and accepts the production signature.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -291,7 +291,7 @@ pub struct WholeWorkflowBudget {
 
 impl WholeWorkflowBudget {
     /// Production wrapper for `WholeWorkflowBudget::compute` at
-    /// `crates/vb_core/src/budget/compute.rs:100-106`. Body skipped by Verus;
+    /// `crates/vb_core/src/budget/compute.rs:104-110`. Body skipped by Verus;
     /// contract attached via `assume_specification` in the spec file.
     #[verifier::external]
     pub fn compute(
@@ -421,12 +421,12 @@ pub enum BudgetError {
 // Aggregate resource types — production mirror
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget/aggregate.rs:11-282`. These types are the
+// Mirror of `crates/vb_core/src/budget/aggregate.rs:11-283`. These types are the
 // runtime-admission surface that the boundedness policy validates
 // against.
 
 /// Mirror of production `AggregateResourceBudget` at
-/// `crates/vb_core/src/budget/aggregate.rs:11-49`.
+/// `crates/vb_core/src/budget/aggregate.rs:17-55`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct AggregateResourceBudget {
     pub max_steps_executable: u32,
@@ -460,7 +460,7 @@ pub struct AggregateResourceBudget {
 }
 
 /// Mirror of production `AggregateResourceCapacity` at
-/// `crates/vb_core/src/budget/aggregate.rs:53-94`.
+/// `crates/vb_core/src/budget/aggregate.rs:59-100`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct AggregateResourceCapacity {
     pub max_steps_executable: u64,
@@ -492,7 +492,7 @@ pub struct AggregateResourceCapacity {
 }
 
 /// Mirror of production `AggregateResourceUsage` at
-/// `crates/vb_core/src/budget/aggregate.rs:98-132`.
+/// `crates/vb_core/src/budget/aggregate.rs:104-138`.
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub struct AggregateResourceUsage {
     pub max_steps_executable: u64,
@@ -525,10 +525,10 @@ pub struct AggregateResourceUsage {
 // AggregateBudgetError — production mirror (restricted variants)
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget/aggregate.rs:208-277`.
+// Mirror of `crates/vb_core/src/budget/aggregate.rs:214-283`.
 
 /// Mirror of production `AggregateBudgetError` at
-/// `crates/vb_core/src/budget/aggregate.rs:208-277`. All 9 production variants
+/// `crates/vb_core/src/budget/aggregate.rs:214-283`. All 9 production variants
 /// are mirrored.
 #[derive(Clone, Copy)]
 pub enum AggregateBudgetError {
@@ -576,7 +576,7 @@ pub enum AggregateBudgetError {
 // spec file (`budget_bounded.rs`).
 
 /// Production wrapper for `WholeWorkflowBudget::compute` at
-/// `crates/vb_core/src/budget/compute.rs:100-106`. Body skipped by Verus.
+/// `crates/vb_core/src/budget/compute.rs:104-110`. Body skipped by Verus.
 #[verifier::external]
 pub fn whole_workflow_budget_compute(
     nodes: &[super::workflow::CompiledNode],

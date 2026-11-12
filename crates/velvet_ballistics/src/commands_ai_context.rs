@@ -16,6 +16,9 @@ use self::journal_events::{
 };
 use self::workflow_summary::{ai_workflow_summary, workflow_digest_from_events};
 
+#[cfg(test)]
+use self::workflow_summary::{DecodeCompiledWorkflowError, decode_compiled_workflow_from_ir};
+
 mod journal_events;
 mod workflow_summary;
 
@@ -273,3 +276,7 @@ fn json_error(value: &Value, format: OutputFormat) {
 #[cfg(test)]
 #[path = "commands_ai_context/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "ai_context_versioned_tests.rs"]
+mod versioned_tests;

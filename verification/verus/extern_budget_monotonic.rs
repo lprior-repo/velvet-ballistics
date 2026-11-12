@@ -29,11 +29,10 @@
 //   - `WholeWorkflowBudget`        <- crates/vb_core/src/budget/compute.rs:17-93
 //   - `WholeWorkflowBudget::compute` <- crates/vb_core/src/budget/compute.rs:100-106
 //   - `BudgetTraversalError`       <- crates/vb_core/src/budget/traversal_error.rs:13-37
-//   - `WorkflowError`              <- crates/vb_core/src/workflow/error.rs:13-227
-//   - `ResourceContract`           <- crates/vb_core/src/workflow/resource_contract.rs:8-45
-//   - `CompiledNode`, `CompiledNodeKind`
-//                                   <- crates/vb_core/src/workflow/node.rs:14-23,
-//                                      crates/vb_core/src/workflow/node_kind.rs:14-180
+//   - `WorkflowError` <- crates/vb_core/src/workflow/error.rs:13-233 (kind `enum_item`; owner `-`; trait `-`).
+//   - `ResourceContract` <- crates/vb_core/src/workflow/resource_contract.rs:8-45 (kind `struct_item`; owner `-`; trait `-`).
+//   - `CompiledNode` <- crates/vb_core/src/workflow/node.rs:14-23 (kind `struct_item`; owner `-`; trait `-`).
+//   - `CompiledNodeKind` <- crates/vb_core/src/workflow/node_kind.rs:14-180 (kind `enum_item`; owner `-`; trait `-`).
 //
 // ============================================================================
 // TRUST BOUNDARY

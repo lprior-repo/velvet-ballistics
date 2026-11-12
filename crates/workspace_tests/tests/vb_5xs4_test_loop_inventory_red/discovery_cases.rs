@@ -70,9 +70,16 @@ fn discover_excludes_vendor_and_target_paths_when_not_whitelisted() {
 }
 
 #[test]
-fn discover_returns_workspace_unreadable_when_root_marker_is_unreadable() {
+fn discover_returns_workspace_unreadable_when_root_marker_is_unreadable()
+-> Result<(), Box<dyn std::error::Error>> {
     // Given
-    let root = workspace_root("/tmp/vb-5xs4-missing-root");
+    let dir = tempfile::tempdir()?;
+    let missing = dir.path().join("missing");
+    let missing_root = missing
+        .to_str()
+        .ok_or("fixture path must be UTF-8")?
+        .to_owned();
+    let root = WorkspaceRoot::new(&missing_root);
     let scope = InventoryScope::FirstPartyRustTests;
 
     // When
@@ -81,10 +88,9 @@ fn discover_returns_workspace_unreadable_when_root_marker_is_unreadable() {
     // Then
     assert_eq!(
         result,
-        Err(InventoryError::WorkspaceUnreadable {
-            root: "/tmp/vb-5xs4-missing-root".to_owned(),
-        })
+        Err(InventoryError::WorkspaceUnreadable { root: missing_root })
     );
+    Ok(())
 }
 
 #[test]

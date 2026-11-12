@@ -66,10 +66,18 @@ fn write_bytes(path: &Path, bytes: &[u8]) {
 }
 
 fn write_parts(path: &Path, parts: &WorkflowParts) {
-    let encoded = postcard::to_allocvec(parts);
+    let encoded = canonical_bytes(parts);
     assert!(encoded.is_ok(), "test WorkflowParts encodes: {encoded:?}");
     let payload = encoded.unwrap_or_default();
     write_bytes(path, &payload);
+}
+
+fn canonical_bytes(parts: &WorkflowParts) -> Result<Vec<u8>, postcard::Error> {
+    let mut canonical = parts.clone();
+    canonical.digest = WorkflowDigest::from_bytes([0; 32]);
+    let preimage = postcard::to_allocvec(&canonical)?;
+    canonical.digest = WorkflowDigest::from_bytes(*blake3::hash(&preimage).as_bytes());
+    postcard::to_allocvec(&canonical)
 }
 
 fn run_vb(args: &[&OsStr]) -> Output {

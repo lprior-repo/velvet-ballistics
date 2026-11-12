@@ -46,6 +46,7 @@ struct RecoveredSeedProductContext {
     /// here is what closes the FINDING-002 typestate bypass: the raw
     /// `RecoveryFrameSeed` DTO no longer leaks into the runtime flow.
     seed: vb_storage::recovery::RecoveryFrameSeedProduct,
+    replay_cursor: Option<(StepIdx, u64)>,
     boundary: crate::recovery::RecoveredRunBoundary,
 }
 
@@ -229,3 +230,7 @@ pub use registered_executor::RegisteredExecutionError;
 #[cfg(test)]
 #[path = "runtime/shutdown_tests.rs"]
 mod shutdown_tests;
+
+#[cfg(test)]
+#[path = "runtime/bound_symbol_duplicate_retry_tests.rs"]
+mod bound_symbol_duplicate_retry_tests;

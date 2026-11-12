@@ -122,7 +122,7 @@ fn helper_fact(
     facts: &Facts<'_>,
     field: &'static str,
 ) -> Result<ValueFact, CompileError> {
-    let taint = helper_taint(args, facts, field)?;
+    let taint = helper_taint(name, args, facts, field)?;
     Ok(ValueFact {
         value_type: helper_type(name),
         taint,
@@ -130,15 +130,31 @@ fn helper_fact(
 }
 
 fn helper_taint(
+    name: ExpressionHelper,
     args: &[ParsedExpression],
     facts: &Facts<'_>,
     field: &'static str,
 ) -> Result<Taint, CompileError> {
-    let mut taint = Taint::Clean;
-    for arg in args {
-        taint = taint.merge(parsed_expression_fact(arg, facts, field)?.taint);
+    args.iter()
+        .enumerate()
+        .try_fold(Taint::Clean, |taint, (position, arg)| {
+            let fact = parsed_expression_fact(arg, facts, field)?;
+            if let Some(expected) = helper_expected_type(name, position)
+                && !matches_type(fact.value_type, expected)
+            {
+                return Err(type_mismatch(field, expected, fact.value_type));
+            }
+            Ok(taint.merge(fact.taint))
+        })
+}
+
+fn helper_expected_type(name: ExpressionHelper, position: usize) -> Option<ValueType> {
+    match (name, position) {
+        (ExpressionHelper::Has, 0) => Some(ValueType::Object),
+        (ExpressionHelper::Has, 1) => Some(ValueType::Text),
+        (ExpressionHelper::Contains, 0) => Some(ValueType::List),
+        _ => None,
     }
-    Ok(taint)
 }
 
 fn helper_type(name: ExpressionHelper) -> ValueType {

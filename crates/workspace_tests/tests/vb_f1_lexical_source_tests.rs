@@ -203,9 +203,40 @@ fn unknown_var_is_not_a_numeric_slot_error() -> Result<(), String> {
 
 #[test]
 fn non_scalar_vars_are_not_faked_as_counts() -> Result<(), String> {
-    rejects(&scalar_source("vars: {text: hello}\n", "1"), |e| {
-        matches!(e, CompileError::UnsupportedConstantValue { step: 0 })
+    let list_source = scalar_source("vars: {text: []}\n", "1");
+    let obj_source = scalar_source("vars: {text: {}}\n", "1");
+    rejects(&list_source, |e| {
+        matches!(
+            e,
+            CompileError::ExpressionLoweringUnsupported { feature }
+                if feature.as_ref() == "vars.text currently requires a null, boolean, integer, or text static literal"
+        )
+    })?;
+    rejects(&obj_source, |e| {
+        matches!(
+            e,
+            CompileError::ExpressionLoweringUnsupported { feature }
+                if feature.as_ref() == "vars.text currently requires a null, boolean, integer, or text static literal"
+        )
     })
+}
+
+#[test]
+fn text_var_is_bound_symbol_not_count() -> Result<(), String> {
+    let workflow = compile(&scalar_source("vars: {text: hello}\n", "1"))?;
+    let payloads = workflow
+        .symbol_payloads()
+        .ok_or("expected symbol payloads for text declaration")?;
+    assert_eq!(payloads, &[Box::<str>::from("hello")]);
+    let parts = workflow.to_parts();
+    assert_eq!(
+        parts.constants,
+        Box::from([
+            vb_core::ConstValue::Symbol(vb_core::SymbolId::new(0)),
+            vb_core::ConstValue::I64(1),
+        ])
+    );
+    Ok(())
 }
 
 fn choose_source(condition: &str, body: &str, finish: &str) -> String {

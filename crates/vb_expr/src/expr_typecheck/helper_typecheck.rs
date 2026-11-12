@@ -13,7 +13,10 @@ pub(super) fn check_helper_positions(helper: ExprHelper, arg_types: &[ExprType])
         ExprHelper::Merge => check_two_objects(helper, arg_types),
         ExprHelper::StartsWith | ExprHelper::EndsWith => check_two_text(helper, arg_types),
         ExprHelper::Has => check_object_text(helper, arg_types),
-        ExprHelper::Length | ExprHelper::Count | ExprHelper::Empty | ExprHelper::Contains => Ok(()),
+        ExprHelper::Length => check_scalar_arg(arg_types),
+        ExprHelper::Count => check_scalar_arg(arg_types),
+        ExprHelper::Empty => check_scalar_arg(arg_types),
+        ExprHelper::Contains => check_first_list(helper, arg_types),
     }
 }
 
@@ -48,6 +51,20 @@ fn check_first_list(helper: ExprHelper, arg_types: &[ExprType]) -> ExprResult<()
             found: type_name(*ty),
         }),
         None => Err(helper_arity_error(helper, 0)),
+    }
+}
+
+fn check_scalar_arg(arg_types: &[ExprType]) -> ExprResult<()> {
+    if let Some(ty) = arg_types.first() {
+        match ty {
+            ExprType::Bool | ExprType::I64 | ExprType::F64 => Err(ExprError::TypeMismatch {
+                expected: "list".into(),
+                found: type_name(*ty),
+            }),
+            _ => Ok(()),
+        }
+    } else {
+        Ok(())
     }
 }
 

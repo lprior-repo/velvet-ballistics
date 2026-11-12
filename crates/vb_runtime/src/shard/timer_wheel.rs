@@ -156,6 +156,47 @@ impl TimerWheel {
     pub fn get_entry(&self, run: RunId) -> Option<TimerEntry> {
         self.by_run.get(&run).copied()
     }
+
+    /// Inserts a timer with a caller-supplied generation. Crate-private;
+    /// used by shard aggregate integration where the caller has already
+    /// computed the checked next generation.
+    pub(crate) fn insert_exact_generation(
+        &mut self,
+        run: RunId,
+        generation: u64,
+        deadline: Instant,
+        kind: PendingTimerKind,
+    ) {
+        self.cancel(run);
+        let entry = TimerEntry {
+            run,
+            generation,
+            deadline,
+            kind,
+        };
+        self.by_deadline.entry(deadline).or_default().push(entry);
+        self.by_run.insert(run, entry);
+    }
+
+    /// Peeks the earliest due entry without consuming it. Selects the
+    /// earliest deadline, then the smallest RunId within equal deadlines.
+    /// Returns None if no timers are due or the wheel is empty.
+    pub(crate) fn due_peek(&self, now: Instant) -> Option<TimerEntry> {
+        self.by_deadline
+            .range(..=now)
+            .find_map(|(_, entries)| Self::smallest_current_entry(entries, &self.by_run))
+    }
+
+    fn smallest_current_entry(
+        entries: &[TimerEntry],
+        by_run: &Map<RunId, TimerEntry>,
+    ) -> Option<TimerEntry> {
+        entries
+            .iter()
+            .copied()
+            .filter(|entry| by_run.get(&entry.run).copied() == Some(*entry))
+            .min_by_key(|entry| entry.run.get())
+    }
 }
 
 impl Default for TimerWheel {

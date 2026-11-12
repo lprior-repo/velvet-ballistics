@@ -31,6 +31,8 @@ pub mod derive;
 pub mod derive_entries;
 pub mod dimensions;
 pub mod hydrate;
+mod input_context;
+pub use input_context::recover_runtime_frame_seed_from_events_with_replay_inputs;
 
 #[cfg(test)]
 #[path = "tests.rs"]

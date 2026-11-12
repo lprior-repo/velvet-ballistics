@@ -8,6 +8,10 @@
 //! - `proof-evidence --bead <id>` - writes evidence bundle
 //! - `proof-drift` - checks spec/code alignment
 
+#[path = "proof/kani_filter.rs"]
+mod kani_filter;
+use kani_filter::kani_harness_filter;
+
 pub mod commands;
 pub mod types;
 

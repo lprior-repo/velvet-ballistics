@@ -5,7 +5,9 @@
 pub(crate) use crate::errors::CoreError;
 
 mod compiled;
-pub use compiled::CompiledWorkflow;
+pub use compiled::{CompiledWorkflow, VersionedWorkflowParts, WorkflowIrV2};
+
+pub mod source_metadata;
 
 mod constraints;
 pub use constraints::{Bound, ExtraFields, Secretness};

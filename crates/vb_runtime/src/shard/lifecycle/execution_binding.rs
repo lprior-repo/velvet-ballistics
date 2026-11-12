@@ -21,9 +21,9 @@ pub(super) fn validate(
     }
     let digest = workflow.digest();
     let artifact = load_artifact(store, digest)?;
-    crate::admission::verify_stored_artifact(store, &artifact, Some(policy))
-        .map_err(|_| RuntimeError::AdmissionArtifactInvalid { digest })?;
     crate::admission::check_artifact_ir_version(&artifact)
+        .map_err(|_| RuntimeError::AdmissionArtifactInvalid { digest })?;
+    crate::admission::verify_stored_artifact(store, &artifact, Some(policy))
         .map_err(|_| RuntimeError::AdmissionArtifactInvalid { digest })?;
     compare_execution_tuple(&artifact, workflow, contracts)
 }
@@ -58,13 +58,18 @@ fn compare_execution_tuple(
         });
     }
     compare_action_abi_digests(artifact, contracts)?;
-    let payload = postcard::to_allocvec(&workflow.to_parts())
+    let payload = vb_storage::encode_compiled_ir(workflow)
         .map_err(|_| RuntimeError::AdmissionArtifactInvalid { digest })?;
-    if payload != artifact.ir || contracts != artifact.action_contracts.as_ref() {
+    if payload.as_ref() != artifact.ir.as_slice() || contracts != artifact.action_contracts.as_ref()
+    {
         return Err(RuntimeError::AdmissionArtifactInvalid { digest });
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "execution_binding_versioned_tests.rs"]
+mod versioned_tests;
 
 /// Compares submitter action ABI digests against the accepted artifact's
 /// contracts before the full contract-equality comparison, so a divergent

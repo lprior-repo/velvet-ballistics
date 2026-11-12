@@ -51,15 +51,25 @@ fn source_map_from_events(text: &str, events: &[YamlEvent]) -> SourceMap {
 
 /// Convert an EventSpan to a SourceSpan.
 fn event_span_to_source_span(text: &str, span: EventSpan) -> SourceSpan {
-    let (end_line, end_col) = line_col(text, span.end);
+    let start_offset = char_offset_to_byte_offset(text, span.start);
+    let end_offset = char_offset_to_byte_offset(text, span.end);
+    let start_line = span.line;
+    let start_col = span.column.saturating_add(1);
+    let (end_line, end_col) = line_col(text, end_offset);
     SourceSpan::new(
-        span.start,
-        span.end,
-        span.line,
-        span.column,
+        start_offset,
+        end_offset,
+        start_line,
+        start_col,
         end_line,
         end_col,
     )
+}
+
+fn char_offset_to_byte_offset(text: &str, offset: usize) -> usize {
+    text.char_indices()
+        .nth(offset)
+        .map_or(text.len(), |(byte_offset, _)| byte_offset)
 }
 
 /// Build a cold semantic source map for commonly diagnosed author paths.
@@ -191,22 +201,39 @@ fn line_col(text: &str, offset: usize) -> (usize, usize) {
     let mut line = 1usize;
     let mut col = 1usize;
     let mut cursor = 0usize;
+    let mut previous_was_cr = false;
     for ch in text.chars() {
         if cursor >= offset {
             break;
         }
-        if ch == '\n' {
-            line = line.saturating_add(1);
-            col = 1;
-        } else {
-            col = col.saturating_add(1);
-        }
+        advance_line_col(&mut line, &mut col, &mut previous_was_cr, ch);
         cursor = match cursor.checked_add(ch.len_utf8()) {
             Some(next) => next,
             None => break,
         };
     }
     (line, col)
+}
+
+fn advance_line_col(line: &mut usize, col: &mut usize, previous_was_cr: &mut bool, ch: char) {
+    match ch {
+        '\r' => {
+            *line = line.saturating_add(1);
+            *col = 1;
+            *previous_was_cr = true;
+        }
+        '\n' => {
+            if !*previous_was_cr {
+                *line = line.saturating_add(1);
+            }
+            *col = 1;
+            *previous_was_cr = false;
+        }
+        _ => {
+            *col = col.saturating_add(1);
+            *previous_was_cr = false;
+        }
+    }
 }
 
 /// Look up the span for a node by index in a pre-built source map.

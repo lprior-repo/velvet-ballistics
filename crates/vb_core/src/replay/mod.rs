@@ -15,6 +15,7 @@ use crate::workflow::CompiledWorkflow;
 pub mod choose;
 pub mod expr_stack;
 pub mod helpers;
+mod input_context;
 pub mod ops;
 pub mod step;
 
@@ -95,12 +96,16 @@ fn engine_to_replay_err(e: EngineError) -> ReplayError {
 /// the provided `ValueStore` and `RunFrame`.
 pub struct ReplayEngine<'a> {
     plan: &'a CompiledWorkflow,
+    initial_inputs: &'a [(SlotIdx, SlotValue, Taint)],
 }
 
 impl<'a> ReplayEngine<'a> {
     /// Creates a new replay engine for the given compiled workflow.
     pub fn new(plan: &'a CompiledWorkflow) -> Self {
-        Self { plan }
+        Self {
+            plan,
+            initial_inputs: &[],
+        }
     }
 
     /// Replays deterministic steps from the entry point up to `target_step`.
@@ -149,16 +154,6 @@ impl<'a> ReplayEngine<'a> {
             .node(step)
             .map(|_| ())
             .ok_or(ReplayError::StepNotFound { step })
-    }
-
-    fn new_replay_frame(&self) -> Result<RunFrame, ReplayError> {
-        RunFrame::new(
-            RunId::new(0),
-            self.plan.entry(),
-            self.plan.node_count(),
-            self.plan.slot_count(),
-        )
-        .map_err(engine_to_replay_err)
     }
 
     fn replay_until(

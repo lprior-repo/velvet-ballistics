@@ -31,6 +31,7 @@ pub mod codec;
 #[cfg(all(test, miri))]
 pub mod codec_miri_tests;
 pub mod compat;
+pub mod compiled_ir;
 pub mod constants;
 pub mod continuation_carrier;
 pub use continuation_carrier::{
@@ -280,6 +281,7 @@ pub use codec::{
     decode_journal_event, decode_record, decode_record_header, encode_record, encode_record_header,
     validate_journal_event_record_kind, verify_digest_match,
 };
+pub use compiled_ir::{decode_compiled_ir, encode_compiled_ir};
 
 // Admission
 pub use admission::{

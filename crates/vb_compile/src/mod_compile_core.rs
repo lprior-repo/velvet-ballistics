@@ -157,14 +157,7 @@ pub fn compute_compiled_digest(source: &[u8]) -> WorkflowDigest {
 /// The serialized artifact can be loaded by the hot runtime without
 /// re-parsing YAML source.
 pub fn emit_compiled_artifact(workflow: &CompiledWorkflow) -> Result<Box<[u8]>, CompileErrors> {
-    let parts = workflow.to_parts();
-    postcard::to_allocvec(&parts)
-        .map(std::vec::Vec::into_boxed_slice)
-        .map_err(|error| {
-            CompileErrors(vec![CompileError::ExpressionLoweringUnsupported {
-                feature: format!("postcard serialization failed: {error}").into_boxed_str(),
-            }])
-        })
+    crate::encode_compiled_ir(workflow)
 }
 
 /// Validates that all action contracts satisfy idempotency safety requirements.

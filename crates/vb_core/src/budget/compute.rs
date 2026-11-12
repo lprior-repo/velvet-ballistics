@@ -6,10 +6,14 @@ use crate::ids::StepIdx;
 use crate::workflow::{ResourceContract, WorkflowError};
 
 use super::BudgetTraversalError;
+#[cfg(not(kani))]
 use super::depth::compute_structural_depth;
+#[cfg(not(kani))]
 use super::loop_body::count_total_steps;
+#[cfg(not(kani))]
 use super::reachable::compute_reachable_metrics;
 use super::small_linear::compute_small_linear_budget;
+#[cfg(not(kani))]
 use super::successors::bounded_tracking_vec;
 
 /// Computed budget for an entire workflow, derived by walking the IR.

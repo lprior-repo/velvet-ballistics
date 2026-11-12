@@ -56,7 +56,7 @@ pub(crate) fn ai_workflow_summary(
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum DecodeCompiledWorkflowError {
+pub(super) enum DecodeCompiledWorkflowError {
     DirectWorkflowPartsDecode,
     DirectWorkflowCompile,
     AcceptedArtifactDecode,
@@ -64,7 +64,7 @@ enum DecodeCompiledWorkflowError {
     AcceptedArtifactWorkflowCompile,
 }
 
-fn decode_compiled_workflow_from_ir(
+pub(super) fn decode_compiled_workflow_from_ir(
     ir: &[u8],
 ) -> Result<vb_core::CompiledWorkflow, DecodeCompiledWorkflowError> {
     decode_direct_compiled_workflow(ir).or_else(|_| decode_accepted_artifact_workflow(ir))
@@ -73,10 +73,12 @@ fn decode_compiled_workflow_from_ir(
 fn decode_direct_compiled_workflow(
     ir: &[u8],
 ) -> Result<vb_core::CompiledWorkflow, DecodeCompiledWorkflowError> {
-    let parts = postcard::from_bytes::<vb_core::WorkflowParts>(ir)
-        .map_err(|_| DecodeCompiledWorkflowError::DirectWorkflowPartsDecode)?;
-    vb_core::CompiledWorkflow::try_from_parts(parts)
-        .map_err(|_| DecodeCompiledWorkflowError::DirectWorkflowCompile)
+    vb_storage::decode_compiled_ir(ir, None).map_err(|e| match e {
+        vb_storage::JournalError::WorkflowReconstruction(_) => {
+            DecodeCompiledWorkflowError::DirectWorkflowCompile
+        }
+        _ => DecodeCompiledWorkflowError::DirectWorkflowPartsDecode,
+    })
 }
 
 fn decode_accepted_artifact_workflow(
@@ -84,10 +86,14 @@ fn decode_accepted_artifact_workflow(
 ) -> Result<vb_core::CompiledWorkflow, DecodeCompiledWorkflowError> {
     let artifact = postcard::from_bytes::<vb_storage::admission::AcceptedArtifact>(ir)
         .map_err(|_| DecodeCompiledWorkflowError::AcceptedArtifactDecode)?;
-    let parts = postcard::from_bytes::<vb_core::WorkflowParts>(&artifact.ir)
-        .map_err(|_| DecodeCompiledWorkflowError::AcceptedArtifactWorkflowPartsDecode)?;
-    vb_core::CompiledWorkflow::try_from_parts(parts)
-        .map_err(|_| DecodeCompiledWorkflowError::AcceptedArtifactWorkflowCompile)
+    vb_storage::decode_compiled_ir(&artifact.ir, Some(artifact.artifact_version)).map_err(|e| {
+        match e {
+            vb_storage::JournalError::WorkflowReconstruction(_) => {
+                DecodeCompiledWorkflowError::AcceptedArtifactWorkflowCompile
+            }
+            _ => DecodeCompiledWorkflowError::AcceptedArtifactWorkflowPartsDecode,
+        }
+    })
 }
 
 fn workflow_summary_from_source(

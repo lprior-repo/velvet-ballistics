@@ -337,13 +337,10 @@
     #[test]
     fn eval_helper_with_store_contains_checks_substring() -> ExprResult<()> {
         let mut store = ValueStore::new();
-        let haystack = store
-            .insert_symbol(Box::<str>::from("hello world"))
+        let list = store
+            .insert_list(vec![SlotValue::I64(7), SlotValue::I64(11)].into_boxed_slice())
             .map_err(|_| ExprError::UnexpectedEof)?;
-        let needle = store
-            .insert_symbol(Box::<str>::from("world"))
-            .map_err(|_| ExprError::UnexpectedEof)?;
-        let args = [SlotValue::Symbol(haystack), SlotValue::Symbol(needle)];
+        let args = [SlotValue::List(list), SlotValue::I64(7)];
         let result = eval_helper_with_store(ExprHelper::Contains, &args, &mut store)?;
         assert_eq!(result, SlotValue::Bool(true));
         Ok(())
@@ -352,13 +349,10 @@
     #[test]
     fn eval_helper_with_store_contains_returns_false_for_absent() -> ExprResult<()> {
         let mut store = ValueStore::new();
-        let haystack = store
-            .insert_symbol(Box::<str>::from("hello world"))
+        let list = store
+            .insert_list(vec![SlotValue::I64(7), SlotValue::I64(11)].into_boxed_slice())
             .map_err(|_| ExprError::UnexpectedEof)?;
-        let needle = store
-            .insert_symbol(Box::<str>::from("xyz"))
-            .map_err(|_| ExprError::UnexpectedEof)?;
-        let args = [SlotValue::Symbol(haystack), SlotValue::Symbol(needle)];
+        let args = [SlotValue::List(list), SlotValue::I64(13)];
         let result = eval_helper_with_store(ExprHelper::Contains, &args, &mut store)?;
         assert_eq!(result, SlotValue::Bool(false));
         Ok(())
@@ -398,7 +392,9 @@
     fn eval_helper_with_store_has_checks_object_key() -> ExprResult<()> {
         use vb_core::value_store::ObjectField;
         let mut store = ValueStore::new();
-        let key = vb_core::ids::SymbolId::new(42);
+        let key = store
+            .insert_symbol("present")
+            .map_err(|_| ExprError::UnexpectedEof)?;
         let obj = store
             .insert_object(
                 vec![ObjectField {
@@ -419,8 +415,12 @@
     fn eval_helper_with_store_has_returns_false_for_missing_key() -> ExprResult<()> {
         use vb_core::value_store::ObjectField;
         let mut store = ValueStore::new();
-        let key_present = vb_core::ids::SymbolId::new(1);
-        let key_absent = vb_core::ids::SymbolId::new(99);
+        let key_present = store
+            .insert_symbol("present")
+            .map_err(|_| ExprError::UnexpectedEof)?;
+        let key_absent = store
+            .insert_symbol("absent")
+            .map_err(|_| ExprError::UnexpectedEof)?;
         let obj = store
             .insert_object(
                 vec![ObjectField {

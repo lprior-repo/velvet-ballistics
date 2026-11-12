@@ -336,7 +336,7 @@ pub assume_specification[ production::count_and_push_loop_body ](
             ) || !spec_checked_add_u64_ok(
                 _total as int,
                 _body_count as int * spec_effective_iter_count(_iter_count),
-            ) || spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@) == None),
+            ) || spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@) == None::<Seq<StepIdx>>),
         },
 ;
 
@@ -361,7 +361,7 @@ pub assume_specification[ production::push_done_continuation ](
             ),
             Err(BudgetError::TotalStepsExceeded { actual, limit }) => actual == u64::MAX && limit
                 == u64::MAX && spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@)
-                == None,
+                == None::<Seq<StepIdx>>,
         },
 ;
 
@@ -512,7 +512,7 @@ pub fn exec_count_and_push_loop_body(
             ) || !spec_checked_add_u64_ok(
                 total as int,
                 body_count as int * spec_effective_iter_count(iter_count),
-            ) || spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@) == None),
+            ) || spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@) == None::<Seq<StepIdx>>),
         },
 {
     count_and_push_loop_body(body_count, iter_count, total, nodes, done, node_count, stack)
@@ -537,7 +537,7 @@ pub fn exec_push_done_continuation(
             ),
             Err(BudgetError::TotalStepsExceeded { actual, limit }) => actual == u64::MAX && limit
                 == u64::MAX && spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@)
-                == None,
+                == None::<Seq<StepIdx>>,
         },
 {
     push_done_continuation(nodes, done, node_count, stack)
@@ -751,7 +751,7 @@ pub proof fn lemma_push_done_next_iff_end(nodes: Seq<CompiledNode>, pos: int)
         0 <= pos,
         pos < nodes.len(),
     ensures
-        spec_push_next_id(nodes, pos) != None == (match nodes[pos].routing.next {
+        spec_push_next_id(nodes, pos) != None::<StepIdx> == (match nodes[pos].routing.next {
             NodeContinuation::End => pos + 1 < nodes.len(),
             NodeContinuation::Step(_) => false,
         }),
@@ -770,11 +770,11 @@ pub proof fn lemma_push_done_error_iff_unfindable(
     stack: Seq<StepIdx>,
 )
     ensures
-        (spec_push_done_stack(nodes, done, node_count, stack) == None) == (spec_find_position(
+        (spec_push_done_stack(nodes, done, node_count, stack) == None::<Seq<StepIdx>>) == (spec_find_position(
             nodes,
             done,
             node_count,
-        ) == None),
+        ) == None::<int>),
 {
 }
 
@@ -855,13 +855,13 @@ pub proof fn lemma_find_scan_none_iff(nodes: Seq<CompiledNode>, step: StepIdx, s
         0 <= start,
         start <= nodes.len(),
     ensures
-        (spec_find_scan(nodes, step, start) == None) == (forall|i: int|
+        (spec_find_scan(nodes, step, start) == None::<int>) == (forall|i: int|
             #![auto]
             start <= i < nodes.len() ==> nodes[i].id != step),
     decreases nodes.len() - start,
 {
     if start >= nodes.len() {
-        assert(spec_find_scan(nodes, step, start) == None);
+        assert(spec_find_scan(nodes, step, start) == None::<int>);
         assert(forall|i: int| #![auto] start <= i < nodes.len() ==> nodes[i].id != step);
     } else if nodes[start].id == step {
         assert(spec_find_scan(nodes, step, start) == Some(start));
@@ -884,7 +884,7 @@ pub proof fn lemma_find_scan_none_iff(nodes: Seq<CompiledNode>, step: StepIdx, s
 /// index out of range and no matching id.
 pub proof fn lemma_find_position_none_iff(nodes: Seq<CompiledNode>, step: StepIdx, node_count: int)
     ensures
-        (spec_find_position(nodes, step, node_count) == None) == ((step.0 as int) >= node_count && (
+        (spec_find_position(nodes, step, node_count) == None::<int>) == ((step.0 as int) >= node_count && (
         forall|i: int| #![auto] 0 <= i < nodes.len() ==> nodes[i].id != step)),
 {
     let direct = step.0 as int;
@@ -892,21 +892,21 @@ pub proof fn lemma_find_position_none_iff(nodes: Seq<CompiledNode>, step: StepId
     if direct < node_count {
         if direct < nodes.len() && nodes[direct].id == step {
             assert(spec_find_position(nodes, step, node_count) == Some(direct));
-        } else if spec_find_scan(nodes, step, 0) != None {
-            assert(spec_find_position(nodes, step, node_count) != None);
+        } else if spec_find_scan(nodes, step, 0) != None::<int> {
+            assert(spec_find_position(nodes, step, node_count) != None::<int>);
         } else {
             assert(spec_find_position(nodes, step, node_count) == Some(direct));
         }
-        assert(spec_find_position(nodes, step, node_count) != None);
+        assert(spec_find_position(nodes, step, node_count) != None::<int>);
         assert(!(direct >= node_count && (forall|i: int|
             #![auto]
             0 <= i < nodes.len() ==> nodes[i].id != step)));
     } else {
-        assert((spec_find_position(nodes, step, node_count) == None) == (spec_find_scan(
+        assert((spec_find_position(nodes, step, node_count) == None::<int>) == (spec_find_scan(
             nodes,
             step,
             0,
-        ) == None));
+        ) == None::<int>));
     }
 }
 

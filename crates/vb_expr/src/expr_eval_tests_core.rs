@@ -647,14 +647,12 @@
         };
         let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
         let result = eval_expr_program(&program, &[], &constants);
-        let Err(ExprError::TypeMismatch { expected, .. }) = result else {
-            return Err(ExprError::UnexpectedToken {
-                token: "expected TypeMismatch for Contains with I64 args".into(),
-            });
-        };
-        assert!(
-            expected.contains("text"),
-            "expected should mention text, got: {expected}"
+        assert_eq!(
+            result,
+            Err(ExprError::TypeMismatch {
+                expected: "list".into(),
+                found: "number".into(),
+            })
         );
         Ok(())
     }

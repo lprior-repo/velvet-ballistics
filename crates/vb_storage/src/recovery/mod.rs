@@ -61,8 +61,10 @@ pub use replay::{
     RecoveryFrameSeedBuilder, extract_terminal, is_terminal_event, load_snapshot,
     recover_full_journal, recover_raw_runtime_frame_seed_from_events,
     recover_raw_runtime_frame_seed_from_events_with_workflow,
-    recover_runtime_frame_seed_from_events, recover_runtime_frame_seed_from_events_with_workflow,
-    recover_snapshot_plus_tail, replay_events, summarize_recovery_events,
+    recover_runtime_frame_seed_from_events,
+    recover_runtime_frame_seed_from_events_with_replay_inputs,
+    recover_runtime_frame_seed_from_events_with_workflow, recover_snapshot_plus_tail,
+    replay_events, summarize_recovery_events,
 };
 
 // ============================================================================

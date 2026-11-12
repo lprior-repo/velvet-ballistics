@@ -262,7 +262,7 @@ fn bytecode_vs_ast_anchored_values() -> ExprResult<()> {
     assert_source_value("$a + $c", SlotValue::I64(10))?;
     assert_source_value("length($d)", SlotValue::I64(3))?;
     assert_source_value("sum($d)", SlotValue::I64(6))?;
-    assert_source_value("contains($g, $h)", SlotValue::Bool(true))?;
+    assert_source_value("contains($d, $c)", SlotValue::Bool(true))?;
     assert_source_value("has($f, $j)", SlotValue::Bool(true))?;
     assert_source_value("starts_with($g, $h)", SlotValue::Bool(true))?;
     assert_source_value("ends_with($g, $i)", SlotValue::Bool(true))?;
@@ -271,6 +271,8 @@ fn bytecode_vs_ast_anchored_values() -> ExprResult<()> {
     assert_source_value("1.5 + 2.5", SlotValue::F64(FiniteF64::new(4.0)?))?;
     Ok(())
 }
+
+include!("bytecode_ast_equiv_contains_tests.rs");
 
 #[test]
 fn bytecode_vs_ast_error_shapes() -> ExprResult<()> {

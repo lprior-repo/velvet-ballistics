@@ -126,25 +126,13 @@ pub(super) fn eval_helper_contains_with_store(
     needle: &SlotValue,
     store: &mut ValueStore,
 ) -> ExprResult<SlotValue> {
-    if matches!(*haystack, SlotValue::F64(_)) || matches!(*needle, SlotValue::F64(_)) {
-        return Err(ExprError::TypeMismatch {
-            expected: "list, text, or object".into(),
-            found: "number".into(),
-        });
-    }
-    let haystack_id = expect_symbol(*haystack)?;
-    let needle_id = expect_symbol(*needle)?;
-    let haystack_str = store
-        .symbol(haystack_id)
+    let list_id = expect_list(*haystack)?;
+    let items = store
+        .list(list_id)
         .map_err(|_| ExprError::InvalidReference {
-            reference: format!("symbol:{haystack_id:?}"),
+            reference: format!("list:{list_id:?}"),
         })?;
-    let needle_str = store
-        .symbol(needle_id)
-        .map_err(|_| ExprError::InvalidReference {
-            reference: format!("symbol:{needle_id:?}"),
-        })?;
-    Ok(SlotValue::Bool(haystack_str.contains(needle_str)))
+    Ok(SlotValue::Bool(items.contains(needle)))
 }
 
 pub(super) fn eval_helper_starts_with_with_store(
@@ -198,6 +186,11 @@ pub(super) fn eval_helper_has_with_store(
         .object(obj_id)
         .map_err(|_| ExprError::InvalidReference {
             reference: format!("object:{obj_id:?}"),
+        })?;
+    store
+        .symbol(key_id)
+        .map_err(|_| ExprError::InvalidReference {
+            reference: format!("symbol:{key_id:?}"),
         })?;
     let found = fields.iter().any(|f| f.key == key_id);
     Ok(SlotValue::Bool(found))

@@ -12,16 +12,16 @@ use crate::workflow::ExprOp;
 #[test]
 fn contains_finds_substring() -> Result<(), EngineError> {
     let mut store = ValueStore::new();
-    let haystack = store.insert_symbol("hello world")?;
-    let needle = store.insert_symbol("world")?;
+    let list = store.insert_list(vec![SlotValue::I64(7), SlotValue::I64(11)].into_boxed_slice())?;
     let ops = vec![
+        ExprOp::LoadSlot(SlotIdx::new(0)),
         ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
         ExprOp::Contains,
     ];
-    let result = eval_expr_ops_with_constants(
+    let result = eval_expr_ops_with_store(
         &ops,
-        vec![ConstValue::Symbol(haystack), ConstValue::Symbol(needle)],
+        vec![SlotValue::List(list)],
+        vec![ConstValue::I64(7)],
         &mut store,
     )?;
     assert_eq!(result, SlotValue::Bool(true));
@@ -31,16 +31,16 @@ fn contains_finds_substring() -> Result<(), EngineError> {
 #[test]
 fn contains_rejects_missing_substring() -> Result<(), EngineError> {
     let mut store = ValueStore::new();
-    let haystack = store.insert_symbol("hello")?;
-    let needle = store.insert_symbol("xyz")?;
+    let list = store.insert_list(vec![SlotValue::I64(7), SlotValue::I64(11)].into_boxed_slice())?;
     let ops = vec![
+        ExprOp::LoadSlot(SlotIdx::new(0)),
         ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
         ExprOp::Contains,
     ];
-    let result = eval_expr_ops_with_constants(
+    let result = eval_expr_ops_with_store(
         &ops,
-        vec![ConstValue::Symbol(haystack), ConstValue::Symbol(needle)],
+        vec![SlotValue::List(list)],
+        vec![ConstValue::I64(13)],
         &mut store,
     )?;
     assert_eq!(result, SlotValue::Bool(false));
@@ -88,8 +88,14 @@ fn ends_with_matches_suffix() -> Result<(), EngineError> {
 #[test]
 fn has_finds_element_in_list() -> Result<(), EngineError> {
     let mut store = ValueStore::new();
-    let list = store.insert_list(
-        vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)].into_boxed_slice(),
+    let key = store.insert_symbol("name")?;
+    let object = store.insert_object(
+        vec![ObjectField {
+            key,
+            value: SlotValue::I64(20),
+            taint: Taint::Clean,
+        }]
+        .into_boxed_slice(),
     )?;
 
     let ops = vec![
@@ -99,8 +105,8 @@ fn has_finds_element_in_list() -> Result<(), EngineError> {
     ];
     let result = eval_expr_ops_with_store(
         &ops,
-        vec![SlotValue::List(list)],
-        vec![ConstValue::I64(20)],
+        vec![SlotValue::Object(object)],
+        vec![ConstValue::Symbol(key)],
         &mut store,
     )?;
     assert_eq!(result, SlotValue::Bool(true));

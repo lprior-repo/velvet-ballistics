@@ -51,14 +51,10 @@
 // ============================================================================
 // BINDING LEDGER
 // ============================================================================
-//   - `CompiledWorkflow::try_from_parts` exec signature
-//     <- crates/vb_core/src/workflow/compiled.rs:34-57
-//   - `validate_parts` structural validation
-//     <- crates/vb_core/src/workflow/validate.rs:20-45
-//   - `validate_budget` budget policy validation
-//     <- crates/vb_core/src/workflow/validate.rs:108-114
-//   - `validate_budget_result` budget error collapse
-//     <- crates/vb_core/src/workflow/validate.rs:116-125
+//   - `CompiledWorkflow::try_from_parts` <- crates/vb_core/src/workflow/compiled.rs:39-63 (kind `function_item`; owner `CompiledWorkflow`; trait `-`).
+//   - `validate_parts` <- crates/vb_core/src/workflow/validate.rs:20-45 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_budget` <- crates/vb_core/src/workflow/validate.rs:108-114 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_budget_result` <- crates/vb_core/src/workflow/validate.rs:116-125 (kind `function_item`; owner `-`; trait `-`).
 //   - `WholeWorkflowBudget` field set
 //     <- crates/vb_core/src/budget/compute.rs:17-93
 //   - `WholeWorkflowBudget::compute`
@@ -81,89 +77,56 @@
 //     <- crates/vb_core/src/budget/validate_error.rs:65-91
 //   - `BudgetDimension`
 //     <- crates/vb_core/src/budget/validate_error.rs:100-147
-//   - `validate_resource_contract`
-//     <- crates/vb_core/src/workflow/resource_limits.rs:112-118
-//   - `validate_entry`
-//     <- crates/vb_core/src/workflow/validate.rs:142-144
-//   - `validate_node` / `validate_node_common`
-//     <- crates/vb_core/src/workflow/validate.rs:146-185
-//   - `validate_node_kind`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:15-147
-//   - `validate_slots`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:149-154
-//   - `validate_build_list`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:156-163
-//   - `validate_build_object`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:165-178
-//   - `validate_for_each_start`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:180-190
-//   - `validate_slot_and_steps`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:192-200
-//   - `validate_two_steps`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:202-209
-//   - `validate_together`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:211-221
-//   - `validate_nonzero_u16`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:223-229
-//   - `validate_reduce_start`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:231-243
-//   - `validate_reduce_next`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:245-255
-//   - `validate_repeat_start`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:257-265
-//   - `validate_slot_choose`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:274-285
-//   - `validate_expr_choose`
-//     <- crates/vb_core/src/workflow/validate_node_kind.rs:287-298
-//   - `validate_branch_route`
-//     <- crates/vb_core/src/workflow/validate_refs.rs:20-29
+//   - `validate_resource_contract` <- crates/vb_core/src/workflow/resource_limits.rs:112-118 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_entry` <- crates/vb_core/src/workflow/validate.rs:142-144 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_node_kind` <- crates/vb_core/src/workflow/validate_node_kind.rs:15-147 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_node` <- crates/vb_core/src/workflow/validate.rs:146-151 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_node_common` <- crates/vb_core/src/workflow/validate.rs:180-185 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_slots` <- crates/vb_core/src/workflow/validate_node_kind.rs:149-154 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_build_list` <- crates/vb_core/src/workflow/validate_node_kind.rs:156-163 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_build_object` <- crates/vb_core/src/workflow/validate_node_kind.rs:165-178 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_for_each_start` <- crates/vb_core/src/workflow/validate_node_kind.rs:180-190 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_slot_and_steps` <- crates/vb_core/src/workflow/validate_node_kind.rs:192-200 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_two_steps` <- crates/vb_core/src/workflow/validate_node_kind.rs:202-209 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_together` <- crates/vb_core/src/workflow/validate_node_kind.rs:211-221 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_nonzero_u16` <- crates/vb_core/src/workflow/validate_node_kind.rs:223-229 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_reduce_start` <- crates/vb_core/src/workflow/validate_node_kind.rs:231-243 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_reduce_next` <- crates/vb_core/src/workflow/validate_node_kind.rs:245-255 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_repeat_start` <- crates/vb_core/src/workflow/validate_node_kind.rs:257-265 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_slot_choose` <- crates/vb_core/src/workflow/validate_node_kind.rs:274-285 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_expr_choose` <- crates/vb_core/src/workflow/validate_node_kind.rs:287-298 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_branch_route` <- crates/vb_core/src/workflow/validate_refs.rs:20-29 (kind `function_item`; owner `-`; trait `-`).
 //   - `MAX_LIST_ITEMS_PER_VALUE` / `MAX_OBJECT_FIELDS_PER_VALUE`
 //     <- crates/vb_core/src/limits.rs:71-75
-//   - `validate_reduce_branch_targets`
-//     <- crates/vb_core/src/workflow/validate.rs:153-166
-//   - `validate_for_each_next_targets`
-//     <- crates/vb_core/src/workflow/validate.rs:168-178
-//   - `validate_input_constraint`
-//     <- crates/vb_core/src/workflow/validate.rs:80-106
-//   - `CompiledInputConstraint` field set
-//     <- crates/vb_core/src/workflow/input_constraint.rs:18-42
-//   - `validate_step`, `validate_slot`, `validate_const`, `validate_expr`,
-//     `validate_accessor`, `validate_symbol`
-//     <- crates/vb_core/src/workflow/validate_refs.rs:38-188
-//   - `validate_accessor_paths`
-//     <- crates/vb_core/src/workflow/validate_refs.rs:121-151
-//   - `validate_constants_symbols`
-//     <- crates/vb_core/src/workflow/validate_refs.rs:154-164
-//   - `validate_build_object_symbols`
-//     <- crates/vb_core/src/workflow/validate_refs.rs:167-179
+//   - `validate_reduce_branch_targets` <- crates/vb_core/src/workflow/validate.rs:153-166 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_for_each_next_targets` <- crates/vb_core/src/workflow/validate.rs:168-178 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_input_constraint` <- crates/vb_core/src/workflow/validate.rs:80-106 (kind `function_item`; owner `-`; trait `-`).
+//   - `CompiledInputConstraint` <- crates/vb_core/src/workflow/input_constraint.rs:18-42 (kind `struct_item`; owner `-`; trait `-`).
+//   - `validate_step` <- crates/vb_core/src/workflow/validate_refs.rs:48-54 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_slot` <- crates/vb_core/src/workflow/validate_refs.rs:56-62 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_const` <- crates/vb_core/src/workflow/validate_refs.rs:64-70 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_expr` <- crates/vb_core/src/workflow/validate_refs.rs:38-46 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_accessor` <- crates/vb_core/src/workflow/validate_refs.rs:105-118 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_symbol` <- crates/vb_core/src/workflow/validate_refs.rs:182-188 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_accessor_paths` <- crates/vb_core/src/workflow/validate_refs.rs:121-151 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_constants_symbols` <- crates/vb_core/src/workflow/validate_refs.rs:154-164 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_build_object_symbols` <- crates/vb_core/src/workflow/validate_refs.rs:167-179 (kind `function_item`; owner `-`; trait `-`).
 //   - `MAX_PATH_DEPTH`
 //     <- crates/vb_core/src/limits.rs:59
-//   - `validate_reachability`
-//     <- crates/vb_core/src/workflow/traversal.rs:12-81
-//   - `validate_forward_edges`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:13-41
-//   - `validate_kind_edges`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:44-103
-//   - `validate_choose_slot_edges`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:105-118
-//   - `validate_choose_expr_edges`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:120-133
-//   - `validate_loop_done_only`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:135-137
-//   - `nearest_active_owner` (`repeat_check_validate` module)
-//     <- crates/vb_core/src/workflow/repeat_check_validate.rs:11-29
-//   - `validate` (`repeat_check_validate` module)
-//     <- crates/vb_core/src/workflow/repeat_check_validate.rs:31-122
-//   - `validate_loop_start_edges`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:143-151
-//   - `validate_together_start_edges`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:153-163
-//   - `validate_together_branch_edges`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:165-173
-//   - `validate_forward_target`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:176-185
-//   - `push_loop_span`
-//     <- crates/vb_core/src/workflow/forward_edges.rs:188-235
+//   - `validate_reachability` <- crates/vb_core/src/workflow/traversal.rs:12-81 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_forward_edges` <- crates/vb_core/src/workflow/forward_edges.rs:13-41 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_kind_edges` <- crates/vb_core/src/workflow/forward_edges.rs:44-103 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_choose_slot_edges` <- crates/vb_core/src/workflow/forward_edges.rs:105-118 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_choose_expr_edges` <- crates/vb_core/src/workflow/forward_edges.rs:120-133 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_loop_done_only` <- crates/vb_core/src/workflow/forward_edges.rs:135-137 (kind `function_item`; owner `-`; trait `-`).
+//   - `repeat_check_validate` <- crates/vb_core/src/workflow/mod.rs:48-48 (kind `mod_item`; owner `-`; trait `-`).
+//   - `repeat_check_validate::nearest_active_owner` <- crates/vb_core/src/workflow/repeat_check_validate.rs:11-29 (kind `function_item`; owner `-`; trait `-`).
+//   - `repeat_check_validate::validate` <- crates/vb_core/src/workflow/repeat_check_validate.rs:31-122 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_loop_start_edges` <- crates/vb_core/src/workflow/forward_edges.rs:143-151 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_together_start_edges` <- crates/vb_core/src/workflow/forward_edges.rs:153-163 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_together_branch_edges` <- crates/vb_core/src/workflow/forward_edges.rs:165-173 (kind `function_item`; owner `-`; trait `-`).
+//   - `validate_forward_target` <- crates/vb_core/src/workflow/forward_edges.rs:176-185 (kind `function_item`; owner `-`; trait `-`).
+//   - `push_loop_span` <- crates/vb_core/src/workflow/forward_edges.rs:188-235 (kind `function_item`; owner `-`; trait `-`).
 //   - `validate_no_nested_together` (moved out of workflow/mod.rs)
 //     <- crates/vb_core/src/engine/validate.rs:119-172
 //   - `walk_contains_together_start`
@@ -202,30 +165,24 @@
 //     <- crates/vb_core/src/workflow/loop_regions/edges.rs:108-128
 //   - `is_finish`
 //     <- crates/vb_core/src/workflow/loop_regions/edges.rs:130-135
-//   - `collect_node_targets`
-//     <- crates/vb_core/src/workflow/traversal.rs:85-151
+//   - `collect_node_targets` <- crates/vb_core/src/workflow/traversal.rs:85-151 (kind `function_item`; owner `-`; trait `-`).
 //   - `crossing` (LoopRegionCrossing constructor)
 //     <- crates/vb_core/src/workflow/loop_regions.rs:157-163
 //   - `control_shape`
 //     <- crates/vb_core/src/workflow/loop_regions/shapes.rs:21-34
 //   - `start_shape`
 //     <- crates/vb_core/src/workflow/loop_regions/shapes.rs:54-67
-//   - `WorkflowError` discriminant set
-//     <- crates/vb_core/src/workflow/error.rs:13-227
-//   - `WorkflowParts` field set
-//     <- crates/vb_core/src/workflow/parts.rs:11-44
-//   - `ResourceContract` field set
-//     <- crates/vb_core/src/workflow/resource_contract.rs:8-45
-//   - `CompiledNode` field set
-//     <- crates/vb_core/src/workflow/node.rs:14-23
-//   - `CompiledNodeKind` discriminant set
-//     <- crates/vb_core/src/workflow/node_kind.rs:14-180
-//   - `ExprProgram` / `ExprOp` discriminant set
-//     <- crates/vb_core/src/workflow/expr_program.rs:11-100
-//   - `AccessorProgram` / `PathSegment`
-//     <- crates/vb_core/src/workflow/parts.rs:48-63
-//   - `ExprBranch` / `SlotBranch`
-//     <- crates/vb_core/src/workflow/input_slot.rs:10-24
+//   - `WorkflowError` <- crates/vb_core/src/workflow/error.rs:13-233 (kind `enum_item`; owner `-`; trait `-`).
+//   - `WorkflowParts` <- crates/vb_core/src/workflow/parts.rs:11-44 (kind `struct_item`; owner `-`; trait `-`).
+//   - `ResourceContract` <- crates/vb_core/src/workflow/resource_contract.rs:8-45 (kind `struct_item`; owner `-`; trait `-`).
+//   - `CompiledNode` <- crates/vb_core/src/workflow/node.rs:14-23 (kind `struct_item`; owner `-`; trait `-`).
+//   - `CompiledNodeKind` <- crates/vb_core/src/workflow/node_kind.rs:14-180 (kind `enum_item`; owner `-`; trait `-`).
+//   - `ExprProgram` <- crates/vb_core/src/workflow/expr_program.rs:11-16 (kind `struct_item`; owner `-`; trait `-`).
+//   - `ExprOp` <- crates/vb_core/src/workflow/expr_program.rs:41-100 (kind `enum_item`; owner `-`; trait `-`).
+//   - `AccessorProgram` <- crates/vb_core/src/workflow/parts.rs:48-53 (kind `struct_item`; owner `-`; trait `-`).
+//   - `PathSegment` <- crates/vb_core/src/workflow/parts.rs:58-63 (kind `enum_item`; owner `-`; trait `-`).
+//   - `ExprBranch` <- crates/vb_core/src/workflow/input_slot.rs:10-15 (kind `struct_item`; owner `-`; trait `-`).
+//   - `SlotBranch` <- crates/vb_core/src/workflow/input_slot.rs:19-24 (kind `struct_item`; owner `-`; trait `-`).
 //
 // All numeric mirrors use `u32` to avoid `u16`-vs-`int` lossy casts that
 // would break Verus's `int`-based spec layer.
@@ -611,8 +568,8 @@ pub struct SpecAccessor {
 /// `CompiledInputConstraint` at
 /// `crates/vb_core/src/workflow/input_constraint.rs:18-42`. Only the bounds
 /// `validate_input_constraint` (workflow/validate.rs:80-106) reads are
-/// mirrored; `optional`, `nullable`, `default_value`, `element`,
-/// `allow_extra`, and `secret` are out of scope for the validation
+/// mirrored; `presence`, `nullability`, `default_value`, `element`,
+/// `extra`, and `secretness` are out of scope for the validation
 /// decision. Flattened `has_` / value pairs follow the `SpecNodeMeta`
 /// convention so the spec layer reads them without `Option`.
 #[derive(Clone, Copy)]
@@ -626,6 +583,8 @@ pub struct SpecInputConstraint {
     pub has_max_length: u8,
     pub max_length: i64,
 }
+
+
 /// One ordered validation operation of production
 /// `validate_node_kind` (`crates/vb_core/src/workflow/validate_node_kind.rs:15-147`)
 /// for a single node. The per-node `kind_refs` inventory lists these

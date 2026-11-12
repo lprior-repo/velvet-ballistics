@@ -1,9 +1,13 @@
 #![forbid(unsafe_code)]
 
+use std::ffi::{OsStr, OsString};
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
+
+#[path = "support/prebuilt_cli_path.rs"]
+mod prebuilt_cli_path;
 
 use vb_core::workflow::node;
 use vb_core::{
@@ -708,37 +712,141 @@ fn assert_evidence_then_return(
     })
 }
 
+fn kyyf_standalone_command() -> Command {
+    let mut command = Command::new(env!("CARGO"));
+    command.args([
+        "run",
+        "--quiet",
+        "-p",
+        "velvet-ballistics",
+        "--bin",
+        "velvet-ballistics",
+        "--",
+    ]);
+    command
+}
+
+fn kyyf_cli_command(
+    command_name: &str,
+    run_arg: &str,
+    db_path: &Path,
+    prebuilt: Option<OsString>,
+) -> Command {
+    match prebuilt {
+        Some(path) => {
+            let root = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));
+            let resolved = prebuilt_cli_path::resolve_prebuilt_cli(path, root);
+            let mut command = Command::new(resolved);
+            command.args([command_name, run_arg, "--db"]).arg(db_path);
+            command
+        }
+        None => {
+            let mut command = kyyf_standalone_command();
+            command.args([command_name, run_arg, "--db"]).arg(db_path);
+            command
+        }
+    }
+}
+
 fn run_velvet_ballistics_cli(
     command_name: &'static str,
     run_arg: &str,
-    db_path: &std::path::Path,
+    db_path: &Path,
 ) -> Result<CliReport, VbKyyfScenarioDiagnostic> {
-    let output = Command::new(env!("CARGO"))
-        .args([
-            "run",
-            "--quiet",
-            "-p",
-            "velvet-ballistics",
-            "--bin",
-            "velvet-ballistics",
-            "--",
-            command_name,
-            run_arg,
-            "--db",
-        ])
-        .arg(db_path)
-        .output()
-        .map_err(|_| VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
-            bead_id: BEAD_ID,
-            scenario_id: BDD_KYYF_002,
-            public_surface: "velvet-ballistics CLI process launch",
-        })?;
+    let output = kyyf_cli_command(
+        command_name,
+        run_arg,
+        db_path,
+        prebuilt_cli_path::configured_prebuilt_cli(),
+    )
+    .output()
+    .map_err(|_| VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
+        bead_id: BEAD_ID,
+        scenario_id: BDD_KYYF_002,
+        public_surface: "velvet-ballistics CLI process launch",
+    })?;
     Ok(CliReport {
         command_name,
         status_code: output.status.code(),
         stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
         stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
     })
+}
+
+#[test]
+fn kyyf_prebuilt_cli_selector_honors_explicit_os_path() {
+    let explicit = OsString::from("/some/distinct/prebuilt/vb-cli");
+    let expected = prebuilt_cli_path::resolve_prebuilt_cli(
+        explicit.clone(),
+        Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../..")),
+    );
+    let db = Path::new("program-inspection-db");
+    let command = kyyf_cli_command("replay", "12345", db, Some(explicit));
+    assert_eq!(command.get_program(), expected.as_os_str());
+    assert_eq!(
+        command.get_args().collect::<Vec<_>>(),
+        [
+            OsStr::new("replay"),
+            OsStr::new("12345"),
+            OsStr::new("--db"),
+            db.as_os_str()
+        ]
+    );
+}
+
+fn kyyf_expected_cargo_arguments() -> [&'static str; 11] {
+    [
+        "run",
+        "--quiet",
+        "-p",
+        "velvet-ballistics",
+        "--bin",
+        "velvet-ballistics",
+        "--",
+        "inspect",
+        "999",
+        "--db",
+        "inspection-db",
+    ]
+}
+
+#[test]
+fn kyyf_none_builds_exact_cargo_command() {
+    let db = Path::new("inspection-db");
+    let command = kyyf_cli_command("inspect", "999", db, None);
+    assert_eq!(command.get_program(), env!("CARGO"));
+    assert_eq!(
+        command.get_args().collect::<Vec<_>>(),
+        kyyf_expected_cargo_arguments()
+            .into_iter()
+            .map(OsStr::new)
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(command.get_current_dir(), None);
+}
+
+#[test]
+fn kyyf_explicit_invalid_path_fails_without_fallback() -> std::io::Result<()> {
+    let temp = tempfile::tempdir()?;
+    let invalid_path = temp.path().join("missing-child");
+    let db = Path::new("inspection-db");
+    let mut command = kyyf_cli_command(
+        "replay",
+        "123",
+        db,
+        Some(invalid_path.clone().into_os_string()),
+    );
+    assert_eq!(command.get_program(), invalid_path.as_os_str());
+    let expected = ["replay", "123", "--db", "inspection-db"];
+    assert_eq!(
+        command.get_args().collect::<Vec<_>>(),
+        expected.into_iter().map(OsStr::new).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        command.output().err().map(|e| e.kind()),
+        Some(std::io::ErrorKind::NotFound)
+    );
+    Ok(())
 }
 
 fn cli_report_is_successful_and_traceable(report: &CliReport) -> bool {

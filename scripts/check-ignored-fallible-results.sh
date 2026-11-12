@@ -112,6 +112,14 @@ record_violation() {
   printf 'ViolationFound|%s|%s|line=%s|%s\n' "$class" "$rel" "$line_no" "$text" >> "$out"
 }
 
+is_returned_fallible_expression() {
+  local line="$1"
+  local call='([A-Za-z_][A-Za-z0-9_]*::)*(fallible[A-Za-z0-9_]*|try_[A-Za-z0-9_]*)\([^(){};]*\)'
+  local returned_call="^[[:space:]]*return[[:space:]]+${call};[[:space:]]*$"
+  local returned_ok="^[[:space:]]*return[[:space:]]+Ok\([[:space:]]*${call}[[:space:]]*\?[[:space:]]*\)[[:space:]]*;[[:space:]]*$"
+  [[ "$line" =~ $returned_call || "$line" =~ $returned_ok ]]
+}
+
 classify_line() {
   local out="$1"
   local rel="$2"
@@ -143,7 +151,7 @@ classify_line() {
   if [[ "$compact" =~ $drop_shape && "$compact" =~ $drop_call ]]; then
     record_violation "$out" "$rel" "$line_no" "DISCARD-005" "$compact"
   fi
-  if [[ "$compact" != .* && "$compact" != *"="* && "$compact" != *"|"* && "$compact" != *"assert"* && "$compact" != *"expect("* && "$compact" != *"unwrap"* && "$compact" != *".ok();"* && "$compact" != *".err();"* && "$compact" =~ $fallible_call ]]; then
+  if [[ "$compact" != .* && "$compact" != *"="* && "$compact" != *"|"* && "$compact" != *"assert"* && "$compact" != *"expect("* && "$compact" != *"unwrap"* && "$compact" != *".ok();"* && "$compact" != *".err();"* && "$compact" =~ $fallible_call ]] && ! is_returned_fallible_expression "$line"; then
     record_violation "$out" "$rel" "$line_no" "DISCARD-001" "$compact"
   fi
 }
@@ -272,6 +280,27 @@ run_self_tests() {
   local report="$dir/report.txt"
   local allow="$dir/allow.txt"
   : > "$allow"
+
+  write_fixture "$dir/crates/demo/src/lib.rs" $'pub fn direct() -> Result<(), ()> {\n    return try_call();\n}'
+  expect_status "returned direct fallible" 0 "$dir" "$allow" "$report"
+
+  write_fixture "$dir/crates/demo/src/lib.rs" $'pub fn direct() -> Result<(), ()> {\n    return CompiledWorkflow::try_from_parts(parts);\n}'
+  expect_status "returned qualified fallible" 0 "$dir" "$allow" "$report"
+
+  write_fixture "$dir/crates/demo/src/lib.rs" $'pub fn returned() -> Result<(), ()> {\n    return Ok(CompiledWorkflow::try_from_parts(parts)?);\n}'
+  expect_status "returned Ok propagated fallible" 0 "$dir" "$allow" "$report"
+
+  write_fixture "$dir/crates/demo/src/lib.rs" $'pub fn prior() -> Result<(), ()> {\n    try_call(); return Ok(());\n}'
+  expect_status "prior discard before return" 2 "$dir" "$allow" "$report"
+
+  write_fixture "$dir/crates/demo/src/lib.rs" $'pub fn block() -> Result<(), ()> {\n    return { try_call(); Ok(()) };\n}'
+  expect_status "returned block preserves discard" 2 "$dir" "$allow" "$report"
+
+  write_fixture "$dir/crates/demo/src/lib.rs" $'pub fn lossy() -> Result<(), ()> {\n    return Ok(try_call().ok());\n}'
+  expect_status "returned lossy conversion remains violation" 2 "$dir" "$allow" "$report"
+
+  write_fixture "$dir/crates/demo/src/lib.rs" $'pub fn dropped() -> () {\n    return drop(try_call());\n}'
+  expect_status "returned drop remains violation" 2 "$dir" "$allow" "$report"
 
   write_fixture "$dir/crates/demo/src/lib.rs" 'pub fn clean() -> Result<(), ()> { fallible_result()?; Ok(()) }'
   expect_status "clean production-like fixture" 0 "$dir" "$allow" "$report"

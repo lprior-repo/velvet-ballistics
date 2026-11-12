@@ -83,11 +83,6 @@ pub(super) fn pop_triple(
     Ok((left, mid, right))
 }
 
-pub(super) fn pop_i64_pair(stack: &mut ExprStack) -> Result<(i64, i64), EngineError> {
-    let (left, right) = pop_pair(stack)?;
-    Ok((expect_i64(left)?, expect_i64(right)?))
-}
-
 pub(super) fn expect_bool(value: SlotValue) -> Result<bool, EngineError> {
     match value {
         SlotValue::Bool(value) => Ok(value),

@@ -18,7 +18,7 @@ pub mod reentry_harnesses {
     use vb_core::value::SlotValue;
     use vb_core::value_store::ValueStore;
 
-    use crate::primitives::collect::{collect_next, collect_page, CollectStates};
+    use crate::primitives::collect::{CollectStates, collect_next, collect_page};
     use crate::primitives::for_each::for_each_next;
     use crate::primitives::reduce::reduce_next;
     use crate::primitives::repeat::{repeat_attempt, repeat_check};

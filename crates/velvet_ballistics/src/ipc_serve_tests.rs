@@ -29,8 +29,7 @@ fn service_turn_commits_accepted_journal_work_before_shutdown() -> TestResult {
     let run = vb_core::RunId::new(42);
     let accepted = event(run, 0, 7);
     service.queue.enqueue_journaled(accepted.clone())?;
-    let socket =
-        std::path::PathBuf::from(format!("/tmp/vb_fnugl_visible_{}.sock", std::process::id()));
+    let socket = dir.path().join("vb_fnugl_visible.sock");
     let mut server = vb_ipc::server::IpcServer::bind(&socket)?;
     let mut runtime = vb_runtime::runtime::Runtime::new_for_tests_and_benchmarks_only(
         NonZeroUsize::MIN,
@@ -61,8 +60,7 @@ fn service_turn_preserves_and_reports_failed_journal_staging() -> TestResult {
     let run = vb_core::RunId::new(43);
     service.journal.append_journaled(&event(run, 0, 1))?;
     service.queue.enqueue_journaled(event(run, 0, 2))?;
-    let socket =
-        std::path::PathBuf::from(format!("/tmp/vb_fnugl_error_{}.sock", std::process::id()));
+    let socket = dir.path().join("vb_fnugl_error.sock");
     let mut server = vb_ipc::server::IpcServer::bind(&socket)?;
     let mut runtime = vb_runtime::runtime::Runtime::new_for_tests_and_benchmarks_only(
         NonZeroUsize::MIN,
@@ -91,10 +89,7 @@ fn shutdown_acknowledgement_follows_all_65_owned_queue_events_before_exit() -> T
     use std::io::{Read, Write};
     let dir = tempfile::tempdir()?;
     let service = service(&dir)?;
-    let socket = std::path::PathBuf::from(format!(
-        "/tmp/vb_fnugl_shutdown_{}.sock",
-        std::process::id()
-    ));
+    let socket = dir.path().join("vb_fnugl_shutdown.sock");
     let mut server = vb_ipc::server::IpcServer::bind(&socket)?;
     let mut client = std::os::unix::net::UnixStream::connect(&socket)?;
     client.set_read_timeout(Some(std::time::Duration::from_millis(200)))?;

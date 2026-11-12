@@ -1,7 +1,7 @@
 use crate::errors::CoreError;
 use crate::frame::RunFrame;
 use crate::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
-use crate::replay::{ReplayEngine, ReplayError};
+use crate::replay::ReplayError;
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{

@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+use super::super::canonical_reduce_initial::accumulator_type;
 use super::super::emit_single_body_set;
 use super::ReduceEdges;
 use super::ReduceLowering;
@@ -57,30 +58,6 @@ pub(super) fn lower_multi_body(
         Some(accumulator),
     )?;
     accumulator_type(index, final_type, initial_type, config)
-}
-
-fn accumulator_type(
-    index: usize,
-    final_type: ExprType,
-    initial_type: ExprType,
-    config: &ReduceLowering<'_>,
-) -> Result<ExprType, CompileErrors> {
-    let last_is_set = config
-        .body
-        .last()
-        .is_some_and(|step| matches!(step.primitive, crate::StepPrimitive::Set { .. }));
-    if last_is_set && final_type != initial_type {
-        return Err(field_error(
-            index,
-            "reduce.steps",
-            "a set value preserving the accumulator type",
-        ));
-    }
-    if last_is_set || final_type != ExprType::Unknown {
-        Ok(initial_type)
-    } else {
-        Ok(ExprType::Unknown)
-    }
 }
 
 pub(super) fn lower_body(

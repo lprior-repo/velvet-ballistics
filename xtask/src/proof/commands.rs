@@ -1,3 +1,4 @@
+use super::kani_harness_filter;
 #[cfg(test)]
 use super::types::RequiredProof;
 use super::types::{FuzzField, ObligationStatus, ProofEvidence, ProofObligation};
@@ -49,17 +50,6 @@ pub fn obligations_for_level(obligations: &[ProofObligation], level: &str) -> Ve
 /// The registry names the proof file (`kani_step_budget.rs`) or a
 /// `file.rs::harness` pair; Kani matches filters against fully qualified
 /// harness names, which never contain `.rs`.
-fn kani_harness_filter(reference: &str) -> &str {
-    let bare = match reference.rsplit("::").next() {
-        Some(part) => part,
-        None => reference,
-    };
-    match bare.strip_suffix(".rs") {
-        Some(stem) => stem,
-        None => bare,
-    }
-}
-
 pub fn commands_for_obligation(obl: &ProofObligation) -> Vec<String> {
     let mut cmds = Vec::new();
 

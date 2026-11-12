@@ -31,6 +31,10 @@ fn copy_assertion_scripts(root: &Path) -> Result<(), std::io::Error> {
         scripts.join("check-workspace-assertions.rs"),
     )?;
     fs::copy(
+        source_root.join("scripts/check_workspace_assertions_driver.rs"),
+        scripts.join("check_workspace_assertions_driver.rs"),
+    )?;
+    fs::copy(
         source_root.join("scripts/check-workspace-assertions.sh"),
         scripts.join("check-workspace-assertions.sh"),
     )?;

@@ -1,0 +1,44 @@
+{
+  "candidate": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-has-integrated-validation",
+    "source_pin": "1a3a47754e04d69db27c43343a0b6c162c51483f",
+    "git_and_jj_roots_verified": true,
+    "worktree_clean_at_audit": true
+  },
+  "approved_contract": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-masterplan-locator-luna/.beads/vb-eirmk.42/has-parity-contract-proposal-v3.md",
+    "sha256": "2f3329582a76616ad9b02e83ea0b5036a66c616fa5b49e39afcd71b33339d860"
+  },
+  "static_vb_expr": {
+    "registration": "expr_typecheck/mod.rs:8 -> expr_typecheck/tests.rs:5-6 -> tests/helper_argument_types.rs",
+    "production_guard": "crates/vb_expr/src/expr_typecheck/helper_typecheck.rs:7-20,134-153; Has routes to check_object_text, accepting Object or Unknown in receiver and Text or Unknown in key.",
+    "covered": [
+      "has_object_text_returns_bool (helper_argument_types.rs:94-97): known Object/Text returns Bool.",
+      "has_wrong_types_rejected (144-149): known wrong receiver and key types assert expected/found TypeMismatch payloads.",
+      "unknown_later_does_not_mask_earlier_type_error (190-193): wrong known receiver plus Unknown key still reports expected object/found text.",
+      "arity_error_has_missing_arg (215-217): typechecker reports HelperArityMismatch for arity 1 with helper has and expected 2."
+    ],
+    "missing_from_inspected_registered_cases": [
+      "Positive Unknown/Text, Object/Unknown, and Unknown/Unknown -> Bool cases.",
+      "Unknown receiver plus known wrong key -> exact expected text/found i64 mismatch.",
+      "Has typechecker arity 0 and 3 cases; only arity 1 is explicit in helper_argument_types.rs."
+    ]
+  },
+  "canonical_workflow_compile": {
+    "production_path": "crates/vb_compile/src/mod_compile_core.rs:40-46 -> mod_compile_lowering::compile_source; crates/vb_compile/src/mod_compile_lowering/canonical_types.rs:20-28 maps canonical expressions through vb_expr::typecheck_expr and maps Has at 208-214. The existing static guard is on this path; no production change is indicated.",
+    "registered_test_module": "crates/vb_compile/src/mod_compile_lowering.rs:25-26 registers mod_compile_lowering/tests.rs.",
+    "coverage_finding": "Targeted search in the registered mod_compile_lowering/tests.rs found no Has expression or ExpressionHelperArity case. No canonical workflow test oracle was found there for the V3 Has clauses.",
+    "missing_v3_clauses": [
+      "Any receiver/Text key, Object/Any key, and Any/Any compile acceptance; assert the Has condition is Bool and the relevant slots are ExprType::Unknown.",
+      "Known bad receiver and key preservation errors at field set.value: expected object/found boolean and expected text/found i64.",
+      "YamlCompiler::compile Has arities 0, 1, and 3 mapped to ExpressionHelperArity { helper: has, expected: 2, actual: n }."
+    ],
+    "minimal_next_test_file": "crates/vb_compile/src/mod_compile_lowering/tests.rs (already registered). Add canonical compile preservation/Any/arity cases there; static Unknown-position cases can extend the already registered helper_argument_types.rs."
+  },
+  "parse_ast_boundary": {
+    "source_fact": "crates/vb_compile/src/mod_compile_core.rs:75-90 calls type_taint::validate_workflow_ast; type_taint_expr.rs:119-129 helper_fact assigns helper_type(name) after taint collection without position checks.",
+    "coverage": "No Has-specific parse_ast fixture was found by targeted search in type_taint/tests.rs.",
+    "decision": "This private parse_ast source gap is separate from canonical YamlCompiler::compile. Do not add a guard or describe the already-correct canonical checker as missing."
+  },
+  "audit_limits": "Source-only, ten source files maximum, no test/build execution. Findings are limited to the inspected registered modules and targeted Has searches; no repository-wide absence claim."
+}
