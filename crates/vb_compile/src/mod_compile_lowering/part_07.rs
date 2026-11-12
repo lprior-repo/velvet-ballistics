@@ -147,6 +147,7 @@ pub fn lower_finish(id: StepIdx, result: SlotIdx, builder: &mut SlotCompiler) ->
 #[derive(Debug, Default)]
 pub struct SlotCompiler {
     pub(super) body_depth: u16,
+    pub(super) together_stack: Vec<StepIdx>,
     pub(super) symbols: crate::source_symbols::SourceSymbolTable,
     pub(super) display_names: std::collections::BTreeMap<StepIdx, Box<str>>,
     pub(super) nodes: Vec<CompiledNode>,
