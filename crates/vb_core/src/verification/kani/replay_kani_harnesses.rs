@@ -70,10 +70,10 @@ mod verification {
                             },
                         ]
                         .into_boxed_slice(),
-                        otherwise: if has_otherwise {.into()
-                            Some(StepIdx::new(3))
+                        otherwise: if has_otherwise {
+                            Some(StepIdx::new(3)).into()
                         } else {
-                            None
+                            None.into()
                         },
                     },
                     None,

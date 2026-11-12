@@ -227,11 +227,11 @@ fn budget_node_kind() -> CompiledNodeKind {
         },
         3 => CompiledNodeKind::WaitEvent {
             event: bounded_slot(),
-            timeout_slot: maybe_slot(),
+            timeout_slot: maybe_slot().into(),
         },
         4 => CompiledNodeKind::Ask {
             prompt: bounded_slot(),
-            timeout_slot: maybe_slot(),
+            timeout_slot: maybe_slot().into(),
         },
         _ => CompiledNodeKind::Finish {
             result: bounded_slot(),
