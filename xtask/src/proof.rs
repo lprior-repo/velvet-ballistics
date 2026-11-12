@@ -16,6 +16,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+mod commands;
+
+pub use commands::commands_for_obligation;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofObligation {
     pub id: String,
@@ -47,6 +51,10 @@ pub struct RequiredProof {
     pub property_tests: Vec<String>,
     #[serde(default)]
     pub differential_tests: Vec<String>,
+    #[serde(default)]
+    pub crash_lab: Vec<String>,
+    #[serde(default)]
+    pub diff_test: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -136,41 +144,6 @@ pub fn obligations_for_level(obligations: &[ProofObligation], level: &str) -> Ve
         .filter(|obl| obl.proof_level == level)
         .cloned()
         .collect()
-}
-
-pub fn commands_for_obligation(obl: &ProofObligation) -> Vec<String> {
-    let mut cmds = Vec::new();
-
-    if let Some(ref kani) = obl.required.kani {
-        cmds.push(format!(
-            "cargo kani --harness {}",
-            kani_harness_filter(kani)
-        ));
-    }
-    if let Some(ref verus) = obl.required.verus {
-        cmds.push(format!("verus {}", verus));
-    }
-    for test in &obl.required.tests {
-        cmds.push(format!("cargo nextest run -p {} {}", obl.crate_name, test));
-    }
-    if let Some(ref fuzz) = obl.required.fuzz {
-        match fuzz {
-            FuzzField::Single(s) => cmds.push(format!("cargo fuzz run {}", s)),
-            FuzzField::Multiple(v) => {
-                for f in v {
-                    cmds.push(format!("cargo fuzz run {}", f));
-                }
-            }
-        }
-    }
-    if let Some(ref tla) = obl.required.tla {
-        cmds.push(format!("tla2tools {}", tla));
-    }
-    if let Some(ref loom) = obl.required.loom {
-        cmds.push(format!("cargo xtask loom --model {}", loom));
-    }
-
-    cmds
 }
 
 #[allow(dead_code)]
@@ -285,12 +258,46 @@ mod tests {
                 loom: None,
                 property_tests: vec![],
                 differential_tests: vec![],
+                crash_lab: vec![],
+                diff_test: vec![],
             },
             commands: vec![],
         };
         assert_eq!(
             commands_for_obligation(&obligation),
-            vec!["cargo kani --harness kani_step_budget".to_string()]
+            vec!["cargo kani --package vb_core --harness kani_step_budget".to_string()]
+        );
+    }
+
+    #[test]
+    fn commands_for_obligation_names_package_for_vb_compile_kani() {
+        let obligation = ProofObligation {
+            id: "VB-COMPILE-DIGEST-REPEAT-001".to_string(),
+            section: vec![47],
+            statement: "Repeat max attempts changes digest".to_string(),
+            proof_level: "L3".to_string(),
+            crate_name: "vb_compile".to_string(),
+            files: vec!["crates/vb_compile/src/digest.rs".to_string()],
+            required: RequiredProof {
+                verus: None,
+                kani: Some("kani_digest_repeat.rs::kani_repeat_max_attempts_consumed".to_string()),
+                tests: vec![],
+                fuzz: None,
+                tla: None,
+                loom: None,
+                property_tests: vec![],
+                differential_tests: vec![],
+                crash_lab: vec![],
+                diff_test: vec![],
+            },
+            commands: vec![],
+        };
+        assert_eq!(
+            commands_for_obligation(&obligation),
+            vec![
+                "cargo kani --package vb_compile --harness kani_repeat_max_attempts_consumed"
+                    .to_string()
+            ]
         );
     }
 }

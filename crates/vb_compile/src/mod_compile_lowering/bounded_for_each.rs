@@ -2,8 +2,10 @@
 
 use super::super::part_01::ForEachInputs;
 use super::super::part_14::BodyCtx;
-use super::{CanonicalScope, resolve_slot_reference, validate_output_alias};
+use super::canonical_references::resolve_slot_reference_scoped;
+use super::{CanonicalScope, validate_output_alias};
 use crate::{CompileError, CompileErrors};
+use std::collections::HashMap;
 use vb_core::{SlotIdx, StepIdx};
 
 pub(in crate::mod_compile_lowering) struct ForEachLowering<'a> {
@@ -33,12 +35,8 @@ fn resolve_input(
         .input
         .strip_prefix("$input.")
         .ok_or_else(|| domain_error(index))?;
-    let slot = resolve_slot_reference(
-        config.input,
-        config.scope.outputs,
-        config.scope.step_outputs,
-    )
-    .map_err(|e| CompileErrors(vec![e]))?;
+    let slot = resolve_slot_reference_scoped(config.input, config.scope)
+        .map_err(|e| CompileErrors(vec![e]))?;
     let max = config
         .inputs
         .resolve(slot, name, index)
@@ -74,9 +72,7 @@ fn validate_variable_capture(
     variable: &str,
     config: &ForEachLowering<'_>,
 ) -> Result<(), CompileErrors> {
-    if config.scope.outputs.contains_key(variable)
-        || config.scope.step_outputs.contains_key(variable)
-    {
+    if config.scope.contains_output(variable) || config.scope.contains_step(variable) {
         return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
             name: variable.into(),
         }]));
@@ -198,17 +194,19 @@ fn emit_body(
     item: SlotIdx,
     builder: &mut SlotCompiler,
 ) -> Result<Option<SlotIdx>, CompileErrors> {
-    let mut local_outputs = config.scope.outputs.clone();
-    let local_step_outputs = config.scope.step_outputs.clone();
-    let mut local_types = config.scope.slot_types.clone();
+    // Borrowed overlay: tiny HashMaps for the single variable binding plus
+    // parent chain. Avoids cloning the whole lexical maps (perf waiver fix).
+    let mut overlay_outputs = HashMap::with_capacity(1);
+    overlay_outputs.insert(config.variable.to_owned(), item);
+    let mut overlay_types = HashMap::with_capacity(1);
+    overlay_types.insert(item, vb_expr::expr_typecheck::ExprType::Unknown);
 
-    local_outputs.insert(config.variable.to_owned(), item);
-    local_types.insert(item, vb_expr::expr_typecheck::ExprType::Unknown);
-
+    // Reuse parent step_outputs directly (no clone needed — not modified).
     let local_scope = CanonicalScope {
-        outputs: &local_outputs,
-        step_outputs: &local_step_outputs,
-        slot_types: &local_types,
+        outputs: &overlay_outputs,
+        step_outputs: config.scope.step_outputs,
+        slot_types: &overlay_types,
+        parent: Some(&config.scope),
     };
 
     let (body_output, _) = super::super::part_14::emit_scoped_flat_body(

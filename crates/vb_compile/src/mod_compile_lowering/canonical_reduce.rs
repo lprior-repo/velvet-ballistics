@@ -9,6 +9,7 @@ use crate::mod_compile_lowering::{
     CanonicalScope, SlotCompiler, body_width, checked_step_offset,
     lower_canonical_set_expression_with_binding, slot_from_text,
 };
+use std::collections::HashMap;
 use vb_core::workflow::node;
 use vb_core::{CompiledNodeKind, ConstValue, SlotIdx, StepIdx};
 use vb_expr::expr_typecheck::ExprType;
@@ -193,14 +194,16 @@ fn lower_multi_body(
             },
         ]));
     }
-    let mut local_outputs = config.scope.outputs.clone();
-    let mut local_types = config.scope.slot_types.clone();
-    local_outputs.insert(config.variable.to_owned(), accumulator);
-    local_types.insert(accumulator, initial_type);
+    // Borrowed overlay: tiny maps + parent chain (no whole-map clone).
+    let mut overlay_outputs = HashMap::with_capacity(1);
+    overlay_outputs.insert(config.variable.to_owned(), accumulator);
+    let mut overlay_types = HashMap::with_capacity(1);
+    overlay_types.insert(accumulator, initial_type);
     let scope = CanonicalScope {
-        outputs: &local_outputs,
+        outputs: &overlay_outputs,
         step_outputs: config.scope.step_outputs,
-        slot_types: &local_types,
+        slot_types: &overlay_types,
+        parent: Some(&config.scope),
     };
     let (_, final_type) = emit_scoped_flat_body(
         config.body,
@@ -263,8 +266,9 @@ fn lower_body(
         )?;
         return Ok(ExprType::Unknown);
     };
-    let mut types = config.scope.slot_types.clone();
-    types.insert(accumulator, initial_type);
+    // Single-binding overlay for type only; outputs reused via parent chain.
+    let mut overlay_types = HashMap::with_capacity(1);
+    overlay_types.insert(accumulator, initial_type);
     let inferred = lower_canonical_set_expression_with_binding(
         id,
         accumulator,
@@ -273,7 +277,8 @@ fn lower_body(
         CanonicalScope {
             outputs: config.scope.outputs,
             step_outputs: config.scope.step_outputs,
-            slot_types: &types,
+            slot_types: &overlay_types,
+            parent: Some(&config.scope),
         },
         config.variable,
         builder,

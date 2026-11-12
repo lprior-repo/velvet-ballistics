@@ -1,4 +1,4 @@
-//! Recursive lexical bodies. Bindings never escape their branch or loop body.
+//! Scoped lexical bodies. Bindings never escape their branch or loop body.
 
 use super::super::part_01::ForEachInputs;
 use super::*;
@@ -14,11 +14,24 @@ use branch_bindings::BranchBindings;
 /// `inputs` resolves nested `for_each` sources against declared inputs,
 /// `step_names` resolves nested `choose.otherwise` labels against top-level
 /// steps, and `index` is the outer diagnostic step index used by every level.
+/// Maximum nested-body depth accepted by [`emit_scoped_flat_body`].
+///
+/// Equals the YAML source depth limit (`DEFAULT_MAX_DEPTH`), so no source
+/// that passes the parse depth check can trip this budget; it exists purely
+/// to bound the `emit_scoped_flat_body` -> `lower_nested_container` ->
+/// `lower_bounded_*` -> `emit_scoped_flat_body` recursion (Rule 1). With the
+/// budget the recursion is at most 64 levels deep and strictly increasing
+/// per level, which is its termination proof.
+pub(in crate::mod_compile_lowering) const MAX_BODY_NESTING_DEPTH: u16 = 64;
+
 #[derive(Clone, Copy)]
 pub(in crate::mod_compile_lowering) struct BodyCtx<'a> {
     pub(in crate::mod_compile_lowering) inputs: &'a ForEachInputs,
     pub(in crate::mod_compile_lowering) step_names: &'a [Box<str>],
     pub(in crate::mod_compile_lowering) index: usize,
+    /// Depth at which the body described by this context is emitted: 0 for
+    /// a top-level step's body, incremented once per nested container level.
+    pub(in crate::mod_compile_lowering) depth: u16,
 }
 
 pub(in crate::mod_compile_lowering) fn emit_scoped_branch_body(
@@ -61,7 +74,31 @@ pub(in crate::mod_compile_lowering) fn emit_scoped_flat_body(
     primitive: &'static str,
     final_target: Option<SlotIdx>,
 ) -> Result<(Option<SlotIdx>, ExprType), CompileErrors> {
-    let mut local = BranchBindings::new(scope, primitive == "for_each", ctx);
+    if ctx.depth > MAX_BODY_NESTING_DEPTH {
+        return Err(CompileErrors(vec![
+            CompileError::PrimitiveLoweringLimitExceeded {
+                primitive,
+                field: "body nesting depth",
+                value: usize::from(ctx.depth),
+                limit: usize::from(MAX_BODY_NESTING_DEPTH),
+            },
+        ]));
+    }
+    // Nested containers in this body sit one level deeper; the child
+    // context threads that depth through to their own lowering entry points.
+    let child_depth = ctx.depth.checked_add(1).ok_or_else(|| {
+        CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+            primitive,
+            field: "body nesting depth",
+            value: usize::from(ctx.depth),
+            limit: usize::from(MAX_BODY_NESTING_DEPTH),
+        }])
+    })?;
+    let child = BodyCtx {
+        depth: child_depth,
+        ..ctx
+    };
+    let mut local = BranchBindings::new(scope, primitive == "for_each", child);
     let mut result = None;
     let mut result_type = ExprType::Unknown;
     let mut cursor = start;

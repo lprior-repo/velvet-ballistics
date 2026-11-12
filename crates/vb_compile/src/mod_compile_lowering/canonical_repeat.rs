@@ -21,6 +21,9 @@ pub(in crate::mod_compile_lowering) struct RepeatLowering<'a> {
     pub(in crate::mod_compile_lowering) scope: CanonicalScope<'a>,
     pub(in crate::mod_compile_lowering) inputs: &'a ForEachInputs,
     pub(in crate::mod_compile_lowering) step_names: &'a [Box<str>],
+    /// Depth at which this repeat's body is emitted (0 at top level), so
+    /// nested bodies stay inside the body nesting budget.
+    pub(in crate::mod_compile_lowering) depth: u16,
 }
 
 pub(in crate::mod_compile_lowering) fn lower_canonical_repeat(
@@ -61,6 +64,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_repeat(
         inputs: config.inputs,
         step_names: config.step_names,
         index,
+        depth: config.depth,
     };
     let (result, _) = emit_scoped_flat_body(
         config.body,
@@ -72,8 +76,8 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_repeat(
         "repeat",
         None,
     )?;
-    let result = result
-        .ok_or_else(|| super::field_error(index, "steps", "at least one set or do step"))?;
+    let result =
+        result.ok_or_else(|| super::field_error(index, "steps", "at least one set or do step"))?;
     push_repeat_continuations(layout, attempt_slot, result, config.next, builder);
     Ok(result)
 }

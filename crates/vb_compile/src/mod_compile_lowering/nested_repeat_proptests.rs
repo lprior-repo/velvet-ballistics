@@ -10,7 +10,8 @@
 use crate::{CompileError, compile_workflow};
 use proptest::prelude::*;
 
-const HEADER: &str = "version: velvet-ballistics/v1\nname: nested_repeat_prop\nwhen: {manual: {}}\n";
+const HEADER: &str =
+    "version: velvet-ballistics/v1\nname: nested_repeat_prop\nwhen: {manual: {}}\n";
 
 fn repeat_source(attempts: u16) -> String {
     format!(

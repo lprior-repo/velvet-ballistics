@@ -101,7 +101,16 @@ pub fn replay_step_with_collect(
             limit,
             body,
             done,
-        } => replay_for_each_start(run, store, node, *input, *item_slot, limit.get(), *body, *done),
+        } => replay_for_each_start(
+            run,
+            store,
+            node,
+            *input,
+            *item_slot,
+            limit.get(),
+            *body,
+            *done,
+        ),
         CompiledNodeKind::ForEachNext {
             iterator_slot,
             body,

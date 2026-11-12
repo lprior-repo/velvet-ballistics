@@ -110,6 +110,10 @@ pub mod kani_taint;
 #[path = "verification/kani/kani_vbjpq733_proofs.rs"]
 pub mod kani_vbjpq733_proofs;
 
+#[cfg(kani)]
+#[path = "verification/kani/kani_reduce_repeat_invariants.rs"]
+pub mod kani_reduce_repeat_invariants;
+
 #[cfg(all(kani, feature = "kani-diagnostic-codes"))]
 #[path = "verification/kani/diagnostic/mod.rs"]
 pub mod kani;

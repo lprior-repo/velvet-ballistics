@@ -118,11 +118,13 @@ fn scoped_collect<'a>(
             outputs: &maps.outputs,
             step_outputs: &maps.step_outputs,
             slot_types: &maps.slot_types,
+            parent: None,
         },
         nested: BodyCtx {
             inputs: &maps.inputs,
             step_names: &[],
             index: 0,
+            depth: 0,
         },
     }
 }

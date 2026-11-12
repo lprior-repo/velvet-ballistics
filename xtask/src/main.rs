@@ -17,6 +17,7 @@ mod forbidden_scan;
 mod gates;
 mod loom;
 mod proof;
+mod proof_commands;
 mod replay_lab;
 mod shell;
 // UI modules moved to velvet-optional repo (deferred):

@@ -4,8 +4,10 @@
 //! here, and nested `repeat`/`choose` containers delegate to their top-level
 //! lowering entry points.
 
+use super::super::*;
 use super::BranchBindings;
 use super::*;
+use crate::mod_compile_lowering::part_02::resolve_slot_reference_scoped;
 use crate::mod_compile_lowering::part_04::{RepeatLowering, lower_canonical_repeat};
 use crate::mod_compile_lowering::part_14::{ChooseScope, lower_canonical_choose_in_scope};
 use vb_core::ActionId;
@@ -29,6 +31,7 @@ impl<'a> BranchBindings<'a> {
                 scope: self.view(),
                 inputs: self.ctx.inputs,
                 step_names: self.ctx.step_names,
+                depth: self.ctx.depth,
             },
             builder,
         )
@@ -52,6 +55,7 @@ impl<'a> BranchBindings<'a> {
                 names: self.ctx.step_names,
                 bindings: self.view(),
                 inputs: self.ctx.inputs,
+                depth: self.ctx.depth,
             },
             builder,
         )
@@ -100,7 +104,8 @@ impl<'a> BranchBindings<'a> {
                 expected: "numeric action ID (u16)",
             }])
         })?;
-        let input = resolve_slot_reference(input, &self.outputs, &self.steps)
+        // Borrowed scope lookup: walks overlay then parent chain.
+        let input = resolve_slot_reference_scoped(input, self.view())
             .map_err(|e| CompileErrors(vec![e]))?;
         let node = lower_do(
             target.id,

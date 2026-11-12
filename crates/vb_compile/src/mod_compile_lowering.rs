@@ -30,11 +30,11 @@ mod tests;
 // lowering property suites here so they can exercise private lowering seams
 // without a silent disabled module declaration.
 #[cfg(test)]
-#[path = "mod_compile_lowering/nested_body_tests.rs"]
-mod nested_body_tests;
-#[cfg(test)]
 #[path = "mod_compile_lowering/canonical_reduce_proptests.rs"]
 mod canonical_reduce_proptests;
+#[cfg(test)]
+#[path = "mod_compile_lowering/nested_body_tests/mod.rs"]
+mod nested_body_tests;
 #[cfg(test)]
 #[path = "mod_compile_lowering/nested_repeat_proptests.rs"]
 mod nested_repeat_proptests;
@@ -55,6 +55,9 @@ mod proptest_step_offset;
 #[cfg(test)]
 #[path = "mod_compile_lowering/vb_8mdp_7_collect.rs"]
 mod vb_8mdp_7_collect;
+#[cfg(test)]
+#[path = "mod_compile_lowering/canonical_collect_scoped_tests.rs"]
+mod canonical_collect_scoped_tests;
 
 #[allow(unused_imports)]
 pub(crate) use part_01::*;

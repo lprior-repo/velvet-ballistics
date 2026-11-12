@@ -1419,6 +1419,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "reference"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+ "vb_core",
+ "vb_expr",
+ "vb_storage",
+]
+
+[[package]]
 name = "regex"
 version = "1.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

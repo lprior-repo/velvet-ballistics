@@ -55,7 +55,7 @@ fn collect_kind_targets(
         .map_err(|_| resource_error())?;
     // Reuse the constructor's exhaustive successor inventory, including all
     // branch/fallback, loop body/done/exhausted and handler/async routes.
-    super::super::collect_node_targets(&node.kind, targets);
+    super::super::traversal::collect_node_targets(&node.kind, targets);
     Ok(())
 }
 

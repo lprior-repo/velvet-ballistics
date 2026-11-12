@@ -21,7 +21,7 @@ pub(super) fn choose_node(
             .map(|(branch, target)| {
                 let condition =
                     slot_from_text(&branch.when, id.as_usize(), "choose.branches[].when")?;
-                require_boolean_type(scope.slot_types.get(&condition).copied())?;
+                require_boolean_type(scope.get_type(condition))?;
                 Ok(SlotBranch {
                     condition,
                     target: *target,
@@ -57,7 +57,7 @@ fn choose_condition(
     // Preserve the existing numeric-slot dialect even in a mixed branch table.
     if value.parse::<i64>().is_ok() {
         let slot = slot_from_text(value, 0, "choose.branches[].when")?;
-        require_boolean_type(scope.slot_types.get(&slot).copied())?;
+        require_boolean_type(scope.get_type(slot))?;
         builder.record_slot(slot);
         let program = vb_core::ExprProgram::try_from_ops(
             vec![vb_core::ExprOp::LoadSlot(slot)].into_boxed_slice(),
