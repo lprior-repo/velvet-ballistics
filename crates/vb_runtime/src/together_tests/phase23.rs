@@ -104,9 +104,7 @@ fn phase23_branch_zero_independent_state_does_not_touch_accumulator() {
     let output = SlotIdx::new(1);
     let entry = StepIdx::new(5);
     list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(100)]);
-    run.write_slot(output, SlotValue::I64(999))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(999)), Ok(()), "write");
     // When calling together_branch for branch 0
     let result = together_branch(
         &mut run,
@@ -144,9 +142,7 @@ fn phase23_branch_one_appends_own_result_independently() {
     let output = SlotIdx::new(1);
     let entry = StepIdx::new(5);
     list_in_slot(&mut run, &mut store, accumulator, vec![]);
-    run.write_slot(output, SlotValue::I64(42))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(42)), Ok(()), "write");
     // When calling together_branch for branch 1
     let result = together_branch(
         &mut run,
@@ -199,9 +195,7 @@ fn phase23_sequential_branches_build_independent_accumulator_state() {
     assert_eq!(result0, Ok(vb_core::EngineSignal::Continue));
 
     // Simulate branch 0 body writing I64(10) to output
-    run.write_slot(output, SlotValue::I64(10))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(10)), Ok(()), "write");
 
     // Branch 1: appends I64(10)
     let result1 = together_branch(
@@ -216,9 +210,7 @@ fn phase23_sequential_branches_build_independent_accumulator_state() {
     assert_eq!(result1, Ok(vb_core::EngineSignal::Continue));
 
     // Simulate branch 1 body writing I64(20) to output
-    run.write_slot(output, SlotValue::I64(20))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(20)), Ok(()), "write");
 
     // Branch 2: appends I64(20)
     let result2 = together_branch(
@@ -264,9 +256,11 @@ fn phase23_different_branch_values_do_not_interfere() {
         accumulator,
         vec![SlotValue::I64(1), SlotValue::I64(2)],
     );
-    run.write_slot(output, SlotValue::Bool(true))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(
+        run.write_slot(output, SlotValue::Bool(true)),
+        Ok(()),
+        "write"
+    );
     // When branch 3 appends Bool(true)
     let result = together_branch(
         &mut run,
@@ -309,9 +303,7 @@ fn phase23_join_appends_last_branch_result_to_accumulator() {
     let output = SlotIdx::new(1);
     let next_step = StepIdx::new(5);
     list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
-    run.write_slot(output, SlotValue::I64(20))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(20)), Ok(()), "write");
     // When calling together_join
     assert!(run.add_parallel_in_flight(2).is_ok());
     let result = together_join(
@@ -357,9 +349,7 @@ fn phase23_join_three_branches_all_results_collected() {
         accumulator,
         vec![SlotValue::I64(10), SlotValue::I64(20)],
     );
-    run.write_slot(output, SlotValue::I64(30))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(30)), Ok(()), "write");
     // When calling together_join with branch_count=3
     assert!(run.add_parallel_in_flight(3).is_ok());
     let result = together_join(
@@ -400,9 +390,7 @@ fn phase23_join_produces_list_in_output_slot() {
     let output = SlotIdx::new(1);
     let next_step = StepIdx::new(5);
     list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(7)]);
-    run.write_slot(output, SlotValue::I64(8))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(8)), Ok(()), "write");
     // When calling together_join
     assert!(run.add_parallel_in_flight(2).is_ok());
     let result = together_join(
@@ -432,9 +420,11 @@ fn phase23_join_merges_taint_from_accumulator_and_output() {
     let output = SlotIdx::new(1);
     let next_step = StepIdx::new(5);
     list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
-    run.write_slot_with_taint(accumulator, SlotValue::I64(10), Taint::DerivedFromSecret)
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(
+        run.write_slot_with_taint(accumulator, SlotValue::I64(10), Taint::DerivedFromSecret),
+        Ok(()),
+        "write"
+    );
     // Reset accumulator to list after the overwrite
     let list_id = store
         .insert_list(vec![SlotValue::I64(10)].into_boxed_slice())
@@ -447,9 +437,11 @@ fn phase23_join_merges_taint_from_accumulator_and_output() {
     )
     .ok()
     .unwrap_or_else(|| panic!("write"));
-    run.write_slot_with_taint(output, SlotValue::I64(20), Taint::Secret)
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(
+        run.write_slot_with_taint(output, SlotValue::I64(20), Taint::Secret),
+        Ok(()),
+        "write"
+    );
     // When calling together_join
     assert!(run.add_parallel_in_flight(2).is_ok());
     let result = together_join(
@@ -480,12 +472,12 @@ fn phase23_branch_failure_when_accumulator_corrupted_propagates_error() {
     let accumulator = SlotIdx::new(0);
     let output = SlotIdx::new(1);
     // Accumulator holds a non-list value (simulating corruption)
-    run.write_slot(accumulator, SlotValue::Bool(false))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
-    run.write_slot(output, SlotValue::I64(42))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(
+        run.write_slot(accumulator, SlotValue::Bool(false)),
+        Ok(()),
+        "write"
+    );
+    assert_eq!(run.write_slot(output, SlotValue::I64(42)), Ok(()), "write");
     // When calling together_branch with branch=1 (triggers append)
     let result = together_branch(
         &mut run,
@@ -516,14 +508,18 @@ fn phase23_branch_failure_preserves_existing_accumulator_state() {
     let accumulator = SlotIdx::new(0);
     let output = SlotIdx::new(1);
     list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
-    run.write_slot(output, SlotValue::Bool(false))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(
+        run.write_slot(output, SlotValue::Bool(false)),
+        Ok(()),
+        "write"
+    );
     // When calling together_branch with branch=1 but accumulator corrupted after
     // First make the accumulator corrupt
-    run.write_slot(accumulator, SlotValue::Bool(false))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(
+        run.write_slot(accumulator, SlotValue::Bool(false)),
+        Ok(()),
+        "write"
+    );
     let result = together_branch(
         &mut run,
         &mut store,
@@ -617,9 +613,7 @@ fn phase23_partial_failure_first_branch_succeeds_second_corrupt_accumulator() {
     assert_eq!(result0, Ok(vb_core::EngineSignal::Continue));
 
     // Branch 0 body writes I64(10)
-    run.write_slot(output, SlotValue::I64(10))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(10)), Ok(()), "write");
 
     // Branch 1 succeeds (appends I64(10))
     let result1 = together_branch(
@@ -650,14 +644,14 @@ fn phase23_partial_failure_first_branch_succeeds_second_corrupt_accumulator() {
     }
 
     // Branch 1 body writes I64(20)
-    run.write_slot(output, SlotValue::I64(20))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(20)), Ok(()), "write");
 
     // Corrupt the accumulator before branch 2
-    run.write_slot(accumulator, SlotValue::Bool(false))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(
+        run.write_slot(accumulator, SlotValue::Bool(false)),
+        Ok(()),
+        "write"
+    );
 
     // Branch 2 fails due to corrupted accumulator
     let result2 = together_branch(
@@ -692,9 +686,7 @@ fn phase23_partial_failure_output_preserved_after_branch_error() {
 
     // Branch 0 writes Null to output (valid)
     list_in_slot(&mut run, &mut store, accumulator, vec![]);
-    run.write_slot(output, SlotValue::Null)
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(output, SlotValue::Null), Ok(()), "write");
 
     // Branch 1 appends Null
     let result = together_branch(
@@ -709,9 +701,11 @@ fn phase23_partial_failure_output_preserved_after_branch_error() {
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
 
     // Now corrupt the accumulator
-    run.write_slot(accumulator, SlotValue::I64(999))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(
+        run.write_slot(accumulator, SlotValue::I64(999)),
+        Ok(()),
+        "write"
+    );
 
     // Branch 2 fails
     let fail_result = together_branch(
@@ -742,9 +736,7 @@ fn phase23_join_with_single_branch_collects_one_result() {
     let output = SlotIdx::new(1);
     let next_step = StepIdx::new(5);
     list_in_slot(&mut run, &mut store, accumulator, vec![]);
-    run.write_slot(output, SlotValue::I64(42))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(42)), Ok(()), "write");
     // When calling together_join with branch_count=1
     assert!(run.add_parallel_in_flight(1).is_ok());
     let result = together_join(
@@ -786,9 +778,11 @@ fn phase23_taint_propagation_across_branches() {
     // Start with clean accumulator
     list_in_slot(&mut run, &mut store, accumulator, vec![]);
     // Branch 0 body writes I64(10) with Secret taint
-    run.write_slot_with_taint(output, SlotValue::I64(10), Taint::Secret)
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(
+        run.write_slot_with_taint(output, SlotValue::I64(10), Taint::Secret),
+        Ok(()),
+        "write"
+    );
 
     // Branch 1 appends I64(10) - accumulator should pick up Secret taint
     let result = together_branch(
@@ -855,9 +849,7 @@ fn phase23_join_preserves_order_of_branch_results() {
         accumulator,
         vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
     );
-    run.write_slot(output, SlotValue::I64(4))
-        .ok()
-        .unwrap_or_else(|| panic!("write"));
+    assert_eq!(run.write_slot(output, SlotValue::I64(4)), Ok(()), "write");
     // When calling together_join with branch_count=4
     assert!(run.add_parallel_in_flight(4).is_ok());
     let result = together_join(
