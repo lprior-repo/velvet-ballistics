@@ -15,13 +15,13 @@ fn frame(value: SlotValue) -> TestResult<RunFrame> {
 
 fn store(workflow: &CompiledWorkflow) -> TestResult<ValueStore> {
     let mut store = ValueStore::with_max_slots(workflow.resource_contract().max_slots);
-    assert_eq!(store.insert_text("key")?, SymbolId::new(0));
+    assert_eq!(store.insert_symbol("key")?, SymbolId::new(0));
     Ok(store)
 }
 
 fn populated(workflow: &CompiledWorkflow) -> TestResult<ValueStore> {
     let mut store = store(workflow)?;
-    assert_eq!(store.insert_text("retired")?, SymbolId::new(1));
+    assert_eq!(store.insert_symbol("retired")?, SymbolId::new(1));
     assert_eq!(
         store.insert_list(Box::from([SlotValue::I64(7)]))?,
         ListId::new(0)

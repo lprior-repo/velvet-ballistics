@@ -5,13 +5,18 @@ use vb_core::{
 
 pub(super) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+fn resource_contract(bound: u16) -> vb_core::ResourceContract {
+    let mut contract = vb_core::ResourceContract::DEFAULT;
+    contract.max_slots = bound;
+    contract
+}
+
 fn parts(bound: u16, slots: u16) -> WorkflowParts {
-    let mut resource_contract = vb_core::ResourceContract::DEFAULT;
-    resource_contract.max_slots = bound;
     WorkflowParts {
         name: "owned prepared".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         slot_count: slots,
         symbols_count: 0,
         nodes: Box::from([vb_core::workflow::node(
@@ -26,7 +31,7 @@ fn parts(bound: u16, slots: u16) -> WorkflowParts {
         accessors: Box::default(),
         constants: Box::default(),
         entry: StepIdx::ZERO,
-        resource_contract,
+        resource_contract: resource_contract(bound),
         step_names: Box::default(),
         input_slots: input_slots(slots),
     }

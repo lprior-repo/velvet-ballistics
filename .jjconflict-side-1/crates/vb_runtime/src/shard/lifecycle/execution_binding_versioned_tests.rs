@@ -33,6 +33,7 @@ fn parts() -> WorkflowParts {
         name: "tuple".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![set_node(), finish_node()].into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),

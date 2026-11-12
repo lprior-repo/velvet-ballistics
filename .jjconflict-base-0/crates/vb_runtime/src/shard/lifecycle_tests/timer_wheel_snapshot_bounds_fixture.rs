@@ -82,6 +82,7 @@ fn bounded_snapshot_ask_nodes() -> Box<[vb_core::workflow::CompiledNode]> {
 fn bounded_snapshot_ask_parts() -> vb_core::workflow::WorkflowParts {
     vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         name: Box::from("bounded_snapshot_timed_ask"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([5; 32]),
         nodes: bounded_snapshot_ask_nodes(),

@@ -77,7 +77,7 @@ fn make_carrier(
 ) -> TestResult<RecoveredRetainedInputs> {
     let mut store = ValueStore::with_max_slots(workflow.resource_contract().max_slots);
     seed_source_symbols(workflow.source_metadata().ok_or("metadata")?, &mut store)?;
-    assert_eq!(store.insert_text("retired")?, SymbolId::new(2));
+    assert_eq!(store.insert_symbol("retired")?, SymbolId::new(2));
     assert_eq!(
         store.insert_list(Box::from([SlotValue::I64(7)]))?,
         LIST_ID_0

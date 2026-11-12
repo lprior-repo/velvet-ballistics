@@ -8,6 +8,7 @@ fn parts(resource_contract: ResourceContract) -> WorkflowParts {
         name: "prepared".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         slot_count: 3,
         symbols_count: 0,
         nodes: Box::from([vb_core::workflow::node(

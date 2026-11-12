@@ -22,6 +22,7 @@ fn parts() -> WorkflowParts {
         name: "cold-inputs".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: Box::from([finish()]),
         expressions: Box::default(),
         accessors: Box::default(),

@@ -1,0 +1,11 @@
+# Runtime unit compatibility r507
+
+Repair exactly the ten compiler errors reported by runtime-unit-r507.log: six existing WorkflowParts fixture constructors add source_metadata: None; three new recovery-test symbol insertions call the actual ValueStore::insert_symbol API without changing text, insertion order, SymbolIds, taints, contents or assertions; one historical missing-Ask-schedule fixture adapts its existing RecoveryFrameSeedProduct through the existing RecoveredWorkflowSeed::from conversion.
+
+The missing-Ask-schedule fixture intentionally has empty retained inputs and no replay-derived arena or cursor. Preserve its existing empty carrier, boundary, seed fields and exact pending_asks rejection oracle; seed.into() retains the typed seed and sets only the existing no-cursor legacy conversion. Do not create a new empty store, drop an existing arena, alter production seed/store pairing or change any product classification.
+
+Use the current split runtime_tests/helpers_and_recovery_tests.rs path from the parent source as a guarded read-only preimage; do not rewrite the older unsplit runtime_tests.rs file or other physical split modules. Every source path gets exact pre/post hashes; source_metadata field additions and insert_symbol substitutions preserve all other bytes where formatting permits. No production codec197ea, schemas, dependencies, APIs, gates, assertions, test cases, retry semantics or group-default hunks are changed.
+
+Adding the required field makes two fixture constructors exceed the existing function bound. Extract only the original three-op expression construction and the original default-resource-contract/max_slots assignment into bounded private fixture helpers, preserving exact operation order, literal IDs, fallible propagation, resource defaults and evaluation position. The parent included test chunk retains its original indentation and every other byte; standalone formatting of that chunk is not grounds to reindent foreign source.
+
+Author in the assigned isolated runtime root with one serial local5090 source request and minimal integration. Formatting is syntax/source evidence only; the parent reruns the actual full-runtime unit target and records native exit, raw diagnostics and review outcomes. Keep every prior source candidate and raw failure immutable.
