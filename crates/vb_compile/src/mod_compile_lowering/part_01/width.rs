@@ -63,7 +63,18 @@ pub(in crate::mod_compile_lowering) fn body_width(
                         .ok_or(CompileError::StepIndexOutOfRange { value: width })?
                 }
                 crate::StepPrimitive::Ask { .. } => 2,
-                _ => 1,
+                crate::StepPrimitive::Set { .. }
+                | crate::StepPrimitive::Save { .. }
+                | crate::StepPrimitive::Do { .. }
+                | crate::StepPrimitive::Wait { .. }
+                | crate::StepPrimitive::Finish { .. } => 1,
+                other => {
+                    let name = canonical_primitive_name(other)?;
+                    return Err(CompileError::UnsupportedStepPrimitive {
+                        step: 0,
+                        primitive: name,
+                    });
+                }
             };
             width = width
                 .checked_add(fixed)

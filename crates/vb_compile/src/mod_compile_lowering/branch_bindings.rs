@@ -82,10 +82,11 @@ impl<'a> BranchBindings<'a> {
                 self.lower_do(action, input, target, builder)?
             }
             other => {
+                let name = canonical_primitive_name(other).map_err(|e| CompileErrors(vec![e]))?;
                 return Err(CompileErrors(vec![
                     CompileError::UnsupportedStepPrimitive {
                         step: id.as_usize(),
-                        primitive: canonical_primitive_name(other),
+                        primitive: name,
                     },
                 ]));
             }

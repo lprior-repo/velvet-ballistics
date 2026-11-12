@@ -280,7 +280,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
         other => Err(CompileErrors(vec![
             CompileError::UnsupportedStepPrimitive {
                 step: index,
-                primitive: canonical_primitive_name(other),
+                primitive: canonical_primitive_name(other).map_err(|e| CompileErrors(vec![e]))?,
             },
         ])),
     };

@@ -12,7 +12,7 @@
 // production source:
 //
 //   1. Production `use thiserror::Error;` and `#[derive(... serde::Serialize,
-//      serde::Deserialize ...)]` at budget/validate_error.rs:5 / aggregate.rs:10 are NOT re-included.
+//      serde::Deserialize ...)]` at budget/validate_error.rs:5 / aggregate.rs:16 are NOT re-included.
 //      The mirror uses a `#[derive(Clone, Copy, ...)]` subset that
 //      Verus 0.2026.05.05 can parse without proc-macro support. Field
 //      NAMES and TYPES match production byte-for-byte, so any drift
@@ -21,6 +21,8 @@
 //
 //   2. Production `#[error("...")]` thiserror attributes on BudgetError
 //      variants are stripped; the discriminant set is preserved verbatim.
+//      AggregateBudgetError::WorkflowBudget keeps only the discriminant;
+//      its native WorkflowError payload is omitted from this WEAK mirror.
 //      The error Display strings live only in production; the mirror
 //      only carries the discriminant shape.
 //
@@ -59,16 +61,16 @@
 //   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget/validate.rs:88-147
 // Production `crates/vb_core/src/budget/validate.rs:88-147`
 //   - `BudgetError`                          <- crates/vb_core/src/budget/validate_error.rs:10-57
-//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:17-54
-// Production `crates/vb_core/src/budget/aggregate.rs:17-54`
+//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:17-55
+// Production `crates/vb_core/src/budget/aggregate.rs:17-55`
 //   - `AggregateResourceBudget::from_workflow`  <- crates/vb_core/src/budget/aggregate_validate.rs:12-23
 //   - `AggregateResourceBudget::from_whole_workflow_budget`
 //                                            <- crates/vb_core/src/budget/aggregate_validate.rs:25-59
 // Production `crates/vb_core/src/budget/aggregate_validate.rs:25-59`
-//   - `AggregateResourceCapacity`            <- crates/vb_core/src/budget/aggregate.rs:59-94
-// Production `crates/vb_core/src/budget/aggregate.rs:59-94`
-//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:104-140
-// Production `crates/vb_core/src/budget/aggregate.rs:104-140`
+//   - `AggregateResourceCapacity`            <- crates/vb_core/src/budget/aggregate.rs:59-100
+// Production `crates/vb_core/src/budget/aggregate.rs:59-100`
+//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:104-138
+// Production `crates/vb_core/src/budget/aggregate.rs:104-138`
 //   - `AggregateResourceUsage::try_add_budget`
 //                                            <- crates/vb_core/src/budget/usage_arith.rs:9-123
 // Production `crates/vb_core/src/budget/usage_arith.rs:9-123`
@@ -421,12 +423,12 @@ pub enum BudgetError {
 // Aggregate resource types — production mirror
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget/aggregate.rs:11-282`. These types are the
+// Mirror of `crates/vb_core/src/budget/aggregate.rs:17-283`. These types are the
 // runtime-admission surface that the boundedness policy validates
 // against.
 
 /// Mirror of production `AggregateResourceBudget` at
-/// `crates/vb_core/src/budget/aggregate.rs:17-54`.
+/// `crates/vb_core/src/budget/aggregate.rs:17-55`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct AggregateResourceBudget {
     pub max_steps_executable: u32,
@@ -460,7 +462,7 @@ pub struct AggregateResourceBudget {
 }
 
 /// Mirror of production `AggregateResourceCapacity` at
-/// `crates/vb_core/src/budget/aggregate.rs:59-94`.
+/// `crates/vb_core/src/budget/aggregate.rs:59-100`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct AggregateResourceCapacity {
     pub max_steps_executable: u64,
@@ -492,7 +494,7 @@ pub struct AggregateResourceCapacity {
 }
 
 /// Mirror of production `AggregateResourceUsage` at
-/// `crates/vb_core/src/budget/aggregate.rs:104-140`.
+/// `crates/vb_core/src/budget/aggregate.rs:104-138`.
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub struct AggregateResourceUsage {
     pub max_steps_executable: u64,
@@ -525,11 +527,11 @@ pub struct AggregateResourceUsage {
 // AggregateBudgetError — production mirror (restricted variants)
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget/aggregate.rs:208-277`.
+// Mirror of `crates/vb_core/src/budget/aggregate.rs:214-283`.
 
 /// Mirror of production `AggregateBudgetError` at
-/// `crates/vb_core/src/budget/aggregate.rs:208-277`. All 9 production variants
-/// are mirrored.
+/// `crates/vb_core/src/budget/aggregate.rs:214-283`. All 9 production discriminants
+/// are mirrored; the native WorkflowBudget payload is omitted.
 #[derive(Clone, Copy)]
 pub enum AggregateBudgetError {
     PolicyExceeded {

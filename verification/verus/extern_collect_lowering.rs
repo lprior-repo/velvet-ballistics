@@ -223,7 +223,7 @@ impl StepIdx {
     }
 
     /// Mirror of `StepIdx::checked_add(self, rhs: u16) -> Option<Self>`
-    /// at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206`
+    /// at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:214-219`
     /// (the hand-written `impl StepIdx { ... }` block, since the
     /// `numeric_id!` macro at `crates/vb_core/src/ids/mod.rs:24-55` does NOT generate
     /// `checked_add`):
@@ -365,17 +365,17 @@ pub struct SpecCollectOutcome {
     /// Total number of `CompiledNode`s the production body constructs
     /// on success. Equals `3 + body_node_count` (the three fixed nodes
     /// `CollectStart` / `CollectNext` / `CollectFinish` at
-    /// bounded_collect.rs:181-194, 222-233, 235-244 plus the nodes
+    /// bounded_collect.rs:160-173, 201-212, 214-223 plus the nodes
     /// emitted by `emit_body` for the body sequence).
     pub emitted_node_count: u32,
-    /// Value of `id + 1` (the `body` offset, bounded_collect.rs:121).
+    /// Value of `id + 1` (the `body` offset, bounded_collect.rs:100).
     /// `0` when `ok == false`.
     pub body_offset: u16,
     /// Value of `id + body_len + 1` (the `advance` offset,
-    /// bounded_collect.rs:122-123). `0` when `ok == false`.
+    /// bounded_collect.rs:101-102). `0` when `ok == false`.
     pub advance_offset: u16,
     /// Value of `id + body_len + 2` (the `done` offset,
-    /// bounded_collect.rs:124-125). `0` when `ok == false`.
+    /// bounded_collect.rs:103-104). `0` when `ok == false`.
     pub done_offset: u16,
 }
 

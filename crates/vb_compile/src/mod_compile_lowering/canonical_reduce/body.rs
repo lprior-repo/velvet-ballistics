@@ -85,12 +85,15 @@ fn lower_single_step_body(
             }
             Ok(inferred)
         }
-        other => Err(CompileErrors(vec![
-            CompileError::UnsupportedStepPrimitive {
-                step: index,
-                primitive: canonical_primitive_name(other),
-            },
-        ])),
+        other => {
+            let name = canonical_primitive_name(other).map_err(|e| CompileErrors(vec![e]))?;
+            Err(CompileErrors(vec![
+                CompileError::UnsupportedStepPrimitive {
+                    step: index,
+                    primitive: name,
+                },
+            ]))
+        }
     }
 }
 

@@ -1,22 +1,7 @@
-use super::part_05_digest_primitive::MAX_BODY_NESTING_DEPTH;
+use super::part_05_digest_primitive::{MAX_BODY_NESTING_DEPTH, body_nesting_error, child_depth};
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 fn author_nesting_error(depth: u16) -> CompileErrors {
     body_nesting_error("author_value", depth)
-}
-fn body_nesting_error(primitive: &'static str, depth: u16) -> CompileErrors {
-    let err = CompileError::PrimitiveLoweringLimitExceeded {
-        primitive,
-        field: "body nesting depth",
-        value: usize::from(depth),
-        limit: usize::from(MAX_BODY_NESTING_DEPTH),
-    };
-    CompileErrors(vec![err])
-}
-
-fn child_depth(depth: u16, primitive: &'static str) -> Result<u16, CompileErrors> {
-    depth
-        .checked_add(1)
-        .ok_or_else(|| body_nesting_error(primitive, depth))
 }
 
 /// Hash an AuthorValue iteratively (pre-order + `TAG_END`); depth budget fails
@@ -37,11 +22,7 @@ pub(crate) fn digest_author_value(
             depth: u16,
         },
     }
-    enum Op<'a> {
-        Push(Frame<'a>),
-        Pop,
-        Nothing,
-    }
+    type Op<'a> = super::part_05_digest_primitive::DigestOp<Frame<'a>>;
     let mut stack: Vec<Frame<'_>> = Vec::new();
     match value {
         crate::AuthorValue::Null => {
@@ -248,10 +229,9 @@ pub(crate) fn validate_branch_counts(source: &crate::WorkflowSource) -> Result<(
     }
     while let Some((primitive, depth)) = stack.pop() {
         if depth > MAX_BODY_NESTING_DEPTH {
-            return Err(body_nesting_error(
-                super::canonical_primitive_name(primitive),
-                depth,
-            ));
+            let name =
+                super::canonical_primitive_name(primitive).map_err(|e| CompileErrors(vec![e]))?;
+            return Err(body_nesting_error(name, depth));
         }
         match primitive {
             crate::StepPrimitive::Together { branches } => {
@@ -276,7 +256,9 @@ pub(crate) fn validate_branch_counts(source: &crate::WorkflowSource) -> Result<(
             | crate::StepPrimitive::Collect { body, .. }
             | crate::StepPrimitive::Aggregate { body, .. }
             | crate::StepPrimitive::Repeat { body, .. } => {
-                let next = child_depth(depth, super::canonical_primitive_name(primitive))?;
+                let name = super::canonical_primitive_name(primitive)
+                    .map_err(|e| CompileErrors(vec![e]))?;
+                let next = child_depth(depth, name)?;
                 for step in body.iter().rev() {
                     stack.push((&step.primitive, next));
                 }
@@ -289,7 +271,17 @@ pub(crate) fn validate_branch_counts(source: &crate::WorkflowSource) -> Result<(
                     }
                 }
             }
-            _ => {}
+            crate::StepPrimitive::Set { .. }
+            | crate::StepPrimitive::Save { .. }
+            | crate::StepPrimitive::Do { .. }
+            | crate::StepPrimitive::Wait { .. }
+            | crate::StepPrimitive::Ask { .. }
+            | crate::StepPrimitive::Finish { .. } => {}
+            _ => {
+                return Err(super::digest_error(
+                    "unknown step primitive variant cannot be canonicalized",
+                ));
+            }
         }
     }
     Ok(())

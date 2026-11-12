@@ -132,12 +132,15 @@ pub(super) fn emit_single_body_set(
         crate::StepPrimitive::Do { action, input } => {
             lower_do_body_set(id, diagnostic_step, slot, next, action, input, builder)
         }
-        other => Err(CompileErrors(vec![
-            CompileError::UnsupportedStepPrimitive {
-                step: diagnostic_step,
-                primitive: canonical_primitive_name(other),
-            },
-        ])),
+        other => {
+            let name = canonical_primitive_name(other).map_err(|e| CompileErrors(vec![e]))?;
+            Err(CompileErrors(vec![
+                CompileError::UnsupportedStepPrimitive {
+                    step: diagnostic_step,
+                    primitive: name,
+                },
+            ]))
+        }
     }
 }
 
