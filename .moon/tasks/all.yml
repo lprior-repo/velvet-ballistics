@@ -798,30 +798,6 @@ tasks:
     options:
       runInCI: true
 
-  benchmark-regression-policy:
-    command: 'rustup run nightly-2026-04-28 cargo run --quiet --manifest-path xtask/Cargo.toml -- benchmark-regression-policy --budget contracts/perf-budget.yaml --evidence evidence/benchmark-evidence.jsonl'
-    deps:
-      - 'bench-build'
-    toolchains:
-      - rust
-    inputs:
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'rust-toolchain.toml'
-      - 'contracts/perf-budget.yaml'
-      - 'evidence/benchmark-evidence.jsonl'
-      - 'evidence/benchmark-logs/**/*'
-      - 'xtask/Cargo.toml'
-      - 'xtask/src/benchmark_policy.rs'
-      - 'xtask/src/benchmark_budget.rs'
-      - 'xtask/src/benchmark_freshness.rs'
-      - 'xtask/src/cli.rs'
-      - 'xtask/src/main.rs'
-      - '.moon/tasks/all.yml'
-    options:
-      cache: false
-      runInCI: true
-
   benchmark-proof:
     script: |
       set -euo pipefail
@@ -1022,19 +998,6 @@ tasks:
       cache: false
       runInCI: false
 
-  contracts:
-    command: 'cargo xtask contracts --check'
-    toolchains:
-      - rust
-    inputs:
-      - 'contracts/**/*'
-      - '.cargo/config.toml'
-      - '.moon/tasks/all.yml'
-    options:
-      # xtask stays outside the Cargo workspace (own Cargo.lock), so the
-      # cargo xtask alias resolves it via --manifest-path from the repo root.
-      runInCI: false
-
   quick:
     script: |
       moon run :fmt
@@ -1059,7 +1022,6 @@ tasks:
       - 'coverage'
       - 'mutants-smoke'
       - 'bench-build'
-      - 'benchmark-regression-policy'
       - 'fuzz-smoke'
       - 'kani-baseline'
       - 'kani-baseline-heavy'

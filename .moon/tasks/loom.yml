@@ -4,7 +4,6 @@ fileGroups:
   loom_sources:
     - 'crates/vb_runtime/Cargo.toml'
     - 'crates/vb_runtime/src/**/*'
-    - 'scripts/loom-list.sh'
     - '.moon/tasks/loom.yml'
 
 tasks:

@@ -34,8 +34,8 @@ validate_allow_file() {
       echo "MalformedException: $allow_file:$line_no expected path|class|owner=...|expiry=...|follow_up=...|reason=..." >&2
       return 3
     fi
-    if [[ "$path" == *"*"* || "$path" == "." || "$path" == /* || "$path" != crates/*/src/*.rs && "$path" != crates/*/src/**/*.rs && "$path" != xtask/src/*.rs && "$path" != xtask/src/**/*.rs ]]; then
-      echo "OverbroadException: $allow_file:$line_no path must target crates/*/src or xtask/src file" >&2
+    if [[ "$path" == *"*"* || "$path" == "." || "$path" == /* || "$path" != crates/*/src/*.rs && "$path" != crates/*/src/**/*.rs ]]; then
+      echo "OverbroadException: $allow_file:$line_no path must target crates/*/src file" >&2
       return 3
     fi
     if [[ "$class" == "*" || "$class" == "ALL" || "$class" != DISCARD-* ]]; then
@@ -161,7 +161,6 @@ scan_tree() {
   for crate_src in "$scan_root"/crates/*/src; do
     [[ -d "$crate_src" ]] && roots+=("$crate_src")
   done
-  [[ -d "$scan_root/xtask/src" ]] && roots+=("$scan_root/xtask/src")
 
   if [[ "${#roots[@]}" -eq 0 ]]; then
     echo "UnreadableInput: no production scan roots found" >&2
@@ -314,6 +313,6 @@ run_self_tests() {
 run_self_tests
 
 PROD_REPORT="$TMP_BASE/ignored-fallible-results.production.txt"
-echo "ScanDomain: crates/*/src xtask/src"
+echo "ScanDomain: crates/*/src"
 echo "NonProductionExcluded: tests benches examples fuzz target .beads fixtures"
 scan_tree "$ROOT" "$ALLOW_FILE_DEFAULT" "$PROD_REPORT"

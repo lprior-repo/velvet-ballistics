@@ -58,9 +58,7 @@ fn workspace() -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
         .collect::<String>();
     write_file(
         &root.join("Cargo.toml"),
-        &format!(
-            "[workspace]\nmembers = [\n{member_lines}]\nexclude = [\"xtask\", \"target/miri-tmp\"]\n"
-        ),
+        &format!("[workspace]\nmembers = [\n{member_lines}]\nexclude = [\"target/miri-tmp\"]\n"),
     )?;
     for &(member, package_name) in MEMBERS {
         write_manifest(root, member, package_name)?;

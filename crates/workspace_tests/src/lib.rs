@@ -5,7 +5,7 @@
 
 pub mod acceptance_catalog;
 pub mod bdd_runner;
-pub mod boundary_inventory;
+pub use boundary_inventory;
 pub mod quality;
 pub mod test_util;
 
