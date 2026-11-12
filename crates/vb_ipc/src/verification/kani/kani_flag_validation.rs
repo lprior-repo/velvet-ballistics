@@ -683,4 +683,5 @@ fn reserved_bits_all_commands() {
     }
 }
 
+#[path = "kani_flag_validation/decode_integration.rs"]
 mod decode_integration;
