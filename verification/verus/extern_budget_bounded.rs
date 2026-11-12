@@ -30,9 +30,9 @@
 //   - `BoundednessPolicy`                    <- crates/vb_core/src/budget/validate.rs:9-56
 //   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget/validate.rs:88-147
 //   - `BudgetError`                          <- crates/vb_core/src/budget/validate_error.rs:10-57
-//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:11-49
-//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:98-132
-//   - `AggregateBudgetError`                 <- crates/vb_core/src/budget/aggregate.rs:208-277
+//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:16-54
+//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:103-137
+//   - `AggregateBudgetError`                 <- crates/vb_core/src/budget/aggregate.rs:213-282
 //   - `validate_aggregate_budget`            <- crates/vb_core/src/budget/aggregate_validate.rs:109-243
 //   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:24-59
 //   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:61-79
@@ -142,7 +142,7 @@ fn prod_methods_drift_check(
     };
 
     // Reference every field of AggregateResourceBudget to surface any
-    // rename in budget/aggregate.rs:11-49.
+    // rename in budget/aggregate.rs:16-54.
     let arb = production_inner::AggregateResourceBudget {
         max_steps_executable: 0,
         max_action_tickets: 0,
@@ -175,11 +175,11 @@ fn prod_methods_drift_check(
     };
 
     // AggregateResourceUsage derives Default; use it to surface the
-    // production field set (budget/aggregate.rs:98-132).
+    // production field set (budget/aggregate.rs:103-137).
     let aru = production_inner::AggregateResourceUsage::default();
 
     // Reference every field of AggregateResourceCapacity to surface
-    // any rename in budget/aggregate.rs:53-94.
+    // any rename in budget/aggregate.rs:58-99.
     let cap = production_inner::AggregateResourceCapacity {
         max_steps_executable: 0,
         max_action_tickets: 0,

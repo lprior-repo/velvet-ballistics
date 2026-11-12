@@ -47,7 +47,7 @@
 //                                              assume_specification below)
 //   - `AggregateResourceBudget`/`Capacity`/`Usage`
 //                                           <- extern_budget_bounded.rs
-//                                              (mirror of crates/vb_core/src/budget/aggregate.rs:11-132)
+//                                              (mirror of crates/vb_core/src/budget/aggregate.rs:16-137)
 //
 // Spec-mode reasoning:
 //   - The spec constants `max_steps_per_workflow() = 65535`,
