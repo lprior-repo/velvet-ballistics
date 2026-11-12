@@ -88,7 +88,10 @@ impl Shard {
         };
 
         match cmd {
-            ShardCommand::ActivateOwnedSubmission { run, expected_source_digest } => {
+            ShardCommand::ActivateOwnedSubmission {
+                run,
+                expected_source_digest,
+            } => {
                 self.handle_owned_activation(run, expected_source_digest)?;
             }
             ShardCommand::Submit {
@@ -142,7 +145,11 @@ impl Shard {
             ShardCommand::EscalateGate { run, gate, now_ms } => {
                 self.escalate_timed_out_gate(run, gate, now_ms)?;
             }
-            ShardCommand::RegisteredActionCompleted { ticket, receipt, output } => {
+            ShardCommand::RegisteredActionCompleted {
+                ticket,
+                receipt,
+                output,
+            } => {
                 self.handle_registered_action_completion(ticket, receipt, output)?;
             }
             ShardCommand::ActionCompleted { ticket, output } => {
