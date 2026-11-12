@@ -118,7 +118,7 @@
 //                                                  body=id+1, advance=id+body_len+1,
 //                                                  done=id+body_len+2)
 //   - `CollectStart` / `CollectNext` /
-//     `CollectFinish`                           <- crates/vb_core/src/workflow/mod.rs:1264-1284
+//     `CollectFinish`                           <- crates/vb_core/src/workflow/node_kind.rs:86-107
 //                                                  (CollectStart { source, limit, page_size,
 //                                                  body, done }; CollectNext
 //                                                  { collector_slot, body, done };
