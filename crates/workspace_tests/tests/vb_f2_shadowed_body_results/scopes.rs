@@ -200,7 +200,7 @@ fn assert_numeric_reduce_rejection(yaml: &str) {
         matches!(result, Err(vb_compile::CompileErrors(ref errors)) if errors.iter().any(|error| matches!(
             error,
             vb_compile::CompileError::StepFieldShape {
-                field: "reduce.steps", expected: "a set value preserving the i64 accumulator type", ..
+                field: "reduce.steps", expected: "a set value preserving the accumulator type", ..
             }
         ))),
         "{result:?}"

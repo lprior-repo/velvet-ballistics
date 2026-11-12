@@ -165,5 +165,5 @@ fn append_to_accumulator(
 }
 
 #[cfg(test)]
-#[path = "../together_tests.rs"]
+#[path = "../together_tests/mod.rs"]
 mod tests;

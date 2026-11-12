@@ -543,12 +543,13 @@ fn empty_body_is_rejected() -> TestResult {
         Err(errors) => errors,
         Ok(_) => return Err("empty body was accepted".into()),
     };
-    assert!(
-        errors
-            .0
-            .iter()
-            .any(|error| matches!(error, CompileError::StepFieldShape { field: "steps", .. }))
-    );
+    assert!(errors.0.iter().any(|error| matches!(
+        error,
+        CompileError::StepFieldShape {
+            field: "reduce.steps",
+            ..
+        }
+    )));
     Ok(())
 }
 
@@ -670,8 +671,12 @@ fn multi_step_do_suspension_updates_the_accumulator_slot() -> TestResult {
         );
         let payload = postcard::to_allocvec(&SlotValue::I64(completion))
             .map_err(|error| error.to_string())?;
+        let action_output = workflow
+            .node(ticket.step)
+            .and_then(|node| node.output.slot())
+            .ok_or("ticket Do output missing")?;
         let output = vb_core::action::ActionOutputReady {
-            output_slot: accumulator,
+            output_slot: action_output,
             value: SlotValue::I64(completion),
             taint: Taint::Clean,
             encoded_len: u32::try_from(payload.len()).map_err(|error| error.to_string())?,

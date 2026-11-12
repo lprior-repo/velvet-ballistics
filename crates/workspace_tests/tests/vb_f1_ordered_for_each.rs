@@ -210,7 +210,7 @@ fn reduce_rejects_a_for_each_list_as_its_numeric_accumulator() -> TestResult {
                 vb_compile::CompileError::StepFieldShape {
                     step: 2,
                     field: "reduce.steps",
-                    expected: "a set value preserving the i64 accumulator type",
+                    expected: "a set value preserving the accumulator type",
                 }
             ]))
         );

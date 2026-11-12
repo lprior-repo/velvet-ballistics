@@ -213,6 +213,7 @@ tasks:
     inputs:
       - 'Cargo.toml'
       - 'scripts/check-workspace-assertions.rs'
+      - 'scripts/check_workspace_assertions_driver.rs'
       - 'scripts/check-workspace-assertions.sh'
       - '.moon/tasks/all.yml'
       - 'crates/*/Cargo.toml'
@@ -262,6 +263,7 @@ tasks:
     command: 'bash scripts/check-hot-cold-forbidden-apis.sh'
     inputs:
       - 'scripts/check-hot-cold-forbidden-apis.rs'
+      - 'scripts/check_hot_cold_driver.rs'
       - 'scripts/check-hot-cold-forbidden-apis.sh'
       - 'scripts/hot-cold-forbidden-apis.allow'
       - 'crates/vb_core/src/**/*'
