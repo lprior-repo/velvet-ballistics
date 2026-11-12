@@ -212,3 +212,7 @@ fn owned_retained_inputs(
 #[cfg(test)]
 #[path = "input_binding/bound_symbols_tests.rs"]
 mod bound_symbols_tests;
+
+#[cfg(test)]
+#[path = "input_binding/secret_roots_tests.rs"]
+mod secret_roots_tests;
