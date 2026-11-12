@@ -36,6 +36,7 @@ fn source_for(class: &BoundaryClass) -> &'static str {
         BoundaryClass::GeneratedCode => "crates/vb_runtime/src/generated/interface.rs",
         BoundaryClass::UnsafeAdjacentDependency => "Cargo.toml",
         BoundaryClass::Unknown => "crates/unknown/src/lib.rs",
+        _ => "crates/unknown/src/lib.rs",
     }
 }
 
@@ -49,6 +50,7 @@ fn marker_for(class: &BoundaryClass) -> &'static str {
         BoundaryClass::GeneratedCode => "generated-interface-boundary",
         BoundaryClass::UnsafeAdjacentDependency => "unsafe-adjacent-dependency-boundary",
         BoundaryClass::Unknown => "plain-rust-module",
+        _ => "plain-rust-module",
     }
 }
 

@@ -1,0 +1,13 @@
+{
+  "source_commit": "bbace49c083f41e63746a342a0ae62fd6fc22d85",
+  "actual_metadata_check_exit": 0,
+  "actual_focused_test_exit": 0,
+  "focused_tests_passed": 9,
+  "excluded_by_focused_filter": 1628,
+  "test_review_outstanding": [
+    "reopen test does not retain and reread original artifact after reopen",
+    "formatted test file405lines needs split under300",
+    "9byte malformed test lacks explicit compiled_ir empty assertion"
+  ],
+  "scope": "Seven new basic cases plus two contract-required existing expectation changes. Full storage test execution now in progress. No behavioral main acceptance yet."
+}

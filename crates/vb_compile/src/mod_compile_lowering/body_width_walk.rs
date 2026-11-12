@@ -1,16 +1,22 @@
 #![forbid(unsafe_code)]
 
 use super::{CompileError, canonical_primitive_name};
-use crate::{ChooseBranch, StepAst, StepPrimitive};
+use crate::{ChooseBranch, StepAst, StepPrimitive, TogetherBranch};
 
 enum Frame<'a> {
     Body {
         steps: &'a [StepAst],
         index: usize,
         width: usize,
+        track: bool,
     },
     Choose {
         branches: &'a [ChooseBranch],
+        index: usize,
+        width: usize,
+    },
+    Together {
+        branches: &'a [TogetherBranch],
         index: usize,
         width: usize,
     },
@@ -28,12 +34,17 @@ enum Progress {
 }
 
 impl<'a> Frame<'a> {
-    fn body(steps: &'a [StepAst], overhead: usize) -> Self {
+    fn tracked_body(steps: &'a [StepAst], overhead: usize, track: bool) -> Self {
         Self::Body {
             steps,
             index: 0,
             width: overhead,
+            track,
         }
+    }
+
+    fn body(steps: &'a [StepAst], overhead: usize) -> Self {
+        Self::tracked_body(steps, overhead, false)
     }
 
     fn choose(branches: &'a [ChooseBranch]) -> Self {
@@ -44,15 +55,27 @@ impl<'a> Frame<'a> {
         }
     }
 
+    fn together(branches: &'a [TogetherBranch]) -> Self {
+        Self::Together {
+            branches,
+            index: 0,
+            width: 2,
+        }
+    }
+
     fn width(&self) -> usize {
         match self {
-            Self::Body { width, .. } | Self::Choose { width, .. } => *width,
+            Self::Body { width, .. }
+            | Self::Choose { width, .. }
+            | Self::Together { width, .. } => *width,
         }
     }
 
     fn width_slot(&mut self) -> &mut usize {
         match self {
-            Self::Body { width, .. } | Self::Choose { width, .. } => width,
+            Self::Body { width, .. }
+            | Self::Choose { width, .. }
+            | Self::Together { width, .. } => width,
         }
     }
 
@@ -62,10 +85,14 @@ impl<'a> Frame<'a> {
                 steps,
                 index,
                 width,
-            } => body_action(steps, index, width),
+                track,
+            } => body_action(steps, index, width, *track),
             Self::Choose {
                 branches, index, ..
             } => branch_action(branches, index),
+            Self::Together {
+                branches, index, ..
+            } => together_branch_action(branches, index),
         }
     }
 }
@@ -88,12 +115,26 @@ fn body_action<'a>(
     steps: &'a [StepAst],
     index: &mut usize,
     width: &mut usize,
+    track: bool,
 ) -> Result<Action<'a>, CompileError> {
     let Some(step) = steps.get(*index) else {
         return Ok(Action::Fold);
     };
     advance_index(index)?;
+    add_step_extras(step, width, track)?;
     primitive_action(&step.primitive, width)
+}
+
+fn add_step_extras(step: &StepAst, width: &mut usize, track: bool) -> Result<(), CompileError> {
+    let copy = track && super::super::part_14::iteration_body::produces_value(step);
+    let extra = usize::from(step.condition.is_some())
+        .checked_add(usize::from(copy))
+        .ok_or(CompileError::StepIndexOutOfRange { value: *width })?;
+    add_width(width, extra)?;
+    if let Some(value) = &step.with {
+        add_width(width, super::super::canonical_values::width(value)?)?;
+    }
+    Ok(())
 }
 
 fn branch_action<'a>(
@@ -107,24 +148,86 @@ fn branch_action<'a>(
     Ok(Action::Push(Frame::body(&branch.steps, 0)))
 }
 
+fn together_branch_action<'a>(
+    branches: &'a [TogetherBranch],
+    index: &mut usize,
+) -> Result<Action<'a>, CompileError> {
+    let Some(branch) = branches.get(*index) else {
+        return Ok(Action::Fold);
+    };
+    advance_index(index)?;
+    Ok(Action::Push(Frame::body(&branch.steps, 2)))
+}
+
 fn primitive_action<'a>(
     primitive: &'a StepPrimitive,
     width: &mut usize,
 ) -> Result<Action<'a>, CompileError> {
     match primitive {
-        StepPrimitive::Set { .. } | StepPrimitive::Do { .. } => {
-            add_width(width, 1).map(|()| Action::Idle)
-        }
-        StepPrimitive::ForEach { body, .. } => Ok(Action::Push(Frame::body(body, 2))),
-        StepPrimitive::Collect { body, .. } | StepPrimitive::Repeat { body, .. } => {
-            Ok(Action::Push(Frame::body(body, 3)))
-        }
-        StepPrimitive::Choose { branches, .. } => Ok(Action::Push(Frame::choose(branches))),
-        other => Err(CompileError::UnsupportedStepPrimitive {
-            step: 0,
-            primitive: canonical_primitive_name(other),
-        }),
+        StepPrimitive::Set { .. }
+        | StepPrimitive::Save { .. }
+        | StepPrimitive::Do { .. }
+        | StepPrimitive::Wait { .. }
+        | StepPrimitive::Finish { .. } => add_width(width, 1).map(|()| Action::Idle),
+        StepPrimitive::Ask { .. } => add_width(width, 2).map(|()| Action::Idle),
+        _ => container_action(primitive, *width),
     }
+}
+
+fn container_action(
+    primitive: &StepPrimitive,
+    parent_width: usize,
+) -> Result<Action<'_>, CompileError> {
+    match primitive {
+        StepPrimitive::ForEach { .. } => for_each_action(primitive, parent_width),
+        StepPrimitive::Collect { .. }
+        | StepPrimitive::Repeat { .. }
+        | StepPrimitive::Aggregate { .. } => loop_action(primitive),
+        StepPrimitive::Choose { branches, .. } => Ok(Action::Push(Frame::choose(branches))),
+        StepPrimitive::Together { branches } => Ok(Action::Push(Frame::together(branches))),
+        other => unsupported_body(other),
+    }
+}
+
+fn for_each_action(
+    primitive: &StepPrimitive,
+    parent_width: usize,
+) -> Result<Action<'_>, CompileError> {
+    let StepPrimitive::ForEach { input, body, .. } = primitive else {
+        return unsupported_body(primitive);
+    };
+    let tracked = super::super::part_14::iteration_body::needs_tracking(body);
+    let overhead = 6usize
+        .checked_add(super::super::list_input::source_width(input))
+        .and_then(|width| width.checked_add(usize::from(tracked)))
+        .ok_or(CompileError::StepIndexOutOfRange {
+            value: parent_width,
+        })?;
+    Ok(Action::Push(Frame::tracked_body(body, overhead, tracked)))
+}
+
+fn loop_action(primitive: &StepPrimitive) -> Result<Action<'_>, CompileError> {
+    let (body, overhead) = match primitive {
+        StepPrimitive::Collect { body, .. } => (body, 3),
+        StepPrimitive::Repeat { body, .. } => (body, 4),
+        StepPrimitive::Aggregate { body, .. } => (
+            body,
+            if super::reduce_direct_body(body) {
+                4
+            } else {
+                5
+            },
+        ),
+        other => return unsupported_body(other),
+    };
+    Ok(Action::Push(Frame::body(body, overhead)))
+}
+
+fn unsupported_body(primitive: &StepPrimitive) -> Result<Action<'_>, CompileError> {
+    Err(CompileError::UnsupportedStepPrimitive {
+        step: 0,
+        primitive: canonical_primitive_name(primitive)?,
+    })
 }
 
 fn fold_frame(stack: &mut Vec<Frame<'_>>) -> Result<Progress, CompileError> {
@@ -136,21 +239,6 @@ fn fold_frame(stack: &mut Vec<Frame<'_>>) -> Result<Progress, CompileError> {
     Ok(Progress::Continue)
 }
 
-/// Iterative layout width for a nested body, replacing the recursive
-/// `body_width` -> `canonical_body_step_width` -> `body_width` cycle with an
-/// explicit heap stack (Rule 1: no recursion).
-///
-/// Each frame owns one body (or choose-branch table) plus its running
-/// accumulator; container steps push a child frame instead of recursing and
-/// completed frames fold their total into the parent. Error values match the
-/// recursive version exactly: the accumulator that overflowed, or the
-/// parent's accumulator when a child total overflows into it.
-///
-/// Termination: every iteration either advances one frame's cursor (one step
-/// or branch consumed, never revisited) or pops a finished frame, so the
-/// total number of iterations is bounded by the number of nodes in the AST
-/// tree; the stack depth never exceeds the AST nesting depth and lives on
-/// the heap, so deep nesting cannot overflow the call stack.
 pub(super) fn body_width(body: &[StepAst], overhead: usize) -> Result<usize, CompileError> {
     let mut stack = vec![Frame::body(body, overhead)];
     loop {

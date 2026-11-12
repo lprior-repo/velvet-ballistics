@@ -1,0 +1,3 @@
+=== compile evidence: admission_fuzz ===
+-rwxr-xr-x 2 lewis lewis 1305592 Oct 22 17:22 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/admission_fuzz
+OK: binary present

@@ -1,0 +1,24 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_core",
+    "-p",
+    "vb_runtime",
+    "--lib",
+    "--",
+    "policy",
+    "--test-threads=1"
+  ],
+  "exit_code": 0,
+  "seconds": 1.73,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-tphef/evidence/V5-TESTS-POST",
+  "coordinator_message": "Current remaining NEW test violations seen by root: core/policy/new_tests.rs line65 .unwrap(), lines71/109 panic!; runtime/policy/emergency_and_admission_tests.rs line55 panic!; runtime/policy/tests.rs lines21/22 uncheckedbytesassignments. Replace assertions with wholetypedexpected equality/matches!, helperdirect[0xAB;32], preserve all behaviors. ZERO newunwrap/expect/panic/allow/index. Original7 tests remainverbatim.\nAlso split policy/new_tests.rs (>400lines) into focused <=300line files. Replace NEW tests/test_digest bytes[0]/bytes[31] assignments with a direct nonzero [0xAB;32] literal; no uncheckedindex additions. Preserve exact original7RuntimePolicytests.\nCOORDINATOR FINAL SOURCE REVIEW: New compute_input_digest Vec::with_capacity(256) copies arbitrary input then allocates/grows and is REJECTED. Restore streaming blake3::Hasher::new()/update(input_bytes) approach, split helper push_ticket_parts to accept &mut Hasher and .update fixed byteparts. This avoids unbounded payloadcopy and allocations; no optimization/performanceclaim. Do not change record schema again. Core encode_taint_canonical in samecrate can exhaustive-match actualTaint with no fallback; futurevariant addition forcescompilefix. Do not collapse unknowns to255. evaluate still>25logical: compute outcome/layer/influence first then ONE recordstructliteral, overlay branch feedsoutcome notduplicatedrecord. Tests must coverall8identityfieldmutations+value+all5taints. Preserve original7tests and no newallow/unwrap/panic/index/casts. Everygate newuniqueprefix; finalstrictlint/fmt/scopedtests rawevidence, foundationonly.\n"
+}

@@ -198,3 +198,10 @@ mod verification {
 #[cfg(test)]
 #[path = "replay_kani_bridge_tests.rs"]
 mod fixture_tests;
+
+#[cfg(kani)]
+#[path = "replay_kani_full_dispatch.rs"]
+mod full_dispatch_domain;
+#[cfg(kani)]
+#[path = "replay_kani_generators.rs"]
+mod generators;

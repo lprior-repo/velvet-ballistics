@@ -5,6 +5,7 @@ pub type OptionalDiscoveryEvidence = Option<DiscoveryEvidence>;
 pub type ReviewSummary = String;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum BoundaryInventoryError {
     WorkspaceNotDiscoverable,
     IncompleteDiscoveryInput,
@@ -22,6 +23,7 @@ pub enum BoundaryInventoryError {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum BoundaryClass {
     CAbi,
     Ffi,
@@ -109,6 +111,7 @@ impl BoundaryExposure {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum BoundaryRisk {
     None,
     ExternalBytes,
@@ -118,6 +121,7 @@ pub enum BoundaryRisk {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum EvidenceKind {
     Fuzz,
     Isolation,
@@ -126,6 +130,7 @@ pub enum EvidenceKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum EvidenceReference {
     RepoLocal { path: PathBuf, kind: EvidenceKind },
     FreeText(String),
@@ -163,6 +168,7 @@ impl FreshnessMarker {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ReviewStatus {
     Approved,
     Waived,

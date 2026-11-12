@@ -45,11 +45,13 @@ use vstd::prelude::*;
 verus! {
 
 // ============================================================================
-// Opaque payload stubs — mirrors of crates/vb_core/src/value.rs
+// Opaque payload stubs — mirrors of crates/vb_core/src/value/slot.rs
+// and crates/vb_core/src/value/taint.rs
 // ============================================================================
 //
 // Production `EngineSignal::Finished(SlotValue, Taint)` carries payload
-// types defined in `crates/vb_core/src/value.rs`. The signals-invariant
+// types defined in `crates/vb_core/src/value/slot.rs` and
+// `crates/vb_core/src/value/taint.rs`. The signals-invariant
 // spec only cares about the discriminant set (specifically the
 // `StepCounterOverflow` variant used by `StepBudget::try_take`), so we
 // mirror the relevant enum variants opaquely.

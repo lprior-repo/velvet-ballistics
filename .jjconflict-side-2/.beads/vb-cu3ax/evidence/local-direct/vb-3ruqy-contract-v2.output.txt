@@ -1,0 +1,11 @@
+**Contract: Declared Input Resolution for Terminal Finish**
+
+The cold compiler resolves declared inputs by binding exact `$input.name` references to numeric ports in declaration order. Inputs are represented as bounded slices of `SlotValue` via Postcard serialization. The schema shorthand accepts `number` or `{is:number}`.
+
+During lowering, the compiler processes preceding internal nodes first. Before allocating input ports, it reserves the non-input terminal `Finish` slot using the existing `canonical_finish_slot` and `builder.record_slot` mechanisms. This reservation prevents integer slot collisions between the `Finish` node and input ports. Input ports are then bound after the largest internal index, and the `Finish` node is lowered last. This sequence ensures that the `Finish` node's internal read is reserved before input port allocation, avoiding aliasing at the numeric boundary.
+
+If no `Finish` node is present, input ports are allocated after all nodes are processed. The layout preserves the existing internal-first port numbering scheme without renumbering. All index arithmetic uses checked addition and u16 conversion. The public `allocate_input_slots` signature remains unchanged.
+
+At runtime, an I64 input value must produce the exact input value for the `Finish` node and any preceding save fixture. Unknown input references produce the existing `CompileError::UnknownOutputName` error with the literal `$input.missing` name. Duplicate input validation continues to run as before.
+
+The deterministic digest and roundtrip properties are preserved. Non-finish consumers of inputs remain explicitly unsupported. This contract does not claim full v1 input support or required input defaults. Broader input use cases remain open under parent issue vb-3ruqy.

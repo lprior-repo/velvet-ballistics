@@ -12,6 +12,7 @@ workspace = true
 [features]
 
 [dependencies]
+boundary_inventory = { path = "../boundary_inventory" }
 fjall.workspace = true
 rand.workspace = true
 serde.workspace = true
@@ -33,7 +34,7 @@ crossbeam-queue.workspace = true
 postcard.workspace = true
 proptest.workspace = true
 rtrb.workspace = true
-reference = { path = "../../xtask/reference" }
+reference = { path = "../reference" }
 saphyr.workspace = true
 serde.workspace = true
 toml.workspace = true
@@ -46,7 +47,6 @@ vb_ipc = { path = "../vb_ipc" }
 vb_runtime = { path = "../vb_runtime" }
 vb_storage = { path = "../vb_storage" }
 vb_validate = { path = "../vb_validate" }
-xtask = { path = "../../xtask" }
 
 [[test]]
 name = "vb_test_util_crate"
@@ -105,22 +105,6 @@ name = "storage_contract_pack_runner"
 path = "tests/storage_contract_pack_runner.rs"
 
 [[test]]
-name = "contracts_production_binding"
-path = "tests/contracts_production_binding.rs"
-
-[[test]]
-name = "contracts_as_data_props"
-path = "tests/contracts_as_data_props.rs"
-
-[[test]]
-name = "contracts_as_data_kani"
-path = "tests/contracts_as_data_kani.rs"
-
-[[test]]
-name = "contracts_integration"
-path = "tests/contracts_integration.rs"
-
-[[test]]
 name = "vb_c1s0_orchestration_runtime_tests"
 path = "tests/vb_c1s0_orchestration_runtime_tests.rs"
 
@@ -139,10 +123,6 @@ path = "tests/vb_test_validate_diagnostic_behavior.rs"
 [[test]]
 name = "vb_test_diagnostic_registry_unification"
 path = "tests/vb_test_diagnostic_registry_unification.rs"
-
-[[test]]
-name = "restate_adapter_contamination_guard"
-path = "tests/restate_adapter_contamination_guard.rs"
 
 [[test]]
 name = "restate_completion_watermark_tests"
@@ -172,9 +152,6 @@ harness = false
 name = "vb_qi37_1_1_recovery"
 harness = false
 
-[[bench]]
-name = "vb_kkvb_xtask_routing_red"
-harness = false
 
 [[bench]]
 name = "ir_traversal"
@@ -290,10 +267,6 @@ path = "tests/vb_ko29_5_public_idempotency.rs"
 name = "legacy_wire_decoder"
 path = "tests/legacy_wire_decoder.rs"
 
-
-[[test]]
-name = "vb_doc_taint_regression"
-path = "tests/vb_doc_taint_regression.rs"
 
 [[test]]
 name = "e2e_yaml_sweep"

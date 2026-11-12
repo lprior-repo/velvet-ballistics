@@ -67,18 +67,18 @@ fn contains_unknown_receiver_accepts_bool_i64_f64_and_null_needles() -> ExprResu
 fn contains_rejects_each_known_non_list_receiver_with_exact_mismatch() -> ExprResult<()> {
     let mut context = TypeContext::new();
     context.add_variable(Box::from("$object"), ExprType::Object);
-    for (receiver, found) in [
-        ("true", "boolean"),
-        ("7", "i64"),
-        ("3.5", "f64"),
-        ("null", "null"),
-        ("\"text\"", "text"),
-        ("$object", "object"),
+    for (receiver, expected, found) in [
+        ("true", "text or list", "boolean"),
+        ("7", "text or list", "i64"),
+        ("3.5", "text or list", "f64"),
+        ("null", "text or list", "null"),
+        ("\"text\"", "text", "i64"),
+        ("$object", "text or list", "object"),
     ] {
         assert_eq!(
             check_with(&format!("contains({receiver}, 1)"), &context),
             Err(ExprError::TypeMismatch {
-                expected: "list".into(),
+                expected: expected.into(),
                 found: found.into(),
             })
         );

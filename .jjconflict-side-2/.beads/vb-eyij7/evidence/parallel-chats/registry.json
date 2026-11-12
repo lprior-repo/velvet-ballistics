@@ -1,0 +1,83 @@
+[
+  {
+    "title": "Velvet v1 acceptance and black-hat audit",
+    "role": "acceptance-audit",
+    "bead": "vb-f8vdd",
+    "model": "sol",
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-v1-gap-review-sol-20261021",
+    "threadId": "01a160a2-0935-70b1-8e54-ad13bf733e1c",
+    "hostId": "local"
+  },
+  {
+    "role": "admission",
+    "bead": "vb-ezymz",
+    "model": "sol",
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-ezymz-admission-sol",
+    "title": "Velvet v1 admission — Sol",
+    "threadId": "01a160a3-fad9-7291-b93f-793d98ea34ad",
+    "hostId": "local"
+  },
+  {
+    "role": "retry",
+    "bead": "vb-r5c1c",
+    "model": "luna",
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-r5c1c-retry-luna",
+    "title": "Velvet v1 retry — Luna",
+    "threadId": "01a160a3-fd87-75d2-82b6-0ec1c902e05d",
+    "hostId": "local"
+  },
+  {
+    "role": "lifecycle",
+    "bead": "vb-mryfc",
+    "model": "luna",
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-mryfc-lifecycle-luna",
+    "title": "Velvet v1 lifecycle — Luna",
+    "threadId": "01a160a4-0033-7371-af76-e69bd6cabddd",
+    "hostId": "local"
+  },
+  {
+    "role": "direct-api",
+    "bead": "vb-cvuau",
+    "model": "luna",
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-cvuau-direct-api-luna",
+    "title": "Velvet v1 direct api — Luna",
+    "threadId": "01a160a4-0392-7ee1-8b7c-74585d1ab2be",
+    "hostId": "local"
+  },
+  {
+    "role": "async-audit",
+    "bead": "vb-cyz6d",
+    "model": "sol",
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-cyz6d-async-audit-sol",
+    "title": "Velvet v1 async audit — Sol",
+    "threadId": "01a160a4-064b-7b30-afb5-e2f45d33322a",
+    "hostId": "local"
+  },
+  {
+    "role": "ci",
+    "bead": "vb-xx331",
+    "model": "luna",
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-xx331-ci-luna",
+    "title": "Velvet v1 ci — Luna",
+    "threadId": "01a160a4-09a2-7071-b869-0fea3d6c9ab7",
+    "hostId": "local"
+  },
+  {
+    "role": "yaml-cli",
+    "bead": "vb-014sy",
+    "model": "luna",
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-014sy-yaml-cli-luna",
+    "title": "Velvet v1 yaml cli — Luna",
+    "threadId": "01a160a4-0c38-7ca1-9922-9ef5f83a1057",
+    "hostId": "local"
+  },
+  {
+    "role": "artifact",
+    "bead": "vb-9agmk",
+    "model": "sol",
+    "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-9agmk-artifact-sol",
+    "title": "Velvet v1 artifact — Sol",
+    "threadId": "01a160a4-1453-7272-8e61-366876a6f5a0",
+    "hostId": "local"
+  }
+]

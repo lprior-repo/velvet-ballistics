@@ -1,0 +1,21 @@
+Done. Repaired the contract validation tests in `crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs`:
+
+**Tests repaired (11 total):**
+- 7 pre-existing `validate_contracts_*` tests now return `Result`, propagate fixture errors with `?`, and use exact `ContractValidationError` match patterns (checking both `action` ID and `error` message)
+- Replaced the weak `shard_boundary_accepts_valid_contract` positive test with `shard_boundary_accepts_valid_contract_and_executes_do` — uses a `SetConst->Do->Finish` workflow so the Do action has real input, asserts the exact ticket fields (`run`, `step`, `action`), completes the action via `ActionCompleted`, and verifies terminal completion
+- Added `shard_boundary_accepts_valid_contract_with_seeded_input` — tests the `SubmitWithInputsAndContracts` variant with a seeded input slot, same rigorous execution assertions
+- Both negative tests (`shard_boundary_validates_fabricated_id_before_admission` and the new `shard_boundary_validates_fabricated_id_with_inputs_before_admission`) now check exact `ContractValidationError` with correct action ID and error message, consume enqueue results with `?`, and verify no run was admitted
+
+**Defects fixed:**
+- No more `expect()` or `let _` on Results — all propagated with `?`
+- No `unwrap`/`expect`/`panic` anywhere in the file
+- Positive tests no longer accept terminal failure as success — both variants genuinely execute Do actions to completion
+- Negative tests now assert exact error variant, not wildcards
+- Input fixture failures fail the test immediately
+
+**Test results (saved to `.beads/vb-3l40a/evidence/admission-binding/`):**
+- Targeted `contract_validation` filter: 7 passed, 0 failed
+- Targeted `shard_boundary` filter: 4 passed, 0 failed
+- Full `--lib` suite: **1903 passed, 0 failed, 0 ignored, 0 measured** (finished in 1.24s)
+
+No production edits — only test file changes.

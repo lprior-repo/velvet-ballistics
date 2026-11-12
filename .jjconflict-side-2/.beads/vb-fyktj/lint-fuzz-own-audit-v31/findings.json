@@ -1,0 +1,102 @@
+{
+  "bead": "vb-fyktj",
+  "audit_type": "own-branch-historical",
+  "patches": [
+    {
+      "sha": "a46c3723dc",
+      "scope": "lint as_mut_slice",
+      "files": [
+        "crates/vb_ipc/src/frame_types.rs",
+        "crates/workspace_tests/src/test_util/fixture.rs",
+        "crates/workspace_tests/src/test_util/seed.rs"
+      ],
+      "hunks": [
+        {
+          "file": "crates/vb_ipc/src/frame_types.rs",
+          "old": "&mut bytes[..]",
+          "current_line": 41,
+          "verdict": "preserved_exact"
+        },
+        {
+          "file": "crates/workspace_tests/src/test_util/fixture.rs",
+          "old": "&mut vec[..]",
+          "current_line": 58,
+          "verdict": "preserved_exact"
+        },
+        {
+          "file": "crates/workspace_tests/src/test_util/seed.rs",
+          "old": "&mut bytes[..]",
+          "current_line": 23,
+          "verdict": "preserved_exact"
+        }
+      ],
+      "summary": "all_3_hunks_preserved"
+    },
+    {
+      "sha": "62a2f47c2f",
+      "scope": "fuzz payload bound and profile comments",
+      "files": [
+        "fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs",
+        "fuzz/fuzz_targets/yaml_events.rs",
+        "fuzz/src/yaml_target.rs"
+      ],
+      "hunks": [
+        {
+          "file": "fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs",
+          "change": "doc comment with command hint",
+          "current_line": 1,
+          "verdict": "preserved_exact"
+        },
+        {
+          "file": "fuzz/fuzz_targets/yaml_events.rs",
+          "change": "doc comment with command hint",
+          "current_line": 1,
+          "verdict": "preserved_exact"
+        },
+        {
+          "file": "fuzz/src/yaml_target.rs",
+          "old": "4096",
+          "current_line": 17,
+          "current_value": "100_000",
+          "verdict": "preserved_exact"
+        }
+      ],
+      "summary": "all_3_hunks_preserved"
+    },
+    {
+      "sha": "c56283c963",
+      "scope": "corpora and dictionary smoke changes",
+      "files": [".moon/tasks/all.yml"],
+      "hunks": [
+        {
+          "file": ".moon/tasks/all.yml",
+          "change": "corpus loading",
+          "current_line": 578,
+          "verdict": "preserved_exact"
+        },
+        {
+          "file": ".moon/tasks/all.yml",
+          "change": "dictionary loading",
+          "current_line": 581,
+          "old_syntax": "dict_flag shell variable",
+          "current_syntax": "bash array fuzz_args",
+          "verdict": "superseded_valid"
+        },
+        {
+          "file": ".moon/tasks/all.yml",
+          "change": "fuzz/corpus input dependency",
+          "current_line": 599,
+          "verdict": "preserved_exact"
+        }
+      ],
+      "summary": "2_preserved_exact_1_superseded_valid"
+    }
+  ],
+  "inherited_unresolved": true,
+  "total_hunks": 9,
+  "preserved_exact": 8,
+  "superseded_valid": 1,
+  "obsolete": 0,
+  "missing": 0,
+  "unsafe_historical": 0
+}

@@ -104,7 +104,11 @@ fn push_repeat_continuations(
     ));
 }
 
-fn field_error(step: usize, field: &'static str, expected: &'static str) -> CompileErrors {
+pub(in crate::mod_compile_lowering) fn field_error(
+    step: usize,
+    field: &'static str,
+    expected: &'static str,
+) -> CompileErrors {
     CompileErrors(vec![CompileError::StepFieldShape {
         step,
         field,

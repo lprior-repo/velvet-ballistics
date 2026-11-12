@@ -14,14 +14,14 @@ pub(super) fn check_helper_positions(helper: ExprHelper, arg_types: &[ExprType])
         ExprHelper::StartsWith | ExprHelper::EndsWith => check_two_text(helper, arg_types),
         ExprHelper::Has => check_object_text(helper, arg_types),
         ExprHelper::Length | ExprHelper::Empty => {
-            check_first_domain(helper, arg_types, "text, list, object, or null", |ty| {
+            check_first_domain(helper, arg_types, "list", |ty| {
                 matches!(
                     ty,
                     ExprType::Text | ExprType::List | ExprType::Object | ExprType::Null
                 )
             })
         }
-        ExprHelper::Count => check_first_domain(helper, arg_types, "list or null", |ty| {
+        ExprHelper::Count => check_first_domain(helper, arg_types, "list", |ty| {
             matches!(ty, ExprType::List | ExprType::Null)
         }),
         ExprHelper::Contains => check_contains(arg_types),

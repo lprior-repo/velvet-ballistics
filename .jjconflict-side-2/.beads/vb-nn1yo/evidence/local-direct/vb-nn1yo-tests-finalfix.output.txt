@@ -1,0 +1,12 @@
+```json
+[
+  {
+    "old": "#[test]\nfn retry_last_started() {\n    let a = analyze_retry(&[failed_action(10), started(8), failed_run()]);\n    assert!(a.can_retry);\n    assert_eq!(a.failed_at_step, Some(8));\n}",
+    "new": "#[test]\nfn retry_last_started() {\n    let a = analyze_retry(&[\n        JournalEvent::ActionFailedEvent{run:RunId::new(1),seq:EventSeq::new(1),step:StepIdx::new(10),action:ActionId::new(0),attempt:1},\n        JournalEvent::StepStarted{run:RunId::new(1),seq:EventSeq::new(2),step:StepIdx::new(8),attempt:1},\n        JournalEvent::RunFailed{run:RunId::new(1),seq:EventSeq::new(4)}\n    ]);\n    assert!(a.can_retry);\n    assert_eq!(a.failed_at_step, Some(8));\n}"
+  },
+  {
+    "old": "proptest::proptest! {",
+    "new": "#[test]\nfn retry_explicit_step_failed() {\n    let a = analyze_retry(&[\n        JournalEvent::StepFailed{run:RunId::new(1),seq:EventSeq::new(1),step:StepIdx::new(17),attempt:1},\n        failed_run()\n    ]);\n    assert!(a.can_retry);\n    assert_eq!(a.failed_at_step, Some(17));\n    assert_eq!(a.last_successful_step, None);\n}\n\nproptest::proptest! {"
+  }
+]
+```

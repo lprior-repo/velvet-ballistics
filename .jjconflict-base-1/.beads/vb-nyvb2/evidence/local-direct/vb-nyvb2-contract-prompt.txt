@@ -1,0 +1,996 @@
+Use Rust contract -> implementation -> tests -> code review -> test review. No proof planning. This is a narrow runtime test lint repair. Establish a concrete contract only (no code yet). Compiler reports one unused snap at runtime_tests.rs line767 and unnecessary mut at chunk_001.rs lines346,394 and contract_validation_tests.rs lines163,182,203,224,259,291,349,367,442,462,484,505,530. Existing runtime lib tests1914pass without-Dwarnings. Preserve all assertions; no lint suppression. At pending external action test, consume the counters snapshot with valid pre-completion assertions, not an underscore. Include exact bounded edits and verification commands.
+COUNTERS:
+#![forbid(unsafe_code)]
+//! Atomic-ish counters for runtime observability.
+
+use core::sync::atomic::{AtomicU64, Ordering};
+
+/// Shard-level counters for runs submitted, completed, failed, and steps executed.
+#[derive(Debug)]
+pub struct ShardCounters {
+    runs_submitted: AtomicU64,
+    runs_completed: AtomicU64,
+    runs_failed: AtomicU64,
+    steps_executed: AtomicU64,
+}
+
+impl Default for ShardCounters {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ShardCounters {
+    /// Creates zeroed counters.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            runs_submitted: AtomicU64::new(0),
+            runs_completed: AtomicU64::new(0),
+            runs_failed: AtomicU64::new(0),
+            steps_executed: AtomicU64::new(0),
+        }
+    }
+
+    /// Increments the runs-submitted counter.
+    pub fn inc_submitted(&self) {
+        self.runs_submitted.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Increments the runs-completed counter.
+    pub fn inc_completed(&self) {
+        self.runs_completed.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Increments the runs-failed counter.
+    pub fn inc_failed(&self) {
+        self.runs_failed.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Adds to the steps-executed counter, saturating at `u64::MAX` on overflow.
+    pub fn add_steps(&self, count: u64) {
+        let mut current = self.steps_executed.load(Ordering::Relaxed);
+        loop {
+            let next = current.saturating_add(count);
+            if current == next
+                || self
+                    .steps_executed
+                    .compare_exchange_weak(current, next, Ordering::Relaxed, Ordering::Relaxed)
+                    .is_ok()
+            {
+                return;
+            }
+            current = self.steps_executed.load(Ordering::Relaxed);
+        }
+    }
+}
+
+#[cfg(test)]
+#[path = "counters/tests.rs"]
+mod tests;
+
+/// Snapshot of all shard counters.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CounterSnapshot {
+    /// Total runs submitted.
+    pub runs_submitted: u64,
+    /// Total runs completed successfully.
+    pub runs_completed: u64,
+    /// Total runs failed.
+    pub runs_failed: u64,
+    /// Total steps executed across all runs.
+    pub steps_executed: u64,
+}
+
+impl ShardCounters {
+    /// Drains a snapshot of all counters.
+    pub fn snapshot(&self) -> CounterSnapshot {
+        CounterSnapshot {
+            runs_submitted: self.runs_submitted.load(Ordering::Relaxed),
+            runs_completed: self.runs_completed.load(Ordering::Relaxed),
+            runs_failed: self.runs_failed.load(Ordering::Relaxed),
+            steps_executed: self.steps_executed.load(Ordering::Relaxed),
+        }
+    }
+}
+
+/// Per-shard metrics snapshot for observability.
+#[derive(Debug, Clone)]
+pub struct ShardMetricsSnapshot {
+    /// Shard index in the runtime's shard vector.
+    pub shard_id: u32,
+    /// Number of active runs on this shard.
+    pub active_runs: u32,
+    /// Commands waiting in the ready queue.
+    pub command_queue_depth: u32,
+    /// Remaining free slots in the command queue.
+    pub command_queue_remaining: u32,
+    /// Number of pending timers.
+    pub pending_timers: u32,
+    /// Free frames in the frame pool.
+    pub frame_pool_free: u32,
+    /// Total capacity of the frame pool.
+    pub frame_pool_total: u32,
+    /// Trace ring fill percentage (0.0 - 100.0).
+    pub trace_ring_fill_pct: f32,
+    /// Counter snapshot.
+    pub counters: CounterSnapshot,
+}
+
+/// Aggregate runtime metrics snapshot.
+#[derive(Debug, Clone)]
+pub struct RuntimeMetricsSnapshot {
+    /// Per-shard metrics.
+    pub shards: Vec<ShardMetricsSnapshot>,
+    /// Total active runs across all shards.
+    pub runs_active: u32,
+    /// Total pending timers across all shards.
+    pub runs_waiting: u32,
+    /// Total runs failed across all shards.
+    pub runs_failed_total: u64,
+    /// Total runs finished across all shards.
+    pub runs_finished_total: u64,
+    /// Total steps executed across all shards.
+    pub steps_total: u64,
+}
+
+
+FILE crates/vb_runtime/src/runtime_tests.rs
+748:     }
+749: 
+750:     #[test]
+751:     fn do_action_completion_writes_output_and_journals_events() {
+752:         let Some(shard_count) = NonZeroUsize::new(1) else {
+753:             return;
+754:         };
+755:         let journal = Arc::new(VolatileRuntimeJournal::new());
+756:         let mut runtime = Runtime::new(shard_count, runtime_config(), journal.clone());
+757:         let Some(wf) = action_then_finish_workflow() else {
+758:             return;
+759:         };
+760:         let run = vb_core::ids::RunId::new(11);
+761:         let submit_result = submit_action_then_finish(&runtime, run, wf);
+762:         assert_eq!(submit_result, Ok(()));
+763:         let tick_result = runtime.tick_all();
+764:         assert_eq!(tick_result, Ok(true));
+765: 
+766:         let events = runtime.list_events(run);
+767:         let snap = runtime.counters_snapshot();
+768:         assert!(matches!(
+769:             events,
+770:             Ok(ref evts) if evts.contains(&TraceEvent::ActionScheduled {
+771:                 run,
+772:                 step: StepIdx::ZERO,
+773:             })
+774:         ));
+775: 
+776:         let ticket = ActionTicket {
+777:             run,
+778:             step: StepIdx::ZERO,
+779:             seq: SeqNo::ZERO,
+780:             action: ActionId::new(7),
+781:             attempt: 1,
+782:             idempotency_key: compute_idempotency_key(run, SeqNo::ZERO, ActionId::new(7)),
+783:             capacity: 1,
+784:         };
+785:         let value = SlotValue::I64(99);
+786:         let output = ActionOutputReady {
+787:             output_slot: SlotIdx::new(1),
+788:             value,
+789:             taint: Taint::Clean,
+790:             encoded_len: encoded_len(&value),
+791:         };
+792:         assert_eq!(runtime.complete_action_with_output(ticket, output), Ok(()));
+793:         assert_eq!(runtime.tick_all(), Ok(true));
+794: 
+795:         let snap = runtime.counters_snapshot();
+796:         assert_eq!(snap.runs_completed, 1);
+797:         let trace = runtime.list_events(run);
+798:         assert!(matches!(
+799:             trace,
+800:             Ok(ref evts) if evts.iter().any(|e| matches!(e,
+801:                 TraceEvent::SlotWritten { run: r, slot, .. }
+
+FILE crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs
+327:             max_input_bytes: 0,
+328:             max_output_bytes: 0,
+329:             timeout_ms: 1000,
+330:             idempotency: vb_core::action::Idempotency::DeterministicPure,
+331:             side_effect: vb_core::action::SideEffect::None,
+332:             retry_safety: vb_core::action::RetrySafety::Safe,
+333:             required_capabilities: required_caps,
+334:         }
+335:     }
+336: 
+337:     #[test]
+338:     fn validate_rejects_insufficient_capability() {
+339:         let shard_config = ShardConfig {
+340:             command_queue_capacity: 64,
+341:             trace_capacity: 64,
+342:             step_budget_per_tick: 4,
+343:             max_active_runs: 8,
+344:             policy: vb_core::policy::RuntimePolicy::Relaxed,
+345:         };
+346:         let mut shard = Shard::new(shard_config);
+347:         let run = vb_core::ids::RunId::new(1);
+348:         let workflow = do_workflow();
+349: 
+350:         // Contract requires a cap that is not granted
+351:         let cap =
+352:             vb_core::capability::Capability::new("storage".into(), vb_core::ids::ActionId::new(0));
+353:         let contract = make_contract(
+354:             vb_core::ids::ActionId::new(0),
+355:             "test",
+356:             Box::new([cap.clone()]),
+357:         );
+358: 
+359:         // Grant a different cap
+360:         let granted = vb_core::capability::CapabilitySet::from_grants(Box::new([
+361:             vb_core::capability::Capability::new("other".into(), vb_core::ids::ActionId::new(0)),
+362:         ]));
+363: 
+364:         let result = shard.validate_submit_admission_with_contracts(
+365:             run,
+366:             &workflow,
+367:             granted,
+368:             &vec![contract],
+369:         );
+370: 
+371:         assert!(result.is_err());
+372:         let err = result.unwrap_err();
+373:         match err {
+374:             RuntimeError::AdmissionCapabilityDenied {
+375:                 required,
+376:                 granted: _,
+377:                 ..
+378:             } => {
+379:                 assert_eq!(required.name(), "storage");
+380:             }
+375:                 required,
+376:                 granted: _,
+377:                 ..
+378:             } => {
+379:                 assert_eq!(required.name(), "storage");
+380:             }
+381:             _ => panic!("expected AdmissionCapabilityDenied, got: {err:?}"),
+382:         }
+383:     }
+384: 
+385:     #[test]
+386:     fn validate_accepts_sufficient_capability() {
+387:         let shard_config = ShardConfig {
+388:             command_queue_capacity: 64,
+389:             trace_capacity: 64,
+390:             step_budget_per_tick: 4,
+391:             max_active_runs: 8,
+392:             policy: vb_core::policy::RuntimePolicy::Relaxed,
+393:         };
+394:         let mut shard = Shard::new(shard_config);
+395:         let run = vb_core::ids::RunId::new(2);
+396:         let workflow = do_workflow();
+397: 
+398:         // Contract requires cap that is granted
+399:         let cap =
+400:             vb_core::capability::Capability::new("storage".into(), vb_core::ids::ActionId::new(0));
+401:         let contract = make_contract(
+402:             vb_core::ids::ActionId::new(0),
+403:             "test",
+404:             Box::new([cap.clone()]),
+405:         );
+406: 
+407:         let granted = vb_core::capability::CapabilitySet::from_grants(Box::new([cap.clone()]));
+408: 
+409:         let result = shard.validate_submit_admission_with_contracts(
+410:             run,
+411:             &workflow,
+412:             granted,
+413:             &vec![contract],
+414:         );
+415: 
+416:         assert!(result.is_ok(), "expected Ok, got: {result:?}");
+417:     }
+418: }
+
+FILE crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs
+144:         nodes: Box::from([do_node, finish]),
+145:         expressions: Box::from([]),
+146:         accessors: Box::from([]),
+147:         constants: Box::from([]),
+148:         slot_count: 2,
+149:         symbols_count: 0,
+150:         entry: StepIdx::ZERO,
+151:         step_names: Box::from([]),
+152:         resource_contract: ResourceContract::DEFAULT,
+153:         input_slots: Box::from([CompiledInputSlot {
+154:             slot: SlotIdx::ZERO,
+155:             kind: InputSlotKind::I64,
+156:         }]),
+157:     })
+158:     .map_err(|e| format!("workflow must compile: {}", e).into())
+159: }
+160: 
+161: #[test]
+162: fn validate_contracts_accepts_valid_do_contract() -> Result<(), Box<dyn std::error::Error>> {
+163:     let mut shard = test_shard();
+164:     let workflow = do_workflow(0)?;
+165:     let contract = make_contract(0, "real_action")?;
+166:     let result = shard.validate_submit_admission_with_contracts(
+167:         RunId::new(1),
+168:         &workflow,
+169:         CapabilitySet::empty(),
+170:         &[contract],
+171:     );
+172:     assert!(
+173:         result.is_ok(),
+174:         "valid Do contract must be accepted: {:?}",
+175:         result
+176:     );
+177:     Ok(())
+178: }
+179: 
+180: #[test]
+181: fn validate_contracts_rejects_fabricated_action_id() -> Result<(), Box<dyn std::error::Error>> {
+182:     let mut shard = test_shard();
+183:     let workflow = do_workflow(0)?;
+184:     let contract = make_contract(999, "not_in_workflow")?;
+185:     let result = shard.validate_submit_admission_with_contracts(
+186:         RunId::new(1),
+187:         &workflow,
+188:         CapabilitySet::empty(),
+189:         &[contract],
+190:     );
+191:     match result {
+192:         Err(RuntimeError::ContractValidationError { action, error }) => {
+193:             assert_eq!(action, ActionId::new(999));
+194:             assert_eq!(error, "contract at index 0 has ID 999 (expected 0)");
+195:         }
+196:         other => return Err(format!("expected ContractValidationError, got: {:?}", other).into()),
+197:     }
+163:     let mut shard = test_shard();
+164:     let workflow = do_workflow(0)?;
+165:     let contract = make_contract(0, "real_action")?;
+166:     let result = shard.validate_submit_admission_with_contracts(
+167:         RunId::new(1),
+168:         &workflow,
+169:         CapabilitySet::empty(),
+170:         &[contract],
+171:     );
+172:     assert!(
+173:         result.is_ok(),
+174:         "valid Do contract must be accepted: {:?}",
+175:         result
+176:     );
+177:     Ok(())
+178: }
+179: 
+180: #[test]
+181: fn validate_contracts_rejects_fabricated_action_id() -> Result<(), Box<dyn std::error::Error>> {
+182:     let mut shard = test_shard();
+183:     let workflow = do_workflow(0)?;
+184:     let contract = make_contract(999, "not_in_workflow")?;
+185:     let result = shard.validate_submit_admission_with_contracts(
+186:         RunId::new(1),
+187:         &workflow,
+188:         CapabilitySet::empty(),
+189:         &[contract],
+190:     );
+191:     match result {
+192:         Err(RuntimeError::ContractValidationError { action, error }) => {
+193:             assert_eq!(action, ActionId::new(999));
+194:             assert_eq!(error, "contract at index 0 has ID 999 (expected 0)");
+195:         }
+196:         other => return Err(format!("expected ContractValidationError, got: {:?}", other).into()),
+197:     }
+198:     Ok(())
+199: }
+200: 
+201: #[test]
+202: fn validate_contracts_rejects_duplicate_action_ids() -> Result<(), Box<dyn std::error::Error>> {
+203:     let mut shard = test_shard();
+204:     let workflow = do_workflow(0)?;
+205:     let contract = make_contract(0, "foo")?;
+206:     let result = shard.validate_submit_admission_with_contracts(
+207:         RunId::new(1),
+208:         &workflow,
+209:         CapabilitySet::empty(),
+210:         &[contract.clone(), contract.clone()],
+211:     );
+212:     match result {
+213:         Err(RuntimeError::ContractValidationError { action, error }) => {
+214:             assert_eq!(action, ActionId::new(0));
+215:             assert_eq!(error, "duplicate action ID");
+216:         }
+184:     let contract = make_contract(999, "not_in_workflow")?;
+185:     let result = shard.validate_submit_admission_with_contracts(
+186:         RunId::new(1),
+187:         &workflow,
+188:         CapabilitySet::empty(),
+189:         &[contract],
+190:     );
+191:     match result {
+192:         Err(RuntimeError::ContractValidationError { action, error }) => {
+193:             assert_eq!(action, ActionId::new(999));
+194:             assert_eq!(error, "contract at index 0 has ID 999 (expected 0)");
+195:         }
+196:         other => return Err(format!("expected ContractValidationError, got: {:?}", other).into()),
+197:     }
+198:     Ok(())
+199: }
+200: 
+201: #[test]
+202: fn validate_contracts_rejects_duplicate_action_ids() -> Result<(), Box<dyn std::error::Error>> {
+203:     let mut shard = test_shard();
+204:     let workflow = do_workflow(0)?;
+205:     let contract = make_contract(0, "foo")?;
+206:     let result = shard.validate_submit_admission_with_contracts(
+207:         RunId::new(1),
+208:         &workflow,
+209:         CapabilitySet::empty(),
+210:         &[contract.clone(), contract.clone()],
+211:     );
+212:     match result {
+213:         Err(RuntimeError::ContractValidationError { action, error }) => {
+214:             assert_eq!(action, ActionId::new(0));
+215:             assert_eq!(error, "duplicate action ID");
+216:         }
+217:         other => return Err(format!("expected ContractValidationError, got: {:?}", other).into()),
+218:     }
+219:     Ok(())
+220: }
+221: 
+222: #[test]
+223: fn validate_contracts_rejects_missing_capability() -> Result<(), Box<dyn std::error::Error>> {
+224:     let mut shard = test_shard();
+225:     let workflow = do_workflow(0)?;
+226:     let required = vb_core::capability::Capability::new("needed".into(), ActionId::new(0));
+227:     let contract = vb_core::action::ActionContract {
+228:         id: ActionId::new(0),
+229:         name: vb_core::action::ActionName::new("needs_cap")?,
+230:         input_slot_count: 1,
+231:         output_slot_count: 1,
+232:         max_input_bytes: 1024,
+233:         max_output_bytes: 1024,
+234:         timeout_ms: 1000,
+235:         idempotency: vb_core::action::Idempotency::DeterministicPure,
+236:         side_effect: vb_core::action::SideEffect::None,
+237:         retry_safety: vb_core::action::RetrySafety::Safe,
+205:     let contract = make_contract(0, "foo")?;
+206:     let result = shard.validate_submit_admission_with_contracts(
+207:         RunId::new(1),
+208:         &workflow,
+209:         CapabilitySet::empty(),
+210:         &[contract.clone(), contract.clone()],
+211:     );
+212:     match result {
+213:         Err(RuntimeError::ContractValidationError { action, error }) => {
+214:             assert_eq!(action, ActionId::new(0));
+215:             assert_eq!(error, "duplicate action ID");
+216:         }
+217:         other => return Err(format!("expected ContractValidationError, got: {:?}", other).into()),
+218:     }
+219:     Ok(())
+220: }
+221: 
+222: #[test]
+223: fn validate_contracts_rejects_missing_capability() -> Result<(), Box<dyn std::error::Error>> {
+224:     let mut shard = test_shard();
+225:     let workflow = do_workflow(0)?;
+226:     let required = vb_core::capability::Capability::new("needed".into(), ActionId::new(0));
+227:     let contract = vb_core::action::ActionContract {
+228:         id: ActionId::new(0),
+229:         name: vb_core::action::ActionName::new("needs_cap")?,
+230:         input_slot_count: 1,
+231:         output_slot_count: 1,
+232:         max_input_bytes: 1024,
+233:         max_output_bytes: 1024,
+234:         timeout_ms: 1000,
+235:         idempotency: vb_core::action::Idempotency::DeterministicPure,
+236:         side_effect: vb_core::action::SideEffect::None,
+237:         retry_safety: vb_core::action::RetrySafety::Safe,
+238:         required_capabilities: Box::from([required]),
+239:     };
+240:     let result = shard.validate_submit_admission_with_contracts(
+241:         RunId::new(1),
+242:         &workflow,
+243:         CapabilitySet::empty(),
+244:         &[contract],
+245:     );
+246:     match result {
+247:         Err(RuntimeError::AdmissionCapabilityDenied { required, .. }) => {
+248:             assert_eq!(required.name(), "needed");
+249:         }
+250:         other => {
+251:             return Err(format!("expected AdmissionCapabilityDenied, got: {:?}", other).into())
+252:         }
+253:     }
+254:     Ok(())
+255: }
+256: 
+257: #[test]
+258: fn validate_contracts_accepts_with_capability() -> Result<(), Box<dyn std::error::Error>> {
+240:     let result = shard.validate_submit_admission_with_contracts(
+241:         RunId::new(1),
+242:         &workflow,
+243:         CapabilitySet::empty(),
+244:         &[contract],
+245:     );
+246:     match result {
+247:         Err(RuntimeError::AdmissionCapabilityDenied { required, .. }) => {
+248:             assert_eq!(required.name(), "needed");
+249:         }
+250:         other => {
+251:             return Err(format!("expected AdmissionCapabilityDenied, got: {:?}", other).into())
+252:         }
+253:     }
+254:     Ok(())
+255: }
+256: 
+257: #[test]
+258: fn validate_contracts_accepts_with_capability() -> Result<(), Box<dyn std::error::Error>> {
+259:     let mut shard = test_shard();
+260:     let workflow = do_workflow(0)?;
+261:     let cap = vb_core::capability::Capability::new("needed".into(), ActionId::new(0));
+262:     let caps = CapabilitySet::from_grants(Box::from([cap]));
+263:     let contract = vb_core::action::ActionContract {
+264:         id: ActionId::new(0),
+265:         name: vb_core::action::ActionName::new("needs_cap")?,
+266:         input_slot_count: 1,
+267:         output_slot_count: 1,
+268:         max_input_bytes: 1024,
+269:         max_output_bytes: 1024,
+270:         timeout_ms: 1000,
+271:         idempotency: vb_core::action::Idempotency::DeterministicPure,
+272:         side_effect: vb_core::action::SideEffect::None,
+273:         retry_safety: vb_core::action::RetrySafety::Safe,
+274:         required_capabilities: Box::from([vb_core::capability::Capability::new(
+275:             "needed".into(),
+276:             ActionId::new(0),
+277:         )]),
+278:     };
+279:     let result =
+280:         shard.validate_submit_admission_with_contracts(RunId::new(1), &workflow, caps, &[contract]);
+281:     assert!(
+282:         result.is_ok(),
+283:         "contract with satisfied capability must be accepted: {:?}",
+284:         result
+285:     );
+286:     Ok(())
+287: }
+288: 
+289: #[test]
+290: fn validate_contracts_rejection_is_non_mutating() -> Result<(), Box<dyn std::error::Error>> {
+291:     let mut shard = test_shard();
+292:     let workflow = do_workflow(0)?;
+293:     let contract = make_contract(999, "not_in_workflow")?;
+272:         side_effect: vb_core::action::SideEffect::None,
+273:         retry_safety: vb_core::action::RetrySafety::Safe,
+274:         required_capabilities: Box::from([vb_core::capability::Capability::new(
+275:             "needed".into(),
+276:             ActionId::new(0),
+277:         )]),
+278:     };
+279:     let result =
+280:         shard.validate_submit_admission_with_contracts(RunId::new(1), &workflow, caps, &[contract]);
+281:     assert!(
+282:         result.is_ok(),
+283:         "contract with satisfied capability must be accepted: {:?}",
+284:         result
+285:     );
+286:     Ok(())
+287: }
+288: 
+289: #[test]
+290: fn validate_contracts_rejection_is_non_mutating() -> Result<(), Box<dyn std::error::Error>> {
+291:     let mut shard = test_shard();
+292:     let workflow = do_workflow(0)?;
+293:     let contract = make_contract(999, "not_in_workflow")?;
+294:     let run = RunId::new(1);
+295:     let result = shard.validate_submit_admission_with_contracts(
+296:         run,
+297:         &workflow,
+298:         CapabilitySet::empty(),
+299:         &[contract],
+300:     );
+301:     assert!(result.is_err());
+302:     assert!(
+303:         !shard.run_state_contains(run),
+304:         "rejection must not mutate run state"
+305:     );
+306:     Ok(())
+307: }
+308: 
+309: #[test]
+310: fn validate_contracts_accepts_reused_action_ids() -> Result<(), Box<dyn std::error::Error>> {
+311:     // Workflow with same action appearing twice
+312:     let node1 = CompiledNode {
+313:         id: StepIdx::ZERO,
+314:         output: Some(SlotIdx::ZERO),
+315:         next: Some(StepIdx::new(1)),
+316:         on_error: None,
+317:         error_slot: None,
+318:         kind: CompiledNodeKind::Do {
+319:             action: ActionId::new(0),
+320:             input: SlotIdx::ZERO,
+321:         },
+322:     };
+323:     let node2 = CompiledNode {
+324:         id: StepIdx::new(1),
+325:         output: Some(SlotIdx::new(1)),
+330:             action: ActionId::new(0),
+331:             input: SlotIdx::new(1),
+332:         },
+333:     };
+334:     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+335:         name: Box::from("reused"),
+336:         digest: WorkflowDigest::from_bytes([3; 32]),
+337:         nodes: Box::from([node1, node2]),
+338:         expressions: Box::from([]),
+339:         accessors: Box::from([]),
+340:         constants: Box::from([]),
+341:         slot_count: 2,
+342:         symbols_count: 0,
+343:         entry: StepIdx::ZERO,
+344:         step_names: Box::from([]),
+345:         resource_contract: ResourceContract::DEFAULT,
+346:         input_slots: Box::from([]),
+347:     })?;
+348: 
+349:     let mut shard = test_shard();
+350:     let contract = make_contract(0, "reused")?;
+351:     let result = shard.validate_submit_admission_with_contracts(
+352:         RunId::new(1),
+353:         &workflow,
+354:         CapabilitySet::empty(),
+355:         &[contract],
+356:     );
+357:     assert!(
+358:         result.is_ok(),
+359:         "reused action IDs must be accepted: {:?}",
+360:         result
+361:     );
+362:     Ok(())
+363: }
+364: 
+365: #[test]
+366: fn validate_contracts_rejects_empty_action_name() -> Result<(), Box<dyn std::error::Error>> {
+367:     let mut shard = test_shard();
+368:     let workflow = do_workflow(0)?;
+369:     // Use postcard to deserialize an empty ActionName (constructor rejects "")
+370:     let empty_bytes = b"\x00\x00";
+371:     let empty_name: vb_core::action::ActionName = postcard::from_bytes(empty_bytes)?;
+372:     let contract = vb_core::action::ActionContract {
+373:         id: ActionId::new(0),
+374:         name: empty_name,
+375:         input_slot_count: 1,
+376:         output_slot_count: 1,
+377:         max_input_bytes: 1024,
+378:         max_output_bytes: 1024,
+379:         timeout_ms: 1000,
+380:         idempotency: vb_core::action::Idempotency::DeterministicPure,
+381:         side_effect: vb_core::action::SideEffect::None,
+382:         retry_safety: vb_core::action::RetrySafety::Safe,
+383:         required_capabilities: Box::new([]),
+348: 
+349:     let mut shard = test_shard();
+350:     let contract = make_contract(0, "reused")?;
+351:     let result = shard.validate_submit_admission_with_contracts(
+352:         RunId::new(1),
+353:         &workflow,
+354:         CapabilitySet::empty(),
+355:         &[contract],
+356:     );
+357:     assert!(
+358:         result.is_ok(),
+359:         "reused action IDs must be accepted: {:?}",
+360:         result
+361:     );
+362:     Ok(())
+363: }
+364: 
+365: #[test]
+366: fn validate_contracts_rejects_empty_action_name() -> Result<(), Box<dyn std::error::Error>> {
+367:     let mut shard = test_shard();
+368:     let workflow = do_workflow(0)?;
+369:     // Use postcard to deserialize an empty ActionName (constructor rejects "")
+370:     let empty_bytes = b"\x00\x00";
+371:     let empty_name: vb_core::action::ActionName = postcard::from_bytes(empty_bytes)?;
+372:     let contract = vb_core::action::ActionContract {
+373:         id: ActionId::new(0),
+374:         name: empty_name,
+375:         input_slot_count: 1,
+376:         output_slot_count: 1,
+377:         max_input_bytes: 1024,
+378:         max_output_bytes: 1024,
+379:         timeout_ms: 1000,
+380:         idempotency: vb_core::action::Idempotency::DeterministicPure,
+381:         side_effect: vb_core::action::SideEffect::None,
+382:         retry_safety: vb_core::action::RetrySafety::Safe,
+383:         required_capabilities: Box::new([]),
+384:     };
+385:     let result = shard.validate_submit_admission_with_contracts(
+386:         RunId::new(1),
+387:         &workflow,
+388:         CapabilitySet::empty(),
+389:         &[contract],
+390:     );
+391:     match result {
+392:         Err(RuntimeError::ContractValidationError { action, error }) => {
+393:             assert_eq!(action, ActionId::new(0));
+394:             assert_eq!(error, "action name is empty");
+395:         }
+396:         other => return Err(format!("expected ContractValidationError, got: {:?}", other).into()),
+397:     }
+398:     Ok(())
+399: }
+400: 
+401: #[test]
+423:             action: ActionId::new(1),
+424:             input: SlotIdx::new(1),
+425:         },
+426:     };
+427:     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+428:         name: Box::from("multi-action"),
+429:         digest: WorkflowDigest::from_bytes([4; 32]),
+430:         nodes: Box::from([node1, node2]),
+431:         expressions: Box::from([]),
+432:         accessors: Box::from([]),
+433:         constants: Box::from([]),
+434:         slot_count: 2,
+435:         symbols_count: 0,
+436:         entry: StepIdx::ZERO,
+437:         step_names: Box::from([]),
+438:         resource_contract: ResourceContract::DEFAULT,
+439:         input_slots: Box::from([]),
+440:     })?;
+441: 
+442:     let mut shard = test_shard();
+443:     let contract0 = make_contract(0, "first")?;
+444:     let contract1 = make_contract(1, "second")?;
+445:     let result = shard.validate_submit_admission_with_contracts(
+446:         RunId::new(1),
+447:         &workflow,
+448:         CapabilitySet::empty(),
+449:         &[contract0, contract1],
+450:     );
+451:     assert!(
+452:         result.is_ok(),
+453:         "multiple distinct action IDs must be accepted: {:?}",
+454:         result
+455:     );
+456:     Ok(())
+457: }
+458: 
+459: #[test]
+460: fn validate_contracts_rejects_missing_referenced_action() -> Result<(), Box<dyn std::error::Error>>
+461: {
+462:     let mut shard = test_shard();
+463:     let workflow = do_workflow(10)?;
+464:     let contract = make_contract(0, "only_action")?;
+465:     let result = shard.validate_submit_admission_with_contracts(
+466:         RunId::new(1),
+467:         &workflow,
+468:         CapabilitySet::empty(),
+469:         &[contract],
+470:     );
+471:     match result {
+472:         Err(RuntimeError::ContractValidationError { action, error }) => {
+473:             assert_eq!(action, ActionId::new(10));
+474:             assert_eq!(error, "no contract for workflow Do action");
+475:         }
+476:         other => return Err(format!("expected ContractValidationError, got: {:?}", other).into()),
+443:     let contract0 = make_contract(0, "first")?;
+444:     let contract1 = make_contract(1, "second")?;
+445:     let result = shard.validate_submit_admission_with_contracts(
+446:         RunId::new(1),
+447:         &workflow,
+448:         CapabilitySet::empty(),
+449:         &[contract0, contract1],
+450:     );
+451:     assert!(
+452:         result.is_ok(),
+453:         "multiple distinct action IDs must be accepted: {:?}",
+454:         result
+455:     );
+456:     Ok(())
+457: }
+458: 
+459: #[test]
+460: fn validate_contracts_rejects_missing_referenced_action() -> Result<(), Box<dyn std::error::Error>>
+461: {
+462:     let mut shard = test_shard();
+463:     let workflow = do_workflow(10)?;
+464:     let contract = make_contract(0, "only_action")?;
+465:     let result = shard.validate_submit_admission_with_contracts(
+466:         RunId::new(1),
+467:         &workflow,
+468:         CapabilitySet::empty(),
+469:         &[contract],
+470:     );
+471:     match result {
+472:         Err(RuntimeError::ContractValidationError { action, error }) => {
+473:             assert_eq!(action, ActionId::new(10));
+474:             assert_eq!(error, "no contract for workflow Do action");
+475:         }
+476:         other => return Err(format!("expected ContractValidationError, got: {:?}", other).into()),
+477:     }
+478:     Ok(())
+479: }
+480: 
+481: #[test]
+482: fn validate_contracts_accepts_unused_dense_entries() -> Result<(), Box<dyn std::error::Error>> {
+483:     // Registry with 3 contracts, workflow only uses action 0
+484:     let mut shard = test_shard();
+485:     let workflow = do_workflow(0)?;
+486:     let contract0 = make_contract(0, "used")?;
+487:     let contract1 = make_contract(1, "unused1")?;
+488:     let contract2 = make_contract(2, "unused2")?;
+489:     let result = shard.validate_submit_admission_with_contracts(
+490:         RunId::new(1),
+491:         &workflow,
+492:         CapabilitySet::empty(),
+493:         &[contract0, contract1, contract2],
+494:     );
+495:     assert!(
+496:         result.is_ok(),
+465:     let result = shard.validate_submit_admission_with_contracts(
+466:         RunId::new(1),
+467:         &workflow,
+468:         CapabilitySet::empty(),
+469:         &[contract],
+470:     );
+471:     match result {
+472:         Err(RuntimeError::ContractValidationError { action, error }) => {
+473:             assert_eq!(action, ActionId::new(10));
+474:             assert_eq!(error, "no contract for workflow Do action");
+475:         }
+476:         other => return Err(format!("expected ContractValidationError, got: {:?}", other).into()),
+477:     }
+478:     Ok(())
+479: }
+480: 
+481: #[test]
+482: fn validate_contracts_accepts_unused_dense_entries() -> Result<(), Box<dyn std::error::Error>> {
+483:     // Registry with 3 contracts, workflow only uses action 0
+484:     let mut shard = test_shard();
+485:     let workflow = do_workflow(0)?;
+486:     let contract0 = make_contract(0, "used")?;
+487:     let contract1 = make_contract(1, "unused1")?;
+488:     let contract2 = make_contract(2, "unused2")?;
+489:     let result = shard.validate_submit_admission_with_contracts(
+490:         RunId::new(1),
+491:         &workflow,
+492:         CapabilitySet::empty(),
+493:         &[contract0, contract1, contract2],
+494:     );
+495:     assert!(
+496:         result.is_ok(),
+497:         "unused dense entries must be accepted: {:?}",
+498:         result
+499:     );
+500:     Ok(())
+501: }
+502: 
+503: #[test]
+504: fn validate_contracts_rejects_sparse_registry() -> Result<(), Box<dyn std::error::Error>> {
+505:     let mut shard = test_shard();
+506:     let workflow = do_workflow(0)?;
+507:     let contract0 = make_contract(0, "ok")?;
+508:     let contract2 = make_contract(2, "sparse")?;
+509:     let result = shard.validate_submit_admission_with_contracts(
+510:         RunId::new(1),
+511:         &workflow,
+512:         CapabilitySet::empty(),
+513:         &[contract0, contract2],
+514:     );
+515:     match result {
+516:         Err(RuntimeError::ContractValidationError { action, error }) => {
+517:             assert_eq!(action, ActionId::new(2));
+518:             assert_eq!(error, "contract at index 1 has ID 2 (expected 1)");
+486:     let contract0 = make_contract(0, "used")?;
+487:     let contract1 = make_contract(1, "unused1")?;
+488:     let contract2 = make_contract(2, "unused2")?;
+489:     let result = shard.validate_submit_admission_with_contracts(
+490:         RunId::new(1),
+491:         &workflow,
+492:         CapabilitySet::empty(),
+493:         &[contract0, contract1, contract2],
+494:     );
+495:     assert!(
+496:         result.is_ok(),
+497:         "unused dense entries must be accepted: {:?}",
+498:         result
+499:     );
+500:     Ok(())
+501: }
+502: 
+503: #[test]
+504: fn validate_contracts_rejects_sparse_registry() -> Result<(), Box<dyn std::error::Error>> {
+505:     let mut shard = test_shard();
+506:     let workflow = do_workflow(0)?;
+507:     let contract0 = make_contract(0, "ok")?;
+508:     let contract2 = make_contract(2, "sparse")?;
+509:     let result = shard.validate_submit_admission_with_contracts(
+510:         RunId::new(1),
+511:         &workflow,
+512:         CapabilitySet::empty(),
+513:         &[contract0, contract2],
+514:     );
+515:     match result {
+516:         Err(RuntimeError::ContractValidationError { action, error }) => {
+517:             assert_eq!(action, ActionId::new(2));
+518:             assert_eq!(error, "contract at index 1 has ID 2 (expected 1)");
+519:         }
+520:         other => return Err(format!("expected ContractValidationError, got: {:?}", other).into()),
+521:     }
+522:     Ok(())
+523: }
+524: 
+525: #[test]
+526: fn validate_contracts_duplicate_precedes_index_mismatch() -> Result<(), Box<dyn std::error::Error>>
+527: {
+528:     // Two contracts with ID 3, at indices 0 and 1 — duplicate must be detected
+529:     // before the index mismatch at index 0
+530:     let mut shard = test_shard();
+531:     let workflow = do_workflow(0)?;
+532:     let contract_a = make_contract(3, "dup")?;
+533:     let contract_b = make_contract(3, "dup2")?;
+534:     let result = shard.validate_submit_admission_with_contracts(
+535:         RunId::new(1),
+536:         &workflow,
+537:         CapabilitySet::empty(),
+538:         &[contract_a, contract_b],
+539:     );
+511:         &workflow,
+512:         CapabilitySet::empty(),
+513:         &[contract0, contract2],
+514:     );
+515:     match result {
+516:         Err(RuntimeError::ContractValidationError { action, error }) => {
+517:             assert_eq!(action, ActionId::new(2));
+518:             assert_eq!(error, "contract at index 1 has ID 2 (expected 1)");
+519:         }
+520:         other => return Err(format!("expected ContractValidationError, got: {:?}", other).into()),
+521:     }
+522:     Ok(())
+523: }
+524: 
+525: #[test]
+526: fn validate_contracts_duplicate_precedes_index_mismatch() -> Result<(), Box<dyn std::error::Error>>
+527: {
+528:     // Two contracts with ID 3, at indices 0 and 1 — duplicate must be detected
+529:     // before the index mismatch at index 0
+530:     let mut shard = test_shard();
+531:     let workflow = do_workflow(0)?;
+532:     let contract_a = make_contract(3, "dup")?;
+533:     let contract_b = make_contract(3, "dup2")?;
+534:     let result = shard.validate_submit_admission_with_contracts(
+535:         RunId::new(1),
+536:         &workflow,
+537:         CapabilitySet::empty(),
+538:         &[contract_a, contract_b],
+539:     );
+540:     match result {
+541:         Err(RuntimeError::ContractValidationError { action, error }) => {
+542:             assert_eq!(action, ActionId::new(3));
+543:             assert_eq!(error, "duplicate action ID");
+544:         }
+545:         other => return Err(format!("expected duplicate error, got: {:?}", other).into()),
+546:     }
+547:     Ok(())
+548: }
+549: 
+550: // Direct shard boundary validation tests with journal immutability checks.
+551: 
+552: #[test]
+553: fn shard_boundary_validates_fabricated_id_before_admission(
+554: ) -> Result<(), Box<dyn std::error::Error>> {
+555:     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+556:     let mut shard = Shard::new_with_journal(
+557:         ShardConfig {
+558:             command_queue_capacity: 64,
+559:             trace_capacity: 64,
+560:             step_budget_per_tick: 4,
+561:             max_active_runs: 8,
+562:             policy: RuntimePolicy::Relaxed,
+563:         },
+564:         journal.clone(),

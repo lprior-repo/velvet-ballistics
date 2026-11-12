@@ -71,6 +71,9 @@ pub(super) fn eval_has(stack: &mut ExprStack, store: &ValueStore) -> Result<(), 
     let fields = store
         .object(object_id)
         .map_err(|_| EngineError::ObjectOutOfBounds { object: object_id })?;
+    store
+        .symbol(key)
+        .map_err(|_| EngineError::SymbolOutOfBounds { symbol: key })?;
     let found = fields.iter().any(|field| field.key == key);
     push_value(stack, SlotValue::Bool(found))
 }

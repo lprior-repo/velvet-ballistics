@@ -1,0 +1,12 @@
+```json
+[
+  {
+    "old": "    let error = real_budget_error()?;\n    let mut warnings: Vec<String> = vec![];\n    let result = handle_budget_computation_failure(VerifyProfile::Full, error, &mut warnings);\n    match result {\n        Err(VerifyError::BudgetPolicy(message)) => {",
+    "new": "    let error = real_budget_error()?;\n    let mut checks = vec![\"yaml_parse\", \"compilation\", \"ir_validation\"];\n    let mut warnings: Vec<String> = vec![];\n    let result = record_budget_result(VerifyProfile::Full, Err(error), &mut checks, &mut warnings);\n    assert_eq!(checks, vec![\"yaml_parse\", \"compilation\", \"ir_validation\"]);\n    match result {\n        Err(VerifyError::BudgetPolicy(message)) => {"
+  },
+  {
+    "old": "    let error = real_budget_error()?;\n    let mut warnings: Vec<String> = vec![];\n    let result = handle_budget_computation_failure(VerifyProfile::Standard, error, &mut warnings);\n    match result {\n        Ok(()) => {",
+    "new": "    let error = real_budget_error()?;\n    let mut checks = vec![\"yaml_parse\", \"compilation\", \"ir_validation\"];\n    let mut warnings: Vec<String> = vec![];\n    let result = record_budget_result(VerifyProfile::Standard, Err(error), &mut checks, &mut warnings);\n    assert_eq!(checks, vec![\"yaml_parse\", \"compilation\", \"ir_validation\"]);\n    match result {\n        Ok(()) => {"
+  }
+]
+```

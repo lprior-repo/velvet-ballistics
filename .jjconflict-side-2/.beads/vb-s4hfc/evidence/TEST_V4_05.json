@@ -1,0 +1,19 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-full-record-tests",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_storage",
+    "--test",
+    "policy_decision_full_record"
+  ],
+  "exit_code": 101,
+  "seconds": 0.273,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-s4hfc/evidence/TEST_V4_05"
+}

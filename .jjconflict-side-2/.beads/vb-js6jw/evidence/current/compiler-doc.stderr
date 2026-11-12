@@ -1,0 +1,3 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-js6jw-compiler-fmt-sol/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.96s
+   Doc-tests vb_compile

@@ -63,7 +63,6 @@ impl SourceSymbolTable {
         self.entries.is_empty()
     }
 
-    #[cfg(test)]
     pub(crate) fn symbol_bytes(&self) -> u64 {
         self.symbol_bytes
     }

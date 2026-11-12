@@ -1,0 +1,69 @@
+Implement accepted contract as exact JSON [{path,old,new}], no prose. Four missing WorkflowParts.input_slots fields in one testfile. Strictuniqueoldmatches: simplest one replacement old "        step_names: Box::default()," currently fouroccurrences; instead return fouruniquecontexts usingname/digestorconstants. Could return entire sourcepatterncommonfield with explicit replace_all true but toolconsumer supports onlypath old new; so4uniquefragments. Only add input_slots:Box::from([]) forfour noexternalportfixtures. No formatting/assertionchange.
+**Contract: Add missing `input_slots` initializers to `WorkflowParts` in cross-crate adversarial tests**
+
+**Scope:** `crates/velvet_ballistics/tests/cross_crate_adversarial.rs` only. No production code or assertion changes.
+
+**Fix:** Add `input_slots: Box::from([])` to every `WorkflowParts` struct initializer in the test file.
+
+**Rationale:** `WorkflowParts` requires an `input_slots` field. Test fixtures were missing this initializer, causing compilation errors. All test workflows are self-contained with no declared external input ports, so an empty `input_slots` array is correct.
+
+**Coverage:**
+- `minimal_parts` helper: covers `direct`, `core`, `engine`, and `invalidIR` test variants.
+- `concrete3SetConst` workflows: produce their own slots internally; no CLI binary input payload is involved.
+
+**Design decision:** Do not infer input ports from `frame.write_slot` calls. Those are runtime-internal input seeding operations, not CLI schema declarations. Empty `input_slots` is added only when no external ports are declared.
+
+**Acceptance:** Execute the focused cross-crate target and inspect actual results. Compilation/pass is not yet demonstrated. No behavioral or assertion changes.
+FULL initializers
+    WorkflowParts {
+        name: Box::from("test"),
+        digest: WorkflowDigest::from_bytes([0u8; 32]),
+        nodes,
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 4,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
+    }
+    let parts = WorkflowParts {
+        name: Box::from("set_finish"),
+        digest: WorkflowDigest::from_bytes([1u8; 32]),
+        nodes: Box::from([node0, node1]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(42)]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
+    };
+    let parts = WorkflowParts {
+        name: Box::from("budget_test"),
+        digest: WorkflowDigest::from_bytes([2u8; 32]),
+        nodes: Box::from([node0, node1, node2]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(42)]),
+        slot_count: 3,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
+    };
+    let parts = WorkflowParts {
+        name: Box::from("rt_test"),
+        digest: WorkflowDigest::from_bytes([3u8; 32]),
+        nodes: Box::from([node0, node1]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(42)]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
+    };

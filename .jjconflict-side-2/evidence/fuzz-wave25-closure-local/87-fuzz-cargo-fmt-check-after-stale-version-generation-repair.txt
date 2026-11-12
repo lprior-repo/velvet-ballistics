@@ -1,0 +1,3 @@
+COMMAND: cargo fmt --all -- --check (fuzz workspace)
+
+EXIT_STATUS=0

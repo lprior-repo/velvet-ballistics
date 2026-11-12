@@ -1,0 +1,29 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-rmufc-preserved-slices-v1",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "NEXTEST_TEST_THREADS=1",
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "nextest",
+    "run",
+    "--cargo-quiet",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--all-features",
+    "-E",
+    "test(source_digest_mismatch_returns_payload_digest_mismatch_when_claimed_digest_differs) | test(pi_02_digest_roundtrip_relaxed) | test(pi_02_digest_roundtrip_journaled) | test(pi_02_digest_roundtrip_strict)"
+  ],
+  "exit_code": 0,
+  "seconds": 36.251,
+  "timeout_seconds": 240,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_PRESERVED_SLICES_V5_ABORTED_TESTS_SERIAL"
+}

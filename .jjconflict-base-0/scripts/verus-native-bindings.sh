@@ -15,7 +15,7 @@ verus_native_build() {
   mkdir -p -- "$evidence"
   evidence="$(cd -- "$evidence" && pwd -P)"
   VERUS_NATIVE_EVIDENCE="$evidence"
-  native_toolchain=$(verus --version | sed -n 's/^  Toolchain: //p')
+  native_toolchain=$(verus --version | sed -n 's/^  Toolchain: \([^ ]*\).*/\1/p')
   if [ -z "$native_toolchain" ] || [[ "$native_toolchain" == *$'\n'* ]]; then
     printf 'Cannot determine the exact Verus Rust toolchain.\n' >&2
     return 1

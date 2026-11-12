@@ -1,0 +1,25 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-ucsv7-local5090-tool-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_eepg_bdd_tests",
+    "--test",
+    "vb_8ma2_workspace_assertions",
+    "--test",
+    "vb_kkvb_xtask_command_shell_coverage",
+    "--test",
+    "vb_nf2u_current_scope_tests"
+  ],
+  "exit_code": 0,
+  "seconds": 58.5,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ucsv7/evidence/ucsv7-all-suites"
+}

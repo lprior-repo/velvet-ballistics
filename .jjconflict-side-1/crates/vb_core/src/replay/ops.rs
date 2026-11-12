@@ -32,13 +32,20 @@ pub fn eval_replay_op(
     stack: &mut ReplayExprStack,
     taint_accum: &mut Taint,
 ) -> Result<(), ReplayError> {
+    let step = run.pc();
     stack.reset_operand_taint();
     let result = eval_replay_op_inner(plan, run, store, op, stack, taint_accum).and_then(|()| {
         *taint_accum = join_taint(*taint_accum, stack.result_taint()?);
         Ok(())
     });
     stack.reset_operand_taint();
-    result
+    result.map_err(|e| {
+        if let ReplayError::ExpressionEvalFailed { step: _ } = e {
+            ReplayError::ExpressionEvalFailed { step }
+        } else {
+            e
+        }
+    })
 }
 
 fn eval_replay_op_inner(

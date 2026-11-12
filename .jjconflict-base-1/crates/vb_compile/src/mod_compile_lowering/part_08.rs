@@ -1,0 +1,216 @@
+#![allow(unused_imports)]
+use super::*;
+use crate::expression::ParsedExpression;
+use crate::expression_bytecode::compile_expr_to_bytecode_with_step_slots;
+use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_error};
+use crate::mod_compile_validation::{
+    reject_unsupported_for_each_fields, validate_canonical_compile_scope,
+};
+use saphyr::Yaml;
+use std::collections::HashMap;
+use vb_core::{
+    AccessorProgram, CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind,
+    CompiledWorkflow, ConstIdx, ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract,
+    SlotBranch, SlotIdx, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
+};
+
+impl SlotCompiler {
+    /// Interns a cold source literal in deterministic identifier order.
+    pub fn intern(&mut self, text: &str) -> Result<vb_core::SymbolId, CompileError> {
+        crate::source_symbol_binding::intern_source_text(&mut self.source_symbols, text)
+    }
+
+    /// Creates a new empty slot compiler.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            source_symbols: crate::source_symbols::SourceSymbolTable::new(),
+            ..Self::default()
+        }
+
+    }
+
+    /// Allocates one slot above every previously recorded or reserved slot.
+    ///
+    /// The resulting slot count must remain representable as `u16`. In
+    /// particular, slot 65_535 cannot be allocated because its count would
+    /// be 65_536. Overflow leaves the builder unchanged.
+    pub fn allocate_slot(&mut self) -> Result<SlotIdx, CompileError> {
+        let index = self.slot_count()?;
+        let count = index
+            .checked_add(1)
+            .ok_or(CompileError::SlotIndexOutOfRange {
+                value: i64::from(index),
+            })?;
+        self.reserve_slots(count)?;
+        Ok(SlotIdx::new(index))
+    }
+
+    /// Reserves `[0, count)` without shrinking an existing reservation.
+    ///
+    /// Source-visible slots must be reserved before generated scratch slots
+    /// are allocated. Zero is a no-op; a failed check never changes state.
+    pub fn reserve_slots(&mut self, count: u16) -> Result<(), CompileError> {
+        if count == 0 {
+            return Ok(());
+        }
+        let current = self.slot_count()?;
+        if count > current {
+            let last = count
+                .checked_sub(1)
+                .ok_or(CompileError::SlotIndexOutOfRange { value: 0 })?;
+            self.record_slot(SlotIdx::new(last));
+        }
+        Ok(())
+    }
+
+    /// Pushes a constant value and returns its index.
+    pub fn push_constant(&mut self, value: ConstValue) -> Result<ConstIdx, CompileError> {
+        let index = u16::try_from(self.constants.len()).map_err(|_| {
+            CompileError::Workflow(WorkflowError::ConstOutOfBounds {
+                constant: ConstIdx::new(u16::MAX),
+            })
+        })?;
+        self.constants.push(value);
+        Ok(ConstIdx::new(index))
+    }
+
+    /// Pushes an expression program and returns its index.
+    pub fn push_expression(&mut self, program: ExprProgram) -> Result<ExprIdx, CompileError> {
+        let index = u16::try_from(self.expressions.len()).map_err(|_| {
+            CompileError::ExpressionLoweringUnsupported {
+                feature: "expression table overflow".into(),
+            }
+        })?;
+        self.expressions.push(program);
+        Ok(ExprIdx::new(index))
+    }
+
+    /// Pushes an accessor program and returns its index.
+    pub fn push_accessor(
+        &mut self,
+        program: AccessorProgram,
+    ) -> Result<vb_core::AccessorIdx, CompileError> {
+        let index = u16::try_from(self.accessors.len()).map_err(|_| {
+            CompileError::ExpressionLoweringUnsupported {
+                feature: "accessor table overflow".into(),
+            }
+        })?;
+        self.accessors.push(program);
+        Ok(vb_core::AccessorIdx::new(index))
+    }
+
+    /// Compiles an expression with step slot resolution, pushing constants and
+    /// accessors into the builder's internal vectors.
+    pub fn compile_expression_with_step_slots(
+        &mut self,
+        expr: &ParsedExpression,
+        step_slots: &[(Box<str>, SlotIdx)],
+    ) -> Result<ExprIdx, CompileError> {
+        let program = compile_expr_to_bytecode_with_step_slots(
+            expr,
+            &mut self.constants,
+            &mut self.accessors,
+            step_slots,
+        )?;
+        self.push_expression(program)
+    }
+
+    /// Records a slot reference for slot count tracking.
+    pub fn record_slot(&mut self, slot: SlotIdx) {
+        let value = slot.as_usize();
+        self.max_slot = Some(match self.max_slot {
+            Some(current) => current.max(value),
+            None => value,
+        });
+    }
+
+    /// Records an input slot with its kind classification and retained constraints.
+    pub fn record_input_slot(
+        &mut self,
+        slot: SlotIdx,
+        kind: InputSlotKind,
+        constraint: CompiledInputConstraint,
+    ) {
+        self.input_slots.push(CompiledInputSlot {
+            slot,
+            kind,
+            constraint,
+        });
+        self.input_slots.sort_unstable_by_key(|input| input.slot);
+    }
+
+    /// Pushes a compiled node into the node array.
+    pub fn push_node(&mut self, node: CompiledNode) {
+        self.nodes.push(node);
+    }
+
+    /// Returns the current slot count.
+    pub fn slot_count(&self) -> Result<u16, CompileError> {
+        match self.max_slot {
+            Some(value) => {
+                let count = value
+                    .checked_add(1)
+                    .ok_or(CompileError::SlotIndexOutOfRange { value: i64::MAX })?;
+                u16::try_from(count).map_err(|_| CompileError::SlotIndexOutOfRange {
+                    value: i64::from(u16::MAX),
+                })
+            }
+            None => Ok(0),
+        }
+    }
+
+    /// Builds the final workflow parts from accumulated state.
+    pub fn build_parts(
+        self,
+        name: &str,
+        digest: WorkflowDigest,
+    ) -> Result<WorkflowParts, CompileError> {
+        Ok(WorkflowParts {
+            name: Box::from(name),
+            digest,
+            semantic_source_identity: None,
+            source_metadata: None,
+            slot_count: self.slot_count()?,
+            symbols_count: 0,
+            nodes: self.nodes.into_boxed_slice(),
+            expressions: self.expressions.into_boxed_slice(),
+            accessors: self.accessors.into_boxed_slice(),
+            constants: self.constants.into_boxed_slice(),
+            entry: StepIdx::new(0),
+            // NB: ResourceContract::DEFAULT is used when no explicit contract is provided.
+            // Callers needing a specific contract should use compile_source(contract).
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+            input_slots: self.input_slots.into_boxed_slice(),
+        })
+    }
+}
+
+pub(super) fn validate_branch_route(
+    branches: &[SlotBranch],
+    otherwise: Option<StepIdx>,
+) -> Result<(), CompileError> {
+    if branches.is_empty() && otherwise.is_none() {
+        Err(CompileError::Workflow(WorkflowError::EmptyBranchTable))
+    } else {
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum StepPrimitive {
+    Set,
+    Run,
+    Do,
+    Save,
+    Choose,
+    ForEach,
+    Parallel,
+    Collect,
+    Aggregate,
+    Repeat,
+    Wait,
+    Ask,
+    Finish,
+}

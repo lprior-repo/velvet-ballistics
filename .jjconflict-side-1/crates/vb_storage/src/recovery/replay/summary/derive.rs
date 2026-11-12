@@ -14,6 +14,7 @@ use crate::recovery::types::{
 use super::accumulator::FrameSeedAccumulator;
 use super::derive_entries::{dimension_count, recovered_pending_actions, recovered_steps};
 use super::hydrate::RecoveredSlots;
+use super::input_context::ReplayInputContext;
 
 /// Builder that constructs a raw [`RecoveryFrameSeed`] from journal events.
 ///
@@ -71,7 +72,7 @@ pub fn recover_runtime_frame_seed_from_events(
 pub fn recover_raw_runtime_frame_seed_from_events(
     events: &[JournalEvent],
 ) -> RecoveryResult<RecoveryFrameSeed> {
-    recover_runtime_frame_seed_from_events_inner(events, None)
+    recover_runtime_frame_seed_from_events_inner(events, None, None)
 }
 
 /// Recovers a typed frame-seed product and reconstructs deterministic slot state
@@ -96,7 +97,7 @@ pub fn recover_raw_runtime_frame_seed_from_events_with_workflow(
     workflow: &CompiledWorkflow,
 ) -> RecoveryResult<RecoveryFrameSeed> {
     reject_workflow_digest_mismatch(events, workflow.digest())?;
-    recover_runtime_frame_seed_from_events_inner(events, Some(workflow))
+    recover_runtime_frame_seed_from_events_inner(events, Some(workflow), None)
 }
 
 /// Recovers the latest admission metadata from ordered journal events.
@@ -179,16 +180,25 @@ pub(crate) fn reject_workflow_digest_mismatch(
     })
 }
 
-fn recover_runtime_frame_seed_from_events_inner(
+pub(super) fn recover_runtime_frame_seed_from_events_inner(
     events: &[JournalEvent],
     workflow: Option<&CompiledWorkflow>,
+    inputs: Option<ReplayInputContext<'_>>,
 ) -> RecoveryResult<RecoveryFrameSeed> {
+    recover_runtime_frame_seed_with_context(events, workflow, inputs).map(|(seed, _)| seed)
+}
+
+pub(super) fn recover_runtime_frame_seed_with_context(
+    events: &[JournalEvent],
+    workflow: Option<&CompiledWorkflow>,
+    inputs: Option<ReplayInputContext<'_>>,
+) -> RecoveryResult<(RecoveryFrameSeed, Option<(StepIdx, u64)>)> {
     let first = events
         .first()
         .ok_or(RecoveryError::NoRecoveryData { run: RunId::new(0) })?;
     let run = first.run_id();
     let accumulator = recover_frame_seed_accumulator(events, run, first.seq())?;
-    build_recovery_frame_seed(accumulator, workflow)
+    build_recovery_frame_seed(accumulator, workflow, inputs)
 }
 
 fn recover_frame_seed_accumulator(
@@ -202,39 +212,36 @@ fn recover_frame_seed_accumulator(
     )
 }
 
-fn build_recovery_frame_seed(
-    accumulator: FrameSeedAccumulator,
-    workflow: Option<&CompiledWorkflow>,
-) -> RecoveryResult<RecoveryFrameSeed> {
-    let run = accumulator.run;
-    let observed_step_count = dimension_count(accumulator.max_step_idx, run)?;
-    let observed_slot_count = dimension_count(accumulator.max_slot_idx, run)?;
-    let step_count = workflow.map_or(observed_step_count, |value| {
-        observed_step_count.max(value.node_count())
-    });
-    let slot_count = workflow.map_or(observed_slot_count, |value| {
-        observed_slot_count.max(value.slot_count())
-    });
-    let first_step = accumulator.first_step();
-    if let (Some(plan), Some(_)) = (workflow, accumulator.last_succeeded_step) {
-        reject_unbound_retry_policy(plan)?;
-    }
-    let slots = super::hydrate::recover_slots(&accumulator, workflow)?;
-    let unsupported = seed_unsupported_state(&accumulator, &slots);
-    let steps = recovered_steps(accumulator.step_states);
-    let pending_actions = recovered_pending_actions(accumulator.pending_actions);
+#[path = "derive/seed_build.rs"]
+mod seed_build;
+use seed_build::build_recovery_frame_seed;
 
-    Ok(RecoveryFrameSeed {
-        summary: accumulator.summary,
-        first_step,
-        step_count,
-        slot_count,
-        pc: accumulator.pc,
-        steps,
-        slots: slots.entries,
-        pending_actions,
-        unsupported,
-    })
+fn recovered_cursor(
+    accumulator: &FrameSeedAccumulator,
+    cursor: Option<(StepIdx, u64)>,
+) -> Option<(StepIdx, u64)> {
+    if accumulator.last_succeeded_step == Some(accumulator.pc)
+        && matches!(
+            accumulator.step_states.get(&accumulator.pc),
+            Some(crate::recovery::types::RecoveredStepState::Succeeded)
+        )
+    {
+        cursor
+    } else {
+        None
+    }
+}
+
+fn recovery_dimensions(
+    accumulator: &FrameSeedAccumulator,
+    workflow: Option<&CompiledWorkflow>,
+) -> RecoveryResult<(u16, u16)> {
+    let step_count = dimension_count(accumulator.max_step_idx, accumulator.run)?;
+    let slot_count = dimension_count(accumulator.max_slot_idx, accumulator.run)?;
+    Ok((
+        workflow.map_or(step_count, |plan| step_count.max(plan.node_count())),
+        workflow.map_or(slot_count, |plan| slot_count.max(plan.slot_count())),
+    ))
 }
 
 fn seed_unsupported_state(

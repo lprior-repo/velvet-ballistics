@@ -124,7 +124,6 @@ tasks:
       - '.cargo/**/*'
       - 'crates/*/Cargo.toml'
       - 'fuzz/Cargo.toml'
-      - 'xtask/Cargo.toml'
       - '.moon/tasks/kani.yml'
     options:
       runInCI: true

@@ -1,0 +1,18 @@
+
+running 1 test
+test server::reactor_tests::shutdown_poll_waits_until_pending_acknowledgement_is_written ... FAILED
+
+failures:
+
+---- server::reactor_tests::shutdown_poll_waits_until_pending_acknowledgement_is_written stdout ----
+
+thread 'server::reactor_tests::shutdown_poll_waits_until_pending_acknowledgement_is_written' (2567157) panicked at crates/vb_ipc/src/server/reactor_tests.rs:199:5:
+completed acknowledgement ends shutdown polling
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    server::reactor_tests::shutdown_poll_waits_until_pending_acknowledgement_is_written
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 535 filtered out; finished in 0.02s
+

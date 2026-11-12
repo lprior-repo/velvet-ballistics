@@ -33,7 +33,7 @@
 //   - `checked_step_add`                    <- crates/vb_core/src/budget/loop_body.rs:214-219
 //   - `max_gather_pages`                    <- crates/vb_core/src/budget/reachable.rs:169-181
 //   - `total`                               <- crates/vb_core/src/budget/loop_body.rs:43-47
-//   - `count`                               <- crates/vb_core/src/budget/loop_region.rs:47-52
+//   - `count`                               <- crates/vb_core/src/budget/loop_region.rs:50-55
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -86,7 +86,7 @@ pub mod production_inner;
 //   - checked_step_add              (budget/loop_body.rs:214-219)
 //   - collect_start_update_metrics  (budget/reachable.rs:169-181)
 //   - count_total_steps_step_increment (budget/loop_body.rs:43-47)
-//   - body_region_step_increment    (budget/loop_region.rs:47-52)
+//   - body_region_step_increment    (budget/loop_region.rs:50-55)
 //
 // Plus the production type discriminants referenced by the spec
 // (BudgetTraversalError::StepCountOverflow, BudgetError::TotalStepsExceeded,

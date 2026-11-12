@@ -1,0 +1,73 @@
+
+running 6 tests
+test encoded_empty_plus_garbage_fails_all_durabilities ... ok
+test bool_kind_mismatch_fails_all_durabilities ... ok
+test malformed_decode_fails_all_durabilities ... ok
+test excess_slots_fails_all_durabilities ... ok
+test validation_precedes_journal_open ... ok
+test test_submit_controls ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+
+running 2 tests
+test submitted_values_survive_process_exit_and_reopen_and_drive_numeric_ir ... FAILED
+test dangling_arena_input_is_rejected_before_creating_database ... FAILED
+
+failures:
+
+---- submitted_values_survive_process_exit_and_reopen_and_drive_numeric_ir stdout ----
+
+thread 'submitted_values_survive_process_exit_and_reopen_and_drive_numeric_ir' (2507360) panicked at crates/velvet_ballistics/../workspace_tests/tests/cli/submit_retained_inputs.rs:24:5:
+assertion `left == right` failed: invalid argument: unknown emit mode for submit: json
+
+velvet-ballistics - compiled workflow runtime
+
+commands:
+  validate   <workflow.yaml> [--emit text|yaml|postcard]
+  verify     <workflow.yaml> [--profile <quick|standard|full>] [--emit text|yaml|postcard]
+  explain    <workflow.yaml> [--emit text|yaml|postcard]
+  compile    <workflow.yaml> --emit <ir|yaml|postcard> --out <file>
+  run        <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>] [--emit text|yaml|postcard]
+  run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>] [--emit text|yaml|postcard]
+  ipc-serve  --socket <path> --db <path>
+  inspect    <run_id> --db <path> [--emit text|yaml|postcard]
+  events     <run_id> --db <path> [--emit text|yaml|postcard]
+  replay     <run_id> --db <path> [--emit text|yaml|postcard]
+  trace      <run_id> --db <path> [--emit text|yaml|postcard]
+  retry      <run_id> --db <path> [--emit text|yaml|postcard]
+  resume     <run_id> --db <path> [--emit text|yaml|postcard]
+  cancel     <run_id> --db <path> [--reason <text>] [--emit text|yaml|postcard]
+  action     <list|inspect> [--registry <registered|empty|uninitialized>] [--emit text|yaml|postcard]
+  bench-run  <workflow.yaml> [--emit text|yaml|postcard]
+  doctor     [--db <path>] [--emit text|yaml|postcard]
+  answer     <run_id> --step <N> --value-file <file> --db <path> [--emit text|yaml|postcard]
+  graph      <workflow.yaml> [--emit text|yaml|postcard]
+  diff       <run_a> <run_b> --db <path> [--emit text|yaml|postcard]
+  incident   <run_id> --db <path> [--emit text|yaml|postcard]
+  submit     <workflow.yaml> --input-bin <file> --db <path> --durability <mode> [--emit text|yaml|postcard]
+  simulate   <workflow.yaml> [--emit text|yaml|postcard]
+  system status [--profile <quick|standard|full>] [--server none] [--emit text|yaml]
+  agent-context [--deliver stdout|file:<absolute-path>]
+  ai-context <run_id> --db <path> [--emit text|yaml|postcard]
+  help
+  version
+
+architecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall journal, no HTTP hot path
+
+  left: Some(2)
+ right: Some(0)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- dangling_arena_input_is_rejected_before_creating_database stdout ----
+
+thread 'dangling_arena_input_is_rejected_before_creating_database' (2507359) panicked at crates/velvet_ballistics/../workspace_tests/tests/cli/submit_retained_inputs.rs:129:9:
+assertion failed: String::from_utf8_lossy(&result.stderr).contains("runtime input schema mismatch")
+
+
+failures:
+    dangling_arena_input_is_rejected_before_creating_database
+    submitted_values_survive_process_exit_and_reopen_and_drive_numeric_ir
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

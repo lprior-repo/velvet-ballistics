@@ -1,17 +1,17 @@
-// Verification artifact: proptest_collect_budget.rs
-// PO: PO-026 (Collect budget boundary values)
-// Verifier: proptest
-// Command: cargo test -p vb_core -- proptest_collect_budget --test-threads=1
-
 #![cfg(test)]
 #![forbid(unsafe_code)]
 
 use crate::budget::WholeWorkflowBudget;
-use crate::ids::{SlotIdx, StepIdx};
+use crate::ids::{SlotIdx, StepIdx, WorkflowDigest};
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
+    CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+    InputSlotKind, ResourceContract, WorkflowError, WorkflowParts, node,
 };
 use proptest::prelude::*;
+use proptest::test_runner::TestCaseResult;
+
+#[path = "proptest_collect_budget_yaml.rs"]
+mod yaml_union;
 
 fn collect_start_node(limit: u32, page_size: u32) -> CompiledNode {
     node(
@@ -77,9 +77,10 @@ fn collect_nodes(limit: u32, page_size: u32) -> Box<[CompiledNode]> {
 pub(super) fn make_collect_workflow(limit: u32, page_size: u32) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: collect_inputs(),
         name: Box::from("test_collect_budget"),
-        digest: crate::ids::WorkflowDigest::from_bytes([0; 32]),
+        digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: collect_nodes(limit, page_size),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -90,6 +91,14 @@ pub(super) fn make_collect_workflow(limit: u32, page_size: u32) -> WorkflowParts
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     }
+}
+
+fn collect_inputs() -> Box<[CompiledInputSlot]> {
+    Box::new([CompiledInputSlot {
+        slot: SlotIdx::ZERO,
+        kind: InputSlotKind::List,
+        constraint: CompiledInputConstraint::required(),
+    }])
 }
 
 pub(super) fn expected_budget_total(limit: u32) -> Result<u64, TestCaseError> {
@@ -118,7 +127,7 @@ fn budget_arbitrary_strategy() -> impl Strategy<Value = (u32, u32)> {
 
 fn assert_budget_overflow(parts: WorkflowParts, total: u64) -> Result<(), TestCaseError> {
     match CompiledWorkflow::try_from_parts(parts) {
-        Err(crate::workflow::WorkflowError::StepCountOverflow { actual }) => {
+        Err(WorkflowError::StepCountOverflow { actual }) => {
             prop_assert_eq!(actual, total, "StepCountOverflow actual must match oracle");
             Ok(())
         }
@@ -174,14 +183,38 @@ fn assert_collect_budget(limit: u32, page_size: u32) -> Result<(), TestCaseError
     }
 }
 
+pub(super) fn make_yaml_collect_workflow(limit: u32, page_size: u32) -> WorkflowParts {
+    yaml_union::make_collect_workflow(limit, page_size)
+}
+
+pub(super) fn check_collect_budget(limit: u32, page_size: u32) -> TestCaseResult {
+    yaml_union::check_collect_budget(limit, page_size)
+}
+
 proptest! {
     #[test]
     fn proptest_collect_budget_limits((limit, page_size) in budget_boundary_strategy()) {
         assert_collect_budget(limit, page_size)?;
+        check_collect_budget(limit, page_size)?;
     }
 
     #[test]
     fn proptest_collect_budget_arbitrary((limit, page_size) in budget_arbitrary_strategy()) {
         assert_collect_budget(limit, page_size)?;
+        check_collect_budget(limit, page_size)?;
     }
+
+    #[test]
+    fn proptest_collect_budget_admitted(limit in 0u32..=499_999, page_size in any::<u32>()) {
+        check_collect_budget(limit, page_size)?;
+    }
+}
+
+#[test]
+fn proptest_collect_budget_yaml_limits() -> TestCaseResult {
+    let cases = yaml_union::boundary_cases();
+    for (limit, page_size) in cases {
+        check_collect_budget(limit, page_size)?;
+    }
+    Ok(())
 }

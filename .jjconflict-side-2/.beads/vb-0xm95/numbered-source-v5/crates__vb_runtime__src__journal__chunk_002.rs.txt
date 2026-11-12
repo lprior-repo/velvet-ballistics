@@ -1,0 +1,556 @@
+1: impl StorageRuntimeJournal {
+2:     /// Strict journal with explicitly checked registered executor startup authority.
+3:     pub fn shared_strict_with_catalog(
+4:         journal: Arc<FjallJournal>,
+5:         catalog: Arc<vb_storage::executor::ExecutorCatalog>,
+6:     ) -> SharedRuntimeJournal {
+7:         Arc::new(Self {
+8:             journal,
+9:             catalog: Some(catalog),
+10:             profile: DurabilityProfile::Strict,
+11:         })
+12:     }
+13: 
+14:     /// Creates an adapter that uses journaled appends without a per-event sync barrier.
+15:     #[must_use]
+16:     pub fn journaled(journal: Arc<FjallJournal>) -> Self {
+17:         Self {
+18:             journal,
+19:             catalog: None,
+20:             profile: DurabilityProfile::Journaled,
+21:         }
+22:     }
+23: 
+24:     /// Creates an adapter that forces a strict durability barrier for every append.
+25:     #[must_use]
+26:     pub fn strict(journal: Arc<FjallJournal>) -> Self {
+27:         Self {
+28:             journal,
+29:             catalog: None,
+30:             profile: DurabilityProfile::Strict,
+31:         }
+32:     }
+33: 
+34:     /// Creates a shared journaled adapter for direct runtime construction.
+35:     #[must_use]
+36:     pub fn shared_journaled(journal: Arc<FjallJournal>) -> SharedRuntimeJournal {
+37:         Arc::new(Self::journaled(journal))
+38:     }
+39: 
+40:     /// Creates a shared strict adapter for direct runtime construction.
+41:     #[must_use]
+42:     pub fn shared_strict(journal: Arc<FjallJournal>) -> SharedRuntimeJournal {
+43:         Arc::new(Self::strict(journal))
+44:     }
+45: 
+46:     fn append_storage_event(&self, event: &JournalEvent) -> RuntimeResult<()> {
+47:         let result = if self.profile == DurabilityProfile::Strict {
+48:             self.journal.append_strict(event)
+49:         } else {
+50:             self.journal.append_journaled(event)
+51:         };
+52:         result.map_err(RuntimeError::from)
+53:     }
+54: 
+55:     fn append_runtime_event_batch(
+56:         journal: &FjallJournal,
+57:         profile: DurabilityProfile,
+58:         events: &[RuntimeJournalEvent],
+59:         start_seq: EventSeq,
+60:     ) -> RuntimeResult<()> {
+61:         if events.is_empty() {
+62:             return Ok(());
+63:         }
+64:         let mut batch = journal.batch();
+65:         for (offset, event) in events.iter().enumerate() {
+66:             let seq = Self::sequence_at_offset(start_seq, offset)?;
+67:             let storage_event = Self::storage_event(event.clone(), seq)?;
+68:             batch
+69:                 .append_event(&storage_event)
+70:                 .map_err(RuntimeError::from)?;
+71:         }
+72:         if profile == DurabilityProfile::Strict {
+73:             return batch.strict().commit().map_err(RuntimeError::from);
+74:         }
+75:         batch.commit().map_err(RuntimeError::from)
+76:     }
+77: 
+78:     fn sequence_at_offset(start_seq: EventSeq, offset: usize) -> RuntimeResult<EventSeq> {
+79:         let offset = u64::try_from(offset)
+80:             .map_err(|_| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
+81:         start_seq
+82:             .get()
+83:             .checked_add(offset)
+84:             .map(EventSeq::new)
+85:             .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
+86:     }
+87: 
+88:     fn run_storage_event(
+89:         event: RuntimeJournalEvent,
+90:         seq: EventSeq,
+91:     ) -> RuntimeResult<Option<JournalEvent>> {
+92:         match event {
+93:             RuntimeJournalEvent::RunSubmitted { run, workflow } => {
+94:                 Ok(Some(JournalEvent::RunAccepted { run, seq, workflow }))
+95:             }
+96:             RuntimeJournalEvent::RunAdmission { admission } => {
+97:                 Ok(Some(JournalEvent::RunAdmission {
+98:                     input_digest: vb_storage::RunInputBinding::LegacyUnbound,
+99:                     run: admission.run_id(),
+100:                     seq,
+101:                     artifact_digest: admission.artifact_digest(),
+102:                     policy_pin: admission.policy_pin(),
+103:                     granted_capabilities: admission.granted_capabilities().clone(),
+104:                     policy: admission.policy(),
+105:                 }))
+106:             }
+107:             RuntimeJournalEvent::RetryCheckpoint {
+108:                 run,
+109:                 attempt,
+110:                 step,
+111:                 payload_digest,
+112:                 payload,
+113:             } => Ok(Some(JournalEvent::RetryCheckpoint {
+114:                 run,
+115:                 seq,
+116:                 attempt,
+117:                 step,
+118:                 payload_digest,
+119:                 payload,
+120:             })),
+121:             RuntimeJournalEvent::RunFinished {
+122:                 run,
+123:                 result,
+124:                 attempt,
+125:             } => Ok(Some(JournalEvent::RunFinished {
+126:                 run,
+127:                 seq,
+128:                 result,
+129:                 attempt,
+130:             })),
+131:             RuntimeJournalEvent::RunFailed { run, attempt } => {
+132:                 Ok(Some(JournalEvent::RunFailedEvent { run, seq, attempt }))
+133:             }
+134:             RuntimeJournalEvent::RunCancelled {
+135:                 run,
+136:                 reason,
+137:                 attempt,
+138:             } => Ok(Some(JournalEvent::RunCancelled {
+139:                 run,
+140:                 seq,
+141:                 attempt,
+142:                 reason,
+143:             })),
+144:             RuntimeJournalEvent::RunKilled { run, attempt } => {
+145:                 Ok(Some(JournalEvent::RunKilled { run, seq, attempt }))
+146:             }
+147:             RuntimeJournalEvent::Resumed { run, timestamp } => {
+148:                 resumed_storage_event(run, seq, timestamp).map(Some)
+149:             }
+150:             RuntimeJournalEvent::StepStarted { run, step, attempt } => {
+151:                 Ok(Some(JournalEvent::StepStarted {
+152:                     run,
+153:                     seq,
+154:                     step,
+155:                     attempt,
+156:                 }))
+157:             }
+158:             RuntimeJournalEvent::StepSucceeded {
+159:                 run, step, output, ..
+160:             } => Ok(Some(JournalEvent::StepSucceeded {
+161:                 run,
+162:                 seq,
+163:                 step,
+164:                 output,
+165:             })),
+166:             RuntimeJournalEvent::ActionScheduled { .. }
+167:             | RuntimeJournalEvent::ActionCompleted { .. }
+168:             | RuntimeJournalEvent::ActionScheduledTicket { .. }
+169:             | RuntimeJournalEvent::ActionCompletedEnvelope { .. }
+170:             | RuntimeJournalEvent::ActionFailed { .. }
+171:             | RuntimeJournalEvent::ActionAbandoned { .. }
+172:             | RuntimeJournalEvent::WaitScheduled { .. }
+173:             | RuntimeJournalEvent::WaitResolved { .. }
+174:             | RuntimeJournalEvent::AskScheduled { .. }
+175:             | RuntimeJournalEvent::AskAnswered { .. }
+176:             | RuntimeJournalEvent::AskTimedOut { .. }
+177:             | RuntimeJournalEvent::SlotWritten { .. } => Ok(None),
+178:         }
+179:     }
+180: 
+181:     fn action_storage_event(event: RuntimeJournalEvent, seq: EventSeq) -> Option<JournalEvent> {
+182:         match event {
+183:             RuntimeJournalEvent::ActionScheduled { run, step, action } => {
+184:                 Some(JournalEvent::ActionScheduled {
+185:                     run,
+186:                     seq,
+187:                     step,
+188:                     action,
+189:                     attempt: 1,
+190:                 })
+191:             }
+192:             RuntimeJournalEvent::ActionCompleted { run, step, action } => {
+193:                 Some(JournalEvent::ActionCompletedEvent {
+194:                     run,
+195:                     seq,
+196:                     step,
+197:                     action,
+198:                     attempt: 1,
+199:                 })
+200:             }
+201:             RuntimeJournalEvent::ActionScheduledTicket {
+202:                 ticket,
+203:                 input,
+204:                 output,
+205:                 action_abi_digest,
+206:             } => Some(JournalEvent::ActionScheduledTicket {
+207:                 run: ticket.run,
+208:                 seq,
+209:                 ticket,
+210:                 input,
+211:                 output,
+212:                 action_abi_digest,
+213:             }),
+214:             RuntimeJournalEvent::ActionCompletedEnvelope {
+215:                 ticket,
+216:                 output,
+217:                 value,
+218:                 encoded_len,
+219:                 taint,
+220:                 value_digest,
+221:                 action_abi_digest,
+222:             } => Some(JournalEvent::ActionCompletedEnvelope {
+223:                 run: ticket.run,
+224:                 seq,
+225:                 ticket,
+226:                 output,
+227:                 outcome: vb_storage::DurableActionOutcome::Ready,
+228:                 value,
+229:                 encoded_len,
+230:                 taint,
+231:                 value_digest,
+232:                 action_abi_digest,
+233:             }),
+234:             RuntimeJournalEvent::ActionFailed {
+235:                 run,
+236:                 step,
+237:                 action,
+238:                 attempt,
+239:             } => Some(JournalEvent::ActionFailedEvent {
+240:                 run,
+241:                 seq,
+242:                 step,
+243:                 action,
+244:                 attempt,
+245:             }),
+246:             RuntimeJournalEvent::ActionAbandoned { ticket } => {
+247:                 Some(JournalEvent::ActionAbandoned {
+248:                     run: ticket.run,
+249:                     seq,
+250:                     ticket,
+251:                 })
+252:             }
+253:             RuntimeJournalEvent::RunSubmitted { .. }
+254:             | RuntimeJournalEvent::RunAdmission { .. }
+255:             | RuntimeJournalEvent::RetryCheckpoint { .. }
+256:             | RuntimeJournalEvent::RunFinished { .. }
+257:             | RuntimeJournalEvent::RunFailed { .. }
+258:             | RuntimeJournalEvent::RunCancelled { .. }
+259:             | RuntimeJournalEvent::RunKilled { .. }
+260:             | RuntimeJournalEvent::WaitScheduled { .. }
+261:             | RuntimeJournalEvent::WaitResolved { .. }
+262:             | RuntimeJournalEvent::AskScheduled { .. }
+263:             | RuntimeJournalEvent::AskAnswered { .. }
+264:             | RuntimeJournalEvent::AskTimedOut { .. }
+265:             | RuntimeJournalEvent::SlotWritten { .. }
+266:             | RuntimeJournalEvent::StepStarted { .. }
+267:             | RuntimeJournalEvent::StepSucceeded { .. }
+268:             | RuntimeJournalEvent::Resumed { .. } => None,
+269:         }
+270:     }
+271: 
+272:     fn boundary_storage_event(
+273:         event: RuntimeJournalEvent,
+274:         seq: EventSeq,
+275:     ) -> RuntimeResult<Option<JournalEvent>> {
+276:         match event {
+277:             RuntimeJournalEvent::WaitScheduled { run, step } => {
+278:                 Ok(Some(JournalEvent::WaitScheduledEvent {
+279:                     run,
+280:                     seq,
+281:                     step,
+282:                     attempt: 1,
+283:                 }))
+284:             }
+285:             RuntimeJournalEvent::WaitResolved { run, step } => {
+286:                 Ok(Some(JournalEvent::WaitResolvedEvent {
+287:                     run,
+288:                     seq,
+289:                     step,
+290:                     attempt: 1,
+291:                 }))
+292:             }
+293:             RuntimeJournalEvent::AskScheduled { run, step } => {
+294:                 Ok(Some(JournalEvent::AskScheduledEvent {
+295:                     run,
+296:                     seq,
+297:                     step,
+298:                     attempt: 1,
+299:                 }))
+300:             }
+301:             RuntimeJournalEvent::AskAnswered { run, step, .. } => {
+302:                 Ok(Some(JournalEvent::AskAnsweredEvent {
+303:                     run,
+304:                     seq,
+305:                     step,
+306:                     attempt: 1,
+307:                 }))
+308:             }
+309:             RuntimeJournalEvent::AskTimedOut { run, step } => {
+310:                 Ok(Some(JournalEvent::AskTimedOutEvent {
+311:                     run,
+312:                     seq,
+313:                     step,
+314:                     attempt: 1,
+315:                 }))
+316:             }
+317:             RuntimeJournalEvent::SlotWritten {
+318:                 run,
+319:                 slot,
+320:                 value,
+321:                 taint,
+322:                 extra,
+323:             } => Ok(Some(JournalEvent::SlotWrittenEvent {
+324:                 run,
+325:                 seq,
+326:                 slot,
+327:                 value: Some(value),
+328:                 extra: encoded_slot_taint_extra(taint, extra)?,
+329:                 attempt: 1,
+330:             })),
+331:             RuntimeJournalEvent::RunSubmitted { .. }
+332:             | RuntimeJournalEvent::RunAdmission { .. }
+333:             | RuntimeJournalEvent::RetryCheckpoint { .. }
+334:             | RuntimeJournalEvent::RunFinished { .. }
+335:             | RuntimeJournalEvent::RunFailed { .. }
+336:             | RuntimeJournalEvent::RunCancelled { .. }
+337:             | RuntimeJournalEvent::RunKilled { .. }
+338:             | RuntimeJournalEvent::ActionScheduled { .. }
+339:             | RuntimeJournalEvent::ActionCompleted { .. }
+340:             | RuntimeJournalEvent::ActionScheduledTicket { .. }
+341:             | RuntimeJournalEvent::ActionCompletedEnvelope { .. }
+342:             | RuntimeJournalEvent::ActionFailed { .. }
+343:             | RuntimeJournalEvent::ActionAbandoned { .. }
+344:             | RuntimeJournalEvent::StepStarted { .. }
+345:             | RuntimeJournalEvent::StepSucceeded { .. }
+346:             | RuntimeJournalEvent::Resumed { .. } => Ok(None),
+347:         }
+348:     }
+349: 
+350:     fn storage_event(event: RuntimeJournalEvent, seq: EventSeq) -> RuntimeResult<JournalEvent> {
+351:         // Dispatch on `&event` so the full event is cloned at most once, by the
+352:         // matched arm that actually consumes it. The previous chain cloned the
+353:         // event three times before the real variant was determined.
+354:         let result = match &event {
+355:             RuntimeJournalEvent::RunSubmitted { .. }
+356:             | RuntimeJournalEvent::RunAdmission { .. }
+357:             | RuntimeJournalEvent::RetryCheckpoint { .. }
+358:             | RuntimeJournalEvent::RunFinished { .. }
+359:             | RuntimeJournalEvent::RunFailed { .. }
+360:             | RuntimeJournalEvent::RunCancelled { .. }
+361:             | RuntimeJournalEvent::RunKilled { .. }
+362:             | RuntimeJournalEvent::Resumed { .. }
+363:             | RuntimeJournalEvent::StepStarted { .. }
+364:             | RuntimeJournalEvent::StepSucceeded { .. } => {
+365:                 Self::run_storage_event(clone_for_dispatch(&event), seq)
+366:             }
+367:             RuntimeJournalEvent::ActionScheduled { .. }
+368:             | RuntimeJournalEvent::ActionCompleted { .. }
+369:             | RuntimeJournalEvent::ActionScheduledTicket { .. }
+370:             | RuntimeJournalEvent::ActionCompletedEnvelope { .. }
+371:             | RuntimeJournalEvent::ActionFailed { .. }
+372:             | RuntimeJournalEvent::ActionAbandoned { .. } => {
+373:                 Ok(Self::action_storage_event(clone_for_dispatch(&event), seq))
+374:             }
+375:             RuntimeJournalEvent::WaitScheduled { .. }
+376:             | RuntimeJournalEvent::WaitResolved { .. }
+377:             | RuntimeJournalEvent::AskScheduled { .. }
+378:             | RuntimeJournalEvent::AskAnswered { .. }
+379:             | RuntimeJournalEvent::AskTimedOut { .. }
+380:             | RuntimeJournalEvent::SlotWritten { .. } => {
+381:                 Self::boundary_storage_event(clone_for_dispatch(&event), seq)
+382:             }
+383:         }?;
+384:         if let Some(storage_event) = result {
+385:             return Ok(storage_event);
+386:         }
+387:         Err(RuntimeError::UnsupportedRuntimeJournalEventMapping {
+388:             event_kind: event.kind(),
+389:         })
+390:     }
+391: }
+392: 
+393: fn resumed_storage_event(run: RunId, seq: EventSeq, timestamp: u64) -> RuntimeResult<JournalEvent> {
+394:     let seconds =
+395:         i64::try_from(timestamp).map_err(|_| RuntimeError::RuntimeJournalTimestampOutOfRange {
+396:             event_kind: "Resumed",
+397:             timestamp,
+398:         })?;
+399:     let timestamp = DateTime::<Utc>::from_timestamp(seconds, 0).ok_or(
+400:         RuntimeError::RuntimeJournalTimestampOutOfRange {
+401:             event_kind: "Resumed",
+402:             timestamp,
+403:         },
+404:     )?;
+405:     Ok(JournalEvent::RunResumed {
+406:         run,
+407:         seq,
+408:         timestamp,
+409:     })
+410: }
+411: 
+412: /// Counts the number of times `clone_for_dispatch` is invoked. Used by the
+413: /// `storage_event_clones_the_event_exactly_once_per_dispatch` regression test
+414: /// to assert that dispatching a `RuntimeJournalEvent` through `storage_event`
+415: /// performs exactly one full-event clone.
+416: #[cfg(test)]
+417: static STORAGE_EVENT_CLONE_COUNT: std::sync::atomic::AtomicUsize =
+418:     std::sync::atomic::AtomicUsize::new(0);
+419: 
+420: /// Clones a `RuntimeJournalEvent` for dispatch into one of the per-variant
+421: /// helpers. In test builds this also increments `STORAGE_EVENT_CLONE_COUNT`
+422: /// so the single-clone invariant is enforced by an executable assertion; in
+423: /// release builds it is a plain clone.
+424: fn clone_for_dispatch(event: &RuntimeJournalEvent) -> RuntimeJournalEvent {
+425:     #[cfg(test)]
+426:     {
+427:         STORAGE_EVENT_CLONE_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+428:     }
+429:     event.clone()
+430: }
+431: 
+432: fn encoded_slot_taint_extra(
+433:     taint: Taint,
+434:     extra: Option<Vec<u8>>,
+435: ) -> RuntimeResult<Option<Vec<u8>>> {
+436:     vb_storage::encode_slot_written_extra(taint, extra)
+437:         .map(Some)
+438:         .map_err(|_| RuntimeError::EncodeFailed)
+439: }
+440: 
+441: impl RuntimeJournal for StorageRuntimeJournal {
+442:     fn executor_catalog(&self) -> Option<Arc<vb_storage::executor::ExecutorCatalog>> {
+443:         self.catalog.clone()
+444:     }
+445: 
+446:     fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
+447:         Err(RuntimeError::UnsupportedOperation {
+448:             operation: "unsequenced_storage_journal_append",
+449:         })
+450:     }
+451: 
+452:     fn append_sequenced(&self, event: RuntimeJournalEvent, seq: EventSeq) -> RuntimeResult<()> {
+453:         let storage_event = Self::storage_event(event, seq)?;
+454:         self.append_storage_event(&storage_event)?;
+455:         Ok(())
+456:     }
+457:     fn convert_to_storage_event(
+458:         &self,
+459:         event: RuntimeJournalEvent,
+460:         seq: EventSeq,
+461:     ) -> RuntimeResult<vb_storage::JournalEvent> {
+462:         Self::storage_event(event, seq)
+463:     }
+464: 
+465:     fn append_policy_decision_strict(
+466:         &self,
+467:         decision: vb_core::policy::DecisionRecord,
+468:         seq: EventSeq,
+469:     ) -> RuntimeResult<()> {
+470:         let storage_event = JournalEvent::PolicyDecisionEvent {
+471:             run: decision.ticket.run,
+472:             seq,
+473:             decision,
+474:         };
+475:         self.journal
+476:             .append_strict(&storage_event)
+477:             .map_err(RuntimeError::from)
+478:     }
+479: 
+480:     fn append_sequenced_batch(
+481:         &self,
+482:         events: &[RuntimeJournalEvent],
+483:         start_seq: EventSeq,
+484:     ) -> RuntimeResult<()> {
+485:         Self::append_runtime_event_batch(self.journal.as_ref(), self.profile, events, start_seq)
+486:     }
+487: 
+488:     fn probe(&self) -> RuntimeResult<()> {
+489:         self.journal.probe_health().map_err(RuntimeError::from)
+490:     }
+491: 
+492:     fn storage_journal(&self) -> Option<std::sync::Arc<vb_storage::FjallJournal>> {
+493:         Some(self.journal.clone())
+494:     }
+495: }
+496: 
+497: /// Runtime journal adapter that stages lifecycle events through `JournalWriterQueue`.
+498: pub struct QueuedStorageRuntimeJournal {
+499:     journal: Arc<FjallJournal>,
+500:     queue: Arc<JournalWriterQueue>,
+501:     profile: DurabilityProfile,
+502: }
+503: 
+504: impl QueuedStorageRuntimeJournal {
+505:     /// Creates a queued adapter that enqueues journaled requests.
+506:     #[must_use]
+507:     pub fn journaled(journal: Arc<FjallJournal>, queue: Arc<JournalWriterQueue>) -> Self {
+508:         Self {
+509:             journal,
+510:             queue,
+511:             profile: DurabilityProfile::Journaled,
+512:         }
+513:     }
+514: 
+515:     /// Creates a queued adapter that enqueues strict requests.
+516:     #[must_use]
+517:     pub fn strict(journal: Arc<FjallJournal>, queue: Arc<JournalWriterQueue>) -> Self {
+518:         Self {
+519:             journal,
+520:             queue,
+521:             profile: DurabilityProfile::Strict,
+522:         }
+523:     }
+524: 
+525:     /// Creates a shared queued journaled adapter for direct runtime construction.
+526:     #[must_use]
+527:     pub fn shared_journaled(
+528:         journal: Arc<FjallJournal>,
+529:         queue: Arc<JournalWriterQueue>,
+530:     ) -> SharedRuntimeJournal {
+531:         Arc::new(Self::journaled(journal, queue))
+532:     }
+533: 
+534:     /// Creates a shared queued strict adapter for direct runtime construction.
+535:     #[must_use]
+536:     pub fn shared_strict(
+537:         journal: Arc<FjallJournal>,
+538:         queue: Arc<JournalWriterQueue>,
+539:     ) -> SharedRuntimeJournal {
+540:         Arc::new(Self::strict(journal, queue))
+541:     }
+542: 
+543:     /// Flushes a bounded batch from the queue into Fjall.
+544:     pub fn flush_batch(&self) -> RuntimeResult<JournalWriterFlushReport> {
+545:         self.queue
+546:             .flush_batch(&self.journal)
+547:             .map_err(RuntimeError::from)
+548:     }
+549: 
+550:     /// Drains all queued journal writes into Fjall.
+551:     pub fn drain_all(&self) -> RuntimeResult<JournalWriterFlushReport> {
+552:         self.queue
+553:             .drain_all(&self.journal)
+554:             .map_err(RuntimeError::from)
+555:     }
+556: }

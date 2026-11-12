@@ -1,0 +1,3 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-my3b3-deepseek-qi37/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.52s
+     Running tests/vb_qi37_4_2_strict_runtime_admission.rs (target/debug/deps/vb_qi37_4_2_strict_runtime_admission-7e747ffab38e373c)

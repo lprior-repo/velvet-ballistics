@@ -1,0 +1,8 @@
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_core)
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_storage)
+    Checking vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_validate)
+    Checking vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_runtime)
+    Checking vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_ipc)
+    Checking velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_cli)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.19s

@@ -17,8 +17,8 @@ const EXPECTED_MEMBERS: &[&str] = &[
     "fuzz",
 ];
 
-// Excluded: xtask and target/miri-tmp
-const EXPECTED_EXCLUDES: &[&str] = &["xtask", "target/miri-tmp"];
+// Excluded: target/miri-tmp
+const EXPECTED_EXCLUDES: &[&str] = &["target/miri-tmp"];
 
 const BOUNDARY_CRATES: &[&str] = &["vb_core", "vb_runtime", "vb_storage", "vb_ipc"];
 const FORBIDDEN_UI_DEPENDENCIES: &[&str] = &[

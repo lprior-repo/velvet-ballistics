@@ -1,0 +1,1750 @@
+FINAL independent test review of the same frozen candidate. Return <=250 words: Findings (actual actionable in-scope defects only), Evidence, Limitations, STATUS. Do not invent owner_approved_* dispositions. Describing a known limitation is NOT a finding needing a waiver. A missing future-enum runtime test cannot be written externally; static gate plus reviewed matches! is the explicit contract, not executed future coverage. No claim of fixed seed: evidence does not prove it. #[must_use] uses unused_must_use, not dead_code; all four actual callers assert the bool, no ignored result. All tests are green, but do not approve blindly: reject if genuine scoped defect. Feature source and complete fixture diff follow.
+You are an independent TEST REVIEWER, not an implementer. Review only the supplied vb-k563f patch contract and its direct dependency fixture changes. Return <=650 words Markdown. Prior test review is rejected as evidence because it invented owner_approved_debt and a false mutation claim. Nobody approved debt. A constant-true predicate would NOT fail the malformed-header test: that test asserts the decoder independently. The existing static script DOES fail a simple constant-true replacement because all variant mentions disappear. Future unknown IpcError variants cannot be constructed externally today; distinguish reviewed wildcard semantics and enum drift gate from executed runtime evidence. #[must_use] is a warning policy, not automatically a hard error. Do not claim all enum additions automatically cause executed failures without the static gate. Count 13 input_slots literal additions across 12 files. Do not invent total runtime duration unless raw logs prove it. Existing unrelated journal roundtrip weakness is not a waiver; identify separately as pre-existing followup if relevant, and determine whether this patch introduces or exacerbates it. Findings first, exact scoped blocker if any. APPROVED only if no open in-scope findings; else REJECTED. No owner dispositions invented. No proof planning.
+
+## test-reviewer/SKILL.md
+---
+name: test-reviewer
+description: "Adversarial reviewer for behavior test plans and suites only. Enforces contract parity, assertion strength, determinism, public-API testing, and mutation resistance. Does not review proof plans or proof artifacts; use proof-plan-reviewer/proof-reviewer for that."
+---
+
+# Test Reviewer
+
+You do not write tests. You find the test that would still pass if the behavior were deleted.
+
+## Scope
+
+This skill reviews behavior-test plans and executable test suites only.
+
+Proof plans, proof obligations, Verus, Kani, Flux, Loom, and proof evidence belong to `proof-plan-reviewer` or `proof-reviewer`.
+
+## Modes
+
+- Plan review: input `contract.md` plus `test-plan.md`; output `test-plan-review.md`.
+- Suite review: input implementation plus tests; output `test-suite-review.md`.
+
+## Plan Review Gates
+
+1. Every public behavior in `contract.md` has at least one Given/When/Then scenario.
+2. Every error variant has a scenario asserting the exact variant and fields.
+3. Assertions are concrete; `is_ok()`, `is_err()`, `Some(_)`, and boolean smoke assertions are lethal unless the contract is explicitly boolean.
+4. Boundary cases are named: minimum, maximum, just below, just above, empty/zero/none, overflow/underflow where relevant.
+5. Non-trivial pure behavior has property tests planned.
+6. Parser/codec/hostile input has fuzz or adversarial input tests planned.
+7. Verifier harnesses do not count as behavior tests.
+8. Proof-to-implementation rows must be covered by executable behavior tests that hit production code, not copied models or commented-out examples.
+
+## Suite Review Gates
+
+1. Tests compile and execute deterministically.
+2. Integration tests use public API only.
+3. Tests assert behavior, not implementation details.
+4. No ignored tests, sleeps, broad mocks of domain queries, hidden shared mutable state, or silent error suppression.
+5. Mutation thought experiment: deleting branch/error/value logic must be caught by a named test.
+6. Snapshot tests must be checked and intentional.
+7. Resource-heavy commands are bounded: broad Kani/CBMC, mutation, fuzz, coverage, sanitizer, or full-workspace suites must use scoped targets, timeouts, and memory caps. Unbounded verifier commands such as `cargo kani -j 4` are infrastructure-risk findings, not acceptable test evidence.
+8. Commented-out tests, dormant modules, `#[ignore]` proof properties not run by the required command, and zero-test filtered runs are not evidence.
+
+## Resource Governance
+
+When a test plan or suite asks the agent to execute expensive verification-adjacent commands, review the command shape before approving or running it.
+
+- Behavior tests should not depend on broad proof lanes; verifier harnesses still do not count as behavior tests.
+- Prefer exact package, test, harness, or file scopes over full-workspace sweeps.
+- Require timeouts for long-running lanes.
+- Require cgroup/container memory caps for broad or unknown Kani/CBMC runs. Safe local default:
+
+```bash
+systemd-run --user --scope --collect \
+  -p WorkingDirectory=<workspace> \
+  -p MemoryHigh=20G \
+  -p MemoryMax=24G \
+  -p MemorySwapMax=0 \
+  cargo kani -j 1 --output-format=regular <exact-package-or-harness-args>
+```
+
+- Flag any unbounded `cargo kani`, `cargo kani -j 4`, full mutation sweep, or fuzz run without a time and memory budget as a review finding.
+
+## References
+
+- `references/behavior-test-rubric.md`
+- `references/determinism-and-mutation.md`
+- `../go-skill/references/finding-codes.md`
+
+## Output Rules
+
+Findings first, ordered by severity. Include file/line when reviewing code. Include resource-risk findings for unbounded expensive test commands. `STATUS: APPROVED` only when every finding at every severity uses canonical disposition `fixed_with_evidence`, `owner_approved_debt`, or `owner_approved_no_action`. If any finding is `blocker`, write `STATUS: REJECTED` and prevent advancement. Do not approve with open LOW/MINOR/OBSERVATION/INFORMATIONAL findings.
+
+## .beads/vb-k563f/contract.md
+# vb-k563f Rust contract
+
+Public #[must_use] bool predicate assert_typed_ipc_error accepts exactly the 14 current vb_ipc::IpcError variants and rejects future additions. Callers must assert the returned bool; no caller may ignore the result. This provides a static oracle: any new enum variant will cause the predicate to return false, failing the assertion and alerting callers to update the predicate. Tests cover each of the 14 current variants plus a malformed-header case producing InvalidMagic{actual:0}.
+
+The current implementation name stays assert_typed_ipc_error; future unknown variant rejection is a wildcard policy, not an executed unknown-variant test. Static production-enum/oracle drift checking remains required. No production decoder semantics change.
+
+## Compiler fixture feature binding
+
+Enable test-util feature on vb_compile dependency in fuzz harness to expose fixture constructors required for canonical digest property tests; no production feature defaults altered.
+Canonical property build exposed the gated constructor after fixing IPC export. The fuzz package dependency enables the existing compiler test-util feature. Cargo unifies that feature for shared dependencies in a build selecting fuzz; standalone production selection does not gain a new default feature. No production API visibility edits or deleted property checks.
+
+
+## fuzz/src/ipc_target.rs
+//! IPC frame fuzzing targets.
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::let_underscore_must_use)]
+#![allow(clippy::as_conversions)]
+#![allow(clippy::arithmetic_side_effects)]
+#![allow(clippy::len_zero)]
+
+#[must_use]
+pub fn assert_typed_ipc_error(error: vb_ipc::IpcError) -> bool {
+    use vb_ipc::IpcError;
+    matches!(
+        error,
+        IpcError::Full
+            | IpcError::Disconnected
+            | IpcError::PayloadTooLarge { .. }
+            | IpcError::InvalidMagic { .. }
+            | IpcError::UnsupportedVersion { .. }
+            | IpcError::UnknownCommand(_)
+            | IpcError::ReservedNonZero { .. }
+            | IpcError::PayloadLengthMismatch { .. }
+            | IpcError::HeaderEncodeFailed
+            | IpcError::HeaderDecodeFailed
+            | IpcError::PayloadLengthOutOfRange { .. }
+            | IpcError::PayloadEncodeFailed
+            | IpcError::PayloadDecodeFailed
+            | IpcError::ResponseDecodeFailed
+    )
+}
+
+pub fn fuzz_ipc_frame(data: &[u8]) {
+    use vb_ipc::frame::{decode_frame_header, decode_frame_payload};
+
+    let Some(header_bytes) = data.get(..vb_ipc::IPC_HEADER_LEN) else {
+        return;
+    };
+
+    let mut header = [0u8; vb_ipc::IPC_HEADER_LEN];
+    header.copy_from_slice(header_bytes);
+
+    let header_result = decode_frame_header(&header);
+
+    if let Ok(decoded_header) = header_result
+        && let Ok(encoded) = decoded_header.encode()
+    {
+        assert_eq!(
+            &encoded[..],
+            header_bytes,
+            "re-encoded header must match original bytes"
+        );
+    }
+
+    let Some(payload) = data.get(vb_ipc::IPC_HEADER_LEN..) else {
+        return;
+    };
+
+    if !payload.is_empty()
+        && let Ok(header) = header_result
+    {
+        let payload_len_usize = header.payload_len as usize;
+        let result = decode_frame_payload(&header, payload);
+        match result {
+            Ok(decoded) => {
+                assert!(
+                    payload.len() == payload_len_usize,
+                    "decode must fail when payload len mismatches header"
+                );
+                match decoded {
+                    vb_ipc::IpcPayload::SubmitRun(p) | vb_ipc::IpcPayload::SubmitRunInline(p) => {
+                        let _ = p.run_id;
+                        let _ = p.workflow;
+                    }
+                    vb_ipc::IpcPayload::CancelRun { run_id }
+                    | vb_ipc::IpcPayload::InspectRun { run_id }
+                    | vb_ipc::IpcPayload::ListEvents { run_id, .. }
+                    | vb_ipc::IpcPayload::DrainTrace { run_id, .. } => {
+                        let _ = run_id;
+                    }
+                    vb_ipc::IpcPayload::AnswerAsk { run_id, ticket, .. } => {
+                        let _ = run_id;
+                        let _ = ticket;
+                    }
+                    vb_ipc::IpcPayload::CompleteAction { run_id, ticket, .. }
+                    | vb_ipc::IpcPayload::FailAction { run_id, ticket, .. } => {
+                        let _ = run_id;
+                        let _ = ticket;
+                    }
+                    vb_ipc::IpcPayload::Health | vb_ipc::IpcPayload::Shutdown => {}
+                    _ => {}
+                }
+            }
+            Err(e) => assert!(assert_typed_ipc_error(e)),
+        }
+    }
+}
+
+pub fn fuzz_ipc_decode(data: &[u8]) {
+    use vb_ipc::frame::decode_frame_header;
+
+    if data.len() >= vb_ipc::IPC_HEADER_LEN {
+        let mut header_bytes = [0u8; vb_ipc::IPC_HEADER_LEN];
+        header_bytes.copy_from_slice(&data[..vb_ipc::IPC_HEADER_LEN]);
+
+        let bounds: &[usize] = &[0, 1, 16, 256, 1024, 65536, 1_048_576];
+        for &b in bounds {
+            if let Some(max) = std::num::NonZeroUsize::new(b) {
+                let _ = vb_ipc::IpcFrameHeader::decode(
+                    &header_bytes,
+                    vb_ipc::MaxPayloadBytes::new(max),
+                );
+            }
+        }
+
+        let _ = decode_frame_header(&header_bytes);
+    }
+
+    for len in 0..vb_ipc::IPC_HEADER_LEN {
+        if data.len() >= len {
+            let mut bytes = [0u8; vb_ipc::IPC_HEADER_LEN];
+            let end = len.min(data.len());
+            bytes[..end].copy_from_slice(&data[..end]);
+            let _ = vb_ipc::IpcFrameHeader::decode(&bytes, vb_ipc::MaxPayloadBytes::DEFAULT);
+        }
+    }
+}
+
+pub fn fuzz_ipc_frame_boundary(data: &[u8]) {
+    use vb_ipc::frame::{decode_frame_header, validate_frame_magic};
+    use vb_ipc::{IPC_HEADER_LEN, IpcError, MaxPayloadBytes};
+
+    if data.is_empty() {
+        return;
+    }
+
+    let magic_result = validate_frame_magic(data);
+    if data.len() < 4 {
+        assert!(
+            matches!(magic_result, Err(IpcError::HeaderDecodeFailed)),
+            "truncated frame (< 4 bytes) must return HeaderDecodeFailed"
+        );
+        return;
+    }
+
+    if magic_result.is_err() {
+        assert!(
+            matches!(
+                magic_result,
+                Err(IpcError::InvalidMagic { .. }) | Err(IpcError::HeaderDecodeFailed)
+            ),
+            "wrong magic must return InvalidMagic or HeaderDecodeFailed"
+        );
+        return;
+    }
+
+    if data.len() < IPC_HEADER_LEN {
+        return;
+    }
+
+    let mut header_bytes = [0u8; IPC_HEADER_LEN];
+    header_bytes.copy_from_slice(&data[..IPC_HEADER_LEN]);
+
+    let Some(max_payload_nz) = std::num::NonZeroUsize::new(65536) else {
+        return;
+    };
+    let max_payload = MaxPayloadBytes::new(max_payload_nz);
+    let header_result = vb_ipc::IpcFrameHeader::decode(&header_bytes, max_payload);
+
+    match header_result {
+        Ok(header) => {
+            let payload = data.get(IPC_HEADER_LEN..).unwrap_or(&[]);
+            let Ok(expected_len) = usize::try_from(header.payload_len) else {
+                return;
+            };
+            if payload.len() != expected_len && !payload.is_empty() {}
+        }
+        Err(e) => {
+            assert!(assert_typed_ipc_error(e));
+        }
+    }
+
+    if data.len() >= IPC_HEADER_LEN {
+        let _ = decode_frame_header(&header_bytes);
+    }
+}
+
+#[cfg(test)]
+mod typed_ipc_error_tests {
+    use super::*;
+
+    #[test]
+    fn test_all_14_explicit_variants_match() {
+        let variants = [
+            vb_ipc::IpcError::Full,
+            vb_ipc::IpcError::Disconnected,
+            vb_ipc::IpcError::PayloadTooLarge {
+                actual: 1,
+                limit: 0,
+            },
+            vb_ipc::IpcError::InvalidMagic { actual: 0 },
+            vb_ipc::IpcError::UnsupportedVersion { actual: 0 },
+            vb_ipc::IpcError::UnknownCommand(0),
+            vb_ipc::IpcError::ReservedNonZero { actual: 1 },
+            vb_ipc::IpcError::PayloadLengthMismatch {
+                header: 1,
+                actual: 0,
+            },
+            vb_ipc::IpcError::HeaderEncodeFailed,
+            vb_ipc::IpcError::HeaderDecodeFailed,
+            vb_ipc::IpcError::PayloadLengthOutOfRange { actual: 0 },
+            vb_ipc::IpcError::PayloadEncodeFailed,
+            vb_ipc::IpcError::PayloadDecodeFailed,
+            vb_ipc::IpcError::ResponseDecodeFailed,
+        ];
+        for variant in variants {
+            assert!(assert_typed_ipc_error(variant));
+        }
+    }
+
+    #[test]
+    fn test_malformed_header_decode() -> Result<(), Box<dyn std::error::Error>> {
+        let header = [0u8; vb_ipc::IPC_HEADER_LEN];
+        let error = vb_ipc::frame::decode_frame_header(&header)
+            .err()
+            .ok_or("expected malformed header rejection")?;
+        assert_eq!(error, vb_ipc::IpcError::InvalidMagic { actual: 0 });
+        assert!(assert_typed_ipc_error(error));
+        Ok(())
+    }
+}
+
+
+## fuzz/src/lib.rs
+//! Shared fuzz target bodies for Velvet Ballistics evidence gates.
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::let_underscore_must_use)]
+#![allow(clippy::as_conversions)]
+#![allow(clippy::arithmetic_side_effects)]
+#![allow(clippy::len_zero)]
+
+pub mod bin_common;
+
+mod storage_codec_assertions;
+mod storage_codec_errors;
+mod storage_codec_mutation;
+pub mod storage_codec_target;
+pub mod yaml_target;
+pub mod validation_target;
+pub mod journal_target;
+pub mod expression_target;
+pub mod workflow_target;
+pub mod ipc_target;
+pub mod boundary_target;
+
+pub use storage_codec_target::fuzz_vb_storage_codec;
+
+pub use yaml_target::fuzz_yaml_events;
+pub use yaml_target::fuzz_strict_yaml_profile;
+pub use yaml_target::fuzz_compile_source_ast_marks;
+pub use yaml_target::fuzz_span_bridge;
+
+pub use validation_target::fuzz_capability_name_schema;
+pub use validation_target::fuzz_capability_contract_schema;
+pub use validation_target::fuzz_verifier_gates;
+pub use validation_target::fuzz_diagnostic_from_error;
+pub use validation_target::fuzz_diagnostic_code_from_str;
+
+pub use journal_target::fuzz_journal_event;
+pub use journal_target::fuzz_replay_events;
+pub use journal_target::fuzz_extract_terminal;
+pub use journal_target::fuzz_action_tracker;
+pub use journal_target::fuzz_admission_flow;
+pub use journal_target::fuzz_admission_fuzz;
+pub use journal_target::fuzz_strict_artifact_decoder;
+pub use journal_target::fuzz_digest_coherence;
+pub use journal_target::fuzz_readback_family_set;
+pub use journal_target::fuzz_admission_input_surface;
+pub use journal_target::fuzz_accepted_artifact_decode;
+pub use journal_target::fuzz_recovery_decode;
+pub use journal_target::fuzz_vb_qi37_12_persisted_payload_decode;
+pub use journal_target::fuzz_storage_envelope_boundary;
+pub use journal_target::fuzz_binary_payload_boundary;
+pub use journal_target::fuzz_accepted_artifact_envelope_qi37_4_2;
+
+pub use expression_target::fuzz_expression;
+pub use expression_target::fuzz_expr_bytecode;
+pub use expression_target::fuzz_taint_propagation;
+pub use expression_target::fuzz_expr_eval;
+
+pub use workflow_target::fuzz_compiled_ir;
+pub use workflow_target::fuzz_generated_compare;
+pub use workflow_target::fuzz_resource_budget;
+pub use workflow_target::fuzz_budget_compute;
+pub use workflow_target::fuzz_accessor_traversal;
+pub use workflow_target::fuzz_slot_value_roundtrip;
+pub use workflow_target::fuzz_collect_page_pagination;
+pub use workflow_target::fuzz_step_budget_new;
+
+pub use ipc_target::assert_typed_ipc_error;
+pub use ipc_target::fuzz_ipc_frame;
+pub use ipc_target::fuzz_ipc_decode;
+pub use ipc_target::fuzz_ipc_frame_boundary;
+
+pub use boundary_target::fuzz_external_input_adapter_boundary;
+
+
+## fuzz/fuzz_targets/ipc_frame.rs
+//! Fuzz target for IPC frame decode.
+//!
+//! ## INVARIANT Oracle
+//!
+//! Replaces crash-only fuzzing with structural assertions on
+//! `decode_frame_header` and `decode_frame_payload`:
+//! - Decoded `IpcFrameHeader` is guaranteed to have matched `IPC_VERSION` on
+//!   decode (the version slot is validated during decode and not stored on the
+//!   struct). The wire-format version slot of any re-encoded header MUST equal
+//!   `IPC_VERSION`.
+//! - On Ok: re-encoding the decoded header round-trips to the exact input
+//!   bytes (`encode ∘ decode = id`).
+//! - `decode_frame_payload` MUST return `Err` whenever `payload.len()` differs
+//!   from the header's `payload_len` field.
+//! - All errors are typed `IpcError` variants (enforced inside
+//!   `fuzz_lib::fuzz_ipc_frame`).
+//!
+//! Every `decode_frame_header` call is matched into `Ok / Err` so that no
+//! decoder `Result` is silently discarded and no wildcard `IpcPayload` arm is
+//! reached. Decode and encode failures are routed through the typed
+//! `fuzz_lib::assert_typed_ipc_error` oracle.
+//!
+//! Corpus seeds are maintained in `fuzz/corpus/ipc_frame/`.
+
+#![no_main]
+
+use libfuzzer_sys::fuzz_target;
+
+fuzz_target!(|data: &[u8]| {
+    // Target-level oracle: a successfully decoded header re-encodes to bytes
+    // whose version slot equals IPC_VERSION. This is the only externally
+    // observable form of the "decoded header has version == IPC_VERSION"
+    // invariant, since `IpcFrameHeader` does not store a version field.
+    //
+    // Both decoder calls are matched into `Ok / Err` so the typed oracle in
+    // `fuzz_lib` exercises every error class. The strict lint gate forbids
+    // `let _ = decode(...)` discard patterns and any wildcard `IpcPayload`
+    // arm, so we route both branches through the oracle.
+    if let Some(header_bytes) = data.first_chunk::<{ vb_ipc::IPC_HEADER_LEN }>() {
+        match vb_ipc::frame::decode_frame_header(header_bytes) {
+            Ok(decoded) => match decoded.encode() {
+                Ok(encoded) => {
+                    let version_bytes: [u8; 2] = encoded
+                        .as_slice()
+                        .get(4..6)
+                        .and_then(|s| <[u8; 2]>::try_from(s).ok())
+                        .unwrap_or([0u8; 2]);
+                    let version = u16::from_le_bytes(version_bytes);
+                    assert_eq!(
+                        version,
+                        vb_ipc::IPC_VERSION,
+                        "decoded IpcFrameHeader re-encodes with version != IPC_VERSION"
+                    );
+                    assert_eq!(
+                        encoded.as_slice(),
+                        header_bytes.as_slice(),
+                        "re-encoded header must match original bytes"
+                    );
+                }
+                Err(encode_error) => {
+                    assert!(fuzz_lib::assert_typed_ipc_error(encode_error));
+                }
+            },
+            Err(decode_error) => {
+                assert!(fuzz_lib::assert_typed_ipc_error(decode_error));
+            }
+        }
+    }
+
+    fuzz_lib::fuzz_ipc_frame(data);
+});
+
+
+## scripts/check-error-exhaustiveness.sh
+#!/usr/bin/env bash
+# **PO-vb-hbav-033**: CI error exhaustiveness check script.
+#
+# Compares fuzz oracle function bodies against production error enum definitions.
+# Exits 0 when every checked oracle body mentions every current production
+# variant. Exits non-zero when variants are missing or inputs cannot be parsed.
+#
+# Usage: bash scripts/check-error-exhaustiveness.sh
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$SCRIPT_DIR/.."
+
+if ! command -v python3 >/dev/null 2>&1; then
+    printf 'Missing required parser: python3\n' >&2
+    exit 127
+fi
+
+printf '=== Checking fuzz harness error exhaustiveness ===\n'
+
+python3 - "$ROOT_DIR" <<'PY'
+from __future__ import annotations
+
+import re
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+
+def strip_comments(text: str) -> str:
+    without_blocks = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    return re.sub(r"//.*", "", without_blocks)
+
+
+def enum_body(text: str, enum_name: str) -> str:
+    marker = re.search(rf"\benum\s+{re.escape(enum_name)}\s*{{", text)
+    if marker is None:
+        raise ValueError(f"enum {enum_name} not found")
+    start = marker.end() - 1
+    depth = 0
+    for index in range(start, len(text)):
+        char = text[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start + 1:index]
+    raise ValueError(f"enum {enum_name} body is not closed")
+
+
+@dataclass(frozen=True)
+class Oracle:
+    path: Path
+    function: str
+
+
+def braced_body(text: str, open_brace: int, label: str) -> str:
+    depth = 0
+    for index in range(open_brace, len(text)):
+        char = text[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[open_brace + 1:index]
+    raise ValueError(f"{label} body is not closed")
+
+
+def function_body(text: str, function_name: str) -> str:
+    marker = re.search(rf"\bfn\s+{re.escape(function_name)}\s*(?:<[^>]*>)?\(", text)
+    if marker is None:
+        raise ValueError(f"function {function_name} not found")
+    open_brace = text.find("{", marker.end())
+    if open_brace < 0:
+        raise ValueError(f"function {function_name} body not found")
+    return braced_body(text, open_brace, f"function {function_name}")
+
+
+def enum_variants(path: Path, enum_name: str) -> set[str]:
+    text = strip_comments(path.read_text(encoding="utf-8"))
+    body = enum_body(text, enum_name)
+    variants: set[str] = set()
+    for line in body.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        match = re.match(r"([A-Z][A-Za-z0-9_]*)\b(?:\s*[({,]|$)", stripped)
+        if match is not None:
+            variants.add(match.group(1))
+    if not variants:
+        raise ValueError(f"no variants parsed for {enum_name} in {path}")
+    return variants
+
+
+def mentioned_variants(path: Path, type_name: str, function_name: str) -> set[str]:
+    text = strip_comments(path.read_text(encoding="utf-8"))
+    body = function_body(text, function_name)
+    return set(re.findall(rf"\b{re.escape(type_name)}::([A-Z][A-Za-z0-9_]*)\b", body))
+
+
+def graceful_wildcard_failure(path: Path, function_name: str) -> str | None:
+    text = strip_comments(path.read_text(encoding="utf-8"))
+    body = function_body(text, function_name)
+    graceful_patterns = [
+        r"_\s*=>\s*\{\s*\}",
+        r"_\s*=>\s*Ok\s*\(\s*\(\s*\)\s*\)",
+        r"_\s*=>\s*\(\s*\)",
+    ]
+    for pattern in graceful_patterns:
+        if re.search(pattern, body, flags=re.S) is not None:
+            return "graceful wildcard arm accepts an unlisted variant"
+    return None
+
+
+def main() -> int:
+    root = Path(sys.argv[1])
+    checks = [
+        (
+            "JournalError",
+            root / "crates/vb_storage/src/error/mod.rs",
+            [
+                Oracle(root / "fuzz/src/journal_target/errors.rs", "assert_typed_journal_error"),
+                Oracle(root / "fuzz/fuzz_targets/decode_record.rs", "assert_typed_journal_error"),
+                Oracle(root / "fuzz/fuzz_targets/journal_decode.rs", "assert_typed_journal_error"),
+                Oracle(
+                    root / "fuzz/tests/proptest_journal_error_exhaustiveness.rs",
+                    "assert_known_journal_error",
+                ),
+            ],
+        ),
+        (
+            "IpcError",
+            root / "crates/vb_ipc/src/error.rs",
+            [
+                Oracle(root / "fuzz/src/ipc_target.rs", "assert_typed_ipc_error"),
+                Oracle(
+                    root / "fuzz/tests/proptest_ipc_error_exhaustiveness.rs",
+                    "assert_known_ipc_error",
+                ),
+            ],
+        ),
+        (
+            "ValidationError",
+            root / "crates/vb_validate/src/validation_errors.rs",
+            [
+                Oracle(
+                    root / "fuzz/src/validation_target/verifier.rs",
+                    "assert_typed_validation_error",
+                )
+            ],
+        ),
+    ]
+
+    failures: list[str] = []
+    for type_name, enum_path, oracles in checks:
+        try:
+            variants = enum_variants(enum_path, type_name)
+        except ValueError as error:
+            failures.append(f"{type_name} enum parse failed in {enum_path}: {error}")
+            continue
+        for oracle in oracles:
+            rel = oracle.path.relative_to(root)
+            try:
+                mentions = mentioned_variants(oracle.path, type_name, oracle.function)
+            except ValueError as error:
+                failures.append(f"{type_name} oracle parse failed in {rel}::{oracle.function}: {error}")
+                continue
+            try:
+                wildcard_failure = graceful_wildcard_failure(oracle.path, oracle.function)
+            except ValueError as error:
+                failures.append(f"{type_name} wildcard parse failed in {rel}::{oracle.function}: {error}")
+                continue
+            if wildcard_failure is not None:
+                failures.append(f"{type_name} {wildcard_failure} in {rel}::{oracle.function}")
+            missing = sorted(variants - mentions)
+            if missing:
+                failures.append(
+                    f"{type_name} missing in {rel}::{oracle.function}: {', '.join(missing)}"
+                )
+            else:
+                print(f"  OK {type_name} in {rel}::{oracle.function}: {len(variants)} variants")
+
+    if failures:
+        print("=== Error exhaustiveness failures ===", file=sys.stderr)
+        for failure in failures:
+            print(f"  {failure}", file=sys.stderr)
+        return 1
+
+    print("=== All error exhaustiveness checks passed ===")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+PY
+
+
+## .beads/vb-k563f/evidence/independent/unit-tests.log
+   Compiling serde_core v1.0.228
+   Compiling serde v1.0.228
+   Compiling num-traits v0.2.19
+   Compiling jobserver v0.1.35
+   Compiling cc v1.2.62
+   Compiling chrono v0.4.44
+   Compiling bytes v1.11.1
+   Compiling byteorder v1.5.0
+   Compiling hash32 v0.2.1
+   Compiling blake3 v1.8.5
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-test-review-5090/crates/vb_core)
+   Compiling log v0.4.29
+   Compiling heapless v0.7.17
+   Compiling simd-adler32 v0.3.9
+   Compiling memchr v2.8.0
+   Compiling crc32fast v1.5.0
+   Compiling zmij v1.0.21
+   Compiling anstyle v1.0.14
+   Compiling sfa v1.0.0
+   Compiling postcard v1.1.3
+   Compiling utf8parse v0.2.2
+   Compiling adler2 v2.0.1
+   Compiling version_check v0.9.5
+   Compiling lsm-tree v3.1.4
+   Compiling ahash v0.8.12
+   Compiling miniz_oxide v0.8.9
+   Compiling anstyle-parse v1.0.0
+   Compiling anstyle-query v1.1.5
+   Compiling itoa v1.0.18
+   Compiling serde_json v1.0.150
+   Compiling colorchoice v1.0.5
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling camino v1.2.2
+   Compiling fjall v3.1.4
+   Compiling anstream v1.0.0
+   Compiling flate2 v1.1.9
+   Compiling aho-corasick v1.1.4
+   Compiling fdeflate v0.3.7
+   Compiling ordered-float v5.3.0
+   Compiling encoding_rs v0.8.35
+   Compiling clap_lex v1.1.0
+   Compiling unicode-width v0.2.2
+   Compiling winnow v1.0.3
+   Compiling pxfm v0.1.29
+   Compiling anyhow v1.0.102
+   Compiling heck v0.5.0
+   Compiling strsim v0.11.1
+   Compiling clap_builder v4.6.0
+   Compiling moxcms v0.8.1
+   Compiling clap_derive v4.6.1
+   Compiling toml_parser v1.1.2+spec-1.1.0
+   Compiling annotate-snippets v0.12.16
+   Compiling encoding_rs_io v0.1.7
+   Compiling regex-automata v0.4.14
+   Compiling saphyr v0.0.6
+   Compiling png v0.18.1
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-test-review-5090/crates/vb_storage)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-test-review-5090/crates/vb_validate)
+   Compiling saphyr-parser-bw v0.0.611
+   Compiling crossbeam-channel v0.5.15
+   Compiling libfuzzer-sys v0.4.13
+   Compiling cargo-platform v0.1.9
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.1
+   Compiling semver v1.0.28
+   Compiling bytemuck v1.25.0
+   Compiling base64 v0.22.1
+   Compiling nohash-hasher v0.2.0
+   Compiling unsafe-libyaml v0.2.11
+   Compiling toml_writer v1.1.1+spec-1.1.0
+   Compiling ryu v1.0.23
+   Compiling winnow v0.7.15
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling serde-saphyr v0.0.25
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-test-review-5090/crates/vb_runtime)
+   Compiling image v0.25.10
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+   Compiling cargo_metadata v0.19.2
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-test-review-5090/crates/vb_expr)
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-test-review-5090/crates/vb_yaml)
+   Compiling regex v1.12.3
+   Compiling clap v4.6.1
+   Compiling mio v1.2.0
+   Compiling arbitrary v1.4.2
+   Compiling proptest v1.11.0
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-test-review-5090/crates/vb_ipc)
+   Compiling xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-test-review-5090/xtask)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-test-review-5090/crates/vb_compile)
+   Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-test-review-5090/fuzz)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 25.88s
+     Running unittests src/lib.rs (target/debug/deps/fuzz_lib-c08b189488a50b10)
+
+running 2 tests
+test ipc_target::typed_ipc_error_tests::test_all_14_explicit_variants_match ... ok
+test ipc_target::typed_ipc_error_tests::test_malformed_header_decode ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+
+## .beads/vb-k563f/evidence/independent/canonical-properties.log
+warning: methods `input`, `output`, and `action_abi_digest` are never used
+  --> crates/vb_runtime/src/recovery/full.rs:66:25
+   |
+37 | impl RecoveredPendingActionTicket {
+   | --------------------------------- methods in this implementation
+...
+66 |     pub(crate) const fn input(self) -> SlotIdx {
+   |                         ^^^^^
+...
+71 |     pub(crate) const fn output(self) -> SlotIdx {
+   |                         ^^^^^^
+...
+76 |     pub(crate) const fn action_abi_digest(self) -> WorkflowDigest {
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning
+   Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-test-review-5090/fuzz)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.92s
+     Running tests/proptest_digest_coherence.rs (target/debug/deps/proptest_digest_coherence-138e32162b6602da)
+
+running 1 test
+test proptest_workflow_digest_coherence ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/proptest_ipc_error_exhaustiveness.rs (target/debug/deps/proptest_ipc_error_exhaustiveness-f5d6c2f7698848f8)
+
+running 2 tests
+test proptest_validate_frame_magic_typed ... ok
+test proptest_ipc_frame_errors_are_typed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.60s
+
+     Running tests/proptest_journal_error_exhaustiveness.rs (target/debug/deps/proptest_journal_error_exhaustiveness-5b7c3fa2288980f0)
+
+running 1 test
+test proptest_decode_record_errors_are_typed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/proptest_roundtrip_determinism.rs (target/debug/deps/proptest_roundtrip_determinism-44ac7cbd0556a11d)
+
+running 2 tests
+test proptest_step_started_roundtrip ... ok
+test proptest_journal_event_roundtrip ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+
+## .beads/vb-k563f/evidence/independent/exhaustiveness.log
+=== Checking fuzz harness error exhaustiveness ===
+  OK JournalError in fuzz/src/journal_target/errors.rs::assert_typed_journal_error: 60 variants
+  OK JournalError in fuzz/fuzz_targets/decode_record.rs::assert_typed_journal_error: 60 variants
+  OK JournalError in fuzz/fuzz_targets/journal_decode.rs::assert_typed_journal_error: 60 variants
+  OK JournalError in fuzz/tests/proptest_journal_error_exhaustiveness.rs::assert_known_journal_error: 60 variants
+  OK IpcError in fuzz/src/ipc_target.rs::assert_typed_ipc_error: 14 variants
+  OK IpcError in fuzz/tests/proptest_ipc_error_exhaustiveness.rs::assert_known_ipc_error: 14 variants
+  OK ValidationError in fuzz/src/validation_target/verifier.rs::assert_typed_validation_error: 58 variants
+=== All error exhaustiveness checks passed ===
+
+## fuzz manifest
+[package]
+name = "velvet-ballistics-fuzz"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+autobins = false
+
+[package.metadata]
+# NOTE: cargo-fuzz requires `cargo-fuzz = true` here for manifest detection.
+# The `[package.metadata.cargo-fuzz]` subtable is the documented place for
+# libfuzzer options, but Cargo's TOML parser rejects both `[package.metadata]`
+# with a `cargo-fuzz` key AND `[package.metadata.cargo-fuzz]` as a subtable.
+# Minimization config (sancov_timeout, libfuzzer_options) is applied via
+# the `fuzz-smoke` Moon task and `scripts/fuzz-minimization.sh` instead.
+cargo-fuzz = true
+
+[features]
+fuzz = []
+test-util = []
+
+[lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+
+[dependencies]
+libfuzzer-sys = "0.4"
+postcard = { version = "1", features = ["alloc"] }
+serde = { version = "1", features = ["derive"] }
+blake3 = "1"
+bytes = { version = "1", features = ["serde"] }
+tempfile = "3"
+vb_core = { path = "../crates/vb_core" }
+vb_storage = { path = "../crates/vb_storage" }
+vb_runtime = { path = "../crates/vb_runtime" }
+vb_validate = { path = "../crates/vb_validate" }
+vb_compile = { path = "../crates/vb_compile", features = ["test-util"] }
+vb_ipc = { path = "../crates/vb_ipc" }
+
+xtask = { path = "../xtask" }
+crc32c = "0.6"
+
+[dev-dependencies]
+proptest = "1"
+
+[lib]
+name = "fuzz_lib"
+path = "src/lib.rs"
+
+[package.metadata.cargo-machete]
+ignored = ["bytes"]
+
+# === Fuzz profile (Phase 0) ===
+[[bin]]
+name = "accessor_traversal"
+path = "stdin_smoke/accessor_traversal.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "action_tracker"
+path = "stdin_smoke/action_tracker.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "admission_flow"
+path = "stdin_smoke/admission_flow.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "admission_fuzz"
+path = "stdin_smoke/admission_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "binary_payload_fuzz_boundary"
+path = "stdin_smoke/binary_payload_fuzz_boundary.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "budget_compute"
+path = "stdin_smoke/budget_compute.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "expr_bytecode"
+path = "stdin_smoke/expr_bytecode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "expr_eval"
+path = "stdin_smoke/expr_eval.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "external_input_adapter_fuzz"
+path = "stdin_smoke/external_input_adapter_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "extract_terminal"
+path = "stdin_smoke/extract_terminal.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ipc_decode"
+path = "stdin_smoke/ipc_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ipc_frame_fuzz_boundary"
+path = "stdin_smoke/ipc_frame_fuzz_boundary.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "recovery_decode"
+path = "stdin_smoke/recovery_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "replay_events"
+path = "stdin_smoke/replay_events.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "resource_budget"
+path = "stdin_smoke/resource_budget.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "slot_value_roundtrip"
+path = "stdin_smoke/slot_value_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "step_budget_new"
+path = "stdin_smoke/step_budget_new.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "storage_envelope_fuzz_boundary"
+path = "stdin_smoke/storage_envelope_fuzz_boundary.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "strict_yaml_profile"
+path = "stdin_smoke/strict_yaml_profile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "taint_propagation"
+path = "stdin_smoke/taint_propagation.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "verifier_gates"
+path = "stdin_smoke/verifier_gates.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "aggregate_artifact_budget"
+path = "stdin_smoke/aggregate_artifact_budget.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "aggregate_workflow_budget"
+path = "stdin_smoke/aggregate_workflow_budget.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "boundary_evidence_reference"
+path = "stdin_smoke/boundary_evidence_reference.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "boundary_inventory_parser"
+path = "stdin_smoke/boundary_inventory_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "boundary_metadata"
+path = "stdin_smoke/boundary_metadata.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "recover_runtime_frame_seed_contract"
+path = "stdin_smoke/recover_runtime_frame_seed_contract.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "structured_status_render_hostile"
+path = "stdin_smoke/structured_status_render_hostile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "xtask_parse_argv_hostile"
+path = "stdin_smoke/xtask_parse_argv_hostile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "xtask_parse_options_hostile"
+path = "stdin_smoke/xtask_parse_options_hostile.rs"
+test = false
+doc = false
+bench = false
+
+# === fuzz_targets/ (active libFuzzer harnesses with mutation + corpus) ===
+# These are the real fuzz targets. Each uses `#![no_main]` and
+# `libfuzzer_sys::fuzz_target!`. CI MUST distinguish these from the
+# stdin_smoke wrappers above; only these count as fuzz coverage evidence.
+
+[[bin]]
+name = "lex_expr"
+path = "fuzz_targets/lex_expr.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "check_doc_taint_consistency_accepts_arbitrary_markdown"
+path = "fuzz_targets/check_doc_taint_consistency_accepts_arbitrary_markdown.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "compile_source_ast_marks"
+path = "fuzz_targets/compile_source_ast_marks.rs"
+test = false
+doc = false
+bench = false
+
+# === fuzz_targets/ (restored and wired) ===
+
+[[bin]]
+name = "canonical_digest_ask"
+path = "fuzz_targets/canonical_digest_ask.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "choose_lowering_fuzzer"
+path = "fuzz_targets/choose_lowering_fuzzer.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_for_each_lowering"
+path = "fuzz_targets/fuzz_for_each_lowering.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_collect_lowering"
+path = "fuzz_targets/fuzz_collect_lowering.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_wait_lowering"
+path = "fuzz_targets/fuzz_wait_lowering.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_set_lowering"
+path = "fuzz_targets/fuzz_set_lowering.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_finish_lowering"
+path = "fuzz_targets/fuzz_finish_lowering.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "compile_workflow_fuzz"
+path = "fuzz_targets/compile_workflow_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "compiled_ir_fuzz"
+path = "fuzz_targets/compiled_ir.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "decode_record"
+path = "fuzz_targets/decode_record.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "diagnostic_code_from_str_fuzz"
+path = "fuzz_targets/diagnostic_code_from_str.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "diagnostic_from_error_fuzz"
+path = "fuzz_targets/diagnostic_from_error.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "expr_eval_fuzz"
+path = "fuzz_targets/expr_eval.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "expression_fuzz"
+path = "fuzz_targets/expression.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_choose_depth"
+path = "fuzz_targets/fuzz_choose_depth.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_choose_when_parse"
+path = "fuzz_targets/fuzz_choose_when_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_diagnostic_code_from_str"
+path = "fuzz_targets/fuzz_diagnostic_code_from_str.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_digest_compile"
+path = "fuzz_targets/fuzz_digest_compile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_finish_digest_encoding"
+path = "fuzz_targets/fuzz_finish_digest_encoding.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_retry_postcard_codec"
+path = "fuzz_targets/fuzz_retry_postcard_codec.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_retry_normalize_ticket"
+path = "fuzz_targets/fuzz_retry_normalize_ticket.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_retry_record_attempt"
+path = "fuzz_targets/fuzz_retry_record_attempt.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_retry_validate_completion"
+path = "fuzz_targets/fuzz_retry_validate_completion.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ipc_frame_fuzz"
+path = "fuzz_targets/ipc_frame.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "journal_decode"
+path = "fuzz_targets/journal_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "journal_event_fuzz"
+path = "fuzz_targets/journal_event.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_storage_codec"
+path = "fuzz_targets/vb_storage_codec.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "kind_validation"
+path = "fuzz_targets/kind_validation.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_workflow_source_fuzz"
+path = "fuzz_targets/parse_workflow_source_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "span_bridge_fuzz"
+path = "fuzz_targets/span_bridge_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tooling_flux_check_selector"
+path = "fuzz_targets/tooling_flux_check_selector.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tooling_guard_zero_parser"
+path = "fuzz_targets/tooling_guard_zero_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tooling_kani_list_args"
+path = "fuzz_targets/tooling_kani_list_args.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tooling_loom_list_xtask"
+path = "fuzz_targets/tooling_loom_list_xtask.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_f04l_yaml_compiler_compile"
+path = "fuzz_targets/vb_f04l_yaml_compiler_compile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_rpch_hydrate_events_fuzz"
+path = "fuzz_targets/vb_rpch_hydrate_events_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_rpch_hydrate_snapshot_tail_fuzz"
+path = "fuzz_targets/vb_rpch_hydrate_snapshot_tail_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_rpch_replay_events_fuzz"
+path = "fuzz_targets/vb_rpch_replay_events_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_rpch_seed_dimensions_fuzz"
+path = "fuzz_targets/vb_rpch_seed_dimensions_fuzz.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_roundtrip"
+path = "fuzz_targets/fuzz_storage_codec_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_header"
+path = "fuzz_targets/fuzz_storage_codec_header.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_payload_corruption"
+path = "fuzz_targets/fuzz_storage_codec_payload_corruption.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_kind_family"
+path = "fuzz_targets/fuzz_storage_codec_kind_family.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_schema_version"
+path = "fuzz_targets/fuzz_storage_codec_schema_version.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_storage_codec_digest"
+path = "fuzz_targets/fuzz_storage_codec_digest.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_001"
+path = "fuzz_targets/vb_vzcuf_PS_001.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_002"
+path = "fuzz_targets/vb_vzcuf_PS_002.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_003"
+path = "fuzz_targets/vb_vzcuf_PS_003.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_004"
+path = "fuzz_targets/vb_vzcuf_PS_004.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_005"
+path = "fuzz_targets/vb_vzcuf_PS_005.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_006"
+path = "fuzz_targets/vb_vzcuf_PS_006.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_007"
+path = "fuzz_targets/vb_vzcuf_PS_007.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_008"
+path = "fuzz_targets/vb_vzcuf_PS_008.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_vzcuf_PS_009"
+path = "fuzz_targets/vb_vzcuf_PS_009.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "wait_digest_exhaustive_collision"
+path = "fuzz_targets/wait_digest_exhaustive_collision.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "wait_digest_sensitivity"
+path = "fuzz_targets/wait_digest_sensitivity.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "wait_sentinel_collision"
+path = "fuzz_targets/wait_sentinel_collision.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "yaml_events"
+path = "fuzz_targets/yaml_events.rs"
+test = false
+doc = false
+bench = false
+
+# The two `capability_*_schema` bins below were deleted in commit 437a51f20
+# (vb-4b0mk) when their .rs sources were moved from `src/bin/` to
+# `stdin_smoke/`, but the test in
+# `crates/workspace_tests/tests/vb_qi37_6_state8_setup.rs`
+# (`state8_fuzz_schema_setup_registers_required_capability_bins`) still
+# requires both names to be registered under `autobins = false`. Re-registered
+# here with the post-move paths so the static-source assertion holds. This
+# adds zero dependencies, so `fuzz/Cargo.lock` is unchanged.
+
+[[bin]]
+name = "capability_contract_schema"
+path = "stdin_smoke/capability_contract_schema.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "capability_name_schema"
+path = "stdin_smoke/capability_name_schema.rs"
+test = false
+doc = false
+bench = false
+
+# === src/bin/ orphans (declared 2026-05-24 Phase 0) ===
+
+## complete fixture patch
+commit f41c19bfe (origin/codex/vb-bwdf0-fuzz-fixtures, codex/vb-bwdf0-fuzz-fixtures)
+Author: femdation-controller <femdation@velvet-ballistics.local>
+Date:   Wed Oct 21 13:52:54 2026 -0500
+
+    vb-bwdf0: repair explicit fuzz workflow input schema fixtures
+
+diff --git a/fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs b/fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs
+index 105b2f790..192fd7dc3 100644
+--- a/fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs
++++ b/fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs
+@@ -80,6 +80,7 @@ fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
+         symbols_count: 0,
+         entry: StepIdx::ZERO,
+         step_names: Box::from([]),
++        input_slots: Box::from([]),
+         resource_contract: ResourceContract::DEFAULT,
+     };
+ 
+diff --git a/fuzz/fuzz_targets/fuzz_retry_postcard_codec.rs b/fuzz/fuzz_targets/fuzz_retry_postcard_codec.rs
+index 54ad911ef..c814cdb93 100644
+--- a/fuzz/fuzz_targets/fuzz_retry_postcard_codec.rs
++++ b/fuzz/fuzz_targets/fuzz_retry_postcard_codec.rs
+@@ -139,6 +139,7 @@ fn workflow_parts_from_bytes(data: &[u8]) -> Option<WorkflowParts> {
+         symbols_count: 0,
+         entry: StepIdx::new(u16::from(entry_byte)),
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+         resource_contract: ResourceContract::DEFAULT,
+     })
+ }
+diff --git a/fuzz/fuzz_targets/fuzz_retry_record_attempt.rs b/fuzz/fuzz_targets/fuzz_retry_record_attempt.rs
+index 91ae4e64d..833807d6f 100644
+--- a/fuzz/fuzz_targets/fuzz_retry_record_attempt.rs
++++ b/fuzz/fuzz_targets/fuzz_retry_record_attempt.rs
+@@ -83,6 +83,7 @@ fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
+         symbols_count: 0,
+         entry: StepIdx::ZERO,
+         step_names: Box::from([]),
++        input_slots: Box::from([]),
+         resource_contract: ResourceContract::DEFAULT,
+     };
+ 
+diff --git a/fuzz/fuzz_targets/fuzz_retry_validate_completion.rs b/fuzz/fuzz_targets/fuzz_retry_validate_completion.rs
+index 01f54aa71..c7651641a 100644
+--- a/fuzz/fuzz_targets/fuzz_retry_validate_completion.rs
++++ b/fuzz/fuzz_targets/fuzz_retry_validate_completion.rs
+@@ -77,6 +77,7 @@ fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
+         symbols_count: 0,
+         entry: StepIdx::ZERO,
+         step_names: Box::from([]),
++        input_slots: Box::from([]),
+         resource_contract: ResourceContract::DEFAULT,
+     };
+ 
+diff --git a/fuzz/src/expression_target.rs b/fuzz/src/expression_target.rs
+index 27e99e50e..e5a2aca52 100644
+--- a/fuzz/src/expression_target.rs
++++ b/fuzz/src/expression_target.rs
+@@ -82,6 +82,7 @@ pub fn fuzz_expr_bytecode(data: &[u8]) {
+         entry: vb_core::StepIdx::ZERO,
+         resource_contract: vb_core::ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+     }) else {
+         return;
+     };
+@@ -163,6 +164,7 @@ pub fn fuzz_taint_propagation(data: &[u8]) {
+         entry: vb_core::StepIdx::ZERO,
+         resource_contract: vb_core::ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+     }) else {
+         return;
+     };
+diff --git a/fuzz/src/journal_target/admission.rs b/fuzz/src/journal_target/admission.rs
+index 098b26c4e..2685fe592 100644
+--- a/fuzz/src/journal_target/admission.rs
++++ b/fuzz/src/journal_target/admission.rs
+@@ -107,6 +107,7 @@ fn workflow_parts(
+         entry: vb_core::StepIdx::ZERO,
+         resource_contract: vb_core::ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+     }
+ }
+ 
+diff --git a/fuzz/src/journal_target/readback.rs b/fuzz/src/journal_target/readback.rs
+index e9b5b11d2..3222a3835 100644
+--- a/fuzz/src/journal_target/readback.rs
++++ b/fuzz/src/journal_target/readback.rs
+@@ -126,6 +126,7 @@ fn one_node_parts(name: &'static str, digest: [u8; 32]) -> vb_core::WorkflowPart
+         entry: vb_core::StepIdx::ZERO,
+         resource_contract: vb_core::ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+     }
+ }
+ 
+diff --git a/fuzz/src/validation_target/capability.rs b/fuzz/src/validation_target/capability.rs
+index 1344d7cbb..505113301 100644
+--- a/fuzz/src/validation_target/capability.rs
++++ b/fuzz/src/validation_target/capability.rs
+@@ -90,6 +90,7 @@ fn fuzz_parts_with_actions(actions: &[u16]) -> WorkflowParts {
+         entry: StepIdx::new(0),
+         resource_contract: ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+     }
+ }
+ 
+diff --git a/fuzz/src/validation_target/verifier.rs b/fuzz/src/validation_target/verifier.rs
+index d5d22da03..4d5f4c0b2 100644
+--- a/fuzz/src/validation_target/verifier.rs
++++ b/fuzz/src/validation_target/verifier.rs
+@@ -207,6 +207,7 @@ pub fn fuzz_verifier_gates(data: &[u8]) {
+         entry: vb_core::StepIdx::ZERO,
+         resource_contract: vb_core::ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+     };
+     for result in [
+         vb_validate::gates::validate_gate_07_expression_stack_depth(&parts),
+diff --git a/fuzz/src/workflow_target/accessor.rs b/fuzz/src/workflow_target/accessor.rs
+index 66d267096..cbf4f6f1e 100644
+--- a/fuzz/src/workflow_target/accessor.rs
++++ b/fuzz/src/workflow_target/accessor.rs
+@@ -38,6 +38,7 @@ pub fn fuzz_accessor_traversal(data: &[u8]) {
+         entry: vb_core::StepIdx::ZERO,
+         resource_contract: vb_core::ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+     };
+     let Ok(workflow) = vb_core::CompiledWorkflow::try_from_parts(parts) else {
+         return;
+diff --git a/fuzz/src/workflow_target/budget.rs b/fuzz/src/workflow_target/budget.rs
+index 24a84e128..cd127f1de 100644
+--- a/fuzz/src/workflow_target/budget.rs
++++ b/fuzz/src/workflow_target/budget.rs
+@@ -79,6 +79,7 @@ fn two_node_parts(constant: vb_core::ConstValue) -> vb_core::WorkflowParts {
+         entry: vb_core::StepIdx::ZERO,
+         resource_contract: vb_core::ResourceContract::DEFAULT,
+         step_names: Box::new([]),
++        input_slots: Box::from([]),
+     }
+ }
+ 
+diff --git a/fuzz/tests/proptest_digest_coherence.rs b/fuzz/tests/proptest_digest_coherence.rs
+index 49ed795ca..ea3aee7be 100644
+--- a/fuzz/tests/proptest_digest_coherence.rs
++++ b/fuzz/tests/proptest_digest_coherence.rs
+@@ -81,6 +81,7 @@ proptest! {
+             entry: StepIdx::ZERO,
+             resource_contract: ResourceContract::DEFAULT,
+             step_names: Box::new([]),
++            input_slots: Box::from([]),
+         };
+ 
+         // Compute reference digest via postcard + blake3.

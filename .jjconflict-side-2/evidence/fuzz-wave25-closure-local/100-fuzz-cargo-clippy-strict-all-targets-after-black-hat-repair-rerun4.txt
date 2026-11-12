@@ -1,0 +1,109 @@
+COMMAND: cargo clippy --workspace --all-targets --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz
+    Checking velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+error: using a potentially dangerous silent `as` conversion
+  --> fuzz_targets/fuzz_choose_when_parse.rs:70:26
+   |
+70 |             current.push(byte as char);
+   |                          ^^^^^^^^^^^^
+   |
+   = help: consider using a safe wrapper for this conversion
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#as_conversions
+   = note: requested on the command line with `-D clippy::as-conversions`
+
+error: this `let...else` may be rewritten with the `?` operator
+  --> fuzz_targets/canonical_digest_ask.rs:36:17
+   |
+36 | /                 let Some(timeout_bytes) = data.get(1..) else {
+37 | |                     return None;
+38 | |                 };
+   | |__________________^ help: replace it with: `let timeout_bytes = data.get(1..)?;`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#question_mark
+   = note: `-D clippy::question-mark` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::question_mark)]`
+
+error: could not compile `velvet-ballistics-fuzz` (bin "fuzz_choose_when_parse") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `velvet-ballistics-fuzz` (bin "canonical_digest_ask") due to 1 previous error
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> fuzz_targets/vb_vzcuf_PS_009.rs:31:24
+   |
+31 |     let conservative = current + encoded_len;
+   |                        ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#arithmetic_side_effects
+   = note: requested on the command line with `-D clippy::arithmetic-side-effects`
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> fuzz_targets/vb_vzcuf_PS_009.rs:33:23
+   |
+33 |     let precise_new = current + encoded_len;
+   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#arithmetic_side_effects
+
+error: indexing may panic
+   --> fuzz_targets/vb_vzcuf_PS_009.rs:121:44
+    |
+121 |     let is_duplicate = data.len() >= 25 && data[24] & 1 == 1;
+    |                                            ^^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+    = note: requested on the command line with `-D clippy::indexing-slicing`
+
+error: indexing may panic
+   --> fuzz_targets/vb_vzcuf_PS_009.rs:138:11
+    |
+138 |     match data[0] % 3 {
+    |           ^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: slicing may panic
+   --> fuzz_targets/vb_vzcuf_PS_009.rs:139:41
+    |
+139 |         0 => fuzz_duplicate_accounting(&data[1..]),
+    |                                         ^^^^^^^^^
+    |
+    = help: consider using `.get(n..)` or .get_mut(n..)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: slicing may panic
+   --> fuzz_targets/vb_vzcuf_PS_009.rs:140:44
+    |
+140 |         1 => fuzz_encode_record_duplicate(&data[1..]),
+    |                                            ^^^^^^^^^
+    |
+    = help: consider using `.get(n..)` or .get_mut(n..)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: slicing may panic
+   --> fuzz_targets/vb_vzcuf_PS_009.rs:141:37
+    |
+141 |         _ => fuzz_staged_invariant(&data[1..]),
+    |                                     ^^^^^^^^^
+    |
+    = help: consider using `.get(n..)` or .get_mut(n..)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: could not compile `velvet-ballistics-fuzz` (bin "vb_vzcuf_PS_009") due to 7 previous errors
+error: this pattern reimplements `Option::unwrap_or`
+  --> fuzz_targets/kind_validation.rs:40:12
+   |
+40 |       } else if let Some(value) = read_u16_le_at(data, 0) {
+   |  ____________^
+41 | |         value // reuse first 2 bytes as kind for 4-byte inputs
+42 | |     } else {
+43 | |         28 // default to RunKilled for very short inputs
+44 | |     };
+   | |_____^ help: replace with: `read_u16_le_at(data, 0).unwrap_or(28)`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_unwrap_or
+   = note: `-D clippy::manual-unwrap-or` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_unwrap_or)]`
+
+error: could not compile `velvet-ballistics-fuzz` (bin "kind_validation") due to 1 previous error
+EXIT_STATUS=101

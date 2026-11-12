@@ -26,7 +26,7 @@ pub(super) use canonical_reduce_initial::parse_typed_initial;
 
 #[path = "canonical_repeat.rs"]
 mod canonical_repeat;
-pub(super) use canonical_repeat::lower_canonical_repeat;
+pub(super) use canonical_repeat::{field_error, lower_canonical_repeat};
 
 pub(super) fn lower_canonical_wait(
     index: usize,

@@ -40,6 +40,7 @@ fn parts(symbols_count: u32) -> WorkflowParts {
         name: "bound-fixture".into(),
         digest: WorkflowDigest::from_bytes([7; 32]),
         semantic_source_identity: None,
+        source_metadata: None,
         nodes: vec![value_node(), finish_node(1, 0)].into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -268,3 +269,6 @@ fn bound_symbols_unchecked_legacy_constructor_stays_unbound() {
         VersionedWorkflowParts::V1(_)
     ));
 }
+
+#[path = "bound_symbols_metadata_tests.rs"]
+mod metadata_tests;

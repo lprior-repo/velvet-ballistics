@@ -1,0 +1,10 @@
+COMMAND: cargo check --workspace --all-targets --all-features
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+    Checking vb_cli v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_cli)
+    Checking vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_compile)
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_core)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_runtime)
+    Checking velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/workspace_tests)
+    Checking velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_cli)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.44s
+EXIT_STATUS=0

@@ -1,0 +1,28 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-p51m8-local5090-finish/crates/workspace_tests)
+warning: unused import: `std::num::NonZeroUsize`
+ --> crates/workspace_tests/tests/vb_ko29_5_fixture/mod.rs:7:5
+  |
+7 | use std::num::NonZeroUsize;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `abi_digest2`
+   --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:410:19
+    |
+410 |     let (ticket2, abi_digest2) =
+    |                   ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_abi_digest2`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `contracts` is never used
+  --> crates/workspace_tests/tests/vb_ko29_5_fixture/mod.rs:99:4
+   |
+99 | fn contracts() -> Result<Box<[ActionContract]>, String> {
+   |    ^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `velvet-ballistics-workspace-tests` (test "vb_ko29_5_public_idempotency") generated 3 warnings (run `cargo fix --test "vb_ko29_5_public_idempotency" -p velvet-ballistics-workspace-tests` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.34s
+  Executable tests/vb_ko29_5_public_idempotency.rs (target/debug/deps/vb_ko29_5_public_idempotency-85f1f98b14656cee)

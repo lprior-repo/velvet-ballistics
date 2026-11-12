@@ -44,7 +44,7 @@ obligations:
     proof_level: L4
     crate: vb_core
     files:
-      - crates/vb_core/src/value.rs
+      - crates/vb_core/src/value/taint.rs
     required:
       verus: verification/verus/taint_lattice.rs
       tests: [taint_join_associative, taint_join_commutative, taint_join_idempotent]
@@ -61,7 +61,7 @@ obligations:
     proof_level: L4
     crate: vb_core
     files:
-      - crates/vb_core/src/value.rs
+      - crates/vb_core/src/value/taint.rs
     required:
       verus: verification/verus/taint_lattice.rs
     commands:
@@ -74,7 +74,7 @@ obligations:
     proof_level: L4
     crate: vb_core
     files:
-      - crates/vb_core/src/value.rs
+      - crates/vb_core/src/value/taint.rs
     required:
       verus: verification/verus/taint_lattice.rs
     commands:
@@ -87,7 +87,7 @@ obligations:
     proof_level: L4
     crate: vb_core
     files:
-      - crates/vb_core/src/value.rs
+      - crates/vb_core/src/value/taint.rs
     required:
       verus: verification/verus/taint_lattice.rs
       kani: kani_taint_lattice.rs
@@ -102,7 +102,7 @@ obligations:
     proof_level: L4
     crate: vb_core
     files:
-      - crates/vb_core/src/value.rs
+      - crates/vb_core/src/value/taint.rs
     required:
       verus: verification/verus/taint_lattice.rs
     commands:
@@ -116,7 +116,7 @@ obligations:
     proof_level: L3
     crate: vb_core
     files:
-      - crates/vb_core/src/value.rs
+      - crates/vb_core/src/value/taint.rs
       - crates/vb_core/src/engine/step.rs
     required:
       kani: kani_taint_propagation.rs
@@ -866,7 +866,7 @@ obligations:
     proof_level: L2
     crate: reference
     files:
-      - reference/engine_model.rs
+      - xtask/reference/src/engine_model.rs
     required:
       differential_tests: [engine_vs_reference]
     commands:
@@ -879,7 +879,7 @@ obligations:
     proof_level: L2
     crate: reference
     files:
-      - reference/taint_model.rs
+      - xtask/reference/src/taint_model.rs
     required:
       differential_tests: [taint_vs_reference]
     commands:

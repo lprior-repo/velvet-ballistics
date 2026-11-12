@@ -1,0 +1,16 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local3090-authority-review/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running tests/legacy_wire_decoder.rs (target/debug/deps/legacy_wire_decoder-2ded1f19ab345a4e)
+
+=== Legacy wire decoder test ===
+Legacy payload serialized to 61 bytes
+Testing: 7-field ActionTicket (commit 423d8ae8) layout
+Against: current decoder with 8-field ActionTicket
+
+Legacy payload serialized to 61 bytes
+Envelope built with 122 total bytes
+Test uses valid BLAKE3 digest computed by encode_record
+Envelope built with 122 total bytes
+Current decoder REJECTED legacy bytes (fail-closed):
+  Error: PostcardDecodeFailed(SerdeDeCustom)
+  Type: vb_storage::error::JournalError

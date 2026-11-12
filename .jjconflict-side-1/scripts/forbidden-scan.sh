@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(pwd -P)"
-if [[ ! -f "$ROOT/Cargo.toml" || ! -d "$ROOT/crates" || ! -f "$ROOT/xtask/src/forbidden_scan.rs" ]]; then
+if [[ ! -f "$ROOT/Cargo.toml" || ! -d "$ROOT/crates" || ! -f "$ROOT/scripts/forbidden_scan.rs" ]]; then
   printf '%s\n' "InvalidInvocation: run from repository root" >&2
   exit 64
 fi
@@ -29,7 +29,7 @@ mkdir -p "$TMP_DIR/src"
 cat >"$TMP_DIR/src/main.rs" <<EOF
 #![forbid(unsafe_code)]
 
-#[path = "$ROOT/xtask/src/forbidden_scan.rs"]
+#[path = "$ROOT/scripts/forbidden_scan.rs"]
 mod forbidden_scan;
 
 fn main() -> anyhow::Result<()> {

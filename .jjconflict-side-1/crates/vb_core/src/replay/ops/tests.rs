@@ -95,7 +95,13 @@ fn replay_err_to_core(e: ReplayError) -> CoreError {
     }
 }
 
-include!("tests/expr_stack_and_pop.rs");
-include!("tests/arith_compare_logic.rs");
-include!("tests/load_and_eval_expr.rs");
-include!("tests/blackhat_mixed_ce003.rs");
+include!("tests_stack.rs");
+include!("tests_expr.rs");
+include!("has_parity_replay_tests.rs");
+include!("tests_ce003.rs");
+include!("has_error_replay_tests.rs");
+include!("has_bytecode_boundary_tests.rs");
+include!("has_bytecode_boundary_hot_tests.rs");
+include!("has_bytecode_boundary_replay_tests.rs");
+include!("contains_replay_parity_tests.rs");
+include!("contains_replay_workflow_tests.rs");

@@ -1,0 +1,264 @@
+{
+  "verdict": "PASS",
+  "review_kind": "bounded independent TEST re-review; source inspection and existing raw execution receipts",
+  "source_pin": "95b1daffe01cdee461faa35f48e4625a8310020c",
+  "compared_to": "0a3f9ce994ed8ed2cfc81b08e491c027bd3428d4",
+  "contract_sha256": "b97207da41fcdc3369fe4706f7e6099283de684010f528962a99639903334b51",
+  "contract_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/.beads/vb-eirmk.42.1/has-bytecode-contract-clarification-v5.md",
+  "workspace": "/home/lewis/src/isoloated/velvet-ballistics-four-repairs-test-sol",
+  "roots_verified": true,
+  "files": {
+    "crates/vb_core/src/replay/ops/has_bytecode_boundary_tests.rs": {
+      "sha256": "aaaa8f2ff55b768a0f8e4f0b0b4a7aeb1be48348f00325cd54bec7cea6dfe91a",
+      "functions": [
+        {
+          "name": "values",
+          "line": 9,
+          "logical_lines_including_signature": 5
+        },
+        {
+          "name": "ops",
+          "line": 17,
+          "logical_lines_including_signature": 10
+        },
+        {
+          "name": "constructor_error",
+          "line": 30,
+          "logical_lines_including_signature": 6
+        },
+        {
+          "name": "has_bytecode_constants",
+          "line": 40,
+          "logical_lines_including_signature": 2
+        },
+        {
+          "name": "has_bytecode_choose_node",
+          "line": 44,
+          "logical_lines_including_signature": 16
+        },
+        {
+          "name": "has_bytecode_nodes",
+          "line": 62,
+          "logical_lines_including_signature": 15
+        },
+        {
+          "name": "has_bytecode_finish_node",
+          "line": 79,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "has_bytecode_parts",
+          "line": 90,
+          "logical_lines_including_signature": 15
+        },
+        {
+          "name": "has_bytecode_fixture",
+          "line": 108,
+          "logical_lines_including_signature": 13
+        },
+        {
+          "name": "malformed_has_program",
+          "line": 123,
+          "logical_lines_including_signature": 4
+        },
+        {
+          "name": "valid_has_program",
+          "line": 130,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "checked_has_plan",
+          "line": 142,
+          "logical_lines_including_signature": 4
+        },
+        {
+          "name": "eval_hot_has",
+          "line": 149,
+          "logical_lines_including_signature": 10
+        },
+        {
+          "name": "replay_has",
+          "line": 162,
+          "logical_lines_including_signature": 10
+        },
+        {
+          "name": "replay_choose_with_plan",
+          "line": 174,
+          "logical_lines_including_signature": 11
+        },
+        {
+          "name": "assert_replay_error_at_pc_one",
+          "line": 188,
+          "logical_lines_including_signature": 7
+        }
+      ]
+    },
+    "crates/vb_core/src/replay/ops/has_bytecode_boundary_hot_tests.rs": {
+      "sha256": "9072c8a855161abb1aaf38f36618c440605ff6204014db353e74a0ee057ddd40",
+      "functions": [
+        {
+          "name": "assert_program_constructors_reject_has_depth",
+          "line": 1,
+          "logical_lines_including_signature": 11
+        },
+        {
+          "name": "assert_workflow_constructor_rejects_has_depth",
+          "line": 14,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "has_bytecode_boundary_validators_reject_zero_one_and_three_stack_values",
+          "line": 29,
+          "logical_lines_including_signature": 8
+        },
+        {
+          "name": "has_bytecode_boundary_hot_underflows_with_zero_stack_values",
+          "line": 42,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "has_bytecode_boundary_hot_underflows_with_one_stack_value",
+          "line": 58,
+          "logical_lines_including_signature": 12
+        },
+        {
+          "name": "has_bytecode_boundary_hot_rejects_three_values_at_finalization",
+          "line": 74,
+          "logical_lines_including_signature": 14
+        },
+        {
+          "name": "has_bytecode_boundary_hot_validated_control_returns_true",
+          "line": 91,
+          "logical_lines_including_signature": 10
+        }
+      ]
+    },
+    "crates/vb_core/src/replay/ops/has_bytecode_boundary_replay_tests.rs": {
+      "sha256": "aac1ab306d4f23cf3387134e9d1ee69dbe53fed8e310fd1aad1aace7e1344365",
+      "functions": [
+        {
+          "name": "has_bytecode_boundary_replay_zero_values_error_at_pc_one",
+          "line": 3,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "has_bytecode_boundary_replay_one_value_error_at_pc_one",
+          "line": 16,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "has_bytecode_boundary_replay_three_values_fail_finalization_at_pc_one",
+          "line": 29,
+          "logical_lines_including_signature": 9
+        },
+        {
+          "name": "has_bytecode_boundary_replay_validated_control_takes_true_branch",
+          "line": 42,
+          "logical_lines_including_signature": 14
+        }
+      ]
+    }
+  },
+  "identities_preserved": [
+    "has_bytecode_boundary_validators_reject_zero_one_and_three_stack_values",
+    "has_bytecode_boundary_hot_underflows_with_zero_stack_values",
+    "has_bytecode_boundary_hot_underflows_with_one_stack_value",
+    "has_bytecode_boundary_hot_rejects_three_values_at_finalization",
+    "has_bytecode_boundary_hot_validated_control_returns_true",
+    "has_bytecode_boundary_replay_zero_values_error_at_pc_one",
+    "has_bytecode_boundary_replay_one_value_error_at_pc_one",
+    "has_bytecode_boundary_replay_three_values_fail_finalization_at_pc_one",
+    "has_bytecode_boundary_replay_validated_control_takes_true_branch"
+  ],
+  "findings": [],
+  "dispositions": [
+    {
+      "id": "HBC-REPLAY-CONTROL",
+      "status": "FIXED",
+      "path": "crates/vb_core/src/replay/ops/has_bytecode_boundary_tests.rs",
+      "lines": [
+        44,
+        62,
+        108
+      ],
+      "evidence": "Checked four-node workflow has true target2 and otherwise3; frame node_count4 admits both. Initialized slot0 contains Object{key:7}; constant1 is its valid Symbol. Replay checked control asserts Continue(2) and pc2. False-result/fallback3 or wrong-PC behavior fails these assertions."
+    },
+    {
+      "id": "DEFAULT-FEATURE-COMPILE",
+      "status": "FIXED",
+      "evidence": "Exactly six raw malformed diagnostic tests and three unchecked-only helpers gated by existing test-util. Constructor matrix, checked Hot true control and checked Replay true branch remain unconditional. No production, Cargo feature, gate or registration delta vs old pin. Retained before log reports two E0599 errors for from_parts_unchecked, exit101; frozen default receipt runs the three unconditional tests successfully."
+    },
+    {
+      "id": "EXACT-DIAGNOSTICS",
+      "status": "PRESERVED",
+      "evidence": "0/1 exact CoreError underflow through both ExprProgram constructors and WorkflowError::Expression wrapper;3 exact non-single reason. Hot raw0/1 exact EngineError underflow, raw3 exact non-single reason. Replay all3 exact ExpressionEvalFailed{step:1}; unexpected Ok maps to None and fails equality. Three-value fixture leaves99 below valid Object/Symbol operands, so final-stack check is reached rather than an uninitialized/type mask. Fatal setup propagation and checked-plan rejection branches cannot silently pass."
+    }
+  ],
+  "mutation_resistance": {
+    "method": "source reasoning only; no mutants executed",
+    "covered": "False Has result is observed as fallback3 rather than2; returned-target-only and PC-only divergences independently fail; accepting malformed constructors, wrong error variant/payload, wrong Replay PC, or bypassing final depth fails exact assertions.",
+    "limit": "Replay wrapper exposes only ExpressionEvalFailed with PC, not internal error cause. These tests do not prove all possible evaluator mutants are distinguished."
+  },
+  "function_length": {
+    "rule": "Nonblank, noncomment lines including signature; exclude only standalone brace-only lines",
+    "maximum": 16,
+    "forbidden_new_constructs_found": false
+  },
+  "raw_evidence": {
+    "has-bytecode-boundary-all-features-frozen": {
+      "log": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/has-bytecode-boundary-all-features-frozen.log",
+      "log_sha256": "83880a790822d48f62eda7d8001c76856435f77e25ed916d5450ef40a7ea48f0",
+      "exit_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/has-bytecode-boundary-all-features-frozen.exit",
+      "exit_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "observed_exit": 0,
+      "summary": [
+        "Starting 9 tests across 28 binaries (3387 tests skipped)",
+        "Summary [   0.004s] 9 tests run: 9 passed, 3387 skipped"
+      ],
+      "passed_names": [
+        "has_bytecode_boundary_hot_rejects_three_values_at_finalization",
+        "has_bytecode_boundary_replay_zero_values_error_at_pc_one",
+        "has_bytecode_boundary_replay_three_values_fail_finalization_at_pc_one",
+        "has_bytecode_boundary_hot_underflows_with_one_stack_value",
+        "has_bytecode_boundary_validators_reject_zero_one_and_three_stack_values",
+        "has_bytecode_boundary_hot_underflows_with_zero_stack_values",
+        "has_bytecode_boundary_replay_one_value_error_at_pc_one",
+        "has_bytecode_boundary_hot_validated_control_returns_true",
+        "has_bytecode_boundary_replay_validated_control_takes_true_branch"
+      ]
+    },
+    "has-bytecode-boundary-default-frozen": {
+      "log": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/has-bytecode-boundary-default-frozen.log",
+      "log_sha256": "a93787ebd301a116521a28f2b9c217d294b24c3fe588a2f41b54242baced0f1e",
+      "exit_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/has-bytecode-boundary-default-frozen.exit",
+      "exit_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "observed_exit": 0,
+      "summary": [
+        "Starting 3 tests across 28 binaries (3173 tests skipped)",
+        "Summary [   0.004s] 3 tests run: 3 passed, 3173 skipped"
+      ],
+      "passed_names": [
+        "has_bytecode_boundary_validators_reject_zero_one_and_three_stack_values",
+        "has_bytecode_boundary_hot_validated_control_returns_true",
+        "has_bytecode_boundary_replay_validated_control_takes_true_branch"
+      ]
+    },
+    "has-bytecode-boundary-default-before": {
+      "log": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/has-bytecode-boundary-default-before.log",
+      "log_sha256": "010760d0090430d8f907678ef18a99052df3cb918b4499bd078b1bf4b9138dca",
+      "exit_path": "/home/lewis/src/isoloated/velvet-ballistics-timer-source-repair-luna/target/core-build-20261110/evidence/has-bytecode-boundary-default-before.exit",
+      "exit_sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "observed_exit": 101,
+      "summary": [],
+      "passed_names": []
+    }
+  },
+  "execution_limits": [
+    "No fresh build/native/mutation execution by reviewer. Existing author logs read directly and hashed.",
+    "Frozen all-features receipt:9 passed,3387 filtered/skipped; default receipt:3 passed,3173 filtered/skipped. Not a zero-filter or full-suite run.",
+    "Receipt filenames identify feature lanes; logs do not embed complete invocation/provenance, so source-to-executable identity is not independently reconstructed here.",
+    "Existing public replay_step into real Choose and whole-expression evaluator is reviewed; no ReplayEngine API reachability claim.",
+    "Raw six diagnostics require existing test-util and are not admitted through validating constructors.",
+    "Full Has acceptance, literal Text lowering, full CI, formal and whole-master closure remain unaccepted."
+  ]
+}

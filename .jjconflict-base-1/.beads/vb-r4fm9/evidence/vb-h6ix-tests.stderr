@@ -1,0 +1,184 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-r4fm9-local5090-replay/crates/vb_storage)
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+  --> crates/vb_storage/src/codec/tests.rs:35:26
+   |
+35 |         idempotency_key: compute_action_idempotency_key(run, seq, action),
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^      --- argument #2 of type `u16` is missing
+   |
+note: function defined here
+  --> crates/vb_core/src/action/ticket.rs:28:8
+   |
+28 | pub fn compute_action_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: provide the argument
+   |
+35 |         idempotency_key: compute_action_idempotency_key(run, /* u16 */, seq, action),
+   |                                                              ++++++++++
+
+error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+  --> crates/vb_storage/src/codec/tests.rs:29:5
+   |
+29 |     ActionTicket {
+   |     ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+  --> crates/vb_storage/src/journal/regression_tests_vb_1rqz7.rs:33:5
+   |
+33 |     ActionTicket {
+   |     ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+  --> crates/vb_storage/src/journal/regression_tests_vb_xsu4g.rs:45:17
+   |
+45 |         ticket: ActionTicket {
+   |                 ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+   --> crates/vb_storage/src/journal/regression_tests_vb_xsu4g.rs:106:35
+    |
+106 |             let expected_ticket = ActionTicket {
+    |                                   ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+  --> crates/vb_storage/src/index_maintenance_tests.rs:87:9
+   |
+87 |         ActionTicket {
+   |         ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_storage/src/recovery/replay/summary/tests.rs:632:26
+    |
+632 |         idempotency_key: vb_core::action::compute_action_idempotency_key(
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+633 |             run,
+634 |             vb_core::SeqNo::new(2),
+    |             ---------------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_core/src/action/ticket.rs:28:8
+    |
+ 28 | pub fn compute_action_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: provide the argument
+    |
+632 |         idempotency_key: vb_core::action::compute_action_idempotency_key(
+633 |             run,
+634 ~             /* u16 */,
+635 ~             vb_core::SeqNo::new(2),
+    |
+
+error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+   --> crates/vb_storage/src/recovery/replay/summary/tests.rs:626:18
+    |
+626 |     let ticket = vb_core::ActionTicket {
+    |                  ^^^^^^^^^^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_storage/src/recovery/replay/summary/tests.rs:686:26
+    |
+686 |         idempotency_key: vb_core::action::compute_action_idempotency_key(
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+687 |             run,
+688 |             vb_core::SeqNo::new(3),
+    |             ---------------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_core/src/action/ticket.rs:28:8
+    |
+ 28 | pub fn compute_action_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: provide the argument
+    |
+686 |         idempotency_key: vb_core::action::compute_action_idempotency_key(
+687 |             run,
+688 ~             /* u16 */,
+689 ~             vb_core::SeqNo::new(3),
+    |
+
+error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+   --> crates/vb_storage/src/recovery/replay/summary/tests.rs:680:18
+    |
+680 |     let ticket = vb_core::ActionTicket {
+    |                  ^^^^^^^^^^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_storage/src/recovery/replay/summary/tests.rs:758:26
+    |
+758 |         idempotency_key: vb_core::action::compute_action_idempotency_key(
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+759 |             run,
+760 |             vb_core::SeqNo::new(5),
+    |             ---------------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_core/src/action/ticket.rs:28:8
+    |
+ 28 | pub fn compute_action_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: provide the argument
+    |
+758 |         idempotency_key: vb_core::action::compute_action_idempotency_key(
+759 |             run,
+760 ~             /* u16 */,
+761 ~             vb_core::SeqNo::new(5),
+    |
+
+error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+   --> crates/vb_storage/src/recovery/replay/summary/tests.rs:752:18
+    |
+752 |     let ticket = vb_core::ActionTicket {
+    |                  ^^^^^^^^^^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_storage/src/recovery/tests.rs:121:26
+    |
+121 |         idempotency_key: compute_action_idempotency_key(run, seq, action),
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^      --- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_core/src/action/ticket.rs:28:8
+    |
+ 28 | pub fn compute_action_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: provide the argument
+    |
+121 |         idempotency_key: compute_action_idempotency_key(run, /* u16 */, seq, action),
+    |                                                              ++++++++++
+
+error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+   --> crates/vb_storage/src/recovery/tests.rs:115:5
+    |
+115 |     ActionTicket {
+    |     ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+    --> crates/vb_storage/src/recovery/tests.rs:2460:30
+     |
+2460 |             idempotency_key: compute_action_idempotency_key(run, seq, action),
+     |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^      --- argument #2 of type `u16` is missing
+     |
+note: function defined here
+    --> crates/vb_core/src/action/ticket.rs:28:8
+     |
+  28 | pub fn compute_action_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: provide the argument
+     |
+2460 |             idempotency_key: compute_action_idempotency_key(run, /* u16 */, seq, action),
+     |                                                                  ++++++++++
+
+error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+    --> crates/vb_storage/src/recovery/tests.rs:2454:9
+     |
+2454 |         ActionTicket {
+     |         ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+    --> crates/vb_storage/src/tests.rs:2982:9
+     |
+2982 |         ActionTicket {
+     |         ^^^^^^^^^^^^ missing `run_attempt`
+
+Some errors have detailed explanations: E0061, E0063.
+For more information about an error, try `rustc --explain E0061`.
+error: could not compile `vb_storage` (lib test) due to 17 previous errors

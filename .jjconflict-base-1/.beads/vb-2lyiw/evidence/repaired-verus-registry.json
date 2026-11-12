@@ -1,0 +1,17 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing",
+  "argv": [
+    "env",
+    "VERUS_EVIDENCE_DIR=.beads/vb-2lyiw/evidence/verus-registry-raw",
+    "bash",
+    "scripts/verify-verus.sh"
+  ],
+  "exit_code": 1,
+  "seconds": 8.643,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-2lyiw/evidence/repaired-verus-registry"
+}

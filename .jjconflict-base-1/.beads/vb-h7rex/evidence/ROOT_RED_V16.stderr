@@ -1,0 +1,7 @@
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/vb-h7rex-red-v16/crates/vb_core)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-h7rex-red-v16/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-h7rex-red-v16/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-h7rex-red-v16/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.47s
+     Running tests/policy_pin_durable_recovery.rs (/home/lewis/src/isoloated/vb-h7rex-tests-v11/target/debug/deps/policy_pin_durable_recovery-9f177cdb1287f517)
+error: test failed, to rerun pass `-p vb_runtime --test policy_pin_durable_recovery`

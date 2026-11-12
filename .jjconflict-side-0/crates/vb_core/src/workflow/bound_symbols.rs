@@ -47,13 +47,22 @@ impl CompiledWorkflow {
         parts: WorkflowParts,
         symbol_payloads: Box<[Box<str>]>,
     ) -> Result<Self, WorkflowError> {
+        let secret_requirements = Box::new([]);
         let metadata =
-            source_metadata::WorkflowSourceMetadata::try_new(symbol_payloads, Box::default())
+            source_metadata::WorkflowSourceMetadata::try_new(symbol_payloads, secret_requirements)
                 .map_err(|source| WorkflowError::InvalidSymbolMetadata { source })?;
         metadata
             .validate_symbols_count(parts.symbols_count)
             .map_err(|source| WorkflowError::InvalidSymbolMetadata { source })?;
         let mut workflow = Self::try_from_parts(parts)?;
+        if workflow
+            .source_metadata()
+            .is_some_and(|existing| existing.symbols() != metadata.symbols())
+        {
+            return Err(WorkflowError::SourceMetadata {
+                detail: "bound symbol payloads do not match source metadata".into(),
+            });
+        }
         workflow.source_symbols = Some(metadata);
         Ok(workflow)
     }

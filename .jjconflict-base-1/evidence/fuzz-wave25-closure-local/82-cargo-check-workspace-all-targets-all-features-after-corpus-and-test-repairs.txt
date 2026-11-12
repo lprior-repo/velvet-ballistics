@@ -1,0 +1,8 @@
+COMMAND: cargo check --workspace --all-targets --all-features
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_core)
+    Checking velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_cli)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_runtime)
+    Checking velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/workspace_tests)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.22s
+
+EXIT_STATUS=0

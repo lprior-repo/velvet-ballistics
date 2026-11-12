@@ -1,0 +1,114 @@
+ACTUALCURRENT crates/vb_storage/src/batch/append_event.rs
+1: #![forbid(unsafe_code)]
+2: use super::types::JournalWriteBatch;
+3: use crate::codec::encode_record;
+4: use crate::constants::{MAGIC_JOURNAL_EVENT, MAX_BATCH_COUNT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
+5: use crate::error::JournalError;
+6: use crate::events::JournalEvent;
+7: use crate::keys::run_event_key;
+8: 
+9: impl<'j> JournalWriteBatch<'j> {
+10:     /// Appends a journal event into the batch.
+11:     ///
+12:     /// # Invariant I20
+13:     /// Duplicate event detection is enforced at `append_event` time by
+14:     /// checking both the current batch's staged keys and the journal's
+15:     /// keyspace for already-committed events. Same-batch duplicate
+16:     /// keys are rejected before Fjall can collapse them silently.
+17:     ///
+18:     /// # Guard Precedence (C6)
+19:     /// 1. Key construction
+20:     /// 2. Semantic event validation
+21:     /// 3. Same-batch duplicate check (HashSet guard)
+22:     /// 4. Durable duplicate check → aborts batch
+23:     /// 5. Count capacity check (QueueFull)
+24:     /// 6. Per-record encoding / payload size check (PayloadTooLarge)
+25:     /// 7. Accumulated byte admission check (JournalBatchBytesExceeded)
+26:     /// 8. Insert into inner OwnedWriteBatch
+27:     ///
+28:     /// # Preconditions (requires)
+29:     /// - The batch is not already aborted.
+30:     /// - `event.run_id()` and `event.seq()` form a valid key.
+31:     /// - `event` payload is bounded by `MAX_JOURNAL_EVENT_PAYLOAD_BYTES`.
+32:     ///
+33:     /// # Postconditions (ensures)
+34:     /// - On success: the event is staged in `inner`, `staged_bytes` is
+35:     ///   incremented by the full encoded record length.
+36:     /// - On `DuplicateStagedKey`: no state mutated, batch remains open.
+37:     /// - On `DuplicateEvent`: batch is aborted, no state mutated.
+38:     /// - On `QueueFull`: no state mutated, batch remains open.
+39:     /// - On `PayloadTooLarge`: no state mutated.
+40:     /// - On `JournalBatchBytesExceeded`: no state mutated,
+41:     ///   `staged_bytes` unchanged, batch remains open.
+42:     pub fn append_event(&mut self, event: &JournalEvent) -> Result<(), JournalError> {
+43:         let key = run_event_key(event.run_id(), event.seq())?;
+44:         if !event.is_valid() {
+45:             return Err(JournalError::InvalidEvent);
+46:         }
+47:         // Same-batch duplicate guard (vb-1rqz7.18 / vb-byk3q / SA-003).
+48:         //
+49:         // `journal.events.contains_key` only inspects the durable
+50:         // memtable; it cannot see entries staged into the current
+51:         // `OwnedWriteBatch` but not yet committed. Without this
+52:         // HashSet-based guard, two `append_event` calls with the same
+53:         // `(run, seq)` would both pass the durable check and Fjall
+54:         // would silently overwrite the first value at commit time.
+55:         if self.staged_event_keys.contains(&key) {
+56:             return Err(JournalError::DuplicateStagedKey {
+57:                 run: event.run_id(),
+58:                 seq: event.seq(),
+59:             });
+60:         }
+61:         if self.journal.events.contains_key(key)? {
+62:             self.aborted = true;
+63:             return Err(JournalError::DuplicateEvent {
+64:                 run: event.run_id(),
+65:                 seq: event.seq(),
+66:             });
+67:         }
+68:         if self.inner.len() >= MAX_BATCH_COUNT {
+69:             return Err(JournalError::QueueFull);
+70:         }
+71:         let value = encode_record(
+72:             MAGIC_JOURNAL_EVENT,
+73:             event.record_kind(),
+74:             event.seq().get(),
+75:             event,
+76:             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+77:         )?;
+78: 
+79:         // Byte admission check: guard 6 per C6 contract.
+80:         //
+81:         // Uses checked_add to avoid overflow; overflow is rejected
+82:         // with the same JournalBatchBytesExceeded error as a budget
+83:         // overrun.  The encoded_len conversion is try_from on
+84:         // principle, though the bounded payload guarantees it always
+85:         // fits in u64 on all practical targets.
+86:         if let Some(limit) = self.byte_limit {
+87:             let encoded_len =
+88:                 u64::try_from(value.len()).map_err(|_| JournalError::SequenceOverflow)?;
+89:             let attempted = match self.staged_bytes.checked_add(encoded_len) {
+90:                 Some(total) => total,
+91:                 None => {
+92:                     return Err(JournalError::JournalBatchBytesExceeded {
+93:                         attempted: u64::MAX,
+94:                         limit,
+95:                     });
+96:                 }
+97:             };
+98:             if attempted > limit {
+99:                 return Err(JournalError::JournalBatchBytesExceeded { attempted, limit });
+100:             }
+101:             self.staged_bytes = attempted;
+102:         }
+103: 
+104:         self.journal
+105:             .stage_recovery_index_ops(&mut self.inner, event)?;
+106:         self.inner.insert(&self.journal.events, key, value);
+107:         // Record the key as staged so a subsequent append_event with
+108:         // the same `(run, seq)` is rejected by the same-batch
+109:         // duplicate guard above before the durable lookup.
+110:         self.staged_event_keys.insert(key);
+111:         Ok(())
+112:     }
+113: }

@@ -1,0 +1,26 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-xx331-ci-luna/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running tests/digest_repeat_unit.rs (target/debug/deps/digest_repeat_unit-62b55af1031046c1)
+
+running 1 test
+test test_repeat_different_set_output_changes_digest ... FAILED
+
+failures:
+
+---- test_repeat_different_set_output_changes_digest stdout ----
+
+thread 'test_repeat_different_set_output_changes_digest' (2814166) panicked at crates/vb_compile/tests/digest_repeat_unit.rs:308:5:
+assertion `left != right` failed: different Set output fields in repeat body must produce different WorkflowDigest
+  left: WorkflowDigest([121, 151, 218, 44, 123, 215, 10, 4, 167, 238, 194, 227, 156, 120, 30, 158, 199, 27, 192, 22, 127, 159, 148, 149, 201, 164, 169, 249, 172, 123, 72, 131])
+ right: WorkflowDigest([121, 151, 218, 44, 123, 215, 10, 4, 167, 238, 194, 227, 156, 120, 30, 158, 199, 27, 192, 22, 127, 159, 148, 149, 201, 164, 169, 249, 172, 123, 72, 131])
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    test_repeat_different_set_output_changes_digest
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p vb_compile --test digest_repeat_unit`
+
+exit_code=101

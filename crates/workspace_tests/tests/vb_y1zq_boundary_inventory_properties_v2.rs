@@ -395,6 +395,7 @@ proptest::proptest! {
             UnsafeIsolationStatus::Complete { boundary_count } => {
                 prop_assert_eq!(boundary_count, valid_count);
             }
+            _ => prop_assert!(false, "expected Complete"),
         }
     }
 }

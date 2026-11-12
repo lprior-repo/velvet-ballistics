@@ -43,7 +43,7 @@ vb_validate = { path = "../crates/vb_validate" }
 vb_compile = { path = "../crates/vb_compile", features = ["test-util"] }
 vb_ipc = { path = "../crates/vb_ipc" }
 
-xtask = { path = "../xtask" }
+boundary_inventory = { path = "../crates/boundary_inventory" }
 crc32c = "0.6"
 
 [dev-dependencies]
@@ -246,26 +246,8 @@ test = false
 doc = false
 bench = false
 
-[[bin]]
-name = "structured_status_render_hostile"
-path = "stdin_smoke/structured_status_render_hostile.rs"
-test = false
-doc = false
-bench = false
 
-[[bin]]
-name = "xtask_parse_argv_hostile"
-path = "stdin_smoke/xtask_parse_argv_hostile.rs"
-test = false
-doc = false
-bench = false
 
-[[bin]]
-name = "xtask_parse_options_hostile"
-path = "stdin_smoke/xtask_parse_options_hostile.rs"
-test = false
-doc = false
-bench = false
 
 # === fuzz_targets/ (active libFuzzer harnesses with mutation + corpus) ===
 # These are the real fuzz targets. Each uses `#![no_main]` and
@@ -279,12 +261,6 @@ test = false
 doc = false
 bench = false
 
-[[bin]]
-name = "check_doc_taint_consistency_accepts_arbitrary_markdown"
-path = "fuzz_targets/check_doc_taint_consistency_accepts_arbitrary_markdown.rs"
-test = false
-doc = false
-bench = false
 
 [[bin]]
 name = "compile_source_ast_marks"
@@ -519,12 +495,6 @@ test = false
 doc = false
 bench = false
 
-[[bin]]
-name = "tooling_loom_list_xtask"
-path = "fuzz_targets/tooling_loom_list_xtask.rs"
-test = false
-doc = false
-bench = false
 
 [[bin]]
 name = "vb_f04l_yaml_compiler_compile"

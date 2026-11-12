@@ -33,6 +33,9 @@ pub mod dimensions;
 pub mod hydrate;
 mod input_context;
 pub use input_context::recover_runtime_frame_seed_from_events_with_replay_inputs;
+pub use input_context::{
+    RecoveredReplayOutcome, recover_runtime_frame_seed_from_events_with_replay_outcome,
+};
 
 #[cfg(test)]
 #[path = "tests.rs"]

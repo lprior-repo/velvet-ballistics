@@ -1,0 +1,48 @@
+COMMAND: cargo tree -i fjall (root and fuzz); test -f fuzz/Cargo.lock; rg fjall in locks; git status/diff lock paths
+CWD: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+
+ROOT_FJALL_TREE:
+fjall v3.1.4
+├── vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_storage)
+│   ├── vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_runtime)
+│   │   ├── vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_ipc)
+│   │   │   └── velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_cli)
+│   │   │       [dev-dependencies]
+│   │   │       └── velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/workspace_tests)
+│   │   │   [dev-dependencies]
+│   │   │   └── velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/workspace_tests)
+│   │   └── velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_cli) (*)
+│   │   [dev-dependencies]
+│   │   └── velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/workspace_tests)
+│   └── velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_cli) (*)
+│   [dev-dependencies]
+│   └── velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/workspace_tests)
+└── velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/workspace_tests)
+
+FUZZ_FJALL_TREE:
+fjall v3.1.4
+└── vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_storage)
+    ├── vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_runtime)
+    │   ├── vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/crates/vb_ipc)
+    │   │   └── velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+    │   └── velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+    └── velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-w25-fuzz/fuzz)
+
+FUZZ_LOCK_EXISTS:
+fuzz/Cargo.lock exists status=0
+
+FJALL_LOCK_ENTRIES:
+fuzz/Cargo.lock:541:name = "fjall"
+Cargo.lock:638:name = "fjall"
+
+LOCK_PATH_STATUS:
+ A fuzz/Cargo.lock
+ M fuzz/Cargo.toml
+
+LOCK_PATH_DIFF_NAME_STATUS:
+A	fuzz/Cargo.lock
+M	fuzz/Cargo.toml
+EXIT_STATUS_ROOT_TREE=0
+EXIT_STATUS_FUZZ_TREE=0
+EXIT_STATUS_LOCK_EXISTS=0
+EXIT_STATUS_LOCK_RG=0

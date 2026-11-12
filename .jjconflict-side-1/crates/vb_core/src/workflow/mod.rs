@@ -5,7 +5,7 @@
 pub(crate) use crate::errors::CoreError;
 
 mod compiled;
-pub use compiled::CompiledWorkflow;
+pub use compiled::{CompiledWorkflow, VersionedWorkflowParts, WorkflowIrV2};
 pub(crate) use compiled::resolved_error_slot;
 
 mod cursor_ownership;

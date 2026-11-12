@@ -1,0 +1,11 @@
+{"bead":"vb-xi2f.4","artifact":"domain-model.md","requirement":"R-EMISSION-001: All compiler-emitted CompiledWorkflow instances must pass structural validation.","status":"modeled"}
+{"bead":"vb-xi2f.4","artifact":"type-contracts.md","requirement":"R-EMISSION-002: WorkflowParts is untrusted; CompiledWorkflow construction must use try_from_parts.","status":"modeled"}
+{"bead":"vb-xi2f.4","artifact":"type-contracts.md","requirement":"R-FEATURE-001: test-util must not be enabled in vb_compile production dependencies.","status":"modeled"}
+{"bead":"vb-xi2f.4","artifact":"workflow-model.md","requirement":"R-EMISSION-003: LoweredParts to CompiledWorkflow transition must be guarded by try_from_parts.","status":"modeled"}
+{"bead":"vb-xi2f.4","artifact":"error-taxonomy.md","requirement":"R-ERROR-001: WorkflowError from try_from_parts must map to CompileError::Workflow with stable diagnostic codes.","status":"modeled"}
+{"bead":"vb-xi2f.4","artifact":"boundary-map.md","requirement":"R-BOUNDARY-001: Validation boundary between compiler lowering and runtime core must be enforced.","status":"modeled"}
+{"bead":"vb-xi2f.4","artifact":"hazard-analysis.md","requirement":"R-HAZARD-001: Unchecked emission in production code must be eliminated.","status":"modeled"}
+{"bead":"vb-xi2f.4","artifact":"hazard-analysis.md","requirement":"R-HAZARD-002: test-util feature leakage to production dependency graph must be eliminated.","status":"modeled"}
+{"bead":"vb-xi2f.4","artifact":"hazard-analysis.md","requirement":"R-HAZARD-003: Validation failures must surface as compile diagnostics, not runtime panics.","status":"modeled"}
+{"bead":"vb-xi2f.4","artifact":"contract.md","requirement":"R-SCOPE-001: Change limited to compile_source emission site and Cargo.toml feature flag.","status":"modeled"}
+{"bead":"vb-xi2f.4","artifact":"proof-seeds.jsonl","requirement":"R-VERIFY-001: Proof seeds for structural validation coverage, feature-gate enforcement, error mapping, regression prevention, and boundary enforcement.","status":"seeded"}

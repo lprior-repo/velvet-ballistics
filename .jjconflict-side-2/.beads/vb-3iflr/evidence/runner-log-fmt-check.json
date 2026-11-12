@@ -1,0 +1,8 @@
+{
+  "command": "cargo fmt --manifest-path xtask/Cargo.toml --check",
+  "exit_code": 0,
+  "seconds": 0.079,
+  "log_prefix": "/tmp/vb-fmt-check-vb3iflr",
+  "output": "PASS",
+  "timestamp": "2026-10-22"
+}

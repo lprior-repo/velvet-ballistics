@@ -1,0 +1,39 @@
+diff --git a/crates/vb_ipc/src/frame_types.rs b/crates/vb_ipc/src/frame_types.rs
+index ced48998c..e14fbb8bc 100644
+--- a/crates/vb_ipc/src/frame_types.rs
++++ b/crates/vb_ipc/src/frame_types.rs
+@@ -38,7 +38,7 @@ impl IpcFrameHeader {
+     /// Encodes the header using the §21 little-endian wire layout.
+     pub fn encode(self) -> Result<[u8; IPC_HEADER_LEN], IpcError> {
+         let mut bytes = [0u8; IPC_HEADER_LEN];
+-        let mut cursor = std::io::Cursor::new(&mut bytes[..]);
++        let mut cursor = std::io::Cursor::new(bytes.as_mut_slice());
+         cursor
+             .write_u32::<LittleEndian>(IPC_MAGIC)
+             .map_err(|_| IpcError::HeaderEncodeFailed)?;
+diff --git a/crates/workspace_tests/src/test_util/fixture.rs b/crates/workspace_tests/src/test_util/fixture.rs
+index 65e37d569..1a5dc5c55 100644
+--- a/crates/workspace_tests/src/test_util/fixture.rs
++++ b/crates/workspace_tests/src/test_util/fixture.rs
+@@ -55,7 +55,7 @@ impl FixtureBuilder {
+ 
+         let mut rng = StdRng::seed_from_u64(seed);
+         let mut vec = vec![0u8; self.capacity.value];
+-        rng.fill(&mut vec[..]);
++        rng.fill(vec.as_mut_slice());
+         vec
+     }
+ }
+diff --git a/crates/workspace_tests/src/test_util/seed.rs b/crates/workspace_tests/src/test_util/seed.rs
+index b00d69f8a..8ac813785 100644
+--- a/crates/workspace_tests/src/test_util/seed.rs
++++ b/crates/workspace_tests/src/test_util/seed.rs
+@@ -20,7 +20,7 @@ impl<const N: usize> SeededBytes<N> {
+         }
+         let mut rng = StdRng::seed_from_u64(seed);
+         let mut bytes = [0u8; N];
+-        rng.fill(&mut bytes[..]);
++        rng.fill(bytes.as_mut_slice());
+         Some(Self { bytes })
+     }
+ }

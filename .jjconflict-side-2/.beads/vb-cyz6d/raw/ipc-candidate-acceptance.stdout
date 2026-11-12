@@ -1,0 +1,26 @@
+
+running 7 tests
+test ipc_rejects_oversize_payload ... ok
+test ipc_health_and_shutdown_return_expected_responses ... ok
+test ipc_returns_queue_full_when_backpressure_limit_is_hit ... ok
+test ipc_rejects_bad_magic_before_payload_allocation ... FAILED
+test ipc_correlation_ids_preserved_across_roundtrip ... ok
+test ipc_submit_run_roundtrips_when_frame_is_valid ... ok
+test ipc_all_11_commands_have_typed_responses ... ok
+
+failures:
+
+---- ipc_rejects_bad_magic_before_payload_allocation stdout ----
+
+thread 'ipc_rejects_bad_magic_before_payload_allocation' (2717995) panicked at crates/workspace_tests/tests/vb_te1i_binary_ipc_acceptance.rs:312:25:
+assertion `left == right` failed: bad magic must disconnect without allocating or writing a response
+  left: "Connection reset by peer (os error 104)"
+ right: "eof"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    ipc_rejects_bad_magic_before_payload_allocation
+
+test result: FAILED. 6 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

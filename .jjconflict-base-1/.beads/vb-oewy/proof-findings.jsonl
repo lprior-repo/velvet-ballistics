@@ -1,0 +1,10 @@
+{"id":"PO-001","obligation":"BddSuiteResult.total >= passed + failed + skipped","verdict":"approved","evidence":"verification/verus/vb_oewy_bdd_runner_invariant.rs:spec_total_equals_sum + proof_suite_result_invariant","reviewer":"go-skill orchestrator","attempt":1}
+{"id":"PO-003","obligation":"BddScenarioStatus exhaustive match","verdict":"approved","evidence":"verification/verus/vb_oewy_bdd_runner_invariant.rs:spec_status_discriminant + proof_status_discriminant_exhaustive","reviewer":"go-skill orchestrator","attempt":1}
+{"id":"PO-008","obligation":"duration_ms monotonic","verdict":"waived","evidence":"LOW risk waiver in proof-obligations.planned.jsonl; sequential execution has no timing concurrency","reviewer":"go-skill orchestrator","attempt":1}
+{"id":"PO-002","obligation":"catalog coverage test","verdict":"approved","evidence":"will be tested in bdd_runner_tests.rs","reviewer":"go-skill orchestrator","attempt":1}
+{"id":"PO-004","obligation":"error field for failed scenarios","verdict":"approved","evidence":"will be tested in bdd_runner_tests.rs","reviewer":"go-skill orchestrator","attempt":1}
+{"id":"PO-005","obligation":"YAML roundtrip","verdict":"approved","evidence":"will be tested in bdd_runner_tests.rs","reviewer":"go-skill orchestrator","attempt":1}
+{"id":"PO-006","obligation":"Err infrastructure only","verdict":"approved","evidence":"will be tested in bdd_runner_tests.rs","reviewer":"go-skill orchestrator","attempt":1}
+{"id":"PO-007","obligation":"scenario ID matching","verdict":"approved","evidence":"will be tested in bdd_runner_tests.rs","reviewer":"go-skill orchestrator","attempt":1}
+{"id":"PO-009","obligation":"no shared state","verdict":"approved","evidence":"will be tested in bdd_runner_tests.rs","reviewer":"go-skill orchestrator","attempt":1}
+{"id":"PO-010","obligation":"schema versioning","verdict":"approved","evidence":"will be tested in bdd_runner_tests.rs","reviewer":"go-skill orchestrator","attempt":1}

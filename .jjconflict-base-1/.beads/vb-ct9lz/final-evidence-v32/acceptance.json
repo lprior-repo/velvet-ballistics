@@ -1,0 +1,17 @@
+{
+  "status": "accepted scoped registered artifact issuance; CLI sibling and full v1 remain open",
+  "frozen_candidate": "6d6ee939a48d805c56d631e904854ad94c93e68a",
+  "production_sha256": "a85defdbf5703a620c5b23bde5f788f6d7c220cf017244e696c385ee1c3a7c78",
+  "source_files_verified": 1841,
+  "canonical_tasks_passed": 17,
+  "tests_passed": 14505,
+  "existing_skipped": 27,
+  "nextest_seconds": 482.117,
+  "prior_failure": "V28 inner10min timeout retained in final-evidence-v28; same source and unchanged gates passed warm retry V32",
+  "code_review": "6bc1ddb3be960154d9d3eafe4510e2cc36df8e88",
+  "independent_test_review": "7097275fc93fb973a496dec139b30736b4f68908",
+  "storage_tests_passed": 1658,
+  "new_tests": 15,
+  "fresh_metrics": "metrics-v27 actual3records; baseline=result no speedup claim",
+  "limits": "no power-loss, all-interleavings, formal proof or universal IO rollback claim"
+}

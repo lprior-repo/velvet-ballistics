@@ -1,0 +1,45 @@
+crates/vb_storage/src/admission/verification/executor_profile.rs:1: use super::*;
+crates/vb_storage/src/admission/verification/executor_profile.rs:2: use vb_core::action_pack::{ActionPack, PackedArtifactEvidence};
+crates/vb_storage/src/admission/verification/executor_profile.rs:3: 
+crates/vb_storage/src/admission/verification/executor_profile.rs:4: pub(crate) enum ExecutorProfile<'a> {
+crates/vb_storage/src/admission/verification/executor_profile.rs:5:     Legacy,
+crates/vb_storage/src/admission/verification/executor_profile.rs:6:     Registered {
+crates/vb_storage/src/admission/verification/executor_profile.rs:7:         catalog: &'a crate::executor::ExecutorCatalog,
+crates/vb_storage/src/admission/verification/executor_profile.rs:8:         packs: &'a [ActionPack],
+crates/vb_storage/src/admission/verification/executor_profile.rs:9:     },
+crates/vb_storage/src/admission/verification/executor_profile.rs:10: }
+crates/vb_storage/src/admission/verification/executor_profile.rs:11: 
+crates/vb_storage/src/admission/verification/executor_profile.rs:12: impl ExecutorProfile<'_> {
+crates/vb_storage/src/admission/verification/executor_profile.rs:13:     pub(super) fn check(
+crates/vb_storage/src/admission/verification/executor_profile.rs:14:         &self,
+crates/vb_storage/src/admission/verification/executor_profile.rs:15:         policy: RuntimePolicy,
+crates/vb_storage/src/admission/verification/executor_profile.rs:16:         contracts: &[ActionContract],
+crates/vb_storage/src/admission/verification/executor_profile.rs:17:     ) -> Result<(), JournalError> {
+crates/vb_storage/src/admission/verification/executor_profile.rs:18:         match self {
+crates/vb_storage/src/admission/verification/executor_profile.rs:19:             Self::Legacy
+crates/vb_storage/src/admission/verification/executor_profile.rs:20:                 if policy == RuntimePolicy::Strict
+crates/vb_storage/src/admission/verification/executor_profile.rs:21:                     && contracts.iter().any(|c| c.side_effect != SideEffect::None) =>
+crates/vb_storage/src/admission/verification/executor_profile.rs:22:             {
+crates/vb_storage/src/admission/verification/executor_profile.rs:23:                 Err(JournalError::MissingRequiredProofFlag {
+crates/vb_storage/src/admission/verification/executor_profile.rs:24:                     flag: "executor_conformance",
+crates/vb_storage/src/admission/verification/executor_profile.rs:25:                 })
+crates/vb_storage/src/admission/verification/executor_profile.rs:26:             }
+crates/vb_storage/src/admission/verification/executor_profile.rs:27:             Self::Legacy => Ok(()),
+crates/vb_storage/src/admission/verification/executor_profile.rs:28:             Self::Registered { catalog, packs } => catalog
+crates/vb_storage/src/admission/verification/executor_profile.rs:29:                 .check_packs(contracts, packs)
+crates/vb_storage/src/admission/verification/executor_profile.rs:30:                 .map_err(|_| JournalError::ArtifactMalformed),
+crates/vb_storage/src/admission/verification/executor_profile.rs:31:         }
+crates/vb_storage/src/admission/verification/executor_profile.rs:32:     }
+crates/vb_storage/src/admission/verification/executor_profile.rs:33: 
+crates/vb_storage/src/admission/verification/executor_profile.rs:34:     pub(super) fn wrap(&self, base: ArtifactVerificationEvidence) -> ArtifactEvidence {
+crates/vb_storage/src/admission/verification/executor_profile.rs:35:         match self {
+crates/vb_storage/src/admission/verification/executor_profile.rs:36:             Self::Legacy => ArtifactEvidence::Verified(Box::new(base)),
+crates/vb_storage/src/admission/verification/executor_profile.rs:37:             Self::Registered { packs, .. } => {
+crates/vb_storage/src/admission/verification/executor_profile.rs:38:                 ArtifactEvidence::Packed(Box::new(PackedArtifactEvidence {
+crates/vb_storage/src/admission/verification/executor_profile.rs:39:                     base,
+crates/vb_storage/src/admission/verification/executor_profile.rs:40:                     packs: packs.to_vec().into_boxed_slice(),
+crates/vb_storage/src/admission/verification/executor_profile.rs:41:                 }))
+crates/vb_storage/src/admission/verification/executor_profile.rs:42:             }
+crates/vb_storage/src/admission/verification/executor_profile.rs:43:         }
+crates/vb_storage/src/admission/verification/executor_profile.rs:44:     }
+crates/vb_storage/src/admission/verification/executor_profile.rs:45: }

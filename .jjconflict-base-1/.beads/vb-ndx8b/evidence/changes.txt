@@ -1,0 +1,35 @@
+# VB-NDX8B: Fix UTF-8 handling in test integrity checker
+
+## Problem
+`scripts/check-test-integrity.rs` converted the entire git/jj diff output to UTF-8
+using strict `String::from_utf8`. When the working tree diff included binary or
+non-UTF-8 files (such as .beads/evidence/ binary proof artifacts), the checker
+failed with a "non-UTF8 stdout" error before scanning for test changes.
+
+## Fix
+Restructured the diff scanning to:
+1. Obtain the diff as raw bytes from the VCS command (new `diff_bytes` function)
+2. Split the diff into per-file hunks at `diff --git` boundaries (`split_hunks`)
+3. Parse old and new paths from each hunk's header lines (`hunk_test_path`)
+4. Convert each hunk to UTF-8 only if it involves a test path
+5. If a test-path hunk has non-UTF8 bytes, report a NonUtf8TestFile finding (fail closed)
+6. If a non-test-path hunk has non-UTF8 bytes, silently skip it
+
+## Files Changed
+- `scripts/check-test-integrity.rs`:
+  - Added `tool_output_bytes()` for raw byte command output
+  - Added `command_output_abs()` for absolute binary path (self-test workaround)
+  - Renamed `diff_text()` to `diff_bytes()` returning `Vec<u8>`
+  - Added `split_hunks()` to split diff into per-file hunks
+  - Added `hunk_test_path()` to extract test file path from hunk (checks both old and new paths)
+  - Added `scan_diff_bytes()` that processes hunks with per-hunk UTF-8 decoding
+  - Updated `check()` to use `scan_diff_bytes()` with `diff_bytes()`
+  - Updated `run_self_test_case()` to use `command_output_abs()` for self-test git repos
+  - Added `run_self_test_case_with_evidence()` for UTF-8 handling self-tests
+  - Added 3 new self-test cases to `self_test()`:
+    - `unrelated-binary-passes`: Unrelated non-UTF8 evidence doesn't fail checker
+    - `binary-with-test-delete`: Actual test deletion still fails alongside binary evidence
+    - `binary-with-weak-assertion`: Weakened assertion still fails alongside binary evidence
+
+## Self-Test Results
+All 15 self-tests passed (12 existing + 3 new UTF-8 handling tests).

@@ -1,0 +1,3 @@
+=== compile evidence: span_bridge_fuzz ===
+-rwxr-xr-x 2 lewis lewis 2926600 Oct 22 17:18 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/span_bridge_fuzz
+OK: binary present

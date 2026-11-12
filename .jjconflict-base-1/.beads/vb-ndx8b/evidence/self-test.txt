@@ -1,0 +1,20 @@
+SelfTest:delete: PASS expected=1 actual=1
+SelfTest:ignore: PASS expected=1 actual=1
+SelfTest:weaken: PASS expected=1 actual=1
+SelfTest:strengthen: PASS expected=0 actual=0
+SelfTest:module-rs-delete: PASS expected=1 actual=1
+SelfTest:module-rs-weaken: PASS expected=1 actual=1
+SelfTest:module-rs-silent-return: PASS expected=1 actual=1
+SelfTest:module-rs-strengthen: PASS expected=0 actual=0
+SelfTest:module-dir-delete: PASS expected=1 actual=1
+SelfTest:module-dir-weaken: PASS expected=1 actual=1
+SelfTest:module-dir-silent-return: PASS expected=1 actual=1
+SelfTest:module-dir-strengthen: PASS expected=0 actual=0
+SelfTest:unrelated-binary-passes: PASS expected=0 actual=0
+SelfTest:binary-with-test-delete: PASS expected=1 actual=1
+SelfTest:binary-with-weak-assertion: PASS expected=1 actual=1
+
+All 15 self-tests passed. New UTF-8 handling tests confirm:
+- Unrelated non-UTF8 binary evidence does not fail the checker
+- Actual test deletions are still detected alongside binary evidence
+- Weakened assertions are still detected alongside binary evidence

@@ -1,0 +1,45 @@
+=== Fjall preservation check ===
+Working dir: /home/lewis/src/isoloated/velvet-ballistics-w25-fuzz
+Date: 2026-07-10T12:36:28Z
+
+--- grep Fjall version pinned in Cargo.toml files ---
+supply-chain/config.toml:648:[[exemptions.fjall]]
+Cargo.toml:33:fjall = { version = "=3.1.4", default-features = false, features = ["lz4"] }
+fuzz/Cargo.lock:541:name = "fjall"
+fuzz/Cargo.lock:1651: "fjall",
+cargo-vet.toml:185:# fjall — High-performance LSM-tree key-value store
+cargo-vet.toml:187:name = "fjall"
+crates/workspace_tests/Cargo.toml:15:fjall.workspace = true
+crates/workspace_tests/Cargo.toml:77:name = "fjall_keyspace_manifest_tests"
+crates/workspace_tests/Cargo.toml:78:path = "tests/fjall_keyspace_manifest_tests.rs"
+deny.toml:51:#    - Source: wasip3 (tempfile/fjall) vs wasip2 (getrandom/ahash)
+crates/vb_storage/Cargo.toml:12:fjall.workspace = true
+
+--- check fuzz/Cargo.lock still intact ---
+-rw-r--r-- 1 lewis lewis 50765 Jul  9 22:57 fuzz/Cargo.lock
+
+--- git status fuzz/Cargo.lock ---
+Not currently on any branch.
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	new file:   fuzz/Cargo.lock
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+--- git status fuzz/Cargo.toml ---
+Not currently on any branch.
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   fuzz/Cargo.toml
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+--- check Cargo.lock hashes unchanged ---
+68a715dfe62efb7c181a9e33040a2560  fuzz/Cargo.lock
+b455a9937871cdf0d822e387f259956e  Cargo.lock
+
+--- check Fjall in fuzz/Cargo.lock ---
+name = "fjall"
+version = "3.1.4"

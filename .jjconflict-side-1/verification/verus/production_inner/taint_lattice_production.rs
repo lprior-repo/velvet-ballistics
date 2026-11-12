@@ -17,7 +17,7 @@
 //   - Attributes:         #[non_exhaustive]
 //
 // `join_taint(a, b)` is a VERBATIM copy of `crates/vb_core/src/value/taint.rs`
-// lines 84-100 (the production free fn that picks the higher-ranked
+// lines 25-41 (the production free fn that picks the higher-ranked
 // variant). The verbatim copy preserves the inline discriminant-match
 // style production uses — production does NOT extract `rank` as a
 // method on `Taint`.
@@ -37,13 +37,13 @@
 // `impl Enum { fn }` blocks inside spec-mode `verus!` modules.
 // Production `value/taint.rs` does not export a method form either; the
 // discriminant pattern is inlined inside `join_taint` (see lines
-// 85-91 and 92-98 of value/taint.rs).
+// 26-32 and 33-39 of value/taint.rs).
 //
 // ============================================================================
 // DRIFT POLICY
 // ============================================================================
 // This file MUST be reviewed against `crates/vb_core/src/value/taint.rs:10-21`
-// (Taint enum) and `crates/vb_core/src/value/taint.rs:84-100` (`join_taint`)
+// (Taint enum) and `crates/vb_core/src/value/taint.rs:25-41` (`join_taint`)
 // whenever production taint semantics change. Drift in either block
 // breaks the Verus binding (variant renames surface as
 // "no variant named X" errors; discriminant changes surface as
@@ -53,7 +53,7 @@
 // production. Any drift breaks the verification build.
 //
 // Production `crates/vb_core/src/value/taint.rs:10-21`
-// Production `crates/vb_core/src/value/taint.rs:84-100`
+// Production `crates/vb_core/src/value/taint.rs:25-41`
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -95,7 +95,7 @@ pub enum Taint {
 }
 
 /// Free-fn form of the inline discriminant pattern that production's
-/// `value/taint.rs:85-91` and `value/taint.rs:92-98` use inside `join_taint`.
+/// `value/taint.rs:26-32` and `value/taint.rs:33-39` use inside `join_taint`.
 /// Kept as a free fn (not `impl Taint::rank(&self)`) because Verus
 /// 0.2026.05.05 panics on `impl Enum { fn }` inside spec-mode `verus!`.
 /// Models the production discriminant mapping byte-for-byte.
@@ -110,7 +110,7 @@ pub fn taint_rank(self_: Taint) -> u8 {
 }
 
 // ----------------------------------------------------------------------------
-// Verbatim copy of crates/vb_core/src/value/taint.rs:84-100 (`join_taint`)
+// Verbatim copy of crates/vb_core/src/value/taint.rs:25-41 (`join_taint`)
 // ----------------------------------------------------------------------------
 /// Joins two taint levels, returning the more restrictive one.
 #[must_use]

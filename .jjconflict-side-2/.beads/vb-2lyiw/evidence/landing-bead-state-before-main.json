@@ -1,0 +1,1860 @@
+[
+  {
+    "id": "vb-18fhg",
+    "title": "Add reusable DeepSeek OMP implementation and review agent types",
+    "status": "in_progress",
+    "dependencies": []
+  },
+  {
+    "id": "vb-1nx31",
+    "title": "Audit every stopped-agent branch for source patch coverage before landing",
+    "status": "in_progress",
+    "dependencies": []
+  },
+  {
+    "id": "vb-1tq2d",
+    "title": "Independently verify final session source preservation and fixture API merge",
+    "status": "in_progress",
+    "dependencies": []
+  },
+  {
+    "id": "vb-2lyiw",
+    "title": "Validate and land the complete preserved session integration on main",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-pxby2",
+        "title": "Bind new idempotency evidence digest type in Verus replay tracker extern bridge",
+        "description": "Actual full registry after recovery repair gets through recovery123proofs then fails idempotency_replay_tracker.rs137/143: WorkflowDigest ignored external type embedded in ActionScheduleEvidence/ActionCompletionEvidence. Verus suggests external_type_specification ExWorkflowDigest. Repair actual external type binding without new assumptions/opaque crypto equality/no-lifetime bypass. Rerun namedmain then fullregistry withrawlogs. See final-landing .beads/vb-2lyiw/evidence/repaired-verus-registry.*.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "bug",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:31:38Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T00:01:42Z",
+        "started_at": "2026-10-22T04:43:57Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-9tg1c",
+        "title": "Format integrated fixture changes with pinned Rust 2024 formatter",
+        "description": "Actual pinned cargo fmt --all --check found8 changed testfiles. Local author formats only listed files, preserving all behavior, and verifies pinned check. qi37 formatting owned by DeepSeek concurrently in separate workspace; no shared worktrees.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:46:29Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T04:46:52Z",
+        "started_at": "2026-10-22T04:46:52Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-3v011",
+        "title": "Repair actual CLI run and relaxed artifact submission against typed admission evidence",
+        "description": "On staged union be65d919, full nextest diagnostics identify 9 CLI integration failures, finish_input_execution, and admission_evidence_integration failures. CLI run --input-bin --durability journaled rejects artifact invalid, relaxed submit checksum mismatch. Establish current MASTER evidence contract, fix actual producer/admission/runtime integration without accepting forged artifacts or weakening tests. Independent code and test review plus scoped real CLI tests before main.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "bug",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:15:53Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-21T23:51:00Z",
+        "started_at": "2026-10-22T04:16:26Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-79ffw",
+        "title": "Independent local3090 review of ticket generation wire and retry authority",
+        "description": "Fresh independent production/code and behavior review of A run_attempt propagation plus NewActionTicket/ActionDispatchContext and JournalEvent accessor, frozenaf142d34 baseline423d8ae8. Verify actual old/new serialized ticket/event compatibility fails closed, multi-retry stale/future callbacks no pending/counter/journal mutation, valid current completion, replay generation. No production changes by reviewer, exact evidence and scope.",
+        "notes": "Real golden current decoder actual5tests pass, all3old423 records reject PostcardDecodeFailed(underlying varint error). LOCAL3090 finishing exact enum oracle/portable lookup. Bad rewritten callback draft056abbe822b788de70e37ffaaa5e0e56f614b3ca preserved/rejected (invented APIs, compile101). FreshLOCAL5090 vb-2b170 now minimally strengthens actualpassing329 probe in separate isolated workspace; no production edits.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:14:03Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T03:25:19Z",
+        "started_at": "2026-10-22T02:14:16Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-1tq2d",
+        "title": "Independently verify final session source preservation and fixture API merge",
+        "description": "DeepSeek read-only production review of final fixture merge and typed API semantic preservation. Check 13 saved WIP ancestry/content, stopped session acceptance counterparts, honest evidence limitations. No self-approval of DeepSeek BCD or cleanup. New independent probes permitted, code/test review required. Parent vb-2lyiw.",
+        "notes": "Independent review v1 found actual Kani compiler counterexample missing per-action symbolic attempt field in fixture migration; rawactualexit1 and modeloutput preserved/pushed2b06966e03706c3eeb710cbd65902aec63e8a306. Reviewer v2 now finishes independent thirteen-source/stopped-chat content coverage audit; no production edits. Root assigned symbolic field restore and missing action_ticket inequality assertion to5090 author; final acceptance still rejected pending repaired candidate review.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:25:34Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T02:38:12Z",
+        "started_at": "2026-10-22T02:25:41Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ga13x",
+        "title": "Restore symbolic ticket fixture fields exposed by independent Kani review",
+        "description": "Independent vb-1tq2d actual Kani compilation failed: symbolic_ticket in vb_core/src/kani_idempotency_gates.rs lost per-action attempt: kani::any during run_attempt fixture migration; replay/kani_harnesses.rs also lacks WorkflowParts.input_slots. Restore exact symbolic obligations with no fixed dummy shapes or weakened assertions; actual bounded Kani compile/verification and independent review required. Root owns VCS; isolated local5090 bounded repair. Parent vb-2lyiw.",
+        "notes": "Exact d14 two-line symbolic attempt/input_slots fix independently reviewed in vb-t59ev after wrong-base report attribution corrected. Actual ticket harness proof success1/4covers; unrelated legacy replay timedout840s and is tracked vb-73gp3, not pass. Await accepted main.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:44:02Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T03:20:13Z",
+        "started_at": "2026-10-22T02:44:34Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-e7rjr",
+        "title": "Honor existing MASTER advisory reporting policy without losing supply-chain failures",
+        "description": "Actual repaired Moon supply-chain audit0 aftercrossbeam/rtrbsecuritypatch; deny1 on long-preexisting RUSTSEC-2024-0449 unsafe-libyaml unmaintained. MASTER114,1683,1721 explicit2026-05-23 ownerwaiver makes cargo-deny/vet/geiger advisory unless bead optsinto blocking. Align active task with authoritativeexistingpolicy, preserve per-tool rawexit/status and findings; do not claim advisory failures passed or suppress findings, do not addnewwaivers, keep actualsecurityaudit failclosed. Independent code/testreview and positive/negative harness for pertoolstatus.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "bug",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:29:28Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T04:45:56Z",
+        "started_at": "2026-10-22T04:45:56Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-bbf56",
+        "title": "Repair integration-induced production mirror drift with preserved proof contracts",
+        "description": "Canonical candidate reports 78 raw production-inner-drift lines; original main isolated actual gate exit1 reports30. Compare exact baseline/candidate diagnostics, repair newly introduced source mirror/path/member drift without weakening proof contracts or gate exceptions. Preserve pre-existing failure evidence and track unresolved baseline debt explicitly. Requires independent code/proof-binding review and actual scoped gates. Parent vb-2lyiw.",
+        "notes": "Rejected local5090 fake postcard/blake3 stubs; checkpoint 6efcb3b9 preserved, not accepted. Drift exit1 is not PASS. Fresh DeepSeek faithful repair required including baseline bindings, no checker weakening.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:38:04Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-21T22:35:02Z",
+        "started_at": "2026-10-22T02:38:31Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ja1zd",
+        "title": "Correct TSAN artifact lookup for the pure virtual Cargo workspace",
+        "description": "Canonical actual d20 fuzz-tsan builds successfully15m21 then fails TSAN-MISSING accessor_traversal because task hardcodes fuzz/target while root virtual workspace builds under workspace target. Repair artifact discovery or explicit output-dir contract preserving thread sanitizer, build-std, alltargets, executable existence checks, failclosed behavior. No bypass/skip/symlink fakeartifact/waiver. Local5090 implementation plus bounded exact existing artifact inspection and independent review, final canonical rerun.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "bug",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T03:55:29Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-21T23:03:34Z",
+        "started_at": "2026-10-22T03:55:54Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-t59ev",
+        "title": "Independent review of faithful integration file splits and asserted callback outcomes",
+        "description": "Fresh isolated local5090 review of DeepSeek repair against good source5766: all six overlength file decompositions, exact original bodies and failure/rollback/Ask boundary semantics, compiler digest tag/order/constants and typed arguments, three ignored callback tick Results strengthened without weakened behavior. Review actual source-length/strictClippy/compile/216focusedtest evidence; independent code/test reports required. No production edits by reviewer, no self-approval. Parent vb-2lyiw.",
+        "notes": "Independent LOCAL5090 code/test APPROVED faithful bfb split vs5766, corrected exact d14 two-line attribution. Six actual bounded gate metadata verified cwd+exit0, archived .beads/vb-t59ev/evidence: libcheck, digest123, checkpoint2, recovery37, shard683, authority4. No broad CI or general proof closure claimed; replay840s timeout remains vb-73gp3. Await accepted main.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T03:07:23Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T03:20:13Z",
+        "started_at": "2026-10-22T03:16:07Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-5aw5i",
+        "title": "Repair historical tool and workspace test fixtures without restoring removed UI scope",
+        "description": "Actual be65 nextest diagnostics: eepg known kind family mismatch1; synthetic workspace assertions1; xtask help/version2; nf2u UI8 now outside authoritative Backend/IR Interpreter goal. Correct exact typed oracle/workspace fixtures and real xtask invocations. Preserve historical UI source and validate current scope contract rather than rebuilding removed UI or ignoring all tests. Independent reviews, bounded actual tests.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "bug",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:17:36Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-21T23:51:01Z",
+        "started_at": "2026-10-22T04:18:15Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ndx8b",
+        "title": "Scope test-integrity diffs to relevant Rust sources without decoding raw binary evidence",
+        "description": "Fresh canonical moon CI test-integrity fails decoding git diff all tracked artifacts: nonUTF8 raw proof evidence around byte33279512. Existing Rust checker scans relevant source for removed tests and weakened assertions. Fix input selection at git/JJ diff invocation or equivalent safe perpath UTF8 handling, retaining failclosed for malformed relevant Rust, new ignoredtests/deletions/weakening. Add regression with unrelated nonUTF8 evidence plus actual failing Rust test deletion. Independent review required.",
+        "notes": "Independent fresh5090 checker review reproduced TWO concrete bypasses in efee79de: new_path unrelated or ABSENT can justify a still-existing weakened old_path without binding its currentblob. Reviewc1a76a89 preserved remotely; must fix and regressions before accept. Current DeepSeek partial exact-relocation checkpoint still435rawfindings due modifiedCLIrenames scanned as D/A; all drafts preserved. Root transitioning fresh bounded repair context with explicit pair mapping/hash fixes, no suppressions. Main remains unchanged.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:49:48Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T05:58:45Z",
+        "started_at": "2026-10-22T04:53:29Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-r8t6e",
+        "title": "Migrate remaining Loom benchmark and validate Kani fixtures to current contracts",
+        "description": "Canonical d20 actual CI shows missing ActionTicket.run_attempt in workspace Loom and action_dispatch benchmark, and missing WorkflowParts.input_slots in vb_validate Kani. Repair fixture sites to actual current contract without weakening assertions or arbitrary shape mandates. Keep source rules, focused actual compile/test/verification evidence and fresh independent review. Root source edits prohibited; local model author only.",
+        "notes": "Additional exact canonical union check failure101 under -Dwarnings: unused assert_tick_cannot_resume helper runtime_fjall_pending_action_recovery.rs:564. DeepSeek same bounded fixture worker instructed to wire meaningful assertion or remove redundant helper preserving tests; no deadcode allowance. Raw true union-canonical-check.stderr available in final landing isolated workspace.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "bug",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T03:47:53Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-21T23:03:34Z",
+        "started_at": "2026-10-22T03:49:00Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-g4mol",
+        "title": "Recover honest historical closure manifest rows and raw artifacts from stopped sessions",
+        "description": "Canonical CI d20 blocker-closure-evidence reports closed vb-jpq7 children .1,.2,.3,.4,.53,audit.1,audit.2 missing manifest rows. Recover actual tracked/raw evidence from historical refs/worktrees or rerun exact appropriate commands in isolated JJ workspace; no fake evidence, no closed-bead status gaming/gate weakening. Keep current code/closure defects distinct. Parent vb-2lyiw.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T03:34:04Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T03:36:53Z",
+        "started_at": "2026-10-22T03:36:53Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-9ucmq",
+        "title": "Repair actual canonical supply-chain advisories with patched compatible dependencies",
+        "description": "Canonical frozen CI d20 actual cargo audit reports crossbeam-epoch0.9.18 RUSTSEC-2026-0204 patched>=0.9.20 and rtrb0.3.4 RUSTSEC-2026-0274 patched>=0.3.5. Verify primary RustSec sources and dependency constraints, apply minimum compatible locked updates, scoped consumer tests, independent review; no advisory ignores/allowance weakening. Parent vb-2lyiw.",
+        "notes": "Root independent lock review APPROVED exact4version/checksum lines with liveprimaryRustSecverification. Actual immutable runner cargo audit exit0 and scoped4consumerlibs6269tests pass. Fuzz package resolvesroot workspaceCargo.toml so separate historical fuzz/Cargo.lock unused; no misleadingclaim itwasupdated. Fullsupplychain/canonical remains separate.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "bug",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T03:27:59Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T03:38:51Z",
+        "started_at": "2026-10-22T03:29:02Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-xgj4v",
+        "title": "Pass Criterion baseline options only to actual benchmark executables",
+        "description": "Actual repaired source d466d749 moon benchmark-proof finishes6m34s releasebuild then fails101: libtest vb_compile rejects --save-baseline. Current command cargo bench --workspace --all-features -- --save-baseline vb-current passes Criterion-onlyoption to libtest/fuzz/nonCriterion targets. Need precise current IR benchmark registration and explicit Criterion-target selection; preserve meaningful real benchmark evidence and no speedclaims fromcompile. Do not just skip errors or weaken actual required bench-build/regression contract.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "bug",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:27:54Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T04:45:55Z",
+        "started_at": "2026-10-22T04:45:55Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-j3e3s",
+        "title": "Repair benchmark evidence freshness binding and refresh actual current-source measurements",
+        "description": "Actual replay-integrated canonical scope run: all14358testsPASS, but benchmark-regression-policy stderr rejects evidence2990ccb0 vs GitHEADf003129c. Existing gate requires checked-in evidence.commit==currentHEAD, which becomes stale after committing evidence itself or evidence-only merges. No relabeling old measurements, no gate disable/threshold relaxation. Establish measured-source identity binding that rejects any changed benchmark/source/dependency/toolchain/budget inputs while allowing evidence-only descendant commits, with actual positive/negative/stale/uncommittedsource regressions and independent review. Refresh all3budgeted metric measurements and required metadata using actual current benchmark executable/perf/allocation evidence; no inventedcounts or speedclaim. Existing aggregate_resource_budget Criterionpass is differentbenchmark and cannot substitute. Preserve old evidence historically. User requests source integration; mandatory benchmark policy remains enforced. Root coordinates; local5090/3090/DeepSeek implementation only, isolated Git/JJ workspace.",
+        "notes": "Actual final collectionv3 exit0/31.664s at full measuredcommit534aa40434b2704ad63666130557937087796259. All3requiredmetrics with10Criterion samples, realperf and exactheaptrack totals; no speedupclaim. Fullcompressedtraces~11MB plusrawCSV/samples/runnerJSON preserved inGit .beads/vb-j3e3s/evidence/actual-collection-v3; pushed90b3e5d1f2254650d5febcc4c0ea0638b32e3b5f. Tracked standalone xtask/Cargo.lock instead ofexcludingit fromfreshness (canonicalCargocommand regeneratesit). Originalrecords/v2retainedhistory. Independentlocal3090 reviewingrawmeasurementmethod/actualcounts; finalcanonicalstaticbenchmarkgate rerunroot. Test-generatedrelativedb leftovers preservedexternally withoutdelete; preexistinghelperfollowupvb-8li6dopen.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "bug",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T06:18:48Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:52:55Z",
+        "started_at": "2026-10-22T06:19:41Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-k8z9l",
+        "title": "Migrate obsolete artifact-claim and capability fixtures to the accepted evidence contract",
+        "description": "Actual full staged nextest be65 exposes8 accepted_artifact_red_phase failures demanding legacy gate_count15 and blanket true proof/durable flags, plus vb_lp2v2admission failures granting1unusedcapability for no-actionworkflow requiring0. Establish MASTER/current accepted evidence contract first. Replace stale fixtures with stronger typed-ledger/evidence/durability boundary assertions and actual matching grant set; retain refusal/forgery/admission negatives. Never flip productionflags true or weaken evidence/policy to green stale tests. Actual production defects if present mustfix typedcontract, notchangeoracles. Independent code/test review and scopedactualtests required.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "bug",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:08:48Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-21T23:51:00Z",
+        "started_at": "2026-10-22T04:09:12Z",
+        "dependency_type": "blocks"
+      }
+    ]
+  },
+  {
+    "id": "vb-3iflr",
+    "title": "Independently review measured-source freshness repair and its public CLI regressions",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-j3e3s",
+        "title": "Repair benchmark evidence freshness binding and refresh actual current-source measurements",
+        "description": "Actual replay-integrated canonical scope run: all14358testsPASS, but benchmark-regression-policy stderr rejects evidence2990ccb0 vs GitHEADf003129c. Existing gate requires checked-in evidence.commit==currentHEAD, which becomes stale after committing evidence itself or evidence-only merges. No relabeling old measurements, no gate disable/threshold relaxation. Establish measured-source identity binding that rejects any changed benchmark/source/dependency/toolchain/budget inputs while allowing evidence-only descendant commits, with actual positive/negative/stale/uncommittedsource regressions and independent review. Refresh all3budgeted metric measurements and required metadata using actual current benchmark executable/perf/allocation evidence; no inventedcounts or speedclaim. Existing aggregate_resource_budget Criterionpass is differentbenchmark and cannot substitute. Preserve old evidence historically. User requests source integration; mandatory benchmark policy remains enforced. Root coordinates; local5090/3090/DeepSeek implementation only, isolated Git/JJ workspace.",
+        "notes": "Actual final collectionv3 exit0/31.664s at full measuredcommit534aa40434b2704ad63666130557937087796259. All3requiredmetrics with10Criterion samples, realperf and exactheaptrack totals; no speedupclaim. Fullcompressedtraces~11MB plusrawCSV/samples/runnerJSON preserved inGit .beads/vb-j3e3s/evidence/actual-collection-v3; pushed90b3e5d1f2254650d5febcc4c0ea0638b32e3b5f. Tracked standalone xtask/Cargo.lock instead ofexcludingit fromfreshness (canonicalCargocommand regeneratesit). Originalrecords/v2retainedhistory. Independentlocal3090 reviewingrawmeasurementmethod/actualcounts; finalcanonicalstaticbenchmarkgate rerunroot. Test-generatedrelativedb leftovers preservedexternally withoutdelete; preexistinghelperfollowupvb-8li6dopen.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "bug",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T06:18:48Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:52:55Z",
+        "started_at": "2026-10-22T06:19:41Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-3v011",
+    "title": "Repair actual CLI run and relaxed artifact submission against typed admission evidence",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-2lyiw",
+        "title": "Validate and land the complete preserved session integration on main",
+        "description": "Combine preserved source and honest evidence checkpoints, independently review bounded final repairs, run canonical moon ci on isolated Git/JJ candidate, resolve actual integration failures without weakening contracts, verify stopped-chat/source coverage, push accepted main and reconcile beads. Parent vb-wlnl4. Root coordinates VCS only; local5090/local3090/DeepSeek perform implementation and review.",
+        "notes": "Frozen source206fa03977d215c7c005e6fea54b92f2c40f1632 actually pushed codex/vb-2lyiw-frozen-reviewed-source. Fresh ancestry verifies all13saved source checkpoints plus coordinationHEAD96f6bb59;29stashes preserved. Actual assembled14358NextestPASS; finalstatic original-main fmt/source-length/lint-src0;40xtaskbenchmarktests0. Clean measurement workspace collector75checks0. First actual3metric collection failed honestly after successfulbenchbuild/criterion because collector nonrecursive output discovery missed actual nested runtime_core/metric/new/benchmark.json. No newrecords published. LOCAL5090 bounded recursive-new-only lookup+regressionrepair active. Main not yetpublished. Existingbaselineproofdebtheuiz/73gp3/z9jmf remainsopen.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:24:32Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:43:49Z",
+        "started_at": "2026-10-22T02:24:46Z",
+        "dependency_type": "discovered-from"
+      },
+      {
+        "id": "vb-d1068",
+        "title": "Independently review checked CLI artifact producer and durability policy repair",
+        "description": "Fresh local reviewer for be65d919..a36705032ef5: CLIrun/runcompiled producer now delegates checked submit_artifact instead of legacy unverified envelope; consistent Journaled/Strict/None policy mapping;3persistence fixtures compiled withgenuine digest plus tamper rejection acrossbothpolicies. Author actual149targettests0. Separate code/testverdicts, verify exact CLI happy paths and rejection strength, actual strict scoped check. No author-source edits.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:35:40Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T04:43:57Z",
+        "started_at": "2026-10-22T04:43:57Z",
+        "dependency_type": "blocks"
+      }
+    ]
+  },
+  {
+    "id": "vb-47u9o",
+    "title": "Independently assess unchanged Kani timeout scope for session integration",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-2lyiw",
+        "title": "Validate and land the complete preserved session integration on main",
+        "description": "Combine preserved source and honest evidence checkpoints, independently review bounded final repairs, run canonical moon ci on isolated Git/JJ candidate, resolve actual integration failures without weakening contracts, verify stopped-chat/source coverage, push accepted main and reconcile beads. Parent vb-wlnl4. Root coordinates VCS only; local5090/local3090/DeepSeek perform implementation and review.",
+        "notes": "Frozen source206fa03977d215c7c005e6fea54b92f2c40f1632 actually pushed codex/vb-2lyiw-frozen-reviewed-source. Fresh ancestry verifies all13saved source checkpoints plus coordinationHEAD96f6bb59;29stashes preserved. Actual assembled14358NextestPASS; finalstatic original-main fmt/source-length/lint-src0;40xtaskbenchmarktests0. Clean measurement workspace collector75checks0. First actual3metric collection failed honestly after successfulbenchbuild/criterion because collector nonrecursive output discovery missed actual nested runtime_core/metric/new/benchmark.json. No newrecords published. LOCAL5090 bounded recursive-new-only lookup+regressionrepair active. Main not yetpublished. Existingbaselineproofdebtheuiz/73gp3/z9jmf remainsopen.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:24:32Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:43:49Z",
+        "started_at": "2026-10-22T02:24:46Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-4qog3",
+    "title": "Independent local5090 review of strict retry boundaries and checkpoint consumption",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-wlnl4",
+        "title": "Integrate saved agent changes, resolve review blockers and land validated changes on main",
+        "notes": "User explicitly reiterates preserve all other sessions and integrate main. First combined A+B/C/D+compiler/quality source candidate af142d349ef0a7255f7da68ab6dd0729b6cecce6 PUSHED codex/vb-k5936-combined-integration;22focused tests green (A4+replay3+BCD10+retry2+CLI3), pending20 awaits fixturemerge. Sourcequality fresh strictClippy0 evidenced18162b51 pushed. 3090 now workspace test compile and2177core lib pass; storage codec historical unknown37 test stale because RetryCheckpoint37 legitimatelyadded, correctingpositive37/unknown38+actual full tests. Current3090 source checkpointf53d9fbc preserved and pushingremote. Independent5090BCD review approved0d348f5a with9realcoldprobes; fixing2newtestunwraps and recording exactlimits beforepublication. DeepSeek bounded Flux token parsefix/newtest safeindex cleanup active; masterformalcontractunchanged. Main still clean unchangedda633fe0; real canonicalCI/finalreview andmainpush notdone.\nLatest remote preservation: c816f6b3bdc9e8542aefac533b499d082af2e2b9 fixture/probe merge and f4a405469a1709a291008653f023f81a7b4fb978 bounded Flux syntax/safe getter cleanup both actually pushed. Combined isolated candidate78352490 includes both plus evidence correction6e3c5375. LOCAL5090 via pinned OMP performs canonical CI vb-2lyiw; LOCAL3090 independent authority/legacy-wire review vb-79ffw; DeepSeek independent fixture/source-session preservation review vb-1tq2d. Nine other Codex Velvet chats freshly inspected, all stopped/notLoaded, no new Sol/Luna development. Main remains unchanged pending actual acceptance.\nFresh Git ancestry check: all13 saved source/WIP SHAs in /tmp/vb-wlnl4-source-inventory.json are ancestors of published candidate5766dff917a95f0d56a6199871b93d17de5fd7be. Machine-readable evidence /tmp/vb-2lyiw-current-source-ancestry.json. This establishes preservation only; DeepSeek still verifies current code/test counterparts. Historical29 stashes retained untouched. Main remains da633fe0 pending new integration fixes/review/canonical gates.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-21T23:44:12Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T02:39:40Z",
+        "started_at": "2026-10-21T23:45:19Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-5aw5i",
+    "title": "Repair historical tool and workspace test fixtures without restoring removed UI scope",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-2lyiw",
+        "title": "Validate and land the complete preserved session integration on main",
+        "description": "Combine preserved source and honest evidence checkpoints, independently review bounded final repairs, run canonical moon ci on isolated Git/JJ candidate, resolve actual integration failures without weakening contracts, verify stopped-chat/source coverage, push accepted main and reconcile beads. Parent vb-wlnl4. Root coordinates VCS only; local5090/local3090/DeepSeek perform implementation and review.",
+        "notes": "Frozen source206fa03977d215c7c005e6fea54b92f2c40f1632 actually pushed codex/vb-2lyiw-frozen-reviewed-source. Fresh ancestry verifies all13saved source checkpoints plus coordinationHEAD96f6bb59;29stashes preserved. Actual assembled14358NextestPASS; finalstatic original-main fmt/source-length/lint-src0;40xtaskbenchmarktests0. Clean measurement workspace collector75checks0. First actual3metric collection failed honestly after successfulbenchbuild/criterion because collector nonrecursive output discovery missed actual nested runtime_core/metric/new/benchmark.json. No newrecords published. LOCAL5090 bounded recursive-new-only lookup+regressionrepair active. Main not yetpublished. Existingbaselineproofdebtheuiz/73gp3/z9jmf remainsopen.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:24:32Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:43:49Z",
+        "started_at": "2026-10-22T02:24:46Z",
+        "dependency_type": "discovered-from"
+      },
+      {
+        "id": "vb-ucsv7",
+        "title": "Independently review current backend tool fixture and archived UI test transition",
+        "description": "Read-only review be65 to final5aw fixture patch: byte-identical oldUIarchive, currentbackend6realCLIcases, no newlyignored/skippedassertions, eepg mismatchclassification, syntheticworkspace valid/invalid controls, portablextaskpaths. Actual48tests0 strictcheck and pinnedfmt.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:45:56Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T04:58:00Z",
+        "started_at": "2026-10-22T04:58:00Z",
+        "dependency_type": "blocks"
+      }
+    ]
+  },
+  {
+    "id": "vb-5nbtm",
+    "title": "Merge final fixture and independent probe candidates before canonical validation",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-wlnl4",
+        "title": "Integrate saved agent changes, resolve review blockers and land validated changes on main",
+        "notes": "User explicitly reiterates preserve all other sessions and integrate main. First combined A+B/C/D+compiler/quality source candidate af142d349ef0a7255f7da68ab6dd0729b6cecce6 PUSHED codex/vb-k5936-combined-integration;22focused tests green (A4+replay3+BCD10+retry2+CLI3), pending20 awaits fixturemerge. Sourcequality fresh strictClippy0 evidenced18162b51 pushed. 3090 now workspace test compile and2177core lib pass; storage codec historical unknown37 test stale because RetryCheckpoint37 legitimatelyadded, correctingpositive37/unknown38+actual full tests. Current3090 source checkpointf53d9fbc preserved and pushingremote. Independent5090BCD review approved0d348f5a with9realcoldprobes; fixing2newtestunwraps and recording exactlimits beforepublication. DeepSeek bounded Flux token parsefix/newtest safeindex cleanup active; masterformalcontractunchanged. Main still clean unchangedda633fe0; real canonicalCI/finalreview andmainpush notdone.\nLatest remote preservation: c816f6b3bdc9e8542aefac533b499d082af2e2b9 fixture/probe merge and f4a405469a1709a291008653f023f81a7b4fb978 bounded Flux syntax/safe getter cleanup both actually pushed. Combined isolated candidate78352490 includes both plus evidence correction6e3c5375. LOCAL5090 via pinned OMP performs canonical CI vb-2lyiw; LOCAL3090 independent authority/legacy-wire review vb-79ffw; DeepSeek independent fixture/source-session preservation review vb-1tq2d. Nine other Codex Velvet chats freshly inspected, all stopped/notLoaded, no new Sol/Luna development. Main remains unchanged pending actual acceptance.\nFresh Git ancestry check: all13 saved source/WIP SHAs in /tmp/vb-wlnl4-source-inventory.json are ancestors of published candidate5766dff917a95f0d56a6199871b93d17de5fd7be. Machine-readable evidence /tmp/vb-2lyiw-current-source-ancestry.json. This establishes preservation only; DeepSeek still verifies current code/test counterparts. Historical29 stashes retained untouched. Main remains da633fe0 pending new integration fixes/review/canonical gates.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-21T23:44:12Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T02:39:40Z",
+        "started_at": "2026-10-21T23:45:19Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-79ffw",
+    "title": "Independent local3090 review of ticket generation wire and retry authority",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-2b170",
+        "title": "Repair exact stale callback mutation oracles from working public API probe",
+        "description": "LOCAL5090 bounded new integration test from actual passing329 probe, not invented APIs from rejected f389 rewrite. Exact full serialized journal equality for stale completion and queued failure, pending ticket/counters unchanged, current ticket RunFinished/output. Crosscrate test canonical workspace_tests. Parent vb-79ffw. Independent review required.",
+        "notes": "FINAL BOUNDED REPAIR COMPLETE: v3 fixed all 3 blocking oracles despite initial handoff claim. Forbidden .as_ref().unwrap() lines 320/364 replaced with full Option<ActionTicket> equality to Some(current_ticket). StaleAttempt error now asserts exact fields incoming:1/current:3 not StaleAttempt{..}. InvalidActionCompletion exact match preserved. Added stronger frozen public state: Runtime::snapshot_run captured before stale rejection and after stale tick, exact InspectSnapshot equality asserted. RunFinished now asserts result==SlotIdx(1). ActionCompletedEnvelope ties current_ticket AND output_slot==SlotIdx(1) AND value==I64(42). All 6 tests pass via python3 runner. No self-approval, leaving in_progress for independent root review. Actual JSON exit 0 + raw logs at .beads/vb-2b170/evidence/probe-final-strict.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T03:24:04Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T03:32:50Z",
+        "started_at": "2026-10-22T03:25:01Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-txqll",
+        "title": "Independent final code and test review of exact stale callback and state invariance probe",
+        "description": "Review cc8bb9ab724ed4d408f0a41e1308962c40dd6366 against actualworking329 probe/current production: actualoldticket through2retries, exact StaleAttempt1/3 completion and InvalidActionCompletion queuedfailure, independent fullserializedjournal and publicInspectSnapshot/fullpendingticket equality eachboundary, exactcurrent RunFinishedslot+output42, all6tests preserved. No sourceedits, independent rawgate. Parentvb-79ffw.",
+        "notes": "Code and test review complete. STATUS: APPROVED both. Independent test run: 6/6 passed in 16.9s.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T03:38:52Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T03:40:47Z",
+        "started_at": "2026-10-22T03:39:39Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-wlnl4",
+        "title": "Integrate saved agent changes, resolve review blockers and land validated changes on main",
+        "notes": "User explicitly reiterates preserve all other sessions and integrate main. First combined A+B/C/D+compiler/quality source candidate af142d349ef0a7255f7da68ab6dd0729b6cecce6 PUSHED codex/vb-k5936-combined-integration;22focused tests green (A4+replay3+BCD10+retry2+CLI3), pending20 awaits fixturemerge. Sourcequality fresh strictClippy0 evidenced18162b51 pushed. 3090 now workspace test compile and2177core lib pass; storage codec historical unknown37 test stale because RetryCheckpoint37 legitimatelyadded, correctingpositive37/unknown38+actual full tests. Current3090 source checkpointf53d9fbc preserved and pushingremote. Independent5090BCD review approved0d348f5a with9realcoldprobes; fixing2newtestunwraps and recording exactlimits beforepublication. DeepSeek bounded Flux token parsefix/newtest safeindex cleanup active; masterformalcontractunchanged. Main still clean unchangedda633fe0; real canonicalCI/finalreview andmainpush notdone.\nLatest remote preservation: c816f6b3bdc9e8542aefac533b499d082af2e2b9 fixture/probe merge and f4a405469a1709a291008653f023f81a7b4fb978 bounded Flux syntax/safe getter cleanup both actually pushed. Combined isolated candidate78352490 includes both plus evidence correction6e3c5375. LOCAL5090 via pinned OMP performs canonical CI vb-2lyiw; LOCAL3090 independent authority/legacy-wire review vb-79ffw; DeepSeek independent fixture/source-session preservation review vb-1tq2d. Nine other Codex Velvet chats freshly inspected, all stopped/notLoaded, no new Sol/Luna development. Main remains unchanged pending actual acceptance.\nFresh Git ancestry check: all13 saved source/WIP SHAs in /tmp/vb-wlnl4-source-inventory.json are ancestors of published candidate5766dff917a95f0d56a6199871b93d17de5fd7be. Machine-readable evidence /tmp/vb-2lyiw-current-source-ancestry.json. This establishes preservation only; DeepSeek still verifies current code/test counterparts. Historical29 stashes retained untouched. Main remains da633fe0 pending new integration fixes/review/canonical gates.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-21T23:44:12Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T02:39:40Z",
+        "started_at": "2026-10-21T23:45:19Z",
+        "dependency_type": "discovered-from"
+      },
+      {
+        "id": "vb-zoccj",
+        "title": "Independently review real old journal golden fixtures and exact current decoder rejection",
+        "description": "FreshLOCAL5090 read-only production review6c482f52 real old423 golden provenance3cases, sourceSHA/length/BLAKE3 and portable tracked fixture lookup; exact PostcardDecodeFailed(DeserializeBadVarint) current5tests, no universal compatibility claim. Inspect real old producer99f36 and current full event serialization. Code and test review outputs, actual scoped rerun. Parent vb-79ffw.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T03:34:04Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T03:34:19Z",
+        "started_at": "2026-10-22T03:34:19Z",
+        "dependency_type": "blocks"
+      }
+    ]
+  },
+  {
+    "id": "vb-7x0ol",
+    "title": "Independent local review of integrated recovery retry Ask and executor authority",
+    "status": "in_progress",
+    "dependencies": []
+  },
+  {
+    "id": "vb-9tg1c",
+    "title": "Format integrated fixture changes with pinned Rust 2024 formatter",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-2lyiw",
+        "title": "Validate and land the complete preserved session integration on main",
+        "description": "Combine preserved source and honest evidence checkpoints, independently review bounded final repairs, run canonical moon ci on isolated Git/JJ candidate, resolve actual integration failures without weakening contracts, verify stopped-chat/source coverage, push accepted main and reconcile beads. Parent vb-wlnl4. Root coordinates VCS only; local5090/local3090/DeepSeek perform implementation and review.",
+        "notes": "Frozen source206fa03977d215c7c005e6fea54b92f2c40f1632 actually pushed codex/vb-2lyiw-frozen-reviewed-source. Fresh ancestry verifies all13saved source checkpoints plus coordinationHEAD96f6bb59;29stashes preserved. Actual assembled14358NextestPASS; finalstatic original-main fmt/source-length/lint-src0;40xtaskbenchmarktests0. Clean measurement workspace collector75checks0. First actual3metric collection failed honestly after successfulbenchbuild/criterion because collector nonrecursive output discovery missed actual nested runtime_core/metric/new/benchmark.json. No newrecords published. LOCAL5090 bounded recursive-new-only lookup+regressionrepair active. Main not yetpublished. Existingbaselineproofdebtheuiz/73gp3/z9jmf remainsopen.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:24:32Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:43:49Z",
+        "started_at": "2026-10-22T02:24:46Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-9ucmq",
+    "title": "Repair actual canonical supply-chain advisories with patched compatible dependencies",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-2lyiw",
+        "title": "Validate and land the complete preserved session integration on main",
+        "description": "Combine preserved source and honest evidence checkpoints, independently review bounded final repairs, run canonical moon ci on isolated Git/JJ candidate, resolve actual integration failures without weakening contracts, verify stopped-chat/source coverage, push accepted main and reconcile beads. Parent vb-wlnl4. Root coordinates VCS only; local5090/local3090/DeepSeek perform implementation and review.",
+        "notes": "Frozen source206fa03977d215c7c005e6fea54b92f2c40f1632 actually pushed codex/vb-2lyiw-frozen-reviewed-source. Fresh ancestry verifies all13saved source checkpoints plus coordinationHEAD96f6bb59;29stashes preserved. Actual assembled14358NextestPASS; finalstatic original-main fmt/source-length/lint-src0;40xtaskbenchmarktests0. Clean measurement workspace collector75checks0. First actual3metric collection failed honestly after successfulbenchbuild/criterion because collector nonrecursive output discovery missed actual nested runtime_core/metric/new/benchmark.json. No newrecords published. LOCAL5090 bounded recursive-new-only lookup+regressionrepair active. Main not yetpublished. Existingbaselineproofdebtheuiz/73gp3/z9jmf remainsopen.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:24:32Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:43:49Z",
+        "started_at": "2026-10-22T02:24:46Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-a2l02",
+    "title": "Canonical semantic source digest concatenation collides across nested identifiers",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-6jn77",
+        "title": "Preserve normalized source identity in compiled artifact digest",
+        "description": "Public compiler regressions show that workflow version and trigger identity, plus Repeat body Set output identifiers, currently disappear during lowering. The compiled digest is calculated from serialized WorkflowParts, so it correctly follows the payload but that payload omits normalized source-semantic identity. Preserve \u00a751 compiled_digest = BLAKE3(canonical compiled artifact payload): add the normalized semantic source identity to the serialized compiled artifact payload and hash the complete payload with the digest field zeroed. Do not replace compiled_digest with the source digest, include YAML formatting/comments, weaken equality assertions, or alter validators to hide the mismatch. Coordinate exact field and legacy wire behavior with the active artifact/admission owners before shared API edits. Explicitly decide whether legacy artifacts lacking the field are accepted as legacy-only or rejected; never silently assign new authority to a missing identity. Also split crates/vb_compile/src/proptest_finish_digest.rs below 300 lines with equivalent property coverage.",
+        "acceptance_criteria": "1. Distinct workflow version and trigger type/parameters produce distinct compiled digests. 2. Distinct Repeat body Set output identifiers produce distinct compiled digests. 3. Recompiling semantically identical source is stable, independent of YAML formatting/comments. 4. Recompute BLAKE3 from the serialized compiled payload with only digest zeroed and match compiled.digest(); do not use source identity as the payload digest. 5. Existing authoritative artifact/admission tests cover the explicit legacy/version migration decision and reject tampered identity/payload. 6. Split the compiler finish-digest property source below 300 lines without weakening any property or adding lint allowances. Focused tests and strict source lint pass; record limits for unrun broader gates.",
+        "notes": "Initial focused evidence: after splitting proptest_finish_digest.rs (344 lines) into parent module (209 lines) and boundary submodule (135 lines), `CARGO_BUILD_JOBS=2 cargo test -p vb_compile --lib proptest_finish_digest` passed 10/10. A cross-crate search finds 556 WorkflowParts struct-literal occurrences; this is a broad Rust API blast radius requiring scoped fixture updates. Current artifact/admission thread IDs are not visible from this task; request sent for coordination before shared API edits. `workflow_source_digest` candidate should be canonical_digest(source), which excludes YAML formatting/comments and currently covers name/version/trigger/steps.\nAdded `crates/vb_compile/tests/compiled_digest_payload.rs` contract tests: recomputed serialized WorkflowParts digest with digest zeroed matches the compiler digest, and YAML formatting/comments do not affect compiled digest. `CARGO_BUILD_JOBS=2 cargo test -p vb_compile --test compiled_digest_payload` passed 2/2. The five known version/trigger regressions and repeat nested output regression remain unaddressed pending artifact/admission field and migration coordination.\nBaseline logs saved under .beads/vb-6jn77/evidence/: finish_digest_integration reports 9 pass/5 fail/1 ignored (exit 101), digest_repeat_unit focused regression 0 pass/1 fail (exit 101), canonical payload tests 2 pass (exit 0). Working proposal for owner review only: append an Option<WorkflowDigest> semantic_source_identity field to serialized WorkflowParts; source compilation populates it from canonical_digest(WorkflowSource), while the artifact candidate keeps raw source provenance separate. Missing identity should be explicit legacy/compiled-IR-only state, never implicit proof for source-backed compilation. A serde default plus omit-None serialization may preserve old payload bytes, but this must be verified with actual old-wire fixtures and accepted by admission owner before use.\nDesign decision finalized with artifact and admission owners: WorkflowParts.semantic_source_identity is Option<WorkflowDigest>; source compilation stores canonical_digest(source); IR-only paths and fixtures use None. The complete serialized WorkflowParts payload remains the compiled digest input with only digest zeroed. Postcard positional compatibility uses evidence schema 3; schema-2 artifacts are RequiresMigration before legacy WorkflowParts decode. The source lane is stacked on codex/vb-9agmk-integration-fixtures and adds semantic_source_identity to that branch's new verified_artifact support fixture. Current evidence: vb_compile lib 497/497; finish_digest_integration 14 passed/1 ignored; compiled_digest_payload 3/3; repeat nested output regression 1/1; workspace test target check passed; owner version barrier 10/10 and wave16 3/3. Full moon ci and Kani were not run. A separate P1 follow-up vb-6hqsd tracks a stale pre-execution idempotency_attested assertion exposed after replacing fabricated proof metadata with a real prepared artifact.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "bug",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-21T23:02:15Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-21T23:26:04Z",
+        "started_at": "2026-10-21T23:02:19Z",
+        "labels": [
+          "compiler",
+          "digest",
+          "regression"
+        ],
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-absr9",
+    "title": "Repair strict source quality and new replay test fallibility after ticket migration",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-wop2u",
+        "title": "Bind action ticket authority to durable run attempt and reject stale retry callbacks",
+        "description": "Confirmed independent public Runtime/Fjall counterexample on f6a3631b: old==new ActionTicket after durable retry and old ActionFailed accepted, poisoning new attempt. Must repair actual production ticket/run authority, preserve bounded per-action retries and capacity, durability/policy/grants/reconciliation and schema compatibility. Add permanent real cold-retry stale completion/failure tests asserting typed expected/found and no mutation. Preserve successful prefix and actual maxattempt=1 re-execution. Check AskTicket authority. Independent review required; no nonce/increment-past-max/lint/test weakening workaround.",
+        "notes": "Coordinator now owns all JJ mutations/tracking/bookmark/publication for workers, following prior local worker VCS/evidence mistakes. Read-only root/status/log/diff allowed; leave source and .beads/vb-wop2u artifacts in assigned workspace and finish handoff. Do not bypass PATH guards, change .gitignore or shared /tmp helpers. Root will snapshot/publish exact source after handoff. Do not close bead.\nFrozen production9954545d3f816ec360b9ecd07ea07dfd77a27767 published with4real stale-run ticket tests and2existing retry passes. Independent vb-xvqwl local5090 review active. IMPORTANT root source observation: vb_storage/events.rs attempt() still maps full ticket-bearing events to ticket.attempt (per-action) not new ticket.run_attempt, potentially dropping active run2 events in replay. Needs actual independent probe/fix if confirmed. Do not call full run-attempt propagation complete from initial4 tests alone.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:17:08Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:40:25Z",
+        "started_at": "2026-10-22T01:21:37Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-b24vj",
+    "title": "Restore public Ask callback rejection coverage and exact current test replacement mappings",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-vzyac",
+        "title": "Independently disposition integration test-integrity findings and identify real coverage losses",
+        "description": "Root actualoriginbase gate17findings in .beads/vb-ndx8b/evidence/coordinator-real-integration-base.stderr. Review ninefiles against MASTER/currentpublicAPIs and acceptedindependentreviews. Distinguish relocated/supersededcoverage fromactualdeletedorweakenedbehavior. Critical shardwrongAskStep callback\u2192lookup-onlymayloseactualerrorbehavior; privateTicketalone notproofwhenDeserialize exists. Return exact replacementtestmapping+filehashes, actionable realgaps. No blanketcountapproval orsourceedits. Usedfor concrete boundedrepairs and evidencebacked gate policy (checker advertises beadlinkedjustification but currentlycannotreadit). Separate reviews required.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T05:01:42Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T05:04:08Z",
+        "started_at": "2026-10-22T05:04:08Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-bbf56",
+    "title": "Repair integration-induced production mirror drift with preserved proof contracts",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-hrvix",
+        "title": "Bind input-slot validation to actual constructor proof model and behavior tests",
+        "description": "Independent vb-fg1pi review rejects vb-bbf56 due new always-Ok input-slot mirror and missing third validation step/error variants in try_from_parts_pure. Repair with faithful production logic and bounded model that includes slot range, duplicate, order semantics and exact error precedence; production public constructor tests for all3 errors and valid inputs. Preserve contract and existing proof obligations, no new assumptions, no fake crypto/serialization or weakening. Fresh independent review plus actual Verus main obligation and production tests required.",
+        "notes": "Local3090 final checkpoint27090007f600 pushed codex/vb-hrvix-complete-input-validation. Replaced alwaysOk input validation mirror, actualprev_slot update and distinct opaque source/artifact parameters; actual main67Verus/inputtests evidence preserved. Pending independent fresh reviewer before acceptance; distinct constantdigestcaller does not establish cryptographic property. No main publication yet.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "bug",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T03:51:23Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-21T23:30:58Z",
+        "started_at": "2026-10-22T03:51:46Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eq4ff",
+        "title": "Resolve actual recovery Verus erasure-context compiler crash without disabling lifetime checks",
+        "description": "Canonical CI d20 verify-verus aborts at recovery_verification production::CANNOT_RESUME_REASONS: thir_body query may require erasure but VerusErasureCtxt not initialized. Preserve raw stack/log and actual production-binding semantics; scoped reproducer and legitimate fix with default lifetime checking, no blanket --no-lifetime or weakened contracts. Current DeepSeek vb-bbf56 binding worker assigned same affected surfaces.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "bug",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T03:32:54Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-21T23:03:34Z",
+        "started_at": "2026-10-22T03:35:03Z",
+        "dependency_type": "blocks"
+      }
+    ]
+  },
+  {
+    "id": "vb-bxzxu",
+    "title": "Independently review failclosed test-integrity repair and hash-bound replacement records",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-ndx8b",
+        "title": "Scope test-integrity diffs to relevant Rust sources without decoding raw binary evidence",
+        "description": "Fresh canonical moon CI test-integrity fails decoding git diff all tracked artifacts: nonUTF8 raw proof evidence around byte33279512. Existing Rust checker scans relevant source for removed tests and weakened assertions. Fix input selection at git/JJ diff invocation or equivalent safe perpath UTF8 handling, retaining failclosed for malformed relevant Rust, new ignoredtests/deletions/weakening. Add regression with unrelated nonUTF8 evidence plus actual failing Rust test deletion. Independent review required.",
+        "notes": "Independent fresh5090 checker review reproduced TWO concrete bypasses in efee79de: new_path unrelated or ABSENT can justify a still-existing weakened old_path without binding its currentblob. Reviewc1a76a89 preserved remotely; must fix and regressions before accept. Current DeepSeek partial exact-relocation checkpoint still435rawfindings due modifiedCLIrenames scanned as D/A; all drafts preserved. Root transitioning fresh bounded repair context with explicit pair mapping/hash fixes, no suppressions. Main remains unchanged.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:49:48Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T05:58:45Z",
+        "started_at": "2026-10-22T04:53:29Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-e7rjr",
+    "title": "Honor existing MASTER advisory reporting policy without losing supply-chain failures",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-2lyiw",
+        "title": "Validate and land the complete preserved session integration on main",
+        "description": "Combine preserved source and honest evidence checkpoints, independently review bounded final repairs, run canonical moon ci on isolated Git/JJ candidate, resolve actual integration failures without weakening contracts, verify stopped-chat/source coverage, push accepted main and reconcile beads. Parent vb-wlnl4. Root coordinates VCS only; local5090/local3090/DeepSeek perform implementation and review.",
+        "notes": "Frozen source206fa03977d215c7c005e6fea54b92f2c40f1632 actually pushed codex/vb-2lyiw-frozen-reviewed-source. Fresh ancestry verifies all13saved source checkpoints plus coordinationHEAD96f6bb59;29stashes preserved. Actual assembled14358NextestPASS; finalstatic original-main fmt/source-length/lint-src0;40xtaskbenchmarktests0. Clean measurement workspace collector75checks0. First actual3metric collection failed honestly after successfulbenchbuild/criterion because collector nonrecursive output discovery missed actual nested runtime_core/metric/new/benchmark.json. No newrecords published. LOCAL5090 bounded recursive-new-only lookup+regressionrepair active. Main not yetpublished. Existingbaselineproofdebtheuiz/73gp3/z9jmf remainsopen.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:24:32Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:43:49Z",
+        "started_at": "2026-10-22T02:24:46Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-f7nmz",
+    "title": "Independently review restored public admission retry replay and journal coverage",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-p51m8",
+        "title": "Restore removed public idempotency admission precedence replay and unchanged-journal assertions",
+        "description": "Rootdiff finds8removedko29public tests, provisionalreview onlymapped3andgenericreplacement:4admission casesinclwrongdigest+stalefloorprecedence; completedactionreplay; volatileevictiondurablerecovery;2CLIretryfailureslostafter==before journalguards. Restore currentcontract strongcases withrealcheckedartifacts/currentwireevents/realissuedtickets, notcountpadding. Typed proof changed expectederrorsactualcontract, no productionbehaviorpatch unlessrealdefect. Keepcurrent10tests and allmeaningfuloldbehavior. Independentreviewrequired.",
+        "notes": "Actual runtime producer exposed real public replay failure: expected ABI supplied but full recovery guard recognizes only legacy ActionScheduled, not ActionScheduledTicket; completion envelope producer writes zero digest despite schedule real nonzero ABI. Root stopped exact5090PID3269488 after observed attempt to work around with manual tracker replay/private API calls. Such workaround REJECTED. Actual failing logs /tmp/vb_ko29_workaround.*, raw event trace retained. Production repair vb-hjdi0 claimed; test oracles must retain public replay_journal. No weakening/zero acceptance. Current draft preserved before dedicated repair.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T05:30:26Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T05:51:30Z",
+        "started_at": "2026-10-22T05:30:57Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-flvw3",
+    "title": "Independently review restored Ask callback rejection and journal invariance coverage",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-b24vj",
+        "title": "Restore public Ask callback rejection coverage and exact current test replacement mappings",
+        "description": "Independent vb-vzyac review acknowledges missing InvalidActionCompletion AskAnswered integration path but approves based on private fields; that is insufficient if tickets deserialize or IPC accepts forged wire. Restore behavioral guard coverage safely via real public issued ticket, codec/mutation at external boundary or internal constructor test as appropriate; exact no state/journal mutation on rejection. Also audit other named parity mappings, identify omitted oldcases. No blanket justifications or assertion count padding. Local5090 author; independent review required.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T05:14:10Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T05:14:45Z",
+        "started_at": "2026-10-22T05:14:45Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-g4mol",
+    "title": "Recover honest historical closure manifest rows and raw artifacts from stopped sessions",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-2lyiw",
+        "title": "Validate and land the complete preserved session integration on main",
+        "description": "Combine preserved source and honest evidence checkpoints, independently review bounded final repairs, run canonical moon ci on isolated Git/JJ candidate, resolve actual integration failures without weakening contracts, verify stopped-chat/source coverage, push accepted main and reconcile beads. Parent vb-wlnl4. Root coordinates VCS only; local5090/local3090/DeepSeek perform implementation and review.",
+        "notes": "Frozen source206fa03977d215c7c005e6fea54b92f2c40f1632 actually pushed codex/vb-2lyiw-frozen-reviewed-source. Fresh ancestry verifies all13saved source checkpoints plus coordinationHEAD96f6bb59;29stashes preserved. Actual assembled14358NextestPASS; finalstatic original-main fmt/source-length/lint-src0;40xtaskbenchmarktests0. Clean measurement workspace collector75checks0. First actual3metric collection failed honestly after successfulbenchbuild/criterion because collector nonrecursive output discovery missed actual nested runtime_core/metric/new/benchmark.json. No newrecords published. LOCAL5090 bounded recursive-new-only lookup+regressionrepair active. Main not yetpublished. Existingbaselineproofdebtheuiz/73gp3/z9jmf remainsopen.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:24:32Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:43:49Z",
+        "started_at": "2026-10-22T02:24:46Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-ga13x",
+    "title": "Restore symbolic ticket fixture fields exposed by independent Kani review",
+    "status": "in_progress",
+    "dependencies": []
+  },
+  {
+    "id": "vb-gl41l",
+    "title": "Independent local3090 code and test review of durable retry implementation",
+    "status": "in_progress",
+    "dependencies": []
+  },
+  {
+    "id": "vb-gucyr",
+    "title": "Independently review mechanical Verus length cleanup and actual advisory-script regression matrix",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-sue37",
+        "title": "Finish source-length governance cleanup and extracted advisory regression selftest",
+        "description": "Rootactualsource-length nowfails3items: staleledgerrow216 archivedUItest removedscope; extern_try_from_parts828>800; production_inner/vb_xi2f_compile_source_production805>800. Mechanicalwhitespace/commentcompression or proper smallfile split with no contract/assertion/math/trust changes, no newexceptions. Also independent vb-xhrt9 codeAPPROVEDconfig but testREJECTEDauthorhandwrittenstatusselftest; adopt reusable real extractedMoon-script matrix fromindependentreviewer verifying exactstatuses/fullgeigercontinue/auditfailclosed. Independentfreshreviewrequired.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T05:21:00Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T05:21:44Z",
+        "started_at": "2026-10-22T05:21:44Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-hjdi0",
+    "title": "Repair real runtime action journal ABI and modern schedule replay parity",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-p51m8",
+        "title": "Restore removed public idempotency admission precedence replay and unchanged-journal assertions",
+        "description": "Rootdiff finds8removedko29public tests, provisionalreview onlymapped3andgenericreplacement:4admission casesinclwrongdigest+stalefloorprecedence; completedactionreplay; volatileevictiondurablerecovery;2CLIretryfailureslostafter==before journalguards. Restore currentcontract strongcases withrealcheckedartifacts/currentwireevents/realissuedtickets, notcountpadding. Typed proof changed expectederrorsactualcontract, no productionbehaviorpatch unlessrealdefect. Keepcurrent10tests and allmeaningfuloldbehavior. Independentreviewrequired.",
+        "notes": "Actual runtime producer exposed real public replay failure: expected ABI supplied but full recovery guard recognizes only legacy ActionScheduled, not ActionScheduledTicket; completion envelope producer writes zero digest despite schedule real nonzero ABI. Root stopped exact5090PID3269488 after observed attempt to work around with manual tracker replay/private API calls. Such workaround REJECTED. Actual failing logs /tmp/vb_ko29_workaround.*, raw event trace retained. Production repair vb-hjdi0 claimed; test oracles must retain public replay_journal. No weakening/zero acceptance. Current draft preserved before dedicated repair.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T05:30:26Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T05:51:30Z",
+        "started_at": "2026-10-22T05:30:57Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-hz9v8",
+    "title": "Close durable retry automatic recovery and durability authority review findings",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-tf5lr",
+        "title": "Independently exercise stale tickets and policy across durable run retry",
+        "description": "Focused independent adversarial public Runtime/Fjall/CLI review of f6a3631b50f11846c012b6f7d189bba73861dad5 before final integration. Must exercise old ActionTicket completion/failure and AskTicket across explicit run retry, exact expected/found and no mutation; check Strict policy and automatic recovery of next-attempt checkpoint. Existing local3090 approval did not execute these required cases. Preserve repro and honest verdict; no production edits.",
+        "notes": "DeepSeek v4Pro independent adversarial review of f6a3631b: REJECTED. Red counterexamples (real public Runtime/FjallJournal, genuine failure->checkpoint->cold recover_retry->tick_all): (A) old ActionTicket == retried ticket (attempt=1, seq=0, same idempotency_key); old ActionCompleted accepted (run completed=1) and old ActionFailed accepted (run failed=1) - no StaleAttempt, violates master 72.3 + rust-contract.md:60-61. Root: RunCheckpointV1::capture clones action_attempts verbatim (run_checkpoint.rs:112-117) and frame 'executed' restored verbatim (checkpoint.rs:121) so seq/attempt unchanged. (C) recover_product classifies failed run Resumable; recover_and_resume=Ok, journal 7->10, counters 0->1 - auto cold recovery silently resumes failed run. (B) cmd_retry hardcodes shared_journaled (DurabilityProfile::Journaled) - silent strict-durability downgrade. (D) recover_retry accepts caller-tampered run_attempt=99. Reports + repro at .beads/vb-tf5lr/. Parent vb-wlnl4 owns CI and bd remote push.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:10:17Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:24:23Z",
+        "started_at": "2026-10-22T01:10:28Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-hzdts",
+    "title": "Repair final merge recovery boxing and source governance without lint allowances",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-wlnl4",
+        "title": "Integrate saved agent changes, resolve review blockers and land validated changes on main",
+        "notes": "User explicitly reiterates preserve all other sessions and integrate main. First combined A+B/C/D+compiler/quality source candidate af142d349ef0a7255f7da68ab6dd0729b6cecce6 PUSHED codex/vb-k5936-combined-integration;22focused tests green (A4+replay3+BCD10+retry2+CLI3), pending20 awaits fixturemerge. Sourcequality fresh strictClippy0 evidenced18162b51 pushed. 3090 now workspace test compile and2177core lib pass; storage codec historical unknown37 test stale because RetryCheckpoint37 legitimatelyadded, correctingpositive37/unknown38+actual full tests. Current3090 source checkpointf53d9fbc preserved and pushingremote. Independent5090BCD review approved0d348f5a with9realcoldprobes; fixing2newtestunwraps and recording exactlimits beforepublication. DeepSeek bounded Flux token parsefix/newtest safeindex cleanup active; masterformalcontractunchanged. Main still clean unchangedda633fe0; real canonicalCI/finalreview andmainpush notdone.\nLatest remote preservation: c816f6b3bdc9e8542aefac533b499d082af2e2b9 fixture/probe merge and f4a405469a1709a291008653f023f81a7b4fb978 bounded Flux syntax/safe getter cleanup both actually pushed. Combined isolated candidate78352490 includes both plus evidence correction6e3c5375. LOCAL5090 via pinned OMP performs canonical CI vb-2lyiw; LOCAL3090 independent authority/legacy-wire review vb-79ffw; DeepSeek independent fixture/source-session preservation review vb-1tq2d. Nine other Codex Velvet chats freshly inspected, all stopped/notLoaded, no new Sol/Luna development. Main remains unchanged pending actual acceptance.\nFresh Git ancestry check: all13 saved source/WIP SHAs in /tmp/vb-wlnl4-source-inventory.json are ancestors of published candidate5766dff917a95f0d56a6199871b93d17de5fd7be. Machine-readable evidence /tmp/vb-2lyiw-current-source-ancestry.json. This establishes preservation only; DeepSeek still verifies current code/test counterparts. Historical29 stashes retained untouched. Main remains da633fe0 pending new integration fixes/review/canonical gates.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-21T23:44:12Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T02:39:40Z",
+        "started_at": "2026-10-21T23:45:19Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-i8o2v",
+    "title": "Independently audit bound coverage records and correct checker review evidence",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-vzyac",
+        "title": "Independently disposition integration test-integrity findings and identify real coverage losses",
+        "description": "Root actualoriginbase gate17findings in .beads/vb-ndx8b/evidence/coordinator-real-integration-base.stderr. Review ninefiles against MASTER/currentpublicAPIs and acceptedindependentreviews. Distinguish relocated/supersededcoverage fromactualdeletedorweakenedbehavior. Critical shardwrongAskStep callback\u2192lookup-onlymayloseactualerrorbehavior; privateTicketalone notproofwhenDeserialize exists. Return exact replacementtestmapping+filehashes, actionable realgaps. No blanketcountapproval orsourceedits. Usedfor concrete boundedrepairs and evidencebacked gate policy (checker advertises beadlinkedjustification but currentlycannotreadit). Separate reviews required.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T05:01:42Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T05:04:08Z",
+        "started_at": "2026-10-22T05:04:08Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-j3e3s",
+    "title": "Repair benchmark evidence freshness binding and refresh actual current-source measurements",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-2lyiw",
+        "title": "Validate and land the complete preserved session integration on main",
+        "description": "Combine preserved source and honest evidence checkpoints, independently review bounded final repairs, run canonical moon ci on isolated Git/JJ candidate, resolve actual integration failures without weakening contracts, verify stopped-chat/source coverage, push accepted main and reconcile beads. Parent vb-wlnl4. Root coordinates VCS only; local5090/local3090/DeepSeek perform implementation and review.",
+        "notes": "Frozen source206fa03977d215c7c005e6fea54b92f2c40f1632 actually pushed codex/vb-2lyiw-frozen-reviewed-source. Fresh ancestry verifies all13saved source checkpoints plus coordinationHEAD96f6bb59;29stashes preserved. Actual assembled14358NextestPASS; finalstatic original-main fmt/source-length/lint-src0;40xtaskbenchmarktests0. Clean measurement workspace collector75checks0. First actual3metric collection failed honestly after successfulbenchbuild/criterion because collector nonrecursive output discovery missed actual nested runtime_core/metric/new/benchmark.json. No newrecords published. LOCAL5090 bounded recursive-new-only lookup+regressionrepair active. Main not yetpublished. Existingbaselineproofdebtheuiz/73gp3/z9jmf remainsopen.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:24:32Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:43:49Z",
+        "started_at": "2026-10-22T02:24:46Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-ja1zd",
+    "title": "Correct TSAN artifact lookup for the pure virtual Cargo workspace",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-hv27k",
+        "title": "Independently review sanitizer artifact output isolation and failclosed fuzz paths",
+        "description": "FreshDeepSeek review local5090vb-ja1zd final three-lane explicit builddir/lookup contract, ASANvsTSAN isolation, logs/flags/targets/corpora/failure behavior unchanged, no gateweakening. Exactdiff plus independent scriptconfig validation and negative equal-dirs evidence, no falsefreshsanitizerclaim. Rootfinalcanonical owns actualbuilds.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:03:25Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T04:03:34Z",
+        "started_at": "2026-10-22T04:03:34Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-2lyiw",
+        "title": "Validate and land the complete preserved session integration on main",
+        "description": "Combine preserved source and honest evidence checkpoints, independently review bounded final repairs, run canonical moon ci on isolated Git/JJ candidate, resolve actual integration failures without weakening contracts, verify stopped-chat/source coverage, push accepted main and reconcile beads. Parent vb-wlnl4. Root coordinates VCS only; local5090/local3090/DeepSeek perform implementation and review.",
+        "notes": "Frozen source206fa03977d215c7c005e6fea54b92f2c40f1632 actually pushed codex/vb-2lyiw-frozen-reviewed-source. Fresh ancestry verifies all13saved source checkpoints plus coordinationHEAD96f6bb59;29stashes preserved. Actual assembled14358NextestPASS; finalstatic original-main fmt/source-length/lint-src0;40xtaskbenchmarktests0. Clean measurement workspace collector75checks0. First actual3metric collection failed honestly after successfulbenchbuild/criterion because collector nonrecursive output discovery missed actual nested runtime_core/metric/new/benchmark.json. No newrecords published. LOCAL5090 bounded recursive-new-only lookup+regressionrepair active. Main not yetpublished. Existingbaselineproofdebtheuiz/73gp3/z9jmf remainsopen.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:24:32Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:43:49Z",
+        "started_at": "2026-10-22T02:24:46Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-k5936",
+    "title": "Combine ticket generation boundary fixes and fixture migration for canonical CI",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-wlnl4",
+        "title": "Integrate saved agent changes, resolve review blockers and land validated changes on main",
+        "notes": "User explicitly reiterates preserve all other sessions and integrate main. First combined A+B/C/D+compiler/quality source candidate af142d349ef0a7255f7da68ab6dd0729b6cecce6 PUSHED codex/vb-k5936-combined-integration;22focused tests green (A4+replay3+BCD10+retry2+CLI3), pending20 awaits fixturemerge. Sourcequality fresh strictClippy0 evidenced18162b51 pushed. 3090 now workspace test compile and2177core lib pass; storage codec historical unknown37 test stale because RetryCheckpoint37 legitimatelyadded, correctingpositive37/unknown38+actual full tests. Current3090 source checkpointf53d9fbc preserved and pushingremote. Independent5090BCD review approved0d348f5a with9realcoldprobes; fixing2newtestunwraps and recording exactlimits beforepublication. DeepSeek bounded Flux token parsefix/newtest safeindex cleanup active; masterformalcontractunchanged. Main still clean unchangedda633fe0; real canonicalCI/finalreview andmainpush notdone.\nLatest remote preservation: c816f6b3bdc9e8542aefac533b499d082af2e2b9 fixture/probe merge and f4a405469a1709a291008653f023f81a7b4fb978 bounded Flux syntax/safe getter cleanup both actually pushed. Combined isolated candidate78352490 includes both plus evidence correction6e3c5375. LOCAL5090 via pinned OMP performs canonical CI vb-2lyiw; LOCAL3090 independent authority/legacy-wire review vb-79ffw; DeepSeek independent fixture/source-session preservation review vb-1tq2d. Nine other Codex Velvet chats freshly inspected, all stopped/notLoaded, no new Sol/Luna development. Main remains unchanged pending actual acceptance.\nFresh Git ancestry check: all13 saved source/WIP SHAs in /tmp/vb-wlnl4-source-inventory.json are ancestors of published candidate5766dff917a95f0d56a6199871b93d17de5fd7be. Machine-readable evidence /tmp/vb-2lyiw-current-source-ancestry.json. This establishes preservation only; DeepSeek still verifies current code/test counterparts. Historical29 stashes retained untouched. Main remains da633fe0 pending new integration fixes/review/canonical gates.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-21T23:44:12Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T02:39:40Z",
+        "started_at": "2026-10-21T23:45:19Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-k8z9l",
+    "title": "Migrate obsolete artifact-claim and capability fixtures to the accepted evidence contract",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-2lyiw",
+        "title": "Validate and land the complete preserved session integration on main",
+        "description": "Combine preserved source and honest evidence checkpoints, independently review bounded final repairs, run canonical moon ci on isolated Git/JJ candidate, resolve actual integration failures without weakening contracts, verify stopped-chat/source coverage, push accepted main and reconcile beads. Parent vb-wlnl4. Root coordinates VCS only; local5090/local3090/DeepSeek perform implementation and review.",
+        "notes": "Frozen source206fa03977d215c7c005e6fea54b92f2c40f1632 actually pushed codex/vb-2lyiw-frozen-reviewed-source. Fresh ancestry verifies all13saved source checkpoints plus coordinationHEAD96f6bb59;29stashes preserved. Actual assembled14358NextestPASS; finalstatic original-main fmt/source-length/lint-src0;40xtaskbenchmarktests0. Clean measurement workspace collector75checks0. First actual3metric collection failed honestly after successfulbenchbuild/criterion because collector nonrecursive output discovery missed actual nested runtime_core/metric/new/benchmark.json. No newrecords published. LOCAL5090 bounded recursive-new-only lookup+regressionrepair active. Main not yetpublished. Existingbaselineproofdebtheuiz/73gp3/z9jmf remainsopen.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:24:32Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:43:49Z",
+        "started_at": "2026-10-22T02:24:46Z",
+        "dependency_type": "discovered-from"
+      },
+      {
+        "id": "vb-4akb9",
+        "title": "Independently review full typed artifact fixture migration and exact rejection assertions",
+        "description": "Fresh independentlocalreview be65 to finalk8+DeepSeekqi37 migration: all9artifactfixturefamilies/storage29/YAML35/ABI25/SSEI4/qi37 andlp2v. Ensure oldfabricated15gateflagsreplacedwithrealcheckedcompiler/storage positiveevidence, schema3canonicalledger/digests/ABI, exacttamper/rejection/errors/noallocatedframe, emptyattestation intentional; no missing/skipped tests or weakenedassertions. Author fulltestpass necessary but notsufficient. Separatecode/testverdicts and actualscopedreruns.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:57:34Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T05:12:39Z",
+        "started_at": "2026-10-22T05:12:39Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-my3b3",
+        "title": "Finish qi37 checked admission fixtures with typed evidence and exact rejection oracles",
+        "description": "DeepSeek-only implementation in unique isolated Git+JJ workspace. Repair all15 remaining qi37 failures using real checked compiler/storage producer and typed evidence; preserve exact error and no-allocation assertions. No legacy flag fabrication, skipping or weakening. Actual strict suite and independent review required.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:43:44Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T04:43:57Z",
+        "started_at": "2026-10-22T04:43:57Z",
+        "dependency_type": "blocks"
+      }
+    ]
+  },
+  {
+    "id": "vb-ks7uq",
+    "title": "Local 3090 strict source-quality review of integrated candidates",
+    "status": "in_progress",
+    "dependencies": []
+  },
+  {
+    "id": "vb-m6w04",
+    "title": "Independently review local3090 compiler oracle repair",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-v0s45",
+        "title": "Resolve five primitive lowering integration failures against actual contract",
+        "description": "Local3090 isolated repair. Actual v1_primitive_lowering five failures in final combined source e51716f3: constant table index expectations and compile taxonomy accepted workflow. Determine real contract and fix implementation if flawed, update stale oracle only with concrete master/lowering evidence; never weaken assertions just to pass. Publish focused real test evidence and contract rationale.",
+        "notes": "Root discovered worker rewrote shared /tmp/vb-run-gate.py globally, removing process-group timeout cleanup and overwriting each log as evidence/test-run.json. Root preserved overwritten version and restored canonical real-exit full stdout/stderr/JSON runner with read-only mode. Do not modify global helpers; execute them as supplied. Existing overwritten first logs may need rerun at distinct prefixes after source freeze. Use unique .beads/vb-v0s45/evidence/NAME prefixes.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:13:21Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:20:56Z",
+        "started_at": "2026-10-22T01:13:30Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-ndx8b",
+    "title": "Scope test-integrity diffs to relevant Rust sources without decoding raw binary evidence",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-2lyiw",
+        "title": "Validate and land the complete preserved session integration on main",
+        "description": "Combine preserved source and honest evidence checkpoints, independently review bounded final repairs, run canonical moon ci on isolated Git/JJ candidate, resolve actual integration failures without weakening contracts, verify stopped-chat/source coverage, push accepted main and reconcile beads. Parent vb-wlnl4. Root coordinates VCS only; local5090/local3090/DeepSeek perform implementation and review.",
+        "notes": "Frozen source206fa03977d215c7c005e6fea54b92f2c40f1632 actually pushed codex/vb-2lyiw-frozen-reviewed-source. Fresh ancestry verifies all13saved source checkpoints plus coordinationHEAD96f6bb59;29stashes preserved. Actual assembled14358NextestPASS; finalstatic original-main fmt/source-length/lint-src0;40xtaskbenchmarktests0. Clean measurement workspace collector75checks0. First actual3metric collection failed honestly after successfulbenchbuild/criterion because collector nonrecursive output discovery missed actual nested runtime_core/metric/new/benchmark.json. No newrecords published. LOCAL5090 bounded recursive-new-only lookup+regressionrepair active. Main not yetpublished. Existingbaselineproofdebtheuiz/73gp3/z9jmf remainsopen.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:24:32Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:43:49Z",
+        "started_at": "2026-10-22T02:24:46Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-p51m8",
+    "title": "Restore removed public idempotency admission precedence replay and unchanged-journal assertions",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-vzyac",
+        "title": "Independently disposition integration test-integrity findings and identify real coverage losses",
+        "description": "Root actualoriginbase gate17findings in .beads/vb-ndx8b/evidence/coordinator-real-integration-base.stderr. Review ninefiles against MASTER/currentpublicAPIs and acceptedindependentreviews. Distinguish relocated/supersededcoverage fromactualdeletedorweakenedbehavior. Critical shardwrongAskStep callback\u2192lookup-onlymayloseactualerrorbehavior; privateTicketalone notproofwhenDeserialize exists. Return exact replacementtestmapping+filehashes, actionable realgaps. No blanketcountapproval orsourceedits. Usedfor concrete boundedrepairs and evidencebacked gate policy (checker advertises beadlinkedjustification but currentlycannotreadit). Separate reviews required.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T05:01:42Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T05:04:08Z",
+        "started_at": "2026-10-22T05:04:08Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-pxby2",
+    "title": "Bind new idempotency evidence digest type in Verus replay tracker extern bridge",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-tosif",
+        "title": "Independently review opaque Verus digest bridge and mechanical final formatting",
+        "description": "Fresh read-only review exacta08\u2192940e9889 opaque production WorkflowDigest wrapper, actual36artifactregistry0; cabd\u21929b2cce47 formattingsevenfiles tokenpreservation and comments/metadata corrections only. No newassumptions/math, no assertionchanges; review rawcommandsand7actualinputslottests.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:58:01Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T04:58:40Z",
+        "started_at": "2026-10-22T04:58:40Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-2lyiw",
+        "title": "Validate and land the complete preserved session integration on main",
+        "description": "Combine preserved source and honest evidence checkpoints, independently review bounded final repairs, run canonical moon ci on isolated Git/JJ candidate, resolve actual integration failures without weakening contracts, verify stopped-chat/source coverage, push accepted main and reconcile beads. Parent vb-wlnl4. Root coordinates VCS only; local5090/local3090/DeepSeek perform implementation and review.",
+        "notes": "Frozen source206fa03977d215c7c005e6fea54b92f2c40f1632 actually pushed codex/vb-2lyiw-frozen-reviewed-source. Fresh ancestry verifies all13saved source checkpoints plus coordinationHEAD96f6bb59;29stashes preserved. Actual assembled14358NextestPASS; finalstatic original-main fmt/source-length/lint-src0;40xtaskbenchmarktests0. Clean measurement workspace collector75checks0. First actual3metric collection failed honestly after successfulbenchbuild/criterion because collector nonrecursive output discovery missed actual nested runtime_core/metric/new/benchmark.json. No newrecords published. LOCAL5090 bounded recursive-new-only lookup+regressionrepair active. Main not yetpublished. Existingbaselineproofdebtheuiz/73gp3/z9jmf remainsopen.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:24:32Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:43:49Z",
+        "started_at": "2026-10-22T02:24:46Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-qdg7t",
+    "title": "Independently re-review semantic digest framing and regressions",
+    "status": "in_progress",
+    "dependencies": []
+  },
+  {
+    "id": "vb-r4fm9",
+    "title": "Bind ticket-bearing journal events to durable run attempt for replay",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-wop2u",
+        "title": "Bind action ticket authority to durable run attempt and reject stale retry callbacks",
+        "description": "Confirmed independent public Runtime/Fjall counterexample on f6a3631b: old==new ActionTicket after durable retry and old ActionFailed accepted, poisoning new attempt. Must repair actual production ticket/run authority, preserve bounded per-action retries and capacity, durability/policy/grants/reconciliation and schema compatibility. Add permanent real cold-retry stale completion/failure tests asserting typed expected/found and no mutation. Preserve successful prefix and actual maxattempt=1 re-execution. Check AskTicket authority. Independent review required; no nonce/increment-past-max/lint/test weakening workaround.",
+        "notes": "Coordinator now owns all JJ mutations/tracking/bookmark/publication for workers, following prior local worker VCS/evidence mistakes. Read-only root/status/log/diff allowed; leave source and .beads/vb-wop2u artifacts in assigned workspace and finish handoff. Do not bypass PATH guards, change .gitignore or shared /tmp helpers. Root will snapshot/publish exact source after handoff. Do not close bead.\nFrozen production9954545d3f816ec360b9ecd07ea07dfd77a27767 published with4real stale-run ticket tests and2existing retry passes. Independent vb-xvqwl local5090 review active. IMPORTANT root source observation: vb_storage/events.rs attempt() still maps full ticket-bearing events to ticket.attempt (per-action) not new ticket.run_attempt, potentially dropping active run2 events in replay. Needs actual independent probe/fix if confirmed. Do not call full run-attempt propagation complete from initial4 tests alone.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:17:08Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:40:25Z",
+        "started_at": "2026-10-22T01:21:37Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-r8t6e",
+    "title": "Migrate remaining Loom benchmark and validate Kani fixtures to current contracts",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-2lyiw",
+        "title": "Validate and land the complete preserved session integration on main",
+        "description": "Combine preserved source and honest evidence checkpoints, independently review bounded final repairs, run canonical moon ci on isolated Git/JJ candidate, resolve actual integration failures without weakening contracts, verify stopped-chat/source coverage, push accepted main and reconcile beads. Parent vb-wlnl4. Root coordinates VCS only; local5090/local3090/DeepSeek perform implementation and review.",
+        "notes": "Frozen source206fa03977d215c7c005e6fea54b92f2c40f1632 actually pushed codex/vb-2lyiw-frozen-reviewed-source. Fresh ancestry verifies all13saved source checkpoints plus coordinationHEAD96f6bb59;29stashes preserved. Actual assembled14358NextestPASS; finalstatic original-main fmt/source-length/lint-src0;40xtaskbenchmarktests0. Clean measurement workspace collector75checks0. First actual3metric collection failed honestly after successfulbenchbuild/criterion because collector nonrecursive output discovery missed actual nested runtime_core/metric/new/benchmark.json. No newrecords published. LOCAL5090 bounded recursive-new-only lookup+regressionrepair active. Main not yetpublished. Existingbaselineproofdebtheuiz/73gp3/z9jmf remainsopen.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:24:32Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:43:49Z",
+        "started_at": "2026-10-22T02:24:46Z",
+        "dependency_type": "discovered-from"
+      },
+      {
+        "id": "vb-cd7g8",
+        "title": "Independently review fixture migration cleanup and recovery const-erasure repair",
+        "description": "Fresh5090 review exact DeepSeek4aee1e0d8file delta vs8a7e2340: only legitimate fixturefields and genuinely unused helpers/imports removed, no tests/assertions dropped, recovery const token data and productionbinding preserved, defaultlifetimechecks. Actual independent mainVerus123 and strictcheck/Loom/boundedtests required, truthful originalfailure evidence and limits. No sourcewrites by reviewer.",
+        "notes": "Independent5090 source review approved exact8-file delta, test review conditional lp2v2fixtures pendingvb-k8z9l. Reviewer attempted invalid cargo kani trailing subcommand; this is reviewer invocation error, NOT a repository flag defect and not vb-k8z9l source responsibility. No Kani proof obtained from that command. Actual canonical four named accessor harnesses now running in root reviewed-gates workspace. Reviewer Loom filter without cfgloom only smoke; true canonical cfgloom gate running. Main not yet landed.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:03:25Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T04:20:14Z",
+        "started_at": "2026-10-22T04:03:34Z",
+        "dependency_type": "blocks"
+      }
+    ]
+  },
+  {
+    "id": "vb-s1rry",
+    "title": "Integrate reviewed branch audit and OMP roles; remove obsolete digest mirror test",
+    "status": "in_progress",
+    "dependencies": []
+  },
+  {
+    "id": "vb-sue37",
+    "title": "Finish source-length governance cleanup and extracted advisory regression selftest",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-2lyiw",
+        "title": "Validate and land the complete preserved session integration on main",
+        "description": "Combine preserved source and honest evidence checkpoints, independently review bounded final repairs, run canonical moon ci on isolated Git/JJ candidate, resolve actual integration failures without weakening contracts, verify stopped-chat/source coverage, push accepted main and reconcile beads. Parent vb-wlnl4. Root coordinates VCS only; local5090/local3090/DeepSeek perform implementation and review.",
+        "notes": "Frozen source206fa03977d215c7c005e6fea54b92f2c40f1632 actually pushed codex/vb-2lyiw-frozen-reviewed-source. Fresh ancestry verifies all13saved source checkpoints plus coordinationHEAD96f6bb59;29stashes preserved. Actual assembled14358NextestPASS; finalstatic original-main fmt/source-length/lint-src0;40xtaskbenchmarktests0. Clean measurement workspace collector75checks0. First actual3metric collection failed honestly after successfulbenchbuild/criterion because collector nonrecursive output discovery missed actual nested runtime_core/metric/new/benchmark.json. No newrecords published. LOCAL5090 bounded recursive-new-only lookup+regressionrepair active. Main not yetpublished. Existingbaselineproofdebtheuiz/73gp3/z9jmf remainsopen.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:24:32Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:43:49Z",
+        "started_at": "2026-10-22T02:24:46Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-t59ev",
+    "title": "Independent review of faithful integration file splits and asserted callback outcomes",
+    "status": "in_progress",
+    "dependencies": []
+  },
+  {
+    "id": "vb-tf5lr",
+    "title": "Independently exercise stale tickets and policy across durable run retry",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-wlnl4",
+        "title": "Integrate saved agent changes, resolve review blockers and land validated changes on main",
+        "notes": "User explicitly reiterates preserve all other sessions and integrate main. First combined A+B/C/D+compiler/quality source candidate af142d349ef0a7255f7da68ab6dd0729b6cecce6 PUSHED codex/vb-k5936-combined-integration;22focused tests green (A4+replay3+BCD10+retry2+CLI3), pending20 awaits fixturemerge. Sourcequality fresh strictClippy0 evidenced18162b51 pushed. 3090 now workspace test compile and2177core lib pass; storage codec historical unknown37 test stale because RetryCheckpoint37 legitimatelyadded, correctingpositive37/unknown38+actual full tests. Current3090 source checkpointf53d9fbc preserved and pushingremote. Independent5090BCD review approved0d348f5a with9realcoldprobes; fixing2newtestunwraps and recording exactlimits beforepublication. DeepSeek bounded Flux token parsefix/newtest safeindex cleanup active; masterformalcontractunchanged. Main still clean unchangedda633fe0; real canonicalCI/finalreview andmainpush notdone.\nLatest remote preservation: c816f6b3bdc9e8542aefac533b499d082af2e2b9 fixture/probe merge and f4a405469a1709a291008653f023f81a7b4fb978 bounded Flux syntax/safe getter cleanup both actually pushed. Combined isolated candidate78352490 includes both plus evidence correction6e3c5375. LOCAL5090 via pinned OMP performs canonical CI vb-2lyiw; LOCAL3090 independent authority/legacy-wire review vb-79ffw; DeepSeek independent fixture/source-session preservation review vb-1tq2d. Nine other Codex Velvet chats freshly inspected, all stopped/notLoaded, no new Sol/Luna development. Main remains unchanged pending actual acceptance.\nFresh Git ancestry check: all13 saved source/WIP SHAs in /tmp/vb-wlnl4-source-inventory.json are ancestors of published candidate5766dff917a95f0d56a6199871b93d17de5fd7be. Machine-readable evidence /tmp/vb-2lyiw-current-source-ancestry.json. This establishes preservation only; DeepSeek still verifies current code/test counterparts. Historical29 stashes retained untouched. Main remains da633fe0 pending new integration fixes/review/canonical gates.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-21T23:44:12Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T02:39:40Z",
+        "started_at": "2026-10-21T23:45:19Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-v0s45",
+    "title": "Resolve five primitive lowering integration failures against actual contract",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-wlnl4",
+        "title": "Integrate saved agent changes, resolve review blockers and land validated changes on main",
+        "notes": "User explicitly reiterates preserve all other sessions and integrate main. First combined A+B/C/D+compiler/quality source candidate af142d349ef0a7255f7da68ab6dd0729b6cecce6 PUSHED codex/vb-k5936-combined-integration;22focused tests green (A4+replay3+BCD10+retry2+CLI3), pending20 awaits fixturemerge. Sourcequality fresh strictClippy0 evidenced18162b51 pushed. 3090 now workspace test compile and2177core lib pass; storage codec historical unknown37 test stale because RetryCheckpoint37 legitimatelyadded, correctingpositive37/unknown38+actual full tests. Current3090 source checkpointf53d9fbc preserved and pushingremote. Independent5090BCD review approved0d348f5a with9realcoldprobes; fixing2newtestunwraps and recording exactlimits beforepublication. DeepSeek bounded Flux token parsefix/newtest safeindex cleanup active; masterformalcontractunchanged. Main still clean unchangedda633fe0; real canonicalCI/finalreview andmainpush notdone.\nLatest remote preservation: c816f6b3bdc9e8542aefac533b499d082af2e2b9 fixture/probe merge and f4a405469a1709a291008653f023f81a7b4fb978 bounded Flux syntax/safe getter cleanup both actually pushed. Combined isolated candidate78352490 includes both plus evidence correction6e3c5375. LOCAL5090 via pinned OMP performs canonical CI vb-2lyiw; LOCAL3090 independent authority/legacy-wire review vb-79ffw; DeepSeek independent fixture/source-session preservation review vb-1tq2d. Nine other Codex Velvet chats freshly inspected, all stopped/notLoaded, no new Sol/Luna development. Main remains unchanged pending actual acceptance.\nFresh Git ancestry check: all13 saved source/WIP SHAs in /tmp/vb-wlnl4-source-inventory.json are ancestors of published candidate5766dff917a95f0d56a6199871b93d17de5fd7be. Machine-readable evidence /tmp/vb-2lyiw-current-source-ancestry.json. This establishes preservation only; DeepSeek still verifies current code/test counterparts. Historical29 stashes retained untouched. Main remains da633fe0 pending new integration fixes/review/canonical gates.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-21T23:44:12Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T02:39:40Z",
+        "started_at": "2026-10-21T23:45:19Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-vzyac",
+    "title": "Independently disposition integration test-integrity findings and identify real coverage losses",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-ndx8b",
+        "title": "Scope test-integrity diffs to relevant Rust sources without decoding raw binary evidence",
+        "description": "Fresh canonical moon CI test-integrity fails decoding git diff all tracked artifacts: nonUTF8 raw proof evidence around byte33279512. Existing Rust checker scans relevant source for removed tests and weakened assertions. Fix input selection at git/JJ diff invocation or equivalent safe perpath UTF8 handling, retaining failclosed for malformed relevant Rust, new ignoredtests/deletions/weakening. Add regression with unrelated nonUTF8 evidence plus actual failing Rust test deletion. Independent review required.",
+        "notes": "Independent fresh5090 checker review reproduced TWO concrete bypasses in efee79de: new_path unrelated or ABSENT can justify a still-existing weakened old_path without binding its currentblob. Reviewc1a76a89 preserved remotely; must fix and regressions before accept. Current DeepSeek partial exact-relocation checkpoint still435rawfindings due modifiedCLIrenames scanned as D/A; all drafts preserved. Root transitioning fresh bounded repair context with explicit pair mapping/hash fixes, no suppressions. Main remains unchanged.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:49:48Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T05:58:45Z",
+        "started_at": "2026-10-22T04:53:29Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-wlnl4",
+    "title": "Integrate saved agent changes, resolve review blockers and land validated changes on main",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-18fhg",
+        "title": "Add reusable DeepSeek OMP implementation and review agent types",
+        "description": "User authorizes DeepSeek via OMP and asks hook up as more agents or agent type. OMP DeepSeek v4Pro actual READY auth probe and real bash/read calls already succeeded. Add named model-pinned high-reasoning OMP Rust implementation, code-review and test-review roles; respect isolation, no cloud fallback, no secrets. Build in unique Git/JJ workspace and publish candidate; optional install only new unique global OMP role names without overriding existing config. Verify actual discovery/model routing with bounded benign smoke. Do not claim native Codex model picker registration.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T00:18:12Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T00:18:38Z",
+        "started_at": "2026-10-22T00:18:38Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-1nx31",
+        "title": "Audit every stopped-agent branch for source patch coverage before landing",
+        "description": "User explicitly asks every branch work brought over and finished. Saved handoff13 source checkpoints ancestry included in local candidate62ff5544, but branch audit found43 unmerged codex refs,14 with source deltas. Must classify superseded vs genuinely missing using actual patch/current-tree comparison, not ancestry alone; integrate missing direct API bb124563, parity59aa6d2e and CI naming fd06cd11 as needed. Review/source branches a5b1338a,4ae3e8cb,f82f834e,d5e70304,e0a83304,8a474d70,6ede2011,b994b995,b29dd7ce need explicit disposition. New hash29b rejected in progress. Audit input /tmp/vb-wlnl4-unmerged-branch-audit.json and /tmp/vb-wlnl4-source-inventory.json. Publish durable bead evidence and acceptance status for each branch; never merge historical regressions solely for ancestry. Local models only.",
+        "notes": "AUDIT COMPLETE + CANDIDATE PUBLISHED (independent review pending).\n\nPublished bookmark: codex/vb-1nx31-missing-branch-integration @ 043d4528185e0ad1bbb0c8080669d755fd9f6706 (verified remote SHA match; fast-forward-only, no main push).\n\nDisposition (44 refs = 43 audit + 1 new digest ref):\n- integrated: 1 (vb-cvuau direct-API bb124563) \u2014 fabricated action_ticket helper removed, action-completion test un-ignored, lookup_pending_action_ticket + struct-update negative rejections + ActionCompletedEnvelope journal assertion + exact encoded_len. 14/14 pass, 0 ignored.\n- redundant: 2 (fd06cd11 vb-xx331-ci, b994b995 isolation-review) \u2014 6/6 naming_scan+spelling files byte-identical to base.\n- superseded: 7 (a5b1338a, 4ae3e8cb, 59aa6d2e, f82f834e, d5e70304, e0a83304, 8a474d70) \u2014 base newer/rewrite-equivalent; recovery/Ask base +220/-37; ABI schedule_action_abi_digest present.\n- blocked: 2 (29b9f85a vb-a2l02, 18ef1b9c vb-7x0ol) \u2014 canonical digest, owned by c789b1b (DO NOT TOUCH).\n- review/evidence: 28 \u00b7 contract: 3 \u00b7 base: 1.\n80 additional origin/codex refs are ancestors of base (landed); 13 source checkpoints confirmed ancestors.\n\nEvidence: .beads/vb-1nx31/{contract.md,branch-disposition.md,branch-disposition.json} (tracked --include-ignored).\n\nKeeping open pending independent review; parent owns bd Dolt remote sync.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T00:02:00Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T00:23:04Z",
+        "started_at": "2026-10-22T00:04:21Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-2lyiw",
+        "title": "Validate and land the complete preserved session integration on main",
+        "description": "Combine preserved source and honest evidence checkpoints, independently review bounded final repairs, run canonical moon ci on isolated Git/JJ candidate, resolve actual integration failures without weakening contracts, verify stopped-chat/source coverage, push accepted main and reconcile beads. Parent vb-wlnl4. Root coordinates VCS only; local5090/local3090/DeepSeek perform implementation and review.",
+        "notes": "Frozen source206fa03977d215c7c005e6fea54b92f2c40f1632 actually pushed codex/vb-2lyiw-frozen-reviewed-source. Fresh ancestry verifies all13saved source checkpoints plus coordinationHEAD96f6bb59;29stashes preserved. Actual assembled14358NextestPASS; finalstatic original-main fmt/source-length/lint-src0;40xtaskbenchmarktests0. Clean measurement workspace collector75checks0. First actual3metric collection failed honestly after successfulbenchbuild/criterion because collector nonrecursive output discovery missed actual nested runtime_core/metric/new/benchmark.json. No newrecords published. LOCAL5090 bounded recursive-new-only lookup+regressionrepair active. Main not yetpublished. Existingbaselineproofdebtheuiz/73gp3/z9jmf remainsopen.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:24:32Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:43:49Z",
+        "started_at": "2026-10-22T02:24:46Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-4qog3",
+        "title": "Independent local5090 review of strict retry boundaries and checkpoint consumption",
+        "description": "Independently code-review and test-review frozen vb-hz9v8 B/C/D source on combined ticket-generation/quality candidate. Exercise consumed checkpoint, malformed authority, terminal auto recovery and genuine pending/active recovery with actual public Runtime/Fjall calls. Preserve independent verdict and raw true-exit logs. No product fixes by reviewer.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:58:34Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:58:48Z",
+        "started_at": "2026-10-22T01:58:48Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-5nbtm",
+        "title": "Merge final fixture and independent probe candidates before canonical validation",
+        "description": "Merge frozenaf142d34 combined source, a8452f9e fixture migration andb5baccbd independent BCD probes, preserve both API signatures/fields and all assertions, resolve conflicts using local5090. Actual workspace check/targeted gates. DeepSeek bounded Flux syntax/BCD safeindex cleanup will be delivered separately before canonicalCI and final independent approval/main push.",
+        "notes": "Local 5090 worker complete. Resolved 3 merge conflicts in crates/vb_core/src/action/tests.rs using NewActionTicket struct API with fixture migration run_attempt semantics. Repaired 2 unchecked subtractions in crates/vb_runtime/tests/vb_4qog3_independent_review.rs with checked_sub. All 11 verification suites passed (workspace compile, 3 library suites, 7 focused suites). Full evidence in .beads/vb-5nbtm/evidence/. Contract and handoff documents written. Ready for root review and main landing after DeepSeek Flux lane and local3090 ticket authority lane merge.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:14:04Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T02:19:17Z",
+        "started_at": "2026-10-22T02:14:15Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-79ffw",
+        "title": "Independent local3090 review of ticket generation wire and retry authority",
+        "description": "Fresh independent production/code and behavior review of A run_attempt propagation plus NewActionTicket/ActionDispatchContext and JournalEvent accessor, frozenaf142d34 baseline423d8ae8. Verify actual old/new serialized ticket/event compatibility fails closed, multi-retry stale/future callbacks no pending/counter/journal mutation, valid current completion, replay generation. No production changes by reviewer, exact evidence and scope.",
+        "notes": "Real golden current decoder actual5tests pass, all3old423 records reject PostcardDecodeFailed(underlying varint error). LOCAL3090 finishing exact enum oracle/portable lookup. Bad rewritten callback draft056abbe822b788de70e37ffaaa5e0e56f614b3ca preserved/rejected (invented APIs, compile101). FreshLOCAL5090 vb-2b170 now minimally strengthens actualpassing329 probe in separate isolated workspace; no production edits.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:14:03Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T03:25:19Z",
+        "started_at": "2026-10-22T02:14:16Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-7x0ol",
+        "title": "Independent local review of integrated recovery retry Ask and executor authority",
+        "description": "Review saved integration candidate bab4d6eb and follow-up as published; inspect semantic and authority invariants, execute bounded independent probes, publish exact-head code/test findings. Local models only; no main push or broad moon ci. Discovered from vb-wlnl4.",
+        "notes": "Fresh independent DeepSeek recovery/ABI reviewer starts in unique workspace /home/lewis/src/isoloated/velvet-ballistics-vb-7x0ol-recovery-rereview at frozen162ac607dc86; source identical82d381e3. Other workers independently fix retry and final merge/public acceptance. This review will inspect F1/F3 repairs and typed ABI error guard with actual public probes; no author self-approval, no source edits, prior rejection remains until final behavior is accepted.\nIndependent re-review at frozen 162ac607dc86 (source tree dda8ec066b). VERDICT: APPROVED (scoped) \u2014 F1 guard wiring + F3 C6 harness + typed ABI-error guard correct. 18/20 Fjall (2 known red: Gate12 ACTION_CONTRACT_MISSING submit expectation; pending-ticket rehydration after cold reopen). 5/5 executor conformance, C6 1/1. 5 independent public-API probes (execute=1 effect, reconcile=0 new effects, mismatched-grant=Unauthorized, Blocked-pack recovery=RecoveryCannotResume(registered_recovery_blocked), ReconcileReceipt=Resumable/PendingAction). Reports: .beads/vb-7x0ol/code-rereview-162ac.md + test-rereview-162ac.md. Published codex/vb-7x0ol-recovery-independent-rereview @ 84d179281006. Left OPEN for final source after other workers (vb-r5c1c retry, vb-s1rry merge); no main/dolt push.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-21T23:58:46Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T00:56:05Z",
+        "started_at": "2026-10-21T23:58:58Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-a2l02",
+        "title": "Canonical semantic source digest concatenation collides across nested identifiers",
+        "description": "Independent CODE review vb-um4oi reproduced on exact376979e05670c4771700f61b73f50fec23b02149: valid identical Repeat(max_attempts3, Set value1) workflows with nested step/output pair a/setb versus aset/b yield equal canonical_digest, semantic_source_identity, compiled digest and exact WorkflowParts. canonical digest concatenates unframed step.id + primitive tag set + output + value. Require boundary-safe canonical semantic encoding with real public regression; preserve equality for formatting/comments. Raw reproduced exit1 in codex/vb-um4oi-code-review-wip. No repair or approval; USER STOP.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "bug",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-21T23:35:43Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-21T23:45:19Z",
+        "started_at": "2026-10-21T23:45:19Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-absr9",
+        "title": "Repair strict source quality and new replay test fallibility after ticket migration",
+        "description": "Frozen run-attempt source introduced issue_action_ticket8arg and possible other strict production Clippy failures; no new lint suppressions permitted. Run canonical source flags, use legitimate type/domain grouping or minimal refactor preserving API behavior and invariants, update directly affected callers. New vb_r4fm9_event_generation tests introduced6expect calls despite noexpect policy: replace with fallible typed test errors preserving all assertions. Final formatting after last edit and true raw source Clippy/gate logs. Root publication; independent final review pending.",
+        "notes": "LOCAL5090 completed: 1) Fixed 3 Clippy too_many_arguments via typed param structs (NewActionTicket, ActionDispatchContext) - production Clippy strict passes. 2) Removed all 6 .expect() calls from vb_r4fm9_event_generation.rs using Result helpers - 3/3 tests pass. Handoff docs written. Fixture compilation errors from ticket migration remain (owned by LOCAL3090 vb-3gthe).",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:48:25Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:52:54Z",
+        "started_at": "2026-10-22T01:49:13Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-eyij7",
+        "title": "vb-wm2z2 audit blocker: workspace layout drift from master \u00a723/\u00a734",
+        "description": "Master \u00a723/\u00a734 mandates workspace members vb_core, vb_yaml, vb_validate, vb_expr, vb_compile, vb_storage, vb_runtime, vb_ipc, velvet_ballistics, workspace_tests, fuzz. Actual workspace (Cargo.toml lines 1-12) has only vb_cli, vb_compile, vb_core, vb_ipc, vb_queue_semantics, vb_runtime, vb_storage, vb_validate, workspace_tests \u2014 missing vb_yaml, vb_expr, velvet_ballistics; fuzz excluded; vb_cli and vb_queue_semantics not in master; Cargo.toml excludes crates/vb_ui which is also not in master list. Expression lexer/parser/bytecode lives in vb_compile (expr_lexer/, expr_parser/, expr_eval/, expression.rs). YAML parsing lives in vb_compile (yaml_ast/, parse.rs, parse_fields.rs, parse_steps.rs, parse_trigger.rs). Decide canonical layout (rename to match master OR amend master) and reconcile.",
+        "notes": "User flow: Rust contract -> implementation -> tests -> code review -> test review; no Go/proof planning. Local3090 integration repair now executes 30 migration integration tests passing plus vb_compile470 (4ignored), vb_expr857, vb_yaml158. Both code and test review rejected prior snapshots; ongoing compatibility repair restores old public module paths/existing cfg modules and repairs product crate rename compile errors. No acceptance/closure. Checkpoints pushed codex/vb-eyij7-workspace and codex/vb-3l40a-runtime; latest fixes not yet reviewed/pushed.\nIntegrated migration, runtime prerequisite, and renamed path consumers at codex/vb-eyij7-combined checkpoint34b7faab. Local3090 repairing invalid quality-gate fixture (correct name previously expected drift) and forbidden new test expect/panic; preserve negative coverage and zero new ignores. Actual33 migration tests previously passed. User five-stage flow remains contract->implementation->tests->code review->test review, no Go/fullproofplanning. Focused product lifecycle test and independent integrated code review now running.\nLatest candidate a47c885d isolates one stable JJ change from origin/main (avoids automatic ancestor rewrite drift between independent JJ repos). Focused actual results: migration33/0ignore, qualitygates3/0ignore, vb_compile479pass4pre-existingignored, vb_expr857pass, vb_yaml158pass, product lifecycle43pass after missing input_slots fixture fix, compatibility9pass, coreerrorconversion6pass. Independent code review rejected admission/workflow binding; independent test review running. New ignored negative fixture removed, no gate exceptions added. No acceptance/closure.\nFive stages executed on actual local5090/3090 CLI profiles; latest independent test review REJECTED, no bead closure. Source candidatea47c885d, focused/evidence checkpoint938e9aa4 already pushed to codex/vb-eyij7-delivery-checkpoint; final review evidence being appended. Runtime library1894pass, independent lifecycle105pass, product lifecycle43pass. Compiler ignored properties3fail are tracked vb-jei3u; broad CI remainsred under vb-xx331. No Go/fullproofplanning or new gate exceptions.\nUSER STOP for usage limit. All coordinated development stopped; root integrated already independently reviewed compiler guard, ABI schedule, cancellation and lifecycle fixture repairs into codex/vb-eyij7-reviewed-integration (finalfa4d09bf pendingremoteverify). Combined516focusedtests passed before final reviewed lifecycle merge; lifecycle independent70pass. Fullv1/CI NOTcomplete, maincoordclean. Sourceidentity collisionvb-a2l02 and other rejected/unreviewed candidates excluded. Exacthandoff .beads/vb-eyij7/stop-handoff-20261021.md and WIPpreservation registry pushed; resumeonlyuponuserrequest.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-07-01T15:26:04Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-21T23:37:09Z",
+        "started_at": "2026-10-21T02:56:46Z",
+        "dependency_type": "discovered-from"
+      },
+      {
+        "id": "vb-gl41l",
+        "title": "Independent local3090 code and test review of durable retry implementation",
+        "description": "Fresh RTX3090 high-reasoning OMP reviewer of frozen f6a3631b durable retry candidate. Verify actual checkpoint producer, exact observed-step selection, preserved successful state/prefix, checked attempt authority, policy/ABI/grant binding, cold suffix handling and stale completion rejection with actual public tests. Independent code+test reports, no author self approval or implementation edits. Main landing remains blocked until accepted.",
+        "notes": "Root inspected draft reviews: basic3CLI+2runtime+2unit passes are real, but stale cross-run-attempt ticket/policy/next-attempt automatic recovery requirements only asserted by inspection. Separate focused independent vb-tf5lr now executing adversarial cases before final acceptance. Keep this approval scoped to actually inspected/executed coverage; not full integration approval.\nAPPROVAL LIMIT: independent vb-tf5lr actual stale retry probe contradicts stale safety by inspection: old and new ActionTicket exactly equal after explicit run retry, old ActionFailed accepted and fails new attempt. Existing basic tests pass but do not cover this. Root requires repair/new independent review before feature acceptance.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:05:21Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:15:33Z",
+        "started_at": "2026-10-22T01:05:59Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-hz9v8",
+        "title": "Close durable retry automatic recovery and durability authority review findings",
+        "description": "Independent vb-tf5lr confirmed B strict CLI durability silently shared_journaled; C recover_product/recover_and_resume re-drive terminal failed journal (7->10 events); D raw recover_retry accepts tampered run_attempt99 despite durable2 and discards prior_seq. Fix B/C/D without weakening runtime admission, grants, barriers, checkpoint chain binding. Preserve original failed runs terminal until explicit retry; public raw checkpoint must not create authority. Actual independent probe regressions and review required. Separate from local5090 vb-wop2u stale ActionTicket field binding.",
+        "notes": "COORDINATOR D-SCOPE CHECK: validating supplied next_seq against latest RetryCheckpoint.seq+1 is insufficient if that checkpoint is still latest after the retry was already activated/completed. The journal can have newer StepStarted/ActionCompleted/RunFinished events with no newer checkpoint, so old checkpoint2 + old next_seq can satisfy current1-7 validation despite actual current tail being later. Please exercise real complete attempt2 -> cold reopen -> recover_retry(old checkpoint2, old next_seq) and require rejection before enqueue/no mutation. Bind actual current journal head/terminal state and reject already-consumed checkpoint, not merely latest checkpoint among checkpoint records. This is within explicit stale/multiple-attempt D acceptance, not extra scope. Also field equality vs exact bytes should preserve valid representations; do not weaken integrity.\nDEEPSEEK v4Pro (vb-hz9v8 worker): B/C/D fixes complete in isolated workspace. B: cmd_retry uses shared_strict (SyncAll barrier; durability not journaled -> strict safe default). C: run_is_currently_terminal excludes RetryCheckpoint attempt; recover_product returns CannotResume('terminal_state') for terminal failed/finished/cancelled runs; explicit-recovery pending-action resumable. D: recover_retry binds full checkpoint to latest durable RetryCheckpoint (digest+value-eq), prior_seq+1==durable.seq, next_seq==durable.seq+1, journal-head (rejects already-consumed checkpoint), preceding RunFailed(attempt-1). Tests: 10 boundary + 4 terminal_gate unit + 1938 vb_runtime lib + 2 retry_exec + 3 cli + 20 fjall + retained/c6/registered probes all green. Finding A stale-ticket probes remain RED (LOCAL5090 owns). LEAVE OPEN for root review/merge.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:23:41Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:55:57Z",
+        "started_at": "2026-10-22T01:26:42Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-hzdts",
+        "title": "Repair final merge recovery boxing and source governance without lint allowances",
+        "description": "Preserve stopped final integration e51716f3. Restore Box RecoverRunCommand semantics from7ef while retaining durable retry f6; remove newly introduced Clippy allowance and use actual canonical strict source gates. Publish frozen combined source/evidence and honest failures. Local5090 only; no main push.",
+        "notes": "Source fix complete: removed lint allowance, restored Box RecoverRunCommand semantics from vb-s1rry. Clippy, fmt, and focused tests pass. Handoff documentation published to .beads/vb-hzdts/handoff.md. Parent owns final review/CI/landing. JJ commit: qksryntt a1906630.\nRoot reopened: worker closed prematurely despite requested leave-open; actual independent review, source hash-bound gate evidence and parent main landing still pending. Source boxing repair retained; do not count source author own approval as final gate.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:13:20Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:19:47Z",
+        "started_at": "2026-10-22T01:13:28Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-k5936",
+        "title": "Combine ticket generation boundary fixes and fixture migration for canonical CI",
+        "description": "Integrate frozen36936fcc quality/ticket/replay/compiler candidate with0d348f5a BCD boundaries and forthcoming vb-3gthe fixtures. Preserve all authority guards, resolve conflicts in isolated Git+JJ only. Run actual canonical moon ci with raw exit evidence and fix genuine integration failures without weakening checks; final independent source/test review and root main push required.",
+        "notes": "Bounded first merge (A+B) complete. Conflict resolved in runtime.rs preserving B's validate_retry_checkpoint_against_durable_chain + A's Box::new formatting. Strict production clippy exit 0. Focused: A4=4, replay3=3, BCD10=10, retry2=2, CLI3=3 all passed; pending20 blocked by 3 LOCAL3090 fixture call sites (runtime_fjall_pending_action_recovery.rs:262,268,922). flux_sequence.rs fmt parse error at 132:59 (16#ffff# -> 0xffff). Leaving OPEN for root fixture merge + canonical moon ci.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:59:30Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T02:09:41Z",
+        "started_at": "2026-10-22T01:59:57Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-ks7uq",
+        "title": "Local 3090 strict source-quality review of integrated candidates",
+        "description": "Use RTX3090 through OMP high reasoning, isolated Git/JJ workspace. Run true-exit focused source Clippy/fmt gates on integrated candidate, review actual warnings, make minimal non-conflicting repairs or report owner-required changes. No business logic, no weakening lints, no broad CI before final source freeze. Independent of5090 integration and DeepSeek retry; publish source-quality evidence and exact candidate.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:00:07Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:00:46Z",
+        "started_at": "2026-10-22T01:00:46Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-m6w04",
+        "title": "Independently review local3090 compiler oracle repair",
+        "description": "Fresh independent local model review of frozen531f72e6 compiler repair f2babab2 delta from11e4146f. Verify together distinct literal constant table semantics, top-level inputs acceptance per master, formatting-only digest changes. Reproduce47 primitive/496lib/9collision tests and assess assertions, no source edits. Root publishes after report; no worker VCS mutation.",
+        "notes": "INDEPENDENT REVIEW: APPROVED. Both test oracle fixes verified correct: (1) together primitive constant indices must be distinct (0 and 1) for distinct values \"1\" and \"2\" - old oracle expecting both index 0 was wrong; (2) top-level inputs is valid per master spec line 298 - old oracle expecting UnsupportedTopLevelDeclaration was wrong. Formatting changes to part_05_digest.rs are semantics-neutral. All 47 primitive tests, 496 lib tests, 9 collision tests pass. Artifacts: .beads/vb-m6w04/code-review.md, .beads/vb-m6w04/test-review.md",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:25:11Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:28:08Z",
+        "started_at": "2026-10-22T01:25:37Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-qdg7t",
+        "title": "Independently re-review semantic digest framing and regressions",
+        "description": "Fresh independent code and test review of published integration digest checkpoint 013189c5 and original c789 repair; certify actual collision-free framed semantic mapping, typed fail-closed errors, normalized defaults, real regression strength and source governance. Separate workspace and DeepSeek-only reviewer; no code edits. Parent will re-review remaining runtime work separately before main.",
+        "notes": "Independent code+test review COMPLETE (APPROVED) at frozen 013189c5be8c. code-review.md APPROVED: F4 fail-closed/typed-error, F5 defaults normalization (verified lowering oracle part_02:188/part_03:218-219), F6 cold-path justification all resolved in actual code. test-review.md APPROVED: 496 lib + 9 collision + 14 digest integration binaries green. Finding T-1 (pre-existing, out of repair diff): digest_duplicate_parity 4 red tests mirror deleted dead compile/mod.rs unframed encoding; discrete fix = delete test + update PO-UT-003 tracking. Left open for parent coord; no code edits.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T00:27:05Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T00:36:04Z",
+        "started_at": "2026-10-22T00:27:38Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-r4fm9",
+        "title": "Bind ticket-bearing journal events to durable run attempt for replay",
+        "description": "Frozen9954545d adds ActionTicket.run_attempt but vb_storage/events.rs attempt() still returns ticket.attempt (per-action) for ActionScheduledTicket, ActionCompletedEnvelope, ActionAbandoned. On explicit retry run2 with per-action1 this reports1 and can filter current events as stale. Establish actual public Runtime/Fjall red repro and downstream cold replay/resume impact, then minimal proper production fix preserving per-action bounds and old layouts fail-closed. Preserve typed preflight authority and add permanent regression; independent final delta review still required.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:42:16Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:42:55Z",
+        "started_at": "2026-10-22T01:42:55Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-s1rry",
+        "title": "Integrate reviewed branch audit and OMP roles; remove obsolete digest mirror test",
+        "description": "Merge independently reviewed direct API043d4528, OMP roles716db2475 and review evidence into current integration checkpoint; correct branch-audit factual entries from vb-yenns; replace obsolete deleted-dead-digest-mirror parity tests with real public semantic invariants as approved vb-qdg7t. Unique Git/JJ workspace, DeepSeek-only source integration, true scoped gates. Separate ABI/runtime and durable retry workers remain active and must be merged later. No main push or broad canonical CI before source frozen and final review.",
+        "notes": "User requires5090 and3090 active now. DeepSeek merge worker interrupted safely with all changes snapshotted c382db7283cfb9c7d7054b467552fe24659c723b. Local5090 takes over in unique /home/lewis/src/isoloated/velvet-ballistics-vb-s1rry-local5090-finish. No edits/source lost; prior workspace preserved. Local3090 source-quality worker vb-ks7uq separate; DeepSeek retains durable retry. Fresh independent recovery review84d179281006e9aca90d3ce558d1bff90f5fb88b approves scoped guards and contains actual public executor/C6 probes to adopt as permanent tests.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T00:38:42Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:00:46Z",
+        "started_at": "2026-10-22T00:39:39Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-tf5lr",
+        "title": "Independently exercise stale tickets and policy across durable run retry",
+        "description": "Focused independent adversarial public Runtime/Fjall/CLI review of f6a3631b50f11846c012b6f7d189bba73861dad5 before final integration. Must exercise old ActionTicket completion/failure and AskTicket across explicit run retry, exact expected/found and no mutation; check Strict policy and automatic recovery of next-attempt checkpoint. Existing local3090 approval did not execute these required cases. Preserve repro and honest verdict; no production edits.",
+        "notes": "DeepSeek v4Pro independent adversarial review of f6a3631b: REJECTED. Red counterexamples (real public Runtime/FjallJournal, genuine failure->checkpoint->cold recover_retry->tick_all): (A) old ActionTicket == retried ticket (attempt=1, seq=0, same idempotency_key); old ActionCompleted accepted (run completed=1) and old ActionFailed accepted (run failed=1) - no StaleAttempt, violates master 72.3 + rust-contract.md:60-61. Root: RunCheckpointV1::capture clones action_attempts verbatim (run_checkpoint.rs:112-117) and frame 'executed' restored verbatim (checkpoint.rs:121) so seq/attempt unchanged. (C) recover_product classifies failed run Resumable; recover_and_resume=Ok, journal 7->10, counters 0->1 - auto cold recovery silently resumes failed run. (B) cmd_retry hardcodes shared_journaled (DurabilityProfile::Journaled) - silent strict-durability downgrade. (D) recover_retry accepts caller-tampered run_attempt=99. Reports + repro at .beads/vb-tf5lr/. Parent vb-wlnl4 owns CI and bd remote push.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:10:17Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:24:23Z",
+        "started_at": "2026-10-22T01:10:28Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-v0s45",
+        "title": "Resolve five primitive lowering integration failures against actual contract",
+        "description": "Local3090 isolated repair. Actual v1_primitive_lowering five failures in final combined source e51716f3: constant table index expectations and compile taxonomy accepted workflow. Determine real contract and fix implementation if flawed, update stale oracle only with concrete master/lowering evidence; never weaken assertions just to pass. Publish focused real test evidence and contract rationale.",
+        "notes": "Root discovered worker rewrote shared /tmp/vb-run-gate.py globally, removing process-group timeout cleanup and overwriting each log as evidence/test-run.json. Root preserved overwritten version and restored canonical real-exit full stdout/stderr/JSON runner with read-only mode. Do not modify global helpers; execute them as supplied. Existing overwritten first logs may need rerun at distinct prefixes after source freeze. Use unique .beads/vb-v0s45/evidence/NAME prefixes.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:13:21Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:20:56Z",
+        "started_at": "2026-10-22T01:13:30Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-wop2u",
+        "title": "Bind action ticket authority to durable run attempt and reject stale retry callbacks",
+        "description": "Confirmed independent public Runtime/Fjall counterexample on f6a3631b: old==new ActionTicket after durable retry and old ActionFailed accepted, poisoning new attempt. Must repair actual production ticket/run authority, preserve bounded per-action retries and capacity, durability/policy/grants/reconciliation and schema compatibility. Add permanent real cold-retry stale completion/failure tests asserting typed expected/found and no mutation. Preserve successful prefix and actual maxattempt=1 re-execution. Check AskTicket authority. Independent review required; no nonce/increment-past-max/lint/test weakening workaround.",
+        "notes": "Coordinator now owns all JJ mutations/tracking/bookmark/publication for workers, following prior local worker VCS/evidence mistakes. Read-only root/status/log/diff allowed; leave source and .beads/vb-wop2u artifacts in assigned workspace and finish handoff. Do not bypass PATH guards, change .gitignore or shared /tmp helpers. Root will snapshot/publish exact source after handoff. Do not close bead.\nFrozen production9954545d3f816ec360b9ecd07ea07dfd77a27767 published with4real stale-run ticket tests and2existing retry passes. Independent vb-xvqwl local5090 review active. IMPORTANT root source observation: vb_storage/events.rs attempt() still maps full ticket-bearing events to ticket.attempt (per-action) not new ticket.run_attempt, potentially dropping active run2 events in replay. Needs actual independent probe/fix if confirmed. Do not call full run-attempt propagation complete from initial4 tests alone.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:17:08Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:40:25Z",
+        "started_at": "2026-10-22T01:21:37Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-xvqwl",
+        "title": "Independently review run-attempt ticket authority production and regressions",
+        "description": "Fresh local reviewer exact frozen production candidate plus partial migration source. Actual stale completion/failure no journal/frame/counter/pending mutation and valid current completion; second retry and Ask boundary, zero/future/overflow, serialization/layout compatibility, deterministic key receipt/grant bindings and no-contract path. Author four tests green but production-half handoff did not establish full wire boundary or second retry. No product edits; real adversarial probes allowed. Root owns VCS/publication.",
+        "notes": "COORDINATOR SOURCE OBSERVATION to settle with real probe: frozenA adds ActionTicket.run_attempt, but crates/vb_storage/src/events.rs:198-200 JournalEvent::attempt still returns ticket.attempt for ActionScheduledTicket/ActionCompletedEnvelope/ActionAbandoned. That is per-action ordinal1 after run retry2, so latest-run replay filtering may discard current ticket-bearing events. Check actual currentattempt2 pending/completed cold recovery and event accessor values; no blanket approval until this specific identity propagation is resolved. ProductionA changed no storage event accessor/version logic. Actual report should distinguish proven source binding discrepancy from executable downstream impact.\nRoot limits initial APPROVED report: it did not settle explicit ticket-bearing event generation observation. vb_storage/events.rs attempt() returns ticket.attempt for full-ticket events despite new ticket.run_attempt; this can classify current run2 event as generation1. Need real public Runtime/Fjall probe and targeted repair/re-review before final acceptance. Initial4+2 tests green do not cover latest-attempt cold replay after retry. No main acceptance from this approval alone.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:37:21Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:42:17Z",
+        "started_at": "2026-10-22T01:38:04Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-yenns",
+        "title": "Independently review all-branch audit and DeepSeek OMP roles",
+        "description": "Review frozen 043d4528185e0ad1bbb0c8080669d755fd9f6706 branch audit/direct API patch and 716db2475 DeepSeek named roles; independent code and test review, real API authority and all branch dispositions, actual resolved model smoke metadata. No source changes. Publish exact findings and evidence in isolated JJ/Git workspace; parent owns final main landing and remote beads sync.",
+        "notes": "Independent code+test review complete (DeepSeek v4 Pro). Both deliveries APPROVED. Published codex/vb-yenns-deepseek-audit-review at 6c5f0b23d6ac. A: direct-API patch correct (authentic lookup_pending_action_ticket, un-ignored completion, negative tickets from real issuance, exact encoded_len/blake3 digest, [0;32] ABI digest proven faithful no-call-contract; 14/14 0 ignored). A findings for parent: A-1 MEDIUM 18ef1b9c misclassified as digest source (own delta is review evidence; 5 digest files from c789b1b35); A-2 LOW a2l02 tip stale (29b9f85a vs c789b1b35). B: OMP roles byte-identical, deepseek-v4-pro + thinking high, smoke fallback=false + exact token. Kept open pending parent integration; no main push, no bd dolt push.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T00:26:07Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T00:35:43Z",
+        "started_at": "2026-10-22T00:26:16Z",
+        "dependency_type": "blocks"
+      }
+    ]
+  },
+  {
+    "id": "vb-wop2u",
+    "title": "Bind action ticket authority to durable run attempt and reject stale retry callbacks",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-3gthe",
+        "title": "Complete test fixture migration for run-attempt ticket authority API",
+        "description": "Local3090 mechanical existing fixture/callsite updates for new ActionTicket.run_attempt and key/drive signatures from frozen743ded04 successor with authored contract. Test-only files and cfg-test sections; preserve each actual run attempt/capacity and assertions, no production source edits. 5090 owns production/schema and new stale-retry regression tests. Root handles JJ/publication. Genuine focused compile/test logs; no assertion weakening/default random authority.",
+        "notes": "Source+actual2177core/1617storage/1934runtime library passes and workspace test compile0 frozen/pusheda8452f9ecb2a. Background full workspace test ended withOMP exit, no completed JSON and no associated process remains; partialstdout is not whole-workspace pass or running status. Coordinator correction beingpushed. FinalcombinedcanonicalCI stillrequired. Mechanical migration includes2Kani ticketswithkani::any runattempt, no full proofsuccessclaimed.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:31:57Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T02:16:27Z",
+        "started_at": "2026-10-22T01:33:15Z",
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-tf5lr",
+        "title": "Independently exercise stale tickets and policy across durable run retry",
+        "description": "Focused independent adversarial public Runtime/Fjall/CLI review of f6a3631b50f11846c012b6f7d189bba73861dad5 before final integration. Must exercise old ActionTicket completion/failure and AskTicket across explicit run retry, exact expected/found and no mutation; check Strict policy and automatic recovery of next-attempt checkpoint. Existing local3090 approval did not execute these required cases. Preserve repro and honest verdict; no production edits.",
+        "notes": "DeepSeek v4Pro independent adversarial review of f6a3631b: REJECTED. Red counterexamples (real public Runtime/FjallJournal, genuine failure->checkpoint->cold recover_retry->tick_all): (A) old ActionTicket == retried ticket (attempt=1, seq=0, same idempotency_key); old ActionCompleted accepted (run completed=1) and old ActionFailed accepted (run failed=1) - no StaleAttempt, violates master 72.3 + rust-contract.md:60-61. Root: RunCheckpointV1::capture clones action_attempts verbatim (run_checkpoint.rs:112-117) and frame 'executed' restored verbatim (checkpoint.rs:121) so seq/attempt unchanged. (C) recover_product classifies failed run Resumable; recover_and_resume=Ok, journal 7->10, counters 0->1 - auto cold recovery silently resumes failed run. (B) cmd_retry hardcodes shared_journaled (DurabilityProfile::Journaled) - silent strict-durability downgrade. (D) recover_retry accepts caller-tampered run_attempt=99. Reports + repro at .beads/vb-tf5lr/. Parent vb-wlnl4 owns CI and bd remote push.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:10:17Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:24:23Z",
+        "started_at": "2026-10-22T01:10:28Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-xgj4v",
+    "title": "Pass Criterion baseline options only to actual benchmark executables",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-2lyiw",
+        "title": "Validate and land the complete preserved session integration on main",
+        "description": "Combine preserved source and honest evidence checkpoints, independently review bounded final repairs, run canonical moon ci on isolated Git/JJ candidate, resolve actual integration failures without weakening contracts, verify stopped-chat/source coverage, push accepted main and reconcile beads. Parent vb-wlnl4. Root coordinates VCS only; local5090/local3090/DeepSeek perform implementation and review.",
+        "notes": "Frozen source206fa03977d215c7c005e6fea54b92f2c40f1632 actually pushed codex/vb-2lyiw-frozen-reviewed-source. Fresh ancestry verifies all13saved source checkpoints plus coordinationHEAD96f6bb59;29stashes preserved. Actual assembled14358NextestPASS; finalstatic original-main fmt/source-length/lint-src0;40xtaskbenchmarktests0. Clean measurement workspace collector75checks0. First actual3metric collection failed honestly after successfulbenchbuild/criterion because collector nonrecursive output discovery missed actual nested runtime_core/metric/new/benchmark.json. No newrecords published. LOCAL5090 bounded recursive-new-only lookup+regressionrepair active. Main not yetpublished. Existingbaselineproofdebtheuiz/73gp3/z9jmf remainsopen.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T02:24:32Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T07:43:49Z",
+        "started_at": "2026-10-22T02:24:46Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-xhrt9",
+    "title": "Independently review advisory status preservation and optional Criterion task repair",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-e7rjr",
+        "title": "Honor existing MASTER advisory reporting policy without losing supply-chain failures",
+        "description": "Actual repaired Moon supply-chain audit0 aftercrossbeam/rtrbsecuritypatch; deny1 on long-preexisting RUSTSEC-2024-0449 unsafe-libyaml unmaintained. MASTER114,1683,1721 explicit2026-05-23 ownerwaiver makes cargo-deny/vet/geiger advisory unless bead optsinto blocking. Align active task with authoritativeexistingpolicy, preserve per-tool rawexit/status and findings; do not claim advisory failures passed or suppress findings, do not addnewwaivers, keep actualsecurityaudit failclosed. Independent code/testreview and positive/negative harness for pertoolstatus.",
+        "status": "in_progress",
+        "priority": 1,
+        "issue_type": "bug",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T04:29:28Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T04:45:56Z",
+        "started_at": "2026-10-22T04:45:56Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-xvqwl",
+    "title": "Independently review run-attempt ticket authority production and regressions",
+    "status": "in_progress",
+    "dependencies": [
+      {
+        "id": "vb-wop2u",
+        "title": "Bind action ticket authority to durable run attempt and reject stale retry callbacks",
+        "description": "Confirmed independent public Runtime/Fjall counterexample on f6a3631b: old==new ActionTicket after durable retry and old ActionFailed accepted, poisoning new attempt. Must repair actual production ticket/run authority, preserve bounded per-action retries and capacity, durability/policy/grants/reconciliation and schema compatibility. Add permanent real cold-retry stale completion/failure tests asserting typed expected/found and no mutation. Preserve successful prefix and actual maxattempt=1 re-execution. Check AskTicket authority. Independent review required; no nonce/increment-past-max/lint/test weakening workaround.",
+        "notes": "Coordinator now owns all JJ mutations/tracking/bookmark/publication for workers, following prior local worker VCS/evidence mistakes. Read-only root/status/log/diff allowed; leave source and .beads/vb-wop2u artifacts in assigned workspace and finish handoff. Do not bypass PATH guards, change .gitignore or shared /tmp helpers. Root will snapshot/publish exact source after handoff. Do not close bead.\nFrozen production9954545d3f816ec360b9ecd07ea07dfd77a27767 published with4real stale-run ticket tests and2existing retry passes. Independent vb-xvqwl local5090 review active. IMPORTANT root source observation: vb_storage/events.rs attempt() still maps full ticket-bearing events to ticket.attempt (per-action) not new ticket.run_attempt, potentially dropping active run2 events in replay. Needs actual independent probe/fix if confirmed. Do not call full run-attempt propagation complete from initial4 tests alone.",
+        "status": "in_progress",
+        "priority": 0,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-10-22T01:17:08Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-10-22T01:40:25Z",
+        "started_at": "2026-10-22T01:21:37Z",
+        "dependency_type": "discovered-from"
+      }
+    ]
+  },
+  {
+    "id": "vb-yenns",
+    "title": "Independently review all-branch audit and DeepSeek OMP roles",
+    "status": "in_progress",
+    "dependencies": []
+  }
+]

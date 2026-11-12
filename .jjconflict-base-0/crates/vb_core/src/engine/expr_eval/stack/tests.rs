@@ -120,11 +120,6 @@ fn pop_triple_returns_left_mid_right_ordering() -> Result<(), String> {
     ensure_equal(right, SlotValue::I64(3))
 }
 
-fn pop_i64_pair(stack: &mut ExprStack) -> Result<(i64, i64), EngineError> {
-    let (left, right) = pop_pair(stack)?;
-    Ok((expect_i64(left)?, expect_i64(right)?))
-}
-
 // ===== pop_i64_pair =====
 
 #[test]

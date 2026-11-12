@@ -1,0 +1,60 @@
+crates/vb_storage/src/admission/tests.rs:193: fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, String> {
+crates/vb_storage/src/admission/tests.rs:194:     use vb_core::value::ConstValue;
+crates/vb_storage/src/admission/tests.rs:195:     use vb_core::workflow::{ResourceContract, WorkflowParts};
+crates/vb_storage/src/admission/tests.rs:196:     use vb_core::{
+crates/vb_storage/src/admission/tests.rs:197:         CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, SlotIdx, StepIdx,
+crates/vb_storage/src/admission/tests.rs:198:         WorkflowDigest,
+crates/vb_storage/src/admission/tests.rs:199:     };
+crates/vb_storage/src/admission/tests.rs:200: 
+crates/vb_storage/src/admission/tests.rs:201:     let mut parts = WorkflowParts {
+crates/vb_storage/src/admission/tests.rs:202:         semantic_source_identity: None,
+crates/vb_storage/src/admission/tests.rs:203:         name: Box::<str>::from("test_admission"),
+crates/vb_storage/src/admission/tests.rs:204:         input_slots: Box::new([]),
+crates/vb_storage/src/admission/tests.rs:205:         digest: WorkflowDigest::from_bytes([0u8; 32]),
+crates/vb_storage/src/admission/tests.rs:206:         nodes: Box::new([
+crates/vb_storage/src/admission/tests.rs:207:             CompiledNode {
+crates/vb_storage/src/admission/tests.rs:208:                 id: StepIdx::new(0),
+crates/vb_storage/src/admission/tests.rs:209:                 output: Some(SlotIdx::new(0)),
+crates/vb_storage/src/admission/tests.rs:210:                 next: Some(StepIdx::new(1)),
+crates/vb_storage/src/admission/tests.rs:211:                 on_error: None,
+crates/vb_storage/src/admission/tests.rs:212:                 error_slot: None,
+crates/vb_storage/src/admission/tests.rs:213:                 kind: CompiledNodeKind::SetConst {
+crates/vb_storage/src/admission/tests.rs:214:                     value: ConstIdx::new(0),
+crates/vb_storage/src/admission/tests.rs:215:                 },
+crates/vb_storage/src/admission/tests.rs:216:             },
+crates/vb_storage/src/admission/tests.rs:217:             CompiledNode {
+crates/vb_storage/src/admission/tests.rs:218:                 id: StepIdx::new(1),
+crates/vb_storage/src/admission/tests.rs:219:                 output: None,
+crates/vb_storage/src/admission/tests.rs:220:                 next: None,
+crates/vb_storage/src/admission/tests.rs:221:                 on_error: None,
+crates/vb_storage/src/admission/tests.rs:222:                 error_slot: None,
+crates/vb_storage/src/admission/tests.rs:223:                 kind: CompiledNodeKind::Finish {
+crates/vb_storage/src/admission/tests.rs:224:                     result: SlotIdx::new(0),
+crates/vb_storage/src/admission/tests.rs:225:                 },
+crates/vb_storage/src/admission/tests.rs:226:             },
+crates/vb_storage/src/admission/tests.rs:227:         ]),
+crates/vb_storage/src/admission/tests.rs:228:         expressions: Box::new([]),
+crates/vb_storage/src/admission/tests.rs:229:         accessors: Box::new([]),
+crates/vb_storage/src/admission/tests.rs:230:         constants: Box::new([ConstValue::I64(42)]),
+crates/vb_storage/src/admission/tests.rs:231:         slot_count: 1,
+crates/vb_storage/src/admission/tests.rs:232:         symbols_count: 0,
+crates/vb_storage/src/admission/tests.rs:233:         entry: StepIdx::new(0),
+crates/vb_storage/src/admission/tests.rs:234:         resource_contract: ResourceContract::DEFAULT,
+crates/vb_storage/src/admission/tests.rs:235:         step_names: Box::new([]),
+crates/vb_storage/src/admission/tests.rs:236:     };
+crates/vb_storage/src/admission/tests.rs:237: 
+crates/vb_storage/src/admission/tests.rs:238:     // Compute the correct BLAKE3 digest from the zeroed-digest serialization.
+crates/vb_storage/src/admission/tests.rs:239:     let hash_bytes =
+crates/vb_storage/src/admission/tests.rs:240:         postcard::to_allocvec(&parts).map_err(|e| format!("serialize parts for digest: {e}"))?;
+crates/vb_storage/src/admission/tests.rs:241:     let computed = blake3::hash(&hash_bytes);
+crates/vb_storage/src/admission/tests.rs:242:     parts.digest = WorkflowDigest::from_bytes(computed.into());
+crates/vb_storage/src/admission/tests.rs:243: 
+crates/vb_storage/src/admission/tests.rs:244:     CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+crates/vb_storage/src/admission/tests.rs:245: }
+crates/vb_storage/src/admission/tests.rs:246: 
+crates/vb_storage/src/admission/tests.rs:247: fn compiled_record_digest(
+crates/vb_storage/src/admission/tests.rs:248:     workflow: &vb_core::CompiledWorkflow,
+crates/vb_storage/src/admission/tests.rs:249: ) -> Result<vb_core::WorkflowDigest, String> {
+crates/vb_storage/src/admission/tests.rs:250:     let bytes = postcard::to_allocvec(&workflow.to_parts())
+crates/vb_storage/src/admission/tests.rs:251:         .map_err(|e| format!("serialize compiled workflow parts: {e}"))?;
+crates/vb_storage/src/admission/tests.rs:252:     Ok(vb_core::WorkflowDigest::from_bytes(

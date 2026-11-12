@@ -1,0 +1,14 @@
+{
+  "command": [
+    "cargo",
+    "kani",
+    "-p",
+    "vb_validate",
+    "--",
+    "kani_gate_08_accessor"
+  ],
+  "exit_code": 2,
+  "elapsed_seconds": 0.02708148956298828,
+  "stdout": "",
+  "stderr": "error: unrecognized subcommand 'kani_gate_08_accessor'\n\nUsage: cargo-kani [OPTIONS] [COMMAND]\n\nFor more information, try '--help'.\n"
+}

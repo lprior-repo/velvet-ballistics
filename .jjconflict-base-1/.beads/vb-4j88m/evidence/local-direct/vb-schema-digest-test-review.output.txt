@@ -1,0 +1,21 @@
+**FINDINGS**
+
+**vb-4j88m (Input Schema Kind Resolution)**
+
+1. **Missing: Any variant in digest calculation test.** `test_digest_stability_and_roundtrip` uses `{is: number}` vs `{is: boolean}` to prove schema changes alter the digest, but never exercises the new `Any` kind. A regression where `InputSlotKind::Any` is resolved correctly at compile time but omitted from the serialized parts (or normalized away) would pass all current tests. Add a digest-diff test using `{is: any}` vs `{is: number}`.
+
+2. **Missing: CLI mapper kind-mismatch rejection for typed slots.** The contract states "kind mismatch errors preserved for typed slots" under CLI. `any_port_maps_primitives` proves Any accepts everything; `typed_i64_mapping_and_trailing_rejection` proves valid I64 maps and trailing bytes fail. No test feeds a non-I64 value (e.g., Bool or Symbol) to an I64 slot through `map_runtime_inputs` and asserts a kind-mismatch error. A regression where the CLI mapper silently accepts or coerces mismatched types for typed slots would slip through.
+
+3. **Minor: Longform `default` and non-empty `fields` untested.** `{is: object, fields: {}}` is tested, but no test uses a non-empty `fields` map or a `default` value. If future work ties defaults or field schemas to kind resolution or digest, these paths are unverified. Low risk given current contract scope.
+
+**vb-86nyq (Numeric IR Digest)**
+
+4. **Missing: Digest change on input-kind alteration to Any.** The contract requires verifying the fingerprint "changes when an input kind or constant is altered." `test_constant_change_alters_digest` covers constants; `test_digest_stability_and_roundtrip` covers number→boolean. No test alters an input kind to/from `Any` and asserts digest change. This overlaps with finding #1 but is called out explicitly by the vb-86nyq acceptance criteria.
+
+**NAMED TEST WOULD MISS BUG**
+
+A compiler regression that resolves `any` to `InputSlotKind::Any` for slot typing but fails to include the Any kind in the serialized `WorkflowParts` (e.g., serializing it as a legacy kind or omitting the slot schema) would pass all 9 compiler tests, both runtime tests, and the CLI tests. The digest would be computed from incomplete parts, breaking the vb-86nyq invariant that the fingerprint binds the complete emitted IR including declared input kinds. Only a digest-diff test using the Any kind (findings #1/#4) would catch this.
+
+**STATUS: REJECTED**
+
+Both beads require the missing Any-in-digest test and the CLI typed-slot kind-mismatch test before approval. The contracts explicitly bind the digest to input kinds and require preserved kind-mismatch errors in the CLI; the current suite does not verify these for the new Any variant.

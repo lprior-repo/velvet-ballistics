@@ -1,0 +1,133 @@
+Based on my inspection of the ticket validation path and the test files, here is the diagnosis:
+
+## Diagnosis: Nine Failing Tests Due to Synthetic Ticket Fixtures
+
+### Root Cause
+
+The nine failing tests fabricate tickets using `make_ticket(run, step, attempt, capacity)` with values that do not match the actual tickets issued and stored by the shard. The production validation path requires **full ticket equality** (`pending == ticket`) before any attempt-number classification occurs.
+
+### Validation Chain
+
+The shard validates action completions and failures through two gates:
+
+1. **`require_pending_action_ownership(ticket)`** (chunk_004.rs:37-46): Full ticket equality check against the ticket stored in `pending_actions`. Must pass before any other validation.
+2. **`validate_action_completion(state, ticket)`** (helpers.rs:74-82): Calls `validate_ticket_attempt(state, ticket)` which checks attempt number relationships.
+
+```rust
+// chunk_004.rs:37
+fn require_pending_action_ownership(&self, ticket: ActionTicket) -> RuntimeResult<()> {
+    if !self.run_state_contains(ticket.run) {
+        return Err(RuntimeError::RunNotFound);
+    }
+    match self.pending_action_get(ticket.run) {
+        Some(pending) if pending == ticket => Ok(()),
+        Some(_) | None => Err(RuntimeError::InvalidActionCompletion),
+    }
+}
+```
+
+```rust
+// helpers.rs:118
+fn validate_ticket_attempt(
+    state: &crate::shard::types::RunState,
+    ticket: ActionTicket,
+) -> RuntimeResult<()> {
+    if ticket.attempt == 0 || ticket.capacity == 0 || ticket.attempt > ticket.capacity {
+        return Err(RuntimeError::AttemptBeyondMax { ... });
+    }
+    let current = state.action_attempts.get(ticket.step.as_usize()).copied()
+        .ok_or(RuntimeError::InvalidActionCompletion)?;
+    if ticket.attempt < current {
+        return Err(RuntimeError::StaleAttempt { incoming: ticket.attempt, current });
+    }
+    if ticket.attempt > current {
+        return Err(RuntimeError::InvalidActionCompletion);
+    }
+    Ok(())
+}
+```
+
+### Ticket Issuance Flow
+
+When the shard issues a ticket:
+1. Engine creates `ActionTicket { attempt: 1, capacity: retry_policy.max_attempts, seq: 0, ... }`
+2. `prepare_awaiting_action` calls `normalize_scheduled_ticket` which preserves the capacity but normalizes the attempt
+3. `record_scheduled_attempt` sets `action_attempts[step] = ticket.attempt`
+4. `pending_action_insert` stores the normalized ticket
+
+### The Nine Failing Tests
+
+**In vb_jggy_lifecycle_tests.rs (7 tests):**
+
+| Test | Fabricated Ticket | Actual Ticket | Failure Mode |
+|------|-------------------|---------------|--------------|
+| `step_succeeded_carries_attempt_field` | attempt=1, capacity=1 | attempt=1, capacity=1 | Should pass - ticket matches |
+| `action_failed_carries_attempt_field` | attempt=1, **capacity=3** | attempt=1, capacity=1 | **require_pending_action_ownership fails first** |
+| `step_succeeded_carries_retry_attempt_number` | attempt=3, **capacity=5** | attempt=1, capacity=1 (then manual set to 3) | **require_pending_action_ownership fails first** |
+| `stale_attempt_completion_rejected_before_journal_write` | attempt=2, **capacity=3** | attempt=1, capacity=1 (then manual set to 3) | **require_pending_action_ownership fails first** |
+| `stale_attempt_failure_rejected_before_journal_write` | attempt=3, **capacity=5** | attempt=1, capacity=1 (then manual set to 5) | **require_pending_action_ownership fails first** |
+| `validate_ticket_attempt_accepts_valid_ticket` | attempt=1, **capacity=3** | attempt=1, capacity=1 (then manual set to 1) | **require_pending_action_ownership fails first** |
+| `future_attempt_within_capacity_is_rejected` | attempt=3, **capacity=5** | attempt=1, capacity=1 | **require_pending_action_ownership fails first** |
+
+**In durable_retry_red_phase.rs (2 tests):**
+
+| Test | Issue |
+|------|-------|
+| `ticket_with_retry_capacity_increases_capacity_to_max_attempts` | Calls private `ticket_with_retry_capacity` method |
+| `ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata` | Calls private `ticket_with_retry_capacity` method |
+
+### Answer to User's Questions
+
+**(1) Which success failures are invalid synthetic make_ticket fixtures?**
+
+Six of the nine failing tests use `make_ticket` with wrong capacity (3 or 5 instead of 1). The actual ticket issued by the shard for `suspended_workflow` has `capacity=1` (from the default `EngineSignal::AwaitingAction`). The tests cannot pass because `require_pending_action_ownership` rejects the mismatched ticket before `validate_ticket_attempt` ever runs.
+
+**(2) Whether real old issued tickets should yield StaleAttempt?**
+
+Yes. The current `validate_ticket_attempt` implementation is correct:
+- `ticket.attempt < current` → `StaleAttempt`
+- `ticket.attempt > current` → `InvalidActionCompletion` (future attempt)
+- `ticket.attempt == current` → `Ok(())`
+
+This matches the master contract (§72). The issue is that tests never reach this logic because the ticket mismatch fails earlier.
+
+**(3) What exact functions/lines would need change?**
+
+No production validation logic needs change. The fix is to give tests access to the actual issued ticket. Two options:
+
+**Option A (preferred): Make `pending_action_get` public**
+```diff
+// crates/vb_runtime/src/shard/types.rs:990
+- pub(crate) fn pending_action_get(&self, run: RunId) -> Option<ActionTicket> {
++ pub fn pending_action_get(&self, run: RunId) -> Option<ActionTicket> {
+```
+
+Then tests can use:
+```rust
+let ticket = shard.pending_action_get(run).expect("ticket must exist");
+// Use ticket for completion/failure commands
+```
+
+**Option B: Fix tests to use correct capacity=1**
+
+Change all `make_ticket(run, step, attempt, capacity)` calls in failing tests to use `capacity=1` for `suspended_workflow` tests. However, this doesn't fix the stale-attempt tests because the manual `action_attempts` manipulation creates a mismatch between the stored ticket and the test's expectation.
+
+### What is Proven vs Inferred
+
+**Proven:**
+- `require_pending_action_ownership` enforces full ticket equality (code inspection)
+- Tests use fabricated tickets with wrong capacity/attempt values (code inspection)
+- The validation chain runs `require_pending_action_ownership` before `validate_ticket_attempt` (code inspection)
+
+**Inferred:**
+- The nine failing tests are exactly those listed above (would need to run tests to confirm exact count)
+- No production bug exists in the ticket validation logic itself (the logic is correct; the tests are wrong)
+
+### Minimal Concrete Repair Proposal
+
+1. **Make `pending_action_get` public** in `crates/vb_runtime/src/shard/types.rs:990`
+2. **Update all nine failing tests** to retrieve the actual issued ticket via `shard.pending_action_get(run)` instead of fabricating tickets with `make_ticket`
+3. For stale-attempt tests: retrieve the original ticket, manually advance `action_attempts`, then submit the original ticket again (now stale)
+4. For success tests: retrieve the original ticket and use it directly
+
+This preserves full pending ticket authority while allowing tests to validate attempt-number classification correctly.

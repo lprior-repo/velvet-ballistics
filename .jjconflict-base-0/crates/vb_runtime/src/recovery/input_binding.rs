@@ -7,6 +7,8 @@ use vb_storage::{FjallJournal, JournalEvent, RetainedRunInputs, RunInputsRecord}
 use crate::{RuntimeError, RuntimeResult};
 
 mod preparation;
+mod scalar_roots;
+mod secret_roots;
 use preparation::{prepare_owned_record, prepare_scalar_roots, validate_owned_identity};
 
 /// Validates that a retained input record matches an admission event's binding.
@@ -112,6 +114,12 @@ impl RecoveredRetainedInputs {
         self.store.as_ref()
     }
 
+    pub(crate) fn use_replayed_store(&mut self, store: Option<ValueStore>) {
+        if let Some(store) = store {
+            self.store = Some(store);
+        }
+    }
+
     /// Versioned checkpoint of the restored store for the recovery command.
     pub(crate) fn store_checkpoint(&self) -> Option<vb_core::value_store::ValueStoreCheckpointV1> {
         self.store.as_ref().map(ValueStore::checkpoint_v1)
@@ -169,15 +177,6 @@ pub(crate) fn load_retained_inputs_for_recovery(
     }
 }
 
-fn slot_taint(workflow: &CompiledWorkflow, slot: SlotIdx) -> Taint {
-    for slot_decl in workflow.input_slots().iter() {
-        if slot_decl.slot == slot && slot_decl.constraint.secretness.is_secret() {
-            return Taint::Secret;
-        }
-    }
-    Taint::Clean
-}
-
 fn scalar_retained_inputs(
     record: &RunInputsRecord,
     run: RunId,
@@ -188,11 +187,7 @@ fn scalar_retained_inputs(
     validate_input_record_binding(record, run, admission_event)?;
     validate_input_record_artifact(record, artifact_digest)?;
     validate_input_record_workflow(record, workflow)?;
-    let initial_inputs = record
-        .inputs()
-        .iter()
-        .map(|(slot, value)| (*slot, *value, slot_taint(workflow, *slot)))
-        .collect();
+    let initial_inputs = scalar_roots::scalar_roots(record, workflow)?;
     prepare_scalar_roots(workflow, initial_inputs)
 }
 

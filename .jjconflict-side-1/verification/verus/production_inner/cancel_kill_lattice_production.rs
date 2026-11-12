@@ -5,13 +5,13 @@
 // This file is the WEAK `production_inner/` binding surface for
 // `verification/verus/cancel_kill_lattice.rs`. It mirrors the observable
 // state predicates and method names used by
-// `crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:161-221`.
+// `crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:124-184`.
 //
 // DRIFT POLICY: This file MUST be reviewed against
-// `crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:161-221` whenever
+// `crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:124-184` whenever
 // production cancel/kill lifecycle behavior changes.
 //
-// Production `crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:161-221`
+// Production `crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:124-184`
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 

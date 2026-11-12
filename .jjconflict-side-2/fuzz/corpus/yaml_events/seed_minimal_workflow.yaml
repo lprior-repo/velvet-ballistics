@@ -1,0 +1,5 @@
+name: minimal-workflow
+version: "1.0"
+steps:
+  - id: start
+    action: NoOp

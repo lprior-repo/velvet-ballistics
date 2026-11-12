@@ -12,6 +12,7 @@ serde.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+vb_core = { path = ".", features = ["test-util"] }
 blake3.workspace = true
 criterion.workspace = true
 postcard.workspace = true

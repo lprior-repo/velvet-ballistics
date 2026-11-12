@@ -42,7 +42,7 @@ pub(in crate::mod_compile_lowering) fn together_width(
     let mut width = 2usize;
     for branch in branches {
         width = width
-            .checked_add(body_width(&branch.steps, 1)?)
+            .checked_add(body_width(&branch.steps, 2)?)
             .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
     }
     Ok(width)
@@ -66,7 +66,7 @@ pub(in crate::mod_compile_lowering) fn canonical_body_step_width(
         crate::StepPrimitive::Choose { branches, .. } => choose_width(branches),
         other => Err(CompileError::UnsupportedStepPrimitive {
             step: 0,
-            primitive: canonical_primitive_name(other),
+            primitive: canonical_primitive_name(other)?,
         }),
     }
 }

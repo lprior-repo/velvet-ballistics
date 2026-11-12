@@ -10,8 +10,8 @@ use super::{
     AccessorProgram, CompiledInputSlot, CompiledLoopRegion, CompiledNode, CompiledNodeKind,
     ExprProgram, LoopRegionSlot, ResourceContract, WorkflowError, WorkflowParts,
 };
-use super::{loop_regions, source_metadata};
-use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, StepIdx, WorkflowDigest};
+use super::{cursor_ownership, loop_regions, retry_policy, slot_flow, source_metadata};
+use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::ConstValue;
 
 /// Immutable compiled workflow.
@@ -20,6 +20,7 @@ pub struct CompiledWorkflow {
     name: Box<str>,
     digest: WorkflowDigest,
     semantic_source_identity: Option<WorkflowDigest>,
+    source_metadata: Option<Box<source_metadata::WorkflowSourceMetadata>>,
     nodes: Box<[CompiledNode]>,
     expressions: Box<[ExprProgram]>,
     accessors: Box<[AccessorProgram]>,
@@ -38,15 +39,28 @@ impl CompiledWorkflow {
     /// Creates a compiled workflow after validating all numeric references.
     pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
         validate_parts(&parts)?;
+        if let Some(metadata) = &parts.source_metadata {
+            metadata
+                .validate_symbols_count(parts.symbols_count)
+                .map_err(|error| WorkflowError::SourceMetadata {
+                    detail: error.to_string().into(),
+                })?;
+        }
         let loop_regions = loop_regions::validate(&parts)?;
+        cursor_ownership::validate(&parts, &loop_regions)?;
         let nested_activation_entries = loop_regions::nested_activation_map(&parts, &loop_regions)?;
         let loop_slots = loop_regions::merge_slots(&loop_regions, &nested_activation_entries);
         validate_budget(&parts)?;
+        source_metadata::resources::validate(&parts)?;
         validate_input_slots(&parts)?;
+        source_metadata::secrets::validate(&parts)?;
+        retry_policy::validate(&parts)?;
+        slot_flow::validate_slot_flow(&parts)?;
         Ok(Self {
             name: parts.name,
             digest: parts.digest,
             semantic_source_identity: parts.semantic_source_identity,
+            source_metadata: parts.source_metadata,
             nodes: parts.nodes,
             expressions: parts.expressions,
             accessors: parts.accessors,
@@ -72,6 +86,7 @@ impl CompiledWorkflow {
             name: parts.name,
             digest: parts.digest,
             semantic_source_identity: parts.semantic_source_identity,
+            source_metadata: parts.source_metadata,
             nodes: parts.nodes,
             expressions: parts.expressions,
             accessors: parts.accessors,
@@ -95,6 +110,7 @@ impl CompiledWorkflow {
             name: parts.name,
             digest: parts.digest,
             semantic_source_identity: parts.semantic_source_identity,
+            source_metadata: parts.source_metadata,
             nodes: parts.nodes,
             expressions: parts.expressions,
             accessors: parts.accessors,
@@ -234,6 +250,7 @@ impl CompiledWorkflow {
             name: self.name.clone(),
             digest: self.digest,
             semantic_source_identity: self.semantic_source_identity,
+            source_metadata: self.source_metadata.clone(),
             nodes: self.nodes.clone(),
             expressions: self.expressions.clone(),
             accessors: self.accessors.clone(),
@@ -246,9 +263,24 @@ impl CompiledWorkflow {
             input_slots: self.input_slots.clone(),
         }
     }
-    pub(crate) fn error_handler_for_body(&self, body_step: StepIdx) -> Option<&CompiledNode> {
-        self.nodes.iter().find(|node| {
-            matches!(node.kind, CompiledNodeKind::ErrorHandler { body, .. } if body == body_step)
-        })
+    /// Immutable compiled source symbol payloads.
+    #[must_use]
+    pub fn source_metadata(&self) -> Option<&source_metadata::WorkflowSourceMetadata> {
+        self.source_metadata.as_deref()
     }
+
+    /// Resolves a node's direct error slot before considering a legacy wrapper fallback.
+    #[must_use]
+    pub fn resolved_error_slot(&self, node: &CompiledNode) -> Option<SlotIdx> {
+        resolved_error_slot(&self.nodes, node)
+    }
+}
+
+// A direct error slot takes precedence; legacy wrappers provide only a fallback.
+pub(crate) fn resolved_error_slot(nodes: &[CompiledNode], node: &CompiledNode) -> Option<SlotIdx> {
+    node.routing.error.error_slot().or_else(|| {
+        nodes.iter().find(|candidate| {
+            matches!(candidate.kind, CompiledNodeKind::ErrorHandler { body, .. } if body == node.id)
+        }).and_then(|wrapper| wrapper.routing.error.error_slot())
+    })
 }

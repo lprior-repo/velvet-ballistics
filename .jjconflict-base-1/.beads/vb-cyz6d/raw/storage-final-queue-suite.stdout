@@ -1,0 +1,56 @@
+
+running 51 tests
+test queue::tests::internal_tests::batch_builder_default_trait_yields_empty ... ok
+test queue::tests::internal_tests::batch_builder_accumulates_multiple_events ... ok
+test queue::tests::internal_tests::batch_builder_as_slice_returns_event_order ... ok
+test queue::tests::internal_tests::batch_builder_push_adds_events ... ok
+test queue::tests::internal_tests::batch_builder_starts_empty ... ok
+test queue::tests::internal_tests::capacity_limit_applies_to_strict_events ... ok
+test queue::tests::internal_tests::capacity_limit_shared_across_strict_and_journaled ... ok
+test queue::tests::internal_tests::enqueue_at_exact_capacity_succeeds ... ok
+test queue::tests::internal_tests::enqueue_rejects_when_at_capacity ... ok
+test queue::tests::internal_tests::pending_profile_counts_tracks_mixed_profiles ... ok
+test queue::tests::internal_tests::pending_profile_counts_tracks_strict_events ... ok
+test queue::tests::internal_tests::queue_with_capacity_one_accepts_single_event ... ok
+test queue::tests::internal_tests::queue_holds_exact_capacity_without_overflow ... ok
+test queue::tests::internal_tests::queue_with_capacity_one_rejects_second_event ... ok
+test queue::tests::internal_tests::new_rejects_zero_capacity ... ok
+test queue::tests::internal_tests::pending_profile_counts_empty_queue ... ok
+test queue::tests::internal_tests::new_accepts_valid_capacity_and_batch ... ok
+test queue::tests::internal_tests::pending_profile_counts_tracks_journaled_events ... ok
+test queue::tests::internal_tests::new_rejects_zero_batch_size ... ok
+test queue::tests::internal_tests::mixed_batch_followed_by_journaled_only_batch ... ok
+test queue::tests::internal_tests::multi_flush_maintains_fifo_across_batches ... ok
+test queue::tests::internal_tests::counts_after_partial_strict_flush ... ok
+test queue::tests::internal_tests::flush_batch_rejects_same_batch_duplicate_key ... ok
+test queue::tests::internal_tests::drain_all_with_mixed_profiles_writes_all ... ok
+test queue::tests::internal_tests::flush_batch_persists_journaled_events_to_journal ... ok
+test queue::tests::internal_tests::flush_batch_across_calls_handles_idempotent_retry ... ok
+test queue::tests::internal_tests::pending_profile_counts_reflects_partial_drain ... ok
+test queue::tests::internal_tests::shutdown_on_previously_flushed_queue_still_works ... ok
+test queue::writer::flush_tests::durable_service_respects_batch_limit_and_fifo ... ok
+test queue::tests::internal_tests::flush_batch_size_equals_queue_size_drains_all ... ok
+test queue::tests::internal_tests::flush_batch_mixed_strict_and_journaled_writes_all ... ok
+test queue::tests::internal_tests::flush_batch_journaled_only_drains_in_batches ... ok
+test queue::tests::internal_tests::flush_batch_strict_only_drains_in_batches ... ok
+test queue::tests::internal_tests::flush_then_enqueue_then_flush_again ... ok
+test queue::tests::internal_tests::flush_batch_same_call_drains_already_durable_idempotent_retries ... ok
+test queue::tests::internal_tests::shutdown_on_empty_queue_succeeds_with_zero_drained ... ok
+test queue::tests::internal_tests::drain_all_flushes_until_empty ... ok
+test queue::tests::internal_tests::flush_batch_persists_strict_events_to_journal ... ok
+test queue::tests::internal_tests::flush_batch_drains_up_to_batch_size ... ok
+test queue::tests::internal_tests::shutdown_drains_mixed_strict_and_journaled ... ok
+test queue::tests::internal_tests::flush_batch_returns_items_in_fifo_order ... ok
+test queue::tests::internal_tests::shutdown_drains_all_pending_events ... ok
+test queue::tests::internal_tests::flush_batch_writes_events_readable_from_journal ... ok
+test queue::writer::flush_tests::commit_failure_preserves_entire_batch_and_retry_commits_once ... ok
+test queue::tests::internal_tests::shutdown_rejects_strict_and_journaled_after_drain ... ok
+test queue::tests::internal_tests::flush_batch_on_empty_queue_returns_zero ... ok
+test queue::tests::internal_tests::mixed_batch_with_one_strict_among_journaled_writes_all ... ok
+test queue::tests::internal_tests::flush_batch_single_event_with_large_batch_size ... ok
+test queue::tests::internal_tests::drain_all_mixed_tiers_across_multiple_batches ... ok
+test queue::tests::internal_tests::drain_all_on_empty_queue_returns_zero ... ok
+test queue::tests::internal_tests::shutdown_rejects_new_writes_after_call ... ok
+
+test result: ok. 51 passed; 0 failed; 0 ignored; 0 measured; 1547 filtered out; finished in 0.04s
+

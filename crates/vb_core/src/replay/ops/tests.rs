@@ -10,8 +10,9 @@ use crate::replay::{ReplayError, ReplayExprStack, eval_expr_for_replay};
 use crate::value::{ConstValue, FiniteF64, SlotValue, Taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
-    ResourceContract, WorkflowParts, check_expr_stack_bound, node,
+    AccessorProgram, CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind,
+    ExprOp, ExprProgram, InputSlotKind, PathSegment, ResourceContract, WorkflowParts,
+    check_expr_stack_bound, node,
 };
 
 use super::{eval_replay_op, pop_i64_pair, pop_pair};
@@ -24,7 +25,12 @@ fn make_plan(
 ) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
     crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
-        input_slots: Box::new([]),
+        source_metadata: None,
+        input_slots: Box::new([CompiledInputSlot {
+            slot: SlotIdx::new(0),
+            kind: InputSlotKind::Any,
+            constraint: CompiledInputConstraint::required(),
+        }]),
         name: "test_ops".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: nodes.into(),
@@ -89,16 +95,10 @@ fn replay_err_to_core(e: ReplayError) -> CoreError {
     }
 }
 
-// ---- ReplayExprStack lifecycle and stack helpers ----
 include!("tests_stack.rs");
-
-// ---- LoadSlot / LoadConst / LoadAccessor and expr_for_replay ----
 include!("tests_expr.rs");
 include!("has_parity_replay_tests.rs");
-
-// ---- Mixed I64/F64 arithmetic and ce003 taint join tests ----
 include!("tests_ce003.rs");
-
 include!("has_error_replay_tests.rs");
 include!("has_bytecode_boundary_tests.rs");
 include!("has_bytecode_boundary_hot_tests.rs");

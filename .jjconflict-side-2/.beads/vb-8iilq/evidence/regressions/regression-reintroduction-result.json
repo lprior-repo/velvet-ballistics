@@ -1,0 +1,10 @@
+{
+  "exit_code": 101,
+  "restored": "original cfg(test) submission substitutes from a244efa2",
+  "expected_named_failures": [
+    "submit_empty_caps_no_fabrication",
+    "submit_with_inputs_empty_caps_no_fabrication"
+  ],
+  "result": "two actual assertion failures, one denied-capability test retained pass; no compiler failure",
+  "source_restored_in_finally": true
+}

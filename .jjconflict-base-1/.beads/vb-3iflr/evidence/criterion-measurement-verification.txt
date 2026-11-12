@@ -1,0 +1,41 @@
+=== bench_engine_step_once_save_const_single_transition ===
+  Samples: 10
+  Computed mean (ns): 16.410167
+  Estimates.json mean (ns): 16.410167
+  Evidence result (picoseconds): 16410
+  Evidence result (ns): 16.410000
+  P50 (ns): 16.405266
+  P95 (ns): 16.458492
+  P99 (ns): 16.468526
+
+=== ipc_frame_decode ===
+  Samples: 10
+  Computed mean (ns): 79.268548
+  Estimates.json mean (ns): 79.268548
+  Evidence result (picoseconds): 79269
+  Evidence result (ns): 79.269000
+  P50 (ns): 79.033471
+  P95 (ns): 80.872969
+  P99 (ns): 81.266789
+
+=== engine_run_until_blocked_budget_10_small_workflow ===
+  Samples: 10
+  Computed mean (ns): 16.424707
+  Estimates.json mean (ns): 16.424707
+  Evidence result (picoseconds): 16425
+  Evidence result (ns): 16.425000
+  P50 (ns): 16.432691
+  P95 (ns): 16.500834
+  P99 (ns): 16.520323
+
+=== Summary ===
+bench_engine_step_once_save_const_single_transition: estimates_mean*1000=16410ps, evidence=16410ps, match=True
+ipc_frame_decode: estimates_mean*1000=79269ps, evidence=79269ps, match=True
+engine_run_until_blocked_budget_10_small_workflow: estimates_mean*1000=16425ps, evidence=16425ps, match=True
+
+All mean estimates match evidence: True
+
+=== Computed vs Estimates Mean (ns) ===
+bench_engine_step_once_save_const_single_transition: computed=16.4102, estimates=16.4102, diff=0.000000 (0.00%)
+ipc_frame_decode: computed=79.2685, estimates=79.2685, diff=0.000000 (0.00%)
+engine_run_until_blocked_budget_10_small_workflow: computed=16.4247, estimates=16.4247, diff=0.000000 (0.00%)

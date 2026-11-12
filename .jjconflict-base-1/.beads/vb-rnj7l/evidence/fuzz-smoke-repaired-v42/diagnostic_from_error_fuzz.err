@@ -1,0 +1,13 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 645045819
+INFO: Loaded 1 modules   (1226 inline 8-bit counters): 1226 [0x55b7a85398e3, 0x55b7a8539dad), 
+INFO: Loaded 1 PC tables (1226 PCs): 1226 [0x55b7a8539db0,0x55b7a853ea50), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/diagnostic_from_error_fuzz
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 99 ft: 100 corp: 1/1b exec/s: 0 rss: 46Mb
+#11	NEW    cov: 100 ft: 102 corp: 2/4b lim: 4 exec/s: 0 rss: 46Mb L: 3/3 MS: 4 ShuffleBytes-ChangeBinInt-CopyPart-InsertByte-
+#70	REDUCE cov: 100 ft: 102 corp: 2/3b lim: 4 exec/s: 0 rss: 48Mb L: 2/2 MS: 4 CopyPart-CopyPart-ChangeByte-EraseBytes-
+#76	REDUCE cov: 100 ft: 102 corp: 2/2b lim: 4 exec/s: 0 rss: 48Mb L: 1/1 MS: 1 EraseBytes-
+#524876	DONE   cov: 100 ft: 102 corp: 2/2b lim: 4096 exec/s: 262438 rss: 401Mb
+Done 524876 runs in 2 second(s)

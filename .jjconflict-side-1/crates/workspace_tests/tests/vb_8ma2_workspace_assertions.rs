@@ -62,7 +62,7 @@ fn write_manifest(root: &Path, extra_member: Option<&str>) -> Result<(), std::io
          \"crates/vb_ipc\",\n\
          \"crates/velvet_ballistics\",\n\
          \"crates/workspace_tests\",\n\
-         \"fuzz\",\n{extra}]\nexclude = [\"xtask\", \"target/miri-tmp\"]\n"
+         \"fuzz\",\n{extra}]\nexclude = [\"target/miri-tmp\"]\n"
     );
     write_file(&root.join("Cargo.toml"), &content)
 }

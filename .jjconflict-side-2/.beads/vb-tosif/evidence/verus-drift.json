@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-ucsv7-local5090-tool-review",
+  "argv": [
+    "bash",
+    "scripts/check-production-inner-drift.sh"
+  ],
+  "exit_code": 0,
+  "seconds": 3.929,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-tosif/evidence/verus-drift",
+  "coordinator_message": "Scope reminder: full cargo fmt check currently finds qi37 formatting which is separate ACTIVE DeepSeek author vb-my3b3; do not reject toolfixture source solely for that unrelated file. Official pinned rustfmt --edition2024 --check onlyfour actualtooltests is required and expected0. Root knowsglobalfmt pendingqi37. Read-only review, noformat/sourceedits. Verus bridge+metadatareview separatebead tosif. Scoped passes only, report realcounts/trustboundary."
+}

@@ -1,0 +1,17 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery",
+  "argv": [
+    "cargo",
+    "fmt",
+    "--",
+    "crates/vb_runtime/tests/policy_pin_durable_recovery.rs"
+  ],
+  "exit_code": 0,
+  "seconds": 1.476,
+  "timeout_seconds": 60,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "PUBLIC_V7_03"
+}

@@ -121,45 +121,6 @@ impl Shard {
         self.drive_run(run)
     }
 
-    pub(crate) fn handle_timer(
-        &mut self,
-        run: RunId,
-        generation: u64,
-        deadline: std::time::Instant,
-        kind: PendingTimerKind,
-    ) -> RuntimeResult<()> {
-        let current_timer = self.validate_timer_authority(run, generation, deadline, kind)?;
-        if self.pending_retry_timer(run, current_timer.step) {
-            return self.handle_retry_timer(run, current_timer);
-        }
-        let budget_exceeded = self.append_timer_resolution_event(run, current_timer)?;
-        if kind == PendingTimerKind::Ask {
-            self.clear_pending_ask_authority(run);
-        }
-        if budget_exceeded {
-            return self.fail_command_run_on_journal_budget(run);
-        }
-        let mut state = self.take_run_state(run)?;
-        let timer = match self.pending_timer_remove(run) {
-            Some(timer) => timer,
-            None => {
-                self.run_state_insert(run, state)?;
-                return Err(RuntimeError::InvalidTimerFire);
-            }
-        };
-        crate::shard::helpers::advance_after_timer_fire(&mut state, timer)?;
-        let rollback_state = state.clone();
-        let mut evidence = EvidenceCollector::new();
-        let result = self.drive_state(run, &mut state, self.step_budget_per_tick, &mut evidence);
-        match self.apply_drive_result(run, state, result, &mut evidence) {
-            Ok(()) => Ok(()),
-            Err(DriveApplyFailure::BeforeCommit(error)) => {
-                self.restore_run_state_after_drive_failure(run, rollback_state, error)
-            }
-            Err(DriveApplyFailure::AfterCommit(error)) => Err(error),
-        }
-    }
-
     pub(crate) fn handle_cancel(
         &mut self,
         run: RunId,

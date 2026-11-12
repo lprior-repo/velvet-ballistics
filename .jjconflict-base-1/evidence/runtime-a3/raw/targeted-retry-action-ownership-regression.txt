@@ -1,0 +1,2 @@
+test result: FAILED. 116 passed; 1 failed; 0 ignored; 0 measured; 1739 filtered out; finished in 0.06s
+[full output: ~/.local/share/rtk/tee/1783611506_cargo_test.log]

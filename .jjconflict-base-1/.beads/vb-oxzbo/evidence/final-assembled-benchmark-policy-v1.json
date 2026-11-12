@@ -1,0 +1,17 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing",
+  "argv": [
+    "moon",
+    "run",
+    ":benchmark-regression-policy",
+    "--force"
+  ],
+  "exit_code": 0,
+  "seconds": 15.364,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-oxzbo/evidence/final-assembled-benchmark-policy-v1"
+}

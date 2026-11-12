@@ -1,0 +1,220 @@
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:220:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:221:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:222:         admission.policy(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:223:         vb_core::policy::RuntimePolicy::Relaxed,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:224:         "recovered admission must carry the current shard policy"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:225:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:226:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:227:         admission.granted_capabilities(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:228:         &vb_core::CapabilitySet::from_grants(expected_artifact.required_capabilities.clone()),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:229:         "recovered admission must grant exactly the artifact's required capabilities"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:230:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:231: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:232:     // vb-peb9u: Raw 7-argument recovery produces Unverified admission (no policy pin).
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:233:     // Now prove that when a genuine failed-state checkpoint IS supplied via the
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:234:     // public .with_retry_checkpoint() builder, and the checkpoint carries a
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:235:     // different policy pin than the artifact, the shard rejects it with the
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:236:     // exact admission_policy_pin_mismatch error. This exercises the real
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:237:     // checkpoint capture, frame hydration, and policy pin validation path.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:238:     let original_state_clone = state.clone();
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:239:     assert_raw_checkpoint_wrong_pin_rejected(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:240:         &mut shard,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:241:         original_state_clone,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:242:         &journal,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:243:         artifact_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:244:     )?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:245: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:246:     // Verify the Do action was scheduled with the correct ticket fields
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:247:     let ticket = shard
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:248:         .pending_action_get(run_id)
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:249:         .ok_or("pending action not found after recovery; Do action was not scheduled")?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:250:     assert_eq!(ticket.run, run_id);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:251:     assert_eq!(ticket.step, vb_core::ids::StepIdx::ZERO);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:252:     assert_eq!(ticket.action, vb_core::ids::ActionId::new(0));
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:253:     assert_eq!(ticket.attempt, 1);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:254: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:255:     // Phase 2: Complete the action using the REAL API (ShardCommand::ActionCompleted)
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:256:     let output = vb_core::action::ActionOutputReady {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:257:         output_slot: vb_core::ids::SlotIdx::new(1),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:258:         value: vb_core::value::SlotValue::I64(42),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:259:         taint: vb_core::value::Taint::Clean,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:260:         encoded_len: 2,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:261:     };
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:262:     shard.enqueue(crate::shard::ShardCommand::ActionCompleted { ticket, output })?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:263: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:264:     // Drive to completion: ActionCompleted → Finish → RunFinished
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:265:     let ticked = shard.tick()?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:266:     assert!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:267:         ticked,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:268:         "tick should return true after processing the action completion"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:269:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:270: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:271:     // Verify run finished
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:272:     assert!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:273:         shard.terminal_runs_contains(run_id),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:274:         "run should be in terminal state after action completion and finish"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:275:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:276:     assert!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:277:         !shard.run_state_contains(run_id),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:278:         "run state should be removed after terminal completion"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:279:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:280: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:281:     // Phase 3: Verify real journal evidence
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:282:     let events = journal.snapshot()?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:283: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:284:     // When action contracts are present, the runtime uses the new
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:285:     // ActionCompletedEnvelope format (atomic durable envelope).
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:286:     let action_completed_count = events
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:287:         .iter()
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:288:         .filter(|e| {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:289:             matches!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:290:                 e,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:291:                 crate::journal::RuntimeJournalEvent::ActionCompleted { .. }
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:292:                     | crate::journal::RuntimeJournalEvent::ActionCompletedEnvelope { .. }
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:293:             )
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:294:         })
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:295:         .count();
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:296:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:297:         action_completed_count, 1,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:298:         "exactly one action completion journal event expected (Completed or Envelope)"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:299:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:300: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:301:     // Exactly one RunFinished event
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:302:     let run_finished_events: Vec<_> = events
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:303:         .iter()
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:304:         .filter(|e| matches!(e, crate::journal::RuntimeJournalEvent::RunFinished { .. }))
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:305:         .collect();
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:306:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:307:         run_finished_events.len(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:308:         1,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:309:         "exactly one RunFinished journal event expected"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:310:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:311:     // Verify the RunFinished event has the correct run id and result slot
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:312:     assert!(matches!(run_finished_events.first(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:313:             Some(crate::journal::RuntimeJournalEvent::RunFinished { run, result, attempt: 1})
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:314:                 if *run == run_id && *result == vb_core::ids::SlotIdx::new(1)));
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:315:     let completed: Vec<_> = events
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:316:         .iter()
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:317:         .filter_map(|event| match event {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:318:             crate::journal::RuntimeJournalEvent::ActionCompletedEnvelope {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:319:                 ticket,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:320:                 output,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:321:                 value,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:322:                 ..
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:323:             } => Some((*ticket, *output, value.clone())),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:324:             _ => None,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:325:         })
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:326:         .collect();
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:327:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:328:         completed,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:329:         vec![(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:330:             ticket,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:331:             vb_core::ids::SlotIdx::new(1),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:332:             postcard::to_allocvec(&vb_core::value::SlotValue::I64(42))?
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:333:         )]
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:334:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:335: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:336:     // Phase 4: Duplicate completion must NOT produce a second RunFinished
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:337:     // After the run is terminal, a duplicate ActionCompleted is rejected
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:338:     // with an error (InvalidActionCompletion or RunNotFound), not silently
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:339:     // accepted. Verify the error is thrown and journal is unchanged.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:340:     shard.enqueue(crate::shard::ShardCommand::ActionCompleted {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:341:         ticket,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:342:         output: vb_core::action::ActionOutputReady {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:343:             output_slot: vb_core::ids::SlotIdx::new(1),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:344:             value: vb_core::value::SlotValue::I64(99),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:345:             taint: vb_core::value::Taint::Clean,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:346:             encoded_len: 2,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:347:         },
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:348:     })?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:349:     // tick() should return Err because the duplicate completion targets
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:350:     // a run that has already finished (terminal)
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:351:     let tick_result = shard.tick();
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:352:     assert_eq!(tick_result, Err(crate::RuntimeError::RunNotFound));
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:353: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:354:     let events2 = journal.snapshot()?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:355:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:356:         events2, events,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:357:         "duplicate completion must preserve the entire journal"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:358:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:359:     let run_finished_count_after_dup = events2
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:360:         .iter()
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:361:         .filter(|e| matches!(e, crate::journal::RuntimeJournalEvent::RunFinished { .. }))
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:362:         .count();
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:363:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:364:         run_finished_count_after_dup, 1,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:365:         "duplicate completion must not add second RunFinished"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:366:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:367: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:368:     Ok(())
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:369: }
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:370: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:371: fn assert_raw_checkpoint_wrong_pin_rejected(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:372:     shard: &mut crate::shard::Shard,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:373:     original: crate::shard::types::RunState,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:374:     journal: &VolatileRuntimeJournal,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:375:     artifact_digest: vb_core::ids::WorkflowDigest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:376: ) -> Result<(), Box<dyn std::error::Error>> {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:377:     let run_id = original.frame.run_id();
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:378: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:379:     // Record the complete original state before any probe.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:380:     let original_pending = shard.pending_boundary_snapshot(0, 8);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:381:     let original_journal = journal.snapshot()?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:382: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:383:     // Clone the recovered state to build a failed fixture. The original frame
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:384:     // is Running, so we must genuinely transition it to Failed via the real
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:385:     // frame API — not pretend a non-failed frame can be checkpointed.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:386:     let mut failed = original.clone();
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:387:     failed.frame.mark_failed(vb_core::ids::StepIdx::ZERO)?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:388: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:389:     // Forge a policy pin that differs from the artifact's actual policy digest.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:390:     // The original recovered admission has an Unverified raw pin (no digest).
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:391:     // Use a fabricated digest to guarantee the forged pin mismatches the real
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:392:     // computed policy digest, proving the checkpoint pin validation path.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:393:     let wrong_pin = vb_core::ids::WorkflowDigest::from_bytes([44u8; 32]);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:394:     assert_ne!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:395:         wrong_pin,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:396:         vb_storage::admission::compute_policy_digest(&original.workflow)?,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:397:         "forged pin must differ from the workflow's actual policy digest"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:398:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:399:     let forged_admission = failed
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:400:         .admission
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:401:         .as_ref()
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:402:         .ok_or("failed fixture must carry an admission record")?
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:403:         .clone()
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:404:         .with_policy_pin(vb_storage::RunPolicyPin::Pinned(wrong_pin));
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:405:     failed.admission = Some(forged_admission);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:406: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:407:     // Capture a genuinely valid checkpoint from the failed state. This exercises
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:408:     // the real RunCheckpointV1::capture path with its admission validation.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:409:     let checkpoint = crate::run_checkpoint::RunCheckpointV1::capture(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:410:         run_id,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:411:         artifact_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:412:         core::num::NonZeroU16::new(2).ok_or("invalid checkpoint attempt number")?,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:413:         vb_core::ids::StepIdx::ZERO,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:414:         1,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:415:         &failed,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:416:     )?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:417: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:418:     // Hydrate a valid retry frame from the checkpoint for the recovery command.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:419:     let retry_frame = vb_core::frame::RunFrame::from_checkpoint_v1(checkpoint.frame.clone())
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:420:         .map_err(|error| format!("retry frame fixture failed: {error:?}"))?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:421: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:422:     // Build the public recovery command with the retry checkpoint attached via
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:423:     // the exact .with_retry_checkpoint() builder path that production uses.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:424:     let command = RecoverRunCommand::new(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:425:         run_id,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:426:         retry_frame,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:427:         artifact_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:428:         original.workflow.digest(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:429:         vb_storage::types::EventSeq::new(2),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:430:         crate::primitives::collect::CollectStates::new(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:431:         crate::recovery::RecoveredRunBoundary::none(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:432:     )
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:433:     .with_retry_checkpoint(checkpoint);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:434: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:435:     // The shard must reject this because the checkpoint's policy pin (forged to
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:436:     // [44u8;32]) does not match the artifact's actual policy digest (derived
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:437:     // from [43u8;32]).
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:438:     let result = shard.handle_recover(command);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:439:     assert_eq!(

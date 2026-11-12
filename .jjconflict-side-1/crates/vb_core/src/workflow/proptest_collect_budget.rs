@@ -1,151 +1,206 @@
 #![cfg(test)]
 #![forbid(unsafe_code)]
 
-use crate::budget::{BoundednessPolicy, BudgetDimension, BudgetError, WholeWorkflowBudget};
-use crate::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
+use crate::budget::WholeWorkflowBudget;
+use crate::ids::{SlotIdx, StepIdx, WorkflowDigest};
 use crate::workflow::{
-    CompiledInputConstraint, CompiledInputSlot, CompiledNodeKind, CompiledWorkflow, InputSlotKind,
-    ResourceContract, WorkflowError, WorkflowParts, node,
+    CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
+    InputSlotKind, ResourceContract, WorkflowError, WorkflowParts, node,
 };
 use proptest::prelude::*;
 use proptest::test_runner::TestCaseResult;
 
-/// Source is supplied by the caller; collector and result are initialized by the loop.
+#[path = "proptest_collect_budget_yaml.rs"]
+mod yaml_union;
+
+fn collect_start_node(limit: u32, page_size: u32) -> CompiledNode {
+    node(
+        StepIdx::ZERO,
+        CompiledNodeKind::CollectStart {
+            source: SlotIdx::ZERO,
+            limit: limit.into(),
+            page_size,
+            body: StepIdx::new(1),
+            done: StepIdx::new(3),
+        },
+        Some(SlotIdx::new(1)),
+        None,
+    )
+}
+
+fn collect_next_node() -> CompiledNode {
+    node(
+        StepIdx::new(2),
+        CompiledNodeKind::CollectNext {
+            collector_slot: SlotIdx::new(1),
+            body: StepIdx::new(1),
+            done: StepIdx::new(3),
+        },
+        None,
+        None,
+    )
+}
+
+fn collect_finish_node() -> CompiledNode {
+    node(
+        StepIdx::new(3),
+        CompiledNodeKind::CollectFinish {
+            collector_slot: SlotIdx::new(1),
+        },
+        Some(SlotIdx::new(2)),
+        Some(StepIdx::new(4)),
+    )
+}
+
+fn collect_nodes(limit: u32, page_size: u32) -> Box<[CompiledNode]> {
+    Box::from([
+        collect_start_node(limit, page_size),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(2)),
+        ),
+        collect_next_node(),
+        collect_finish_node(),
+        node(
+            StepIdx::new(4),
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(2),
+            },
+            None,
+            None,
+        ),
+    ])
+}
+
 pub(super) fn make_collect_workflow(limit: u32, page_size: u32) -> WorkflowParts {
-    let source = SlotIdx::new(0);
-    let collector = SlotIdx::new(1);
-    let body = StepIdx::new(1);
-    let done = StepIdx::new(3);
     WorkflowParts {
         semantic_source_identity: None,
         source_metadata: None,
-        input_slots: Box::new([CompiledInputSlot {
-            slot: source,
-            kind: InputSlotKind::List,
-            constraint: CompiledInputConstraint::required(),
-        }]),
-        name: "collect-budget".into(),
+        input_slots: collect_inputs(),
+        name: Box::from("test_collect_budget"),
         digest: WorkflowDigest::from_bytes([0; 32]),
-        nodes: vec![
-            node(
-                StepIdx::new(0),
-                CompiledNodeKind::CollectStart {
-                    source,
-                    limit: limit.into(),
-                    page_size,
-                    body,
-                    done,
-                },
-                Some(collector),
-                None,
-            ),
-            node(
-                body,
-                CompiledNodeKind::SetConst {
-                    value: ConstIdx::new(0),
-                },
-                Some(SlotIdx::new(2)),
-                Some(StepIdx::new(2)),
-            ),
-            node(
-                StepIdx::new(2),
-                CompiledNodeKind::CollectNext {
-                    collector_slot: collector,
-                    body,
-                    done,
-                },
-                None,
-                None,
-            ),
-            node(
-                done,
-                CompiledNodeKind::CollectFinish {
-                    collector_slot: collector,
-                },
-                Some(SlotIdx::new(3)),
-                None,
-            ),
-        ]
-        .into_boxed_slice(),
+        nodes: collect_nodes(limit, page_size),
         expressions: Box::new([]),
         accessors: Box::new([]),
-        constants: Box::new([crate::value::ConstValue::I64(0)]),
-        slot_count: 4,
+        constants: Box::new([]),
+        slot_count: 3,
         symbols_count: 0,
-        entry: StepIdx::new(0),
+        entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     }
 }
 
-pub(super) fn check_collect_budget(limit: u32, page_size: u32) -> TestCaseResult {
-    let parts = make_collect_workflow(limit, page_size);
-    // Start and finish execute once; the body and latch have a conservative
-    // minimum of one activation even when the declared item limit is zero.
-    let steps = u64::from(limit)
+fn collect_inputs() -> Box<[CompiledInputSlot]> {
+    Box::new([CompiledInputSlot {
+        slot: SlotIdx::ZERO,
+        kind: InputSlotKind::List,
+        constraint: CompiledInputConstraint::required(),
+    }])
+}
+
+pub(super) fn expected_budget_total(limit: u32) -> Result<u64, TestCaseError> {
+    u64::from(limit)
         .max(1)
         .checked_mul(2)
-        .and_then(|count| count.checked_add(2))
-        .ok_or_else(|| TestCaseError::fail("test step bound overflow"))?;
-    let computed =
-        WholeWorkflowBudget::compute(&parts.nodes, parts.entry, &parts.resource_contract);
-    let constructed = CompiledWorkflow::try_from_parts(parts.clone());
-    if steps > u64::from(u32::MAX) {
-        let expected = WorkflowError::StepCountOverflow { actual: steps };
-        prop_assert_eq!(computed, Err(expected.clone()));
-        prop_assert_eq!(constructed, Err(expected));
-        return Ok(());
+        .and_then(|total| total.checked_add(3))
+        .ok_or_else(|| TestCaseError::fail("budget oracle overflow"))
+}
+
+fn budget_boundary_strategy() -> impl Strategy<Value = (u32, u32)> {
+    prop_oneof![
+        Just((0, 0)),
+        Just((0, 1)),
+        Just((1, 0)),
+        Just((1, 1)),
+        Just((u32::MAX, 1)),
+        Just((1, u32::MAX)),
+        Just((u32::MAX, u32::MAX)),
+    ]
+}
+
+fn budget_arbitrary_strategy() -> impl Strategy<Value = (u32, u32)> {
+    (any::<u32>(), any::<u32>())
+}
+
+fn assert_budget_overflow(parts: WorkflowParts, total: u64) -> Result<(), TestCaseError> {
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::StepCountOverflow { actual }) => {
+            prop_assert_eq!(actual, total, "StepCountOverflow actual must match oracle");
+            Ok(())
+        }
+        other => Err(TestCaseError::fail(format!(
+            "expected StepCountOverflow for total={total}, got {other:?}"
+        ))),
     }
-    let budget = computed.map_err(|error| TestCaseError::fail(format!("budget: {error:?}")))?;
-    prop_assert_eq!(budget.max_total_steps, steps);
-    prop_assert_eq!(budget.max_gather_items, limit);
+}
+
+fn assert_gather_dimensions(
+    budget: &WholeWorkflowBudget,
+    limit: u32,
+    page_size: u32,
+) -> Result<(), TestCaseError> {
+    prop_assert_eq!(
+        budget.max_gather_items,
+        limit,
+        "max_gather_items must equal limit"
+    );
     let pages = u64::from(limit).div_ceil(u64::from(page_size).max(1));
-    prop_assert_eq!(u64::from(budget.max_gather_pages), pages);
-    prop_assert_eq!(budget.max_nesting_depth, 1);
-    let policy = BoundednessPolicy::DEFAULT;
-    if steps > policy.max_total_steps {
-        prop_assert_eq!(
-            policy.validate(&budget),
-            Err(BudgetError::TotalStepsExceeded {
-                actual: steps,
-                limit: policy.max_total_steps,
-            })
-        );
-        prop_assert_eq!(
-            constructed,
-            Err(WorkflowError::BudgetPolicyExceeded {
-                detail: BudgetDimension::TotalSteps,
-            })
-        );
-    } else {
-        prop_assert_eq!(policy.validate(&budget), Ok(()));
-        let workflow = constructed
-            .map_err(|error| TestCaseError::fail(format!("valid collect rejected: {error:?}")))?;
-        prop_assert_eq!(workflow.to_parts(), parts);
-        let region = workflow
-            .loop_region(StepIdx::new(2))
-            .ok_or_else(|| TestCaseError::fail("missing CollectNext ownership"))?;
-        prop_assert_eq!(region.start(), StepIdx::new(0));
-        prop_assert_eq!(region.body(), StepIdx::new(1));
-        prop_assert_eq!(region.control(), StepIdx::new(2));
-        prop_assert_eq!(region.done(), StepIdx::new(3));
-    }
+    let pages_u32 = u32::try_from(pages).map_err(|error| TestCaseError::fail(error.to_string()))?;
+    prop_assert_eq!(
+        budget.max_gather_pages,
+        pages_u32,
+        "max_gather_pages must match ceil(limit/page_size)"
+    );
     Ok(())
 }
 
-#[test]
-fn proptest_collect_budget_limits() -> TestCaseResult {
-    for limit in [0, 1, 499_999, 500_000, u32::MAX / 2, u32::MAX] {
-        for page_size in [0, 1, u32::MAX] {
-            check_collect_budget(limit, page_size)?;
-        }
+fn assert_budget_dimensions(
+    parts: WorkflowParts,
+    limit: u32,
+    page_size: u32,
+    total: u64,
+) -> Result<(), TestCaseError> {
+    let budget = WholeWorkflowBudget::compute(&parts.nodes, parts.entry, &parts.resource_contract)
+        .map_err(|error| TestCaseError::fail(format!("budget compute failed: {error}")))?;
+    prop_assert_eq!(
+        budget.max_total_steps,
+        total,
+        "max_total_steps must match oracle"
+    );
+    assert_gather_dimensions(&budget, limit, page_size)
+}
+
+fn assert_collect_budget(limit: u32, page_size: u32) -> Result<(), TestCaseError> {
+    let parts = make_collect_workflow(limit, page_size);
+    let total = expected_budget_total(limit)?;
+    if total > u64::from(u32::MAX) {
+        assert_budget_overflow(parts, total)
+    } else {
+        assert_budget_dimensions(parts, limit, page_size, total)
     }
-    Ok(())
+}
+
+pub(super) fn make_yaml_collect_workflow(limit: u32, page_size: u32) -> WorkflowParts {
+    yaml_union::make_collect_workflow(limit, page_size)
+}
+
+pub(super) fn check_collect_budget(limit: u32, page_size: u32) -> TestCaseResult {
+    yaml_union::check_collect_budget(limit, page_size)
 }
 
 proptest! {
     #[test]
-    fn proptest_collect_budget_arbitrary(limit in any::<u32>(), page_size in any::<u32>()) {
+    fn proptest_collect_budget_limits((limit, page_size) in budget_boundary_strategy()) {
+        assert_collect_budget(limit, page_size)?;
+        check_collect_budget(limit, page_size)?;
+    }
+
+    #[test]
+    fn proptest_collect_budget_arbitrary((limit, page_size) in budget_arbitrary_strategy()) {
+        assert_collect_budget(limit, page_size)?;
         check_collect_budget(limit, page_size)?;
     }
 
@@ -153,4 +208,13 @@ proptest! {
     fn proptest_collect_budget_admitted(limit in 0u32..=499_999, page_size in any::<u32>()) {
         check_collect_budget(limit, page_size)?;
     }
+}
+
+#[test]
+fn proptest_collect_budget_yaml_limits() -> TestCaseResult {
+    let cases = yaml_union::boundary_cases();
+    for (limit, page_size) in cases {
+        check_collect_budget(limit, page_size)?;
+    }
+    Ok(())
 }

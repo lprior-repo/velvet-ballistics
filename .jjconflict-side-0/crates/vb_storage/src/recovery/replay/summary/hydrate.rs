@@ -48,10 +48,8 @@ pub(super) fn recover_slots(
     match (workflow, accumulator.last_succeeded_step) {
         (Some(plan), Some(target)) => {
             let (slots, cursor) = recover_slots_through_step(plan, target, inputs)?;
-            Ok((
-                merge_recovered_slots(slots, recovered_event_slots(accumulator)),
-                cursor,
-            ))
+            let slots = merge_context_slots(slots, accumulator, inputs)?;
+            Ok((slots, cursor))
         }
         (Some(_), None) => Ok((
             RecoveredSlots::supported(recovered_event_slots(accumulator)),
@@ -65,6 +63,18 @@ pub(super) fn recover_slots(
             None,
         )),
     }
+}
+
+fn merge_context_slots(
+    slots: RecoveredSlots,
+    accumulator: &FrameSeedAccumulator,
+    inputs: Option<ReplayInputContext<'_>>,
+) -> RecoveryResult<RecoveredSlots> {
+    let mut slots = merge_recovered_slots(slots, recovered_event_slots(accumulator));
+    if let Some(inputs) = inputs {
+        inputs.validate_final_slots(&mut slots)?;
+    }
+    Ok(slots)
 }
 
 fn merge_recovered_slots(

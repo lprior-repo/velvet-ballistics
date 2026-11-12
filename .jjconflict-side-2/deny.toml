@@ -1,0 +1,79 @@
+# cargo-deny configuration for Velvet Ballistics
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Banned licenses (enforced via license allowlist + copyleft/default deny):
+# GPL-*, LGPL-*, AGPL-*, SSPL-*, Commons Clause
+
+[licenses]
+version = 2
+# Allow only specific permissive licenses (SPDX identifiers)
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "BSL-1.0",
+    "Unicode-3.0",
+    "Zlib",
+]
+
+# Bead vb-cd6t: scoped exceptions for release dependencies with reviewed
+# OSI/FSF-free license terms. These are crate-specific so weak-copyleft
+# or uncommon fuzzing licenses are not globally admitted.
+exceptions = [
+    { allow = ["NCSA"], crate = "libfuzzer-sys" },
+    { allow = ["MPL-2.0"], crate = "resvg" },
+    { allow = ["MPL-2.0"], crate = "usvg" },
+]
+
+# Banned licenses are denied by default above.
+# GPL-*, LGPL-*, AGPL-*, SSPL-*, Commons Clause are not in the allow list.
+
+[bans]
+# Duplicate dependency policy (vb-jpq7.11):
+#
+# The following duplicates are policy-accepted because they originate from
+# deferred UI/codegen paths that do not pollute backend release gates:
+#
+# 1. windows-*-0.48/0.52 vs 0.56/0.60 crates:
+#    - Source: makepad-platform v1.0.0 requires windows v0.56.0
+#    - Other deps (chrono/iana-time-zone) require windows v0.62.2
+#    - These are PLATFORM-SPECIFIC targets only compiled on Windows
+#    - Backend crates (vb_core, vb_storage, vb_ipc, vb_runtime) do NOT
+#      depend on windows crates; they compile cleanly on Linux
+#
+# 2. winnow 0.7 vs 1.0:
+#    - Source: toml v0.9 (UI/snapshot) vs toml v1.1 (trybuild/test tooling)
+#    - These are TEST/UI toolchain duplicates, not production deps
+#
+# 3. wit-bindgen 0.51 vs 0.57:
+#    - Source: wasip3 (tempfile/fjall) vs wasip2 (getrandom/ahash)
+#    - These are WASI runtime duplicates from different toolchains
+#
+# All duplicate warnings are suppressed via cargo-deny default allow;
+# they do not cause cargo deny to fail. Backend crates compile and pass
+# all gates without windows platform targets on Linux.
+
+[advisories]
+version = 2
+ignore = [
+    # RUSTSEC-2023-0089: atomic-polyfill is pulled through postcard's heapless
+    # 0.7 dependency. There is no safe upgrade in the current postcard line;
+    # retain cargo-audit visibility and revisit when postcard moves to a
+    # maintained atomic backend.
+    "RUSTSEC-2023-0089",
+    # RUSTSEC-2025-0057: fxhash is pulled transitively by makepad-draw
+    # through vb_ui_makepad. No safe upgrade is available in the current
+    # Makepad line; cargo-vet still requires safe-to-deploy coverage and
+    # this ignore must be removed when Makepad migrates to rustc-hash.
+    "RUSTSEC-2025-0057",
+]
+
+[sources]
+# Deny unknown registries and git sources
+unknown-registry = "deny"
+unknown-git = "deny"
+# Allow only crates.io
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

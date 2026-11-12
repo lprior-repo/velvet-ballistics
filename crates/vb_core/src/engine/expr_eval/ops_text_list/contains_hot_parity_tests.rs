@@ -56,6 +56,7 @@ fn contains_hot_plan() -> Result<CompiledWorkflow, crate::errors::CoreError> {
     let expression = contains_hot_program()?;
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: "contains_hot_test".into(),
         digest: WorkflowDigest::from_bytes([0xA5; 32]),

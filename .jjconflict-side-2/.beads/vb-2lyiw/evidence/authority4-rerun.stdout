@@ -1,0 +1,9 @@
+
+running 4 tests
+test run_attempt_advances_but_per_action_attempt_does_not ... ok
+test future_run_attempt_ticket_rejected ... ok
+test stale_old_ticket_rejected_after_durable_retry ... ok
+test zero_run_attempt_ticket_rejected ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

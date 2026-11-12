@@ -90,6 +90,7 @@ fn has_bytecode_finish_node(step: StepIdx) -> crate::workflow::CompiledNode {
 fn has_bytecode_parts(expression: ExprProgram, key: SymbolId) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: "has_bytecode_boundary".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),

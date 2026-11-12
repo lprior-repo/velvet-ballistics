@@ -1,0 +1,140 @@
+1: use super::Runtime;
+2: use super::live_policy_dispatch::AdmissionEvalContext;
+3: use crate::{RuntimeError, shard::ShardCommand};
+4: use vb_core::policy::DecisionRecord;
+5: use vb_core::{ActionTicket, RunId};
+6: use vb_storage::executor::{ExecutorError, FjallRegister, RegisterGrant, RegisterReceipt};
+7: 
+8: /// Runtime authority failures and uncertain adapter outcomes remain distinct.
+9: #[derive(Debug, thiserror::Error)]
+10: pub enum RegisteredExecutionError {
+11:     /// Runtime ticket/state or completion queue failed.
+12:     #[error("registered runtime: {0}")]
+13:     Runtime(#[from] RuntimeError),
+14:     /// Executor rejected authority or requires receipt reconciliation.
+15:     #[error("registered executor: {0}")]
+16:     Executor(#[from] ExecutorError),
+17:     /// Live policy rejected execution before any adapter effect.
+18:     #[error("policy denied execution: {0:?}")]
+19:     PolicyDenied(Box<DecisionRecord>),
+20: }
+21: 
+22: impl Runtime {
+23:     /// Execute only a canonical pending action with its actual live I64 input.
+24:     /// A post-effect queue failure preserves the durable receipt for reconciliation.
+25:     pub fn execute_registered_action(
+26:         &mut self,
+27:         adapter: &mut FjallRegister,
+28:         run: RunId,
+29:         wire_step: u64,
+30:         grant: &RegisterGrant,
+31:     ) -> Result<RegisterReceipt, RegisteredExecutionError> {
+32:         let (ticket, context) = self.registered_context(run, wire_step, grant)?;
+33:         if context.mode != crate::shard::types::RegisteredExecutionMode::Live {
+34:             return Err(ExecutorError::Unauthorized.into());
+35:         }
+36:         let eval_ctx = AdmissionEvalContext {
+37:             ticket,
+38:             admission_pin: context.admission_pin,
+39:             encoded_bytes: context.encoded_bytes,
+40:             input_taint: context.input_taint,
+41:         };
+42:         self.evaluate_admission_and_persist(eval_ctx)?;
+43:         let receipt = adapter.execute(grant, ticket, context.value)?;
+44:         self.enqueue_registered_completion(ticket, context.output, receipt.clone())?;
+45:         Ok(receipt)
+46:     }
+47: 
+48:     /// Recovery reads an existing receipt and never invokes a production effect.
+49:     /// Missing receipts and Blocked recovery fail before any target write.
+50:     pub fn reconcile_registered_action(
+51:         &mut self,
+52:         adapter: &mut FjallRegister,
+53:         run: RunId,
+54:         wire_step: u64,
+55:         grant: &RegisterGrant,
+56:     ) -> Result<RegisterReceipt, RegisteredExecutionError> {
+57:         let (ticket, context) = self.registered_context(run, wire_step, grant)?;
+58:         let catalog = self
+59:             .journal
+60:             .executor_catalog()
+61:             .ok_or(ExecutorError::CatalogRequired)?;
+62:         catalog.require_receipt_recovery(&context.artifact, ticket.action)?;
+63:         let receipt = adapter.reconcile(grant, ticket, context.value)?;
+64:         self.enqueue_registered_completion(ticket, context.output, receipt.clone())?;
+65:         Ok(receipt)
+66:     }
+67: 
+68:     pub(super) fn validate_registered_recovery(
+69:         &self,
+70:         artifact: &vb_storage::AcceptedArtifact,
+71:         boundary: crate::recovery::RecoveredRunBoundary,
+72:     ) -> Result<(), RuntimeError> {
+73:         let Some(pending) = boundary.pending_action_ticket() else {
+74:             return Ok(());
+75:         };
+76:         let vb_core::artifact::ArtifactEvidence::Packed(packed) = &artifact.verification.evidence
+77:         else {
+78:             return Ok(());
+79:         };
+80:         if !packed
+81:             .packs
+82:             .iter()
+83:             .any(|pack| pack.action == pending.ticket().action)
+84:         {
+85:             return Ok(());
+86:         }
+87:         let catalog = self
+88:             .journal
+89:             .executor_catalog()
+90:             .ok_or(RuntimeError::InvalidActionCompletion)?;
+91:         catalog
+92:             .require_receipt_recovery(artifact, pending.ticket().action)
+93:             .map_err(|_| RuntimeError::RecoveryCannotResume {
+94:                 reason: "registered_recovery_blocked".into(),
+95:             })
+96:     }
+97: 
+98:     fn registered_context(
+99:         &self,
+100:         run: RunId,
+101:         wire_step: u64,
+102:         grant: &RegisterGrant,
+103:     ) -> Result<
+104:         (
+105:             ActionTicket,
+106:             crate::shard::lifecycle::RegisteredActionContext,
+107:         ),
+108:         RegisteredExecutionError,
+109:     > {
+110:         let ticket = self
+111:             .lookup_pending_action_ticket(run, wire_step)
+112:             .ok_or(RuntimeError::InvalidActionCompletion)?;
+113:         let shard = self.shard_for_run(run)?;
+114:         let context = shard.registered_action_context(ticket)?;
+115:         let catalog = self
+116:             .journal
+117:             .executor_catalog()
+118:             .ok_or(ExecutorError::CatalogRequired)?;
+119:         catalog.verify_artifact(&context.artifact, self.policy)?;
+120:         if grant.artifact_digest() != context.artifact.digest {
+121:             return Err(ExecutorError::Unauthorized.into());
+122:         }
+123:         Ok((ticket, context))
+124:     }
+125: 
+126:     fn enqueue_registered_completion(
+127:         &mut self,
+128:         ticket: ActionTicket,
+129:         output: vb_core::action::ActionOutputReady,
+130:         receipt: RegisterReceipt,
+131:     ) -> Result<(), RegisteredExecutionError> {
+132:         self.shard_for_mut(ticket.run)?
+133:             .enqueue(ShardCommand::RegisteredActionCompleted {
+134:                 ticket,
+135:                 receipt,
+136:                 output,
+137:             })?;
+138:         Ok(())
+139:     }
+140: }

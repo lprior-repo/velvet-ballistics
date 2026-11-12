@@ -56,16 +56,16 @@
 //                                               crates/vb_core/src/ids/mod.rs)
 //   - `ResourceContract`                    <- extern_budget_monotonic.rs
 //                                               (mirror of
-//                                               crates/vb_core/src/workflow/mod.rs:287-324)
+//                                               crates/vb_core/src/workflow/resource_contract.rs:8-45)
 //   - `CompiledNode`, `CompiledNodeKind`    <- extern_budget_monotonic.rs
 //                                               `workflow` submodule
 //                                               (mirror of
-//                                               crates/vb_core/src/workflow/mod.rs:1070-1081,
-//                                               :1191-1357)
+//                                               crates/vb_core/src/workflow/node.rs:14-25,
+//                                               crates/vb_core/src/workflow/node_kind.rs:14-181)
 //   - `WorkflowError`                       <- extern_budget_monotonic.rs
 //                                               `workflow` submodule
 //                                               (mirror of
-//                                               crates/vb_core/src/workflow/mod.rs:719-955)
+//                                               crates/vb_core/src/workflow/error.rs:13-250)
 //   - `BudgetTraversalError`                <- extern_budget_monotonic.rs
 //                                               (mirror of
 //                                               crates/vb_core/src/budget/traversal_error.rs:13-37)
@@ -222,7 +222,7 @@ pub mod workflow {
     use super::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
 
     /// Mirror of production `CompiledNode` at
-    /// `crates/vb_core/src/workflow/mod.rs:1070-1081`. Every field name,
+    /// `crates/vb_core/src/workflow/node.rs:14-25`. Every field name,
     /// type, and visibility matches production exactly. Drift in any
     /// field breaks the mirror.
     #[derive(Clone, Copy)]
@@ -241,7 +241,7 @@ pub mod workflow {
     }
 
     /// Mirror of production `NodeOutput` at
-    /// `crates/vb_core/src/workflow/mod.rs:1088-1093`.
+    /// `crates/vb_core/src/workflow/node.rs:29-34`.
     #[derive(Clone, Copy)]
     pub enum NodeOutput {
         Discard,
@@ -258,7 +258,7 @@ pub mod workflow {
     }
 
     /// Mirror of production `NodeRouting` at
-    /// `crates/vb_core/src/workflow/mod.rs:1108-1113`.
+    /// `crates/vb_core/src/workflow/node.rs:49-54`.
     #[derive(Clone, Copy)]
     pub struct NodeRouting {
         pub next: NodeContinuation,
@@ -266,7 +266,7 @@ pub mod workflow {
     }
 
     /// Mirror of production `NodeContinuation` at
-    /// `crates/vb_core/src/workflow/mod.rs:1117-1122`.
+    /// `crates/vb_core/src/workflow/node.rs:58-63`.
     #[derive(Clone, Copy)]
     pub enum NodeContinuation {
         End,
@@ -283,7 +283,7 @@ pub mod workflow {
     }
 
     /// Mirror of production `ErrorRouting` at
-    /// `crates/vb_core/src/workflow/mod.rs:1163-1173`.
+    /// `crates/vb_core/src/workflow/node.rs:104-114`.
     #[derive(Clone, Copy)]
     pub enum ErrorRouting {
         None,
@@ -321,7 +321,7 @@ pub mod workflow {
     }
 
     /// Mirror of production `CompiledNodeKind` discriminant set at
-    /// `crates/vb_core/src/workflow/mod.rs:1271-1438`. Includes every
+    /// `crates/vb_core/src/workflow/node_kind.rs:14-181`. Includes every
     /// variant `WholeWorkflowBudget::compute` matches against
     /// (`visit_node_for_total_steps`, `compute_child_depth`,
     /// `update_fanout`, `update_workflow_metrics`,
@@ -474,7 +474,7 @@ pub mod workflow {
     }
 
     /// Mirror of production `WorkflowError` discriminant set at
-    /// `crates/vb_core/src/workflow/mod.rs:719-955`. Restricted to the
+    /// `crates/vb_core/src/workflow/error.rs:13-250`. Restricted to the
     /// variants reachable from `BudgetTraversalError` via the `From`
     /// conversion at `crates/vb_core/src/budget/traversal_error.rs:39-52` plus the
     /// direct `WorkflowError` returns in `compute_budget_local`.
@@ -528,14 +528,14 @@ pub struct BoxedSlotBranches(pub ());
 pub struct BoxedStepIdxs(pub ());
 
 // ============================================================================
-// ResourceContract — mirror of `crates/vb_core/src/workflow/mod.rs:287-324`
+// ResourceContract — mirror of `crates/vb_core/src/workflow/resource_contract.rs:8-45`
 // ============================================================================
 //
 // Field names and types match production line-by-line so any drift in
 // budget.rs use sites breaks the mirror.
 
 /// Mirror of production `ResourceContract` at
-/// `crates/vb_core/src/workflow/mod.rs:287-324`.
+/// `crates/vb_core/src/workflow/resource_contract.rs:8-45`.
 #[derive(Clone, Copy)]
 pub struct ResourceContract {
     pub max_steps: u16,

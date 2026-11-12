@@ -1,0 +1,9 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-eyij7-impl/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.49s
+     Running tests/runtime_fjall_pending_action_recovery.rs (target/debug/deps/runtime_fjall_pending_action_recovery-027521adc325d59d)
+
+running 1 test
+test runtime_records_actual_action_abi_at_schedule_boundary ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 0.01s
+

@@ -1,0 +1,31 @@
+# Reference Models for velvet-ballistics
+#
+# These are slow, obvious, allocation-friendly reference implementations.
+# They serve as the golden reference for differential testing.
+#
+# Rules:
+# - All public functions must be pure (no side effects)
+# - Allocation is acceptable (cold path)
+# - No unsafe, no unwrap, no panic
+# - Must be obviously correct
+#
+# Standalone: cargo nextest run --manifest-path reference/Cargo.toml
+# Workspace: cargo nextest run -p velvet-ballistics-workspace-tests --test reference_model_regressions
+
+[workspace]
+
+[package]
+name = "reference"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+vb_core = { path = "../crates/vb_core" }
+vb_expr = { path = "../crates/vb_expr" }
+vb_storage = { path = "../crates/vb_storage" }
+proptest = "1"
+
+[package.metadata.cargo-machete]
+ignored = ["proptest", "vb_expr"]

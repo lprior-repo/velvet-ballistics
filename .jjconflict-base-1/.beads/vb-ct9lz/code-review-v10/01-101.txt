@@ -1,0 +1,52 @@
+crates/vb_storage/src/executor/packed.rs:101:     pub(super) fn pack_for<'a>(
+crates/vb_storage/src/executor/packed.rs:102:         &self,
+crates/vb_storage/src/executor/packed.rs:103:         artifact: &'a AcceptedArtifact,
+crates/vb_storage/src/executor/packed.rs:104:         action: ActionId,
+crates/vb_storage/src/executor/packed.rs:105:     ) -> Result<&'a ActionPack, ExecutorError> {
+crates/vb_storage/src/executor/packed.rs:106:         let ArtifactEvidence::Packed(packed) = &artifact.verification.evidence else {
+crates/vb_storage/src/executor/packed.rs:107:             return Err(ExecutorError::CatalogRequired);
+crates/vb_storage/src/executor/packed.rs:108:         };
+crates/vb_storage/src/executor/packed.rs:109:         let index = packed
+crates/vb_storage/src/executor/packed.rs:110:             .packs
+crates/vb_storage/src/executor/packed.rs:111:             .binary_search_by_key(&action, |pack| pack.action)
+crates/vb_storage/src/executor/packed.rs:112:             .map_err(|_| ExecutorError::PackMismatch)?;
+crates/vb_storage/src/executor/packed.rs:113:         packed.packs.get(index).ok_or(ExecutorError::PackMismatch)
+crates/vb_storage/src/executor/packed.rs:114:     }
+crates/vb_storage/src/executor/packed.rs:115: }
+crates/vb_storage/src/executor/packed.rs:116: 
+crates/vb_storage/src/executor/packed.rs:117: fn checked_envelope(
+crates/vb_storage/src/executor/packed.rs:118:     artifact: &AcceptedArtifact,
+crates/vb_storage/src/executor/packed.rs:119:     policy: RuntimePolicy,
+crates/vb_storage/src/executor/packed.rs:120: ) -> Result<&PackedArtifactEvidence, ExecutorError> {
+crates/vb_storage/src/executor/packed.rs:121:     let ArtifactEvidence::Packed(packed) = &artifact.verification.evidence else {
+crates/vb_storage/src/executor/packed.rs:122:         return Err(ExecutorError::CatalogRequired);
+crates/vb_storage/src/executor/packed.rs:123:     };
+crates/vb_storage/src/executor/packed.rs:124:     if packed.base.schema_version != verification::EVIDENCE_VERSION {
+crates/vb_storage/src/executor/packed.rs:125:         return Err(crate::JournalError::UnsupportedSchemaVersion {
+crates/vb_storage/src/executor/packed.rs:126:             version: packed.base.schema_version,
+crates/vb_storage/src/executor/packed.rs:127:         }
+crates/vb_storage/src/executor/packed.rs:128:         .into());
+crates/vb_storage/src/executor/packed.rs:129:     }
+crates/vb_storage/src/executor/packed.rs:130:     if packed.base.admission_policy != policy
+crates/vb_storage/src/executor/packed.rs:131:         || packed.packs.len() > MAX_PACKS
+crates/vb_storage/src/executor/packed.rs:132:         || artifact.digest != artifact.verification.digest
+crates/vb_storage/src/executor/packed.rs:133:         || crate::admission::accepted_artifact_digest(artifact)? != artifact.digest
+crates/vb_storage/src/executor/packed.rs:134:     {
+crates/vb_storage/src/executor/packed.rs:135:         return Err(ExecutorError::PackMismatch);
+crates/vb_storage/src/executor/packed.rs:136:     }
+crates/vb_storage/src/executor/packed.rs:137:     Ok(packed)
+crates/vb_storage/src/executor/packed.rs:138: }
+crates/vb_storage/src/executor/packed.rs:139: 
+crates/vb_storage/src/executor/packed.rs:140: fn decode_workflow(artifact: &AcceptedArtifact) -> Result<CompiledWorkflow, ExecutorError> {
+crates/vb_storage/src/executor/packed.rs:141:     let len = u32::try_from(artifact.ir.len()).map_err(|_| ExecutorError::Capacity)?;
+crates/vb_storage/src/executor/packed.rs:142:     if len > crate::constants::MAX_COMPILED_IR_BYTES {
+crates/vb_storage/src/executor/packed.rs:143:         return Err(ExecutorError::Capacity);
+crates/vb_storage/src/executor/packed.rs:144:     }
+crates/vb_storage/src/executor/packed.rs:145:     let (parts, rest): (WorkflowParts, _) = postcard::take_from_bytes(&artifact.ir)?;
+crates/vb_storage/src/executor/packed.rs:146:     if !rest.is_empty() {
+crates/vb_storage/src/executor/packed.rs:147:         return Err(ExecutorError::Corrupt);
+crates/vb_storage/src/executor/packed.rs:148:     }
+crates/vb_storage/src/executor/packed.rs:149:     CompiledWorkflow::try_from_parts(parts).map_err(|source| {
+crates/vb_storage/src/executor/packed.rs:150:         ExecutorError::Artifact(crate::JournalError::WorkflowReconstruction(source))
+crates/vb_storage/src/executor/packed.rs:151:     })
+crates/vb_storage/src/executor/packed.rs:152: }

@@ -1,85 +1,48 @@
 #![forbid(unsafe_code)]
 
-use super::super::emit_single_body_set;
-use super::ReduceEdges;
+use super::super::canonical_reduce_initial::accumulator_type;
+use super::super::field_error;
 use super::ReduceLowering;
-use super::field_error;
 use crate::mod_compile_errors::{CompileError, CompileErrors};
-use crate::mod_compile_lowering::part_14::emit_scoped_flat_body;
 use crate::mod_compile_lowering::{
-    CanonicalScope, SlotCompiler, lower_canonical_set_expression_with_binding,
+    CanonicalScope, SlotCompiler, body_width, checked_step_offset, checked_width_n,
+    emit_scoped_typed_body, lower_canonical_set_expression_with_binding, reduce_direct_body,
 };
 use std::collections::HashMap;
-use vb_core::{SlotIdx, StepIdx};
+use vb_core::workflow::node;
+use vb_core::{CompiledNodeKind, SlotIdx, StepIdx};
 use vb_expr::expr_typecheck::ExprType;
-pub(super) fn lower_multi_body(
-    config: &ReduceLowering<'_>,
+
+struct Body<'a, 's> {
+    config: &'a ReduceLowering<'s>,
     index: usize,
-    edges: &ReduceEdges,
+    id: StepIdx,
     accumulator: SlotIdx,
+    next: StepIdx,
     initial_type: ExprType,
-    builder: &mut SlotCompiler,
-) -> Result<ExprType, CompileErrors> {
-    let last = config
-        .body
-        .last()
-        .ok_or_else(|| field_error(index, "steps", "non-empty body"))?;
-    if !matches!(
-        last.primitive,
-        crate::StepPrimitive::Set { .. } | crate::StepPrimitive::Do { .. }
-    ) {
-        return Err(CompileErrors(vec![
-            CompileError::UnsupportedStepPrimitive {
-                step: index,
-                primitive: crate::mod_compile_lowering::canonical_primitive_name(&last.primitive),
-            },
-        ]));
-    }
-    // Borrowed overlay: tiny maps + parent chain (no whole-map clone).
-    let mut overlay_outputs = HashMap::with_capacity(1);
-    overlay_outputs.insert(config.variable.to_owned(), accumulator);
-    let mut overlay_types = HashMap::with_capacity(1);
-    overlay_types.insert(accumulator, initial_type);
-    let scope = CanonicalScope {
-        outputs: &overlay_outputs,
-        step_outputs: config.scope.step_outputs,
-        slot_types: &overlay_types,
-        parent: Some(&config.scope),
-    };
-    let (_, final_type) = emit_scoped_flat_body(
-        config.body,
-        edges.body,
-        edges.next,
-        scope,
-        config.nested,
-        builder,
-        "reduce",
-        Some(accumulator),
-    )?;
-    accumulator_type(index, final_type, initial_type, config)
 }
 
-fn accumulator_type(
-    index: usize,
-    final_type: ExprType,
-    initial_type: ExprType,
-    config: &ReduceLowering<'_>,
-) -> Result<ExprType, CompileErrors> {
-    let last_is_set = config
-        .body
-        .last()
-        .is_some_and(|step| matches!(step.primitive, crate::StepPrimitive::Set { .. }));
-    if last_is_set && final_type != initial_type {
-        return Err(field_error(
-            index,
-            "reduce.steps",
-            "a set value preserving the accumulator type",
-        ));
+struct Overlay {
+    outputs: HashMap<String, SlotIdx>,
+    types: HashMap<SlotIdx, ExprType>,
+}
+
+impl Overlay {
+    fn new(state: &Body<'_, '_>) -> Self {
+        let mut outputs = HashMap::with_capacity(1);
+        outputs.insert(state.config.variable.to_owned(), state.accumulator);
+        let mut types = HashMap::with_capacity(1);
+        types.insert(state.accumulator, state.initial_type);
+        Self { outputs, types }
     }
-    if last_is_set || final_type != ExprType::Unknown {
-        Ok(initial_type)
-    } else {
-        Ok(ExprType::Unknown)
+
+    fn scope<'a>(&'a self, parent: &'a CanonicalScope<'a>) -> CanonicalScope<'a> {
+        CanonicalScope {
+            outputs: &self.outputs,
+            step_outputs: parent.step_outputs,
+            slot_types: &self.types,
+            parent: Some(parent),
+        }
     }
 }
 
@@ -92,44 +55,100 @@ pub(super) fn lower_body(
     initial_type: ExprType,
     builder: &mut SlotCompiler,
 ) -> Result<ExprType, CompileErrors> {
-    let [step] = config.body else {
-        return Err(field_error(index, "steps", "exactly one set step"));
-    };
-    let crate::StepPrimitive::Set { value, .. } = &step.primitive else {
-        emit_single_body_set(
-            config.body,
-            id,
-            index,
-            accumulator,
-            Some(next),
-            builder,
-            false,
-        )?;
-        return Ok(ExprType::Unknown);
-    };
-    // Single-binding overlay for type only; outputs reused via parent chain.
-    let mut overlay_types = HashMap::with_capacity(1);
-    overlay_types.insert(accumulator, initial_type);
-    let inferred = lower_canonical_set_expression_with_binding(
+    let state = Body {
+        config,
+        index,
         id,
         accumulator,
+        next,
+        initial_type,
+    };
+    if reduce_direct_body(config.body) {
+        lower_single(&state, builder)
+    } else {
+        lower_multi(&state, builder)
+    }
+}
+
+fn lower_single(
+    state: &Body<'_, '_>,
+    builder: &mut SlotCompiler,
+) -> Result<ExprType, CompileErrors> {
+    let value = direct_value(state.config.body, state.index)?;
+    let overlay = Overlay::new(state);
+    let inferred = lower_canonical_set_expression_with_binding(
+        state.id,
+        state.accumulator,
         value,
-        Some(next),
-        CanonicalScope {
-            outputs: config.scope.outputs,
-            step_outputs: config.scope.step_outputs,
-            slot_types: &overlay_types,
-            parent: Some(&config.scope),
-        },
-        config.variable,
+        Some(state.next),
+        overlay.scope(&state.config.scope),
+        state.config.variable,
         builder,
     )?;
-    if inferred != initial_type {
+    accumulator_type(state.index, inferred, state.initial_type, state.config)
+}
+
+fn direct_value(steps: &[crate::StepAst], index: usize) -> Result<&str, CompileErrors> {
+    let [step] = steps else {
+        return Err(field_error(index, "steps", "exactly one set step"));
+    };
+    match &step.primitive {
+        crate::StepPrimitive::Set { value, .. } => Ok(value),
+        other => Err(CompileErrors(vec![
+            CompileError::UnsupportedStepPrimitive {
+                step: index,
+                primitive: crate::mod_compile_lowering::canonical_primitive_name(other)?,
+            },
+        ])),
+    }
+}
+
+fn lower_multi(
+    state: &Body<'_, '_>,
+    builder: &mut SlotCompiler,
+) -> Result<ExprType, CompileErrors> {
+    let width = checked_width_n(body_width(state.config.body, 0)?)?;
+    let copy = checked_step_offset(state.id, width, "reduce", "copy")?;
+    let result = emit_multi(state, copy, builder)?;
+    let (slot, inferred) = result
+        .ok_or_else(|| field_error(state.index, "reduce.steps", "at least one set or do step"))?;
+    let inferred = validate_result(state, inferred)?;
+    emit_copy(state, copy, slot, builder);
+    Ok(inferred)
+}
+
+fn emit_multi(
+    state: &Body<'_, '_>,
+    copy: StepIdx,
+    builder: &mut SlotCompiler,
+) -> Result<Option<(SlotIdx, ExprType)>, CompileErrors> {
+    let overlay = Overlay::new(state);
+    emit_scoped_typed_body(
+        state.config.body,
+        state.id,
+        copy,
+        overlay.scope(&state.config.scope),
+        builder,
+        "reduce",
+    )
+}
+
+fn validate_result(state: &Body<'_, '_>, inferred: ExprType) -> Result<ExprType, CompileErrors> {
+    if inferred != state.initial_type && inferred != ExprType::Unknown {
         return Err(field_error(
-            index,
+            state.index,
             "reduce.steps",
             "a set value preserving the accumulator type",
         ));
     }
-    Ok(inferred)
+    accumulator_type(state.index, inferred, state.initial_type, state.config)
+}
+
+fn emit_copy(state: &Body<'_, '_>, copy: StepIdx, slot: SlotIdx, builder: &mut SlotCompiler) {
+    builder.push_node(node(
+        copy,
+        CompiledNodeKind::Copy { source: slot },
+        Some(state.accumulator),
+        Some(state.next),
+    ));
 }

@@ -1,0 +1,15 @@
+{
+  "source": "00cd2500d5194ca3378b2036b0470a7ebccd73b5",
+  "verdict": "bounded TESTsource approved; finalcombinedcanonicalpending",
+  "actual_native_v7": "All3plaintextpackets cover265actualsource lines; fullpatch and actualstdout/JSON execution read. v6 guessednonexistentpaths/ASTonlyinsufficient, retainednotaccepted.",
+  "scope": "4newexactVec normal/spaces/rootmetachar/packageboundaries,3existingunchanged,actual7pass0ignored64filtered.",
+  "report_qualifications": [
+    "F1-F3 are positive observations, F4-F6 scope limitations, not actionable defects or ownerapproveddispositions. No new followup obligation inferred from unchanged lanes outsidecontract.",
+    "Onlyargvconstructionwasexecuted. Shell injection protection and actualscript/filesystem execution are not proved by4Vec tests.",
+    "Command::args passes distinct arguments; report execvp implementation-detail claim unneeded and not reliedon.",
+    "Otherlanes format! usage is not itself a shellinjection finding.",
+    "Report rough patch/line counts not used; actual gitpatch authoritative.",
+    "Unit tests cannot prove wrapper existence/error mapping; originalwrapperunchanged and CODE review checks route."
+  ],
+  "source_sha256": "fa8156e137bc105653fa03455d4d2498bae813eb65fafc01eff6617b6c1bf149"
+}

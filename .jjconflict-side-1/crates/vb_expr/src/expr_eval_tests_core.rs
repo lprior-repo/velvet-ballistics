@@ -650,7 +650,7 @@
         assert_eq!(
             result,
             Err(ExprError::TypeMismatch {
-                expected: "list".into(),
+                expected: "text".into(),
                 found: "number".into(),
             })
         );

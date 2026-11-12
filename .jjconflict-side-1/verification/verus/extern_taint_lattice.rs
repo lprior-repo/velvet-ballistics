@@ -12,7 +12,7 @@
 // re-exports. The mirror's `Taint` enum is a verbatim copy of
 // `crates/vb_core/src/value/taint.rs:10-21` (5 variants, discriminants
 // 0..=4, `#[non_exhaustive]`) and its `join_taint` is a verbatim copy
-// of `crates/vb_core/src/value/taint.rs:84-100`. The remaining helpers
+// of `crates/vb_core/src/value/taint.rs:25-41`. The remaining helpers
 // (`taint_rank`, `join_many`, `is_*`, `secret_*`, `derived_*`,
 // `all_lattice_laws`) are spec-side observational helpers modeled on
 // production's higher-rank-wins `join_taint` semantics — they exist
@@ -22,10 +22,9 @@
 // WHY WEAK (NOT STRONG)
 // ----------------------------------------------------------------------------
 // A STRONG binding would be `#[path =
-// "../../crates/vb_core/src/value.rs"]` directly, but that file's
-// surrounding module pulls in `serde::{Deserialize, Deserializer,
-// Serialize, Serializer}` and `crate::value_store::ValueStore` — proc
-// macros and inter-module dependencies that Verus 0.2026.05.05 cannot
+// "../../crates/vb_core/src/value/taint.rs"]` directly, but that file
+// carries `serde` derives and re-exports `super::slot_cell::SlotCell` — proc
+// macros and an inter-module dependency that Verus 0.2026.05.05 cannot
 // resolve in single-file mode. The previous binding used
 // `crates/vb_core/src/proof_kernels/taint.rs` as a "STRONG by
 // file-path" stand-in, but that file is a proof-kernel substitute
@@ -59,12 +58,12 @@
 //     Random=3, TimeDependent=4)
 //                              <- crates/vb_core/src/value/taint.rs:10-21
 //   - Production `join_taint(a, b) -> Taint`
-//                              <- crates/vb_core/src/value/taint.rs:84-100
+//                              <- crates/vb_core/src/value/taint.rs:25-41
 //   - Mirror `Taint` enum      <- production_inner/taint_lattice_production.rs
 //   - Mirror `taint_rank(self_) -> u8`
 //                              <- production_inner/taint_lattice_production.rs
 //                                 (spec-side observational helper,
-//                                 modeled on crates/vb_core/src/value/taint.rs:85-91, 92-98)
+//                                 modeled on crates/vb_core/src/value/taint.rs:26-32, 33-39)
 //   - Mirror `join_many(taints: &[Taint]) -> Taint`
 //                              <- production_inner/taint_lattice_production.rs
 //                                 (spec-side observational helper)

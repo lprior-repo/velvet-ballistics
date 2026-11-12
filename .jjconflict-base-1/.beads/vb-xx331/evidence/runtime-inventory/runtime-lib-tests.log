@@ -1,0 +1,157 @@
+warning: unused variable: `snap`
+   --> crates/vb_runtime/src/runtime_tests.rs:767:13
+    |
+767 |         let snap = runtime.counters_snapshot();
+    |             ^^^^ help: if this is intentional, prefix it with an underscore: `_snap`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:346:13
+    |
+346 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs:394:13
+    |
+394 |         let mut shard = Shard::new(shard_config);
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:163:9
+    |
+163 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:182:9
+    |
+182 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:203:9
+    |
+203 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:224:9
+    |
+224 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:259:9
+    |
+259 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:291:9
+    |
+291 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:349:9
+    |
+349 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:367:9
+    |
+367 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:442:9
+    |
+442 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:462:9
+    |
+462 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:484:9
+    |
+484 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:505:9
+    |
+505 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs:530:9
+    |
+530 |     let mut shard = test_shard();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+
+running 1914 tests
+....................................................................................... 87/1914
+....................................................................................... 174/1914
+....................................................................................... 261/1914
+....................................................................................... 348/1914
+....................................................................................... 435/1914
+....................................................................................... 522/1914
+....................................................................................... 609/1914
+....................................................................................... 696/1914
+....................................................................................... 783/1914
+....................................................................................... 870/1914
+....................................................................................... 957/1914
+....................................................................................... 1044/1914
+....................................................................................... 1131/1914
+....................................................................................... 1218/1914
+....................................................................................... 1305/1914
+....................................................................................... 1392/1914
+....................................................................................... 1479/1914
+....................................................................................... 1566/1914
+....................................................................................... 1653/1914
+....................................................................................... 1740/1914
+....................................................................................... 1827/1914
+....................................................................................... 1914/1914
+
+test result: ok. 1914 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.78s
+

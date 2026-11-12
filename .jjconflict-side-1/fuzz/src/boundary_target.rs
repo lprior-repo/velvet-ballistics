@@ -13,8 +13,8 @@
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::len_zero)]
 
-fn assert_typed_boundary_error(error: xtask::boundary_inventory::BoundaryInventoryError) {
-    use xtask::boundary_inventory::BoundaryInventoryError;
+fn assert_typed_boundary_error(error: boundary_inventory::BoundaryInventoryError) {
+    use boundary_inventory::BoundaryInventoryError;
     match error {
         BoundaryInventoryError::WorkspaceNotDiscoverable
         | BoundaryInventoryError::IncompleteDiscoveryInput
@@ -34,7 +34,7 @@ fn assert_typed_boundary_error(error: xtask::boundary_inventory::BoundaryInvento
 }
 
 pub fn fuzz_external_input_adapter_boundary(data: &[u8]) {
-    use xtask::boundary_inventory::{parse_inventory, validate_evidence_reference_bytes};
+    use boundary_inventory::{parse_inventory, validate_evidence_reference_bytes};
 
     if data.is_empty() {
         let result = parse_inventory(data);

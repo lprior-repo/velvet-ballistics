@@ -1,0 +1,17 @@
+
+running 3 tests
+test legacy_version_1_checkpoint_is_explicitly_rejected ... ok
+test journaled_admission_policy_pin_survives_durable_recovery ... FAILED
+test strict_admission_policy_pin_survives_durable_recovery ... ok
+
+failures:
+
+---- journaled_admission_policy_pin_survives_durable_recovery stdout ----
+Error: "submit failed: admission rejected: artifact invalid"
+
+
+failures:
+    journaled_admission_policy_pin_survives_durable_recovery
+
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

@@ -18,7 +18,6 @@ scan_paths=(
   scripts
   .moon
   .github
-  xtask
 )
 
 self_basename="$(basename "$0")"

@@ -1,0 +1,96 @@
+{
+  "source_manifest_sha256": "6272148b4bd5d0a2690c12c61cf6274af6d34d24388c198e63ae1d6307c65b7f",
+  "requirements_unchanged": 190,
+  "source_changes": false,
+  "metadata_changes_only": true,
+  "proposals": [
+    {
+      "requirement_id": "phase:4",
+      "requirement": "AST",
+      "scope": "Typed workflow, trigger, step, primitive, expression, result AST.",
+      "historical_owner": "vb-core-yaml-ast",
+      "proposal_key": "proposal:current-qualification:phase:4",
+      "parent": "vb-eirmk",
+      "issue_type": "epic",
+      "qualification_only": true,
+      "supporting_owners": [
+        "vb-xvu",
+        "vb-core-yaml-ast"
+      ],
+      "source_commit": "23749f4b5b0b1822243a956ae22dd1b59912a0e1",
+      "acceptance": [
+        "Map every named clause to current production API, exact registered behavior/proof/property/fuzz/benchmark lane where applicable and raw source-bound receipts.",
+        "Inspect/reuse existing implementation owners before creating bounded test or repair children; never presume missing implementation.",
+        "Obtain independent CODE and separate TEST acceptance at the same frozen revision; historical closure and compile-only success are insufficient.",
+        "Keep all completion claims false until the entire exact phase qualifies; final canonical moon ci remains with vb-eirmk.11."
+      ],
+      "graph_change": "New current qualification owner blocks vb-eirmk.11; historical implementation record/status is retained."
+    },
+    {
+      "requirement_id": "phase:17",
+      "requirement": "Snapshots/recovery base",
+      "scope": "Snapshot format, snapshot-plus-tail recovery, corruption handling.",
+      "historical_owner": "vb-tzsfr",
+      "proposal_key": "proposal:current-qualification:phase:17",
+      "parent": "vb-eirmk",
+      "issue_type": "epic",
+      "qualification_only": true,
+      "supporting_owners": [
+        "vb-0dg1",
+        "vb-tzsfr"
+      ],
+      "source_commit": "23749f4b5b0b1822243a956ae22dd1b59912a0e1",
+      "acceptance": [
+        "Map every named clause to current production API, exact registered behavior/proof/property/fuzz/benchmark lane where applicable and raw source-bound receipts.",
+        "Inspect/reuse existing implementation owners before creating bounded test or repair children; never presume missing implementation.",
+        "Obtain independent CODE and separate TEST acceptance at the same frozen revision; historical closure and compile-only success are insufficient.",
+        "Keep all completion claims false until the entire exact phase qualifies; final canonical moon ci remains with vb-eirmk.11."
+      ],
+      "graph_change": "New current qualification owner blocks vb-eirmk.11; historical implementation record/status is retained."
+    },
+    {
+      "requirement_id": "phase:20",
+      "requirement": "`retry`/`try_again`",
+      "scope": "Bounded retry policies, delay state, exhaustion semantics.",
+      "historical_owner": "vb-2bbo",
+      "proposal_key": "proposal:current-qualification:phase:20",
+      "parent": "vb-eirmk",
+      "issue_type": "epic",
+      "qualification_only": true,
+      "supporting_owners": [
+        "vb-2bbo",
+        "vb-sfhyj"
+      ],
+      "source_commit": "23749f4b5b0b1822243a956ae22dd1b59912a0e1",
+      "acceptance": [
+        "Map every named clause to current production API, exact registered behavior/proof/property/fuzz/benchmark lane where applicable and raw source-bound receipts.",
+        "Inspect/reuse existing implementation owners before creating bounded test or repair children; never presume missing implementation.",
+        "Obtain independent CODE and separate TEST acceptance at the same frozen revision; historical closure and compile-only success are insufficient.",
+        "Keep all completion claims false until the entire exact phase qualifies; final canonical moon ci remains with vb-eirmk.11."
+      ],
+      "graph_change": "New current qualification owner blocks vb-eirmk.11; historical implementation record/status is retained."
+    },
+    {
+      "requirement_id": "phase:21",
+      "requirement": "`on_error`/`then`",
+      "scope": "Handler routing, typed error slots, forward transitions.",
+      "historical_owner": "vb-heqb",
+      "proposal_key": "proposal:current-qualification:phase:21",
+      "parent": "vb-eirmk",
+      "issue_type": "epic",
+      "qualification_only": true,
+      "supporting_owners": [
+        "vb-heqb",
+        "vb-ekkau"
+      ],
+      "source_commit": "23749f4b5b0b1822243a956ae22dd1b59912a0e1",
+      "acceptance": [
+        "Map every named clause to current production API, exact registered behavior/proof/property/fuzz/benchmark lane where applicable and raw source-bound receipts.",
+        "Inspect/reuse existing implementation owners before creating bounded test or repair children; never presume missing implementation.",
+        "Obtain independent CODE and separate TEST acceptance at the same frozen revision; historical closure and compile-only success are insufficient.",
+        "Keep all completion claims false until the entire exact phase qualifies; final canonical moon ci remains with vb-eirmk.11."
+      ],
+      "graph_change": "New current qualification owner blocks vb-eirmk.11; historical implementation record/status is retained."
+    }
+  ]
+}

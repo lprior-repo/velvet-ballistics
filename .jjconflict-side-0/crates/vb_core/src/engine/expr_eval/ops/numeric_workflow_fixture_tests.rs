@@ -45,6 +45,7 @@ fn numeric_workflow_parts(
 ) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
+        source_metadata: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("numeric_execution_test"),
         digest: WorkflowDigest::from_bytes([0xFA; 32]),

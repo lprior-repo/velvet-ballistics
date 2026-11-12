@@ -10,10 +10,12 @@ members = [
     "crates/vb_ipc",
     "crates/velvet_ballistics",
     "crates/workspace_tests",
+    "crates/reference",
+    "crates/boundary_inventory",
     "fuzz",
 ]
 resolver = "2"
-exclude = ["xtask", "target/miri-tmp"]
+exclude = ["target/miri-tmp"]
 [workspace.package]
 edition = "2024"
 license = "MIT OR Apache-2.0"

@@ -1,0 +1,59 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+warning: unused import: `INPUT_MAPPING_KIND_MISMATCH_MESSAGE`
+  --> crates/velvet_ballistics/src/app_impl.rs:24:46
+   |
+24 |         INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_KIND_MISMATCH_MESSAGE,
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `INPUT_MAPPING_KIND_MISMATCH_MESSAGE` is never used
+  --> crates/velvet_ballistics/src/app_impl.rs:69:18
+   |
+69 | pub(crate) const INPUT_MAPPING_KIND_MISMATCH_MESSAGE: &str =
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: variant `SlotIndexOutOfRange` is never constructed
+  --> crates/velvet_ballistics/src/run_compiled.rs:82:5
+   |
+79 | pub(crate) enum InputMappingError {
+   |                 ----------------- variant in this enum
+...
+82 |     SlotIndexOutOfRange,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `InputMappingError` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: `velvet-ballistics` (bin "velvet-ballistics") generated 3 warnings (run `cargo fix --bin "velvet-ballistics" -p velvet-ballistics` to apply 1 suggestion)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-iw3up-cli-fixture-3090/crates/velvet_ballistics)
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+  --> crates/velvet_ballistics/tests/cross_crate_adversarial.rs:19:5
+   |
+19 |     WorkflowParts {
+   |     ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+   --> crates/velvet_ballistics/tests/cross_crate_adversarial.rs:315:17
+    |
+315 |     let parts = WorkflowParts {
+    |                 ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+   --> crates/velvet_ballistics/tests/cross_crate_adversarial.rs:436:17
+    |
+436 |     let parts = WorkflowParts {
+    |                 ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+    --> crates/velvet_ballistics/tests/cross_crate_adversarial.rs:1400:17
+     |
+1400 |     let parts = WorkflowParts {
+     |                 ^^^^^^^^^^^^^ missing `input_slots`
+
+For more information about this error, try `rustc --explain E0063`.
+error: could not compile `velvet-ballistics` (test "cross_crate_adversarial") due to 4 previous errors
+warning: build failed, waiting for other jobs to finish...

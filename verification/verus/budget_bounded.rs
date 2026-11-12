@@ -386,10 +386,14 @@ pub const SPEC_MAX_ACTION_TICKETS: u64 = 1_000_000;
 // avoids the bug while preserving the production-mirror binding.
 //
 // `MAX_LIST_ITEMS_PER_VALUE` mirrors the production constant at
-// `crates/vb_core/src/limits.rs:71 = 65_535`. The value is referenced
-// by the production budget iteration accounting at
-// `crates/vb_core/src/budget/loop_body.rs:80` and `crates/vb_core/src/budget/loop_region.rs:86` but is currently unused
-// in any spec proof or exec fn in this scope; it is kept here as a
+// `crates/vb_core/src/limits.rs:71 = 65_535`. The value is applied at
+// compile time when lowering reductions
+// (`crates/vb_compile/src/mod_compile_lowering/part_06.rs:144`) and list
+// inputs (`crates/vb_compile/src/mod_compile_lowering/list_input.rs:10`);
+// the budget iteration accounting iterates the node's own `limit` field
+// (`crates/vb_core/src/budget/loop_body.rs:82-92`,
+// `crates/vb_core/src/budget/loop_region.rs:94-102`) rather than this
+// constant. It is currently unused in any spec proof or exec fn in this
 // binding-ledger artifact so the production constant name stays
 // resolvable from spec mode.
 //
@@ -1150,7 +1154,7 @@ pub proof fn proof_unknown_factor_rejects(body: int, factor: int)
 /// VERUS-BUD-002 (overflow reject): when body * factor would overflow
 /// the u64 ceiling, the operation must reject. Mirrors the production
 /// `checked_mul` in `count_and_push_loop_body` at
-/// `crates/vb_core/src/budget/loop_body.rs:228-233`.
+/// `crates/vb_core/src/budget/loop_body.rs:236-241`.
 pub proof fn proof_nested_overflow_rejects(body: int, factor: int)
     requires
         body >= 0,
@@ -1169,7 +1173,7 @@ pub proof fn proof_nested_overflow_rejects(body: int, factor: int)
 /// Branch max: spec predicate `branch_cost(left, right) = max(left, right)`
 /// is conservative — its value is at least the larger of the two
 /// branches. Used in the production `add_conditional_max_steps` at
-/// `crates/vb_core/src/budget/loop_body.rs:154-178`.
+/// `crates/vb_core/src/budget/loop_body.rs:162-186`.
 pub open spec fn branch_cost(left: int, right: int) -> int {
     if left >= right {
         left
@@ -1323,7 +1327,7 @@ pub proof fn proof_overflow_add_returns_error()
 /// Spec lemma: `checked_mul` of u64::MAX * 2 (overflow) returns Err.
 /// Mirrors the production `add_dim` overflow detection shape. The
 /// production does not multiply in `add_dim` (multiplication lives in
-/// `count_and_push_loop_body` at budget/loop_body.rs:228-233); this lemma asserts
+/// `count_and_push_loop_body` at budget/loop_body.rs:236-241); this lemma asserts
 /// the same overflow-detection shape that the multiplication path
 /// discharges in the same way.
 pub proof fn proof_overflow_mul_returns_error()

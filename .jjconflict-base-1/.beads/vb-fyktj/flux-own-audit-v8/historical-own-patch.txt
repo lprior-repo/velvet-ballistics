@@ -1,0 +1,276 @@
+commit 56d14ca78 (origin/bead/vb-6r7f5, bead/vb-6r7f5)
+Author:     Lewis <priorlewis43@gmail.com>
+AuthorDate: Sun Aug 30 00:08:21 2026 -0500
+Commit:     Lewis <priorlewis43@gmail.com>
+CommitDate: Sun Aug 30 00:08:21 2026 -0500
+
+    feat: route flux through canonical scripts/flux-check-package.sh
+    
+    - Enhance flux-check-package.sh as unified entry point for all flux
+      verification (xtask lanes, Moon tasks, direct invocation)
+    - Add --all, --crates, --dry-run, and --help flags
+    - Auto-discover flux-annotated crates via #[cfg(flux)] source scan
+    - Reject --lib/--test target selectors (not supported by cargo-flux)
+    - Route xtask flux lane through the canonical script via flux_command()
+    - Add .moon/tasks/flux.yml with flux-check and flux-check-all Moon tasks
+
+diff --git a/.moon/tasks/flux.yml b/.moon/tasks/flux.yml
+new file mode 100644
+index 000000000..387a56b85
+--- /dev/null
++++ b/.moon/tasks/flux.yml
+@@ -0,0 +1,42 @@
++# Flux refinement-type verification tasks
++# These tasks run formal verification using the flux-rs compiler plugin
++# via the canonical scripts/flux-check-package.sh entry point.
++
++fileGroups:
++  flux_sources:
++    - 'crates/vb_storage/src/**/*'
++  flux_scripts:
++    - 'scripts/flux-check-package.sh'
++
++tasks:
++  flux-check:
++    script: |
++      set -euo pipefail
++      mkdir -p target/moon-locks
++      flock --shared target/moon-locks/source-mutation.lock timeout 120m bash scripts/flux-check-package.sh vb_storage
++    toolchains:
++      - rust
++    inputs:
++      - '@globs(flux_sources)'
++      - '@globs(flux_scripts)'
++      - 'Cargo.toml'
++      - 'rust-toolchain.toml'
++    options:
++      runInCI: true
++      cache: false
++
++  flux-check-all:
++    script: |
++      set -euo pipefail
++      mkdir -p target/moon-locks
++      flock --shared target/moon-locks/source-mutation.lock timeout 180m bash scripts/flux-check-package.sh --all
++    toolchains:
++      - rust
++    inputs:
++      - '@globs(flux_sources)'
++      - '@globs(flux_scripts)'
++      - 'Cargo.toml'
++      - 'rust-toolchain.toml'
++    options:
++      runInCI: false
++      cache: false
+diff --git a/scripts/flux-check-package.sh b/scripts/flux-check-package.sh
+index 330974b6a..413a717f6 100755
+--- a/scripts/flux-check-package.sh
++++ b/scripts/flux-check-package.sh
+@@ -1,21 +1,164 @@
+ #!/usr/bin/env bash
+ set -euo pipefail
+ 
+-if [ "$#" -lt 1 ]; then
+-  printf 'usage: bash scripts/flux-check-package.sh <package> [cargo-flux options]\n' >&2
++# =============================================================================
++# Canonical Flux Check Script
++#
++# Single entry point for all flux verification across:
++#   - xtask lane runner (scripts/flux-check-package.sh <package>)
++#   - Moon tasks (bash scripts/flux-check-package.sh <package> [--all | --crates ...])
++#   - Direct invocation (bash scripts/flux-check-package.sh --help | --dry-run ...)
++#
++# Usage:
++#   bash scripts/flux-check-package.sh <package> [cargo-flux options]
++#   bash scripts/flux-check-package.sh --all [cargo-flux options]
++#   bash scripts/flux-check-package.sh --crates <p1> <p2> ... [cargo-flux options]
++#   bash scripts/flux-check-package.sh --dry-run --all
++#   bash scripts/flux-check-package.sh --help
++#
++# The installed cargo-flux does not accept --lib, --test, --tests, --benches,
++# or --all-targets target selectors; these are rejected at the script level.
++# =============================================================================
++
++SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
++WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
++
++usage() {
++  cat >&2 <<EOF
++usage: bash scripts/flux-check-package.sh [OPTIONS] [PACKAGE]
++
++Canonical flux-check entry point.
++
++Options:
++  --all                    Run flux on all crates with flux annotations
++  --crates P1 [P2 ...]    Run flux on specific packages
++  --dry-run               Print commands without executing
++  --help                  Show this help message
++
++When --all or --crates is omitted, the first positional argument is treated
++as the package name. Additional positional arguments are forwarded to
++cargo-flux.
++EOF
+   exit 2
+-fi
++}
++
++# --- Argument parsing ---
++dry_run=false
++run_all=false
++declare -a extra_packages=()
++declare -a flux_args=()
++
++while [ "$#" -gt 0 ]; do
++  case "$1" in
++    --help)
++      usage
++      ;;
++    --dry-run)
++      dry_run=true
++      shift
++      ;;
++    --all)
++      run_all=true
++      shift
++      ;;
++    --crates)
++      shift
++      if [ "$#" -lt 1 ]; then
++        printf 'error: --crates requires at least one package name\n' >&2
++        exit 2
++      fi
++      while [ "$#" -gt 0 ]; do
++        case "$1" in
++          --dry-run|--all|--crates|--help)
++            break
++            ;;
++          *)
++            extra_packages+=("$1")
++            shift
++            ;;
++        esac
++      done
++      ;;
++    *)
++      flux_args+=("$1")
++      shift
++      ;;
++  esac
++done
+ 
+-package="$1"
+-shift
++# --- Target-selector validation ---
++# The installed cargo-flux does not accept these flags.
++reject_target_selector() {
++  printf 'unsupported cargo-flux target selector: %s\n' "$1" >&2
++  exit 2
++}
+ 
+-for arg in "$@"; do
++for arg in "${flux_args[@]+"${flux_args[@]}"}"; do
+   case "$arg" in
+     --lib|--test|--tests|--benches|--all-targets)
+-      printf 'unsupported cargo-flux target selector for installed cargo-flux: %s\n' "$arg" >&2
+-      exit 2
++      reject_target_selector "$arg"
+       ;;
+   esac
+ done
+ 
+-cargo flux -p "$package" --message-format human "$@"
++# --- Discover packages ---
++discover_all_flux_crates() {
++  # Find crates with #[cfg(flux)] gated flux source files.
++  # This avoids running flux on every crate when only a subset has annotations.
++  local found=()
++  for manifest in "$WORKSPACE_ROOT"/crates/*/Cargo.toml; do
++    local crate_name
++    crate_name="$(basename "$(dirname "$manifest")")"
++    # Check if the crate has flux-annotated source files
++    local crate_src="$WORKSPACE_ROOT/crates/$crate_name/src"
++    if [ -d "$crate_src" ] && grep -rl '#\[cfg(flux)\]' "$crate_src" >/dev/null 2>&1; then
++      found+=("$crate_name")
++    fi
++  done
++  printf '%s\n' "${found[@]+"${found[@]}"}"
++}
++
++if $run_all; then
++  declare -a packages=()
++  while IFS= read -r pkg; do
++    [ -n "$pkg" ] && packages+=("$pkg")
++  done < <(discover_all_flux_crates)
++elif [ "${#extra_packages[@]}" -gt 0 ]; then
++  packages=("${extra_packages[@]}")
++else
++  # Single package mode: first non-flag arg (if any) is the package name.
++  # Remaining positional args after the first are forwarded to cargo-flux.
++  if [ "${#flux_args[@]}" -gt 0 ]; then
++    packages=("${flux_args[0]}")
++    flux_args=("${flux_args[@]:1}")
++  else
++    printf 'error: no package specified. Use <package>, --all, or --crates <p1> <p2> ...\n' >&2
++    exit 2
++  fi
++fi
++
++# --- Execute ---
++if [ "${#packages[@]}" -eq 0 ]; then
++  printf 'no flux-annotated crates found in %s/crates/\n' "$WORKSPACE_ROOT" >&2
++  exit 2
++fi
++
++any_failure=false
++
++for pkg in "${packages[@]}"; do
++  if $dry_run; then
++    printf 'DRY-RUN: cargo flux -p %s --message-format human %s\n' "$pkg" "${flux_args[*]+"${flux_args[*]}"}"
++  else
++    printf 'flux-check: %s ... ' "$pkg" >&2
++    if cargo flux -p "$pkg" --message-format human "${flux_args[@]+"${flux_args[@]}"}"; then
++      printf 'pass\n' >&2
++    else
++      printf 'fail\n' >&2
++      any_failure=true
++    fi
++  fi
++done
++
++if $any_failure; then
++  exit 1
++fi
+diff --git a/xtask/src/lanes.rs b/xtask/src/lanes.rs
+index f97147558..6282995aa 100644
+--- a/xtask/src/lanes.rs
++++ b/xtask/src/lanes.rs
+@@ -78,12 +78,7 @@ pub fn lane_command(lane: &Lane, crate_name: &str, workspace_root: &Path) -> Vec
+         ],
+         "verus" => verus_command(crate_name, workspace_root),
+         "tla" => tla_command(crate_name, workspace_root),
+-        "flux" => vec![
+-            "cargo".into(),
+-            "flux".into(),
+-            "-p".into(),
+-            crate_name.into(),
+-        ],
++        "flux" => flux_command(crate_name, workspace_root),
+         _ => vec!["echo".into(), format!("unknown lane: {}", lane.name)],
+     }
+ }
+@@ -104,6 +99,15 @@ fn tla_command(crate_name: &str, workspace_root: &Path) -> Vec<String> {
+     vec!["tla2tools".into(), format!("{}", tla_file.display())]
+ }
+ 
++fn flux_command(crate_name: &str, workspace_root: &Path) -> Vec<String> {
++    let script = workspace_root.join("scripts/flux-check-package.sh");
++    vec![
++        "bash".into(),
++        format!("{}", script.display()),
++        crate_name.into(),
++    ]
++}
++
+ pub fn detect_available_lanes(workspace_root: &Path) -> Vec<Lane> {
+     let all_lanes = [
+         ("test", true),

@@ -1,0 +1,20 @@
+
+running 2 tests
+test queue::writer::flush_tests::durable_service_respects_batch_limit_and_fifo ... ok
+test queue::writer::flush_tests::commit_failure_preserves_entire_batch_and_retry_commits_once ... FAILED
+
+failures:
+
+---- queue::writer::flush_tests::commit_failure_preserves_entire_batch_and_retry_commits_once stdout ----
+
+thread 'queue::writer::flush_tests::commit_failure_preserves_entire_batch_and_retry_commits_once' (2663786) panicked at crates/vb_storage/src/queue/writer/flush_tests.rs:40:5:
+assertion failed: matches!(result, Err(JournalError::Fjall(fjall::Error::Io(error))) if
+    error.kind() == std::io::ErrorKind::Other)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    queue::writer::flush_tests::commit_failure_preserves_entire_batch_and_retry_commits_once
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 1596 filtered out; finished in 0.01s
+

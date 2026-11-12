@@ -1,0 +1,24 @@
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-nn1yo-retry-5090/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.55s
+     Running unittests src/main.rs (target/debug/deps/velvet_ballistics-88cfba1fae4762ec)
+
+running 1 test
+test commands_journal::retry_analysis_tests::non_matching_success_does_not_clear_failure ... FAILED
+
+failures:
+
+---- commands_journal::retry_analysis_tests::non_matching_success_does_not_clear_failure stdout ----
+
+thread 'commands_journal::retry_analysis_tests::non_matching_success_does_not_clear_failure' (1150766) panicked at crates/velvet_ballistics/src/commands_journal/retry_analysis_tests.rs:163:5:
+assertion `left == right` failed
+  left: None
+ right: Some(5)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    commands_journal::retry_analysis_tests::non_matching_success_does_not_clear_failure
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 347 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p velvet-ballistics --bin velvet-ballistics`

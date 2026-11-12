@@ -1,0 +1,13 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": "owner-authorized-unblock",
+  "sublane": "kani-tractable-proof-kernel",
+  "delegate": "holzman-rust",
+  "attempt": 1,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "reason": "Owner selected option 2: deeper proof architecture work in preserved vb-vt2f workspace after State 5 attempt-7 Kani timeout blocker",
+  "input_artifacts": [".beads/vb-vt2f/blocker-report.md", ".beads/vb-vt2f/proof-obligations.jsonl", ".beads/vb-vt2f/proof-obligations.planned.jsonl", ".beads/vb-vt2f/proof-evidence.md", ".beads/vb-vt2f/proof-writer-report.md", "crates/vb_runtime/src/kani_vt2f_runtime_facade.rs", "crates/vb_runtime/src/kani_vt2f_shard_lower_semantics.rs"],
+  "output_artifacts": [".beads/vb-vt2f/proof-architecture-report.md", ".beads/vb-vt2f/proof-evidence.md", ".beads/vb-vt2f/blocker-report.md", "verification/proof-kernel or cfg(kani) abstractions", "updated Kani harnesses"],
+  "status": "QUEUED"
+}

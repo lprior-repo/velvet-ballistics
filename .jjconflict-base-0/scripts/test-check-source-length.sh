@@ -67,8 +67,8 @@ assert_eq 'production: crates/vb_core/src/foo/bar.rs' \
 assert_eq 'production: crates/vb_core/src/foo/bar/baz.rs' \
   production "$(sl_categorize crates/vb_core/src/foo/bar/baz.rs)"
 
-assert_eq 'production: xtask/src/main.rs' \
-  production "$(sl_categorize xtask/src/main.rs)"
+assert_eq 'production: scripts/forbidden_scan.rs' \
+  production "$(sl_categorize scripts/forbidden_scan.rs)"
 
 assert_eq 'production: scripts/check-workspace-assertions.rs' \
   production "$(sl_categorize scripts/check-workspace-assertions.rs)"

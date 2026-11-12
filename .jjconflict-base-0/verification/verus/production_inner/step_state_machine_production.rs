@@ -48,11 +48,13 @@ use vstd::prelude::*;
 verus! {
 
 // ============================================================================
-// Opaque payload types — mirrors of `crates/vb_core/src/value.rs`
+// Opaque payload types — mirrors of `crates/vb_core/src/value/slot.rs`
+// and `crates/vb_core/src/value/taint.rs`
 // ============================================================================
 //
 // The production `EngineSignal::Finished(SlotValue, Taint)` carries
-// payload types defined in `crates/vb_core/src/value.rs`. The state-
+// payload types defined in `crates/vb_core/src/value/slot.rs` and
+// `crates/vb_core/src/value/taint.rs`. The state-
 // machine spec only cares about the `Finished` discriminant (not the
 // payload), so we mirror the discriminant sets of `SlotValue` and
 // `Taint` opaquely — enough to keep the binding structurally valid
@@ -60,7 +62,7 @@ verus! {
 // `serde::Serialize/Deserialize` derives blocked by the same issue as
 // in `extern_budget_bounded.rs`).
 /// Mirror of `SlotValue` discriminant set at
-/// `crates/vb_core/src/value.rs:50+`. Only the variants referenced by
+/// `crates/vb_core/src/value/slot.rs:14-31`. Only the variants referenced by
 /// `EngineSignal::Finished` payload are mirrored; the rest are folded
 /// into a single `Other` variant for the purpose of this binding.
 #[derive(Clone)]

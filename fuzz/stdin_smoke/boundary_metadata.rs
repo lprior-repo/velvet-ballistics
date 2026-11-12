@@ -1,7 +1,7 @@
 #![no_main]
 
+use boundary_inventory::{BoundaryCandidate, classify_boundary};
 use libfuzzer_sys::fuzz_target;
-use xtask::boundary_inventory::{BoundaryCandidate, classify_boundary};
 
 fuzz_target!(|data: &[u8]| {
     let marker = String::from_utf8_lossy(data);

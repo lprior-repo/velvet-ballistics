@@ -18,6 +18,7 @@ impl Shard {
         }
         let mut store = ValueStore::with_max_slots(workflow.resource_contract().max_slots);
         self.validate_secret_presence(&workflow)?;
+        let supplied_inputs = inputs;
         let filled_inputs = self.prepare_secret_inputs(&workflow, inputs)?;
         let inputs = filled_inputs.as_slice();
         if let Some(metadata) = workflow.source_metadata() {
@@ -31,6 +32,8 @@ impl Shard {
             &workflow,
             action_contracts,
         )?;
+        let prepared_store = fresh_inputs::prepare(&workflow, supplied_inputs)?;
+        let store = prepared_store.map_or(store, |prepared| prepared);
         self.prepare_run_slots(run)?;
         let mut frame = self.take_frame_for(run, &workflow)?;
         crate::shard::helpers::seed_input_slots(&mut frame, inputs, &workflow)?;

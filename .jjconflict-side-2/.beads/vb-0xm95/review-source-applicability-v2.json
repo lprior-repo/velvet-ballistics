@@ -1,0 +1,12 @@
+{
+  "review": "code-review-v2.md",
+  "reviewed_source_commit": "ad55ef764115e0ff2378d2d6c768f285f064f7e3",
+  "current_commit": "69bb7e6c62963907becaf959a4c4a75560f86343",
+  "production_files": 14,
+  "production_hash_mismatches": [],
+  "test_inputs_outside_production_applicability": [
+    "crates/vb_runtime/src/journal/tests/strict_policy_port.rs",
+    "crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs"
+  ],
+  "scope": "Independent static approval applies to unchanged14productioninputs. Changed internal/public tests require independent TEST review. Final canonical and remainingfailclosed cases pending; no fullv1/formal/physicalfault acceptance."
+}

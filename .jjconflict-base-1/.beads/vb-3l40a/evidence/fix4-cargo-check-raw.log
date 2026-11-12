@@ -1,0 +1,176 @@
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090/crates/vb_runtime)
+error: `self` parameter is only allowed in associated functions
+   --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:309:9
+    |
+309 |         &self,
+    |         ^^^^^ not semantically valid as function parameter
+    |
+    = note: associated functions are those in `impl` or `trait` definitions
+
+error[E0432]: unresolved import `full::action_contract_abi_digest`
+  --> crates/vb_runtime/src/recovery.rs:19:5
+   |
+19 |     action_contract_abi_digest,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ no `action_contract_abi_digest` in `recovery::full`
+
+error[E0401]: can't use `Self` from outer item
+  |
+  = note: nested items are independent from their parent item for everything except for privacy and name resolution
+help: refer to the type directly here instead
+ --> crates/vb_runtime/src/lib.rs:1:1
+  |
+1 | Shard#![forbid(unsafe_code)]
+  | +++++
+
+error[E0433]: cannot find type `ActionId` in this scope
+   --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:318:31
+    |
+318 |             let expected_id = ActionId::new(i as u32);
+    |                               ^^^^^^^^ use of undeclared type `ActionId`
+    |
+help: consider importing this struct
+   --> crates/vb_runtime/src/shard/lifecycle/chunk_003_chunks/chunk_001_preflight_completion.rs:1:1
+    |
+  1 + use vb_core::ActionId;
+    |
+
+warning: unused import: `RecoveredPendingActionTicket`
+  --> crates/vb_runtime/src/recovery.rs:20:60
+   |
+20 |     RecoveredAdmissionContext, RecoveredAdmissionEvidence, RecoveredPendingActionTicket,
+   |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::recovery::RecoveredRunBoundary`
+  --> crates/vb_runtime/src/shard/types.rs:21:5
+   |
+21 | use crate::recovery::RecoveredRunBoundary;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `validate_submit_admission_with_contracts` found for reference `&Shard` in the current scope
+   --> crates/vb_runtime/src/runtime.rs:274:15
+    |
+274 |         shard.validate_submit_admission_with_contracts(
+    |         ------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: there is a method `validate_submit_admission` with a similar name, but with different arguments
+   --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:296:5
+    |
+296 | /     pub(crate) fn validate_submit_admission(
+297 | |         &self,
+298 | |         run: RunId,
+299 | |         digest: vb_core::ids::WorkflowDigest,
+300 | |         caps: CapabilitySet,
+301 | |     ) -> RuntimeResult<()> {
+    | |__________________________^
+
+error[E0599]: no method named `validate_submit_admission_with_contracts` found for reference `&Shard` in the current scope
+   --> crates/vb_runtime/src/runtime.rs:298:15
+    |
+298 |         shard.validate_submit_admission_with_contracts(
+    |         ------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: there is a method `validate_submit_admission` with a similar name, but with different arguments
+   --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:296:5
+    |
+296 | /     pub(crate) fn validate_submit_admission(
+297 | |         &self,
+298 | |         run: RunId,
+299 | |         digest: vb_core::ids::WorkflowDigest,
+300 | |         caps: CapabilitySet,
+301 | |     ) -> RuntimeResult<()> {
+    | |__________________________^
+
+error[E0599]: no variant named `ActionContractInvalid` found for enum `RuntimeError`
+   --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:375:42
+    |
+375 |             .ok_or_else(|| RuntimeError::ActionContractInvalid {
+    |                                          ^^^^^^^^^^^^^^^^^^^^^ variant not found in `RuntimeError`
+    |
+   ::: crates/vb_runtime/src/error/mod.rs:7:1
+    |
+  7 | pub enum RuntimeError {
+    | --------------------- variant `ActionContractInvalid` not found here
+
+error[E0616]: field `0` of struct `ActionId` is private
+   --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:377:86
+    |
+377 |                 reason: format!("no action contract for action {} on run {}", action.0, run.0),
+    |                                                                                      ^ private field
+
+error[E0616]: field `0` of struct `RunId` is private
+   --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:377:93
+    |
+377 |                 reason: format!("no action contract for action {} on run {}", action.0, run.0),
+    |                                                                                             ^ private field
+
+error[E0027]: pattern does not mention fields `artifact_digest`, `next_seq`, `collect_states`, `boundary`
+   --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:729:13
+    |
+729 | /             ShardCommand::Recover {
+730 | |                 run,
+731 | |                 frame,
+732 | |                 workflow_digest,
+733 | |             } => self.handle_recover(run, frame, workflow_digest)?,
+    | |_____________^ missing fields `artifact_digest`, `next_seq`, `collect_states`, `boundary`
+    |
+help: include the missing fields in the pattern
+    |
+732 -                 workflow_digest,
+733 -             } => self.handle_recover(run, frame, workflow_digest)?,
+732 +                 workflow_digest, artifact_digest, next_seq, collect_states, boundary } => self.handle_recover(run, frame, workflow_digest)?,
+    |
+help: if you don't care about these missing fields, you can explicitly ignore them
+    |
+732 -                 workflow_digest,
+733 -             } => self.handle_recover(run, frame, workflow_digest)?,
+732 +                 workflow_digest, artifact_digest: _, next_seq: _, collect_states: _, boundary: _ } => self.handle_recover(run, frame, workflow_digest)?,
+    |
+help: or always ignore missing fields here
+    |
+732 -                 workflow_digest,
+733 -             } => self.handle_recover(run, frame, workflow_digest)?,
+732 +                 workflow_digest, .. } => self.handle_recover(run, frame, workflow_digest)?,
+    |
+
+error[E0599]: no variant, associated function, or constant named `Shutdown` found for enum `ShardCommand` in the current scope
+   --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:734:27
+    |
+734 |             ShardCommand::Shutdown => {
+    |                           ^^^^^^^^ variant, associated function, or constant not found in `ShardCommand`
+    |
+   ::: crates/vb_runtime/src/shard/types.rs:60:1
+    |
+ 60 | pub enum ShardCommand {
+    | --------------------- variant, associated function, or constant `Shutdown` not found for this enum
+
+error[E0599]: no variant named `ActionContractInvalid` found for enum `RuntimeError`
+   --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:320:42
+    |
+320 |                 return Err(RuntimeError::ActionContractInvalid {
+    |                                          ^^^^^^^^^^^^^^^^^^^^^ variant not found in `RuntimeError`
+    |
+   ::: crates/vb_runtime/src/error/mod.rs:7:1
+    |
+  7 | pub enum RuntimeError {
+    | --------------------- variant `ActionContractInvalid` not found here
+
+error[E0616]: field `0` of struct `ActionId` is private
+   --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:324:37
+    |
+324 |                         contract.id.0, i
+    |                                     ^ private field
+
+warning: unused variable: `run`
+   --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:352:56
+    |
+352 |     pub(crate) fn action_abi_digests_remove(&mut self, run: RunId) {
+    |                                                        ^^^ help: if this is intentional, prefix it with an underscore: `_run`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+Some errors have detailed explanations: E0027, E0401, E0432, E0433, E0599, E0616.
+For more information about an error, try `rustc --explain E0027`.
+warning: `vb_runtime` (lib) generated 3 warnings
+error: could not compile `vb_runtime` (lib) due to 13 previous errors; 3 warnings emitted

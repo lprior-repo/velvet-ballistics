@@ -1,0 +1,45 @@
+Dictionary: 36 entries
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 4151504716
+INFO: Loaded 1 modules   (54287 inline 8-bit counters): 54287 [0x559973e78063, 0x559973e85472), 
+INFO: Loaded 1 PC tables (54287 PCs): 54287 [0x559973e85478,0x559973f59568), 
+INFO:        1 files found in /home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1/target/fuzz-dictionary-validation/whitespace
+INFO: seed corpus: files: 1 min: 54b max: 54b total: 54b rss: 37Mb
+#2	INITED cov: 1488 ft: 1489 corp: 1/54b exec/s: 0 rss: 40Mb
+	NEW_FUNC[1/4]: 0x559973b488d0  (/home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1/target/fuzz-dictionary-baseline/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x2f58d0) (BuildId: d6f896b4627e7ecfcef2c6a1bcc2f93c961aeb3e)
+	NEW_FUNC[2/4]: 0x559973d0a280  (/home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1/target/fuzz-dictionary-baseline/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x4b7280) (BuildId: d6f896b4627e7ecfcef2c6a1bcc2f93c961aeb3e)
+#3	NEW    cov: 1547 ft: 1758 corp: 2/108b lim: 54 exec/s: 0 rss: 41Mb L: 54/54 MS: 1 CopyPart-
+#4	NEW    cov: 1554 ft: 1960 corp: 3/162b lim: 54 exec/s: 0 rss: 41Mb L: 54/54 MS: 1 CopyPart-
+#5	NEW    cov: 1555 ft: 2036 corp: 4/211b lim: 54 exec/s: 0 rss: 41Mb L: 49/54 MS: 1 EraseBytes-
+#7	NEW    cov: 1558 ft: 2040 corp: 5/263b lim: 54 exec/s: 0 rss: 41Mb L: 52/54 MS: 2 CopyPart-ChangeBit-
+#13	NEW    cov: 1568 ft: 2069 corp: 6/307b lim: 54 exec/s: 0 rss: 41Mb L: 44/54 MS: 1 CrossOver-
+#16	NEW    cov: 1580 ft: 2494 corp: 7/334b lim: 54 exec/s: 0 rss: 42Mb L: 27/54 MS: 3 ChangeBinInt-ShuffleBytes-EraseBytes-
+#28	NEW    cov: 1586 ft: 2518 corp: 8/358b lim: 54 exec/s: 0 rss: 43Mb L: 24/54 MS: 2 CopyPart-CrossOver-
+#34	NEW    cov: 1622 ft: 2838 corp: 9/378b lim: 54 exec/s: 0 rss: 43Mb L: 20/54 MS: 1 EraseBytes-
+#35	NEW    cov: 1668 ft: 2908 corp: 10/417b lim: 54 exec/s: 0 rss: 43Mb L: 39/54 MS: 1 EraseBytes-
+#41	NEW    cov: 1673 ft: 2914 corp: 11/471b lim: 54 exec/s: 0 rss: 43Mb L: 54/54 MS: 1 CMP- DE: "\001\000\000\000\000\000\000\000"-
+#42	REDUCE cov: 1673 ft: 2914 corp: 11/467b lim: 54 exec/s: 0 rss: 43Mb L: 50/54 MS: 1 EraseBytes-
+#43	NEW    cov: 1673 ft: 2915 corp: 12/519b lim: 54 exec/s: 0 rss: 43Mb L: 52/54 MS: 1 CopyPart-
+#60	NEW    cov: 1676 ft: 2926 corp: 13/571b lim: 54 exec/s: 0 rss: 45Mb L: 52/54 MS: 2 CopyPart-ManualDict- DE: "kw_secrets=\"secrets"-
+#61	NEW    cov: 1676 ft: 2941 corp: 14/588b lim: 54 exec/s: 0 rss: 45Mb L: 17/54 MS: 1 EraseBytes-
+#63	NEW    cov: 1676 ft: 2943 corp: 15/620b lim: 54 exec/s: 0 rss: 45Mb L: 32/54 MS: 2 ChangeBinInt-EraseBytes-
+#70	NEW    cov: 1676 ft: 2966 corp: 16/642b lim: 54 exec/s: 0 rss: 45Mb L: 22/54 MS: 2 ManualDict-EraseBytes- DE: "kw_trigger=\"trigger"-
+#73	NEW    cov: 1683 ft: 3036 corp: 17/671b lim: 54 exec/s: 0 rss: 45Mb L: 29/54 MS: 3 CopyPart-ChangeBit-EraseBytes-
+#78	REDUCE cov: 1683 ft: 3036 corp: 17/656b lim: 54 exec/s: 0 rss: 45Mb L: 35/54 MS: 5 ChangeBit-ChangeBit-InsertRepeatedBytes-EraseBytes-PersAutoDict- DE: "\001\000\000\000\000\000\000\000"-
+#79	REDUCE cov: 1683 ft: 3036 corp: 17/636b lim: 54 exec/s: 0 rss: 45Mb L: 32/54 MS: 1 EraseBytes-
+	NEW_FUNC[1/2]: 0x559973b4aba0  (/home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1/target/fuzz-dictionary-baseline/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x2f7ba0) (BuildId: d6f896b4627e7ecfcef2c6a1bcc2f93c961aeb3e)
+	NEW_FUNC[2/2]: 0x559973d8e7b0  (/home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1/target/fuzz-dictionary-baseline/x86_64-unknown-linux-gnu/release/vb_f04l_yaml_compiler_compile+0x53b7b0) (BuildId: d6f896b4627e7ecfcef2c6a1bcc2f93c961aeb3e)
+#85	NEW    cov: 1712 ft: 3119 corp: 18/658b lim: 54 exec/s: 0 rss: 45Mb L: 22/54 MS: 1 ChangeByte-
+#86	NEW    cov: 1713 ft: 3137 corp: 19/699b lim: 54 exec/s: 0 rss: 45Mb L: 41/54 MS: 1 EraseBytes-
+#89	NEW    cov: 1717 ft: 3154 corp: 20/709b lim: 54 exec/s: 0 rss: 46Mb L: 10/54 MS: 3 CopyPart-ShuffleBytes-EraseBytes-
+#90	NEW    cov: 1724 ft: 3162 corp: 21/763b lim: 54 exec/s: 0 rss: 46Mb L: 54/54 MS: 1 CMP- DE: "\001n"-
+#91	REDUCE cov: 1724 ft: 3162 corp: 21/757b lim: 54 exec/s: 0 rss: 46Mb L: 23/54 MS: 1 EraseBytes-
+#98	NEW    cov: 1724 ft: 3164 corp: 22/769b lim: 54 exec/s: 0 rss: 46Mb L: 12/54 MS: 2 ChangeBinInt-CMP- DE: "st"-
+#99	NEW    cov: 1725 ft: 3165 corp: 23/818b lim: 54 exec/s: 0 rss: 46Mb L: 49/54 MS: 1 ChangeByte-
+#100	DONE   cov: 1725 ft: 3165 corp: 23/818b lim: 54 exec/s: 0 rss: 46Mb
+###### Recommended dictionary. ######
+"\001\000\000\000\000\000\000\000" # Uses: 1
+"\001n" # Uses: 0
+"st" # Uses: 0
+###### End of recommended dictionary. ######
+Done 100 runs in 0 second(s)

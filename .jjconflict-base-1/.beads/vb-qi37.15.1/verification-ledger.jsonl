@@ -1,0 +1,4 @@
+{"id":"SIM-CLI-001","result":"PASS","evidence":"rtk cargo test -p velvet_ballistics --test cli_integration cli_simulate -> 4 passed","owner_state":5,"rerun_from":8}
+{"id":"SIM-CLI-002","result":"PASS","evidence":"simulate JSON schema/kind/totals trace test passed","owner_state":5,"rerun_from":8}
+{"id":"SIM-CLI-003","result":"PASS","evidence":"manual-qa-smoke.md STATUS: PASS and no DB side-effect test passed","owner_state":7,"rerun_from":7}
+{"id":"MOON-CI-GLOBAL","result":"DEFERRED_GLOBAL","evidence":"moon ci fails before/after with fatal: ambiguous argument 'main'","owner_state":8,"rerun_from":8,"follow_up":"Fix Moon/JJ isolated workspace base revision detection."}

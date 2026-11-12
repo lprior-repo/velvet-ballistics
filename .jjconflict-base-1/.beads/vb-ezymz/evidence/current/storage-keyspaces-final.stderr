@@ -1,0 +1,3 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-029e3942d93f9ae1)
+error: test failed, to rerun pass `-p vb_storage --lib`

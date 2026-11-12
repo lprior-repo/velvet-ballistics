@@ -31,14 +31,6 @@ use compile_source_finish::finalize_compiled_workflow;
 #[path = "body_width_walk.rs"]
 mod body_width_walk;
 
-#[path = "part_01/width.rs"]
-mod width;
-pub(super) use width::{body_width, canonical_body_step_width, choose_width, together_width};
-#[path = "part_01/layout.rs"]
-mod layout;
-pub(super) use layout::{
-    canonical_step_names, layout_start, layout_width, named_workflow_error, next_layout_start,
-};
 
 
 /// Compile the canonical cold YAML authoring AST into numeric runtime IR.

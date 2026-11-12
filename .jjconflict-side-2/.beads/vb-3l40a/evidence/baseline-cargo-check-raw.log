@@ -1,0 +1,299 @@
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling libc v0.2.186
+   Compiling semver v1.0.28
+   Compiling serde_core v1.0.228
+   Compiling syn v2.0.117
+   Compiling crossbeam-utils v0.8.21
+   Compiling rustc_version v0.4.1
+    Checking scopeguard v1.2.0
+   Compiling serde v1.0.228
+    Checking cfg-if v1.0.4
+    Checking lock_api v0.4.14
+   Compiling getrandom v0.4.2
+   Compiling autocfg v1.5.1
+   Compiling thiserror v2.0.18
+   Compiling serde_derive v1.0.228
+   Compiling rustix v1.1.4
+    Checking equivalent v1.0.2
+   Compiling thiserror-impl v2.0.18
+   Compiling num-traits v0.2.19
+    Checking spin v0.9.8
+    Checking once_cell v1.21.4
+   Compiling find-msvc-tools v0.1.9
+   Compiling parking_lot_core v0.9.12
+   Compiling shlex v1.3.0
+    Checking bitflags v2.11.1
+    Checking linux-raw-sys v0.12.1
+   Compiling cc v1.2.62
+    Checking crossbeam-epoch v0.9.18
+   Compiling heapless v0.7.17
+    Checking hashbrown v0.16.1
+    Checking byteorder v1.5.0
+    Checking xxhash-rust v0.8.15
+    Checking fastrand v2.4.1
+    Checking compare v0.0.6
+    Checking twox-hash v2.1.2
+    Checking log v0.4.29
+    Checking smallvec v1.15.1
+    Checking byteorder-lite v0.1.0
+    Checking sfa v1.0.0
+    Checking lz4_flex v0.13.1
+    Checking tempfile v3.27.0
+    Checking interval-heap v0.0.5
+    Checking quick_cache v0.6.22
+   Compiling enum_dispatch v0.3.13
+    Checking hash32 v0.2.1
+   Compiling blake3 v1.8.5
+    Checking crossbeam-skiplist v0.1.3
+   Compiling crc32c v0.6.8
+    Checking varint-rs v2.2.0
+    Checking stable_deref_trait v1.2.1
+    Checking hashbrown v0.14.5
+    Checking rustc-hash v2.1.2
+    Checking self_cell v1.2.2
+    Checking byteview v0.10.1
+    Checking hashbrown v0.17.1
+    Checking iana-time-zone v0.1.65
+    Checking chrono v0.4.44
+    Checking indexmap v2.14.0
+    Checking dashmap v6.2.1
+    Checking lsm-tree v3.1.4
+    Checking cobs v0.3.0
+    Checking bytes v1.11.1
+    Checking flume v0.12.0
+    Checking constant_time_eq v0.4.2
+    Checking cpufeatures v0.3.0
+    Checking arrayref v0.3.9
+    Checking arrayvec v0.7.6
+    Checking fjall v3.1.4
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090/crates/vb_core)
+    Checking postcard v1.1.3
+    Checking crossbeam-queue v0.3.12
+    Checking rtrb v0.3.4
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090/crates/vb_storage)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3l40a-runtime-5090/crates/vb_runtime)
+error[E0425]: cannot find type `RecoverRunCommand` in module `crate::shard::types`
+   --> crates/vb_runtime/src/recovery/full/product.rs:239:70
+    |
+239 |     pub(crate) fn into_recover_command(self) -> crate::shard::types::RecoverRunCommand {
+    |                                                                      ^^^^^^^^^^^^^^^^^ not found in `crate::shard::types`
+
+error[E0422]: cannot find struct, variant or union type `RecoverRunCommand` in module `crate::shard::types`
+   --> crates/vb_runtime/src/recovery/full/product.rs:240:30
+    |
+240 |         crate::shard::types::RecoverRunCommand {
+    |                              ^^^^^^^^^^^^^^^^^ not found in `crate::shard::types`
+
+warning: unused import: `RecoveredPendingActionTicket`
+  --> crates/vb_runtime/src/recovery.rs:19:60
+   |
+19 |     RecoveredAdmissionContext, RecoveredAdmissionEvidence, RecoveredPendingActionTicket,
+   |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `ActionId` and `WorkflowDigest`
+ --> crates/vb_runtime/src/shard/impl_parts/chunk_004.rs:3:20
+  |
+3 | use vb_core::ids::{ActionId, RunId, SlotIdx, WorkflowDigest};
+  |                    ^^^^^^^^                  ^^^^^^^^^^^^^^
+
+error[E0599]: no method named `validate_submit_admission_with_contracts` found for reference `&Shard` in the current scope
+   --> crates/vb_runtime/src/runtime.rs:274:15
+    |
+274 |         shard.validate_submit_admission_with_contracts(
+    |         ------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: there is a method `validate_submit_admission` with a similar name, but with different arguments
+   --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:296:5
+    |
+296 | /     pub(crate) fn validate_submit_admission(
+297 | |         &self,
+298 | |         run: RunId,
+299 | |         digest: vb_core::ids::WorkflowDigest,
+300 | |         caps: CapabilitySet,
+301 | |     ) -> RuntimeResult<()> {
+    | |__________________________^
+
+error[E0599]: no method named `validate_submit_admission_with_contracts` found for reference `&Shard` in the current scope
+   --> crates/vb_runtime/src/runtime.rs:298:15
+    |
+298 |         shard.validate_submit_admission_with_contracts(
+    |         ------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: there is a method `validate_submit_admission` with a similar name, but with different arguments
+   --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:296:5
+    |
+296 | /     pub(crate) fn validate_submit_admission(
+297 | |         &self,
+298 | |         run: RunId,
+299 | |         digest: vb_core::ids::WorkflowDigest,
+300 | |         caps: CapabilitySet,
+301 | |     ) -> RuntimeResult<()> {
+    | |__________________________^
+
+error[E0559]: variant `ShardCommand::Recover` has no field named `artifact_digest`
+   --> crates/vb_runtime/src/runtime.rs:675:13
+    |
+675 |             artifact_digest: command.artifact_digest,
+    |             ^^^^^^^^^^^^^^^ `ShardCommand::Recover` does not have this field
+    |
+    = note: all struct fields are already assigned
+
+error[E0559]: variant `ShardCommand::Recover` has no field named `next_seq`
+   --> crates/vb_runtime/src/runtime.rs:677:13
+    |
+677 |             next_seq: command.next_seq,
+    |             ^^^^^^^^ `ShardCommand::Recover` does not have this field
+    |
+    = note: all struct fields are already assigned
+
+error[E0559]: variant `ShardCommand::Recover` has no field named `collect_states`
+   --> crates/vb_runtime/src/runtime.rs:678:13
+    |
+678 |             collect_states: command.collect_states,
+    |             ^^^^^^^^^^^^^^ `ShardCommand::Recover` does not have this field
+    |
+    = note: all struct fields are already assigned
+
+error[E0559]: variant `ShardCommand::Recover` has no field named `boundary`
+   --> crates/vb_runtime/src/runtime.rs:679:13
+    |
+679 |             boundary: command.boundary,
+    |             ^^^^^^^^ `ShardCommand::Recover` does not have this field
+    |
+    = note: all struct fields are already assigned
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+  --> crates/vb_runtime/src/shard/tests/chunk_001.rs:60:17
+   |
+60 |     let parts = WorkflowParts {
+   |                 ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+   --> crates/vb_runtime/src/shard/tests/chunk_001.rs:120:17
+    |
+120 |     let parts = WorkflowParts {
+    |                 ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+   --> crates/vb_runtime/src/shard/tests/chunk_002.rs:185:17
+    |
+185 |     let parts = WorkflowParts {
+    |                 ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+   --> crates/vb_runtime/src/shard/tests/chunk_002.rs:232:17
+    |
+232 |     let parts = WorkflowParts {
+    |                 ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+  --> crates/vb_runtime/src/shard/tests/chunk_003.rs:53:17
+   |
+53 |     let parts = WorkflowParts {
+   |                 ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+   --> crates/vb_runtime/src/shard/tests/chunk_012.rs:298:17
+    |
+298 |     let parts = WorkflowParts {
+    |                 ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+  --> crates/vb_runtime/src/shard/tests/chunk_013.rs:55:17
+   |
+55 |     let parts = WorkflowParts {
+   |                 ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0063]: missing field `input_slots` in initializer of `WorkflowParts`
+   --> crates/vb_runtime/src/shard/tests/chunk_029.rs:358:17
+    |
+358 |     let parts = WorkflowParts {
+    |                 ^^^^^^^^^^^^^ missing `input_slots`
+
+error[E0599]: no method named `action_abi_digests_remove` found for mutable reference `&mut Shard` in the current scope
+   --> crates/vb_runtime/src/shard/transitions.rs:113:14
+    |
+113 |         self.action_abi_digests_remove(run);
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ method not found in `&mut Shard`
+
+error[E0599]: no method named `action_abi_digest_for_run_action` found for mutable reference `&mut Shard` in the current scope
+   --> crates/vb_runtime/src/shard/transitions.rs:142:38
+    |
+142 |         let action_abi_digest = self.action_abi_digest_for_run_action(run, ticket.action)?;
+    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ method not found in `&mut Shard`
+
+error[E0599]: no method named `action_abi_digests_remove` found for mutable reference `&mut Shard` in the current scope
+   --> crates/vb_runtime/src/shard/transitions.rs:234:14
+    |
+234 |         self.action_abi_digests_remove(run);
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ method not found in `&mut Shard`
+
+error[E0004]: non-exhaustive patterns: `&RuntimeError::RuntimeInputSlotKindMismatch { .. }` not covered
+   --> crates/vb_runtime/src/error/diagnostics.rs:52:15
+    |
+ 52 |         match self {
+    |               ^^^^ pattern `&RuntimeError::RuntimeInputSlotKindMismatch { .. }` not covered
+    |
+note: `RuntimeError` defined here
+   --> crates/vb_runtime/src/error/mod.rs:7:10
+    |
+  7 | pub enum RuntimeError {
+    |          ^^^^^^^^^^^^
+...
+261 |     RuntimeInputSlotKindMismatch {
+    |     ---------------------------- not covered
+    = note: the matched value is of type `&RuntimeError`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+121 ~             },
+122 +             &RuntimeError::RuntimeInputSlotKindMismatch { .. } => todo!()
+    |
+
+error[E0004]: non-exhaustive patterns: `&RuntimeError::RuntimeInputSlotKindMismatch { .. }` not covered
+   --> crates/vb_runtime/src/error/diagnostics.rs:127:15
+    |
+127 |         match self {
+    |               ^^^^ pattern `&RuntimeError::RuntimeInputSlotKindMismatch { .. }` not covered
+    |
+note: `RuntimeError` defined here
+   --> crates/vb_runtime/src/error/mod.rs:7:10
+    |
+  7 | pub enum RuntimeError {
+    |          ^^^^^^^^^^^^
+...
+261 |     RuntimeInputSlotKindMismatch {
+    |     ---------------------------- not covered
+    = note: the matched value is of type `&RuntimeError`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+188 ~             | Self::Recovery { .. } => None,
+189 ~             &RuntimeError::RuntimeInputSlotKindMismatch { .. } => todo!(),
+    |
+
+error[E0004]: non-exhaustive patterns: `&_` not covered
+   --> crates/vb_runtime/src/shard/helpers.rs:61:11
+    |
+ 61 |     match value {
+    |           ^^^^^ pattern `&_` not covered
+    |
+note: `SlotValue` defined here
+   --> crates/vb_core/src/value.rs:125:1
+    |
+125 | pub enum SlotValue {
+    | ^^^^^^^^^^^^^^^^^^
+    = note: the matched value is of type `&SlotValue`
+    = note: `SlotValue` is marked as non-exhaustive, so a wildcard `_` is necessary to match exhaustively
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+ 69 ~         SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
+ 70 ~         &_ => todo!(),
+    |
+
+Some errors have detailed explanations: E0004, E0063, E0422, E0425, E0559, E0599.
+For more information about an error, try `rustc --explain E0004`.
+warning: `vb_runtime` (lib) generated 2 warnings
+error: could not compile `vb_runtime` (lib) due to 22 previous errors; 2 warnings emitted
