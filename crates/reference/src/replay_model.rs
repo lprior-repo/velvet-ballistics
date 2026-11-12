@@ -154,6 +154,10 @@ pub enum ReplayError {
 }
 
 #[cfg(test)]
+#[path = "replay_model_lint_tests.rs"]
+mod lint_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use vb_core::WorkflowDigest;
