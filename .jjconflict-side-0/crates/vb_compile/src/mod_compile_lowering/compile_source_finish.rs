@@ -1,5 +1,3 @@
-/home/lewis/src/isoloated/velvet-ballistics-union-compiler-5090-r256/target/compiler-wrangler-r430/finalizer-supervisor-repair/candidate.rs:
-
 #![forbid(unsafe_code)]
 //! Final workflow assembly with one ordered source symbol table.
 
