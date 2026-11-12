@@ -16,7 +16,7 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{
-    node, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
 };
 
 use crate::engine::RetryPolicy;

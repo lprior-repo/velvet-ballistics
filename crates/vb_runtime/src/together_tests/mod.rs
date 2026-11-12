@@ -70,7 +70,7 @@ fn together_join_waits_for_all_branches() {
     // Output slot holds the last branch result (a non-list value).
     assert_eq!(run.write_slot(output, SlotValue::I64(20)), Ok(()));
 
-    assert!(run.add_parallel_in_flight(2).is_ok());
+    assert_eq!(run.add_parallel_in_flight(2), Ok(()));
     let result = together_join(
         &mut run,
         &mut store,
@@ -252,7 +252,7 @@ fn together_join_returns_error_when_output_missing() {
     let accumulator = SlotIdx::new(0);
     list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
     // When calling together_join with output=None
-    assert!(run.add_parallel_in_flight(1).is_ok());
+    assert_eq!(run.add_parallel_in_flight(1), Ok(()));
     let result = together_join(
         &mut run,
         &mut store,
@@ -283,7 +283,7 @@ fn together_join_returns_error_when_next_missing() {
     list_in_slot(&mut run, &mut store, accumulator, vec![]);
     assert_eq!(run.write_slot(output, SlotValue::I64(10)), Ok(()));
     // When calling together_join with next=None
-    assert!(run.add_parallel_in_flight(1).is_ok());
+    assert_eq!(run.add_parallel_in_flight(1), Ok(()));
     let result = together_join(
         &mut run,
         &mut store,
@@ -314,7 +314,7 @@ fn together_join_invalid_next_does_not_mutate_output_or_parallel_count() {
     let output = SlotIdx::new(1);
     list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(7)]);
     assert_eq!(run.write_slot(output, SlotValue::I64(8)), Ok(()));
-    assert!(run.add_parallel_in_flight(1).is_ok());
+    assert_eq!(run.add_parallel_in_flight(1), Ok(()));
 
     let result = together_join(
         &mut run,
@@ -522,7 +522,7 @@ fn together_join_appends_non_null_non_list_last_result() {
     list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
     assert_eq!(run.write_slot(output, SlotValue::I64(20)), Ok(()));
     // When calling together_join
-    assert!(run.add_parallel_in_flight(1).is_ok());
+    assert_eq!(run.add_parallel_in_flight(1), Ok(()));
     let result = together_join(
         &mut run,
         &mut store,
@@ -562,7 +562,7 @@ fn together_join_with_non_list_accumulator_uses_accumulator_value() {
     assert_eq!(run.write_slot(accumulator, SlotValue::I64(42)), Ok(()));
     assert_eq!(run.write_slot(output, SlotValue::I64(99)), Ok(()));
     // When calling together_join
-    assert!(run.add_parallel_in_flight(1).is_ok());
+    assert_eq!(run.add_parallel_in_flight(1), Ok(()));
     let result = together_join(
         &mut run,
         &mut store,
@@ -593,7 +593,7 @@ fn together_join_with_distinct_null_result_appends_null() {
     list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
     assert_eq!(run.write_slot(output, SlotValue::Null), Ok(()));
     // When calling together_join
-    assert!(run.add_parallel_in_flight(1).is_ok());
+    assert_eq!(run.add_parallel_in_flight(1), Ok(()));
     let result = together_join(
         &mut run,
         &mut store,
@@ -637,7 +637,7 @@ fn together_join_with_distinct_list_result_appends_nested_list() {
         .unwrap_or_else(|| panic!("must insert"));
     assert_eq!(run.write_slot(output, SlotValue::List(list_id)), Ok(()));
     // When calling together_join
-    assert!(run.add_parallel_in_flight(1).is_ok());
+    assert_eq!(run.add_parallel_in_flight(1), Ok(()));
     let result = together_join(
         &mut run,
         &mut store,
