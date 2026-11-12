@@ -270,7 +270,7 @@ impl MirrorBlobId {
 }
 
 // ============================================================================
-// Mirror SlotValue / Taint — `crates/vb_core/src/value.rs`
+// Mirror SlotValue / Taint — `crates/vb_core/src/value/slot.rs` and `crates/vb_core/src/value/taint.rs`
 // ============================================================================
 
 /// Mirror of production `SlotValue` enum.
