@@ -67,8 +67,11 @@ fn numeric_workflow(
     slot_count: u16,
 ) -> Result<CompiledWorkflow, EngineError> {
     CompiledWorkflow::try_from_parts(numeric_workflow_parts(expr, constants, slot_count)).map_err(
-        |_| EngineError::InternalInvariantViolation {
-            reason: "workflow construction failed".into(),
+        |error| {
+            eprintln!("numeric workflow construction error: {error:?}");
+            EngineError::InternalInvariantViolation {
+                reason: "workflow construction failed".into(),
+            }
         },
     )
 }

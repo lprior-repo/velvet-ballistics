@@ -144,6 +144,7 @@ fn checked_has_plan(
     key: SymbolId,
 ) -> Result<crate::workflow::CompiledWorkflow, crate::workflow::WorkflowError> {
     crate::workflow::CompiledWorkflow::try_from_parts(has_bytecode_parts(valid_has_program(), key))
+        .inspect_err(|error| eprintln!("Has control construction error: {error:?}"))
 }
 
 #[cfg(feature = "test-util")]

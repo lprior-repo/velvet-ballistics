@@ -43,6 +43,7 @@ fn make_plan(
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     })
+    .inspect_err(|error| eprintln!("replay workflow construction error: {error:?}"))
     .map_err(|_| CoreError::InvalidCompiledWorkflow {
         reason: "test workflow validation failed",
     })

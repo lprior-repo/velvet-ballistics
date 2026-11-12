@@ -70,6 +70,7 @@ fn contains_hot_plan() -> Result<CompiledWorkflow, crate::errors::CoreError> {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     })
+    .inspect_err(|error| eprintln!("Contains Hot workflow construction error: {error:?}"))
     .map_err(|_| crate::errors::CoreError::InvalidCompiledWorkflow {
         reason: "Contains hot test workflow validation failed",
     })
