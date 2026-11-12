@@ -152,6 +152,7 @@ fn kani_harness_filter(reference: &str) -> &str {
         None => bare,
     }
 }
+
 #[allow(dead_code)]
 pub fn proof_levels() -> Vec<(&'static str, &'static str)> {
     vec![
@@ -269,7 +270,37 @@ mod tests {
         };
         assert_eq!(
             commands_for_obligation(&obligation),
-            vec!["cargo kani --harness kani_step_budget".to_string()]
+            vec!["cargo kani --package vb_core --harness kani_step_budget".to_string()]
+        );
+    }
+
+    #[test]
+    fn commands_for_obligation_names_package_for_vb_compile_kani() {
+        let obligation = ProofObligation {
+            id: "VB-COMPILE-DIGEST-REPEAT-001".to_string(),
+            section: vec![47],
+            statement: "Repeat max attempts changes digest".to_string(),
+            proof_level: "L3".to_string(),
+            crate_name: "vb_compile".to_string(),
+            files: vec!["crates/vb_compile/src/digest.rs".to_string()],
+            required: RequiredProof {
+                verus: None,
+                kani: Some("kani_digest_repeat.rs::kani_repeat_max_attempts_consumed".to_string()),
+                tests: vec![],
+                fuzz: None,
+                tla: None,
+                loom: None,
+                property_tests: vec![],
+                differential_tests: vec![],
+            },
+            commands: vec![],
+        };
+        assert_eq!(
+            commands_for_obligation(&obligation),
+            vec![
+                "cargo kani --package vb_compile --harness kani_repeat_max_attempts_consumed"
+                    .to_string()
+            ]
         );
     }
 }

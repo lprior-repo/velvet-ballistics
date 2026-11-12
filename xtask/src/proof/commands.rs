@@ -8,7 +8,8 @@ pub fn commands_for_obligation(obl: &ProofObligation) -> Vec<String> {
 
     if let Some(ref kani) = obl.required.kani {
         cmds.push(format!(
-            "cargo kani --harness {}",
+            "cargo kani --package {} --harness {}",
+            obl.crate_name,
             kani_harness_filter(kani)
         ));
     }
