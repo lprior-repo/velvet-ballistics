@@ -24,13 +24,13 @@
 // BINDING LEDGER
 // ============================================================================
 //   - `CompiledWorkflow::try_from_parts` exec signature
-//     <- crates/vb_core/src/workflow/mod.rs:43-79
+//     <- crates/vb_core/src/workflow/compiled.rs:35-71
 //   - `validate_parts` structural validation
-//     <- crates/vb_core/src/workflow/mod.rs:1453-1478
+//     <- crates/vb_core/src/workflow/validate.rs:20-45
 //   - `validate_budget` budget policy validation
-//     <- crates/vb_core/src/workflow/mod.rs:1543-1549
+//     <- crates/vb_core/src/workflow/validate.rs:112-118
 //   - `validate_budget_result` budget error collapse
-//     <- crates/vb_core/src/workflow/mod.rs:1551-1560
+//     <- crates/vb_core/src/workflow/validate.rs:120-129
 //   - `WholeWorkflowBudget` field set
 //     <- crates/vb_core/src/budget/compute.rs:17-93
 //   - `WholeWorkflowBudget::compute`
@@ -54,87 +54,87 @@
 //   - `BudgetDimension`
 //     <- crates/vb_core/src/budget/validate_error.rs:100-147
 //   - `validate_resource_contract`
-//     <- crates/vb_core/src/workflow/mod.rs:1677-1683
+//     <- crates/vb_core/src/workflow/resource_limits.rs:124-130
 //   - `validate_entry`
-//     <- crates/vb_core/src/workflow/mod.rs:1763-1765
+//     <- crates/vb_core/src/workflow/validate.rs:146-148
 //   - `validate_node` / `validate_node_common` / `validate_node_kind`
-//     <- crates/vb_core/src/workflow/mod.rs:1767-1938
+//     <- crates/vb_core/src/workflow/validate.rs:150-155
 //   - `validate_slots`
-//     <- crates/vb_core/src/workflow/mod.rs:1944-1949
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:150-155
 //   - `validate_build_list`
-//     <- crates/vb_core/src/workflow/mod.rs:1951-1958
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:157-164
 //   - `validate_build_object`
-//     <- crates/vb_core/src/workflow/mod.rs:1960-1973
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:166-179
 //   - `validate_for_each_start`
-//     <- crates/vb_core/src/workflow/mod.rs:1975-1985
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:181-191
 //   - `validate_slot_and_steps`
-//     <- crates/vb_core/src/workflow/mod.rs:1987-1995
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:193-201
 //   - `validate_two_steps`
-//     <- crates/vb_core/src/workflow/mod.rs:1997-2004
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:203-210
 //   - `validate_together`
-//     <- crates/vb_core/src/workflow/mod.rs:2006-2016
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:212-222
 //   - `validate_nonzero_u16`
-//     <- crates/vb_core/src/workflow/mod.rs:2018-2024
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:224-230
 //   - `validate_reduce_start`
-//     <- crates/vb_core/src/workflow/mod.rs:2026-2047
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:232-246
 //   - `validate_reduce_next`
-//     <- crates/vb_core/src/workflow/mod.rs:2049-2059
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:248-258
 //   - `validate_repeat_start`
-//     <- crates/vb_core/src/workflow/mod.rs:2061-2069
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:260-268
 //   - `validate_slot_choose`
-//     <- crates/vb_core/src/workflow/mod.rs:2071-2082
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:277-288
 //   - `validate_expr_choose`
-//     <- crates/vb_core/src/workflow/mod.rs:2084-2095
+//     <- crates/vb_core/src/workflow/validate_node_kind.rs:290-301
 //   - `validate_branch_route`
-//     <- crates/vb_core/src/workflow/mod.rs:2097-2106
+//     <- crates/vb_core/src/workflow/validate_refs.rs:20-29
 //   - `MAX_LIST_ITEMS_PER_VALUE` / `MAX_OBJECT_FIELDS_PER_VALUE`
 //     <- crates/vb_core/src/limits.rs:71-75
 //   - `validate_reduce_branch_targets`
-//     <- crates/vb_core/src/workflow/mod.rs:1774-1787
+//     <- crates/vb_core/src/workflow/validate.rs:157-170
 //   - `validate_for_each_next_targets`
-//     <- crates/vb_core/src/workflow/mod.rs:1789-1799
+//     <- crates/vb_core/src/workflow/validate.rs:172-182
 //   - `validate_input_constraint`
-//     <- crates/vb_core/src/workflow/mod.rs:1517-1541
+//     <- crates/vb_core/src/workflow/validate.rs:84-110
 //   - `CompiledInputConstraint` field set
-//     <- crates/vb_core/src/workflow/mod.rs:553-583
+//     <- crates/vb_core/src/workflow/input_constraint.rs:13-43
 //   - `validate_expr`, `validate_step`, `validate_slot`, `validate_const`
-//     <- crates/vb_core/src/workflow/mod.rs:2112-2144
+//     <- crates/vb_core/src/workflow/validate_refs.rs:38-46
 //   - `validate_accessor`
-//     <- crates/vb_core/src/workflow/mod.rs:2176-2186
+//     <- crates/vb_core/src/workflow/validate_refs.rs:105-118
 //   - `validate_symbol`
-//     <- crates/vb_core/src/workflow/mod.rs:2250-2256
+//     <- crates/vb_core/src/workflow/validate_refs.rs:182-188
 //   - `validate_accessor_paths`
-//     <- crates/vb_core/src/workflow/mod.rs:2189-2219
+//     <- crates/vb_core/src/workflow/validate_refs.rs:121-151
 //   - `validate_constants_symbols`
-//     <- crates/vb_core/src/workflow/mod.rs:2222-2232
+//     <- crates/vb_core/src/workflow/validate_refs.rs:154-164
 //   - `validate_build_object_symbols`
-//     <- crates/vb_core/src/workflow/mod.rs:2235-2247
+//     <- crates/vb_core/src/workflow/validate_refs.rs:167-179
 //   - `MAX_PATH_DEPTH`
 //     <- crates/vb_core/src/limits.rs:59
 //   - `validate_reachability`
-//     <- crates/vb_core/src/workflow/mod.rs:2260-2329
+//     <- crates/vb_core/src/workflow/traversal.rs:12-81
 //   - `validate_forward_edges`
-//     <- crates/vb_core/src/workflow/mod.rs:2436-2464
+//     <- crates/vb_core/src/workflow/forward_edges.rs:13-41
 //   - `validate_kind_edges`
-//     <- crates/vb_core/src/workflow/mod.rs:2467-2526
+//     <- crates/vb_core/src/workflow/forward_edges.rs:44-103
 //   - `validate_choose_slot_edges`
-//     <- crates/vb_core/src/workflow/mod.rs:2528-2541
+//     <- crates/vb_core/src/workflow/forward_edges.rs:105-118
 //   - `validate_choose_expr_edges`
-//     <- crates/vb_core/src/workflow/mod.rs:2543-2556
+//     <- crates/vb_core/src/workflow/forward_edges.rs:120-133
 //   - `validate_loop_done_only`
-//     <- crates/vb_core/src/workflow/mod.rs:2558-2560
-//   - `repeat_check_validate` (`nearest_active_owner`)
-//     <- crates/vb_core/src/workflow/mod.rs:2565-2682
+//     <- crates/vb_core/src/workflow/forward_edges.rs:135-137
+//   - `nearest_active_owner` (repeat_check_validate)
+//     <- crates/vb_core/src/workflow/repeat_check_validate.rs:11-29
 //   - `validate_loop_start_edges`
-//     <- crates/vb_core/src/workflow/mod.rs:2688-2696
+//     <- crates/vb_core/src/workflow/forward_edges.rs:143-151
 //   - `validate_together_start_edges`
-//     <- crates/vb_core/src/workflow/mod.rs:2698-2708
+//     <- crates/vb_core/src/workflow/forward_edges.rs:153-163
 //   - `validate_together_branch_edges`
-//     <- crates/vb_core/src/workflow/mod.rs:2710-2718
+//     <- crates/vb_core/src/workflow/forward_edges.rs:165-173
 //   - `validate_forward_target`
-//     <- crates/vb_core/src/workflow/mod.rs:2721-2730
+//     <- crates/vb_core/src/workflow/forward_edges.rs:176-185
 //   - `push_loop_span`
-//     <- crates/vb_core/src/workflow/mod.rs:2733-2780
+//     <- crates/vb_core/src/workflow/forward_edges.rs:188-235
 //   - `validate_no_nested_together` (moved out of workflow/mod.rs)
 //     <- crates/vb_core/src/engine/validate.rs:119-172
 //   - `walk_contains_together_start`
@@ -152,7 +152,7 @@
 //   - `writes_slot`
 //     <- crates/vb_core/src/workflow/repeat_counter_ownership.rs:111-137
 //   - `validate` (loop_regions pairing step)
-//     <- crates/vb_core/src/workflow/loop_regions.rs:59-72
+//     <- crates/vb_core/src/workflow/loop_regions.rs:96-109
 //   - `cache_control`
 //     <- crates/vb_core/src/workflow/loop_regions/pairing.rs:8-31
 //   - `unique_owner`
@@ -166,35 +166,35 @@
 //   - `collect_kind_targets`
 //     <- crates/vb_core/src/workflow/loop_regions/edges.rs:41-60
 //   - `validate_edge`
-//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:62-82
+//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:62-86
 //   - `owned_backedge`
-//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:84-106
+//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:88-110
 //   - `validate_recovery_support`
-//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:108-128
+//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:112-126
 //   - `is_finish`
-//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:130-135
+//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:128-133
 //   - `collect_node_targets`
-//     <- crates/vb_core/src/workflow/mod.rs:2333-2399
+//     <- crates/vb_core/src/workflow/traversal.rs:85-151
 //   - `crossing` (LoopRegionCrossing constructor)
-//     <- crates/vb_core/src/workflow/loop_regions.rs:100-106
+//     <- crates/vb_core/src/workflow/loop_regions.rs:157-163
 //   - `control_shape`
 //     <- crates/vb_core/src/workflow/loop_regions/shapes.rs:21-34
 //   - `start_shape`
 //     <- crates/vb_core/src/workflow/loop_regions/shapes.rs:54-67
 //   - `WorkflowError` discriminant set
-//     <- crates/vb_core/src/workflow/mod.rs:719-955
+//     <- crates/vb_core/src/workflow/error.rs:13-250
 //   - `WorkflowParts` field set
-//     <- crates/vb_core/src/workflow/mod.rs:660-695
+//     <- crates/vb_core/src/workflow/parts.rs:11-46
 //   - `ResourceContract` field set
-//     <- crates/vb_core/src/workflow/mod.rs:287-324
+//     <- crates/vb_core/src/workflow/resource_contract.rs:8-45
 //   - `CompiledNode` / `CompiledNodeKind` discriminant set
-//     <- crates/vb_core/src/workflow/mod.rs:1070-1438
+//     <- crates/vb_core/src/workflow/node.rs:14-25
 //   - `ExprProgram` / `ExprOp` discriminant set
-//     <- crates/vb_core/src/workflow/mod.rs:959-1048
+//     <- crates/vb_core/src/workflow/expr_program.rs:11-16
 //   - `AccessorProgram` / `PathSegment`
-//     <- crates/vb_core/src/workflow/mod.rs:699-714
+//     <- crates/vb_core/src/workflow/parts.rs:50-55
 //   - `ExprBranch` / `SlotBranch`
-//     <- crates/vb_core/src/workflow/mod.rs:485-499
+//     <- crates/vb_core/src/workflow/input_slot.rs:10-15
 //
 // The legacy numeric projections below use `u32` to avoid lossy casts that
 // would break Verus's `int`-based spec layer.

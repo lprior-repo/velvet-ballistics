@@ -9,7 +9,7 @@ fn ask(output: Option<u16>) -> vb_core::CompiledNode {
         1,
         K::Ask {
             prompt: slot(0),
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
         output,
         Some(2),
@@ -65,7 +65,7 @@ fn branch_bypassing_output_none_ask_keeps_answer_absent() -> TestResult {
     );
     p.nodes.get_mut(1).ok_or("missing Ask")?.kind = K::Ask {
         prompt: slot(3),
-        timeout_slot: None,
+        timeout_slot: None.into(),
     };
     declare(&mut p, 0, vb_core::InputSlotKind::Bool);
     declare(&mut p, 3, vb_core::InputSlotKind::I64);

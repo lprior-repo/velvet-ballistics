@@ -36,7 +36,16 @@ fn declared_bounds_and_numeric_elements_follow_proven_slot_copies() -> TestResul
     for raw in [0, 1, 2] {
         assert_eq!(input_limit(SlotIdx::new(raw), &builder)?, 2);
         assert_eq!(
-            item_type(SlotIdx::new(raw), &builder, &Default::default()),
+            item_type(
+                SlotIdx::new(raw),
+                &builder,
+                crate::mod_compile_lowering::CanonicalScope {
+                    outputs: &Default::default(),
+                    step_outputs: &Default::default(),
+                    slot_types: &Default::default(),
+                    parent: None
+                }
+            ),
             ExprType::F64
         );
     }
@@ -81,7 +90,19 @@ fn static_lengths_and_homogeneous_or_mixed_element_types_are_exact() -> TestResu
             None,
         ));
         assert_eq!(input_limit(output, &builder)?, len);
-        assert_eq!(item_type(output, &builder, &Default::default()), expected);
+        assert_eq!(
+            item_type(
+                output,
+                &builder,
+                crate::mod_compile_lowering::CanonicalScope {
+                    outputs: &Default::default(),
+                    step_outputs: &Default::default(),
+                    slot_types: &Default::default(),
+                    parent: None
+                }
+            ),
+            expected
+        );
     }
     Ok(())
 }
@@ -94,7 +115,16 @@ fn unknown_origins_use_the_existing_global_cap_without_inventing_inputs() -> Tes
         u32::try_from(vb_core::limits::MAX_LIST_ITEMS_PER_VALUE)?
     );
     assert_eq!(
-        item_type(SlotIdx::new(9), &builder, &Default::default()),
+        item_type(
+            SlotIdx::new(9),
+            &builder,
+            crate::mod_compile_lowering::CanonicalScope {
+                outputs: &Default::default(),
+                step_outputs: &Default::default(),
+                slot_types: &Default::default(),
+                parent: None
+            }
+        ),
         ExprType::Unknown
     );
     assert_eq!(builder.input_slots.as_slice(), []);

@@ -382,7 +382,7 @@ fn core_to_runtime_choose_with_empty_branches_is_rejected() {
         StepIdx::new(0),
         CompiledNodeKind::ChooseSlot {
             branches: Box::from([]),
-            otherwise: None,
+            otherwise: None.into(),
         },
         None,
         None,

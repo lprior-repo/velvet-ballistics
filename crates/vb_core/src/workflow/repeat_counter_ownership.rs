@@ -130,7 +130,7 @@ fn writes_slot(node: &CompiledNode, slot: SlotIdx) -> bool {
         CompiledNodeKind::ReduceNext { iterator_slot, .. } => *iterator_slot == slot,
         CompiledNodeKind::RepeatCheck { attempt_slot, .. } => *attempt_slot == slot,
         CompiledNodeKind::RetryCheck { policy_slot, .. } => *policy_slot == slot,
-        CompiledNodeKind::ErrorHandler { error_slot, .. } => *error_slot == Some(slot),
+        CompiledNodeKind::ErrorHandler { error_slot, .. } => error_slot.slot() == Some(slot),
         CompiledNodeKind::AskResume { answer } => *answer == slot,
         _ => false,
     }

@@ -64,7 +64,7 @@ fn foreach_start(
     vb_core::CompiledNodeKind::ForEachStart {
         input: safe_slot,
         item_slot: safe_slot,
-        limit: 10,
+        limit: 10.into(),
         body: bounded_next(index, node_count, 1),
         done: bounded_next(index, node_count, 2),
     }
@@ -90,7 +90,7 @@ fn together_start(index: usize, node_count: usize, data: &[u8]) -> vb_core::Comp
 
 fn repeat_start(index: usize, node_count: usize) -> vb_core::CompiledNodeKind {
     vb_core::CompiledNodeKind::RepeatStart {
-        max_attempts: 3,
+        max_attempts: 3.into(),
         body: bounded_next(index, node_count, 1),
         done: bounded_next(index, node_count, 2),
     }
@@ -107,7 +107,7 @@ fn choose_slot(
             target: bounded_next(index, node_count, 1),
         }]
         .into_boxed_slice(),
-        otherwise: Some(bounded_next(index, node_count, 2)),
+        otherwise: vb_core::BranchContinuation::Target(bounded_next(index, node_count, 2)),
     }
 }
 

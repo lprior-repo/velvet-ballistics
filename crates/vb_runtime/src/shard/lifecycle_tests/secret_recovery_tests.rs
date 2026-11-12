@@ -63,7 +63,7 @@ mod secret_authority {
                 slot: SlotIdx::ZERO,
                 kind: InputSlotKind::Symbol,
                 constraint: CompiledInputConstraint {
-                    secret: true,
+                    secretness: true.into(),
                     default_cold: Some(InputDefaultValue::Text("TOKEN".into())),
                     ..CompiledInputConstraint::required()
                 },

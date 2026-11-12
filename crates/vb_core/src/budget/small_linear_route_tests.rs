@@ -21,11 +21,11 @@ fn kinds() -> [CompiledNodeKind; 6] {
         },
         CompiledNodeKind::WaitEvent {
             event: SlotIdx::new(u16::MAX),
-            timeout_slot: Some(SlotIdx::new(0)),
+            timeout_slot: Some(SlotIdx::new(0)).into(),
         },
         CompiledNodeKind::Ask {
             prompt: SlotIdx::new(0),
-            timeout_slot: Some(SlotIdx::new(u16::MAX)),
+            timeout_slot: Some(SlotIdx::new(u16::MAX)).into(),
         },
         CompiledNodeKind::Finish {
             result: SlotIdx::new(u16::MAX),
@@ -236,7 +236,7 @@ fn tiny_path_accepts_raw_ids_and_routes_with_general_error_precedence()
                 1,
                 CompiledNodeKind::Ask {
                     prompt: SlotIdx::new(0),
-                    timeout_slot: None,
+                    timeout_slot: None.into(),
                 },
                 Some(0),
                 Some(1),

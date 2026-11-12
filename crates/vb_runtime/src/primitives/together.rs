@@ -31,7 +31,7 @@ pub fn together_start(
     }
     let requested = run.parallel_in_flight().checked_add(count).ok_or(
         EngineError::InternalInvariantViolation {
-            reason: "parallel_in_flight overflow",
+            reason: "parallel_in_flight overflow".into(),
         },
     )?;
     let max = run.max_parallel_in_flight();
@@ -47,7 +47,7 @@ pub fn together_start(
             .first()
             .copied()
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "together branches checked nonzero",
+                reason: "together branches checked nonzero".into(),
             })?;
     if first_branch.get() >= run.step_count() {
         return Err(EngineError::InvalidProgramCounter { step: first_branch });
@@ -106,7 +106,7 @@ pub fn together_join(
     let count = branch_count.get();
     if run.parallel_in_flight() < count {
         return Err(EngineError::InternalInvariantViolation {
-            reason: "parallel_in_flight underflow",
+            reason: "parallel_in_flight underflow".into(),
         });
     }
     // Read the accumulator list built by together_branch invocations.

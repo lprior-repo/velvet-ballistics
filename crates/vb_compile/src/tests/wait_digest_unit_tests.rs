@@ -483,7 +483,7 @@ fn canonical_primitive_name_returns_non_empty_distinct_name_for_every_variant() 
             "choose",
             StepPrimitive::Choose {
                 branches: vec![],
-                otherwise: None,
+                otherwise: None.into(),
             },
         ),
         (

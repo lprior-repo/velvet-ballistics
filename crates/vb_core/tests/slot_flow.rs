@@ -51,7 +51,7 @@ fn optional_input_is_not_definitely_assigned() -> TestResult {
     let mut p = parts(vec![finish(0, 0)], 1);
     declare(&mut p, 0, vb_core::workflow::InputSlotKind::I64);
     if let Some(input) = p.input_slots.first_mut() {
-        input.constraint.optional = true;
+        input.constraint.presence = true.into();
     }
     assert_constructor_error(
         p,

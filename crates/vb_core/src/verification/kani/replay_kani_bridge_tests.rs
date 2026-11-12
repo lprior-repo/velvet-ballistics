@@ -42,7 +42,8 @@ fn public_dispatch_matches_helper_and_independent_oracle_all_64() -> TestResult 
             return Err("entry is not ChooseSlot".into());
         };
         for (a, b) in [(false, false), (false, true), (true, false), (true, true)] {
-            let (helper_result, helper_frame) = replay_frame(shape, branches, *otherwise, a, b)?;
+            let (helper_result, helper_frame) =
+                replay_frame(shape, branches, otherwise.step(), a, b)?;
             let original_frame = frame(shape, a, b)?;
             let checkpoint = shape.checkpoint(a, b);
             assert_eq!(checkpoint, original_frame.checkpoint_v1());
@@ -110,7 +111,7 @@ fn public_and_helper_reject_non_boolean_conditions_without_state_changes() -> Te
         let helper_result = outcome(super::super::choose::replay_choose_slot(
             &mut helper_frame,
             branches,
-            *otherwise,
+            otherwise.step(),
         ));
         let expected = Err(ReplayError::Internal {
             reason: "choose_slot condition is not boolean",

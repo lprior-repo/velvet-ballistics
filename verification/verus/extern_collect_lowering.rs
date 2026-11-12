@@ -89,7 +89,7 @@
 //   - `StepIdx` (u16 newtype)                   <- crates/vb_core/src/ids/mod.rs:70-70
 //   - `StepIdx::new(value: u16) -> Self`        <- crates/vb_core/src/ids/mod.rs:36-36
 //   - `StepIdx::get(self) -> u16`               <- crates/vb_core/src/ids/mod.rs:70-70
-//   - `StepIdx::checked_add`                    <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206
+//   - `StepIdx::checked_add`                    <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:214-219
 //                                                  (used at bounded_collect.rs:117-127
 //                                                   via the `checked_step_offset`
 //                                                   wrapper at part_12.rs:199-212)
@@ -104,7 +104,7 @@
 //                                                  (the exact variant produced by
 //                                                  `checked_body_length_offset` when
 //                                                  body_len+extra overflows u16)
-//   - `lower_bounded_collect`                   <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:244-261
+//   - `lower_bounded_collect`                   <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:225-242
 //                                                  (plan build + start/body/next/finish emission;
 //                                                  edges computed by plan_compute_edges,
 //                                                  bounded_collect.rs:117-127)

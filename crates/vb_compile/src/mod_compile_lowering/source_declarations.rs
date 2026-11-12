@@ -31,7 +31,7 @@ pub(super) fn prepare_source_declarations(
             slot,
             InputSlotKind::Symbol,
             vb_core::CompiledInputConstraint {
-                secret: true,
+                secretness: true.into(),
                 default_cold: Some(vb_core::InputDefaultValue::Text(
                     secret.value.clone().into(),
                 )),
@@ -56,6 +56,7 @@ pub(super) fn prepare_source_declarations(
             outputs,
             step_outputs: &steps,
             slot_types: types,
+            parent: None,
         };
         let (slot, ty) = super::canonical_values::emit(&variable.value, false, scope, builder)?;
         bind_declaration(outputs, format!("$vars.{}", variable.key), slot)?;

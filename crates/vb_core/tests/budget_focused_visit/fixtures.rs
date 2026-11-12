@@ -51,11 +51,11 @@ pub(super) fn words(malformed: bool) -> Vec<Vec<CompiledNode>> {
         },
         CompiledNodeKind::WaitEvent {
             event: SlotIdx::new(u16::MAX),
-            timeout_slot: Some(SlotIdx::new(u16::MAX)),
+            timeout_slot: Some(SlotIdx::new(u16::MAX)).into(),
         },
         CompiledNodeKind::Ask {
             prompt: SlotIdx::new(u16::MAX),
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
         CompiledNodeKind::Finish {
             result: SlotIdx::new(u16::MAX),

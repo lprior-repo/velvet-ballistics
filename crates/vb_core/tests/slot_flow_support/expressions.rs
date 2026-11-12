@@ -78,7 +78,7 @@ fn nullable_operand_is_not_assumed_numeric() -> TestResult {
     );
     declare(&mut p, 0, InputSlotKind::I64);
     if let Some(input) = p.input_slots.first_mut() {
-        input.constraint.nullable = true;
+        input.constraint.nullability = true.into();
     }
     expression(
         &mut p,
@@ -96,7 +96,7 @@ fn scalar_default_establishes_optional_input_presence() -> TestResult {
     let mut p = parts(vec![finish(0, 0)], 1);
     declare(&mut p, 0, InputSlotKind::I64);
     if let Some(input) = p.input_slots.first_mut() {
-        input.constraint.optional = true;
+        input.constraint.presence = true.into();
         input.constraint.default_value = Some(vb_core::SlotValue::I64(7));
     }
     CompiledWorkflow::try_from_parts(p)?;

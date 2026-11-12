@@ -235,7 +235,7 @@ fn choose_slot_workflow_with_otherwise(
                     },
                 ]
                 .into_boxed_slice(),
-                otherwise,
+                otherwise: otherwise.into(),
             },
             None,
             None,
@@ -320,7 +320,7 @@ fn choose_expr_workflow_with(
                     },
                 ]
                 .into_boxed_slice(),
-                otherwise,
+                otherwise: otherwise.into(),
             },
             None,
             None,

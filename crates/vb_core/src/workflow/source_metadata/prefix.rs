@@ -25,6 +25,6 @@ pub fn seed_source_symbols(
 
 fn invalid() -> CoreError {
     CoreError::InternalInvariantViolation {
-        reason: "compiled_source_symbol_prefix",
+        reason: "compiled_source_symbol_prefix".into(),
     }
 }

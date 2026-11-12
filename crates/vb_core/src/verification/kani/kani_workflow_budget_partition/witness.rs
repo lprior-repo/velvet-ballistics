@@ -63,14 +63,14 @@ impl Node {
                 timeout_slot,
             } => Kind::WaitEvent {
                 event,
-                timeout_slot,
+                timeout_slot: timeout_slot.slot(),
             },
             CompiledNodeKind::Ask {
                 prompt,
                 timeout_slot,
             } => Kind::Ask {
                 prompt,
-                timeout_slot,
+                timeout_slot: timeout_slot.slot(),
             },
             CompiledNodeKind::Finish { result } => Kind::Finish { result },
             _ => return None,

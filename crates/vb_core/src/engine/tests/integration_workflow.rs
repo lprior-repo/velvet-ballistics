@@ -299,7 +299,7 @@ fn drive_deterministic_stops_on_awaiting_ask_signal() -> Result<(), String> {
             StepIdx::new(0),
             CompiledNodeKind::Ask {
                 prompt: SlotIdx::new(0),
-                timeout_slot: None,
+                timeout_slot: None.into(),
             },
             None,
             None,

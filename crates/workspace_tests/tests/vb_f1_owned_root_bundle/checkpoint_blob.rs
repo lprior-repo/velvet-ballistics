@@ -34,7 +34,7 @@ fn list_taint_count_mismatch() -> TestResult<()> {
     let err = result.err().ok_or("expected error")?;
     match err {
         OwnedRootBundleError::Checkpoint(CoreError::InternalInvariantViolation { reason }) => {
-            if reason != "list_taint_count_mismatch" {
+            if reason.as_str() != "list_taint_count_mismatch" {
                 return Err(format!("wrong reason: {reason}").into());
             }
         }

@@ -33,7 +33,7 @@
 //   - Decision fns                       <- crates/vb_storage/src/recovery/recover.rs:32-187
 //                                            + crates/vb_storage/src/recovery/hydrate/mod.rs:86-108
 //                                            + crates/vb_runtime/src/recovery/product.rs:36-41
-//                                            + crates/vb_runtime/src/recovery.rs:159-161
+//                                            + crates/vb_runtime/src/recovery.rs:161-163
 //
 // This stub mirrors the production `UnsupportedRecoveryState` field
 // set as the smallest drift-detection surface.
@@ -55,7 +55,7 @@
 //   - Decision fns                       <- crates/vb_storage/src/recovery/recover.rs:32-187
 //                                            + crates/vb_storage/src/recovery/hydrate/mod.rs:86-108
 //                                            + crates/vb_runtime/src/recovery/product.rs:36-41
-//                                            + crates/vb_runtime/src/recovery.rs:159-161
+//                                            + crates/vb_runtime/src/recovery.rs:161-163
 // Regenerate this file whenever production changes. Any rename of
 // `slot_values`, `slot_taint`, `action_payloads`, or `pending_actions`
 // breaks the `extern_recovery_verification` Verus build.
@@ -154,7 +154,7 @@ pub enum RecoveryFrameSeedProduct {
 }
 
 /// Mirror of production `reject_unsupported_live_frame_state` decision
-/// at `crates/vb_runtime/src/recovery.rs:109-115`. Production body checks
+/// at `crates/vb_runtime/src/recovery.rs:111-117`. Production body checks
 /// `seed.cannot_resume_state().is_resumable()`. Body is `#[verifier::external]`.
 #[verifier::external]
 pub fn reject_unsupported_stub(state: RecoveryCannotResumeStateStub) -> bool {

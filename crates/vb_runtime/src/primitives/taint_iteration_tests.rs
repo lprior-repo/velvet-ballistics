@@ -64,7 +64,7 @@ fn iteration_contract(reduce: bool) -> TestResult {
                     CompiledNodeKind::ForEachStart {
                         input: SlotIdx::ZERO,
                         item_slot: SlotIdx::new(1),
-                        limit: 2,
+                        limit: 2.into(),
                         body: StepIdx::new(1),
                         done: StepIdx::new(3),
                     }
@@ -195,7 +195,7 @@ fn collect_contract(replay: bool) -> TestResult {
                 StepIdx::ZERO,
                 CompiledNodeKind::CollectStart {
                     source: SlotIdx::ZERO,
-                    limit: 2,
+                    limit: 2.into(),
                     page_size: 1,
                     body: StepIdx::new(1),
                     done: StepIdx::new(3),

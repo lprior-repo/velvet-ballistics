@@ -13,6 +13,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
     step_names: &mut Vec<Box<str>>,
     slot_types: &mut HashMap<SlotIdx, ExprType>,
     for_each_inputs: &ForEachInputs,
+    parent: Option<&CanonicalScope<'_>>,
     builder: &mut SlotCompiler,
 ) -> Result<Option<SlotIdx>, CompileErrors> {
     let control = canonical_controls::prepare(
@@ -24,6 +25,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
             outputs,
             step_outputs,
             slot_types,
+            parent,
         },
         builder,
     )?;
@@ -48,6 +50,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                     outputs,
                     step_outputs,
                     slot_types,
+                    parent,
                 },
                 builder,
             )?;
@@ -67,6 +70,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                     outputs,
                     step_outputs,
                     slot_types,
+                    parent,
                 },
                 builder,
             )?;
@@ -76,10 +80,20 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
             }
             Ok(output_slot)
         }
-        crate::StepPrimitive::Finish { result } => {
-            lower_canonical_finish(index, last, id, result, outputs, step_outputs, builder)
-                .map(|()| None)
-        }
+        crate::StepPrimitive::Finish { result } => canonical_finish::lower_canonical_finish_scoped(
+            index,
+            last,
+            id,
+            result,
+            CanonicalScope {
+                outputs,
+                step_outputs,
+                slot_types,
+                parent,
+            },
+            builder,
+        )
+        .map(|()| None),
         crate::StepPrimitive::ForEach {
             input,
             variable,
@@ -98,6 +112,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                     outputs,
                     step_outputs,
                     slot_types,
+                    parent,
                 },
                 inputs: for_each_inputs,
             },
@@ -118,6 +133,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                     outputs,
                     step_outputs,
                     slot_types,
+                    parent,
                 },
                 builder,
             )?;
@@ -150,6 +166,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                         outputs,
                         step_outputs,
                         slot_types,
+                        parent,
                     },
                 },
                 builder,
@@ -177,6 +194,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                         outputs,
                         step_outputs,
                         slot_types,
+                        parent,
                     },
                 },
                 builder,
@@ -196,6 +214,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                     outputs,
                     step_outputs,
                     slot_types,
+                    parent,
                 },
                 builder,
             )?;
@@ -213,6 +232,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                 outputs,
                 step_outputs,
                 slot_types,
+                parent,
             },
             builder,
         )
@@ -228,6 +248,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                     outputs,
                     step_outputs,
                     slot_types,
+                    parent,
                 },
                 builder,
             )?;
@@ -250,6 +271,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_step(
                     outputs,
                     step_outputs,
                     slot_types,
+                    parent,
                 },
             },
             builder,

@@ -40,11 +40,11 @@ fn kind(value: &CompiledNodeKind) -> bool {
         CompiledNodeKind::WaitEvent {
             event,
             timeout_slot,
-        } => slot(event) && optional_slot(timeout_slot),
+        } => slot(event) && optional_slot(timeout_slot.slot()),
         CompiledNodeKind::Ask {
             prompt,
             timeout_slot,
-        } => slot(prompt) && optional_slot(timeout_slot),
+        } => slot(prompt) && optional_slot(timeout_slot.slot()),
         CompiledNodeKind::Finish { result } => slot(result),
         _ => false,
     }

@@ -45,7 +45,7 @@ pub(crate) fn choose(id: u16, yes: u16, no: u16) -> CompiledNode {
                 target: step(yes),
             }]
             .into_boxed_slice(),
-            otherwise: Some(step(no)),
+            otherwise: Some(step(no)).into(),
         },
         None,
         None,

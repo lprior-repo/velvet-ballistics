@@ -189,7 +189,8 @@ fn ask_failure_action(
     else {
         return Ok(None);
     };
-    let Err(error) = vb_core::engine::suspension::validate_ask_inputs(frame, prompt, timeout_slot)
+    let Err(error) =
+        vb_core::engine::suspension::validate_ask_inputs(frame, prompt, timeout_slot.slot())
     else {
         return Ok(None);
     };

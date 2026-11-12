@@ -39,7 +39,7 @@ fn with_focused_node(node: CompiledNode, visit: impl FnOnce(CompiledNode)) {
         } => visit(CompiledNode {
             kind: CompiledNodeKind::WaitEvent {
                 event,
-                timeout_slot,
+                timeout_slot: timeout_slot.into(),
             },
             ..node
         }),
@@ -49,7 +49,7 @@ fn with_focused_node(node: CompiledNode, visit: impl FnOnce(CompiledNode)) {
         } => visit(CompiledNode {
             kind: CompiledNodeKind::Ask {
                 prompt,
-                timeout_slot,
+                timeout_slot: timeout_slot.into(),
             },
             ..node
         }),

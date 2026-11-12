@@ -65,7 +65,7 @@ fn flat_repeat_layout_uses_actual_width_and_private_outputs() -> Result<(), Stri
         assert_eq!(
             node(&workflow, 1)?.kind,
             CompiledNodeKind::RepeatStart {
-                max_attempts: attempts,
+                max_attempts: attempts.into(),
                 body: StepIdx::new(2),
                 done: StepIdx::new(6),
             }
@@ -242,7 +242,7 @@ fn repeat_body_guard_lowers_to_boolean_branch() -> Result<(), String> {
         branches.first().ok_or("guard branch")?.target,
         StepIdx::new(3)
     );
-    assert_eq!(*otherwise, Some(StepIdx::new(4)));
+    assert_eq!(otherwise.step(), Some(StepIdx::new(4)));
     assert!(matches!(
         node(&workflow, 3)?.kind,
         CompiledNodeKind::SetConst { .. }

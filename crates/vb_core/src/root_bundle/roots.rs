@@ -32,7 +32,7 @@ impl<'a> Slots<'a> {
             let idx = usize::from(input.slot.get());
             let entry = kinds.get_mut(idx).ok_or(Error::Checkpoint(
                 CoreError::InternalInvariantViolation {
-                    reason: "owned_root_slots",
+                    reason: "owned_root_slots".into(),
                 },
             ))?;
             *entry = Some(input);
@@ -62,7 +62,7 @@ fn validate_duplicates(
         let idx = usize::from(slot.get());
         let entry = slots.seen.get_mut(idx).ok_or(Error::Checkpoint(
             CoreError::InternalInvariantViolation {
-                reason: "owned_root_slots",
+                reason: "owned_root_slots".into(),
             },
         ))?;
         if *entry {
@@ -78,7 +78,7 @@ fn validate_extras(roots: &[(SlotIdx, SlotValue, Taint)], slots: &Slots<'_>) -> 
         let idx = usize::from(slot.get());
         let entry = slots.kinds.get(idx).ok_or(Error::Checkpoint(
             CoreError::InternalInvariantViolation {
-                reason: "owned_root_slots",
+                reason: "owned_root_slots".into(),
             },
         ))?;
         if entry.is_none() {
@@ -93,7 +93,7 @@ fn validate_missing(wf: &CompiledWorkflow, slots: &Slots<'_>) -> Result<(), Erro
         let idx = usize::from(input.slot.get());
         let entry = slots.seen.get(idx).ok_or(Error::Checkpoint(
             CoreError::InternalInvariantViolation {
-                reason: "owned_root_slots",
+                reason: "owned_root_slots".into(),
             },
         ))?;
         if !*entry && input.constraint.requires_value() {
@@ -122,15 +122,15 @@ fn validate_kinds(roots: &[(SlotIdx, SlotValue, Taint)], slots: &Slots<'_>) -> R
         let idx = usize::from(slot.get());
         let entry = slots.kinds.get(idx).ok_or(Error::Checkpoint(
             CoreError::InternalInvariantViolation {
-                reason: "owned_root_slots",
+                reason: "owned_root_slots".into(),
             },
         ))?;
         let expected =
             (*entry).ok_or(Error::Checkpoint(CoreError::InternalInvariantViolation {
-                reason: "owned_root_slots",
+                reason: "owned_root_slots".into(),
             }))?;
         let actual = ValueKind::of(*value);
-        if !(*value == SlotValue::Null && expected.constraint.nullable)
+        if !(*value == SlotValue::Null && expected.constraint.nullability.allows_null())
             && !kind_matches(expected.kind, actual)
         {
             return Err(Error::RootKindMismatch {
@@ -207,7 +207,7 @@ pub(super) fn fill_defaults(
         .try_reserve_exact(workflow.input_slots().len())
         .map_err(|_| Error::Checkpoint(CoreError::AllocationFailed))?;
     for declaration in workflow.input_slots() {
-        let taint = if declaration.constraint.secret {
+        let taint = if declaration.constraint.secretness.is_secret() {
             Taint::Secret
         } else {
             Taint::Clean

@@ -1,5 +1,6 @@
 //! Bound recursive binary decoding before an untrusted tree can reach validation.
 use super::{CompiledInputField, InputDefaultValue, MAX_INPUT_SCHEMA_DEPTH};
+use crate::workflow::{ExtraFields, Nullability, Presence, Secretness};
 use crate::{CompiledInputConstraint, InputSlotKind, SlotValue};
 use serde::{Deserialize, Deserializer, de::Error};
 use std::cell::Cell;
@@ -39,16 +40,16 @@ fn bounded<T, E: Error>(
 // Field and variant ordering intentionally match the versioned production wire.
 #[derive(Deserialize)]
 struct ConstraintWire {
-    optional: bool,
-    nullable: bool,
+    presence: Presence,
+    nullability: Nullability,
     default_value: Option<SlotValue>,
     min: Option<i64>,
     max: Option<i64>,
     min_length: Option<i64>,
     max_length: Option<i64>,
     element: Option<InputSlotKind>,
-    allow_extra: Option<bool>,
-    secret: bool,
+    extra: ExtraFields,
+    secretness: Secretness,
     #[serde(default)]
     fields: Option<Box<[CompiledInputField]>>,
     #[serde(default)]
@@ -61,16 +62,16 @@ impl<'de> Deserialize<'de> for CompiledInputConstraint {
             bounded(depth, || {
                 let wire = ConstraintWire::deserialize(deserializer)?;
                 Ok(Self {
-                    optional: wire.optional,
-                    nullable: wire.nullable,
+                    presence: wire.presence,
+                    nullability: wire.nullability,
                     default_value: wire.default_value,
                     min: wire.min,
                     max: wire.max,
                     min_length: wire.min_length,
                     max_length: wire.max_length,
                     element: wire.element,
-                    allow_extra: wire.allow_extra,
-                    secret: wire.secret,
+                    extra: wire.extra,
+                    secretness: wire.secretness,
                     fields: wire.fields,
                     default_cold: wire.default_cold,
                 })

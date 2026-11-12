@@ -183,7 +183,7 @@ fn mark_suspended(
         StepState::Waiting => frame.mark_waiting(step),
         StepState::Asking => frame.mark_asking(step),
         _ => Err(vb_core::CoreError::InternalInvariantViolation {
-            reason: "invalid_recovered_suspend_state",
+            reason: "invalid_recovered_suspend_state".into(),
         }),
     }
 }

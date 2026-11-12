@@ -4,7 +4,7 @@
 use super::CanonicalScope;
 use super::canonical_references::StepReferenceResolver;
 use super::canonical_types::{
-    infer_canonical_expr_type, validate_canonical_references_with_resolver,
+    infer_canonical_expr_type_scoped, validate_canonical_references_with_resolver,
 };
 use crate::expression::parse_expression;
 use crate::expression_bytecode::compile_expr_to_bytecode_with_resolver;
@@ -124,13 +124,13 @@ fn compile_canonical_expression_with_binding(
     builder: &mut SlotCompiler,
 ) -> Result<(vb_core::ExprIdx, ExprType), CompileErrors> {
     let parsed = parse_expression(value).map_err(|e| CompileErrors(vec![e]))?;
-    let mut resolver = StepReferenceResolver::new(scope.outputs, scope.step_outputs);
+    let mut resolver = StepReferenceResolver::new(scope);
     if let Some((name, slot)) = binding {
         resolver = resolver.with_local_binding(name, slot);
     }
     validate_canonical_references_with_resolver(&parsed, &resolver)
         .map_err(|e| CompileErrors(vec![e]))?;
-    let inferred = infer_canonical_expr_type(&parsed, scope.slot_types, &resolver)
+    let inferred = infer_canonical_expr_type_scoped(&parsed, scope, &resolver)
         .map_err(|e| CompileErrors(vec![e]))?;
     let mut resolver = resolver.with_payloads(&mut builder.symbols, &mut builder.accessors);
     let program =

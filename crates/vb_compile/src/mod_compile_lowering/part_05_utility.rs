@@ -4,6 +4,7 @@ use crate::mod_compile_errors::{CompileError, CompileErrors};
 use std::collections::HashMap;
 use vb_core::SlotIdx;
 
+#[cfg(test)]
 pub(in crate::mod_compile_lowering) fn parse_i64_field(
     value: &str,
     step: usize,

@@ -43,7 +43,7 @@ fn excessive_choice_fanout_is_rejected_before_transfer_expansion() -> TestResult
                         count
                     ]
                     .into_boxed_slice(),
-                    otherwise: Some(step(1)),
+                    otherwise: Some(step(1)).into(),
                 },
                 None,
                 None,

@@ -17,7 +17,7 @@ fn nested_repeat_compiles_with_exact_layout() -> Result<(), String> {
     assert_eq!(
         node(&workflow, 1)?.kind,
         CompiledNodeKind::RepeatStart {
-            max_attempts: 3,
+            max_attempts: 3.into(),
             body: StepIdx::new(2),
             done: StepIdx::new(9),
         }
@@ -25,7 +25,7 @@ fn nested_repeat_compiles_with_exact_layout() -> Result<(), String> {
     assert_eq!(
         node(&workflow, 2)?.kind,
         CompiledNodeKind::RepeatStart {
-            max_attempts: 1,
+            max_attempts: 1.into(),
             body: StepIdx::new(3),
             done: StepIdx::new(6),
         }

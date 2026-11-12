@@ -134,6 +134,7 @@ proptest! {
                 outputs: &outputs,
                 step_outputs: &step_outputs,
                 slot_types: &slot_types,
+                parent: None,
             },
         };
         let result = lower_canonical_collect(0, id, collect, &mut builder);
@@ -172,6 +173,7 @@ proptest! {
                 outputs: &outputs,
                 step_outputs: &step_outputs,
                 slot_types: &slot_types,
+                parent: None,
             },
         };
         let result = lower_canonical_collect(0, StepIdx::new(id), collect, &mut builder);

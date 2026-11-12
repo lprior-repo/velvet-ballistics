@@ -18,12 +18,12 @@ pub fn replay_choose_slot(
         let branch = branches.get(index).ok_or(ReplayError::Internal {
             reason: "choose_slot branch index checked by loop bound",
         })?;
-        let value = run
-            .slot_cell(branch.condition)
-            .and_then(Option::as_ref)
-            .ok_or(ReplayError::SlotNotAvailable {
-                slot: branch.condition,
-            })?;
+        let value =
+            run.slot_cell(branch.condition)
+                .flatten()
+                .ok_or(ReplayError::SlotNotAvailable {
+                    slot: branch.condition,
+                })?;
         match value {
             SlotValue::Bool(true) => {
                 run.set_pc_checked(branch.target)

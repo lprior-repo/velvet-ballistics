@@ -860,7 +860,7 @@ mod behavior_step_state_transitions {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(
-            matches!(err, CoreError::InternalInvariantViolation { reason } if *reason == *"invalid_state_transition")
+            matches!(err, CoreError::InternalInvariantViolation { reason } if reason.as_str() == "invalid_state_transition")
         );
     }
 }

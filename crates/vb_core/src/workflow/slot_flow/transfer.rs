@@ -62,7 +62,7 @@ pub(super) fn apply(ctx: &mut Context<'_>, route: Route) -> FlowResult<()> {
             timeout_slot,
         } => {
             ctx.typed_read(*event, Fact::I64 | Fact::F64)?;
-            timeout(ctx, *timeout_slot)
+            timeout(ctx, timeout_slot.slot())
         }
         K::Ask {
             prompt,
@@ -79,7 +79,7 @@ pub(super) fn apply(ctx: &mut Context<'_>, route: Route) -> FlowResult<()> {
                     | Fact::OBJECT
                     | Fact::BLOB,
             )?;
-            timeout(ctx, *timeout_slot)?;
+            timeout(ctx, timeout_slot.slot())?;
             // Host authority comes from the immediate AskResume, even without Ask.output.
             // Failure edges retain the pre-answer state.
             if let Some(K::AskResume { answer }) = ctx

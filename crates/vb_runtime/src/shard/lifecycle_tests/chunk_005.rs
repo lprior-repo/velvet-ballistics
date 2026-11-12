@@ -878,7 +878,7 @@ fn parallel_together_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let branch_one = vb_core::workflow::node(
         StepIdx::new(2),
         CompiledNodeKind::TogetherBranch {
-            branch: 0,
+            branch: 0.into(),
             entry: StepIdx::new(3),
             join: StepIdx::new(6),
             accumulator: SlotIdx::new(1),
@@ -895,7 +895,7 @@ fn parallel_together_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let branch_two = vb_core::workflow::node(
         StepIdx::new(4),
         CompiledNodeKind::TogetherBranch {
-            branch: 1,
+            branch: 1.into(),
             entry: StepIdx::new(5),
             join: StepIdx::new(6),
             accumulator: SlotIdx::new(1),
@@ -911,7 +911,7 @@ fn parallel_together_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let join = vb_core::workflow::node(
         StepIdx::new(6),
-        CompiledNodeKind::TogetherJoin { branch_count: 2, accumulator: SlotIdx::new(1) },
+        CompiledNodeKind::TogetherJoin { branch_count: 2.into(), accumulator: SlotIdx::new(1) },
         Some(SlotIdx::ZERO),
         Some(StepIdx::new(7)),
     );
@@ -1091,7 +1091,7 @@ fn timer_ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let ask = vb_core::workflow::node(
         StepIdx::new(2),
-        CompiledNodeKind::Ask { prompt: SlotIdx::ZERO, timeout_slot: Some(SlotIdx::new(1)) },
+        CompiledNodeKind::Ask { prompt: SlotIdx::ZERO, timeout_slot: Some(SlotIdx::new(1)).into() },
         Some(vb_core::ids::SlotIdx::new(2)),
         Some(StepIdx::new(3)),
     );
@@ -1839,7 +1839,7 @@ fn wait_event_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     );
     let wait = vb_core::workflow::node(
         StepIdx::new(2),
-        CompiledNodeKind::WaitEvent { event: SlotIdx::ZERO, timeout_slot: Some(SlotIdx::new(1)) },
+        CompiledNodeKind::WaitEvent { event: SlotIdx::ZERO, timeout_slot: Some(SlotIdx::new(1)).into() },
         None,
         Some(StepIdx::new(3)),
     );
@@ -3082,7 +3082,7 @@ fn tiny_journal_ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         StepIdx::new(2),
         CompiledNodeKind::Ask {
             prompt: SlotIdx::ZERO,
-            timeout_slot: Some(SlotIdx::new(1)),
+            timeout_slot: Some(SlotIdx::new(1)).into(),
         },
         Some(vb_core::ids::SlotIdx::new(2)),
         Some(StepIdx::new(3)),
@@ -3848,7 +3848,7 @@ fn two_ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         StepIdx::new(2),
         CompiledNodeKind::Ask {
             prompt: SlotIdx::ZERO,
-            timeout_slot: Some(SlotIdx::new(1)),
+            timeout_slot: Some(SlotIdx::new(1)).into(),
         },
         Some(vb_core::ids::SlotIdx::new(2)),
         Some(StepIdx::new(3)),
@@ -3865,7 +3865,7 @@ fn two_ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         StepIdx::new(4),
         CompiledNodeKind::Ask {
             prompt: SlotIdx::ZERO,
-            timeout_slot: Some(SlotIdx::new(1)),
+            timeout_slot: Some(SlotIdx::new(1)).into(),
         },
         Some(vb_core::ids::SlotIdx::new(2)),
         Some(StepIdx::new(5)),

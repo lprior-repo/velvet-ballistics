@@ -43,7 +43,7 @@ pub fn lower_choose(
         id,
         CompiledNodeKind::ChooseSlot {
             branches,
-            otherwise,
+            otherwise: otherwise.into(),
         },
         None,
         None,
@@ -69,7 +69,7 @@ pub fn lower_for_each(
             CompiledNodeKind::ForEachStart {
                 input,
                 item_slot,
-                limit,
+                limit: limit.into(),
                 body,
                 done,
             },
@@ -117,7 +117,7 @@ pub fn lower_together(
     nodes.push(node(
         join,
         CompiledNodeKind::TogetherJoin {
-            branch_count,
+            branch_count: branch_count.into(),
             accumulator,
         },
         Some(accumulator),

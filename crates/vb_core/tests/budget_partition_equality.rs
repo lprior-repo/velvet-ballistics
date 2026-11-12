@@ -49,35 +49,35 @@ fn variants() -> Vec<CompiledNode> {
         },
         WaitEvent {
             event: zero,
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
         WaitEvent {
             event: high,
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
         WaitEvent {
             event: zero,
-            timeout_slot: Some(zero),
+            timeout_slot: Some(zero).into(),
         },
         WaitEvent {
             event: zero,
-            timeout_slot: Some(high),
+            timeout_slot: Some(high).into(),
         },
         Ask {
             prompt: zero,
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
         Ask {
             prompt: high,
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
         Ask {
             prompt: zero,
-            timeout_slot: Some(zero),
+            timeout_slot: Some(zero).into(),
         },
         Ask {
             prompt: zero,
-            timeout_slot: Some(high),
+            timeout_slot: Some(high).into(),
         },
         Finish { result: zero },
         Finish { result: high },

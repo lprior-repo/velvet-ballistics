@@ -549,7 +549,9 @@ fn eval_expr_operator_rejects_load_slot_op() -> Result<(), String> {
     let mut store = ValueStore::new();
     let result = eval_expr_operator(ExprOp::LoadSlot(SlotIdx::new(0)), &mut stack, &mut store);
     match result {
-        Err(EngineError::InternalInvariantViolation { reason }) if reason.contains("load ops") => {
+        Err(EngineError::InternalInvariantViolation { reason })
+            if reason.as_str().contains("load ops") =>
+        {
             Ok(())
         }
         other => Err(format!("unexpected result: {other:?}")),

@@ -78,7 +78,7 @@ impl Shard {
                     }
                     _ => {
                         return Err(vb_core::CoreError::InternalInvariantViolation {
-                            reason: "secret_input_binding",
+                            reason: "secret_input_binding".into(),
                         }
                         .into());
                     }
@@ -108,7 +108,7 @@ impl Shard {
                 if let Some((_, value)) = filled.iter().find(|(candidate, _)| *candidate == slot) {
                     if *value != expected {
                         return Err(vb_core::CoreError::InternalInvariantViolation {
-                            reason: "secret_input_binding",
+                            reason: "secret_input_binding".into(),
                         }
                         .into());
                     }

@@ -573,7 +573,7 @@ fn wait_event_returns_awaiting_wait_and_preserves_step_in_waiting_state() -> Res
             StepIdx::new(0),
             CompiledNodeKind::WaitEvent {
                 event: SlotIdx::new(0),
-                timeout_slot: None,
+                timeout_slot: None.into(),
             },
             None,
             None,
@@ -611,7 +611,7 @@ fn ask_returns_awaiting_ask_and_step_enters_asking_state() -> Result<(), String>
             StepIdx::new(0),
             CompiledNodeKind::Ask {
                 prompt: SlotIdx::new(0),
-                timeout_slot: None,
+                timeout_slot: None.into(),
             },
             None,
             None,
@@ -651,7 +651,7 @@ fn error_handler_jumps_to_body_and_returns_continue() -> Result<(), String> {
                 CompiledNodeKind::ErrorHandler {
                     body: StepIdx::new(1),
                     handler: StepIdx::new(2),
-                    error_slot: None,
+                    error_slot: None.into(),
                 },
                 None,
                 None,
@@ -713,7 +713,7 @@ fn choose_slot_true_branch_takes_target_step_and_returns_continue() -> Result<()
                         target: StepIdx::new(2),
                     }]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(1)),
+                    otherwise: Some(StepIdx::new(1)).into(),
                 },
                 None,
                 None,
@@ -775,7 +775,7 @@ fn choose_slot_false_takes_otherwise_target() -> Result<(), String> {
                         target: StepIdx::new(2),
                     }]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(1)),
+                    otherwise: Some(StepIdx::new(1)).into(),
                 },
                 None,
                 None,
@@ -1567,9 +1567,11 @@ fn invalid_transition_rejected_in_run_frame_mark() -> Result<(), String> {
     let result = run.mark_pending(StepIdx::new(0));
 
     match result {
-        Err(EngineError::InternalInvariantViolation {
-            reason: "invalid_state_transition",
-        }) => Ok(()),
+        Err(EngineError::InternalInvariantViolation { reason })
+            if reason.as_str() == "invalid_state_transition" =>
+        {
+            Ok(())
+        }
         other => Err(format!(
             "expected InternalInvariantViolation, got {other:?}"
         )),
@@ -1590,9 +1592,11 @@ fn succeeded_to_running_rejected_in_run_frame() -> Result<(), String> {
     let result = run.mark_running(StepIdx::new(0));
 
     match result {
-        Err(EngineError::InternalInvariantViolation {
-            reason: "invalid_state_transition",
-        }) => Ok(()),
+        Err(EngineError::InternalInvariantViolation { reason })
+            if reason.as_str() == "invalid_state_transition" =>
+        {
+            Ok(())
+        }
         other => Err(format!(
             "expected InternalInvariantViolation, got {other:?}"
         )),

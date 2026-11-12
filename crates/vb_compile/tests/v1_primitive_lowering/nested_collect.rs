@@ -33,7 +33,7 @@ fn compile_workflow_accepts_nested_collect_body() -> Result<(), String> {
             0u16,
             CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
-                limit: 1,
+                limit: 1.into(),
                 page_size: 1,
                 body: StepIdx::new(1),
                 done: StepIdx::new(6),
@@ -45,7 +45,7 @@ fn compile_workflow_accepts_nested_collect_body() -> Result<(), String> {
             1u16,
             CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(1),
-                limit: 1,
+                limit: 1.into(),
                 page_size: 1,
                 body: StepIdx::new(2),
                 done: StepIdx::new(4),

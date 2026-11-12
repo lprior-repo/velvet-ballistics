@@ -52,7 +52,7 @@ fn run_frame_with_slots(slots: Vec<SlotValue>) -> Result<crate::RunFrame, Engine
     for (i, value) in slots.iter().enumerate() {
         let idx = SlotIdx::new(u16::try_from(i).map_err(|_| {
             EngineError::InternalInvariantViolation {
-                reason: "slot index overflow",
+                reason: "slot index overflow".into(),
             }
         })?);
         run.write_slot(idx, *value)?;

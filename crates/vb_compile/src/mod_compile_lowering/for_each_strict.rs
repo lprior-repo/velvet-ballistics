@@ -1,5 +1,5 @@
-use super::canonical_types::validate_canonical_references;
-use super::{CanonicalScope, resolve_slot_reference};
+use super::canonical_types::validate_canonical_references_scoped;
+use super::{CanonicalScope, resolve_slot_reference_scoped};
 use crate::expression::{BinaryOp, ParsedExpression, parse_expression};
 use crate::{CompileError, CompileErrors};
 use vb_expr::expr_typecheck::ExprType;
@@ -9,18 +9,13 @@ pub(in crate::mod_compile_lowering) fn validate_for_each_expression(
     scope: CanonicalScope<'_>,
 ) -> Result<(), CompileErrors> {
     let expr = parse_expression(value).map_err(|e| CompileErrors(vec![e]))?;
-    validate_canonical_references(&expr, scope.outputs, scope.step_outputs)
-        .map_err(|e| CompileErrors(vec![e]))?;
+    validate_canonical_references_scoped(&expr, scope).map_err(|e| CompileErrors(vec![e]))?;
     validate_operands(&expr, scope, true).map_err(|e| CompileErrors(vec![e]))
 }
 
 fn reject_unknown_reference(name: &str, scope: CanonicalScope<'_>) -> Result<(), CompileError> {
-    let slot = resolve_slot_reference(name, scope.outputs, scope.step_outputs)?;
-    let ty = scope
-        .slot_types
-        .get(&slot)
-        .copied()
-        .unwrap_or(ExprType::Unknown);
+    let slot = resolve_slot_reference_scoped(name, scope)?;
+    let ty = scope.get_type(slot).unwrap_or(ExprType::Unknown);
     if ty == ExprType::Unknown {
         Err(CompileError::TypeMismatch {
             field: "set.value",

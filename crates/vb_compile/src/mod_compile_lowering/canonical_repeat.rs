@@ -33,7 +33,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_repeat(
     builder.push_node(node(
         id,
         CompiledNodeKind::RepeatStart {
-            max_attempts,
+            max_attempts: max_attempts.into(),
             body: layout.body,
             done: layout.done,
         },

@@ -85,8 +85,8 @@ impl RunFrame {
                 .copied()
                 .map(CheckpointStepState::from)
                 .collect(),
-            slots: self.slots.to_vec(),
-            taint: self.taint.to_vec(),
+            slots: self.slots_snapshot(),
+            taint: self.taint_snapshot(),
         }
     }
 
@@ -128,8 +128,15 @@ impl RunFrame {
             max_parallel_in_flight: checkpoint.max_parallel_in_flight,
             parallel_in_flight: checkpoint.parallel_in_flight,
             states: checkpoint.states.into_iter().map(StepState::from).collect(),
-            slots: checkpoint.slots.into_boxed_slice(),
-            taint: checkpoint.taint.into_boxed_slice(),
+            cells: checkpoint
+                .slots
+                .into_iter()
+                .zip(checkpoint.taint)
+                .map(|(value, taint)| match value {
+                    Some(value) => crate::value::SlotCell::value(value, taint),
+                    None => crate::value::SlotCell::empty(),
+                })
+                .collect(),
         })
     }
 }

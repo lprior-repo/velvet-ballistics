@@ -285,7 +285,7 @@ fn optional_input_missing_is_accepted() -> TestResult {
 #[test]
 fn scalar_default_is_filled_and_bound_to_identity() -> TestResult {
     let constraint = CompiledInputConstraint {
-        optional: false,
+        presence: false.into(),
         default_value: Some(SlotValue::I64(7)),
         ..CompiledInputConstraint::unconstrained()
     };
@@ -308,8 +308,8 @@ fn null_accepted_only_when_nullable() -> TestResult {
     let nullable = constrained_workflow(
         InputSlotKind::I64,
         CompiledInputConstraint {
-            optional: false,
-            nullable: true,
+            presence: false.into(),
+            nullability: true.into(),
             ..CompiledInputConstraint::unconstrained()
         },
     )?;
@@ -323,7 +323,7 @@ fn integer_range_bounds_are_enforced() -> TestResult {
     let bounded = constrained_workflow(
         InputSlotKind::I64,
         CompiledInputConstraint {
-            optional: false,
+            presence: false.into(),
             min: Some(1),
             max: Some(10),
             ..CompiledInputConstraint::unconstrained()

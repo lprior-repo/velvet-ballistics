@@ -25,7 +25,7 @@ fn nested_do_in_repeat_body_lowers_to_final_ir() -> Result<(), String> {
         (
             0,
             K::RepeatStart {
-                max_attempts: 3,
+                max_attempts: 3.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(4),
             },
@@ -97,7 +97,7 @@ fn nested_do_in_collect_body_lowers_to_final_ir() -> Result<(), String> {
         0,
         vb_core::CompiledNodeKind::CollectStart {
             source: vb_core::SlotIdx::new(0),
-            limit: 15,
+            limit: 15.into(),
             page_size: 5,
             body: vb_core::StepIdx::new(1),
             done: vb_core::StepIdx::new(3),
@@ -192,7 +192,7 @@ fn nested_do_in_for_each_body_lowers_to_final_ir() -> Result<(), String> {
             K::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(4),
-                limit: 2,
+                limit: 2.into(),
                 body: StepIdx::new(3),
                 done: StepIdx::new(6),
             },
@@ -415,7 +415,7 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
         &parts.nodes,
         1,
         vb_core::CompiledNodeKind::TogetherBranch {
-            branch: 0,
+            branch: 0.into(),
             accumulator: vb_core::SlotIdx::new(2),
             entry: vb_core::StepIdx::new(2),
             join: vb_core::StepIdx::new(7),
@@ -452,7 +452,7 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
         &parts.nodes,
         4,
         vb_core::CompiledNodeKind::TogetherBranch {
-            branch: 1,
+            branch: 1.into(),
             accumulator: vb_core::SlotIdx::new(2),
             entry: vb_core::StepIdx::new(5),
             join: vb_core::StepIdx::new(7),
@@ -489,7 +489,7 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
         &parts.nodes,
         7,
         vb_core::CompiledNodeKind::TogetherJoin {
-            branch_count: 2,
+            branch_count: 2.into(),
             accumulator: vb_core::SlotIdx::new(2),
         },
         Some(vb_core::SlotIdx::new(3)),

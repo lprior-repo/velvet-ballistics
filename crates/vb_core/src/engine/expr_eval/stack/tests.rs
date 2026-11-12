@@ -295,7 +295,7 @@ fn stack_pop_get_failure_returns_invariant_violation() {
     assert_eq!(
         result,
         Err(EngineError::InternalInvariantViolation {
-            reason: "expression stack pop index checked by length",
+            reason: "expression stack pop index checked by length".into(),
         })
     );
 }

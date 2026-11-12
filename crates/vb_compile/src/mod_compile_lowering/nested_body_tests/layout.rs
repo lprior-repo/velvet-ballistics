@@ -1,11 +1,4 @@
-//! Nested composition contracts; legacy test names stay at their original path.
-
-use crate::{CompileError, compile_workflow};
-use vb_core::workflow::{NodeContinuation, NodeOutput};
-use vb_core::{CompiledNode, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx};
-#[path = "nested_body_tests/support.rs"]
-mod support;
-use support::*;
+use super::*;
 
 #[test]
 fn nested_for_each_in_for_each_layout() -> Result<(), String> {
@@ -25,10 +18,10 @@ fn nested_for_each_in_for_each_layout() -> Result<(), String> {
         ..
     } = &node(&workflow, 3)?.kind
     else {
-        return Err("node 1 is not the outer ForEachStart".to_owned());
+        return Err("node 3 is not the outer ForEachStart".to_owned());
     };
     assert_eq!(
-        (*outer_body, *outer_done, *outer_limit),
+        (*outer_body, *outer_done, outer_limit.get()),
         (StepIdx::new(4), StepIdx::new(13), 4)
     );
     let CompiledNodeKind::ForEachStart {
@@ -38,10 +31,10 @@ fn nested_for_each_in_for_each_layout() -> Result<(), String> {
         ..
     } = &node(&workflow, 6)?.kind
     else {
-        return Err("node 4 is not the inner ForEachStart".to_owned());
+        return Err("node 6 is not the inner ForEachStart".to_owned());
     };
     assert_eq!(
-        (*inner_body, *inner_done, *inner_limit),
+        (*inner_body, *inner_done, inner_limit.get()),
         (StepIdx::new(7), StepIdx::new(10), 4)
     );
     assert_eq!(
@@ -133,7 +126,7 @@ fn nested_choose_in_for_each_layout() -> Result<(), String> {
     let CompiledNodeKind::Choose { otherwise, .. } = node(&workflow, 5)?.kind else {
         return Err("missing nested Choose".to_owned());
     };
-    assert_eq!(otherwise, Some(StepIdx::new(7)));
+    assert_eq!(otherwise.step(), Some(StepIdx::new(7)));
     Ok(())
 }
 
@@ -213,7 +206,7 @@ fn aggregate_inside_loop_body_stays_rejected() -> Result<(), String> {
 }
 
 #[test]
-fn together_inside_loop_body_stays_rejected() -> Result<(), String> {
+fn together_inside_loop_body_preserves_scoped_outputs() -> Result<(), String> {
     let text = in_for_each(
         "        - id: fan\n          together:\n            branches:\n              - label: a\n                steps:\n                  - id: only\n                    set: {output: solo, value: '1'}\n",
     );
@@ -225,9 +218,9 @@ fn together_inside_loop_body_stays_rejected() -> Result<(), String> {
     assert!(matches!(
         node(&workflow, join.get())?.kind,
         CompiledNodeKind::TogetherJoin {
-            branch_count: 1,
+            branch_count,
             ..
-        }
+        } if branch_count == 1.into()
     ));
     assert_ne!(output(&workflow, 4)?, output(&workflow, join.get())?);
     Ok(())
@@ -273,5 +266,24 @@ fn finish_inside_loop_body_stays_rejected() -> Result<(), String> {
     })
 }
 
-#[path = "nested_body_tests/controls.rs"]
-mod controls;
+#[test]
+fn foreach_multi_step_body_layout() -> Result<(), String> {
+    let text = source(
+        "  - id: seed\n    set: {output: base, value: '1'}\n  - id: outer\n    for_each:\n      input: '$input.outer_items'\n      variable: entry\n      steps:\n        - id: one\n          set: {output: picked, value: '$entry'}\n        - id: two\n          set: {output: second, value: '$picked'}\n",
+    ) + finish_tail();
+    let workflow = compile(&text)?;
+    assert_eq!(workflow.to_parts().nodes.len(), 10);
+    let CompiledNodeKind::ForEachStart { body, done, .. } = &node(&workflow, 3)?.kind else {
+        return Err("node 3 is not ForEachStart".to_owned());
+    };
+    assert_eq!((*body, *done), (StepIdx::new(4), StepIdx::new(8)));
+    assert_eq!(
+        node(&workflow, 4)?.routing.next,
+        NodeContinuation::Step(StepIdx::new(5))
+    );
+    assert_eq!(
+        node(&workflow, 5)?.routing.next,
+        NodeContinuation::Step(StepIdx::new(6))
+    );
+    Ok(())
+}

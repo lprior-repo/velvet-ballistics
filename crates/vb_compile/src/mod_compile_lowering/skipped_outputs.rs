@@ -232,11 +232,11 @@ impl PossiblySkippedOutputs {
     fn check_wait_event(
         &self,
         event: &SlotIdx,
-        timeout_slot: &Option<SlotIdx>,
+        timeout_slot: &vb_core::Deadline,
     ) -> Result<(), CompileError> {
         self.check(*event, "waitevent.event")?;
-        if let Some(ts) = timeout_slot {
-            self.check(*ts, "waitevent.timeout")?;
+        if let Some(ts) = timeout_slot.slot() {
+            self.check(ts, "waitevent.timeout")?;
         }
         Ok(())
     }
@@ -244,11 +244,11 @@ impl PossiblySkippedOutputs {
     fn check_ask(
         &self,
         prompt: &SlotIdx,
-        timeout_slot: &Option<SlotIdx>,
+        timeout_slot: &vb_core::Deadline,
     ) -> Result<(), CompileError> {
         self.check(*prompt, "ask.prompt")?;
-        if let Some(ts) = timeout_slot {
-            self.check(*ts, "ask.timeout")?;
+        if let Some(ts) = timeout_slot.slot() {
+            self.check(ts, "ask.timeout")?;
         }
         Ok(())
     }

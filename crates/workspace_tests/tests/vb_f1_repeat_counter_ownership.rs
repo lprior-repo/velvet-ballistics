@@ -452,7 +452,7 @@ fn repeat_body_kind_error_handler() -> Result<(), Box<dyn std::error::Error + Se
     body_node.kind = CompiledNodeKind::ErrorHandler {
         body: check_id,
         handler: done_id,
-        error_slot: Some(counter_slot),
+        error_slot: Some(counter_slot).into(),
     };
 
     let result = CompiledWorkflow::try_from_parts(parts);
@@ -624,7 +624,7 @@ fn test_implicit_counter_writers() -> Result<(), Box<dyn std::error::Error + Sen
             CompiledNodeKind::ForEachStart {
                 input: private,
                 item_slot: counter,
-                limit: 1,
+                limit: 1.into(),
                 body: target,
                 done: target,
             },
@@ -640,7 +640,7 @@ fn test_implicit_counter_writers() -> Result<(), Box<dyn std::error::Error + Sen
         ),
         (
             CompiledNodeKind::TogetherBranch {
-                branch: 0,
+                branch: 0.into(),
                 entry: target,
                 join: target,
                 accumulator: counter,
@@ -766,7 +766,7 @@ fn test_collect_start_foreign_write() -> Result<(), Box<dyn std::error::Error + 
         .ok_or("missing forward target")?;
     writer_node.kind = CompiledNodeKind::CollectStart {
         source: counter,
-        limit: 1,
+        limit: 1.into(),
         page_size: 1,
         body: target,
         done: target,
@@ -791,7 +791,7 @@ fn test_together_join_foreign_write() -> Result<(), Box<dyn std::error::Error + 
         .find(|n| n.id == trailing_writer)
         .ok_or("missing writer node")?;
     writer_node.kind = CompiledNodeKind::TogetherJoin {
-        branch_count: 1,
+        branch_count: 1.into(),
         accumulator: counter,
     };
     let result = CompiledWorkflow::try_from_parts(parts);

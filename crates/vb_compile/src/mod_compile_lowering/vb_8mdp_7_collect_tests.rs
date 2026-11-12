@@ -5,7 +5,7 @@
 //! shared scope plumbing lives there.
 
 use crate::{StepAst, StepPrimitive};
-use vb_core::ids::StepIdx;
+use vb_core::ids::{FanoutLimit, StepIdx};
 use vb_core::workflow::CompiledNodeKind;
 use vb_core::workflow::NodeContinuation;
 
@@ -57,7 +57,11 @@ fn per_side_defaults_apply() {
         CompiledNodeKind::CollectStart {
             limit, page_size, ..
         } => {
-            assert_eq!(*limit, 3, "absent pages defaults to 1, so limit is 1 * 3");
+            assert_eq!(
+                *limit,
+                FanoutLimit::new(3),
+                "absent pages defaults to 1, so limit is 1 * 3"
+            );
             assert_eq!(*page_size, 3, "explicit items (page_size) should be 3");
         }
         other => assert!(false, "expected CollectStart, got {other:?}"),
@@ -103,7 +107,11 @@ fn explicit_pages_and_items_multiply_to_limit() {
         CompiledNodeKind::CollectStart {
             limit, page_size, ..
         } => {
-            assert_eq!(*limit, 50, "limit is the total bound 5 * 10");
+            assert_eq!(
+                *limit,
+                FanoutLimit::new(50),
+                "limit is the total bound 5 * 10"
+            );
             assert_eq!(*page_size, 10, "explicit items (page_size) should be 10");
         }
         other => assert!(false, "expected CollectStart, got {other:?}"),

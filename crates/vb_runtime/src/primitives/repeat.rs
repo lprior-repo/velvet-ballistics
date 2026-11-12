@@ -80,7 +80,7 @@ use vb_core::engine::repeat::{decode_repeat_state, encode_repeat_state};
 #[cfg(test)]
 fn invalid_repeat_state() -> EngineError {
     EngineError::InternalInvariantViolation {
-        reason: "invalid_repeat_state",
+        reason: "invalid_repeat_state".into(),
     }
 }
 #[cfg(test)]

@@ -139,7 +139,8 @@ fn eligible(events: &[E], plan: &CompiledWorkflow) -> RecoveryResult<bool> {
             | K::ChooseSlot { .. }
             | K::AskResume { .. }
             | K::Ask {
-                timeout_slot: None, ..
+                timeout_slot: vb_core::workflow::Deadline::Unset,
+                ..
             } => {}
             _ => return Ok(false),
         }

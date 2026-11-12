@@ -24,7 +24,7 @@ fn fixture_parts() -> Result<CompiledWorkflow, String> {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 2,
+                limit: 2.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(3),
             },

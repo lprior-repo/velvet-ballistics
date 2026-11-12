@@ -160,7 +160,7 @@ fn nested_fanout_loop_nodes() -> Vec<CompiledNode> {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 2,
+                limit: 2.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(5),
             },
@@ -179,7 +179,7 @@ fn nested_fanout_loop_nodes() -> Vec<CompiledNode> {
             4,
             None,
             CompiledNodeKind::TogetherJoin {
-                branch_count: 2,
+                branch_count: 2.into(),
                 accumulator: SlotIdx::new(2),
             },
         ),
@@ -201,7 +201,7 @@ fn sequential_collect_reduce_repeat_wait_nodes() -> Vec<CompiledNode> {
             None,
             CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
-                limit: 3,
+                limit: 3.into(),
                 page_size: 1,
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
@@ -239,7 +239,7 @@ fn sequential_collect_reduce_repeat_wait_nodes() -> Vec<CompiledNode> {
             6,
             None,
             CompiledNodeKind::RepeatStart {
-                max_attempts: 2,
+                max_attempts: 2.into(),
                 body: StepIdx::new(7),
                 done: StepIdx::new(8),
             },
@@ -279,7 +279,7 @@ fn conditional_max_nodes() -> Vec<CompiledNode> {
                     },
                 ]
                 .into_boxed_slice(),
-                otherwise: Some(StepIdx::new(5)),
+                otherwise: Some(StepIdx::new(5)).into(),
             },
         ),
         test_node(1, Some(2), CompiledNodeKind::Nop),
@@ -391,7 +391,7 @@ fn foreach_limit_one_counts_body_once() -> Result<(), String> {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 1,
+                limit: 1.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
@@ -463,7 +463,7 @@ fn collect_start_body_accounting() -> Result<(), String> {
             StepIdx::new(0),
             CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
-                limit: 3,
+                limit: 3.into(),
                 page_size: 1,
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
@@ -530,7 +530,7 @@ fn repeat_start_body_accounting() -> Result<(), String> {
         node(
             StepIdx::new(0),
             CompiledNodeKind::RepeatStart {
-                max_attempts: 7,
+                max_attempts: 7.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
@@ -678,7 +678,7 @@ fn nested_for_each_triple_depth() -> Result<(), String> {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 2,
+                limit: 2.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(6),
             },
@@ -690,7 +690,7 @@ fn nested_for_each_triple_depth() -> Result<(), String> {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(2),
                 item_slot: SlotIdx::new(3),
-                limit: 3,
+                limit: 3.into(),
                 body: StepIdx::new(2),
                 done: StepIdx::new(5),
             },
@@ -702,7 +702,7 @@ fn nested_for_each_triple_depth() -> Result<(), String> {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(4),
                 item_slot: SlotIdx::new(5),
-                limit: 4,
+                limit: 4.into(),
                 body: StepIdx::new(3),
                 done: StepIdx::new(4),
             },

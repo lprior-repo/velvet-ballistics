@@ -59,16 +59,16 @@
 //   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget/validate.rs:88-147
 // Production `crates/vb_core/src/budget/validate.rs:88-147`
 //   - `BudgetError`                          <- crates/vb_core/src/budget/validate_error.rs:10-57
-//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:11-49
-// Production `crates/vb_core/src/budget/aggregate.rs:11-49`
+//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget/aggregate.rs:17-54
+// Production `crates/vb_core/src/budget/aggregate.rs:17-54`
 //   - `AggregateResourceBudget::from_workflow`  <- crates/vb_core/src/budget/aggregate_validate.rs:12-23
 //   - `AggregateResourceBudget::from_whole_workflow_budget`
 //                                            <- crates/vb_core/src/budget/aggregate_validate.rs:25-59
 // Production `crates/vb_core/src/budget/aggregate_validate.rs:25-59`
-//   - `AggregateResourceCapacity`            <- crates/vb_core/src/budget/aggregate.rs:53-94
-// Production `crates/vb_core/src/budget/aggregate.rs:53-94`
-//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:98-132
-// Production `crates/vb_core/src/budget/aggregate.rs:98-132`
+//   - `AggregateResourceCapacity`            <- crates/vb_core/src/budget/aggregate.rs:59-94
+// Production `crates/vb_core/src/budget/aggregate.rs:59-94`
+//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget/aggregate.rs:104-140
+// Production `crates/vb_core/src/budget/aggregate.rs:104-140`
 //   - `AggregateResourceUsage::try_add_budget`
 //                                            <- crates/vb_core/src/budget/usage_arith.rs:9-123
 // Production `crates/vb_core/src/budget/usage_arith.rs:9-123`
@@ -426,7 +426,7 @@ pub enum BudgetError {
 // against.
 
 /// Mirror of production `AggregateResourceBudget` at
-/// `crates/vb_core/src/budget/aggregate.rs:11-49`.
+/// `crates/vb_core/src/budget/aggregate.rs:17-54`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct AggregateResourceBudget {
     pub max_steps_executable: u32,
@@ -460,7 +460,7 @@ pub struct AggregateResourceBudget {
 }
 
 /// Mirror of production `AggregateResourceCapacity` at
-/// `crates/vb_core/src/budget/aggregate.rs:53-94`.
+/// `crates/vb_core/src/budget/aggregate.rs:59-94`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct AggregateResourceCapacity {
     pub max_steps_executable: u64,
@@ -492,7 +492,7 @@ pub struct AggregateResourceCapacity {
 }
 
 /// Mirror of production `AggregateResourceUsage` at
-/// `crates/vb_core/src/budget/aggregate.rs:98-132`.
+/// `crates/vb_core/src/budget/aggregate.rs:104-140`.
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub struct AggregateResourceUsage {
     pub max_steps_executable: u64,

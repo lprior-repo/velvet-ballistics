@@ -384,7 +384,7 @@ fn validate_transition_target_rejects_choose_branch_out_of_bounds() {
                     target: StepIdx::new(50),
                 }]
                 .into_boxed_slice(),
-                otherwise: None,
+                otherwise: None.into(),
             },
             None,
             None,
@@ -410,7 +410,7 @@ fn validate_transition_target_rejects_choose_otherwise_out_of_bounds() {
             StepIdx::new(0),
             CompiledNodeKind::Choose {
                 branches: vec![].into_boxed_slice(),
-                otherwise: Some(StepIdx::new(77)),
+                otherwise: Some(StepIdx::new(77)).into(),
             },
             None,
             None,
@@ -440,7 +440,7 @@ fn validate_transition_target_rejects_choose_slot_branch_out_of_bounds() {
                     target: StepIdx::new(50),
                 }]
                 .into_boxed_slice(),
-                otherwise: None,
+                otherwise: None.into(),
             },
             None,
             None,
@@ -466,7 +466,7 @@ fn validate_transition_target_rejects_choose_slot_otherwise_out_of_bounds() {
             StepIdx::new(0),
             CompiledNodeKind::ChooseSlot {
                 branches: vec![].into_boxed_slice(),
-                otherwise: Some(StepIdx::new(88)),
+                otherwise: Some(StepIdx::new(88)).into(),
             },
             None,
             None,
@@ -493,7 +493,7 @@ fn validate_transition_target_rejects_for_each_start_body_out_of_bounds() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 10,
+                limit: 10.into(),
                 body: StepIdx::new(99),
                 done: StepIdx::new(0),
             },
@@ -522,7 +522,7 @@ fn validate_transition_target_rejects_for_each_start_done_out_of_bounds() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 10,
+                limit: 10.into(),
                 body: StepIdx::new(0),
                 done: StepIdx::new(99),
             },
@@ -601,7 +601,7 @@ fn validate_transition_target_rejects_together_branch_entry_out_of_bounds() {
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::TogetherBranch {
-                branch: 0,
+                branch: 0.into(),
                 entry: StepIdx::new(66),
                 join: StepIdx::new(0),
                 accumulator: SlotIdx::new(0),
@@ -629,7 +629,7 @@ fn validate_transition_target_rejects_together_branch_join_out_of_bounds() {
         nodes: vec![node(
             StepIdx::new(0),
             CompiledNodeKind::TogetherBranch {
-                branch: 0,
+                branch: 0.into(),
                 entry: StepIdx::new(0),
                 join: StepIdx::new(44),
                 accumulator: SlotIdx::new(0),
@@ -712,7 +712,7 @@ fn validate_transition_target_rejects_error_handler_body_out_of_bounds() {
             CompiledNodeKind::ErrorHandler {
                 body: StepIdx::new(11),
                 handler: StepIdx::new(0),
-                error_slot: None,
+                error_slot: None.into(),
             },
             None,
             None,
@@ -739,7 +739,7 @@ fn validate_transition_target_rejects_error_handler_handler_out_of_bounds() {
             CompiledNodeKind::ErrorHandler {
                 body: StepIdx::new(0),
                 handler: StepIdx::new(11),
-                error_slot: None,
+                error_slot: None.into(),
             },
             None,
             None,
@@ -799,7 +799,7 @@ fn validate_transition_target_accepts_valid_for_each_start() {
                 CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
-                    limit: 10,
+                    limit: 10.into(),
                     body: StepIdx::new(1),
                     done: StepIdx::new(2),
                 },

@@ -39,14 +39,14 @@ fn make_plan_with_inputs(
         step_names: Box::new([]),
     })
     .map_err(|_| CoreError::InternalInvariantViolation {
-        reason: "test workflow validation failed",
+        reason: "test workflow validation failed".into(),
     })
 }
 
 fn node_at(plan: &CompiledWorkflow, step: u16) -> Result<&CompiledNode, CoreError> {
     plan.node(StepIdx::new(step))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "test node missing",
+            reason: "test node missing".into(),
         })
 }
 
@@ -65,7 +65,9 @@ fn replay_err_to_core(error: ReplayError) -> CoreError {
         ReplayError::SlotNotAvailable { slot } => CoreError::SlotOutOfBounds { slot },
         ReplayError::ExpressionEvalFailed { step } => CoreError::InvalidProgramCounter { step },
         ReplayError::NonDeterministicStep { step, .. } => CoreError::InvalidProgramCounter { step },
-        ReplayError::Internal { reason } => CoreError::InternalInvariantViolation { reason },
+        ReplayError::Internal { reason } => CoreError::InternalInvariantViolation {
+            reason: reason.into(),
+        },
     }
 }
 
@@ -102,7 +104,7 @@ fn replay_for_each_start_binds_first_and_routes_body() -> Result<(), CoreError> 
                 CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
-                    limit: 10,
+                    limit: 10.into(),
                     body: StepIdx::new(1),
                     done: StepIdx::new(1),
                 },
@@ -129,18 +131,18 @@ fn replay_for_each_start_binds_first_and_routes_body() -> Result<(), CoreError> 
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "ForEachStart should Continue to body",
+                reason: "ForEachStart should Continue to body".into(),
             });
         }
     }
     if *run.read_slot(SlotIdx::new(1))? != SlotValue::I64(10) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "item slot should hold first element",
+            reason: "item slot should hold first element".into(),
         });
     }
     if run.read_taint(SlotIdx::new(1))? != Taint::Secret {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "item taint should propagate from input",
+            reason: "item taint should propagate from input".into(),
         });
     }
     Ok(())
@@ -156,7 +158,7 @@ fn replay_for_each_start_empty_routes_done() -> Result<(), CoreError> {
                 CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
-                    limit: 10,
+                    limit: 10.into(),
                     body: StepIdx::new(1),
                     done: StepIdx::new(1),
                 },
@@ -177,7 +179,7 @@ fn replay_for_each_start_empty_routes_done() -> Result<(), CoreError> {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "empty ForEachStart should Continue to done",
+                reason: "empty ForEachStart should Continue to done".into(),
             });
         }
     }
@@ -185,13 +187,13 @@ fn replay_for_each_start_empty_routes_done() -> Result<(), CoreError> {
         SlotValue::List(id) => {
             if !store.list(id)?.is_empty() {
                 return Err(CoreError::InternalInvariantViolation {
-                    reason: "empty ForEachStart should write empty list",
+                    reason: "empty ForEachStart should write empty list".into(),
                 });
             }
         }
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "iterator slot should hold a list",
+                reason: "iterator slot should hold a list".into(),
             });
         }
     }
@@ -208,7 +210,7 @@ fn replay_for_each_start_limit_exceeded_errors() -> Result<(), CoreError> {
                 CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
-                    limit: 1,
+                    limit: 1.into(),
                     body: StepIdx::new(1),
                     done: StepIdx::new(1),
                 },
@@ -250,7 +252,7 @@ fn for_each_loop_plan() -> Result<CompiledWorkflow, CoreError> {
                 CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
-                    limit: 10,
+                    limit: 10.into(),
                     body: StepIdx::new(1),
                     done: StepIdx::new(3),
                 },
@@ -314,13 +316,13 @@ fn replay_for_each_next_advances_then_exits() -> Result<(), CoreError> {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "ForEachNext should Continue to body while items remain",
+                reason: "ForEachNext should Continue to body while items remain".into(),
             });
         }
     }
     if *run.read_slot(SlotIdx::new(1))? != SlotValue::I64(20) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "ForEachNext should bind the second element",
+            reason: "ForEachNext should bind the second element".into(),
         });
     }
     replay_step(node_at(&plan, 1)?, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
@@ -329,7 +331,7 @@ fn replay_for_each_next_advances_then_exits() -> Result<(), CoreError> {
     match action {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(3) => Ok(()),
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "exhausted ForEachNext should Continue to done",
+            reason: "exhausted ForEachNext should Continue to done".into(),
         }),
     }
 }
@@ -346,7 +348,7 @@ fn replay_for_each_next_empty_state_routes_done() -> Result<(), CoreError> {
     match action {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(3) => Ok(()),
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "empty-state ForEachNext should Continue to done",
+            reason: "empty-state ForEachNext should Continue to done".into(),
         }),
     }
 }
@@ -378,7 +380,7 @@ fn replay_for_each_join_materializes_results() -> Result<(), CoreError> {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "ForEachJoin should Continue to next",
+                reason: "ForEachJoin should Continue to next".into(),
             });
         }
     }
@@ -388,7 +390,7 @@ fn replay_for_each_join_materializes_results() -> Result<(), CoreError> {
     ) {
         (SlotValue::List(out), SlotValue::List(materialized)) if out == materialized => Ok(()),
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "ForEachJoin should copy materialized list to output",
+            reason: "ForEachJoin should copy materialized list to output".into(),
         }),
     }
 }
@@ -422,26 +424,26 @@ fn replay_together_start_creates_accumulator_and_forks() -> Result<(), CoreError
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "TogetherStart should Continue to first branch",
+                reason: "TogetherStart should Continue to first branch".into(),
             });
         }
     }
     if run.parallel_in_flight() != 1 {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "TogetherStart should reserve one parallel slot",
+            reason: "TogetherStart should reserve one parallel slot".into(),
         });
     }
     match *run.read_slot(SlotIdx::new(7))? {
         SlotValue::List(id) => {
             if !store.list(id)?.is_empty() {
                 return Err(CoreError::InternalInvariantViolation {
-                    reason: "TogetherStart should write an empty accumulator",
+                    reason: "TogetherStart should write an empty accumulator".into(),
                 });
             }
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "accumulator slot should hold a list",
+            reason: "accumulator slot should hold a list".into(),
         }),
     }
 }
@@ -473,7 +475,7 @@ fn replay_together_start_empty_branches_errors() -> Result<(), CoreError> {
             .nodes
             .first_mut()
             .ok_or(CoreError::InternalInvariantViolation {
-                reason: "test node missing",
+                reason: "test node missing".into(),
             })?;
     malformed.kind = CompiledNodeKind::TogetherStart {
         branches: Box::from([]),
@@ -512,7 +514,7 @@ fn replay_together_branch_first_jumps_without_append() -> Result<(), CoreError> 
             crate::workflow::node(
                 StepIdx::new(0),
                 CompiledNodeKind::TogetherBranch {
-                    branch: 0,
+                    branch: 0.into(),
                     entry: StepIdx::new(1),
                     join: StepIdx::new(1),
                     accumulator: SlotIdx::new(7),
@@ -533,7 +535,7 @@ fn replay_together_branch_first_jumps_without_append() -> Result<(), CoreError> 
     match action {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => Ok(()),
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "first TogetherBranch should Continue to entry",
+            reason: "first TogetherBranch should Continue to entry".into(),
         }),
     }
 }
@@ -546,7 +548,7 @@ fn replay_together_branch_appends_previous_result() -> Result<(), CoreError> {
             crate::workflow::node(
                 StepIdx::new(0),
                 CompiledNodeKind::TogetherBranch {
-                    branch: 1,
+                    branch: 1.into(),
                     entry: StepIdx::new(1),
                     join: StepIdx::new(1),
                     accumulator: SlotIdx::new(7),
@@ -569,7 +571,7 @@ fn replay_together_branch_appends_previous_result() -> Result<(), CoreError> {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "TogetherBranch should Continue to entry",
+                reason: "TogetherBranch should Continue to entry".into(),
             });
         }
     }
@@ -577,13 +579,13 @@ fn replay_together_branch_appends_previous_result() -> Result<(), CoreError> {
         SlotValue::List(id) => {
             if store.list(id)? != [SlotValue::I64(11), SlotValue::I64(22)] {
                 return Err(CoreError::InternalInvariantViolation {
-                    reason: "accumulator should append the previous result",
+                    reason: "accumulator should append the previous result".into(),
                 });
             }
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "accumulator slot should hold a list",
+            reason: "accumulator slot should hold a list".into(),
         }),
     }
 }
@@ -598,7 +600,7 @@ fn replay_together_join_merges_last_result_and_releases() -> Result<(), CoreErro
             crate::workflow::node(
                 StepIdx::new(0),
                 CompiledNodeKind::TogetherJoin {
-                    branch_count: 2,
+                    branch_count: 2.into(),
                     accumulator: SlotIdx::new(7),
                 },
                 Some(SlotIdx::new(6)),
@@ -620,26 +622,26 @@ fn replay_together_join_merges_last_result_and_releases() -> Result<(), CoreErro
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "TogetherJoin should Continue to next",
+                reason: "TogetherJoin should Continue to next".into(),
             });
         }
     }
     if run.parallel_in_flight() != 0 {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "TogetherJoin should release parallel slots",
+            reason: "TogetherJoin should release parallel slots".into(),
         });
     }
     match *run.read_slot(SlotIdx::new(6))? {
         SlotValue::List(id) => {
             if store.list(id)? != [SlotValue::I64(11), SlotValue::I64(22)] {
                 return Err(CoreError::InternalInvariantViolation {
-                    reason: "TogetherJoin should merge the last result",
+                    reason: "TogetherJoin should merge the last result".into(),
                 });
             }
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "join output should hold a list",
+            reason: "join output should hold a list".into(),
         }),
     }
 }
@@ -652,7 +654,7 @@ fn replay_together_join_list_result_keeps_accumulator() -> Result<(), CoreError>
             crate::workflow::node(
                 StepIdx::new(0),
                 CompiledNodeKind::TogetherJoin {
-                    branch_count: 1,
+                    branch_count: 1.into(),
                     accumulator: SlotIdx::new(7),
                 },
                 Some(SlotIdx::new(6)),
@@ -675,7 +677,7 @@ fn replay_together_join_list_result_keeps_accumulator() -> Result<(), CoreError>
     ) {
         (SlotValue::List(out), SlotValue::List(acc)) if out == acc => Ok(()),
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "list result should keep the accumulator unchanged",
+            reason: "list result should keep the accumulator unchanged".into(),
         }),
     }
 }
@@ -729,18 +731,18 @@ fn replay_reduce_start_inits_accumulator_and_binds_first() -> Result<(), CoreErr
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "ReduceStart should Continue to body",
+                reason: "ReduceStart should Continue to body".into(),
             });
         }
     }
     if *run.read_slot(SlotIdx::new(3))? != SlotValue::I64(0) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "accumulator should hold the initial constant",
+            reason: "accumulator should hold the initial constant".into(),
         });
     }
     if *run.read_slot(SlotIdx::new(0))? != SlotValue::I64(5) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "input slot should be rebound to the first element",
+            reason: "input slot should be rebound to the first element".into(),
         });
     }
     Ok(())
@@ -759,13 +761,13 @@ fn replay_reduce_start_empty_routes_done() -> Result<(), CoreError> {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(2) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "empty ReduceStart should Continue to done",
+                reason: "empty ReduceStart should Continue to done".into(),
             });
         }
     }
     if *run.read_slot(SlotIdx::new(3))? != SlotValue::I64(0) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "accumulator should still hold the initial constant",
+            reason: "accumulator should still hold the initial constant".into(),
         });
     }
     Ok(())
@@ -844,13 +846,13 @@ fn replay_reduce_next_advances_then_exits() -> Result<(), CoreError> {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "ReduceNext should Continue to body while items remain",
+                reason: "ReduceNext should Continue to body while items remain".into(),
             });
         }
     }
     if *run.read_slot(SlotIdx::new(1))? != SlotValue::I64(6) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "ReduceNext should bind the second element",
+            reason: "ReduceNext should bind the second element".into(),
         });
     }
     replay_step(node_at(&plan, 1)?, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
@@ -859,7 +861,7 @@ fn replay_reduce_next_advances_then_exits() -> Result<(), CoreError> {
     match action {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(3) => Ok(()),
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "exhausted ReduceNext should Continue to done",
+            reason: "exhausted ReduceNext should Continue to done".into(),
         }),
     }
 }
@@ -892,18 +894,18 @@ fn replay_reduce_finish_writes_accumulator() -> Result<(), CoreError> {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "ReduceFinish should Continue to next",
+                reason: "ReduceFinish should Continue to next".into(),
             });
         }
     }
     if *run.read_slot(SlotIdx::new(4))? != SlotValue::I64(11) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "ReduceFinish should copy the accumulator to output",
+            reason: "ReduceFinish should copy the accumulator to output".into(),
         });
     }
     if run.read_taint(SlotIdx::new(4))? != Taint::Secret {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "ReduceFinish should propagate accumulator taint",
+            reason: "ReduceFinish should propagate accumulator taint".into(),
         });
     }
     Ok(())

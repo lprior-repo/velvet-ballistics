@@ -224,7 +224,7 @@ fn gate_15_accepts_ask_followed_by_do() {
         StepIdx::new(0),
         CompiledNodeKind::Ask {
             prompt: SlotIdx::new(0),
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
         Some(SlotIdx::new(0)),
         Some(StepIdx::new(1)),

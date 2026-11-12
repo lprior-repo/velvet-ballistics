@@ -124,7 +124,7 @@ fn apply_pass(
                 if depth > MAX_INPUT_SCHEMA_DEPTH {
                     return Err(limit());
                 }
-                let taint = if schema.secret {
+                let taint = if schema.secretness.is_secret() {
                     join_taint(taint, Taint::Secret)
                 } else {
                     taint
@@ -146,7 +146,7 @@ fn apply_pass(
                     let index = match index {
                         Some(index) => index,
                         None => {
-                            let field_taint = if field.constraint.secret {
+                            let field_taint = if field.constraint.secretness.is_secret() {
                                 join_taint(taint, Taint::Secret)
                             } else {
                                 taint

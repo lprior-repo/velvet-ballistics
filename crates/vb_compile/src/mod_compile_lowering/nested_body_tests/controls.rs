@@ -25,7 +25,7 @@ fn aggregate_inside_loop_body_checks_numeric_fields_and_keeps_its_result() -> Re
     let workflow = compile(&valid)?;
     assert!(matches!(
         node(&workflow, 3)?.kind,
-        CompiledNodeKind::ReduceStart { limit: 4, .. }
+        CompiledNodeKind::ReduceStart { limit, .. } if limit == 4
     ));
     let result = output(&workflow, 6)?;
     assert_eq!(
@@ -59,7 +59,7 @@ fn nested_control_field_checks_boolean_type_and_lowers_a_valid_guard() -> Result
         branches.first().ok_or("guard branch")?.target,
         StepIdx::new(6)
     );
-    assert_eq!(*otherwise, Some(StepIdx::new(8)));
+    assert_eq!(otherwise.step(), Some(StepIdx::new(8)));
     assert_eq!(
         node(&workflow, 6)?.routing.next,
         NodeContinuation::Step(StepIdx::new(7))
@@ -83,7 +83,7 @@ fn conditional_finish_inside_loop_body_preserves_lexical_item_binding() -> Resul
     let CompiledNodeKind::Choose { otherwise, .. } = node(&workflow, 4)?.kind else {
         return Err("missing Finish guard".to_owned());
     };
-    assert_eq!(otherwise, Some(StepIdx::new(6)));
+    assert_eq!(otherwise.step(), Some(StepIdx::new(6)));
     Ok(())
 }
 

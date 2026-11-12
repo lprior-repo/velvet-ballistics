@@ -3,7 +3,7 @@
 use super::*;
 use vb_core::ActionId;
 
-impl BranchBindings {
+impl BranchBindings<'_> {
     pub(super) fn lower_set(
         &mut self,
         output: &str,
@@ -47,7 +47,7 @@ impl BranchBindings {
                 expected: "numeric action ID (u16)",
             }])
         })?;
-        let input = resolve_slot_reference(input, &self.outputs, &self.steps)
+        let input = resolve_slot_reference_scoped(input, self.view())
             .map_err(|e| CompileErrors(vec![e]))?;
         let node = lower_do(
             target.id,

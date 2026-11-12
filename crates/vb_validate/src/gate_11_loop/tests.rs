@@ -29,7 +29,7 @@ fn accepts_valid_for_each() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 10,
+                limit: 10.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
@@ -96,7 +96,7 @@ fn accepts_valid_repeat() {
         node(
             StepIdx::new(0),
             CompiledNodeKind::RepeatStart {
-                max_attempts: 3,
+                max_attempts: 3.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(3),
             },
@@ -135,7 +135,7 @@ fn accepts_valid_collect() {
             StepIdx::new(0),
             CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
-                limit: 100,
+                limit: 100.into(),
                 page_size: 10,
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
@@ -200,7 +200,7 @@ fn accepts_error_handler_with_valid_steps() {
             CompiledNodeKind::ErrorHandler {
                 body: StepIdx::new(1),
                 handler: StepIdx::new(2),
-                error_slot: None,
+                error_slot: None.into(),
             },
             None,
             None,
@@ -221,7 +221,7 @@ fn rejects_for_each_body_out_of_range() {
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
-            limit: 10,
+            limit: 10.into(),
             body: StepIdx::new(99),
             done: StepIdx::new(2),
         },
@@ -242,7 +242,7 @@ fn rejects_for_each_done_out_of_range() {
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
-            limit: 10,
+            limit: 10.into(),
             body: StepIdx::new(1),
             done: StepIdx::new(99),
         },
@@ -281,7 +281,7 @@ fn rejects_loop_body_not_after_start() {
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
-            limit: 10,
+            limit: 10.into(),
             body: StepIdx::new(0),
             done: StepIdx::new(1),
         },
@@ -302,7 +302,7 @@ fn rejects_done_before_body() {
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
-            limit: 10,
+            limit: 10.into(),
             body: StepIdx::new(2),
             done: StepIdx::new(1),
         },
@@ -378,7 +378,7 @@ fn rejects_error_handler_body_out_of_range() {
         CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(99),
             handler: StepIdx::new(1),
-            error_slot: None,
+            error_slot: None.into(),
         },
         None,
         None,

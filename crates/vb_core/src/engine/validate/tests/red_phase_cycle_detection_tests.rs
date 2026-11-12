@@ -93,7 +93,7 @@ mod cycle_detection_and_backward_edges {
                         target: StepIdx::new(0),
                     }]
                     .into_boxed_slice(),
-                    otherwise: None,
+                    otherwise: None.into(),
                 },
                 None,
                 None,

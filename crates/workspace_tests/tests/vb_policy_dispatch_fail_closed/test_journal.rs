@@ -99,7 +99,7 @@ impl RuntimeJournal for FailingPolicyPortJournal {
         {
             let mut calls = self.captured_calls.lock().map_err(|_| RuntimeError::Core {
                 source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
-                    reason: "captured_calls mutex poisoned",
+                    reason: "captured_calls mutex poisoned".into(),
                 }),
             })?;
             calls.push((decision.clone(), seq));
@@ -112,7 +112,7 @@ impl RuntimeJournal for FailingPolicyPortJournal {
             .lock()
             .map_err(|_| RuntimeError::Core {
                 source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
-                    reason: "captured_decision mutex poisoned",
+                    reason: "captured_decision mutex poisoned".into(),
                 }),
             })?;
         *captured = Some(decision);

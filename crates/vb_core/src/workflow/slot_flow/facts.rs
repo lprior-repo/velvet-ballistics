@@ -95,13 +95,13 @@ pub(super) fn seed(parts: &WorkflowParts) -> FlowResult<Facts> {
     facts.resize(usize::from(parts.slot_count), Fact::UNSET);
     for input in &parts.input_slots {
         let mut fact = Fact::input(input.kind);
-        if input.constraint.nullable {
+        if input.constraint.nullability.allows_null() {
             fact.kinds |= Fact::NULL;
         }
         if let Some(value) = input.constraint.default_value {
             fact.kinds |= Fact::value(value).kinds;
         }
-        fact.absent = input.constraint.optional
+        fact.absent = input.constraint.presence.is_optional()
             && input.constraint.default_value.is_none()
             && input.constraint.default_cold.is_none();
         let dest = facts.get_mut(input.slot.as_usize()).ok_or_else(|| {

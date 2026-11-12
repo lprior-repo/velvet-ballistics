@@ -1,6 +1,6 @@
 use super::super::part_14::emit_scoped_flat_body;
 use super::super::{SlotCompiler, body_width, checked_step_offset, slot_from_text};
-use super::{CanonicalScope, resolve_slot_reference, validate_output_alias};
+use super::{CanonicalScope, resolve_slot_reference_scoped, validate_output_alias};
 use crate::mod_compile_validation::validate_public_name;
 use crate::{CompileError, CompileErrors};
 use vb_core::workflow::node;
@@ -38,12 +38,8 @@ fn bounds_error(index: usize) -> CompileErrors {
 
 fn resolve_source(index: usize, config: &CollectLowering<'_>) -> Result<SlotIdx, CompileErrors> {
     if config.source.starts_with('$') {
-        resolve_slot_reference(
-            config.source,
-            config.scope.outputs,
-            config.scope.step_outputs,
-        )
-        .map_err(|e| CompileErrors(vec![e]))
+        resolve_slot_reference_scoped(config.source, config.scope)
+            .map_err(|e| CompileErrors(vec![e]))
     } else {
         slot_from_text(config.source, index, "collect.source")
     }
@@ -65,9 +61,7 @@ fn validate_variable_capture(
     variable: &str,
     config: &CollectLowering<'_>,
 ) -> Result<(), CompileErrors> {
-    if config.scope.outputs.contains_key(variable)
-        || config.scope.step_outputs.contains_key(variable)
-    {
+    if config.scope.contains_output(variable) || config.scope.contains_step(variable) {
         return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
             name: variable.into(),
         }]));
@@ -83,21 +77,7 @@ fn validate_body(index: usize, config: &CollectLowering<'_>) -> Result<(), Compi
             expected: "non-empty body",
         }]));
     }
-    for step in config.body {
-        if step.id == config.variable {
-            return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-                name: config.variable.into(),
-            }]));
-        }
-        if matches!(
-            &step.primitive,
-            crate::StepPrimitive::Set { output, .. } if output == config.variable
-        ) {
-            return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-                name: config.variable.into(),
-            }]));
-        }
-    }
+    super::for_each_capture::validate_capture(config.variable, config.body)?;
     Ok(())
 }
 
@@ -182,7 +162,7 @@ fn emit_start(id: StepIdx, plan: &CollectPlan, builder: &mut SlotCompiler) {
         id,
         CompiledNodeKind::CollectStart {
             source: plan.source,
-            limit: plan.limit,
+            limit: plan.limit.into(),
             page_size: plan.page_size,
             body: plan.body_step,
             done: plan.done,
@@ -197,14 +177,15 @@ fn emit_body(
     plan: &CollectPlan,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
-    let mut local_outputs = config.scope.outputs.clone();
-    let mut local_types = config.scope.slot_types.clone();
+    let mut local_outputs = std::collections::HashMap::new();
+    let mut local_types = std::collections::HashMap::new();
     local_outputs.insert(config.variable.to_owned(), plan.collector_slot);
     local_types.insert(plan.collector_slot, ExprType::List);
     let local_scope = CanonicalScope {
         outputs: &local_outputs,
         step_outputs: config.scope.step_outputs,
         slot_types: &local_types,
+        parent: Some(&config.scope),
     };
     let _body_output = emit_scoped_flat_body(
         config.body,

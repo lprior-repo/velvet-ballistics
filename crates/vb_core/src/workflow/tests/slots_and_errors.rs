@@ -44,7 +44,7 @@ fn choose_slot_parts(branches: Box<[SlotBranch]>, otherwise: Option<StepIdx>) ->
     branch_parts(
         CompiledNodeKind::ChooseSlot {
             branches,
-            otherwise,
+            otherwise: otherwise.into(),
         },
         Box::new([]),
         1,
@@ -59,7 +59,7 @@ fn choose_expr_parts(
     branch_parts(
         CompiledNodeKind::Choose {
             branches,
-            otherwise,
+            otherwise: otherwise.into(),
         },
         expressions,
         0,
@@ -659,7 +659,7 @@ fn workflow_together_join_zero_branch_count_returns_resource_exceeded() -> Resul
     parts.nodes = vec![crate::workflow::node(
         StepIdx::new(0),
         CompiledNodeKind::TogetherJoin {
-            branch_count: 0,
+            branch_count: 0.into(),
             accumulator: SlotIdx::new(0),
         },
         None,
@@ -685,7 +685,7 @@ fn workflow_repeat_start_zero_max_attempts_returns_resource_exceeded() -> Result
         crate::workflow::node(
             StepIdx::new(0),
             CompiledNodeKind::RepeatStart {
-                max_attempts: 0,
+                max_attempts: 0.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },

@@ -27,7 +27,7 @@ pub fn lower_repeat(
         node(
             id,
             CompiledNodeKind::RepeatStart {
-                max_attempts,
+                max_attempts: max_attempts.into(),
                 body,
                 done,
             },
@@ -87,7 +87,7 @@ pub fn lower_wait(id: StepIdx, kind: WaitKind, builder: &mut SlotCompiler) -> Co
             }
             CompiledNodeKind::WaitEvent {
                 event,
-                timeout_slot: timeout,
+                timeout_slot: timeout.into(),
             }
         }
     };
@@ -120,7 +120,7 @@ pub fn lower_ask(
             id,
             CompiledNodeKind::Ask {
                 prompt,
-                timeout_slot,
+                timeout_slot: timeout_slot.into(),
             },
             Some(answer),
             None,
@@ -146,6 +146,7 @@ pub fn lower_finish(id: StepIdx, result: SlotIdx, builder: &mut SlotCompiler) ->
 /// programs, and input slot metadata during step lowering.
 #[derive(Debug, Default)]
 pub struct SlotCompiler {
+    pub(super) body_depth: u16,
     pub(super) symbols: crate::source_symbols::SourceSymbolTable,
     pub(super) display_names: std::collections::BTreeMap<StepIdx, Box<str>>,
     pub(super) nodes: Vec<CompiledNode>,

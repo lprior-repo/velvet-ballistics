@@ -178,7 +178,7 @@ fn dispatch_for_each<P: BodyEntryPolicy>(
             ctx.store,
             *input,
             *item_slot,
-            *limit,
+            limit.get(),
             *body,
             *done,
             ctx.node.output.slot(),
@@ -219,7 +219,7 @@ fn dispatch_together(ctx: &mut NodeDispatchContext<'_>) -> RuntimeEngineResult<R
         } => handle_together_branch(
             ctx.run,
             ctx.store,
-            *branch,
+            branch.get(),
             *entry,
             *join,
             *accumulator,
@@ -231,7 +231,7 @@ fn dispatch_together(ctx: &mut NodeDispatchContext<'_>) -> RuntimeEngineResult<R
         } => handle_together_join(
             ctx.run,
             ctx.store,
-            *branch_count,
+            branch_count.get(),
             *accumulator,
             ctx.node.output.slot(),
             ctx.node.routing.next.step(),
@@ -248,6 +248,6 @@ fn dispatch_together(ctx: &mut NodeDispatchContext<'_>) -> RuntimeEngineResult<R
 /// `InternalInvariantViolation` rather than a panic.
 fn family_invariant() -> RuntimeEngineError {
     RuntimeEngineError::Core(EngineError::InternalInvariantViolation {
-        reason: "execute_node_full family invariant",
+        reason: "execute_node_full family invariant".into(),
     })
 }

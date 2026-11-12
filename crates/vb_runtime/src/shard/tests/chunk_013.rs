@@ -6,7 +6,7 @@ fn ask_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         vb_core::ids::StepIdx::new(2),
         CompiledNodeKind::Ask {
             prompt: SlotIdx::ZERO,
-            timeout_slot: Some(SlotIdx::new(1)),
+            timeout_slot: Some(SlotIdx::new(1)).into(),
         },
         Some(vb_core::ids::SlotIdx::new(2)),
         Some(vb_core::ids::StepIdx::new(3)),

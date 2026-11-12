@@ -1,4 +1,8 @@
+#![allow(unreachable_pub)]
+//! Command derivation for proof obligations.
+
 use super::{FuzzField, ProofObligation};
+use crate::proof_commands::{crash_lab_command, diff_test_command, nextest_command};
 
 /// Derive the `--harness` filter from a `required: kani:` file reference.
 /// The registry names the proof file (`kani_step_budget.rs`) or a
@@ -20,7 +24,8 @@ pub fn commands_for_obligation(obl: &ProofObligation) -> Vec<String> {
 
     if let Some(ref kani) = obl.required.kani {
         cmds.push(format!(
-            "cargo kani --harness {}",
+            "cargo kani --package {} --harness {}",
+            obl.crate_name,
             kani_harness_filter(kani)
         ));
     }
@@ -28,7 +33,13 @@ pub fn commands_for_obligation(obl: &ProofObligation) -> Vec<String> {
         cmds.push(format!("verus {}", verus));
     }
     for test in &obl.required.tests {
-        cmds.push(format!("cargo nextest run -p {} {}", obl.crate_name, test));
+        cmds.push(nextest_command(&obl.crate_name, test));
+    }
+    for test in &obl.required.property_tests {
+        cmds.push(nextest_command(&obl.crate_name, test));
+    }
+    for test in &obl.required.differential_tests {
+        cmds.push(nextest_command(&obl.crate_name, test));
     }
     if let Some(ref fuzz) = obl.required.fuzz {
         match fuzz {
@@ -45,6 +56,12 @@ pub fn commands_for_obligation(obl: &ProofObligation) -> Vec<String> {
     }
     if let Some(ref loom) = obl.required.loom {
         cmds.push(format!("cargo xtask loom --model {}", loom));
+    }
+    for entry in &obl.required.crash_lab {
+        cmds.push(crash_lab_command(entry));
+    }
+    for entry in &obl.required.diff_test {
+        cmds.push(diff_test_command(entry));
     }
 
     cmds

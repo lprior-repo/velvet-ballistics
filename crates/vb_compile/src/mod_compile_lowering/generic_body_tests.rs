@@ -66,6 +66,7 @@ fn seeded_builder(max_slot: usize) -> SlotCompiler {
 }
 
 fn assert_builder_eq(left: SlotCompiler, right: SlotCompiler) {
+    assert_eq!(left.body_depth, right.body_depth);
     assert_eq!(left.nodes, right.nodes);
     assert_eq!(left.constants, right.constants);
     assert_eq!(left.expressions, right.expressions);
@@ -98,6 +99,7 @@ fn compare(
         outputs: &outputs,
         step_outputs: &steps,
         slot_types: &types,
+        parent: None,
     };
     let mut actual = seeded_builder(max_slot);
     let mut expected = seeded_builder(max_slot);
@@ -158,3 +160,6 @@ proptest! {
 
 #[path = "generic_body_tests/cases.rs"]
 mod cases;
+
+#[path = "generic_body_tests/depth.rs"]
+mod depth;

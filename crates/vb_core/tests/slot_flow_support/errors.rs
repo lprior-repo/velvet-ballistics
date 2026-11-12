@@ -147,7 +147,7 @@ pub(super) fn action_with_legacy_wrapper(result: u16) -> vb_core::workflow::Work
         K::ErrorHandler {
             body: step(1),
             handler: step(5),
-            error_slot: Some(slot(4)),
+            error_slot: Some(slot(4)).into(),
         },
         None,
         None,

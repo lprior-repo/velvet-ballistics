@@ -57,7 +57,7 @@ fn replay_step_by_step_equals_full_replay() -> Result<(), CoreError> {
         let node = plan
             .node(StepIdx::new(idx))
             .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node missing",
+                reason: "node missing".into(),
             })?;
         super::step::replay_step(node, &mut step_run, &mut step_store, &plan)
             .map(|_| ())
@@ -68,12 +68,12 @@ fn replay_step_by_step_equals_full_replay() -> Result<(), CoreError> {
     for slot in 0..3u16 {
         let step_val = *step_run.read_slot(SlotIdx::new(slot)).map_err(|_| {
             CoreError::InternalInvariantViolation {
-                reason: "step frame read error",
+                reason: "step frame read error".into(),
             }
         })?;
         let full_val = *full_frame.read_slot(SlotIdx::new(slot)).map_err(|_| {
             CoreError::InternalInvariantViolation {
-                reason: "full frame read error",
+                reason: "full frame read error".into(),
             }
         })?;
         assert_eq!(step_val, full_val, "slot {slot} mismatch");
@@ -128,12 +128,12 @@ fn replay_idempotent_twice_returns_same_result() -> Result<(), CoreError> {
     for slot in 0..2u16 {
         let val_a = *frame_a.read_slot(SlotIdx::new(slot)).map_err(|_| {
             CoreError::InternalInvariantViolation {
-                reason: "frame_a read error",
+                reason: "frame_a read error".into(),
             }
         })?;
         let val_b = *frame_b.read_slot(SlotIdx::new(slot)).map_err(|_| {
             CoreError::InternalInvariantViolation {
-                reason: "frame_b read error",
+                reason: "frame_b read error".into(),
             }
         })?;
         assert_eq!(val_a, val_b, "slot {slot} mismatch between idempotent runs");
@@ -198,12 +198,12 @@ fn independent_runs_with_same_plan_produce_identical_state() -> Result<(), CoreE
     for slot in 0..3u16 {
         let val_a = *frame_a.read_slot(SlotIdx::new(slot)).map_err(|_| {
             CoreError::InternalInvariantViolation {
-                reason: "frame_a read error",
+                reason: "frame_a read error".into(),
             }
         })?;
         let val_b = *frame_b.read_slot(SlotIdx::new(slot)).map_err(|_| {
             CoreError::InternalInvariantViolation {
-                reason: "frame_b read error",
+                reason: "frame_b read error".into(),
             }
         })?;
         assert_eq!(val_a, val_b, "independent runs slot {slot} mismatch");
@@ -280,7 +280,7 @@ fn replay_from_intermediate_snapshot() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(2))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 2 missing",
+            reason: "node 2 missing".into(),
         })?;
     super::step::replay_step(node, &mut resume_run, &mut resume_store, &plan)
         .map_err(replay_err_to_core)?;
@@ -318,7 +318,7 @@ fn replay_choose_expr_i64_max_boundary_expression() -> Result<(), CoreError> {
                         target: StepIdx::new(1),
                     }]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(2)),
+                    otherwise: Some(StepIdx::new(2)).into(),
                 },
                 None,
                 None,
@@ -362,7 +362,7 @@ fn replay_choose_expr_i64_max_boundary_expression() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let action =
         super::step::replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
@@ -373,7 +373,7 @@ fn replay_choose_expr_i64_max_boundary_expression() -> Result<(), CoreError> {
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "i64::MAX > i64::MAX-1 should be true",
+            reason: "i64::MAX > i64::MAX-1 should be true".into(),
         }),
     }
 }
@@ -398,7 +398,7 @@ fn replay_choose_expr_i64_min_boundary_expression() -> Result<(), CoreError> {
                         target: StepIdx::new(1),
                     }]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(2)),
+                    otherwise: Some(StepIdx::new(2)).into(),
                 },
                 None,
                 None,
@@ -442,7 +442,7 @@ fn replay_choose_expr_i64_min_boundary_expression() -> Result<(), CoreError> {
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
+            reason: "node 0 missing".into(),
         })?;
     let action =
         super::step::replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
@@ -453,7 +453,7 @@ fn replay_choose_expr_i64_min_boundary_expression() -> Result<(), CoreError> {
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "i64::MIN < i64::MIN+1 should be true",
+            reason: "i64::MIN < i64::MIN+1 should be true".into(),
         }),
     }
 }

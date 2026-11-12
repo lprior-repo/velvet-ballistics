@@ -31,12 +31,12 @@ pub fn encode_repeat_state(max_attempts: u16, current_attempt: u16) -> Result<i6
     }
     let Some(high) = i64::from(max_attempts).checked_shl(REPEAT_SHIFT) else {
         return Err(EngineError::InternalInvariantViolation {
-            reason: "repeat_state_encode_overflow",
+            reason: "repeat_state_encode_overflow".into(),
         });
     };
     let Some(packed) = high.checked_add(i64::from(current_attempt)) else {
         return Err(EngineError::InternalInvariantViolation {
-            reason: "repeat_state_encode_overflow",
+            reason: "repeat_state_encode_overflow".into(),
         });
     };
     Ok(packed)
@@ -143,6 +143,6 @@ fn expect_i64(value: SlotValue) -> Result<i64, EngineError> {
 
 fn invalid_repeat_state() -> EngineError {
     EngineError::InternalInvariantViolation {
-        reason: "invalid_repeat_state",
+        reason: "invalid_repeat_state".into(),
     }
 }

@@ -72,7 +72,7 @@ fn normal_and_error_join_count_the_shared_handler_once() -> TestResult {
             1,
             K::WaitEvent {
                 event: SlotIdx::new(0),
-                timeout_slot: None,
+                timeout_slot: None.into(),
             },
             None,
             None,
@@ -102,7 +102,7 @@ fn kinds() -> [(K, u32, u32, u32, u32); 6] {
         (
             K::WaitEvent {
                 event: SlotIdx::new(0),
-                timeout_slot: None,
+                timeout_slot: None.into(),
             },
             0,
             1,
@@ -112,7 +112,7 @@ fn kinds() -> [(K, u32, u32, u32, u32); 6] {
         (
             K::Ask {
                 prompt: SlotIdx::new(0),
-                timeout_slot: None,
+                timeout_slot: None.into(),
             },
             0,
             1,

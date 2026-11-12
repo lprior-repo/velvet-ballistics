@@ -17,7 +17,7 @@ fn eval_accessor_program_without_store(
     }
     let segment = program.path.first().copied().ok_or({
         EngineError::InternalInvariantViolation {
-            reason: "accessor path checked non-empty",
+            reason: "accessor path checked non-empty".into(),
         }
     })?;
     Err(EngineError::UnsupportedAccessorTraversal {
@@ -40,14 +40,14 @@ pub(super) fn eval_accessor_program(
     while index < program.path.len() {
         let segment = program.path.get(index).copied().ok_or({
             EngineError::InternalInvariantViolation {
-                reason: "accessor path index checked by loop bound",
+                reason: "accessor path index checked by loop bound".into(),
             }
         })?;
         current = traverse_accessor_segment(store, current, segment)?;
         index = index
             .checked_add(1)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "accessor path index overflow",
+                reason: "accessor path index overflow".into(),
             })?;
     }
     Ok(current)
@@ -137,7 +137,7 @@ pub(super) fn eval_accessor_with_taint_inner(
     while index < program.path.len() {
         let segment = program.path.get(index).copied().ok_or({
             EngineError::InternalInvariantViolation {
-                reason: "accessor path index checked by loop bound",
+                reason: "accessor path index checked by loop bound".into(),
             }
         })?;
         let (value, segment_taint) = traverse_accessor_segment_with_taint(store, current, segment)?;
@@ -146,7 +146,7 @@ pub(super) fn eval_accessor_with_taint_inner(
         index = index
             .checked_add(1)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "accessor path index overflow",
+                reason: "accessor path index overflow".into(),
             })?;
     }
     Ok((current, accumulated_taint))

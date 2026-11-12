@@ -173,7 +173,7 @@ pub(super) fn eval_expr_operator(
         ExprOp::Unique => eval_unique(stack, store),
         ExprOp::LoadSlot(_) | ExprOp::LoadConst(_) | ExprOp::LoadAccessor(_) => {
             Err(EngineError::InternalInvariantViolation {
-                reason: "load ops should be handled in eval_expr_op",
+                reason: "load ops should be handled in eval_expr_op".into(),
             })
         }
     }

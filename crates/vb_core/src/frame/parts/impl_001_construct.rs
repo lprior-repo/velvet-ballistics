@@ -25,8 +25,7 @@ impl RunFrame {
             max_parallel_in_flight: u16::MAX,
             parallel_in_flight: 0,
             states: vec![StepState::Pending; states_len].into_boxed_slice(),
-            slots: vec![None; slots_len].into_boxed_slice(),
-            taint: vec![Taint::Clean; slots_len].into_boxed_slice(),
+            cells: vec![crate::value::SlotCell::empty(); slots_len].into_boxed_slice(),
         })
     }
 
@@ -61,11 +60,8 @@ impl RunFrame {
         for state in &mut self.states {
             *state = StepState::Pending;
         }
-        for slot in &mut self.slots {
-            *slot = None;
-        }
-        for taint in &mut self.taint {
-            *taint = Taint::Clean;
+        for cell in &mut self.cells {
+            *cell = crate::value::SlotCell::empty();
         }
         Ok(())
     }

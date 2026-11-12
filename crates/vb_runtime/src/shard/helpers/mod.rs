@@ -30,7 +30,7 @@ pub fn seed_input_slots(
         let secret = workflow
             .input_slots()
             .iter()
-            .any(|input| input.slot == slot && input.constraint.secret);
+            .any(|input| input.slot == slot && input.constraint.secretness.is_secret());
         let taint = if secret { Taint::Secret } else { Taint::Clean };
         frame
             .write_slot_with_taint(slot, value, taint)

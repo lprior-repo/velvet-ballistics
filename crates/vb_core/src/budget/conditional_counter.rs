@@ -45,6 +45,7 @@ impl Frame {
                 branches,
                 otherwise,
             } => Ok(otherwise
+                .step()
                 .iter()
                 .copied()
                 .chain(branches.iter().map(|branch| branch.target))
@@ -53,6 +54,7 @@ impl Frame {
                 branches,
                 otherwise,
             } => Ok(otherwise
+                .step()
                 .iter()
                 .copied()
                 .chain(branches.iter().map(|branch| branch.target))

@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Reference resolution for expressions referencing prior step outputs.
 
+use super::CanonicalScope;
 use crate::CompileError;
 use std::collections::HashMap;
 use vb_core::{AccessorIdx, AccessorProgram, ExprOp, PathSegment, SlotIdx};
@@ -16,25 +17,34 @@ use vb_core::{AccessorIdx, AccessorProgram, ExprOp, PathSegment, SlotIdx};
 /// - Direct `$name`: checks both maps, rejects if found in different slots
 /// - Numeric: backward compatibility slot index
 pub(super) struct StepReferenceResolver<'a> {
-    outputs: &'a HashMap<String, SlotIdx>,
-    step_outputs: &'a HashMap<String, SlotIdx>,
+    scope: CanonicalScope<'a>,
     symbols: Option<&'a mut crate::source_symbols::SourceSymbolTable>,
     accessors: Option<&'a mut Vec<AccessorProgram>>,
     local_binding: Option<(&'a str, SlotIdx)>,
 }
 
 impl<'a> StepReferenceResolver<'a> {
-    pub(super) fn new(
-        outputs: &'a HashMap<String, SlotIdx>,
-        step_outputs: &'a HashMap<String, SlotIdx>,
-    ) -> Self {
+    pub(super) fn new(scope: CanonicalScope<'a>) -> Self {
         Self {
-            outputs,
-            step_outputs,
+            scope,
             local_binding: None,
             symbols: None,
             accessors: None,
         }
+    }
+
+    pub(super) fn from_maps(
+        outputs: &'a HashMap<String, SlotIdx>,
+        step_outputs: &'a HashMap<String, SlotIdx>,
+    ) -> Self {
+        static TYPES: std::sync::OnceLock<HashMap<SlotIdx, vb_expr::expr_typecheck::ExprType>> =
+            std::sync::OnceLock::new();
+        Self::new(CanonicalScope {
+            outputs,
+            step_outputs,
+            slot_types: TYPES.get_or_init(HashMap::new),
+            parent: None,
+        })
     }
 
     pub(super) fn with_local_binding(mut self, name: &'a str, slot: SlotIdx) -> Self {
@@ -84,7 +94,7 @@ impl<'a> StepReferenceResolver<'a> {
         {
             return Ok(slot);
         }
-        resolve_slot_reference(reference, self.outputs, self.step_outputs)
+        resolve_slot_reference_scoped(reference, self.scope)
     }
 }
 
@@ -251,3 +261,7 @@ impl crate::expression_bytecode::ExpressionReferenceResolver for StepReferenceRe
         Ok(ExprOp::LoadAccessor(AccessorIdx::new(index)))
     }
 }
+
+#[path = "scoped_references.rs"]
+mod scoped;
+pub(in crate::mod_compile_lowering) use scoped::resolve_slot_reference_scoped;

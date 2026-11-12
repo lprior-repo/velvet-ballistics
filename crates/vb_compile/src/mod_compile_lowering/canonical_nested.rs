@@ -11,7 +11,7 @@ pub(super) fn lower_nested(
     step: &StepAst,
     id: StepIdx,
     next: StepIdx,
-    bindings: &mut BranchBindings,
+    bindings: &mut BranchBindings<'_>,
     names: &[Box<str>],
     builder: &mut SlotCompiler,
 ) -> Result<Option<SlotIdx>, CompileErrors> {
@@ -28,6 +28,7 @@ pub(super) fn lower_nested(
         &mut names,
         &mut bindings.types,
         &inputs,
+        Some(&bindings.parent_scope),
         builder,
     )?;
     if let Some(slot) = result {

@@ -36,7 +36,7 @@ fn repeat(id: u16, max: u16, body: u16, done: u16) -> CompiledNode {
     node(
         id,
         CompiledNodeKind::RepeatStart {
-            max_attempts: max,
+            max_attempts: max.into(),
             body: step(body),
             done: step(done),
         },

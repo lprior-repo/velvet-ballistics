@@ -24,7 +24,7 @@ fn step_once_error_handler_jumps_to_body() -> Result<(), String> {
                 CompiledNodeKind::ErrorHandler {
                     body: StepIdx::new(1),
                     handler: StepIdx::new(2),
-                    error_slot: None,
+                    error_slot: None.into(),
                 },
                 None,
                 None,

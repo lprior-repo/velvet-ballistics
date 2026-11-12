@@ -1381,8 +1381,11 @@ mod verification_tests {
 
         match store.insert_list_with_taint(values, taints) {
             Err(CoreError::InternalInvariantViolation {
-                reason: "list values and taints length mismatch",
-            }) => {}
+                reason,
+            }) => assert_eq!(
+                reason.as_str(),
+                "list values and taints length mismatch"
+            ),
             other => return Err(format!("expected length mismatch error, got {other:?}")),
         }
 

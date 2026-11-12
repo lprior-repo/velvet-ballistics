@@ -50,7 +50,7 @@ pub fn for_each_start(
         .first()
         .copied()
         .ok_or(EngineError::InternalInvariantViolation {
-            reason: "for_each item_count checked nonzero",
+            reason: "for_each item_count checked nonzero".into(),
         })?;
     let item_taint =
         vb_core::value::join_taint(input_taint, store.list_item_with_taint(list_id, 0)?.1);
@@ -87,7 +87,7 @@ pub(crate) fn for_each_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
         .get(cursor)
         .copied()
         .ok_or(EngineError::InternalInvariantViolation {
-            reason: "for_each cursor bounds-checked above",
+            reason: "for_each cursor bounds-checked above".into(),
         })?;
     let item_taint = vb_core::value::join_taint(
         iter_taint,
@@ -102,7 +102,7 @@ pub(crate) fn for_each_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
     let next_cursor = cursor
         .checked_add(1)
         .ok_or(EngineError::InternalInvariantViolation {
-            reason: "for_each cursor overflow",
+            reason: "for_each cursor overflow".into(),
         })?;
     let next_state = build_iterator_state(source_id, next_cursor)?;
     let next_state_id = store.insert_list(next_state)?;

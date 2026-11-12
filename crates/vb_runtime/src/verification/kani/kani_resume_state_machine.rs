@@ -77,6 +77,7 @@ fn symbolic_workflow_parts() -> WorkflowParts {
     let slot_count = symbolic_slot_count();
     let nodes = symbolic_nodes(step_count, slot_count);
     let parts = WorkflowParts {
+        source_metadata: None,
         semantic_source_identity: kani::any(),
         name: symbolic_workflow_name(),
         digest: vb_core::ids::WorkflowDigest::from_bytes(kani::any::<[u8; 32]>()),

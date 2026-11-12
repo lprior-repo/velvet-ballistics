@@ -159,7 +159,7 @@ fn compute_input_digest(
 ) -> RuntimeResult<PolicyDigest> {
     let taint_byte = encode_taint_canonical(taint).ok_or_else(|| {
         let core = vb_core::errors::CoreError::InternalInvariantViolation {
-            reason: "unknown taint variant",
+            reason: "unknown taint variant".into(),
         };
         RuntimeError::Core {
             source: Box::new(core),

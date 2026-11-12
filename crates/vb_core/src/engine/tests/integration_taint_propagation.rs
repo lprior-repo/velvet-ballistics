@@ -671,7 +671,7 @@ fn choose_expr_branch_does_not_accumulate_taint_from_condition() -> Result<(), S
                         target: StepIdx::new(1),
                     }]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(2)),
+                    otherwise: Some(StepIdx::new(2)).into(),
                 },
                 None,
                 None,
@@ -1306,7 +1306,7 @@ fn choose_expr_branch_returns_missing_next_step_when_no_match_and_no_otherwise()
                         target: StepIdx::new(1),
                     }]
                     .into_boxed_slice(),
-                    otherwise: None,
+                    otherwise: None.into(),
                 },
                 None,
                 None,

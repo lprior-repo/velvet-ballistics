@@ -124,7 +124,7 @@ fn shape(
             body,
             done,
         } if body == region.body() && done == region.done() => {
-            source_bounds(authority, source, limit, page_size)?;
+            source_bounds(authority, source, limit.get(), page_size)?;
             source
         }
         _ => return Err(RunContinuationError::BoundaryState),

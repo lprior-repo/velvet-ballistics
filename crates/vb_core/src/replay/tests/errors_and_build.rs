@@ -88,7 +88,7 @@ fn replay_choose_expr_takes_true_branch() -> Result<(), CoreError> {
                         target: StepIdx::new(1),
                     }]
                     .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(2)),
+                    otherwise: Some(StepIdx::new(2)).into(),
                 },
                 None,
                 None,
@@ -152,7 +152,7 @@ fn replay_collect_start_rejects_non_list_source() -> Result<(), CoreError> {
         }
         Err(other) => Err(replay_err_to_core(other)),
         Ok(()) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected non-list collect source error",
+            reason: "expected non-list collect source error".into(),
         }),
     }
 }
@@ -175,7 +175,7 @@ fn replay_collect_page_rejects_non_list_collector() -> Result<(), CoreError> {
         }
         Err(other) => Err(replay_err_to_core(other)),
         Ok(()) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected non-list collect page error",
+            reason: "expected non-list collect page error".into(),
         }),
     }
 }
@@ -198,7 +198,7 @@ fn replay_collect_start_rejects_missing_source_list() -> Result<(), CoreError> {
         }
         Err(other) => Err(replay_err_to_core(other)),
         Ok(()) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected missing collect source list error",
+            reason: "expected missing collect source list error".into(),
         }),
     }
 }
@@ -210,7 +210,7 @@ fn replay_collect_start_reports_page_insert_failure() -> Result<(), CoreError> {
     let source = store
         .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "test capped source list insert failed",
+            reason: "test capped source list insert failed".into(),
         })?;
     let mut run = RunFrame::new(
         RunId::new(98),
@@ -233,7 +233,7 @@ fn replay_collect_start_reports_page_insert_failure() -> Result<(), CoreError> {
         }
         Err(other) => Err(replay_err_to_core(other)),
         Ok(_) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected collect page insert failure",
+            reason: "expected collect page insert failure".into(),
         }),
     }
 }
@@ -256,7 +256,7 @@ fn replay_collect_next_rejects_missing_current_page() -> Result<(), CoreError> {
         }
         Err(other) => Err(replay_err_to_core(other)),
         Ok(()) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected missing collect current page error",
+            reason: "expected missing collect current page error".into(),
         }),
     }
 }
@@ -273,7 +273,7 @@ fn replay_collect_next_rejects_changed_source_length() -> Result<(), CoreError> 
         SlotValue::List(list) => list,
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "collector slot not list after collect start",
+                reason: "collector slot not list after collect start".into(),
             });
         }
     };
@@ -281,16 +281,16 @@ fn replay_collect_next_rejects_changed_source_length() -> Result<(), CoreError> 
     changed_store
         .insert_list(vec![SlotValue::I64(10), SlotValue::I64(20)].into_boxed_slice())
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "test changed source list insert failed",
+            reason: "test changed source list insert failed".into(),
         })?;
     let changed_current_page = changed_store
         .insert_list(vec![SlotValue::I64(10)].into_boxed_slice())
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "test current page list insert failed",
+            reason: "test current page list insert failed".into(),
         })?;
     if changed_current_page != current_page {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "test current page handle mismatch",
+            reason: "test current page handle mismatch".into(),
         });
     }
 
@@ -312,7 +312,7 @@ fn replay_collect_next_rejects_changed_source_length() -> Result<(), CoreError> 
         }
         Err(other) => Err(replay_err_to_core(other)),
         Ok(_) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected changed collect source length replay error",
+            reason: "expected changed collect source length replay error".into(),
         }),
     }
 }
@@ -406,7 +406,7 @@ fn replay_node_error(
         Err(ReplayError::Internal { reason }) => Ok(reason),
         Err(other) => Err(replay_err_to_core(other)),
         Ok(_) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected missing output slot replay error",
+            reason: "expected missing output slot replay error".into(),
         }),
     }
 }
@@ -445,7 +445,7 @@ fn replay_build_object_reports_insert_failure() -> Result<(), CoreError> {
     store
         .insert_list(Vec::new().into_boxed_slice())
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "test cap filler insert failed",
+            reason: "test cap filler insert failed".into(),
         })?;
     let mut states = super::step::ReplayCollectStates::new();
     let node = plan
@@ -461,7 +461,7 @@ fn replay_build_object_reports_insert_failure() -> Result<(), CoreError> {
         }
         Err(other) => Err(replay_err_to_core(other)),
         Ok(_) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected build object insert failure",
+            reason: "expected build object insert failure".into(),
         }),
     }
 }
@@ -500,7 +500,7 @@ fn replay_build_list_reports_insert_failure() -> Result<(), CoreError> {
     store
         .insert_list(Vec::new().into_boxed_slice())
         .map_err(|_| CoreError::InternalInvariantViolation {
-            reason: "test cap filler insert failed",
+            reason: "test cap filler insert failed".into(),
         })?;
     let mut states = super::step::ReplayCollectStates::new();
     let node = plan
@@ -516,7 +516,7 @@ fn replay_build_list_reports_insert_failure() -> Result<(), CoreError> {
         }
         Err(other) => Err(replay_err_to_core(other)),
         Ok(_) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected build list insert failure",
+            reason: "expected build list insert failure".into(),
         }),
     }
 }

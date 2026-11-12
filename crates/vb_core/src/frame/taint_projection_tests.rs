@@ -1,4 +1,5 @@
 use super::{RunFrame, StepState, read_taint_cell, write_taint_cell};
+use crate::value::SlotCell;
 use crate::{
     BlobId, CoreError, CoreResult, FiniteF64, ListId, ObjectId, RunId, SlotIdx, SlotValue, StepIdx,
     SymbolId, Taint,
@@ -12,30 +13,22 @@ const TAINTS: [Taint; 5] = [
     Taint::TimeDependent,
 ];
 
-fn hostile_frame(slots: u16, markers: u16) -> CoreResult<RunFrame> {
+fn hostile_frame(slots: u16, _markers: u16) -> CoreResult<RunFrame> {
     let mut frame = RunFrame::new(RunId::new(91), StepIdx::new(1), 3, slots)?;
     frame.mark_succeeded(StepIdx::ZERO)?;
     frame.mark_running(StepIdx::new(1))?;
     frame.increment_executed()?;
     frame.set_max_parallel_in_flight(37);
     frame.add_parallel_in_flight(3)?;
-    frame.taint = vec![Taint::Secret; usize::from(markers)].into_boxed_slice();
     Ok(frame)
 }
 
 fn expected_read(frame: &RunFrame, slot: SlotIdx) -> CoreResult<Taint> {
-    let index = slot.as_usize();
-    if index >= frame.slots.len() {
-        return Err(CoreError::SlotOutOfBounds { slot });
+    match frame.cells.get(slot.as_usize()) {
+        None => Err(CoreError::SlotOutOfBounds { slot }),
+        Some(SlotCell::Empty) => Err(CoreError::SlotUninitialized { slot }),
+        Some(SlotCell::Value { taint, .. }) => Ok(*taint),
     }
-    if frame.slots.get(index) == Some(&None) {
-        return Err(CoreError::SlotUninitialized { slot });
-    }
-    frame
-        .taint
-        .get(index)
-        .copied()
-        .ok_or(CoreError::SlotOutOfBounds { slot })
 }
 
 fn check_cell(frame: &mut RunFrame, slot: SlotIdx, requested: Taint) -> CoreResult<()> {
@@ -47,8 +40,11 @@ fn check_cell(frame: &mut RunFrame, slot: SlotIdx, requested: Taint) -> CoreResu
         expected_read.as_ref().ok().copied()
     );
     assert_eq!(*frame, expected);
-    let initialized = frame.slots.get(slot.as_usize()).map(Option::is_some);
-    let mut marker = frame.taint.get(slot.as_usize()).copied();
+    let initialized = frame
+        .cells
+        .get(slot.as_usize())
+        .map(SlotCell::is_initialized);
+    let mut marker = frame.cells.get(slot.as_usize()).and_then(SlotCell::taint);
     assert_eq!(read_taint_cell(slot, initialized, marker), expected_read);
     let expected_write = expected_read.map(|_| ());
     assert_eq!(
@@ -57,16 +53,61 @@ fn check_cell(frame: &mut RunFrame, slot: SlotIdx, requested: Taint) -> CoreResu
     );
     assert_eq!(frame.write_taint(slot, requested), expected_write);
     if expected_write.is_ok() {
-        *expected
-            .taint
+        let cell = expected
+            .cells
             .get_mut(slot.as_usize())
-            .ok_or(CoreError::SlotOutOfBounds { slot })? = requested;
+            .ok_or(CoreError::SlotOutOfBounds { slot })?;
+        if let SlotCell::Value { taint, .. } = cell {
+            *taint = requested;
+        }
         assert_eq!(marker, Some(requested));
     } else {
-        assert_eq!(marker, expected.taint.get(slot.as_usize()).copied());
+        assert_eq!(
+            marker,
+            expected
+                .cells
+                .get(slot.as_usize())
+                .and_then(SlotCell::taint)
+        );
     }
     assert_eq!(*frame, expected);
     Ok(())
+}
+
+// Retain the independent malformed parallel-array domain at the projection boundary.
+fn check_legacy_projection(
+    slots: u16,
+    markers: u16,
+    slot: SlotIdx,
+    initialized: bool,
+    old: Taint,
+    requested: Taint,
+) {
+    let index = slot.as_usize();
+    let present = (index < usize::from(slots)).then_some(initialized);
+    let mut marker = (index < usize::from(markers)).then_some(old);
+    let expected = if index >= usize::from(slots) {
+        Err(CoreError::SlotOutOfBounds { slot })
+    } else if !initialized {
+        Err(CoreError::SlotUninitialized { slot })
+    } else if index >= usize::from(markers) {
+        Err(CoreError::SlotOutOfBounds { slot })
+    } else {
+        Ok(old)
+    };
+    assert_eq!(read_taint_cell(slot, present, marker), expected);
+    assert_eq!(
+        write_taint_cell(slot, present, marker.as_mut(), requested),
+        expected.clone().map(|_| ())
+    );
+    assert_eq!(
+        marker,
+        if expected.is_ok() {
+            Some(requested)
+        } else {
+            (index < usize::from(markers)).then_some(old)
+        }
+    );
 }
 
 #[test]
@@ -89,11 +130,20 @@ fn selected_cell_boundary_and_mismatched_length_matrix() -> CoreResult<()> {
                 for initialized in [false, true] {
                     for old in TAINTS {
                         for requested in TAINTS {
-                            if let Some(value) = frame.slots.get_mut(slot.as_usize()) {
-                                *value = initialized.then_some(SlotValue::Null);
-                            }
-                            if let Some(marker) = frame.taint.get_mut(slot.as_usize()) {
-                                *marker = old;
+                            check_legacy_projection(
+                                slots,
+                                markers,
+                                slot,
+                                initialized,
+                                old,
+                                requested,
+                            );
+                            if let Some(cell) = frame.cells.get_mut(slot.as_usize()) {
+                                *cell = if initialized {
+                                    SlotCell::value(SlotValue::Null, old)
+                                } else {
+                                    SlotCell::empty()
+                                };
                             }
                             check_cell(&mut frame, slot, requested)?;
                         }
@@ -154,9 +204,10 @@ fn selected_cell_original_positive_domain_native_maximum() -> CoreResult<()> {
                 assert_eq!(frame.write_taint(slot, requested), Ok(()));
                 assert_eq!(frame.read_taint(slot), Ok(requested));
                 *expected
-                    .taint
+                    .cells
                     .get_mut(slot.as_usize())
-                    .ok_or(CoreError::SlotOutOfBounds { slot })? = requested;
+                    .ok_or(CoreError::SlotOutOfBounds { slot })? =
+                    SlotCell::value(SlotValue::Null, requested);
                 assert_eq!(frame, expected);
             }
         }
@@ -175,13 +226,10 @@ fn check_slot_writes(
         let mut actual = frame.clone();
         let mut expected = frame.clone();
         let marker = if clean_write { Taint::Clean } else { requested };
-        if let Some(target) = expected.slots.get_mut(index) {
-            *target = Some(value);
-            if let Some(target) = expected.taint.get_mut(index) {
-                *target = marker;
-            }
+        if let Some(target) = expected.cells.get_mut(index) {
+            *target = SlotCell::value(value, marker);
         }
-        let expected_result = if index < frame.slots.len() && index < frame.taint.len() {
+        let expected_result = if index < frame.cells.len() {
             Ok(())
         } else {
             Err(CoreError::SlotOutOfBounds { slot })
@@ -216,8 +264,12 @@ fn slot_access_public_errors_and_partial_writes() -> CoreResult<()> {
                 let slot = SlotIdx::new(raw);
                 for initialized in [false, true] {
                     let value = SlotValue::I64(i64::MIN);
-                    if let Some(target) = frame.slots.get_mut(slot.as_usize()) {
-                        *target = initialized.then_some(value);
+                    if let Some(target) = frame.cells.get_mut(slot.as_usize()) {
+                        *target = if initialized {
+                            SlotCell::value(value, Taint::Secret)
+                        } else {
+                            SlotCell::empty()
+                        };
                     }
                     let before = frame.clone();
                     let expected = if slot.as_usize() >= usize::from(slots) {

@@ -52,6 +52,7 @@ mod tests {
     include!("lifecycle_tests/secret_recovery_tests.rs");
     include!("lifecycle_tests/timer_due_regressions.rs");
     include!("lifecycle_tests/chunk_013.rs");
+    include!("lifecycle_tests/chunk_014.rs");
 
     mod strict_policy_sequence {
         include!("lifecycle_tests/strict_policy_sequence.rs");

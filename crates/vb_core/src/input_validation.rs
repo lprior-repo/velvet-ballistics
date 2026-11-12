@@ -100,7 +100,7 @@ pub fn validate_input_value(
         if key.is_some_and(|key| completed.contains(&key)) {
             continue;
         }
-        if check.value == SlotValue::Null && check.constraint.nullable {
+        if check.value == SlotValue::Null && check.constraint.nullability.allows_null() {
             continue;
         }
         if check.kind != InputSlotKind::Any && check.kind != input_value_kind(check.value) {
@@ -157,7 +157,7 @@ pub fn validate_input_value(
                         .iter()
                         .any(|item| name(cp, item.key) == Ok(field.name.as_ref()));
                     if !present
-                        && (!field.constraint.optional
+                        && (!field.constraint.presence.is_optional()
                             || field.constraint.default_value.is_some()
                             || field.constraint.default_cold.is_some())
                     {
@@ -167,7 +167,7 @@ pub fn validate_input_value(
                 for field in fields.iter() {
                     let key = name(cp, field.key)?;
                     let schema = declared.iter().find(|schema| schema.name.as_ref() == key);
-                    if schema.is_none() && check.constraint.allow_extra == Some(false) {
+                    if schema.is_none() && check.constraint.extra.rejects_extra() {
                         return Err(InputValueIssue::ExtraField);
                     }
                     let (kind, constraint) = schema.map_or((InputSlotKind::Any, &any), |schema| {

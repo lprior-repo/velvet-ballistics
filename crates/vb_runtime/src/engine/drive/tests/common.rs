@@ -91,7 +91,7 @@ pub(crate) fn collect_start(id: u16, source: u16, out: u16, body: u16, done: u16
         None,
         CompiledNodeKind::CollectStart {
             source: SlotIdx::new(source),
-            limit: 100,
+            limit: 100.into(),
             page_size: 1,
             body: StepIdx::new(body),
             done: StepIdx::new(done),
@@ -106,7 +106,7 @@ pub(crate) fn cslot(id: u16, branches: Box<[SlotBranch]>, otw: Option<u16>) -> C
         otw,
         CompiledNodeKind::ChooseSlot {
             branches,
-            otherwise: otw.map(StepIdx::new),
+            otherwise: otw.map(StepIdx::new).into(),
         },
     )
 }
@@ -118,7 +118,7 @@ pub(crate) fn askn(id: u16, prompt: u16) -> CompiledNode {
         None,
         CompiledNodeKind::Ask {
             prompt: SlotIdx::new(prompt),
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
     )
 }
@@ -142,7 +142,7 @@ pub(crate) fn errh(id: u16, body: u16, handler: u16, eslot: Option<u16>) -> Comp
         CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(body),
             handler: StepIdx::new(handler),
-            error_slot: eslot.map(SlotIdx::new),
+            error_slot: eslot.map(SlotIdx::new).into(),
         },
     )
 }

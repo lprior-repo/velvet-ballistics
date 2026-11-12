@@ -72,7 +72,7 @@ fn validate_kind(kind: InputSlotKind, schema: &CompiledInputConstraint) -> Resul
         || ((schema.min_length.is_some() || schema.max_length.is_some())
             && kind != InputSlotKind::Symbol)
         || (schema.element.is_some() && kind != InputSlotKind::List)
-        || (schema.allow_extra.is_some() && kind != InputSlotKind::Object)
+        || (schema.extra.as_option().is_some() && kind != InputSlotKind::Object)
     {
         return Err(Issue::KeywordKindMismatch);
     }

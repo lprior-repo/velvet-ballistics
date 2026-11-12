@@ -63,6 +63,36 @@ pub(super) fn emit_typed_body(
     primitive: &'static str,
     tracked: Option<SlotIdx>,
 ) -> Result<Option<(SlotIdx, ExprType)>, CompileErrors> {
+    let depth = builder.body_depth;
+    let prospective = depth
+        .checked_add(1)
+        .ok_or_else(|| index_error(usize::from(depth)))?;
+    if prospective > 64 {
+        return Err(CompileErrors(vec![
+            CompileError::PrimitiveLoweringLimitExceeded {
+                primitive,
+                field: "body nesting depth",
+                value: usize::from(prospective),
+                limit: 64,
+            },
+        ]));
+    }
+    builder.body_depth = prospective;
+    let result =
+        emit_typed_body_inner(body, start, common_next, scope, builder, primitive, tracked);
+    builder.body_depth = depth;
+    result
+}
+
+fn emit_typed_body_inner(
+    body: &[crate::StepAst],
+    start: StepIdx,
+    common_next: StepIdx,
+    scope: CanonicalScope<'_>,
+    builder: &mut SlotCompiler,
+    primitive: &'static str,
+    tracked: Option<SlotIdx>,
+) -> Result<Option<(SlotIdx, ExprType)>, CompileErrors> {
     let mut local = BranchBindings::new(scope, primitive == "for_each");
     let mut layout =
         canonical_layout(body, start.as_usize()).map_err(|e| CompileErrors(vec![e]))?;

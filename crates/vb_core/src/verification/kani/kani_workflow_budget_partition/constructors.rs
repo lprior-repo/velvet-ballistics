@@ -49,7 +49,7 @@ pub(super) fn wait_event(
         fields,
         CompiledNodeKind::WaitEvent {
             event,
-            timeout_slot,
+            timeout_slot: timeout_slot.into(),
         },
     )
 }
@@ -65,7 +65,7 @@ pub(super) fn ask(
         fields,
         CompiledNodeKind::Ask {
             prompt,
-            timeout_slot,
+            timeout_slot: timeout_slot.into(),
         },
     )
 }

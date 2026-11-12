@@ -54,7 +54,7 @@ pub(in crate::mod_compile_lowering) fn prepare(
                     condition,
                     target: body,
                 }]),
-                otherwise: next,
+                otherwise: next.into(),
             },
             None,
             None,

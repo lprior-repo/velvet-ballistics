@@ -87,7 +87,7 @@ fn comparisons_produce_boolean_for_each_numeric_pair() -> TestResult {
                         condition: slot(2),
                         target: step(2),
                     }]),
-                    otherwise: Some(step(2)),
+                    otherwise: Some(step(2)).into(),
                 };
                 CompiledWorkflow::try_from_parts(p)?;
             }

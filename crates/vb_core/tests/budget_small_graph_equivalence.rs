@@ -20,11 +20,11 @@ fn kind(tag: usize) -> K {
         },
         3 => K::WaitEvent {
             event: SlotIdx::new(0),
-            timeout_slot: Some(SlotIdx::new(1)),
+            timeout_slot: Some(SlotIdx::new(1)).into(),
         },
         4 => K::Ask {
             prompt: SlotIdx::new(0),
-            timeout_slot: Some(SlotIdx::new(1)),
+            timeout_slot: Some(SlotIdx::new(1)).into(),
         },
         _ => K::Finish {
             result: SlotIdx::new(0),

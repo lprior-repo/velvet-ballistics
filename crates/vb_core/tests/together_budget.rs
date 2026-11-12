@@ -68,7 +68,7 @@ impl Fixture {
             }
             let entry = StepIdx::new(u16::try_from(self.nodes.len())?);
             self.edit(branch)?.kind = CompiledNodeKind::TogetherBranch {
-                branch: u16::try_from(index)?,
+                branch: u16::try_from(index)?.into(),
                 entry,
                 join: start,
                 accumulator: output,
@@ -81,7 +81,7 @@ impl Fixture {
         let result = last_output.ok_or("empty Together fixture")?;
         let join = self.push(
             CompiledNodeKind::TogetherJoin {
-                branch_count: count,
+                branch_count: count.into(),
                 accumulator: output,
             },
             Some(result),

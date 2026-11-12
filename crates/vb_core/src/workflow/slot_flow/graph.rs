@@ -37,8 +37,8 @@ pub(super) fn successors(node: &CompiledNode) -> FlowResult<Vec<Edge>> {
             for branch in branches {
                 add(branch.target, Route::Next);
             }
-            if let Some(target) = otherwise {
-                add(*target, Route::Next);
+            if let Some(target) = otherwise.step() {
+                add(target, Route::Next);
             }
         }
         K::ChooseSlot {
@@ -48,8 +48,8 @@ pub(super) fn successors(node: &CompiledNode) -> FlowResult<Vec<Edge>> {
             for branch in branches {
                 add(branch.target, Route::Next);
             }
-            if let Some(target) = otherwise {
-                add(*target, Route::Next);
+            if let Some(target) = otherwise.step() {
+                add(target, Route::Next);
             }
         }
         K::ForEachStart { body, done, .. }

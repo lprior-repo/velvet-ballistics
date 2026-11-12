@@ -102,7 +102,7 @@ fn blackhat_foreach_limit_zero_still_counts_as_one_iteration() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 0,
+                limit: 0.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
@@ -282,7 +282,7 @@ fn blackhat_self_referencing_loop_body_gracefully_handled() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 10,
+                limit: 10.into(),
                 body: StepIdx::new(0),
                 done: StepIdx::new(1),
             },

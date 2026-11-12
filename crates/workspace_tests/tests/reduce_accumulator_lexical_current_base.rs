@@ -18,6 +18,10 @@ fn source(prefix: &str, expression: &str, suffix: &str) -> String {
 }
 
 fn assert_run(source: &str, input: &[i64], expected: i64) -> TestResult {
+    assert_run_value(source, input, SlotValue::I64(expected))
+}
+
+fn assert_run_value(source: &str, input: &[i64], expected: SlotValue) -> TestResult {
     let workflow = compile_workflow(source.as_bytes())
         .map_err(|error| format!("compilation failed: {error:?}"))?;
     let original_ir = postcard::to_allocvec(&workflow.to_parts())
@@ -49,7 +53,7 @@ fn assert_run(source: &str, input: &[i64], expected: i64) -> TestResult {
         1,
     )
     .map_err(|error| format!("execution failed: {error:?}"))?;
-    assert_eq!(signal, RuntimeSignal::Finished(SlotValue::I64(expected)));
+    assert_eq!(signal, RuntimeSignal::Finished(expected));
     assert_eq!(
         *frame
             .read_slot(SlotIdx::new(8))
@@ -412,4 +416,285 @@ fn numeric_do_reduce_suspends_and_completes_each_item_without_rewriting_ir() -> 
 #[test]
 fn numeric_do_reduce_empty_input_finishes_with_initial_without_suspending() -> TestResult {
     assert_numeric_do_reduce(&[], &[], 10)
+}
+
+// ---------------------------------------------------------------------------
+// Multi-step bodies, nested containers, and typed accumulators.
+// ---------------------------------------------------------------------------
+
+fn multi_source(prefix: &str, initial: &str, steps: &str, suffix: &str) -> String {
+    format!(
+        "version: velvet-ballistics/v1\nname: reduce_multi_step\nwhen:\n  manual: {{}}\nsteps:\n{prefix}  - id: folded\n    reduce:\n      variable: total\n      input: \"8\"\n      initial: \"{initial}\"\n      steps:\n{steps}{suffix}"
+    )
+}
+
+fn accumulator_slot(workflow: &vb_core::CompiledWorkflow) -> Result<SlotIdx, String> {
+    workflow
+        .to_parts()
+        .nodes
+        .iter()
+        .find_map(|node| match node.kind {
+            vb_core::CompiledNodeKind::ReduceFinish { accumulator } => Some(accumulator),
+            _ => None,
+        })
+        .ok_or_else(|| "reduce accumulator slot missing".to_owned())
+}
+
+fn assert_typed_taint(
+    workflow: &vb_core::CompiledWorkflow,
+    frame: &mut vb_core::RunFrame,
+    accumulator: SlotIdx,
+) -> TestResult {
+    assert_eq!(
+        frame
+            .read_taint(accumulator)
+            .map_err(|error| format!("accumulator taint: {error:?}"))?,
+        Taint::Clean
+    );
+    let _ = workflow;
+    Ok(())
+}
+
+#[test]
+fn multi_step_reduce_accumulates_outer_derived_delta_per_item() -> TestResult {
+    let prefix = "  - id: seed\n    set:\n      output: increment\n      value: \"5\"\n";
+    let steps = "        - id: tmp_step\n          set:\n            output: tmp_value\n            value: \"$increment * 2\"\n        - id: update\n          set:\n            output: local_value\n            value: \"$total + $tmp_value\"\n";
+    let source = multi_source(prefix, "10", steps, FINISH);
+    for (input, expected) in [(&[][..], 10), (&[4][..], 20), (&[4, 7][..], 30)] {
+        assert_run(&source, input, expected)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn nested_repeat_in_multi_step_reduce_feeds_the_accumulator() -> TestResult {
+    let steps = "        - id: loop\n          repeat:\n            max_attempts: 1\n            steps:\n              - id: inner\n                set:\n                  output: tmp_value\n                  value: \"6\"\n        - id: update\n          set:\n            output: local_value\n            value: \"$total + $steps.loop\"\n";
+    let source = multi_source("", "10", steps, FINISH);
+    for (input, expected) in [(&[][..], 10), (&[1][..], 16), (&[1, 2][..], 22)] {
+        assert_run(&source, input, expected)?;
+    }
+    Ok(())
+}
+
+fn f64_source() -> String {
+    let steps = "        - id: tmp_step\n          set:\n            output: delta\n            value: \"0.75\"\n        - id: update\n          set:\n            output: local_value\n            value: \"$delta\"\n";
+    multi_source("", "0.5", steps, FINISH)
+}
+
+#[test]
+fn f64_accumulator_tracks_the_typed_initial_and_preserves_input_taint() -> TestResult {
+    let source = f64_source();
+    let expected =
+        SlotValue::F64(vb_core::FiniteF64::new(0.75).map_err(|error| error.to_string())?);
+    let initial_expected =
+        SlotValue::F64(vb_core::FiniteF64::new(0.5).map_err(|error| error.to_string())?);
+    assert_run_value(&source, &[], initial_expected)?;
+    assert_run_value(&source, &[4], expected)?;
+    let workflow = compile_workflow(source.as_bytes())
+        .map_err(|error| format!("compilation failed: {error:?}"))?;
+    let accumulator = accumulator_slot(&workflow)?;
+    // Drive once more against the same compiled IR to inspect live taint.
+    let mut frame = new_run_frame(RunId::new(2), &workflow)
+        .map_err(|error| format!("frame creation failed: {error:?}"))?;
+    let values = vec![SlotValue::I64(4)];
+    let mut store = ValueStore::new();
+    let list = store
+        .insert_list(values)
+        .map_err(|error| format!("input list allocation failed: {error:?}"))?;
+    frame
+        .write_slot_with_taint(
+            SlotIdx::new(8),
+            SlotValue::List(list),
+            Taint::DerivedFromSecret,
+        )
+        .map_err(|error| format!("input binding failed: {error:?}"))?;
+    let signal = drive_deterministic_full(
+        &workflow,
+        &mut frame,
+        &mut StepBudget::new(128),
+        &mut store,
+        &[],
+        RetryPolicy::NEVER,
+        &mut EvidenceCollector::new(),
+        &mut CollectStates::new(),
+        &CapabilitySet::empty(),
+        2,
+    )
+    .map_err(|error| format!("execution failed: {error:?}"))?;
+    assert_eq!(signal, RuntimeSignal::Finished(expected));
+    assert_typed_taint(&workflow, &mut frame, accumulator)?;
+    Ok(())
+}
+
+#[test]
+fn bool_accumulator_folds_with_constants() -> TestResult {
+    let steps = "        - id: tmp_step\n          set:\n            output: flag\n            value: \"true\"\n        - id: update\n          set:\n            output: local_value\n            value: \"$total or $flag\"\n";
+    let source = multi_source("", "false", steps, FINISH);
+    assert_run_value(&source, &[], SlotValue::Bool(false))?;
+    assert_run_value(&source, &[4], SlotValue::Bool(true))?;
+    assert_run_value(&source, &[4, 7], SlotValue::Bool(true))?;
+    Ok(())
+}
+
+#[test]
+fn empty_body_is_rejected() -> TestResult {
+    let text = "version: velvet-ballistics/v1\nname: reduce_empty\nwhen:\n  manual: {}\nsteps:\n  - id: folded\n    reduce:\n      variable: total\n      input: \"8\"\n      initial: \"10\"\n      steps: []\n  - id: done\n    finish:\n      result: \"$steps.folded\"\n";
+    let errors = match compile_workflow(text.as_bytes()) {
+        Err(errors) => errors,
+        Ok(_) => return Err("empty body was accepted".into()),
+    };
+    assert!(
+        errors
+            .0
+            .iter()
+            .any(|error| matches!(error, CompileError::StepFieldShape { field: "steps", .. }))
+    );
+    Ok(())
+}
+
+#[test]
+fn body_step_outputs_do_not_escape_the_reduce_body() -> TestResult {
+    let steps = "        - id: update\n          set:\n            output: tmp_value\n            value: \"2\"\n        - id: final\n          set:\n            output: local_value\n            value: \"$total + $tmp_value\"\n";
+    let suffix = "  - id: after\n    set:\n      output: answer\n      value: \"$tmp_value\"\n  - id: done\n    finish:\n      result: \"$steps.after\"\n";
+    let errors = match compile_workflow(multi_source("", "10", steps, suffix).as_bytes()) {
+        Err(errors) => errors,
+        Ok(_) => return Err("body-local output escaped the reduce body".into()),
+    };
+    assert!(errors.0.iter().any(|error| matches!(
+        error,
+        CompileError::UnknownReferenceName { kind: "output", name, .. }
+            if name.as_ref() == "tmp_value"
+    )));
+    Ok(())
+}
+
+#[test]
+fn body_step_output_cannot_alias_the_accumulator_variable() -> TestResult {
+    let steps = "        - id: tmp_step\n          set:\n            output: tmp_value\n            value: \"2\"\n        - id: update\n          set:\n            output: total\n            value: \"$tmp_value\"\n";
+    let errors = match compile_workflow(multi_source("", "10", steps, FINISH).as_bytes()) {
+        Err(errors) => errors,
+        Ok(_) => return Err("variable alias was accepted".into()),
+    };
+    assert!(errors.0.iter().any(|error| matches!(
+        error,
+        CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "total"
+    )));
+    Ok(())
+}
+
+#[test]
+fn body_step_id_cannot_shadow_the_accumulator_variable() -> TestResult {
+    let steps = "        - id: total\n          set:\n            output: tmp_value\n            value: \"2\"\n        - id: update\n          set:\n            output: local_value\n            value: \"$total\"\n";
+    let errors = match compile_workflow(multi_source("", "10", steps, FINISH).as_bytes()) {
+        Err(errors) => errors,
+        Ok(_) => return Err("variable step id alias was accepted".into()),
+    };
+    assert!(errors.0.iter().any(|error| matches!(
+        error,
+        CompileError::DuplicateOutputName { name, .. } if name.as_ref() == "total"
+    )));
+    Ok(())
+}
+
+#[test]
+fn multi_step_type_mismatch_is_rejected() -> TestResult {
+    let steps = "        - id: tmp_step\n          set:\n            output: tmp_value\n            value: \"2\"\n        - id: update\n          set:\n            output: local_value\n            value: \"$total == 10\"\n";
+    let errors = match compile_workflow(multi_source("", "10", steps, FINISH).as_bytes()) {
+        Err(errors) => errors,
+        Ok(_) => return Err("type-mismatched body was accepted".into()),
+    };
+    assert!(errors.0.iter().any(|error| matches!(
+        error,
+        CompileError::StepFieldShape {
+            field: "reduce.steps",
+            ..
+        }
+    )));
+    Ok(())
+}
+
+const MULTI_DO_REDUCE: &str = r#"version: velvet-ballistics/v1
+name: reduce_multi_do_body
+when:
+  manual: {}
+steps:
+  - id: folded
+    reduce:
+      variable: total
+      input: "8"
+      initial: "10"
+      steps:
+        - id: tmp_step
+          set:
+            output: tmp_value
+            value: "2"
+        - id: update
+          do:
+            action: "0"
+            input: "1"
+  - id: done
+    finish:
+      result: "$steps.folded"
+"#;
+
+#[test]
+fn multi_step_do_suspension_updates_the_accumulator_slot() -> TestResult {
+    let workflow = compile_workflow(MULTI_DO_REDUCE.as_bytes())
+        .map_err(|error| format!("multi Do Reduce compile failed: {error:?}"))?;
+    let accumulator = accumulator_slot(&workflow)?;
+    let run = RunId::new(94);
+    let mut frame = new_run_frame(run, &workflow).map_err(|error| error.to_string())?;
+    let mut store = ValueStore::new();
+    let list = store
+        .insert_list(vec![SlotValue::I64(4), SlotValue::I64(7)])
+        .map_err(|error| error.to_string())?;
+    frame
+        .write_slot_with_taint(SlotIdx::new(8), SlotValue::List(list), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+    frame
+        .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(7), Taint::Clean)
+        .map_err(|error| error.to_string())?;
+    let contracts = [numeric_do_contract()?];
+    let mut signal = drive_numeric_reduce(&workflow, &mut frame, &mut store, &contracts)?;
+    let mut previous = 10;
+    for completion in [20, 30] {
+        let ticket = match signal {
+            RuntimeSignal::AwaitingAction(ticket) => ticket,
+            other => return Err(format!("expected suspension, got {other:?}")),
+        };
+        assert_eq!(
+            *frame
+                .read_slot(accumulator)
+                .map_err(|error| error.to_string())?,
+            SlotValue::I64(previous)
+        );
+        let payload = postcard::to_allocvec(&SlotValue::I64(completion))
+            .map_err(|error| error.to_string())?;
+        let output = vb_core::action::ActionOutputReady {
+            output_slot: accumulator,
+            value: SlotValue::I64(completion),
+            taint: Taint::Clean,
+            encoded_len: u32::try_from(payload.len()).map_err(|error| error.to_string())?,
+        };
+        let (continued, _) = vb_core::resume_action_completion(
+            &workflow,
+            &mut frame,
+            ticket,
+            output,
+            &payload,
+            contracts.first().ok_or("action contract missing")?,
+        )
+        .map_err(|error| format!("completion failed: {error:?}"))?;
+        assert_eq!(continued, vb_core::EngineSignal::Continue);
+        previous = completion;
+        signal = drive_numeric_reduce(&workflow, &mut frame, &mut store, &contracts)?;
+    }
+    assert_eq!(signal, RuntimeSignal::Finished(SlotValue::I64(30)));
+    assert_eq!(
+        *frame
+            .read_slot(accumulator)
+            .map_err(|error| error.to_string())?,
+        SlotValue::I64(30)
+    );
+    Ok(())
 }

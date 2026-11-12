@@ -5,7 +5,7 @@ fn ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         StepIdx::new(2),
         CompiledNodeKind::Ask {
             prompt: SlotIdx::ZERO,
-            timeout_slot: Some(SlotIdx::new(1)),
+            timeout_slot: Some(SlotIdx::new(1)).into(),
         },
         Some(vb_core::ids::SlotIdx::new(2)),
         Some(StepIdx::new(3)),

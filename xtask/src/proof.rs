@@ -8,14 +8,13 @@
 //! - `proof-evidence --bead <id>` - writes evidence bundle
 //! - `proof-drift` - checks spec/code alignment
 
-mod commands;
-pub use commands::commands_for_obligation;
-#[cfg(test)]
-use commands::kani_harness_filter;
-
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+
+mod commands;
+
+pub use commands::commands_for_obligation;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofObligation {
@@ -48,6 +47,10 @@ pub struct RequiredProof {
     pub property_tests: Vec<String>,
     #[serde(default)]
     pub differential_tests: Vec<String>,
+    #[serde(default)]
+    pub crash_lab: Vec<String>,
+    #[serde(default)]
+    pub diff_test: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -205,7 +208,7 @@ pub fn write_proof_evidence(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{commands::kani_harness_filter, *};
 
     #[test]
     fn kani_harness_filter_strips_rs_suffix() {
@@ -251,12 +254,46 @@ mod tests {
                 loom: None,
                 property_tests: vec![],
                 differential_tests: vec![],
+                crash_lab: vec![],
+                diff_test: vec![],
             },
             commands: vec![],
         };
         assert_eq!(
             commands_for_obligation(&obligation),
-            vec!["cargo kani --harness kani_step_budget".to_string()]
+            vec!["cargo kani --package vb_core --harness kani_step_budget".to_string()]
+        );
+    }
+
+    #[test]
+    fn commands_for_obligation_names_package_for_vb_compile_kani() {
+        let obligation = ProofObligation {
+            id: "VB-COMPILE-DIGEST-REPEAT-001".to_string(),
+            section: vec![47],
+            statement: "Repeat max attempts changes digest".to_string(),
+            proof_level: "L3".to_string(),
+            crate_name: "vb_compile".to_string(),
+            files: vec!["crates/vb_compile/src/digest.rs".to_string()],
+            required: RequiredProof {
+                verus: None,
+                kani: Some("kani_digest_repeat.rs::kani_repeat_max_attempts_consumed".to_string()),
+                tests: vec![],
+                fuzz: None,
+                tla: None,
+                loom: None,
+                property_tests: vec![],
+                differential_tests: vec![],
+                crash_lab: vec![],
+                diff_test: vec![],
+            },
+            commands: vec![],
+        };
+        assert_eq!(
+            commands_for_obligation(&obligation),
+            vec![
+                "cargo kani --package vb_compile --harness kani_repeat_max_attempts_consumed"
+                    .to_string()
+            ]
         );
     }
 }

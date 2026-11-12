@@ -42,8 +42,8 @@
 // ============================================================================
 // DRIFT POLICY
 // ============================================================================
-// This file MUST be reviewed against `crates/vb_core/src/value.rs:14-25`
-// (Taint enum) and `crates/vb_core/src/value.rs:27-45` (`join_taint`)
+// This file MUST be reviewed against `crates/vb_core/src/value.rs:19-30`
+// (Taint enum) and `crates/vb_core/src/value.rs:93-111` (`join_taint`)
 // whenever production taint semantics change. Drift in either block
 // breaks the Verus binding (variant renames surface as
 // "no variant named X" errors; discriminant changes surface as
@@ -52,8 +52,8 @@
 // Field NAMES and DISCRIMINANT RANKS are preserved byte-for-byte from
 // production. Any drift breaks the verification build.
 //
-// Production `crates/vb_core/src/value.rs:14-25`
-// Production `crates/vb_core/src/value.rs:27-45`
+// Production `crates/vb_core/src/value.rs:19-30`
+// Production `crates/vb_core/src/value.rs:93-111`
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -76,7 +76,7 @@
 #![allow(dead_code)]
 
 // ----------------------------------------------------------------------------
-// Verbatim copy of crates/vb_core/src/value.rs:14-25
+// Verbatim copy of crates/vb_core/src/value.rs:19-30
 // ----------------------------------------------------------------------------
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -110,7 +110,7 @@ pub fn taint_rank(self_: Taint) -> u8 {
 }
 
 // ----------------------------------------------------------------------------
-// Verbatim copy of crates/vb_core/src/value.rs:29-45 (`join_taint`)
+// Verbatim copy of crates/vb_core/src/value.rs:93-111 (`join_taint`)
 // ----------------------------------------------------------------------------
 /// Joins two taint levels, returning the more restrictive one.
 #[must_use]

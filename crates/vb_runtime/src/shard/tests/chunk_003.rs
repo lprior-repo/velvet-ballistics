@@ -5,7 +5,7 @@ fn timed_ask_without_answer_workflow() -> Option<vb_core::workflow::CompiledWork
         vb_core::ids::StepIdx::new(2),
         CompiledNodeKind::Ask {
             prompt: SlotIdx::ZERO,
-            timeout_slot: Some(SlotIdx::new(1)),
+            timeout_slot: Some(SlotIdx::new(1)).into(),
         },
         Some(vb_core::ids::SlotIdx::new(2)),
         Some(vb_core::ids::StepIdx::new(3)),

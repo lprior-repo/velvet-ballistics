@@ -119,7 +119,7 @@ impl Shard {
                 let now = crate::shard::helpers::wall_clock_millis_since_epoch().ok_or(
                     crate::engine::types::RuntimeEngineError::Core(
                         vb_core::engine::EngineError::InternalInvariantViolation {
-                            reason: "wall clock unavailable",
+                            reason: "wall clock unavailable".into(),
                         },
                     ),
                 )?;
@@ -130,7 +130,7 @@ impl Shard {
         let now = crate::shard::helpers::wall_clock_millis_since_epoch().ok_or(
             crate::engine::types::RuntimeEngineError::Core(
                 vb_core::engine::EngineError::InternalInvariantViolation {
-                    reason: "wall clock unavailable",
+                    reason: "wall clock unavailable".into(),
                 },
             ),
         )?;

@@ -31,7 +31,7 @@ pub(super) fn make_collect_workflow(limit: u32, page_size: u32) -> WorkflowParts
                 StepIdx::new(0),
                 CompiledNodeKind::CollectStart {
                     source,
-                    limit,
+                    limit: limit.into(),
                     page_size,
                     body,
                     done,

@@ -181,7 +181,7 @@ fn fill_slot_map(
         let idx = usize::from(slot.get());
         let entry = map.get_mut(idx).ok_or(OwnedRootBundleError::Checkpoint(
             CoreError::InternalInvariantViolation {
-                reason: "owned_root_canonicalize",
+                reason: "owned_root_canonicalize".into(),
             },
         ))?;
         *entry = Some((*slot, *value, *taint));

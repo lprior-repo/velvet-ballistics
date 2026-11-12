@@ -8,7 +8,7 @@ fn ask_node(id: u16, next: Option<u16>) -> CompiledNode {
         next,
         CompiledNodeKind::Ask {
             prompt: SlotIdx::new(0),
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
     )
 }
@@ -19,7 +19,7 @@ fn wait_event_node(id: u16, next: Option<u16>) -> CompiledNode {
         next,
         CompiledNodeKind::WaitEvent {
             event: SlotIdx::new(0),
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
     )
 }

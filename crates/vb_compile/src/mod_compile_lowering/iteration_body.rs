@@ -1,7 +1,7 @@
 use super::*;
 use vb_core::{ConstValue, SlotIdx, StepIdx, workflow::node};
 
-pub(super) fn produces_value(step: &crate::StepAst) -> bool {
+pub(in crate::mod_compile_lowering) fn produces_value(step: &crate::StepAst) -> bool {
     matches!(
         step.primitive,
         crate::StepPrimitive::Set { .. }
@@ -15,7 +15,7 @@ pub(super) fn produces_value(step: &crate::StepAst) -> bool {
     )
 }
 
-fn needs_tracking(body: &[crate::StepAst]) -> bool {
+pub(in crate::mod_compile_lowering) fn needs_tracking(body: &[crate::StepAst]) -> bool {
     let Some(last) = body.iter().rposition(produces_value) else {
         return false;
     };

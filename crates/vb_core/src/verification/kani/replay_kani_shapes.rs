@@ -109,7 +109,7 @@ impl Shape {
             two_branches: branches.len() == 2,
             shifted_roots: base == 1,
             reverse_roots: first != base,
-            otherwise: otherwise.is_some(),
+            otherwise: otherwise.step().is_some(),
         })
     }
     pub(super) fn expected(self, a: bool, b: bool) -> Result<StepIdx, ReplayError> {
@@ -135,7 +135,7 @@ impl Shape {
             StepIdx::ZERO,
             CompiledNodeKind::ChooseSlot {
                 branches,
-                otherwise: self.otherwise_target(),
+                otherwise: self.otherwise_target().into(),
             },
             None,
             None,
@@ -151,7 +151,7 @@ impl Shape {
             slot: SlotIdx::new(u16::from(self.shifted_roots) + u16::from(second)),
             kind: InputSlotKind::Bool,
             constraint: CompiledInputConstraint {
-                optional: false,
+                presence: false.into(),
                 ..CompiledInputConstraint::unconstrained()
             },
         };
@@ -250,6 +250,6 @@ fn observe_view(branches: &[SlotBranch], otherwise: Option<StepIdx>, slots: u16)
         two_branches,
         shifted_roots: base == 1,
         reverse_roots: first.condition.get() != base,
-        otherwise: otherwise.is_some(),
+        otherwise: otherwise.step().is_some(),
     })
 }

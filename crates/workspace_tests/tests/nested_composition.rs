@@ -85,7 +85,7 @@ fn drive_source(source: &str, items: &[i64]) -> Result<Driven, String> {
 fn drive_twice(source: &str, items: &[i64]) -> Result<Driven, String> {
     let first = drive_source(source, items)?;
     let second = drive_source(source, items)?;
-    if std::mem::discriminant(&first.0) != std::mem::discriminant(&second.0) {
+    if first != second {
         return Err("drive signal drifted between runs".to_owned());
     }
     assert_eq!(first.2, second.2);

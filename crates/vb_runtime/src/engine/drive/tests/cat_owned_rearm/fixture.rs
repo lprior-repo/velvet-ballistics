@@ -54,7 +54,7 @@ pub(super) fn build(family: Family, productive: bool) -> Result<CompiledWorkflow
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 2,
+                limit: 2.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(4),
             },
@@ -78,7 +78,7 @@ pub(super) fn build(family: Family, productive: bool) -> Result<CompiledWorkflow
             None,
             CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
-                limit: 2,
+                limit: 2.into(),
                 page_size: 1,
                 body: StepIdx::new(1),
                 done: StepIdx::new(4),
@@ -91,7 +91,7 @@ pub(super) fn build(family: Family, productive: bool) -> Result<CompiledWorkflow
                 Some(0),
                 None,
                 CompiledNodeKind::RepeatStart {
-                    max_attempts: max,
+                    max_attempts: max.into(),
                     body: StepIdx::new(1),
                     done: StepIdx::new(4),
                 },
@@ -109,7 +109,7 @@ pub(super) fn build(family: Family, productive: bool) -> Result<CompiledWorkflow
                 target: StepIdx::new(3),
             }]
             .into_boxed_slice(),
-            otherwise: Some(StepIdx::new(2)),
+            otherwise: Some(StepIdx::new(2)).into(),
         },
     );
 

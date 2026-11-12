@@ -17,16 +17,16 @@ pub(super) fn constraint_from_entries(
     let allow_extra = schema_extra(entries, kind)?;
     reject_misplaced_fields(entries, kind)?;
     Ok(CompiledInputConstraint {
-        optional,
-        nullable,
+        presence: optional.into(),
+        nullability: nullable.into(),
         default_value,
         min,
         max,
         min_length,
         max_length,
         element,
-        allow_extra,
-        secret,
+        extra: allow_extra.into(),
+        secretness: secret.into(),
         fields: None,
         default_cold,
     })

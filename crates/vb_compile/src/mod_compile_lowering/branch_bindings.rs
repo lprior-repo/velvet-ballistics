@@ -15,7 +15,8 @@ struct BodyTarget {
     slot: SlotIdx,
 }
 
-pub(super) struct BranchBindings {
+pub(super) struct BranchBindings<'a> {
+    parent_scope: CanonicalScope<'a>,
     outputs: HashMap<String, SlotIdx>,
     steps: HashMap<String, SlotIdx>,
     types: HashMap<SlotIdx, ExprType>,
@@ -24,12 +25,13 @@ pub(super) struct BranchBindings {
     strict_unknown: bool,
 }
 
-impl BranchBindings {
-    pub(super) fn new(scope: CanonicalScope<'_>, strict_unknown: bool) -> Self {
+impl<'a> BranchBindings<'a> {
+    pub(super) fn new(scope: CanonicalScope<'a>, strict_unknown: bool) -> Self {
         Self {
-            outputs: scope.outputs.clone(),
-            steps: scope.step_outputs.clone(),
-            types: scope.slot_types.clone(),
+            outputs: HashMap::new(),
+            steps: HashMap::new(),
+            types: HashMap::new(),
+            parent_scope: scope,
             local_outputs: HashSet::new(),
             local_steps: HashSet::new(),
             strict_unknown,
@@ -41,11 +43,12 @@ impl BranchBindings {
             outputs: &self.outputs,
             step_outputs: &self.steps,
             slot_types: &self.types,
+            parent: Some(&self.parent_scope),
         }
     }
 
     pub(super) fn type_of(&self, slot: SlotIdx) -> Option<ExprType> {
-        self.types.get(&slot).copied()
+        self.view().get_type(slot)
     }
 
     pub(super) fn lower(

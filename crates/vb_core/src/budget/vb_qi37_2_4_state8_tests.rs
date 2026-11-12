@@ -351,7 +351,7 @@ proptest! {
 
         let mut nodes: Vec<CompiledNode> = vec![
             // CollectStart at node 0
-            node(StepIdx::new(0), CompiledNodeKind::CollectStart { source: SlotIdx::new(0), limit, page_size: 1, body: StepIdx::new(1), done: StepIdx::new(collect_done), }, None, None),
+            node(StepIdx::new(0), CompiledNodeKind::CollectStart { source: SlotIdx::new(0), limit: limit.into(), page_size: 1, body: StepIdx::new(1), done: StepIdx::new(collect_done), }, None, None),
         ];
 
         // Body nodes: Nop chain
@@ -399,7 +399,7 @@ proptest! {
         let repeat_done = body_end + 1;
 
         let mut nodes: Vec<CompiledNode> = vec![
-            node(StepIdx::new(0), CompiledNodeKind::RepeatStart { max_attempts, body: StepIdx::new(1), done: StepIdx::new(repeat_done), }, None, None),
+            node(StepIdx::new(0), CompiledNodeKind::RepeatStart { max_attempts: max_attempts.into(), body: StepIdx::new(1), done: StepIdx::new(repeat_done), }, None, None),
         ];
 
         for i in 1..=body_node_count as usize {
@@ -428,7 +428,7 @@ proptest! {
         prop_assert_eq!(
             budget.max_repeat_attempts, max_attempts,
             "max_repeat_attempts should be {}",
-            max_attempts
+            max_attempts,
         );
     }
 
@@ -449,9 +449,9 @@ proptest! {
 
         let mut nodes: Vec<CompiledNode> = vec![
             // Node 0: Outer ForEachStart
-            node(StepIdx::new(0), CompiledNodeKind::ForEachStart { input: SlotIdx::new(0), item_slot: SlotIdx::new(1), limit: outer_limit, body: StepIdx::new(1), done: StepIdx::new(outer_done), }, None, None),
+            node(StepIdx::new(0), CompiledNodeKind::ForEachStart { input: SlotIdx::new(0), item_slot: SlotIdx::new(1), limit: outer_limit.into(), body: StepIdx::new(1), done: StepIdx::new(outer_done), }, None, None),
             // Node 1: Inner ForEachStart
-            node(StepIdx::new(1), CompiledNodeKind::ForEachStart { input: SlotIdx::new(2), item_slot: SlotIdx::new(3), limit: inner_limit, body: StepIdx::new(2), done: StepIdx::new(inner_done), }, None, None),
+            node(StepIdx::new(1), CompiledNodeKind::ForEachStart { input: SlotIdx::new(2), item_slot: SlotIdx::new(3), limit: inner_limit.into(), body: StepIdx::new(2), done: StepIdx::new(inner_done), }, None, None),
         ];
 
         // Inner body: Nop chain
@@ -507,7 +507,7 @@ proptest! {
         }
 
         // Join node
-        nodes.push(node(StepIdx::new(join_idx), CompiledNodeKind::TogetherJoin { branch_count, accumulator: SlotIdx::new(0), }, None, None));
+        nodes.push(node(StepIdx::new(join_idx), CompiledNodeKind::TogetherJoin { branch_count: branch_count.into(), accumulator: SlotIdx::new(0), }, None, None));
 
         // Finish
         let finish_idx = join_idx + 1;
@@ -551,7 +551,7 @@ proptest! {
         let collect_done = body_end + 1;
 
         let mut nodes: Vec<CompiledNode> = vec![
-            node(StepIdx::new(0), CompiledNodeKind::CollectStart { source: SlotIdx::new(0), limit, page_size: 1, body: StepIdx::new(1), done: StepIdx::new(collect_done), }, None, None),
+            node(StepIdx::new(0), CompiledNodeKind::CollectStart { source: SlotIdx::new(0), limit: limit.into(), page_size: 1, body: StepIdx::new(1), done: StepIdx::new(collect_done), }, None, None),
         ];
 
         for i in 1..=body_node_count as usize {
@@ -618,7 +618,7 @@ proptest! {
     ) {
         // Build a simple workflow: CollectStart -> Nop -> CollectFinish -> Finish
         let nodes = vec![
-            node(StepIdx::new(0), CompiledNodeKind::CollectStart { source: SlotIdx::new(0), limit, page_size: 1, body: StepIdx::new(1), done: StepIdx::new(3), }, None, None),
+            node(StepIdx::new(0), CompiledNodeKind::CollectStart { source: SlotIdx::new(0), limit: limit.into(), page_size: 1, body: StepIdx::new(1), done: StepIdx::new(3), }, None, None),
             node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
             node(StepIdx::new(2), CompiledNodeKind::CollectFinish { collector_slot: SlotIdx::new(1), }, None, None),
             node(StepIdx::new(3), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None),
@@ -732,7 +732,7 @@ proptest! {
             nodes.push(node(StepIdx::new(i as u16), CompiledNodeKind::Nop, None, None));
         }
 
-        nodes.push(node(StepIdx::new(join_idx), CompiledNodeKind::TogetherJoin { branch_count, accumulator: SlotIdx::new(0), }, None, None));
+        nodes.push(node(StepIdx::new(join_idx), CompiledNodeKind::TogetherJoin { branch_count: branch_count.into(), accumulator: SlotIdx::new(0), }, None, None));
 
         let finish_idx = join_idx + 1;
         nodes.push(node(StepIdx::new(finish_idx), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None));
@@ -841,8 +841,8 @@ proptest! {
         let outer_done = inner_done + 1;
 
         let mut nodes: Vec<CompiledNode> = vec![
-            node(StepIdx::new(0), CompiledNodeKind::ForEachStart { input: SlotIdx::new(0), item_slot: SlotIdx::new(1), limit: outer_limit, body: StepIdx::new(1), done: StepIdx::new(outer_done), }, None, None),
-            node(StepIdx::new(1), CompiledNodeKind::ForEachStart { input: SlotIdx::new(2), item_slot: SlotIdx::new(3), limit: inner_limit, body: StepIdx::new(2), done: StepIdx::new(inner_done), }, None, None),
+            node(StepIdx::new(0), CompiledNodeKind::ForEachStart { input: SlotIdx::new(0), item_slot: SlotIdx::new(1), limit: outer_limit.into(), body: StepIdx::new(1), done: StepIdx::new(outer_done), }, None, None),
+            node(StepIdx::new(1), CompiledNodeKind::ForEachStart { input: SlotIdx::new(2), item_slot: SlotIdx::new(3), limit: inner_limit.into(), body: StepIdx::new(2), done: StepIdx::new(inner_done), }, None, None),
             node(StepIdx::new(2), CompiledNodeKind::Nop, None, None),
             node(StepIdx::new(inner_done), CompiledNodeKind::ForEachJoin { output: SlotIdx::new(4), }, Some(SlotIdx::new(4)), None),
             node(StepIdx::new(outer_done), CompiledNodeKind::ForEachJoin { output: SlotIdx::new(5), }, Some(SlotIdx::new(5)), None),

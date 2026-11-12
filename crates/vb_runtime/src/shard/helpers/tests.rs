@@ -161,7 +161,7 @@ fn wait_event_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkf
         StepIdx::ZERO,
         CompiledNodeKind::WaitEvent {
             event: SlotIdx::new(0),
-            timeout_slot: Some(SlotIdx::new(1)),
+            timeout_slot: Some(SlotIdx::new(1)).into(),
         },
         None,
         Some(StepIdx::new(1)),
@@ -225,7 +225,7 @@ fn ask_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         StepIdx::ZERO,
         CompiledNodeKind::Ask {
             prompt: SlotIdx::ZERO,
-            timeout_slot: Some(SlotIdx::new(1)),
+            timeout_slot: Some(SlotIdx::new(1)).into(),
         },
         Some(SlotIdx::new(2)),
         Some(StepIdx::new(1)),
@@ -297,7 +297,7 @@ fn ask_without_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow>
         StepIdx::ZERO,
         CompiledNodeKind::Ask {
             prompt: SlotIdx::ZERO,
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
         Some(SlotIdx::new(1)),
         Some(StepIdx::new(1)),
@@ -1013,7 +1013,7 @@ fn error_handler_with_slot_workflow() -> Option<vb_core::workflow::CompiledWorkf
         CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(1),
             handler: StepIdx::new(2),
-            error_slot: Some(SlotIdx::new(1)),
+            error_slot: Some(SlotIdx::new(1)).into(),
         },
         None,
         None,

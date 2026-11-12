@@ -32,11 +32,11 @@ impl CollectStates {
             .total_items_consumed
             .checked_add(u64::try_from(delivered).map_err(|_| {
                 EngineError::InternalInvariantViolation {
-                    reason: "collect item counter overflow",
+                    reason: "collect item counter overflow".into(),
                 }
             })?)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "collect item counter overflow",
+                reason: "collect item counter overflow".into(),
             })?;
         let pages_delivered = match self.entries.get(&key) {
             None => 1,
@@ -46,7 +46,7 @@ impl CollectStates {
             .total_pages_delivered
             .checked_add(pages_delivered)
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "collect page counter overflow",
+                reason: "collect page counter overflow".into(),
             })?;
         self.record_lineage(key, state.current_page)?;
         self.entries.insert(key, state);
@@ -71,7 +71,7 @@ impl CollectStates {
         if let Some(previous) = lineage.previous_page {
             lineage.stale_pages.try_reserve(1).map_err(|_| {
                 EngineError::InternalInvariantViolation {
-                    reason: "collect lineage allocation failed",
+                    reason: "collect lineage allocation failed".into(),
                 }
             })?;
             lineage.stale_pages.push(previous);

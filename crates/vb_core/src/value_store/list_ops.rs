@@ -18,11 +18,11 @@ impl ValueStore {
             self.list_taints
                 .get(list_index(id)?)
                 .ok_or(CoreError::InternalInvariantViolation {
-                    reason: "list taints missing",
+                    reason: "list taints missing".into(),
                 })?;
         if values.len() != taints.len() {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "list values and taints length mismatch",
+                reason: "list values and taints length mismatch".into(),
             });
         }
         Ok(values.iter().copied().zip(taints.iter().copied()))
@@ -70,7 +70,7 @@ impl ValueStore {
                     taints
                         .get_mut(index)
                         .ok_or(CoreError::InternalInvariantViolation {
-                            reason: "unique item taint missing",
+                            reason: "unique item taint missing".into(),
                         })?;
                 *target = join_taint(*target, taint);
             } else {

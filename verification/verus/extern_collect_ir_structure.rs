@@ -94,7 +94,7 @@
 //   - `StepIdx` (u16 newtype)                   <- crates/vb_core/src/ids/mod.rs:70-70
 //   - `StepIdx::new(value: u16) -> Self`        <- crates/vb_core/src/ids/mod.rs:36-36
 //   - `StepIdx::get(self) -> u16`               <- crates/vb_core/src/ids/mod.rs:70-70
-//   - `StepIdx::checked_add`                    <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:183-188
+//   - `StepIdx::checked_add`                    <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:214-219
 //                                                  (used at bounded_collect.rs:116-126
 //                                                   via the `checked_step_offset`
 //                                                   wrapper at part_12.rs:199-212)
@@ -109,7 +109,7 @@
 //                                                  (the exact variant produced by
 //                                                  `checked_body_length_offset` when
 //                                                  body_len+extra overflows u16)
-//   - `lower_bounded_collect`                   <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:244-261
+//   - `lower_bounded_collect`                   <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:225-242
 //                                                  (plan build + start/body/next/finish emission;
 //                                                  edges computed by plan_compute_edges,
 //                                                  bounded_collect.rs:116-126)
@@ -118,7 +118,7 @@
 //                                                  body=id+1, advance=id+body_len+1,
 //                                                  done=id+body_len+2)
 //   - `CollectStart` / `CollectNext` /
-//     `CollectFinish`                           <- crates/vb_core/src/workflow/mod.rs:1344-1364
+//     `CollectFinish`                           <- crates/vb_core/src/workflow/node_kind.rs:87-111
 //                                                  (CollectStart { source, limit, page_size,
 //                                                  body, done }; CollectNext
 //                                                  { collector_slot, body, done };
@@ -133,7 +133,7 @@
 //   - `SlotCompiler::allocate_slot`             <- crates/vb_compile/src/mod_compile_lowering/part_08.rs:41-50
 //                                                  (returns SlotIdx::new(slot_count),
 //                                                  reserves one more slot)
-//   - `emit_scoped_flat_body`                   <- crates/vb_compile/src/mod_compile_lowering/canonical_branch_body.rs:23-33
+//   - `emit_scoped_flat_body`                   <- crates/vb_compile/src/mod_compile_lowering/canonical_branch_body.rs:27-43
 //                                                  (one node per body step at
 //                                                  start+index, one slot allocated
 //                                                  per step)

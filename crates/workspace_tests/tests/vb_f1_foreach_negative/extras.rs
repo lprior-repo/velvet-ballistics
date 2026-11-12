@@ -35,8 +35,8 @@ fn unrelated_schema_is_not_a_foreach_restriction() -> Result<(), String> {
                 if input != items_slot {
                     return Err(format!("input mismatch: {:?} vs {:?}", input, items_slot));
                 }
-                if limit != 3 {
-                    return Err(format!("limit mismatch: {}", limit));
+                if limit.get() != 3 {
+                    return Err(format!("limit mismatch: {}", limit.get()));
                 }
             }
             None => return Err("ForEachStart not found".to_string()),
@@ -110,10 +110,10 @@ steps:
         _ => None,
     });
 
-    if max3_limit != Some(3) {
+    if max3_limit.map(|limit| limit.get()) != Some(3) {
         return Err(format!("expected max3 limit 3, got {:?}", max3_limit));
     }
-    if max1_limit != Some(1) {
+    if max1_limit.map(|limit| limit.get()) != Some(1) {
         return Err(format!("expected max1 limit 1, got {:?}", max1_limit));
     }
 

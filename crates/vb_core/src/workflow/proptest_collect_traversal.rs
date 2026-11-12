@@ -66,7 +66,7 @@ fn collect_traversal_requires_initialized_source() -> TestCaseResult {
                 .input_slots
                 .first_mut()
                 .ok_or_else(|| TestCaseError::fail("missing source input"))?;
-            input.constraint.optional = true;
+            input.constraint.presence = super::Presence::Optional;
         } else {
             parts.input_slots = Box::new([]);
         }

@@ -74,7 +74,7 @@ fn writes_slot(parts: &WorkflowParts, node: &CompiledNode, slot: SlotIdx) -> boo
             branch,
             accumulator,
             ..
-        } => branch != 0 && accumulator == slot,
+        } => branch.get() != 0 && accumulator == slot,
         K::TogetherJoin { accumulator, .. } => {
             output.is_some_and(|out| out != accumulator && (out == slot || accumulator == slot))
         }

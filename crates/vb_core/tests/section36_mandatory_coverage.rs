@@ -715,7 +715,7 @@ fn try_from_parts_rejects_empty_branch_table_without_otherwise() {
                 StepIdx::new(0),
                 CompiledNodeKind::ChooseSlot {
                     branches: Box::new([]),
-                    otherwise: None,
+                    otherwise: None.into(),
                 },
                 None,
                 None,
@@ -763,7 +763,7 @@ fn terminal_succeeded_state_never_transitions_back_to_running() -> CoreResult<()
     assert_eq!(
         result,
         Err(CoreError::InternalInvariantViolation {
-            reason: "invalid_state_transition"
+            reason: "invalid_state_transition".into()
         })
     );
     // State remains Succeeded
@@ -781,7 +781,7 @@ fn terminal_failed_state_never_transitions_to_succeeded() -> CoreResult<()> {
     assert_eq!(
         result,
         Err(CoreError::InternalInvariantViolation {
-            reason: "invalid_state_transition"
+            reason: "invalid_state_transition".into()
         })
     );
     assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Failed);
@@ -797,7 +797,7 @@ fn terminal_cancelled_state_never_transitions_to_running() -> CoreResult<()> {
     assert_eq!(
         result,
         Err(CoreError::InternalInvariantViolation {
-            reason: "invalid_state_transition"
+            reason: "invalid_state_transition".into()
         })
     );
     assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Cancelled);
@@ -873,7 +873,7 @@ fn failed_step_does_not_become_succeeded_without_error_handler() -> Result<(), S
     assert_eq!(
         transition_result,
         Err(CoreError::InternalInvariantViolation {
-            reason: "invalid_state_transition"
+            reason: "invalid_state_transition".into()
         })
     );
     Ok(())
@@ -961,7 +961,7 @@ fn skipped_step_is_terminal_and_rejects_running() -> CoreResult<()> {
     assert_eq!(
         result,
         Err(CoreError::InternalInvariantViolation {
-            reason: "invalid_state_transition"
+            reason: "invalid_state_transition".into()
         })
     );
     Ok(())
@@ -1434,7 +1434,7 @@ fn validate_transition_target_rejects_choose_branch_out_of_bounds() {
                 target: StepIdx::new(99),
             }]
             .into_boxed_slice(),
-            otherwise: None,
+            otherwise: None.into(),
         },
         None,
         None,
@@ -1461,7 +1461,7 @@ fn validate_transition_target_rejects_choose_otherwise_out_of_bounds() {
         StepIdx::new(0),
         CompiledNodeKind::Choose {
             branches: Box::new([]),
-            otherwise: Some(StepIdx::new(99)),
+            otherwise: Some(StepIdx::new(99)).into(),
         },
         None,
         None,
@@ -1485,7 +1485,7 @@ fn validate_transition_target_rejects_choose_slot_branch_out_of_bounds() {
                 target: StepIdx::new(99),
             }]
             .into_boxed_slice(),
-            otherwise: None,
+            otherwise: None.into(),
         },
         None,
         None,
@@ -1506,7 +1506,7 @@ fn validate_transition_target_rejects_for_each_body_out_of_bounds() {
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
-            limit: 0,
+            limit: 0.into(),
             body: StepIdx::new(99),
             done: StepIdx::new(0),
         },
@@ -1567,7 +1567,7 @@ fn validate_transition_target_rejects_together_branch_out_of_bounds() {
     parts.nodes = vec![node(
         StepIdx::new(0),
         CompiledNodeKind::TogetherBranch {
-            branch: 0,
+            branch: 0.into(),
             entry: StepIdx::new(99),
             join: StepIdx::new(0),
             accumulator: SlotIdx::new(0),
@@ -1589,7 +1589,7 @@ fn validate_transition_target_rejects_together_branch_join_out_of_bounds() {
     parts.nodes = vec![node(
         StepIdx::new(0),
         CompiledNodeKind::TogetherBranch {
-            branch: 0,
+            branch: 0.into(),
             entry: StepIdx::new(0),
             join: StepIdx::new(99),
             accumulator: SlotIdx::new(0),
@@ -1654,7 +1654,7 @@ fn validate_transition_target_rejects_error_handler_body_out_of_bounds() {
         CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(99),
             handler: StepIdx::new(0),
-            error_slot: None,
+            error_slot: None.into(),
         },
         None,
         None,
@@ -1675,7 +1675,7 @@ fn validate_transition_target_rejects_error_handler_handler_out_of_bounds() {
         CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(0),
             handler: StepIdx::new(99),
-            error_slot: None,
+            error_slot: None.into(),
         },
         None,
         None,
@@ -2186,7 +2186,7 @@ fn branch_route_rejects_empty_branches_without_otherwise() {
             StepIdx::new(0),
             CompiledNodeKind::ChooseSlot {
                 branches: Box::new([]),
-                otherwise: None,
+                otherwise: None.into(),
             },
             None,
             None,
@@ -2223,7 +2223,7 @@ fn branch_route_accepts_empty_branches_with_otherwise() {
             StepIdx::new(0),
             CompiledNodeKind::ChooseSlot {
                 branches: Box::new([]),
-                otherwise: Some(StepIdx::new(1)),
+                otherwise: Some(StepIdx::new(1)).into(),
             },
             None,
             None,
@@ -2405,7 +2405,7 @@ fn kind_edges_rejects_backward_done_in_for_each_start() {
             CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
-                limit: 0,
+                limit: 0.into(),
                 body: StepIdx::new(2),
                 done: StepIdx::new(1),
             },

@@ -45,11 +45,11 @@ pub(crate) fn awaiting_deadline(state: &RunState, step: StepIdx) -> std::time::I
     let slot = match &node.kind {
         vb_core::workflow::CompiledNodeKind::WaitUntil { deadline_slot } => Some(*deadline_slot),
         vb_core::workflow::CompiledNodeKind::WaitEvent {
-            timeout_slot: Some(slot),
+            timeout_slot: vb_core::Deadline::Slot(slot),
             ..
         }
         | vb_core::workflow::CompiledNodeKind::Ask {
-            timeout_slot: Some(slot),
+            timeout_slot: vb_core::Deadline::Slot(slot),
             ..
         } => Some(*slot),
         _ => None,

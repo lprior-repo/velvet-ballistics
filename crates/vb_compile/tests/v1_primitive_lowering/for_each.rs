@@ -49,7 +49,7 @@ pub(super) fn expected(preamble: bool, values: &[i64]) -> Result<Expected, Strin
             CompiledNodeKind::ForEachStart {
                 input: slot(0)?,
                 item_slot: slot(3)?,
-                limit: 2,
+                limit: 2.into(),
                 body: step(3)?,
                 done: step(join)?,
             },

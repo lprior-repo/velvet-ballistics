@@ -57,9 +57,9 @@
 // ============================================================================
 //   - Production `Taint` enum (Clean=0, DerivedFromSecret=1, Secret=2,
 //     Random=3, TimeDependent=4)
-//                              <- crates/vb_core/src/value.rs:14-25
+//                              <- crates/vb_core/src/value.rs:19-30
 //   - Production `join_taint(a, b) -> Taint`
-//                              <- crates/vb_core/src/value.rs:29-45
+//                              <- crates/vb_core/src/value.rs:93-109
 //   - Mirror `Taint` enum      <- production_inner/taint_lattice_production.rs
 //   - Mirror `taint_rank(self_) -> u8`
 //                              <- production_inner/taint_lattice_production.rs

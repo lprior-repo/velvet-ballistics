@@ -223,7 +223,7 @@ fn scalar_roots(
         let target = taints
             .get_mut(input.slot.as_usize())
             .ok_or_else(|| invalid("retained declaration slot"))?;
-        *target = Some(if input.constraint.secret {
+        *target = Some(if input.constraint.secretness.is_secret() {
             Taint::Secret
         } else {
             Taint::Clean

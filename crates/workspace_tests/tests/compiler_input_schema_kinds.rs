@@ -89,16 +89,16 @@ fn longform_keywords_are_retained() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(
         constraint,
         vb_core::CompiledInputConstraint {
-            optional: true,
-            nullable: true,
+            presence: true.into(),
+            nullability: true.into(),
             default_value: Some(vb_core::SlotValue::I64(5)),
             min: Some(1),
             max: Some(10),
             min_length: None,
             max_length: None,
             element: None,
-            allow_extra: None,
-            secret: true,
+            extra: None.into(),
+            secretness: true.into(),
             fields: None,
             default_cold: None,
         }
@@ -110,7 +110,7 @@ fn longform_keywords_are_retained() -> Result<(), Box<dyn std::error::Error>> {
     let text = single_constraint("{is: text, min_length: 1, max_length: 8}")?;
     assert_eq!((text.min_length, text.max_length), (Some(1), Some(8)));
     let object = single_constraint("{is: object, fields: {enabled: boolean}, extra: reject}")?;
-    assert_eq!(object.allow_extra, Some(false));
+    assert_eq!(object.extra, vb_core::ExtraFields::Reject);
     let boolean = single_constraint("{is: boolean, default: true, optional: true}")?;
     assert_eq!(boolean.default_value, Some(vb_core::SlotValue::Bool(true)));
     assert!(!boolean.requires_value());

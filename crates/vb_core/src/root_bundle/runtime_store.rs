@@ -20,7 +20,7 @@ pub fn validate_runtime_store(
             if expected != actual {
                 return Err(OwnedRootBundleError::Checkpoint(
                     crate::CoreError::InternalInvariantViolation {
-                        reason: "compiled_source_symbol_prefix",
+                        reason: "compiled_source_symbol_prefix".into(),
                     },
                 ));
             }
@@ -28,7 +28,7 @@ pub fn validate_runtime_store(
         if checkpoint.symbols.len() < metadata.symbols().len() {
             return Err(OwnedRootBundleError::Checkpoint(
                 crate::CoreError::InternalInvariantViolation {
-                    reason: "compiled_source_symbol_prefix",
+                    reason: "compiled_source_symbol_prefix".into(),
                 },
             ));
         }

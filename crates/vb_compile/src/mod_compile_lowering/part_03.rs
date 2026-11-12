@@ -82,7 +82,7 @@ pub(super) fn lower_canonical_parallel(
     builder.push_node(node(
         join,
         CompiledNodeKind::TogetherJoin {
-            branch_count,
+            branch_count: branch_count.into(),
             accumulator,
         },
         Some(result),
@@ -150,7 +150,7 @@ pub(super) fn emit_together_branches(
         builder.push_node(node(
             branch_id,
             CompiledNodeKind::TogetherBranch {
-                branch: branch_number,
+                branch: branch_number.into(),
                 entry,
                 join,
                 accumulator: slots.accumulator,

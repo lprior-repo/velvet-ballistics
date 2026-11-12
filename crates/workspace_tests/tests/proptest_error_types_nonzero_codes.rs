@@ -63,7 +63,9 @@ fn all_core_error_variants() -> Vec<CoreError> {
         CoreError::ExpressionStackOverflow { max: 64 },
         CoreError::ExpressionStackUnderflow,
         CoreError::InvalidCompiledWorkflow { reason: "test" },
-        CoreError::UnsupportedPrimitive { primitive: "op" },
+        CoreError::UnsupportedPrimitive {
+            primitive: "op".into(),
+        },
         CoreError::UnsupportedAccessorTraversal {
             segment: "field",
             found: "map",
@@ -72,7 +74,9 @@ fn all_core_error_variants() -> Vec<CoreError> {
             field: SymbolId::new(0),
         },
         CoreError::ListIndexOutOfBounds { index: 999 },
-        CoreError::InternalInvariantViolation { reason: "test" },
+        CoreError::InternalInvariantViolation {
+            reason: "test".into(),
+        },
         CoreError::SymbolOutOfBounds {
             symbol: SymbolId::new(0),
         },
@@ -252,7 +256,9 @@ fn all_runtime_error_variants() -> Vec<RuntimeError> {
         RuntimeError::IpcPayloadSizeExceeded { size: 100, max: 50 },
         RuntimeError::EngineDriveFailed {
             run: RunId::new(42),
-            source: Box::new(CoreError::InternalInvariantViolation { reason: "test" }),
+            source: Box::new(CoreError::InternalInvariantViolation {
+                reason: "test".into(),
+            }),
         },
         RuntimeError::ShardNotFound { shard: 0 },
         RuntimeError::MigrateSelf,

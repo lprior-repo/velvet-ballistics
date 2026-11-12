@@ -5,15 +5,15 @@ impl RunFrame {
     /// or `SlotUninitialized` when the index is valid but no value has been
     /// written to that slot yet.
     pub fn read_slot(&self, slot: SlotIdx) -> CoreResult<&SlotValue> {
-        match self.slot_cell(slot) {
-            None => Err(CoreError::SlotOutOfBounds { slot }),
-            Some(None) => Err(CoreError::SlotUninitialized { slot }),
-            Some(Some(value)) => Ok(value),
-        }
+        self.cells
+            .get(slot.as_usize())
+            .ok_or(CoreError::SlotOutOfBounds { slot })?
+            .value_ref()
+            .ok_or(CoreError::SlotUninitialized { slot })
     }
 
-    pub(crate) fn slot_cell(&self, slot: SlotIdx) -> Option<&Option<SlotValue>> {
-        self.slots.get(slot.as_usize())
+    pub(crate) fn slot_cell(&self, slot: SlotIdx) -> Option<Option<&SlotValue>> {
+        self.cells.get(slot.as_usize()).map(|cell| cell.value_ref())
     }
 
     /// Writes a slot value with Clean taint.
@@ -28,23 +28,18 @@ impl RunFrame {
         value: SlotValue,
         taint: Taint,
     ) -> CoreResult<()> {
-        let index = slot.as_usize();
-        let Some(target) = self.slots.get_mut(index) else {
-            return Err(CoreError::SlotOutOfBounds { slot });
-        };
-        *target = Some(value);
-        let Some(marker) = self.taint.get_mut(index) else {
-            return Err(CoreError::SlotOutOfBounds { slot });
-        };
-        *marker = taint;
+        *self
+            .cells
+            .get_mut(slot.as_usize())
+            .ok_or(CoreError::SlotOutOfBounds { slot })? =
+            crate::value::SlotCell::value(value, taint);
         Ok(())
     }
 
     /// Returns a compact copy of initialized slot values and taint markers.
     pub fn initialized_slots(&self) -> CoreResult<Vec<(SlotIdx, SlotValue, Taint)>> {
-        self.slots
+        self.cells
             .iter()
-            .zip(self.taint.iter())
             .enumerate()
             .filter_map(initialized_slot_entry)
             .collect()
@@ -53,22 +48,26 @@ impl RunFrame {
     /// Returns a snapshot of all slot values (including uninitialized slots as None).
     #[must_use]
     pub fn slots_snapshot(&self) -> Vec<Option<SlotValue>> {
-        self.slots.to_vec()
+        self.cells
+            .iter()
+            .map(|cell| cell.value_ref().copied())
+            .collect()
     }
 
     #[must_use]
     pub fn written_slot_count(&self) -> u64 {
-        self.slots
-            .iter()
-            .fold(0, |count, slot| {
-                count.saturating_add(u64::from(slot.is_some()))
-            })
+        self.cells.iter().fold(0, |count, cell| {
+            count.saturating_add(u64::from(cell.is_initialized()))
+        })
     }
 
     /// Returns a snapshot of all taint markers.
     #[must_use]
     pub fn taint_snapshot(&self) -> Vec<Taint> {
-        self.taint.to_vec()
+        self.cells
+            .iter()
+            .map(|cell| cell.taint().map_or(Taint::Clean, |taint| taint))
+            .collect()
     }
 
     /// Returns a snapshot of all step states.
@@ -82,18 +81,18 @@ impl RunFrame {
     /// Returns `SlotOutOfBounds` when the index is outside the slot array,
     /// or `SlotUninitialized` when the slot index is valid but has no value.
     pub fn read_taint(&self, slot: SlotIdx) -> CoreResult<Taint> {
-        let index = slot.as_usize();
+        let cell = self.cells.get(slot.as_usize());
         read_taint_cell(
             slot,
-            self.slots.get(index).map(Option::is_some),
-            self.taint.get(index).copied(),
+            cell.map(|cell| cell.is_initialized()),
+            cell.and_then(|cell| cell.taint()),
         )
     }
 
     pub(crate) fn initialized_taint(&self, slot: SlotIdx) -> Option<Taint> {
-        let index = slot.as_usize();
-        self.slot_cell(slot)?.as_ref()?;
-        self.taint.get(index).copied()
+        self.cells
+            .get(slot.as_usize())
+            .and_then(|cell| cell.taint())
     }
 
     #[allow(dead_code)]
@@ -102,12 +101,13 @@ impl RunFrame {
             SlotValue::Object(id) => {
                 let mut idx = 0usize;
                 while idx < usize::from(self.slot_count) {
-                    if let Some(Some(SlotValue::Object(vid))) = self.slots.get(idx)
+                    if let Some(SlotValue::Object(vid)) =
+                        self.cells.get(idx).and_then(|cell| cell.value_ref())
                         && *vid == *id
                     {
-                        return self.taint.get(idx).copied().ok_or(
+                        return self.cells.get(idx).and_then(|cell| cell.taint()).ok_or(
                             CoreError::InternalInvariantViolation {
-                                reason: "taint_slots_diverged",
+                                reason: "taint_slots_diverged".into(),
                             },
                         );
                     }
@@ -118,12 +118,13 @@ impl RunFrame {
             SlotValue::List(id) => {
                 let mut idx = 0usize;
                 while idx < usize::from(self.slot_count) {
-                    if let Some(Some(SlotValue::List(vid))) = self.slots.get(idx)
+                    if let Some(SlotValue::List(vid)) =
+                        self.cells.get(idx).and_then(|cell| cell.value_ref())
                         && *vid == *id
                     {
-                        return self.taint.get(idx).copied().ok_or(
+                        return self.cells.get(idx).and_then(|cell| cell.taint()).ok_or(
                             CoreError::InternalInvariantViolation {
-                                reason: "taint_slots_diverged",
+                                reason: "taint_slots_diverged".into(),
                             },
                         );
                     }
@@ -140,16 +141,15 @@ impl RunFrame {
     /// Rejects taint writes to uninitialized slots to prevent a taint/value
     /// desync where a slot carries a non-Clean taint but has no value.
     pub fn write_taint(&mut self, slot: SlotIdx, taint: Taint) -> CoreResult<()> {
-        let index = slot.as_usize();
-        write_taint_cell(
-            slot,
-            self.slots.get(index).map(Option::is_some),
-            self.taint.get_mut(index),
-            taint,
-        )
+        let cell = self.cells.get_mut(slot.as_usize());
+        let initialized = cell.as_ref().map(|cell| cell.is_initialized());
+        let marker = cell.and_then(|cell| match cell {
+            crate::value::SlotCell::Empty => None,
+            crate::value::SlotCell::Value { taint, .. } => Some(taint),
+        });
+        write_taint_cell(slot, initialized, marker, taint)
     }
 }
-
 // The projection preserves missing slots separately from uninitialized slots.
 pub(crate) fn read_taint_cell(
     slot: SlotIdx,
@@ -199,7 +199,7 @@ mod slot_read_backing_characterization {
         let before = run.clone();
         assert_eq!(run.read_slot(SlotIdx::new(0)), Ok(&SlotValue::Bool(false)));
         assert_eq!(run, before);
-        run.slots = Box::new([None]);
+        run.cells = Box::new([crate::value::SlotCell::empty()]);
         run.slot_count = u16::MAX;
         let before = run.clone();
         assert_eq!(
@@ -215,7 +215,7 @@ mod slot_read_backing_characterization {
             })
         );
         assert_eq!(run, before);
-        run.slots = Box::new([]);
+        run.cells = Box::new([]);
         let before = run.clone();
         assert_eq!(
             run.read_slot(SlotIdx::new(0)),

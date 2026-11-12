@@ -58,6 +58,6 @@ fn remap(value: &mut SlotValue, ids: &[SymbolId]) -> CoreResult<()> {
 }
 fn invalid() -> CoreError {
     CoreError::InternalInvariantViolation {
-        reason: "owned_source_symbol_relocation",
+        reason: "owned_source_symbol_relocation".into(),
     }
 }

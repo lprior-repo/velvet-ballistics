@@ -5,7 +5,7 @@ fn ask() -> vb_core::CompiledNode {
         1,
         K::Ask {
             prompt: slot(0),
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
         Some(1),
         Some(2),
@@ -42,7 +42,7 @@ fn bypassing_ask_does_not_supply_an_answer() -> TestResult {
     if let Some(n) = p.nodes.get_mut(1) {
         n.kind = K::Ask {
             prompt: slot(3),
-            timeout_slot: None,
+            timeout_slot: None.into(),
         };
     }
     p.slot_count = 4;

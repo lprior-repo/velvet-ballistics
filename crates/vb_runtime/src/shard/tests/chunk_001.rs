@@ -76,7 +76,7 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
 }
 
 fn action_with_error_handler_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
-    let guard = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::ErrorHandler { body: vb_core::ids::StepIdx::new(1), handler: vb_core::ids::StepIdx::new(2), error_slot: None, }, None, None);
+    let guard = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::ErrorHandler { body: vb_core::ids::StepIdx::new(1), handler: vb_core::ids::StepIdx::new(2), error_slot: None.into(), }, None, None);
     let action = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::new(0), }, Some(SlotIdx::new(0)), Some(vb_core::ids::StepIdx::new(3)));
     let handler = vb_core::workflow::node(vb_core::ids::StepIdx::new(2), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(0)), Some(vb_core::ids::StepIdx::new(3)));
     let finish = vb_core::workflow::node(vb_core::ids::StepIdx::new(3), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);

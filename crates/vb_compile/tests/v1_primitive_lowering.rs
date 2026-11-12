@@ -345,6 +345,70 @@ fn compile_workflow_accepts_multi_step_scoped_bodies() -> Result<(), String> {
             assert_dense_node_ids(&workflow, case_name)?;
             assert_all_targets_in_range(&workflow, case_name)?;
             assert_eq!(parts.slot_count, 7);
+            assert_eq!(parts.entry, StepIdx::ZERO);
+            assert_eq!(parts.constants.len(), 3);
+            assert_eq!(parts.constants.first(), Some(&ConstValue::I64(10)));
+            assert_finish_node(&parts.nodes, 7, 0)?;
+            assert_eq!(
+                node_at(&parts.nodes, 0)?.kind,
+                CompiledNodeKind::Copy {
+                    source: SlotIdx::ZERO
+                }
+            );
+            assert_eq!(
+                node_at(&parts.nodes, 0)?.output,
+                NodeOutput::Slot(SlotIdx::new(1))
+            );
+            assert_eq!(
+                node_at(&parts.nodes, 0)?.routing.next,
+                NodeContinuation::Step(StepIdx::new(1))
+            );
+            let CompiledNodeKind::ReduceStart {
+                input,
+                accumulator,
+                initial,
+                body,
+                done,
+                ..
+            } = node_at(&parts.nodes, 1)?.kind
+            else {
+                return Err("expected ReduceStart".to_owned());
+            };
+            assert_eq!(
+                (
+                    input.get(),
+                    accumulator.get(),
+                    initial.get(),
+                    body.get(),
+                    done.get()
+                ),
+                (1, 4, 0, 2, 6)
+            );
+            assert_eq!(
+                node_at(&parts.nodes, 1)?.output,
+                NodeOutput::Slot(SlotIdx::new(3))
+            );
+            assert_eq!(
+                node_at(&parts.nodes, 5)?.kind,
+                CompiledNodeKind::ReduceNext {
+                    iterator_slot: SlotIdx::new(3),
+                    accumulator: SlotIdx::new(4),
+                    body: StepIdx::new(2),
+                    done: StepIdx::new(6),
+                }
+            );
+            assert_eq!(
+                node_at(&parts.nodes, 5)?.output,
+                NodeOutput::Slot(SlotIdx::new(2))
+            );
+            assert_eq!(
+                node_at(&parts.nodes, 6)?.output,
+                NodeOutput::Slot(SlotIdx::new(4))
+            );
+            assert_eq!(
+                node_at(&parts.nodes, 6)?.routing.next,
+                NodeContinuation::Step(StepIdx::new(7))
+            );
             assert_set_const_node(&parts.nodes, &parts.constants, 2, Some(5), Some(3), 1, 1)?;
             assert_set_const_node(&parts.nodes, &parts.constants, 3, Some(6), Some(4), 2, 2)?;
             assert_eq!(
@@ -413,7 +477,7 @@ fn assert_two_set_repeat_control(nodes: &[CompiledNode]) -> Result<(), String> {
         (
             0u16,
             CompiledNodeKind::RepeatStart {
-                max_attempts: 3,
+                max_attempts: 3.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(5),
             },
@@ -671,7 +735,7 @@ fn assert_repeat_raw_allocation_contract() -> Result<(), String> {
         assert_eq!(
             start.kind,
             CompiledNodeKind::RepeatStart {
-                max_attempts: 1,
+                max_attempts: 1.into(),
                 body: StepIdx::MAX,
                 done: StepIdx::MAX,
             }
@@ -954,7 +1018,7 @@ fn lower_choose_accepts_valid_otherwise_target() -> Result<(), String> {
             otherwise,
         } => {
             assert_eq!(branches.len(), 1);
-            assert_eq!(otherwise, Some(StepIdx::new(2)));
+            assert_eq!(otherwise.step(), Some(StepIdx::new(2)));
         }
         other => {
             return Err(format!("expected ChooseSlot node, got {other:?}"));
@@ -985,7 +1049,7 @@ fn lower_choose_accepts_empty_branches_with_otherwise() -> Result<(), String> {
             otherwise,
         } => {
             assert_eq!(branches.len(), 0);
-            assert_eq!(otherwise, Some(StepIdx::new(2)));
+            assert_eq!(otherwise.step(), Some(StepIdx::new(2)));
         }
         other => {
             return Err(format!("expected ChooseSlot node, got {other:?}"));
@@ -1910,7 +1974,7 @@ fn assert_exact_together(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
             branch_count,
             accumulator,
         } => {
-            assert_eq!((*branch_count, accumulator.get()), (2, 1));
+            assert_eq!((branch_count.get(), accumulator.get()), (2, 1));
         }
         other => return Err(format!("expected TogetherJoin, got {other:?}")),
     }
@@ -1927,7 +1991,7 @@ fn assert_exact_together(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
             accumulator,
         } => {
             assert_eq!(
-                (*branch, entry.get(), join.get(), accumulator.get()),
+                (branch.get(), entry.get(), join.get(), accumulator.get()),
                 (0, 2, 7, 1)
             );
         }
@@ -1944,7 +2008,7 @@ fn assert_exact_together(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
             accumulator,
         } => {
             assert_eq!(
-                (*branch, entry.get(), join.get(), accumulator.get()),
+                (branch.get(), entry.get(), join.get(), accumulator.get()),
                 (1, 5, 7, 1)
             );
         }
@@ -1968,7 +2032,13 @@ fn assert_exact_collect(nodes: &[CompiledNode], constants: &[ConstValue]) -> Res
             done,
         } => {
             assert_eq!(
-                (source.get(), *limit, *page_size, body.get(), done.get()),
+                (
+                    source.get(),
+                    limit.get(),
+                    *page_size,
+                    body.get(),
+                    done.get()
+                ),
                 (0, 15, 5, 1, 3)
             );
         }
@@ -2088,7 +2158,7 @@ fn assert_exact_repeat(nodes: &[CompiledNode], constants: &[ConstValue]) -> Resu
             body,
             done,
         } => {
-            assert_eq!((*max_attempts, body.get(), done.get()), (3, 1, 4));
+            assert_eq!((max_attempts.get(), body.get(), done.get()), (3, 1, 4));
         }
         other => return Err(format!("expected RepeatStart, got {other:?}")),
     }
@@ -2136,7 +2206,9 @@ fn assert_exact_wait_event(nodes: &[CompiledNode]) -> Result<(), String> {
             event,
             timeout_slot,
         } => {
-            let timeout = timeout_slot.ok_or_else(|| String::from("missing wait timeout slot"))?;
+            let timeout = timeout_slot
+                .slot()
+                .ok_or_else(|| String::from("missing wait timeout slot"))?;
             assert_eq!((event.get(), timeout.get()), (0, 1));
         }
         other => return Err(format!("expected WaitEvent, got {other:?}")),
@@ -2151,7 +2223,9 @@ fn assert_exact_ask(nodes: &[CompiledNode]) -> Result<(), String> {
             prompt,
             timeout_slot,
         } => {
-            let timeout = timeout_slot.ok_or_else(|| String::from("missing ask timeout slot"))?;
+            let timeout = timeout_slot
+                .slot()
+                .ok_or_else(|| String::from("missing ask timeout slot"))?;
             assert_eq!((prompt.get(), timeout.get()), (0, 1));
         }
         other => return Err(format!("expected Ask, got {other:?}")),
@@ -2302,7 +2376,7 @@ fn assert_kind_targets_in_range(
             for branch in branches.as_ref() {
                 assert_target(branch.target, node_count, case_name, "choose.branch.target")?;
             }
-            assert_optional_target(*otherwise, node_count, case_name, "choose.otherwise")?;
+            assert_optional_target(otherwise.step(), node_count, case_name, "choose.otherwise")?;
         }
         CompiledNodeKind::ChooseSlot {
             branches,
@@ -2316,7 +2390,12 @@ fn assert_kind_targets_in_range(
                     "choose_slot.branch.target",
                 )?;
             }
-            assert_optional_target(*otherwise, node_count, case_name, "choose_slot.otherwise")?;
+            assert_optional_target(
+                otherwise.step(),
+                node_count,
+                case_name,
+                "choose_slot.otherwise",
+            )?;
         }
         CompiledNodeKind::ForEachStart { body, done, .. }
         | CompiledNodeKind::ForEachNext { body, done, .. }
@@ -2560,7 +2639,7 @@ fn compile_workflow_accepts_multi_step_together_branch() -> Result<(), String> {
         &node(
             StepIdx::new(8),
             CompiledNodeKind::TogetherJoin {
-                branch_count: 2,
+                branch_count: 2.into(),
                 accumulator: SlotIdx::new(1)
             },
             Some(SlotIdx::new(2)),
@@ -2724,7 +2803,7 @@ fn assert_two_set_collect_contract(workflow: &CompiledWorkflow) -> Result<(), St
             done,
         } => {
             if source.get() != 0
-                || *limit != 2
+                || limit.get() != 2
                 || *page_size != 1
                 || body.get() != 1
                 || done.get() != 4
@@ -2791,7 +2870,13 @@ fn assert_exact_for_each(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
             done,
         } => {
             assert_eq!(
-                (input.get(), item_slot.get(), *limit, body.get(), done.get()),
+                (
+                    input.get(),
+                    item_slot.get(),
+                    limit.get(),
+                    body.get(),
+                    done.get()
+                ),
                 (0, 3, 2, 3, 6)
             );
         }
@@ -2860,7 +2945,7 @@ fn assert_two_set_for_each_contract(
             } => {
                 assert_eq!(input.get(), 1, "Start input slot");
                 assert_eq!(item_slot.get(), 4, "Start item slot");
-                assert_eq!(*limit, 2, "Start limit slot");
+                assert_eq!(limit.get(), 2, "Start limit slot");
                 assert_eq!(body.get(), 4, "Start body target");
                 assert_eq!(done.get(), 8, "Start done target");
             }
@@ -2925,7 +3010,7 @@ fn assert_two_set_for_each_contract(
             } => {
                 assert_eq!(input.get(), 0, "Start input slot");
                 assert_eq!(item_slot.get(), 3, "Start item slot");
-                assert_eq!(*limit, 2, "Start limit slot");
+                assert_eq!(limit.get(), 2, "Start limit slot");
                 assert_eq!(body.get(), 3, "Start body target");
                 assert_eq!(done.get(), 7, "Start done target");
             }

@@ -77,7 +77,7 @@ pub(super) fn source_width(input: &str) -> usize {
 pub(super) fn item_type(
     mut source: SlotIdx,
     builder: &SlotCompiler,
-    types: &std::collections::HashMap<SlotIdx, vb_expr::expr_typecheck::ExprType>,
+    scope: super::CanonicalScope<'_>,
 ) -> vb_expr::expr_typecheck::ExprType {
     use vb_expr::expr_typecheck::ExprType as T;
     for node in builder.nodes.iter().rev() {
@@ -100,9 +100,8 @@ pub(super) fn item_type(
             K::BuildList { items } => {
                 let mut result = None;
                 for item in items {
-                    let ty = types
-                        .get(item)
-                        .copied()
+                    let ty = scope
+                        .get_type(*item)
                         .unwrap_or_else(|| constant_type(*item, builder));
                     result = Some(match result {
                         None => ty,

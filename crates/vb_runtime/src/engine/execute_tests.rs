@@ -611,7 +611,7 @@ fn execute_error_handler_routes_to_body_step() {
         CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(1),
             handler: StepIdx::new(2),
-            error_slot: None,
+            error_slot: None.into(),
         },
         None,
         None,
@@ -649,7 +649,7 @@ fn execute_error_handler_with_error_slot_routes_to_body_step() {
         CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(1),
             handler: StepIdx::new(2),
-            error_slot: Some(SlotIdx::new(3)),
+            error_slot: Some(SlotIdx::new(3)).into(),
         },
         None,
         None,
@@ -694,7 +694,7 @@ fn execute_for_each_start_errors_on_uninitialized_input() {
         CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(5),
             item_slot: SlotIdx::new(6),
-            limit: 10,
+            limit: 10.into(),
             body: StepIdx::new(1),
             done: StepIdx::new(2),
         },
@@ -883,7 +883,7 @@ fn execute_together_join_errors_on_missing_next_step() {
     let node0 = vb_core::workflow::node(
         StepIdx::new(0),
         CompiledNodeKind::TogetherJoin {
-            branch_count: 2,
+            branch_count: 2.into(),
             accumulator: SlotIdx::new(1),
         },
         Some(SlotIdx::new(0)),
@@ -948,7 +948,7 @@ fn execute_collect_start_errors_on_uninitialized_source() {
         StepIdx::new(0),
         CompiledNodeKind::CollectStart {
             source: SlotIdx::new(5),
-            limit: 10,
+            limit: 10.into(),
             page_size: 5,
             body: StepIdx::new(1),
             done: StepIdx::new(2),
@@ -1046,7 +1046,7 @@ fn execute_collect_next_errors_on_uninitialized_collector() -> Result<(), String
         StepIdx::new(0),
         CompiledNodeKind::CollectStart {
             source: SlotIdx::new(1),
-            limit: 2,
+            limit: 2.into(),
             page_size: 1,
             body: StepIdx::new(1),
             done: StepIdx::new(3),
@@ -1326,7 +1326,7 @@ fn execute_repeat_start_single_attempt_no_panic() -> Result<(), String> {
     let node0 = vb_core::workflow::node(
         StepIdx::new(0),
         CompiledNodeKind::RepeatStart {
-            max_attempts: 1,
+            max_attempts: 1.into(),
             body: StepIdx::new(1),
             done: StepIdx::new(2),
         },
@@ -1508,7 +1508,7 @@ fn execute_wait_event_errors_on_uninitialized_event() {
         StepIdx::new(0),
         CompiledNodeKind::WaitEvent {
             event: SlotIdx::new(5),
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
         None,
         None,
@@ -1553,7 +1553,7 @@ fn execute_ask_errors_on_uninitialized_prompt() {
         StepIdx::new(0),
         CompiledNodeKind::Ask {
             prompt: SlotIdx::new(5),
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
         None,
         None,

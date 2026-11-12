@@ -89,7 +89,7 @@ pub(super) fn apply(ctx: &mut Context<'_>, kind: &K, route: Route) -> FlowResult
             accumulator,
             ..
         } => {
-            if branch != 0 {
+            if branch.get() != 0 {
                 let out = ctx.node.output.slot().ok_or_else(|| invalid(ctx.node.id))?;
                 ctx.read(out)?;
                 ctx.typed_read(accumulator, Fact::LIST)?;

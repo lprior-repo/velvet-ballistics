@@ -183,23 +183,23 @@ impl kani::Arbitrary for CompiledNodeKind {
             7 => Self::Choose {
                 branches: bounded_expr_branches(),
                 otherwise: if kani::any::<bool>() {
-                    Some(StepIdx::new(kani::any()))
+                    Some(StepIdx::new(kani::any())).into()
                 } else {
-                    None
+                    None.into()
                 },
             },
             8 => Self::ChooseSlot {
                 branches: bounded_slot_branches(),
                 otherwise: if kani::any::<bool>() {
-                    Some(StepIdx::new(kani::any()))
+                    Some(StepIdx::new(kani::any())).into()
                 } else {
-                    None
+                    None.into()
                 },
             },
             9 => Self::ForEachStart {
                 input: SlotIdx::new(kani::any()),
                 item_slot: SlotIdx::new(kani::any()),
-                limit: kani::any(),
+                limit: kani::any::<u32>().into(),
                 body: StepIdx::new(kani::any()),
                 done: StepIdx::new(kani::any()),
             },
@@ -216,18 +216,18 @@ impl kani::Arbitrary for CompiledNodeKind {
                 join: StepIdx::new(kani::any()),
             },
             13 => Self::TogetherBranch {
-                branch: kani::any(),
+                branch: kani::any::<u16>().into(),
                 entry: StepIdx::new(kani::any()),
                 join: StepIdx::new(kani::any()),
                 accumulator: SlotIdx::new(kani::any()),
             },
             14 => Self::TogetherJoin {
-                branch_count: kani::any(),
+                branch_count: kani::any::<u16>().into(),
                 accumulator: SlotIdx::new(kani::any()),
             },
             15 => Self::CollectStart {
                 source: SlotIdx::new(kani::any()),
-                limit: kani::any(),
+                limit: kani::any::<u32>().into(),
                 page_size: kani::any(),
                 body: StepIdx::new(kani::any()),
                 done: StepIdx::new(kani::any()),
@@ -263,7 +263,7 @@ impl kani::Arbitrary for CompiledNodeKind {
                 accumulator: SlotIdx::new(kani::any()),
             },
             22 => Self::RepeatStart {
-                max_attempts: kani::any(),
+                max_attempts: kani::any::<u16>().into(),
                 body: StepIdx::new(kani::any()),
                 done: StepIdx::new(kani::any()),
             },
@@ -285,17 +285,17 @@ impl kani::Arbitrary for CompiledNodeKind {
             27 => Self::WaitEvent {
                 event: SlotIdx::new(kani::any()),
                 timeout_slot: if kani::any::<bool>() {
-                    Some(SlotIdx::new(kani::any()))
+                    Some(SlotIdx::new(kani::any())).into()
                 } else {
-                    None
+                    None.into()
                 },
             },
             28 => Self::Ask {
                 prompt: SlotIdx::new(kani::any()),
                 timeout_slot: if kani::any::<bool>() {
-                    Some(SlotIdx::new(kani::any()))
+                    Some(SlotIdx::new(kani::any())).into()
                 } else {
-                    None
+                    None.into()
                 },
             },
             29 => Self::AskResume {
@@ -310,9 +310,9 @@ impl kani::Arbitrary for CompiledNodeKind {
                 body: StepIdx::new(kani::any()),
                 handler: StepIdx::new(kani::any()),
                 error_slot: if kani::any::<bool>() {
-                    Some(SlotIdx::new(kani::any()))
+                    Some(SlotIdx::new(kani::any())).into()
                 } else {
-                    None
+                    None.into()
                 },
             },
             32 => Self::Jump {

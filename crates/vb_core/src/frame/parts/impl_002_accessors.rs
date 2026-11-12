@@ -50,7 +50,7 @@ impl RunFrame {
     pub fn add_parallel_in_flight(&mut self, count: u16) -> CoreResult<()> {
         let requested = self.parallel_in_flight.checked_add(count).ok_or(
             CoreError::InternalInvariantViolation {
-                reason: "parallel_in_flight overflow",
+                reason: "parallel_in_flight overflow".into(),
             },
         )?;
         if requested > self.max_parallel_in_flight {
@@ -66,7 +66,7 @@ impl RunFrame {
     pub fn sub_parallel_in_flight(&mut self, count: u16) -> CoreResult<()> {
         self.parallel_in_flight = self.parallel_in_flight.checked_sub(count).ok_or(
             CoreError::InternalInvariantViolation {
-                reason: "parallel_in_flight underflow",
+                reason: "parallel_in_flight underflow".into(),
             },
         )?;
         Ok(())

@@ -33,7 +33,7 @@ pub(super) fn plan(otherwise: bool) -> TestResult<CompiledWorkflow> {
                     target: StepIdx::new(2),
                 },
             ]),
-            otherwise: otherwise.then_some(StepIdx::new(3)),
+            otherwise: otherwise.then_some(StepIdx::new(3)).into(),
         },
         None,
         None,
@@ -48,7 +48,7 @@ pub(super) fn plan(otherwise: bool) -> TestResult<CompiledWorkflow> {
         slot: SlotIdx::new(slot),
         kind: InputSlotKind::Any,
         constraint: CompiledInputConstraint {
-            optional: false,
+            presence: false.into(),
             ..CompiledInputConstraint::unconstrained()
         },
     };

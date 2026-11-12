@@ -18,7 +18,11 @@ use vb_core::{
 
 #[path = "canonical_reduce.rs"]
 mod canonical_reduce;
-pub(super) use canonical_reduce::{ReduceLowering, lower_canonical_aggregate};
+pub(super) use canonical_reduce::{ReduceLowering, checked_width_n, lower_canonical_aggregate};
+
+#[path = "canonical_reduce_initial.rs"]
+mod canonical_reduce_initial;
+pub(super) use canonical_reduce_initial::parse_typed_initial;
 
 #[path = "canonical_repeat.rs"]
 mod canonical_repeat;
@@ -126,49 +130,7 @@ pub(super) fn emit_single_body_set(
             Ok(())
         }
         crate::StepPrimitive::Do { action, input } => {
-            // Parse action as integer (ActionId) - action field contains numeric ID
-            let action_value = action.parse::<i64>().map_err(|_| {
-                CompileErrors(vec![CompileError::StepFieldShape {
-                    step: diagnostic_step,
-                    field: "do.action",
-                    expected: "integer action id",
-                }])
-            })?;
-            let action_id = u16::try_from(action_value).map_err(|_| {
-                CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
-                    primitive: "do",
-                    field: "action",
-                    value: integer_error_value(action_value),
-                    limit: usize::from(u16::MAX),
-                }])
-            })?;
-            // Parse input as SlotIdx
-            let input_value = input.parse::<i64>().map_err(|_| {
-                CompileErrors(vec![CompileError::StepFieldShape {
-                    step: diagnostic_step,
-                    field: "do.input",
-                    expected: "integer slot index",
-                }])
-            })?;
-            let input_idx = u16::try_from(input_value).map_err(|_| {
-                CompileErrors(vec![CompileError::SlotIndexOutOfRange {
-                    value: input_value,
-                }])
-            })?;
-            let input_slot = SlotIdx::new(input_idx);
-            builder.record_slot(input_slot);
-            builder.record_slot(slot);
-            // Construct Do node directly to avoid double-borrow of builder
-            builder.push_node(node(
-                id,
-                CompiledNodeKind::Do {
-                    action: vb_core::ActionId::new(action_id),
-                    input: input_slot,
-                },
-                Some(slot),
-                next,
-            ));
-            Ok(())
+            lower_do_body_set(id, diagnostic_step, slot, next, action, input, builder)
         }
         other => Err(CompileErrors(vec![
             CompileError::UnsupportedStepPrimitive {
@@ -177,6 +139,61 @@ pub(super) fn emit_single_body_set(
             },
         ])),
     }
+}
+
+#[cfg(test)]
+fn lower_do_body_set(
+    id: StepIdx,
+    diagnostic_step: usize,
+    slot: SlotIdx,
+    next: Option<StepIdx>,
+    action: &str,
+    input: &str,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    // Parse action as integer (ActionId) - action field contains numeric ID
+    let action_value = action.parse::<i64>().map_err(|_| {
+        CompileErrors(vec![CompileError::StepFieldShape {
+            step: diagnostic_step,
+            field: "do.action",
+            expected: "integer action id",
+        }])
+    })?;
+    let action_id = u16::try_from(action_value).map_err(|_| {
+        CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+            primitive: "do",
+            field: "action",
+            value: integer_error_value(action_value),
+            limit: usize::from(u16::MAX),
+        }])
+    })?;
+    // Parse input as SlotIdx
+    let input_value = input.parse::<i64>().map_err(|_| {
+        CompileErrors(vec![CompileError::StepFieldShape {
+            step: diagnostic_step,
+            field: "do.input",
+            expected: "integer slot index",
+        }])
+    })?;
+    let input_idx = u16::try_from(input_value).map_err(|_| {
+        CompileErrors(vec![CompileError::SlotIndexOutOfRange {
+            value: input_value,
+        }])
+    })?;
+    let input_slot = SlotIdx::new(input_idx);
+    builder.record_slot(input_slot);
+    builder.record_slot(slot);
+    // Construct Do node directly to avoid double-borrow of builder
+    builder.push_node(node(
+        id,
+        CompiledNodeKind::Do {
+            action: vb_core::ActionId::new(action_id),
+            input: input_slot,
+        },
+        Some(slot),
+        next,
+    ));
+    Ok(())
 }
 
 #[path = "body_constants.rs"]

@@ -9,7 +9,7 @@ fn for_each(result: u16) -> vb_core::workflow::WorkflowParts {
                 K::ForEachStart {
                     input: slot(0),
                     item_slot: slot(2),
-                    limit: 4,
+                    limit: 4.into(),
                     body: step(1),
                     done: step(3),
                 },
@@ -53,7 +53,7 @@ fn repeat_runs_body_before_done() -> TestResult {
             node(
                 0,
                 K::RepeatStart {
-                    max_attempts: 2,
+                    max_attempts: 2.into(),
                     body: step(1),
                     done: step(3),
                 },
@@ -85,7 +85,7 @@ fn backedge_cannot_initialize_first_activation_read() -> TestResult {
             node(
                 0,
                 K::RepeatStart {
-                    max_attempts: 2,
+                    max_attempts: 2.into(),
                     body: step(1),
                     done: step(4),
                 },
@@ -118,7 +118,7 @@ fn collect_page_has_no_zero_iteration_exit() -> TestResult {
                 0,
                 K::CollectStart {
                     source: slot(0),
-                    limit: 4,
+                    limit: 4.into(),
                     page_size: 2,
                     body: step(1),
                     done: step(4),
@@ -212,7 +212,7 @@ fn nested_for_each(result: u16) -> vb_core::workflow::WorkflowParts {
                 K::ForEachStart {
                     input: slot(0),
                     item_slot: slot(4),
-                    limit: 4,
+                    limit: 4.into(),
                     body: step(1),
                     done: step(5),
                 },
@@ -224,7 +224,7 @@ fn nested_for_each(result: u16) -> vb_core::workflow::WorkflowParts {
                 K::ForEachStart {
                     input: slot(1),
                     item_slot: slot(5),
-                    limit: 4,
+                    limit: 4.into(),
                     body: step(2),
                     done: step(4),
                 },

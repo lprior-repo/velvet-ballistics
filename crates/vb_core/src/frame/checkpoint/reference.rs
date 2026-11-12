@@ -34,14 +34,15 @@ pub(super) fn via_new_and_seed(
     for (target, state) in frame.states.iter_mut().zip(checkpoint.states) {
         *target = StepState::from(state);
     }
-    for ((slot, value), (taint_slot, taint)) in frame
-        .slots
+    for (cell, (value, taint)) in frame
+        .cells
         .iter_mut()
-        .zip(checkpoint.slots)
-        .zip(frame.taint.iter_mut().zip(checkpoint.taint))
+        .zip(checkpoint.slots.into_iter().zip(checkpoint.taint))
     {
-        *slot = value;
-        *taint_slot = taint;
+        *cell = match value {
+            Some(value) => crate::value::SlotCell::value(value, taint),
+            None => crate::value::SlotCell::empty(),
+        };
     }
     Ok(frame)
 }

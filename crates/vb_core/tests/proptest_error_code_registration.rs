@@ -58,7 +58,9 @@ fn all_core_error_variants() -> Vec<CoreError> {
         CoreError::ExpressionStackOverflow { max: 64 },
         CoreError::ExpressionStackUnderflow,
         CoreError::InvalidCompiledWorkflow { reason: "test" },
-        CoreError::UnsupportedPrimitive { primitive: "op" },
+        CoreError::UnsupportedPrimitive {
+            primitive: "op".into(),
+        },
         CoreError::UnsupportedAccessorTraversal {
             segment: "field",
             found: "map",
@@ -67,7 +69,9 @@ fn all_core_error_variants() -> Vec<CoreError> {
             field: SymbolId::new(0),
         },
         CoreError::ListIndexOutOfBounds { index: 999 },
-        CoreError::InternalInvariantViolation { reason: "test" },
+        CoreError::InternalInvariantViolation {
+            reason: "test".into(),
+        },
         CoreError::SymbolOutOfBounds {
             symbol: SymbolId::new(0),
         },

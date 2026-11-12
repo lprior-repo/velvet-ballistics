@@ -83,11 +83,11 @@ impl MaxAttempts {
     ///
     /// # Errors
     /// Returns `EngineError::InvalidRepeatState` with reason
-    /// `"max_attempts_cannot_be_zero"` if value is 0.
+    /// [`super::errors::InvariantKind::MaxAttemptsCannotBeZero`] if value is 0.
     pub fn try_new(value: u16) -> Result<Self, super::errors::EngineError> {
         if value == 0 {
             return Err(super::errors::EngineError::InvalidRepeatState {
-                reason: "max_attempts_cannot_be_zero",
+                reason: super::errors::InvariantKind::MaxAttemptsCannotBeZero,
             });
         }
         Ok(Self(value))
@@ -97,6 +97,19 @@ impl MaxAttempts {
     #[must_use]
     pub const fn get(self) -> u16 {
         self.0
+    }
+}
+
+/// Unchecked conversion for pre-validated values.
+///
+/// Unlike [`MaxAttempts::try_new`], this accepts 0 and therefore produces a
+/// value that violates the non-zero invariant. It exists for compiler
+/// lowering sites that already rejected 0 and for tests that must express the
+/// invalid state. Artifacts carrying `MaxAttempts(0)` are still rejected by
+/// workflow validation (`validate_repeat_start` in the workflow module).
+impl From<u16> for MaxAttempts {
+    fn from(value: u16) -> Self {
+        Self(value)
     }
 }
 

@@ -1,6 +1,6 @@
 use super::super::part_01::ForEachInputs;
 use super::super::{SlotCompiler, list_input};
-use super::{CanonicalScope, resolve_slot_reference};
+use super::{CanonicalScope, resolve_slot_reference_scoped};
 use crate::{CompileError, CompileErrors};
 use vb_core::{
     CompiledNodeKind as K, ExprOp, ExprProgram, SlotIdx, StepIdx, WorkflowError, workflow::node,
@@ -37,20 +37,11 @@ fn resolve_input(
     let prelude = list_input::source_width(config.input);
     let init = offset(id, prelude, "init")?;
     let (input, ty) = if prelude == 0 {
-        let input = resolve_slot_reference(
-            config.input,
-            config.scope.outputs,
-            config.scope.step_outputs,
-        )
-        .map_err(|e| CompileErrors(vec![e]))?;
+        let input = resolve_slot_reference_scoped(config.input, config.scope)
+            .map_err(|e| CompileErrors(vec![e]))?;
         (
             input,
-            config
-                .scope
-                .slot_types
-                .get(&input)
-                .copied()
-                .unwrap_or(ExprType::Unknown),
+            config.scope.get_type(input).unwrap_or(ExprType::Unknown),
         )
     } else {
         let input = allocate(builder)?;
@@ -90,28 +81,20 @@ fn validate(index: usize, config: &ForEachLowering<'_>) -> Result<(), CompileErr
     }
     crate::mod_compile_validation::validate_public_name("for_each.variable", config.variable)
         .map_err(|e| CompileErrors(vec![e]))?;
+    super::validate_output_alias(config.variable).map_err(|e| CompileErrors(vec![e]))?;
     if config.variable == "step" {
         return Err(CompileErrors(vec![CompileError::InvalidName {
             field: "for_each.variable",
             value: config.variable.into(),
         }]));
     }
-    if config.scope.outputs.contains_key(config.variable)
-        || config.scope.step_outputs.contains_key(config.variable)
+    if config.scope.contains_output(config.variable) || config.scope.contains_step(config.variable)
     {
         return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
             name: config.variable.into(),
         }]));
     }
-    for step in config.body {
-        if step.id == config.variable
-            || matches!(&step.primitive, crate::StepPrimitive::Set { output, .. } if output == config.variable)
-        {
-            return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-                name: config.variable.into(),
-            }]));
-        }
-    }
+    super::for_each_capture::validate_for_each_capture(config.variable, config.body)?;
     Ok(())
 }
 
@@ -123,8 +106,8 @@ fn emit_body(
     item_type: ExprType,
     builder: &mut SlotCompiler,
 ) -> Result<Option<SlotIdx>, CompileErrors> {
-    let mut outputs = config.scope.outputs.clone();
-    let mut types = config.scope.slot_types.clone();
+    let mut outputs = std::collections::HashMap::new();
+    let mut types = std::collections::HashMap::new();
     outputs.insert(config.variable.to_owned(), item);
     types.insert(item, item_type);
     super::super::part_14::emit_iteration_body(
@@ -135,6 +118,7 @@ fn emit_body(
             outputs: &outputs,
             step_outputs: config.scope.step_outputs,
             slot_types: &types,
+            parent: Some(&config.scope),
         },
         builder,
     )
@@ -156,7 +140,7 @@ pub(super) fn lower_bounded_for_each(
     let append = offset(body, width, "append")?;
     let advance = offset(append, 1, "next")?;
     let join = offset(advance, 1, "join")?;
-    let item_type = list_input::item_type(input, builder, config.scope.slot_types);
+    let item_type = list_input::item_type(input, builder, config.scope);
     let accumulator = allocate(builder)?;
     let iterator = allocate(builder)?;
     let item = allocate(builder)?;
@@ -189,7 +173,7 @@ pub(super) fn lower_bounded_for_each(
         K::ForEachStart {
             input,
             item_slot: item,
-            limit,
+            limit: limit.into(),
             body,
             done: join,
         },

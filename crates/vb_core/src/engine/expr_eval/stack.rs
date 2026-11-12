@@ -36,7 +36,7 @@ impl ExprStack {
             .checked_sub(1)
             .and_then(|index| self.taints.peek(usize::from(index)))
             .ok_or(EngineError::InternalInvariantViolation {
-                reason: "expression result taint missing",
+                reason: "expression result taint missing".into(),
             })
     }
     pub(super) fn pending_operand_taint(&self) -> Taint {
@@ -91,12 +91,12 @@ impl ExprStack {
             .ok_or(EngineError::ExpressionStackUnderflow)?;
         let value = self.values.get(usize::from(self.len)).copied().ok_or(
             EngineError::InternalInvariantViolation {
-                reason: "expression stack pop index checked by length",
+                reason: "expression stack pop index checked by length".into(),
             },
         )?;
         let taint = self.taints.take(usize::from(self.len)).ok_or(
             EngineError::InternalInvariantViolation {
-                reason: "expression stack taint missing",
+                reason: "expression stack taint missing".into(),
             },
         )?;
         Ok((value, taint))

@@ -46,14 +46,14 @@ fn make_plan_with_inputs(
         step_names: Box::new([]),
     })
     .map_err(|_| CoreError::InternalInvariantViolation {
-        reason: "test workflow validation failed",
+        reason: "test workflow validation failed".into(),
     })
 }
 
 fn node_at(plan: &CompiledWorkflow, step: u16) -> Result<&CompiledNode, CoreError> {
     plan.node(StepIdx::new(step))
         .ok_or(CoreError::InternalInvariantViolation {
-            reason: "test node missing",
+            reason: "test node missing".into(),
         })
 }
 
@@ -72,7 +72,9 @@ fn replay_err_to_core(error: ReplayError) -> CoreError {
         ReplayError::SlotNotAvailable { slot } => CoreError::SlotOutOfBounds { slot },
         ReplayError::ExpressionEvalFailed { step } => CoreError::InvalidProgramCounter { step },
         ReplayError::NonDeterministicStep { step, .. } => CoreError::InvalidProgramCounter { step },
-        ReplayError::Internal { reason } => CoreError::InternalInvariantViolation { reason },
+        ReplayError::Internal { reason } => CoreError::InternalInvariantViolation {
+            reason: reason.into(),
+        },
     }
 }
 
@@ -96,7 +98,7 @@ fn replay_repeat_start_writes_packed_state() -> Result<(), CoreError> {
             crate::workflow::node(
                 StepIdx::new(0),
                 CompiledNodeKind::RepeatStart {
-                    max_attempts: 2,
+                    max_attempts: 2.into(),
                     body: StepIdx::new(1),
                     done: StepIdx::new(1),
                 },
@@ -116,14 +118,14 @@ fn replay_repeat_start_writes_packed_state() -> Result<(), CoreError> {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "RepeatStart should Continue to body",
+                reason: "RepeatStart should Continue to body".into(),
             });
         }
     }
     match *run.read_slot(SlotIdx::new(0))? {
         SlotValue::I64(_) => Ok(()),
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "RepeatStart should write packed I64 state",
+            reason: "RepeatStart should write packed I64 state".into(),
         }),
     }
 }
@@ -137,7 +139,7 @@ fn replay_repeat_attempt_validates_packed_state() -> Result<(), CoreError> {
             crate::workflow::node(
                 StepIdx::new(0),
                 CompiledNodeKind::RepeatStart {
-                    max_attempts: 2,
+                    max_attempts: 2.into(),
                     body: StepIdx::new(1),
                     done: StepIdx::new(2),
                 },
@@ -167,7 +169,7 @@ fn replay_repeat_attempt_validates_packed_state() -> Result<(), CoreError> {
     match action {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => Ok(()),
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "RepeatAttempt should Continue to body",
+            reason: "RepeatAttempt should Continue to body".into(),
         }),
     }
 }
@@ -214,7 +216,7 @@ fn repeat_loop_plan() -> Result<CompiledWorkflow, CoreError> {
             crate::workflow::node(
                 StepIdx::new(0),
                 CompiledNodeKind::RepeatStart {
-                    max_attempts: 2,
+                    max_attempts: 2.into(),
                     body: StepIdx::new(1),
                     done: StepIdx::new(3),
                 },
@@ -256,7 +258,7 @@ fn replay_repeat_check_counts_attempts_then_routes_done() -> Result<(), CoreErro
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "first RepeatCheck should Continue to body entry",
+                reason: "first RepeatCheck should Continue to body entry".into(),
             });
         }
     }
@@ -266,7 +268,7 @@ fn replay_repeat_check_counts_attempts_then_routes_done() -> Result<(), CoreErro
     match action {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(3) => Ok(()),
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "exhausted RepeatCheck should Continue to done",
+            reason: "exhausted RepeatCheck should Continue to done".into(),
         }),
     }
 }
@@ -298,13 +300,13 @@ fn replay_repeat_finish_writes_result() -> Result<(), CoreError> {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "RepeatFinish should Continue to next",
+                reason: "RepeatFinish should Continue to next".into(),
             });
         }
     }
     if *run.read_slot(SlotIdx::new(4))? != SlotValue::I64(77) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "RepeatFinish should copy the result to output",
+            reason: "RepeatFinish should copy the result to output".into(),
         });
     }
     Ok(())
@@ -345,13 +347,13 @@ fn replay_retry_check_first_visit_routes_body_and_counts() -> Result<(), CoreErr
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "first RetryCheck should Continue to body",
+                reason: "first RetryCheck should Continue to body".into(),
             });
         }
     }
     if *run.read_slot(SlotIdx::new(0))? != SlotValue::I64(1) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "RetryCheck should write back attempt 1",
+            reason: "RetryCheck should write back attempt 1".into(),
         });
     }
     Ok(())
@@ -391,13 +393,13 @@ fn replay_retry_check_exhausted_routes_exhausted() -> Result<(), CoreError> {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(2) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "exhausted RetryCheck should Continue to exhausted",
+                reason: "exhausted RetryCheck should Continue to exhausted".into(),
             });
         }
     }
     if *run.read_slot(SlotIdx::new(0))? != SlotValue::I64(4) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "RetryCheck should still advance the counter on exhaustion",
+            reason: "RetryCheck should still advance the counter on exhaustion".into(),
         });
     }
     Ok(())
@@ -456,7 +458,7 @@ fn replay_error_handler_routes_body() -> Result<(), CoreError> {
                 CompiledNodeKind::ErrorHandler {
                     body: StepIdx::new(1),
                     handler: StepIdx::new(2),
-                    error_slot: None,
+                    error_slot: None.into(),
                 },
                 None,
                 None,
@@ -479,7 +481,7 @@ fn replay_error_handler_routes_body() -> Result<(), CoreError> {
     match action {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => Ok(()),
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "ErrorHandler should Continue to body",
+            reason: "ErrorHandler should Continue to body".into(),
         }),
     }
 }
@@ -514,18 +516,18 @@ fn replay_ask_resume_forwards_answer() -> Result<(), CoreError> {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
         _ => {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "AskResume should Continue to next",
+                reason: "AskResume should Continue to next".into(),
             });
         }
     }
     if *run.read_slot(SlotIdx::new(1))? != SlotValue::I64(42) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "AskResume should forward the answer to output",
+            reason: "AskResume should forward the answer to output".into(),
         });
     }
     if run.read_taint(SlotIdx::new(1))? != Taint::Secret {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "AskResume should propagate answer taint",
+            reason: "AskResume should propagate answer taint".into(),
         });
     }
     Ok(())
@@ -555,7 +557,7 @@ fn replay_ask_resume_missing_answer_errors() -> Result<(), CoreError> {
         Err(ReplayError::SlotNotAvailable { slot }) if slot == SlotIdx::new(0) => Ok(()),
         Err(other) => Err(replay_err_to_core(other)),
         Ok(_) => Err(CoreError::InternalInvariantViolation {
-            reason: "AskResume without an answer must fail",
+            reason: "AskResume without an answer must fail".into(),
         }),
     }
 }
@@ -622,7 +624,7 @@ fn replay_ask_resume_without_output_continues() -> Result<(), CoreError> {
     match action {
         crate::replay::ReplayAction::Continue(next) if next == StepIdx::new(1) => Ok(()),
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "AskResume without output should still Continue",
+            reason: "AskResume without output should still Continue".into(),
         }),
     }
 }
@@ -671,7 +673,7 @@ fn replay_engine_retry_chain_terminates_at_exhausted() -> Result<(), CoreError> 
         .map_err(replay_err_to_core)?;
     if reached != StepIdx::new(7) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "retry chain should terminate at the exhausted finish",
+            reason: "retry chain should terminate at the exhausted finish".into(),
         });
     }
     let frame = engine
@@ -679,7 +681,7 @@ fn replay_engine_retry_chain_terminates_at_exhausted() -> Result<(), CoreError> 
         .map_err(replay_err_to_core)?;
     if *frame.read_slot(SlotIdx::new(0))? != SlotValue::I64(4) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "retry chain should advance the counter once per visit",
+            reason: "retry chain should advance the counter once per visit".into(),
         });
     }
     Ok(())
@@ -694,7 +696,7 @@ fn replay_engine_repeat_loop_terminates_at_done() -> Result<(), CoreError> {
             crate::workflow::node(
                 StepIdx::new(0),
                 CompiledNodeKind::RepeatStart {
-                    max_attempts: 2,
+                    max_attempts: 2.into(),
                     body: StepIdx::new(1),
                     done: StepIdx::new(3),
                 },
@@ -736,7 +738,7 @@ fn replay_engine_repeat_loop_terminates_at_done() -> Result<(), CoreError> {
         .map_err(replay_err_to_core)?;
     if *frame.read_slot(SlotIdx::new(1))? != SlotValue::I64(9) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "repeat loop should reach done with the body result",
+            reason: "repeat loop should reach done with the body result".into(),
         });
     }
     Ok(())
@@ -754,7 +756,7 @@ fn replay_engine_for_each_loop_replays_to_join() -> Result<(), CoreError> {
                 CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
-                    limit: 10,
+                    limit: 10.into(),
                     body: StepIdx::new(1),
                     done: StepIdx::new(3),
                 },
@@ -811,11 +813,11 @@ fn replay_engine_for_each_loop_replays_to_join() -> Result<(), CoreError> {
         guard = guard
             .checked_add(1)
             .ok_or(CoreError::InternalInvariantViolation {
-                reason: "for_each replay did not terminate",
+                reason: "for_each replay did not terminate".into(),
             })?;
         if guard > 32 {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "for_each replay exceeded step bound",
+                reason: "for_each replay exceeded step bound".into(),
             });
         }
         let node = node_at(&plan, current.get())?;
@@ -824,7 +826,7 @@ fn replay_engine_for_each_loop_replays_to_join() -> Result<(), CoreError> {
             crate::replay::ReplayAction::Finished => break,
             crate::replay::ReplayAction::Suspended { .. } => {
                 return Err(CoreError::InternalInvariantViolation {
-                    reason: "for_each replay suspended unexpectedly",
+                    reason: "for_each replay suspended unexpectedly".into(),
                 });
             }
         }
@@ -833,13 +835,13 @@ fn replay_engine_for_each_loop_replays_to_join() -> Result<(), CoreError> {
         SlotValue::List(id) => {
             if store.list(id)? != [SlotValue::I64(20)] {
                 return Err(CoreError::InternalInvariantViolation {
-                    reason: "for_each replay should finish with the last body list",
+                    reason: "for_each replay should finish with the last body list".into(),
                 });
             }
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "for_each replay result should be a list",
+            reason: "for_each replay result should be a list".into(),
         }),
     }
 }
@@ -862,7 +864,7 @@ fn replay_engine_together_branches_merge() -> Result<(), CoreError> {
             crate::workflow::node(
                 StepIdx::new(1),
                 CompiledNodeKind::TogetherBranch {
-                    branch: 0,
+                    branch: 0.into(),
                     entry: StepIdx::new(2),
                     join: StepIdx::new(5),
                     accumulator: SlotIdx::new(7),
@@ -881,7 +883,7 @@ fn replay_engine_together_branches_merge() -> Result<(), CoreError> {
             crate::workflow::node(
                 StepIdx::new(3),
                 CompiledNodeKind::TogetherBranch {
-                    branch: 1,
+                    branch: 1.into(),
                     entry: StepIdx::new(4),
                     join: StepIdx::new(5),
                     accumulator: SlotIdx::new(7),
@@ -900,7 +902,7 @@ fn replay_engine_together_branches_merge() -> Result<(), CoreError> {
             crate::workflow::node(
                 StepIdx::new(5),
                 CompiledNodeKind::TogetherJoin {
-                    branch_count: 2,
+                    branch_count: 2.into(),
                     accumulator: SlotIdx::new(7),
                 },
                 Some(SlotIdx::new(6)),
@@ -926,13 +928,13 @@ fn replay_engine_together_branches_merge() -> Result<(), CoreError> {
         SlotValue::List(id) => {
             if store.list(id)? != [SlotValue::I64(11), SlotValue::I64(22)] {
                 return Err(CoreError::InternalInvariantViolation {
-                    reason: "together replay should merge branch results in order",
+                    reason: "together replay should merge branch results in order".into(),
                 });
             }
             Ok(())
         }
         _ => Err(CoreError::InternalInvariantViolation {
-            reason: "together replay result should be a list",
+            reason: "together replay result should be a list".into(),
         }),
     }
 }
@@ -948,7 +950,7 @@ fn replay_engine_error_handler_chain_replays() -> Result<(), CoreError> {
                 CompiledNodeKind::ErrorHandler {
                     body: StepIdx::new(1),
                     handler: StepIdx::new(2),
-                    error_slot: None,
+                    error_slot: None.into(),
                 },
                 None,
                 None,
@@ -979,7 +981,7 @@ fn replay_engine_error_handler_chain_replays() -> Result<(), CoreError> {
         .map_err(replay_err_to_core)?;
     if *frame.read_slot(SlotIdx::new(0))? != SlotValue::I64(5) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "error-handler chain should replay the body",
+            reason: "error-handler chain should replay the body".into(),
         });
     }
     Ok(())
@@ -1023,7 +1025,7 @@ fn replay_engine_ask_resume_chain_replays() -> Result<(), CoreError> {
         .map_err(replay_err_to_core)?;
     if *frame.read_slot(SlotIdx::new(1))? != SlotValue::I64(42) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "ask-resume chain should forward the seeded answer",
+            reason: "ask-resume chain should forward the seeded answer".into(),
         });
     }
     Ok(())

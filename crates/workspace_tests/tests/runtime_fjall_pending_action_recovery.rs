@@ -100,7 +100,7 @@ fn ask_then_finish_workflow() -> Result<CompiledWorkflow, String> {
                 Some(1),
                 CompiledNodeKind::Ask {
                     prompt: SlotIdx::ZERO,
-                    timeout_slot: None,
+                    timeout_slot: None.into(),
                 },
             ),
             node(
@@ -139,7 +139,7 @@ fn timed_ask_then_finish_workflow() -> Result<CompiledWorkflow, String> {
                 Some(1),
                 CompiledNodeKind::Ask {
                     prompt: SlotIdx::ZERO,
-                    timeout_slot: Some(SlotIdx::new(1)),
+                    timeout_slot: Some(SlotIdx::new(1)).into(),
                 },
             ),
             node(
@@ -1675,7 +1675,7 @@ fn ask_with_list_input_workflow() -> Result<CompiledWorkflow, String> {
                 Some(1),
                 CompiledNodeKind::Ask {
                     prompt: SlotIdx::ZERO,
-                    timeout_slot: None,
+                    timeout_slot: None.into(),
                 },
             ),
             node(

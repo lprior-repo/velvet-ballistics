@@ -54,7 +54,7 @@ pub fn validate(parts: &WorkflowParts) -> Result<(), WorkflowError> {
             return Err(invalid());
         }
         let expected = CompiledInputConstraint {
-            secret: true,
+            secretness: true.into(),
             default_cold: Some(crate::InputDefaultValue::Text(
                 metadata
                     .symbol(binding.requirement())
@@ -91,7 +91,7 @@ pub fn validate_roots(
             && (*value != SlotValue::Symbol(binding.requirement()) || *taint != Taint::Secret)
         {
             return Err(CoreError::InternalInvariantViolation {
-                reason: "secret_input_binding",
+                reason: "secret_input_binding".into(),
             });
         }
     }
@@ -112,7 +112,7 @@ pub fn validate_runtime_roots(
         })
     }) {
         return Err(CoreError::InternalInvariantViolation {
-            reason: "secret_input_binding",
+            reason: "secret_input_binding".into(),
         });
     }
     Ok(())
@@ -143,7 +143,7 @@ fn writes(parts: &WorkflowParts, node: &crate::CompiledNode, slot: SlotIdx) -> b
             .step()
             .and_then(|next| parts.nodes.get(next.as_usize()))
             .is_some_and(|resume| matches!(resume.kind, K::AskResume {answer} if answer == slot)),
-        K::ErrorHandler { error_slot, .. } => error_slot == Some(slot),
+        K::ErrorHandler { error_slot, .. } => error_slot.slot() == Some(slot),
         _ => false,
     }
 }

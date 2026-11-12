@@ -49,16 +49,16 @@ pub(super) fn constraint(depth: u8) -> CompiledInputConstraint {
     let (min, max) = ordered_optional_bounds();
     let (min_length, max_length) = ordered_optional_length_bounds();
     CompiledInputConstraint {
-        optional: kani::any(),
-        nullable: kani::any(),
-        secret: kani::any(),
+        presence: kani::any(),
+        nullability: kani::any(),
+        secretness: kani::any(),
         default_value: kani::any(),
         min,
         max,
         min_length,
         max_length,
         element: kani::any::<bool>().then(kind),
-        allow_extra: kani::any(),
+        extra: kani::any(),
         default_cold: kani::any::<bool>().then(|| value(2)),
         fields: if depth > 0 && kani::any() {
             Some(

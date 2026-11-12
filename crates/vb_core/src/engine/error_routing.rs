@@ -182,13 +182,13 @@ pub fn abandoned_together_count(
             count = count
                 .checked_add(branches)
                 .ok_or(EngineError::InternalInvariantViolation {
-                    reason: "parallel_in_flight overflow",
+                    reason: "parallel_in_flight overflow".into(),
                 })?;
         }
     }
     if count > run.parallel_in_flight() {
         return Err(EngineError::InternalInvariantViolation {
-            reason: "parallel_in_flight underflow",
+            reason: "parallel_in_flight underflow".into(),
         });
     }
     Ok(count)

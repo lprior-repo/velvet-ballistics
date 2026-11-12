@@ -1,7 +1,8 @@
 use super::action_fixture::{ACTION, EXIT, FINISH, START, guard_slot};
 use super::support::{Fixture, ROOT, TAINTS, TestResult, VALUES};
 use vb_core::{
-    CompiledNodeKind, CompiledWorkflow, CoreError, SlotValue, StepIdx, StepState, Taint,
+    BranchContinuation, CompiledNodeKind, CompiledWorkflow, CoreError, SlotValue, StepIdx,
+    StepState, Taint,
 };
 use vb_runtime::engine::EvidenceEvent;
 
@@ -20,7 +21,7 @@ pub(super) fn compiled(workflow: &CompiledWorkflow) -> TestResult {
         branches.first().ok_or("guard branch missing")?.target,
         ACTION
     );
-    assert_eq!(*otherwise, Some(START));
+    assert_eq!(*otherwise, BranchContinuation::Target(START));
     let action = workflow.node(ACTION).ok_or("real Do missing")?;
     assert!(matches!(action.kind, CompiledNodeKind::Do { action, input }
         if action == vb_core::ActionId::new(0) && input == guard_slot(workflow)?));

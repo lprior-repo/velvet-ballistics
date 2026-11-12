@@ -38,7 +38,7 @@ fn scalar_ask_workflow() -> TestResult<vb_core::CompiledWorkflow> {
                 StepIdx::new(1),
                 CompiledNodeKind::Ask {
                     prompt: SlotIdx::new(0),
-                    timeout_slot: None,
+                    timeout_slot: None.into(),
                 },
                 Some(SlotIdx::new(1)),
                 Some(StepIdx::new(2)),

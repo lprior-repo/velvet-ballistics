@@ -19,6 +19,10 @@ mod kani_stack;
 #[path = "../../verification/kani/expr_eval_kani_div_zero.rs"]
 mod kani_div_zero;
 
+#[cfg(kani)]
+#[path = "../../verification/kani/expr_eval_kani_stack_bounds.rs"]
+mod kani_stack_bounds;
+
 #[cfg(test)]
 mod tests;
 

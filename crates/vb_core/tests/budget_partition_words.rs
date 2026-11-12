@@ -43,11 +43,11 @@ fn all_ordered_words_have_exactly_one_partition() -> Result<(), String> {
         },
         CompiledNodeKind::WaitEvent {
             event: zero,
-            timeout_slot: Some(zero),
+            timeout_slot: Some(zero).into(),
         },
         CompiledNodeKind::Ask {
             prompt: zero,
-            timeout_slot: None,
+            timeout_slot: None.into(),
         },
         CompiledNodeKind::Finish { result: zero },
     ];

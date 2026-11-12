@@ -224,7 +224,7 @@ mod depth_overflow_tests {
         let kind = CompiledNodeKind::ForEachStart {
             input: crate::ids::SlotIdx::new(0),
             item_slot: crate::ids::SlotIdx::new(1),
-            limit: 1,
+            limit: 1.into(),
             body: crate::ids::StepIdx::new(0),
             done: crate::ids::StepIdx::new(0),
         };
@@ -251,7 +251,7 @@ mod depth_overflow_tests {
     #[test]
     fn compute_child_depth_does_not_emit_step_count_overflow_at_u16_max() {
         let kind = CompiledNodeKind::RepeatStart {
-            max_attempts: 1,
+            max_attempts: 1.into(),
             body: crate::ids::StepIdx::new(0),
             done: crate::ids::StepIdx::new(0),
         };

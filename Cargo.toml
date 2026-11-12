@@ -11,6 +11,7 @@ members = [
     "crates/velvet_ballistics",
     "crates/workspace_tests",
     "fuzz",
+    "reference",
 ]
 resolver = "2"
 exclude = ["xtask", "target/miri-tmp"]

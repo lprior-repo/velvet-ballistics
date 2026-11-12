@@ -223,7 +223,7 @@ fn loop_start_body_must_be_forward_edge() -> Result<(), String> {
                 CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
-                    limit: 1,
+                    limit: 1.into(),
                     body: StepIdx::new(0),
                     done: StepIdx::new(1),
                 },
@@ -265,7 +265,7 @@ fn phase46_accepts_foreach_forward() -> Result<(), String> {
                 CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
-                    limit: 10,
+                    limit: 10.into(),
                     body: StepIdx::new(1),
                     done: StepIdx::new(3),
                 },
@@ -326,7 +326,7 @@ fn phase46_rejects_improper_nesting() -> Result<(), String> {
                 CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
-                    limit: 10,
+                    limit: 10.into(),
                     body: StepIdx::new(1),
                     done: StepIdx::new(4),
                 },
@@ -338,7 +338,7 @@ fn phase46_rejects_improper_nesting() -> Result<(), String> {
                 CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(1),
                     item_slot: SlotIdx::new(2),
-                    limit: 10,
+                    limit: 10.into(),
                     body: StepIdx::new(2),
                     done: StepIdx::new(5),
                 },
@@ -418,7 +418,7 @@ fn phase46_accepts_proper_nesting() -> Result<(), String> {
                 CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
-                    limit: 10,
+                    limit: 10.into(),
                     body: StepIdx::new(1),
                     done: StepIdx::new(5),
                 },
@@ -430,7 +430,7 @@ fn phase46_accepts_proper_nesting() -> Result<(), String> {
                 CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(1),
                     item_slot: SlotIdx::new(2),
-                    limit: 10,
+                    limit: 10.into(),
                     body: StepIdx::new(2),
                     done: StepIdx::new(4),
                 },

@@ -48,7 +48,7 @@ fn together_join_keeps_null_list_and_item_taints() -> TestResult {
         let node = crate::workflow::node(
             StepIdx::ZERO,
             CompiledNodeKind::TogetherJoin {
-                branch_count: 2,
+                branch_count: 2.into(),
                 accumulator: SlotIdx::ZERO,
             },
             Some(SlotIdx::new(1)),

@@ -116,7 +116,7 @@ fn finite_nested_nodes(collect_limit: u32) -> Box<[CompiledNode]> {
             StepIdx::new(0),
             CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
-                limit: collect_limit,
+                limit: collect_limit.into(),
                 page_size: 2,
                 body: StepIdx::new(1),
                 done: StepIdx::new(6),
@@ -136,7 +136,7 @@ fn finite_nested_nodes(collect_limit: u32) -> Box<[CompiledNode]> {
         node(
             StepIdx::new(2),
             CompiledNodeKind::RepeatStart {
-                max_attempts: 2,
+                max_attempts: 2.into(),
                 body: StepIdx::new(3),
                 done: StepIdx::new(5),
             },
@@ -184,7 +184,7 @@ fn step_count_overflow_nodes() -> Box<[CompiledNode]> {
         node(
             StepIdx::new(0),
             CompiledNodeKind::RepeatStart {
-                max_attempts: u16::MAX,
+                max_attempts: u16::MAX.into(),
                 body: StepIdx::new(1),
                 done: StepIdx::new(4),
             },
@@ -194,7 +194,7 @@ fn step_count_overflow_nodes() -> Box<[CompiledNode]> {
         node(
             StepIdx::new(1),
             CompiledNodeKind::RepeatStart {
-                max_attempts: u16::MAX,
+                max_attempts: u16::MAX.into(),
                 body: StepIdx::new(2),
                 done: StepIdx::new(3),
             },
