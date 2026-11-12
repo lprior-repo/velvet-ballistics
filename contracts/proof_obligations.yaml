@@ -659,7 +659,7 @@ obligations:
       tests: [snapshot_tail_equals_full]
       diff_test: [replay_suite]
     commands:
-      - cargo nextest run -p vb_runtime snapshot_tail
+      - cargo nextest run -p vb_storage snapshot_tail_matches_full_journal
       - cargo xtask diff-test --suite replay
 
   # ============================================================
