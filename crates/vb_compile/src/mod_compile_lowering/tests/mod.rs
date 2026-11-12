@@ -30,14 +30,14 @@ use blake3::Hasher;
 use crate::compute_compiled_digest;
 use crate::mod_compile_lowering::part_05::digest_step_primitive;
 
+mod choose_overflow;
+mod choose_slots;
+mod choose_validate;
 mod collect;
+mod digest_body;
 mod direct_collect;
 mod direct_reduce;
-mod choose_validate;
-mod choose_overflow;
 mod slot;
-mod choose_slots;
-mod digest_body;
 
 /// Helper: build a YAML source with a Collect step having the given field overrides.
 fn collect_yaml_with_field(

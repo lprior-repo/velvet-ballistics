@@ -1009,10 +1009,8 @@ tasks:
       - '.cargo/config.toml'
       - '.moon/tasks/all.yml'
     options:
-      # The xtask crate is currently outside the active Cargo workspace, so the
-      # cargo xtask alias resolves to a non-member package. Keep this manual
-      # until xtask is either re-admitted and re-linted or split into an
-      # independently buildable tool crate.
+      # xtask stays outside the Cargo workspace (own Cargo.lock), so the
+      # cargo xtask alias resolves it via --manifest-path from the repo root.
       runInCI: false
 
   quick:

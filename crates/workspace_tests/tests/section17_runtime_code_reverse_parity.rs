@@ -75,7 +75,9 @@ fn core_error_runtime_codes() -> BTreeSet<String> {
         vb_core::errors::CoreError::ExpressionStackUnderflow,
         vb_core::errors::CoreError::InvalidCompiledWorkflow { reason: "x" },
         vb_core::errors::CoreError::InternalInvariantViolation { reason: "x".into() },
-        vb_core::errors::CoreError::UnsupportedPrimitive { primitive: "x".into() },
+        vb_core::errors::CoreError::UnsupportedPrimitive {
+            primitive: "x".into(),
+        },
         vb_core::errors::CoreError::QueueFull,
         vb_core::errors::CoreError::RepeatExhausted { max: 1 },
         vb_core::errors::CoreError::CollectPageLimitExceeded,

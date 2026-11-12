@@ -129,7 +129,11 @@ fn nested_repeat_inside_choose_branch_preserves_fallthrough() -> Result<(), Stri
     let workflow = compile(&text)?;
     assert_eq!(workflow.to_parts().nodes.len(), 8);
     let kind = &node(&workflow, 2)?.kind;
-    let CompiledNodeKind::Choose { branches, otherwise } = kind else {
+    let CompiledNodeKind::Choose {
+        branches,
+        otherwise,
+    } = kind
+    else {
         return Err("node 2 is not Choose".to_owned());
     };
     assert_eq!(branches.len(), 1);

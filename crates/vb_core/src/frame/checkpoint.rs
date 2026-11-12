@@ -124,9 +124,11 @@ impl RunFrame {
         for (target, state) in frame.states.iter_mut().zip(checkpoint.states) {
             *target = StepState::from(state);
         }
-        for (cell, (value, taint)) in frame.cells.iter_mut().zip(
-            checkpoint.slots.into_iter().zip(checkpoint.taint),
-        ) {
+        for (cell, (value, taint)) in frame
+            .cells
+            .iter_mut()
+            .zip(checkpoint.slots.into_iter().zip(checkpoint.taint))
+        {
             *cell = match value {
                 Some(value) => crate::value::SlotCell::value(value, taint),
                 None => crate::value::SlotCell::empty(),

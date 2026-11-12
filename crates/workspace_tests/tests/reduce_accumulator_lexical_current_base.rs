@@ -432,7 +432,11 @@ fn accumulator_slot(workflow: &vb_core::CompiledWorkflow) -> Result<SlotIdx, Str
         .ok_or_else(|| "reduce accumulator slot missing".to_owned())
 }
 
-fn assert_typed_taint(workflow: &vb_core::CompiledWorkflow, frame: &mut vb_core::RunFrame, accumulator: SlotIdx) -> TestResult {
+fn assert_typed_taint(
+    workflow: &vb_core::CompiledWorkflow,
+    frame: &mut vb_core::RunFrame,
+    accumulator: SlotIdx,
+) -> TestResult {
     assert_eq!(
         frame
             .read_taint(accumulator)
@@ -472,12 +476,10 @@ fn f64_source() -> String {
 #[test]
 fn f64_accumulator_tracks_the_typed_initial_and_preserves_input_taint() -> TestResult {
     let source = f64_source();
-    let expected = SlotValue::F64(
-        vb_core::FiniteF64::new(0.75).map_err(|error| error.to_string())?,
-    );
-    let initial_expected = SlotValue::F64(
-        vb_core::FiniteF64::new(0.5).map_err(|error| error.to_string())?,
-    );
+    let expected =
+        SlotValue::F64(vb_core::FiniteF64::new(0.75).map_err(|error| error.to_string())?);
+    let initial_expected =
+        SlotValue::F64(vb_core::FiniteF64::new(0.5).map_err(|error| error.to_string())?);
     assert_run_value(&source, &[], initial_expected)?;
     assert_run_value(&source, &[4], expected)?;
     let workflow = compile_workflow(source.as_bytes())
@@ -533,10 +535,12 @@ fn empty_body_is_rejected() -> TestResult {
         Err(errors) => errors,
         Ok(_) => return Err("empty body was accepted".into()),
     };
-    assert!(errors.0.iter().any(|error| matches!(
-        error,
-        CompileError::StepFieldShape { field: "steps", .. }
-    )));
+    assert!(
+        errors
+            .0
+            .iter()
+            .any(|error| matches!(error, CompileError::StepFieldShape { field: "steps", .. }))
+    );
     Ok(())
 }
 
@@ -593,7 +597,10 @@ fn multi_step_type_mismatch_is_rejected() -> TestResult {
     };
     assert!(errors.0.iter().any(|error| matches!(
         error,
-        CompileError::StepFieldShape { field: "reduce.steps", .. }
+        CompileError::StepFieldShape {
+            field: "reduce.steps",
+            ..
+        }
     )));
     Ok(())
 }
@@ -634,11 +641,7 @@ fn multi_step_do_suspension_updates_the_accumulator_slot() -> TestResult {
         .insert_list(vec![SlotValue::I64(4), SlotValue::I64(7)])
         .map_err(|error| error.to_string())?;
     frame
-        .write_slot_with_taint(
-            SlotIdx::new(8),
-            SlotValue::List(list),
-            Taint::Clean,
-        )
+        .write_slot_with_taint(SlotIdx::new(8), SlotValue::List(list), Taint::Clean)
         .map_err(|error| error.to_string())?;
     frame
         .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(7), Taint::Clean)
@@ -657,8 +660,8 @@ fn multi_step_do_suspension_updates_the_accumulator_slot() -> TestResult {
                 .map_err(|error| error.to_string())?,
             SlotValue::I64(previous)
         );
-        let payload =
-            postcard::to_allocvec(&SlotValue::I64(completion)).map_err(|error| error.to_string())?;
+        let payload = postcard::to_allocvec(&SlotValue::I64(completion))
+            .map_err(|error| error.to_string())?;
         let output = vb_core::action::ActionOutputReady {
             output_slot: accumulator,
             value: SlotValue::I64(completion),

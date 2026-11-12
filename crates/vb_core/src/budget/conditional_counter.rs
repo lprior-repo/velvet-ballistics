@@ -45,7 +45,8 @@ impl Frame {
                 branches,
                 otherwise,
             } => Ok(otherwise
-                .step().iter()
+                .step()
+                .iter()
                 .copied()
                 .chain(branches.iter().map(|branch| branch.target))
                 .find(|target| !cache.contains_key(target))),
@@ -53,7 +54,8 @@ impl Frame {
                 branches,
                 otherwise,
             } => Ok(otherwise
-                .step().iter()
+                .step()
+                .iter()
                 .copied()
                 .chain(branches.iter().map(|branch| branch.target))
                 .find(|target| !cache.contains_key(target))),

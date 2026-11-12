@@ -7,9 +7,7 @@
 #![forbid(unsafe_code)]
 
 use vb_compile::compile_workflow;
-use vb_core::{
-    CapabilitySet, RunId, SlotValue, StepBudget, Taint, ValueStore, new_run_frame,
-};
+use vb_core::{CapabilitySet, RunId, SlotValue, StepBudget, Taint, ValueStore, new_run_frame};
 use vb_runtime::engine::{
     EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeSignal, drive_deterministic_full,
 };
@@ -21,15 +19,18 @@ const HEADER: &str =
     "version: velvet-ballistics/v1\nname: nested_repeat_activation\nwhen: {manual: {}}\n";
 const INPUTS: &str = "inputs:\n  items: {is: list, of: any, max: 4}\n";
 
-fn drive_source(source: &str, items: &[i64]) -> Result<(RuntimeSignal, Vec<EvidenceEvent>), String> {
-    let workflow =
-        compile_workflow(source.as_bytes()).map_err(|e| format!("compile: {e:?}"))?;
-    let mut frame =
-        new_run_frame(RunId::new(1), &workflow).map_err(|e| format!("frame: {e:?}"))?;
+fn drive_source(
+    source: &str,
+    items: &[i64],
+) -> Result<(RuntimeSignal, Vec<EvidenceEvent>), String> {
+    let workflow = compile_workflow(source.as_bytes()).map_err(|e| format!("compile: {e:?}"))?;
+    let mut frame = new_run_frame(RunId::new(1), &workflow).map_err(|e| format!("frame: {e:?}"))?;
     let mut store = ValueStore::new();
     let values: Vec<SlotValue> = items.iter().copied().map(SlotValue::I64).collect();
     if let Some(slot) = workflow.input_slots().first().map(|i| i.slot) {
-        let list = store.insert_list(values).map_err(|e| format!("list: {e:?}"))?;
+        let list = store
+            .insert_list(values)
+            .map_err(|e| format!("list: {e:?}"))?;
         frame
             .write_slot_with_taint(slot, SlotValue::List(list), Taint::Secret)
             .map_err(|e| format!("bind: {e:?}"))?;
@@ -138,8 +139,7 @@ fn nested_repeat_side_effect_isolated_per_attempt() -> TestResult {
     let source = format!(
         "{HEADER}{INPUTS}steps:\n  - id: s\n    set: {{output: b, value: '1'}}\n  - id: o\n    for_each:\n      input: '$input.items'\n      variable: e\n      steps:\n        - id: i\n          repeat:\n            max_attempts: 3\n            steps:\n              - id: t\n                set: {{output: v, value: '$e'}}\n  - id: done\n    finish: {{result: '$b'}}\n"
     );
-    let workflow =
-        compile_workflow(source.as_bytes()).map_err(|e| format!("compile: {e:?}"))?;
+    let workflow = compile_workflow(source.as_bytes()).map_err(|e| format!("compile: {e:?}"))?;
     let (signal, events) = drive_twice(&source, &[11])?;
     assert_eq!(signal, RuntimeSignal::Finished(SlotValue::I64(1)));
     let tick_slot = workflow
@@ -151,9 +151,7 @@ fn nested_repeat_side_effect_isolated_per_attempt() -> TestResult {
     let writes: Vec<_> = events
         .iter()
         .filter_map(|e| match e {
-            EvidenceEvent::SlotWritten { slot, value, .. } if *slot == tick_slot => {
-                Some(*value)
-            }
+            EvidenceEvent::SlotWritten { slot, value, .. } if *slot == tick_slot => Some(*value),
             _ => None,
         })
         .collect();

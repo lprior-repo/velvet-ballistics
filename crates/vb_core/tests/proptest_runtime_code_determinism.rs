@@ -123,8 +123,12 @@ fn runtime_code_determinism_invalid_compiled_workflow() {
 
 #[test]
 fn runtime_code_determinism_internal_invariant() {
-    let a = CoreError::InternalInvariantViolation { reason: "test".into() };
-    let b = CoreError::InternalInvariantViolation { reason: "other".into() };
+    let a = CoreError::InternalInvariantViolation {
+        reason: "test".into(),
+    };
+    let b = CoreError::InternalInvariantViolation {
+        reason: "other".into(),
+    };
     assert_eq!(a.runtime_code(), b.runtime_code());
     assert_eq!(
         a.runtime_code(),
@@ -134,8 +138,12 @@ fn runtime_code_determinism_internal_invariant() {
 
 #[test]
 fn runtime_code_determinism_unsupported_primitive() {
-    let a = CoreError::UnsupportedPrimitive { primitive: "op".into() };
-    let b = CoreError::UnsupportedPrimitive { primitive: "wait".into() };
+    let a = CoreError::UnsupportedPrimitive {
+        primitive: "op".into(),
+    };
+    let b = CoreError::UnsupportedPrimitive {
+        primitive: "wait".into(),
+    };
     assert_eq!(a.runtime_code(), b.runtime_code());
     assert_eq!(
         a.runtime_code(),

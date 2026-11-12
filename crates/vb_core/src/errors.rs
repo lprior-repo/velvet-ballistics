@@ -182,9 +182,7 @@ impl InvariantKind {
                 "build_object field index checked by loop bound"
             }
             Self::ListItemIndexOverflow => "build_list item index overflow",
-            Self::ListItemIndexCheckedByLoopBound => {
-                "build_list item index checked by loop bound"
-            }
+            Self::ListItemIndexCheckedByLoopBound => "build_list item index checked by loop bound",
             Self::ChooseBranchIndexOverflow => "choose slot branch index overflow",
             Self::ChooseBranchIndexCheckedByLoopBound => {
                 "choose slot branch index checked by loop bound"
@@ -230,9 +228,7 @@ impl From<&'static str> for InvariantKind {
                 Self::ObjectFieldIndexCheckedByLoopBound
             }
             "build_list item index overflow" => Self::ListItemIndexOverflow,
-            "build_list item index checked by loop bound" => {
-                Self::ListItemIndexCheckedByLoopBound
-            }
+            "build_list item index checked by loop bound" => Self::ListItemIndexCheckedByLoopBound,
             "choose slot branch index overflow" => Self::ChooseBranchIndexOverflow,
             "choose slot branch index checked by loop bound" => {
                 Self::ChooseBranchIndexCheckedByLoopBound
