@@ -15,6 +15,10 @@ use vb_expr::expr_typecheck::{ExprType, TypeContext, typecheck_expr};
 use super::canonical_references::StepReferenceResolver;
 use super::canonical_scope::CanonicalScope;
 
+#[path = "canonical_type_names.rs"]
+mod canonical_type_names;
+use canonical_type_names::type_name_static;
+
 /// Type-checks a canonical expression and returns its inferred type.
 /// Known static type errors (e.g., bool + number) are rejected. Dynamic
 /// action outputs remain Unknown.
@@ -176,21 +180,6 @@ fn vb_expr_error_to_compile(e: vb_expr::ExprError) -> CompileError {
             index: 0,
             expected: "valid expression",
         },
-    }
-}
-
-fn type_name_static(name: &str) -> &'static str {
-    match name {
-        "null" => "null",
-        "boolean" => "boolean",
-        "i64" => "i64",
-        "f64" => "f64",
-        "text" => "text",
-        "list" => "list",
-        "object" => "object",
-        "number" => "number",
-        "unknown" => "unknown",
-        _ => "unknown",
     }
 }
 
