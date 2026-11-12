@@ -92,8 +92,8 @@ pub enum SpecTaint {
 // ::StepCounterOverflow)`. We mirror only the variants exercised by
 // signals.rs to keep the binding narrow.
 /// Mirror of `EngineError::StepCounterOverflow` and `EngineError
-/// ::BudgetParse { reason }` from `crates/vb_core/src/errors.rs:241` and
-/// `:396`.
+/// ::BudgetParse { reason }` from `crates/vb_core/src/errors.rs:477` and
+/// `:637`.
 #[derive(Clone)]
 pub enum SpecEngineError {
     StepCounterOverflow,

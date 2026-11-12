@@ -42,7 +42,7 @@
 //   - production::StepBudget::try_take  <- crates/vb_core/src/engine/signals.rs:50-60
 //   - production::StepBudget::remaining <- crates/vb_core/src/engine/signals.rs:64-66
 //   - production::StepBudget::MAX       <- crates/vb_core/src/engine/signals.rs:20-22
-//   - production::EngineError::StepCounterOverflow <- crates/vb_core/src/errors.rs:241
+//   - production::EngineError::StepCounterOverflow <- crates/vb_core/src/errors.rs:477
 //
 // Source: vb-qi37.2.5 proof-obligations.planned.jsonl VERUS-INV-001
 #[path = "extern_signals_invariant.rs"]

@@ -39,7 +39,7 @@
 //   - production::StepBudget::try_take  <- crates/vb_core/src/engine/signals.rs:51-61
 //   - production::StepBudget::remaining <- crates/vb_core/src/engine/signals.rs:65-67
 //   - production::StepBudget::MAX       <- crates/vb_core/src/engine/signals.rs:21-23
-//   - production::EngineError::StepCounterOverflow <- crates/vb_core/src/errors.rs:241
+//   - production::EngineError::StepCounterOverflow <- crates/vb_core/src/errors.rs:477
 #[path = "extern_signals_invariant.rs"]
 mod production;
 
