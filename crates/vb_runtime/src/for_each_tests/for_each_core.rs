@@ -193,7 +193,7 @@ fn for_each_start_returns_error_when_input_is_not_list() {
             assert_eq!(found, "number");
         }
         other => {
-            assert_for_each_type_mismatch_error(other, "number");
+            assert_eq!(other, expected_for_each_type_mismatch("number"));
         }
     }
 }
@@ -383,7 +383,7 @@ fn for_each_next_returns_error_when_output_missing() -> Result<(), String> {
             assert_eq!(step, StepIdx::ZERO);
         }
         other => {
-            assert_for_each_missing_output_error(other);
+            assert_eq!(other, expected_for_each_missing_output());
         }
     }
     Ok(())
@@ -409,7 +409,7 @@ fn for_each_next_returns_error_when_iterator_is_not_list() {
             assert_eq!(found, "boolean");
         }
         other => {
-            assert_for_each_type_mismatch_error(other, "boolean");
+            assert_eq!(other, expected_for_each_type_mismatch("boolean"));
         }
     }
 }
@@ -832,7 +832,7 @@ fn for_each_start_null_input_returns_type_mismatch() {
             assert_eq!(found, "null");
         }
         other => {
-            assert_for_each_type_mismatch_error(other, "null");
+            assert_eq!(other, expected_for_each_type_mismatch("null"));
         }
     }
 }
@@ -1121,26 +1121,19 @@ fn for_each_empty_input_fixture() -> (RunFrame, ValueStore, SlotIdx, SlotIdx, Sl
     (run, store, input, item_slot, output_slot, done)
 }
 
-fn assert_for_each_type_mismatch_error(
-    result: Result<vb_core::EngineSignal, EngineError>,
+fn expected_for_each_type_mismatch(
     found: &'static str,
-) {
-    assert_eq!(
-        result,
-        Err(EngineError::TypeMismatch {
-            expected: "list",
-            found,
-        })
-    );
+) -> Result<vb_core::EngineSignal, EngineError> {
+    Err(EngineError::TypeMismatch {
+        expected: "list",
+        found,
+    })
 }
 
-fn assert_for_each_missing_output_error(result: Result<vb_core::EngineSignal, EngineError>) {
-    assert_eq!(
-        result,
-        Err(EngineError::MissingOutputSlot {
-            step: StepIdx::ZERO,
-        })
-    );
+fn expected_for_each_missing_output() -> Result<vb_core::EngineSignal, EngineError> {
+    Err(EngineError::MissingOutputSlot {
+        step: StepIdx::ZERO,
+    })
 }
 
 fn for_each_null_input_fixture() -> (RunFrame, ValueStore, SlotIdx) {
