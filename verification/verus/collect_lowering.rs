@@ -9,7 +9,7 @@
 // ============================================================================
 //
 // This file is bound to the production exec fn `lower_bounded_collect`
-// at `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277`
+// at `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:241-261`
 // through the companion extern surface
 // `verification/verus/extern_collect_lowering.rs`. The production exec
 // fn computes edges via `plan_compute_edges`
@@ -35,7 +35,7 @@
 //     `crates/vb_compile/src/mod_compile_errors/kind.rs:141` and
 //     `CompileError::StepIndexOutOfRange` from crates/vb_compile/src/mod_compile_errors/kind.rs:126 are what
 //     `checked_step_offset` (part_12.rs:199-212) and
-//     `checked_body_length_offset` (bounded_collect.rs:109-115)
+//     `checked_body_length_offset` (bounded_collect.rs:90-96)
 //     actually construct on overflow.
 //   - The shadow `int` parameters are gone. Each lemma takes the
 //     production `production::StepIdx` and `u16` types directly,
@@ -76,7 +76,7 @@
 //                                              crates/vb_compile/src/mod_compile_errors/kind.rs:126,141)
 //   - `lower_bounded_collect_projection`   <- extern_collect_lowering.rs
 //                                              (mirror of
-//                                              bounded_collect.rs:257-277)
+//                                              bounded_collect.rs:241-261)
 //   - `lower_bounded_collect_offsets`      <- extern_collect_lowering.rs
 //                                              (mirror of
 //                                              bounded_collect.rs:117-127)
@@ -88,7 +88,7 @@
 // `lower_canonical_collect` (part_03.rs): fixed offsets 1/2/3,
 // a `CollectPage` node, a `3 + body.len()` node count, and a +1 slot
 // delta. The production split moved the fn to
-// `bounded_collect.rs:257-277` as `lower_bounded_collect` and changed
+// `bounded_collect.rs:241-261` as `lower_bounded_collect` and changed
 // the shape: edges depend on body length, the middle node is
 // `CollectNext`, the fn returns the finish slot, and the slot delta
 // is +3 (one record plus two allocates). The old lemmas L3
@@ -226,7 +226,7 @@ pub assume_specification[ production::lower_bounded_collect_offsets ](
 // Bridge: `lower_bounded_collect_projection` matches production emission.
 // --------------------------------------------------------------------------
 // Mirrors production `lower_bounded_collect` at
-// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:257-277`.
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:241-261`.
 // The projection flattens the production args to
 // `(id: StepIdx, body_len: u16, body_node_count: u16,
 // pre_slot_count: u16)` and returns `SpecCollectOutcome` carrying
@@ -549,7 +549,7 @@ pub proof fn lemma_collect_edge_gaps(id: production::StepIdx, body_len: u16)
 // Production source: part_12.rs:199-212 (the
 // `PrimitiveLoweringLimitExceeded` error constructed when
 // `StepIdx::checked_add` returns None) and
-// bounded_collect.rs:109-115 (the `StepIndexOutOfRange` error
+// bounded_collect.rs:90-96 (the `StepIndexOutOfRange` error
 // constructed when `body_len + extra` overflows u16).
 //
 // PO-COLLECT-004: At `id == u16::MAX - body_len - 2`, the production
@@ -629,7 +629,7 @@ pub proof fn lemma_option_some_or_default_is_at_least_one(v: Option<u32>)
 // ============================================================================
 // L6: Full emission chain — production projection contract end-to-end
 // ============================================================================
-// Production source: bounded_collect.rs:257-277 (the full
+// Production source: bounded_collect.rs:241-261 (the full
 // `lower_bounded_collect` body).
 //
 // PO-COLLECT-006: For any valid starting `id` (where
