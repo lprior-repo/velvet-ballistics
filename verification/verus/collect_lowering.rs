@@ -608,8 +608,8 @@ pub proof fn lemma_max_valid_collect_start(body_len: u16)
 // ============================================================================
 // L5: Option unwrap safety — pages.unwrap_or(1) and items.unwrap_or(1)
 // ============================================================================
-// Production source: bounded_collect.rs:136-137
-// (`plan_validate_bounds`) and bounded_collect.rs:172 (`plan_build`):
+// Production source: bounded_collect.rs:125-141
+// (`plan_validate_bounds`) and bounded_collect.rs:153-175 (`plan_build`):
 //
 //     let pages = config.pages.unwrap_or(1);
 //     let items = config.items.unwrap_or(1);
